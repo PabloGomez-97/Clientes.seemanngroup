@@ -6,6 +6,7 @@ import QuotesView from './components/quotes/QuotesView';
 import AirShipmentsView from './components/shipments/AirShipmentsView.tsx';
 import Reports from './components/reports/Reports.tsx';
 import Settings from './components/settings/Settings.tsx';
+import ShipmentsView from './components/shipments/Shipments.tsx';
 
 function App() {
   const [accessToken, setAccessToken] = useState('');
@@ -69,6 +70,12 @@ function App() {
           )}
           {activeView === 'shipments' && (
             <AirShipmentsView 
+              accessToken={accessToken}
+              onLogout={handleLogout}
+            />
+          )}
+          {activeView === 'all-shipments' && (
+            <ShipmentsView 
               accessToken={accessToken}
               onLogout={handleLogout}
             />
