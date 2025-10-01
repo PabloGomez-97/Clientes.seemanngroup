@@ -1,44 +1,84 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useState } from 'react';
+import TokenForm from './components/tokenform/TokenForm';
+import Navbar from './components/layout/Navbar';
+import Sidebar from './components/layout/Sidebar';
+import QuotesView from './components/quotes/QuotesView';
+import AirShipmentsView from './components/shipments/AirShipmentsView.tsx';
+import Reports from './components/reports/Reports.tsx';
+import Settings from './components/settings/Settings.tsx';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [accessToken, setAccessToken] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState('quotes');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const handleTokenSaved = (token: string) => {
+    console.log('Token recibido en App:', token ? 'Sí (longitud: ' + token.length + ')' : 'No');
+    setAccessToken(token);
+    setError(null);
+  };
+
+  const handleLogout = () => {
+    setAccessToken('');
+    setError(null);
+    setActiveView('quotes');
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  if (!accessToken) {
+    return (
+      <div className="container py-5">
+        <div className="text-center mb-5">
+          <h1 className="display-4 fw-bold text-primary mb-2">Cotizaciones Linbis</h1>
+          <p className="text-muted">Sistema de gestión de cotizaciones</p>
+        </div>
+        <TokenForm 
+          onTokenSaved={handleTokenSaved}
+          error={error}
+          setError={setError}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="container min-vh-100 d-flex flex-column align-items-center justify-content-center">
-      <div className="text-center">
-        <div className="mb-4">
-          <a href="https://vite.dev" target="_blank" rel="noopener noreferrer" className="me-3">
-            <img src={viteLogo} className="img-fluid" alt="Vite logo" style={{ height: '6em' }} />
-          </a>
-          <a href="https://react.dev" target="_blank" rel="noopener noreferrer">
-            <img src={reactLogo} className="img-fluid" alt="React logo" style={{ height: '6em' }} />
-          </a>
+    <div className="d-flex" style={{ height: '100vh' }}>
+      <Sidebar 
+        activeView={activeView}
+        setActiveView={setActiveView}
+        isOpen={sidebarOpen}
+      />
+
+      <div className="flex-fill d-flex flex-column" style={{ overflow: 'hidden' }}>
+        <Navbar 
+          accessToken={accessToken}
+          onLogout={handleLogout}
+          toggleSidebar={toggleSidebar}
+        />
+
+        <div className="flex-fill p-4" style={{ overflowY: 'auto', backgroundColor: '#f8f9fa' }}>
+          {activeView === 'quotes' && (
+            <QuotesView 
+              accessToken={accessToken}
+              onLogout={handleLogout}
+            />
+          )}
+          {activeView === 'shipments' && (
+            <AirShipmentsView 
+              accessToken={accessToken}
+              onLogout={handleLogout}
+            />
+          )}
+          {activeView === 'reports' && <Reports />}
+          {activeView === 'settings' && <Settings />}
         </div>
-
-        <h1 className="display-4 fw-bold mb-4">Vite + React</h1>
-
-        <div className="card shadow-sm mx-auto" style={{ maxWidth: '500px' }}>
-          <div className="card-body p-4">
-            <button 
-              className="btn btn-primary btn-lg mb-3" 
-              onClick={() => setCount((count) => count + 1)}
-            >
-              count is {count}
-            </button>
-            <p className="mb-0">
-              Edit <code className="text-danger">src/App.tsx</code> and save to test HMR
-            </p>
-          </div>
-        </div>
-
-        <p className="text-muted mt-4">
-          Click on the Vite and React logos to learn more
-        </p>
       </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
