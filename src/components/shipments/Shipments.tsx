@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 
 interface ShipmentsViewProps {
   accessToken: string;
@@ -49,11 +50,12 @@ interface Shipment {
 }
 
 function ShipmentsView({ accessToken, onLogout }: ShipmentsViewProps) {
+  const { user } = useAuth();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [displayedShipments, setDisplayedShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterConsignee] = useState('MAURICIO HOCHSCHILD INGENIERÍA Y SERVICIOS SPA.');
+  const filterConsignee = user?.username || '';
   
   // Modal state
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);

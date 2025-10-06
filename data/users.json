@@ -1,0 +1,17 @@
+[
+  {
+    "email": "admin@seemanngroup.com",
+    "username": "Administrador",
+    "passwordHash": "$2b$12$PVS91KagNiwQCxDMYSps5OoHYe47kP6Y0v.4yKNnWoJjVlvenvSbe"
+  },
+  {
+    "email": "natalia@seemanngroup.com",
+    "username": "SOCIEDAD MINERA ROSARIO LTDA",
+    "passwordHash": "$2b$12$WE/7r5ghlfEvPj/N0BeIZ.hrsiMqoB2enXySQmwybVFjUwQSpQQBK"
+  },
+  {
+    "email": "marco@seemanngroup.com",
+    "username": "MAURICIO HOCHSCHILD INGENIERÍA Y SERVICIOS SPA.",
+    "passwordHash": "$2b$12$I8XfoUg0z5WvPNyjTMCM7eN92.Ddx04YI3fUK8RBRkb3QyNSb3Jee"
+  }
+]

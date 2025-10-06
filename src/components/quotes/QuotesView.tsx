@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 
 interface QuotesViewProps {
   accessToken: string;
@@ -17,11 +18,13 @@ interface Quote {
 }
 
 function QuotesView({ accessToken, onLogout }: QuotesViewProps) {
+  const { user } = useAuth(); // Obtener información del usuario autenticado
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterConsignee] = useState('MAURICIO HOCHSCHILD INGENIERÍA Y SERVICIOS SPA.');
+
+   const filterConsignee = user?.username || '';
   
   // Modal state
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);

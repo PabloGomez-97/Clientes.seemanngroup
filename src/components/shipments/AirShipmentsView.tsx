@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 
 interface AirShipmentsViewProps {
   accessToken: string;
@@ -25,11 +26,12 @@ interface AirShipment {
 }
 
 function AirShipmentsView({ accessToken, onLogout }: AirShipmentsViewProps) {
+  const { user } = useAuth();
   const [shipments, setShipments] = useState<AirShipment[]>([]);
   const [displayedShipments, setDisplayedShipments] = useState<AirShipment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterConsignee] = useState('MAURICIO HOCHSCHILD INGENIERÍA Y SERVICIOS SPA.');
+  const filterConsignee = user?.username || '';
   
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);

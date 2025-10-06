@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../auth/AuthContext';
 
 interface OceanShipmentsViewProps {
   accessToken: string;
@@ -48,11 +49,12 @@ interface OceanShipment {
 }
 
 function OceanShipmentsView({ accessToken, onLogout }: OceanShipmentsViewProps) {
+  const { user } = useAuth();
   const [oceanShipments, setOceanShipments] = useState<OceanShipment[]>([]);
   const [displayedOceanShipments, setDisplayedOceanShipments] = useState<OceanShipment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterConsignee] = useState('MAURICIO HOCHSCHILD INGENIERÍA Y SERVICIOS SPA.');
+  const filterConsignee = user?.username || '';
   
   // Modal state
   const [selectedOceanShipment, setSelectedOceanShipment] = useState<OceanShipment | null>(null);
