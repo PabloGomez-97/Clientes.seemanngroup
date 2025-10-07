@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'cambia-esto-en-.env';
-const TOKEN_TTL = process.env.JWT_TTL || '7d';
+const TOKEN_TTL: string = process.env.JWT_TTL || '7d';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
 // Definir esquema de Usuario
@@ -52,9 +52,8 @@ mongoose
     process.exit(1);
   });
 
-// @ts-ignore - JWT types issue
 const sign = (payload: object): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL as string });
 };
 
 const auth: express.RequestHandler = (req, res, next) => {
