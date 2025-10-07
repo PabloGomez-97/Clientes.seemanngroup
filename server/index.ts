@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'cambia-esto-en-.env';
-const TOKEN_TTL: string = process.env.JWT_TTL || '7d';
+const TOKEN_TTL = process.env.JWT_TTL || '7d';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
 // Definir esquema de Usuario
@@ -52,10 +52,7 @@ mongoose
     process.exit(1);
   });
 
-const sign = (payload: object): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL as string });
-};
-
+// Middleware de autenticación
 const auth: express.RequestHandler = (req, res, next) => {
   const h = req.headers.authorization || '';
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
@@ -67,6 +64,14 @@ const auth: express.RequestHandler = (req, res, next) => {
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
+};
+
+const sign = (payload: object): string => {
+  return jwt.sign(
+    payload, 
+    JWT_SECRET as jwt.Secret, 
+    { expiresIn: TOKEN_TTL }
+  );
 };
 
 // Login endpoint

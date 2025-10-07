@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'cambia-esto-en-.env';
-const TOKEN_TTL: string = process.env.JWT_TTL || '7d';
+const TOKEN_TTL = process.env.JWT_TTL || '7d';
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
 // Definir esquema de Usuario
@@ -53,7 +53,11 @@ async function connectDB() {
 }
 
 const sign = (payload: object): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL as string });
+  return jwt.sign(
+    payload, 
+    JWT_SECRET as jwt.Secret, 
+    { expiresIn: TOKEN_TTL }
+  );
 };
 
 // Función principal del handler
