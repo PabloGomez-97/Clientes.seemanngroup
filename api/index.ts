@@ -4,37 +4,29 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-/** =========================
- *  Utils de entorno y JWT
- *  ========================= */
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env var: ${name}`);
   return v;
 }
 
-// Variables de entorno (tipadas como string seguro)
-const JWT_SECRET = requireEnv('JWT_SECRET');
-const TOKEN_TTL = process.env.JWT_TTL || '7d';
+const JWT_SECRET: jwt.Secret = requireEnv('JWT_SECRET');
+const TOKEN_TTL: jwt.StringValue | number =
+  (process.env.JWT_TTL as jwt.StringValue) ?? '7d';
 const MONGODB_URI = requireEnv('MONGODB_URI');
 
-// Payload personalizado del JWT
 interface AuthPayload extends jwt.JwtPayload {
-  sub: string;        // email del usuario
+  sub: string;
   username: string;
 }
 
-// Firma de tokens con expiración
 function signToken(payload: AuthPayload | object): string {
   return jwt.sign(payload as object, JWT_SECRET, { expiresIn: TOKEN_TTL });
 }
 
-// Verificación del token con tipado
 function verifyToken(token: string): AuthPayload {
   const decoded = jwt.verify(token, JWT_SECRET);
-  if (typeof decoded === 'string') {
-    throw new Error('Invalid token payload');
-  }
+  if (typeof decoded === 'string') throw new Error('Invalid token payload');
   return decoded as AuthPayload;
 }
 

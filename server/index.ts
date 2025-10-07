@@ -6,22 +6,19 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 
-/** =========================
- *  Utils de entorno y JWT
- *  ========================= */
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env var: ${name}`);
   return v;
 }
 
-const JWT_SECRET = requireEnv('JWT_SECRET');         // string seguro
-const TOKEN_TTL = process.env.JWT_TTL || '7d';
-const MONGODB_URI = requireEnv('MONGODB_URI');       // string seguro
+const JWT_SECRET: jwt.Secret = requireEnv('JWT_SECRET');
+const TOKEN_TTL: jwt.StringValue | number =
+  (process.env.JWT_TTL as jwt.StringValue) ?? '7d';
+const MONGODB_URI = requireEnv('MONGODB_URI');
 
-// Payload del token
 interface AuthPayload extends jwt.JwtPayload {
-  sub: string;       // email
+  sub: string;
   username: string;
 }
 
