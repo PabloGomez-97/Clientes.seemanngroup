@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 
@@ -13,8 +13,8 @@ function requireEnv(name: string): string {
 }
 
 const JWT_SECRET: jwt.Secret = requireEnv('JWT_SECRET');
-const TOKEN_TTL: jwt.StringValue | number =
-  (process.env.JWT_TTL as jwt.StringValue) ?? '7d';
+const TOKEN_TTL: jwt.SignOptions['expiresIn'] =
+  (process.env.JWT_TTL as jwt.SignOptions['expiresIn']) ?? '7d';
 const MONGODB_URI = requireEnv('MONGODB_URI');
 
 interface AuthPayload extends jwt.JwtPayload {
@@ -23,7 +23,8 @@ interface AuthPayload extends jwt.JwtPayload {
 }
 
 function signToken(payload: AuthPayload | object): string {
-  return jwt.sign(payload as object, JWT_SECRET, { expiresIn: TOKEN_TTL });
+  const opts: jwt.SignOptions = { expiresIn: TOKEN_TTL };
+  return jwt.sign(payload as object, JWT_SECRET, opts);
 }
 
 function verifyToken(token: string): AuthPayload {
@@ -31,6 +32,7 @@ function verifyToken(token: string): AuthPayload {
   if (typeof decoded === 'string') throw new Error('Invalid token payload');
   return decoded as AuthPayload;
 }
+
 
 /** =========================
  *  Express app
