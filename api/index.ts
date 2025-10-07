@@ -52,8 +52,9 @@ async function connectDB() {
   return db;
 }
 
+// @ts-ignore - JWT types issue
 const sign = (payload: object): string => {
-  return jwt.sign(payload, JWT_SECRET as jwt.Secret, { expiresIn: TOKEN_TTL as string });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL });
 };
 
 // Función principal del handler
