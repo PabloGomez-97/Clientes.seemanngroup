@@ -4,6 +4,7 @@ import TokenForm from './components/tokenform/TokenForm';
 import NavbarAdmin from './components/layout/Navbar-admin';
 import SidebarAdmin from './components/layout/Sidebar-admin';
 import DashboardAdmin from './components/administrador/dashboard-admin';
+import UsersManagement from './components/administrador/users-management'; // ← NUEVO
 
 function AdminApp() {
   const [accessToken, setAccessToken] = useState('');
@@ -69,6 +70,11 @@ function AdminApp() {
             <DashboardAdmin 
               accessToken={accessToken}
               onLogout={handleLogout}
+            />
+          )}
+          {activeView === 'users' && (  // ← NUEVO
+            <UsersManagement 
+              accessToken={accessToken}
             />
           )}
           {activeView === 'reporteria' && (
