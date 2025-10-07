@@ -52,8 +52,9 @@ mongoose
     process.exit(1);
   });
 
-const sign = (payload: object) =>
-  jwt.sign(payload as any, JWT_SECRET, { expiresIn: TOKEN_TTL });
+const sign = (payload: object): string => {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL });
+};
 
 const auth: express.RequestHandler = (req, res, next) => {
   const h = req.headers.authorization || '';

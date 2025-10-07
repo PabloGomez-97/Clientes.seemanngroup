@@ -52,8 +52,9 @@ async function connectDB() {
   return db;
 }
 
-const sign = (payload: object) =>
-  jwt.sign(payload as any, JWT_SECRET, { expiresIn: TOKEN_TTL });
+const sign = (payload: object): string => {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL });
+};
 
 // Función principal del handler
 export default async function handler(req: VercelRequest, res: VercelResponse) {
