@@ -6,6 +6,9 @@ import * as jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 
+/** =========================
+ *  Entorno + JWT
+ *  ========================= */
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env var: ${name}`);
@@ -33,7 +36,6 @@ function verifyToken(token: string): AuthPayload {
   return decoded as AuthPayload;
 }
 
-
 /** =========================
  *  Express app
  *  ========================= */
@@ -42,9 +44,22 @@ app.use(cors());
 app.use(express.json());
 
 /** =========================
- *  Mongoose / Modelos
+ *  Mongoose / Modelos tipados
  *  ========================= */
-const UserSchema = new mongoose.Schema(
+interface IUser {
+  email: string;
+  username: string;
+  passwordHash: string;
+}
+
+interface IUserDoc extends IUser, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type UserModel = mongoose.Model<IUserDoc>;
+
+const UserSchema = new mongoose.Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
@@ -53,8 +68,9 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Evita redefinir el modelo si hay recarga en dev
-const User = mongoose.models.User || mongoose.model('User', UserSchema);
+// Evita redefinir el modelo y, sobre todo, evita unión de tipos
+const User: UserModel =
+  (mongoose.models.User as UserModel) ?? mongoose.model<IUserDoc>('User', UserSchema);
 
 // Conectar a MongoDB
 mongoose
@@ -192,7 +208,7 @@ app.get('/api/admin/users', auth, async (req, res) => {
 
     return res.json({
       success: true,
-      users: users.map((u: any) => ({
+      users: users.map((u: IUserDoc) => ({
         id: u._id,
         email: u.email,
         username: u.username,

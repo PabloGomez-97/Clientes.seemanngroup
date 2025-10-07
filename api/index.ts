@@ -4,6 +4,9 @@ import mongoose from 'mongoose';
 import * as jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
+/** =========================
+ *  Entorno + JWT
+ *  ========================= */
 function requireEnv(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing env var: ${name}`);
@@ -31,11 +34,23 @@ function verifyToken(token: string): AuthPayload {
   return decoded as AuthPayload;
 }
 
-
 /** =========================
- *  Mongoose / Modelos
+ *  Mongoose / Modelos tipados
  *  ========================= */
-const UserSchema = new mongoose.Schema(
+interface IUser {
+  email: string;
+  username: string;
+  passwordHash: string;
+}
+
+interface IUserDoc extends IUser, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type UserModel = mongoose.Model<IUserDoc>;
+
+const UserSchema = new mongoose.Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
@@ -44,8 +59,9 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Evitar redefinir el modelo si ya existe
-const User = mongoose.models.User || mongoose.model('User', UserSchema);
+// Evitar unión de tipos: forzar el tipo explícito del modelo
+const User: UserModel =
+  (mongoose.models.User as UserModel) ?? mongoose.model<IUserDoc>('User', UserSchema);
 
 // Reutilizar la conexión de mongoose en serverless
 let cachedDb: typeof mongoose | null = null;
@@ -58,7 +74,7 @@ async function connectDB() {
 }
 
 /** =========================
- *  Auth helper para rutas admin
+ *  Helpers de auth para rutas
  *  ========================= */
 function extractBearerToken(req: VercelRequest): string | null {
   const authHeader = req.headers.authorization || '';
@@ -218,7 +234,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         return res.json({
           success: true,
-          users: users.map((u: any) => ({
+          users: users.map((u: IUserDoc) => ({
             id: u._id,
             email: u.email,
             username: u.username,
