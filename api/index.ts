@@ -53,7 +53,7 @@ async function connectDB() {
 }
 
 const sign = (payload: object): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_TTL });
+  return jwt.sign(payload, JWT_SECRET as jwt.Secret, { expiresIn: TOKEN_TTL as string });
 };
 
 // Función principal del handler
