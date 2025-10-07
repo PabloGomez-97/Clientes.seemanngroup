@@ -1,7 +1,7 @@
 // api/index.ts - Serverless function para Vercel
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 /** =========================

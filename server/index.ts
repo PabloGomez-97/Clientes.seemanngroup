@@ -2,7 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 
