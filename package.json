@@ -11,6 +11,9 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "bootstrap": "^5.3.8",
@@ -33,6 +36,7 @@
     "@types/mongoose": "^5.11.96",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "@vercel/node": "^5.3.24",
     "@vitejs/plugin-react": "^5.0.3",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
