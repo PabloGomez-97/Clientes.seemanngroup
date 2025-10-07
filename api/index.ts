@@ -50,7 +50,7 @@ interface IUserDoc extends IUser, mongoose.Document {
 
 type UserModel = mongoose.Model<IUserDoc>;
 
-const UserSchema = new mongoose.Schema<IUser>(
+const UserSchema = new mongoose.Schema<IUserDoc>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
@@ -60,9 +60,7 @@ const UserSchema = new mongoose.Schema<IUser>(
 );
 
 // Evitar unión de tipos: forzar el tipo explícito del modelo
-const User: UserModel =
-  (mongoose.models.User as UserModel) ?? mongoose.model<IUserDoc>('User', UserSchema);
-
+const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchema)) as UserModel;
 // Reutilizar la conexión de mongoose en serverless
 let cachedDb: typeof mongoose | null = null;
 
