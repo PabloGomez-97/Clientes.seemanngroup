@@ -4,63 +4,86 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cambia-esto-en-.env';
-const TOKEN_TTL = process.env.JWT_TTL || '7d';
-const MONGODB_URI = process.env.MONGODB_URI || '';
+/** =========================
+ *  Utils de entorno y JWT
+ *  ========================= */
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing env var: ${name}`);
+  return v;
+}
 
-// Definir esquema de Usuario
+// Variables de entorno (tipadas como string seguro)
+const JWT_SECRET = requireEnv('JWT_SECRET');
+const TOKEN_TTL = process.env.JWT_TTL || '7d';
+const MONGODB_URI = requireEnv('MONGODB_URI');
+
+// Payload personalizado del JWT
+interface AuthPayload extends jwt.JwtPayload {
+  sub: string;        // email del usuario
+  username: string;
+}
+
+// Firma de tokens con expiración
+function signToken(payload: AuthPayload | object): string {
+  return jwt.sign(payload as object, JWT_SECRET, { expiresIn: TOKEN_TTL });
+}
+
+// Verificación del token con tipado
+function verifyToken(token: string): AuthPayload {
+  const decoded = jwt.verify(token, JWT_SECRET);
+  if (typeof decoded === 'string') {
+    throw new Error('Invalid token payload');
+  }
+  return decoded as AuthPayload;
+}
+
+/** =========================
+ *  Mongoose / Modelos
+ *  ========================= */
 const UserSchema = new mongoose.Schema(
   {
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    username: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    passwordHash: {
-      type: String,
-      required: true,
-    },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    username: { type: String, required: true, trim: true },
+    passwordHash: { type: String, required: true },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 // Evitar redefinir el modelo si ya existe
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
-// Conectar a MongoDB (reutiliza la conexión)
+// Reutilizar la conexión de mongoose en serverless
 let cachedDb: typeof mongoose | null = null;
 
 async function connectDB() {
-  if (cachedDb) {
-    return cachedDb;
-  }
-
-  const db = await mongoose.connect(MONGODB_URI, {
-    bufferCommands: false,
-  });
-
+  if (cachedDb) return cachedDb;
+  const db = await mongoose.connect(MONGODB_URI, { bufferCommands: false });
   cachedDb = db;
   return db;
 }
 
-const sign = (payload: object): string => {
-  return jwt.sign(
-    payload, 
-    JWT_SECRET as jwt.Secret, 
-    { expiresIn: TOKEN_TTL }
-  );
-};
+/** =========================
+ *  Auth helper para rutas admin
+ *  ========================= */
+function extractBearerToken(req: VercelRequest): string | null {
+  const authHeader = req.headers.authorization || '';
+  return authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+}
 
-// Función principal del handler
+function requireAuth(req: VercelRequest): AuthPayload {
+  const token = extractBearerToken(req);
+  if (!token) throw new Error('No auth token');
+  try {
+    return verifyToken(token);
+  } catch {
+    throw new Error('Invalid token');
+  }
+}
+
+/** =========================
+ *  Handler principal
+ *  ========================= */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -88,7 +111,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // POST /api/login
     if (path === '/api/login' && method === 'POST') {
-      const { email, password } = req.body || {};
+      const { email, password } = (req.body as any) || {};
 
       if (!email || !password) {
         return res.status(400).json({ error: 'Faltan campos' });
@@ -113,7 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(401).json({ error: 'Credenciales inválidas' });
       }
 
-      const token = sign({ sub: user.email, username: user.username });
+      const token = signToken({ sub: user.email, username: user.username });
       return res.json({
         token,
         user: { email: user.email, username: user.username },
@@ -122,15 +145,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // GET /api/me
     if (path === '/api/me' && method === 'GET') {
-      const authHeader = req.headers.authorization || '';
-      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
+      const token = extractBearerToken(req);
       if (!token) {
         return res.status(401).json({ error: 'No auth token' });
       }
 
       try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = verifyToken(token);
         return res.json({ user: decoded });
       } catch {
         return res.status(401).json({ error: 'Invalid token' });
@@ -141,53 +162,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // RUTAS DE ADMINISTRACIÓN
     // ============================================================
 
-    // Verificar autenticación para rutas admin
-    const requireAuth = () => {
-      const authHeader = req.headers.authorization || '';
-      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-      if (!token) {
-        throw new Error('No auth token');
-      }
-
-      try {
-        return jwt.verify(token, JWT_SECRET) as any;
-      } catch {
-        throw new Error('Invalid token');
-      }
-    };
-
     // POST /api/admin/create-user
     if (path === '/api/admin/create-user' && method === 'POST') {
       try {
-        const currentUser = requireAuth();
+        const currentUser = requireAuth(req);
 
         if (currentUser.username !== 'Administrador') {
           return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
         }
 
-        const { email, username, password } = req.body || {};
-
+        const { email, username, password } = (req.body as any) || {};
         if (!email || !username || !password) {
           return res.status(400).json({ error: 'Faltan campos requeridos' });
         }
 
-        const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+        const normalizedEmail = String(email).toLowerCase().trim();
+        const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) {
           return res.status(400).json({ error: 'El email ya está registrado' });
         }
 
-        const passwordHash = bcrypt.hashSync(password, 12);
+        const passwordHash = bcrypt.hashSync(String(password), 12);
 
         const newUser = new User({
-          email: email.toLowerCase().trim(),
-          username: username.trim(),
+          email: normalizedEmail,
+          username: String(username).trim(),
           passwordHash,
         });
 
         await newUser.save();
 
-        console.log('[admin] Usuario creado:', email);
+        console.log('[admin] Usuario creado:', normalizedEmail);
 
         return res.json({
           success: true,
@@ -198,7 +203,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
         });
       } catch (e: any) {
-        if (e.message === 'No auth token' || e.message === 'Invalid token') {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
           return res.status(401).json({ error: e.message });
         }
         console.error('[admin] Error creando usuario:', e);
@@ -209,7 +214,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // GET /api/admin/users
     if (path === '/api/admin/users' && method === 'GET') {
       try {
-        const currentUser = requireAuth();
+        const currentUser = requireAuth(req);
 
         if (currentUser.username !== 'Administrador') {
           return res.status(403).json({ error: 'No tienes permisos para ver usuarios' });
@@ -219,7 +224,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         return res.json({
           success: true,
-          users: users.map((u) => ({
+          users: users.map((u: any) => ({
             id: u._id,
             email: u.email,
             username: u.username,
@@ -227,7 +232,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           })),
         });
       } catch (e: any) {
-        if (e.message === 'No auth token' || e.message === 'Invalid token') {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
           return res.status(401).json({ error: e.message });
         }
         console.error('[admin] Error listando usuarios:', e);
@@ -238,7 +243,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // DELETE /api/admin/users/:id
     if (path?.startsWith('/api/admin/users/') && method === 'DELETE') {
       try {
-        const currentUser = requireAuth();
+        const currentUser = requireAuth(req);
 
         if (currentUser.username !== 'Administrador') {
           return res.status(403).json({ error: 'No tienes permisos para eliminar usuarios' });
@@ -260,7 +265,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           message: 'Usuario eliminado exitosamente',
         });
       } catch (e: any) {
-        if (e.message === 'No auth token' || e.message === 'Invalid token') {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
           return res.status(401).json({ error: e.message });
         }
         console.error('[admin] Error eliminando usuario:', e);

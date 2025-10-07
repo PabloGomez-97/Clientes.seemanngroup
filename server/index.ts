@@ -6,44 +6,60 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 
+/** =========================
+ *  Utils de entorno y JWT
+ *  ========================= */
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing env var: ${name}`);
+  return v;
+}
+
+const JWT_SECRET = requireEnv('JWT_SECRET');         // string seguro
+const TOKEN_TTL = process.env.JWT_TTL || '7d';
+const MONGODB_URI = requireEnv('MONGODB_URI');       // string seguro
+
+// Payload del token
+interface AuthPayload extends jwt.JwtPayload {
+  sub: string;       // email
+  username: string;
+}
+
+function signToken(payload: AuthPayload | object): string {
+  return jwt.sign(payload as object, JWT_SECRET, { expiresIn: TOKEN_TTL });
+}
+
+function verifyToken(token: string): AuthPayload {
+  const decoded = jwt.verify(token, JWT_SECRET);
+  if (typeof decoded === 'string') throw new Error('Invalid token payload');
+  return decoded as AuthPayload;
+}
+
+/** =========================
+ *  Express app
+ *  ========================= */
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cambia-esto-en-.env';
-const TOKEN_TTL = process.env.JWT_TTL || '7d';
-const MONGODB_URI = process.env.MONGODB_URI || '';
-
-// Definir esquema de Usuario
+/** =========================
+ *  Mongoose / Modelos
+ *  ========================= */
 const UserSchema = new mongoose.Schema(
   {
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    username: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    passwordHash: {
-      type: String,
-      required: true,
-    },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    username: { type: String, required: true, trim: true },
+    passwordHash: { type: String, required: true },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const User = mongoose.model('User', UserSchema);
+// Evita redefinir el modelo si hay recarga en dev
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 // Conectar a MongoDB
 mongoose
-  .connect(MONGODB_URI)
+  .connect(MONGODB_URI, { bufferCommands: false })
   .then(() => {
     console.log('✅ Conectado a MongoDB Atlas');
   })
@@ -52,13 +68,16 @@ mongoose
     process.exit(1);
   });
 
-// Middleware de autenticación
+/** =========================
+ *  Middleware de autenticación
+ *  ========================= */
 const auth: express.RequestHandler = (req, res, next) => {
   const h = req.headers.authorization || '';
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'No auth token' });
+
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = verifyToken(token);
     (req as any).user = decoded;
     next();
   } catch {
@@ -66,25 +85,19 @@ const auth: express.RequestHandler = (req, res, next) => {
   }
 };
 
-const sign = (payload: object): string => {
-  return jwt.sign(
-    payload, 
-    JWT_SECRET as jwt.Secret, 
-    { expiresIn: TOKEN_TTL }
-  );
-};
+/** =========================
+ *  Rutas
+ *  ========================= */
 
-// Login endpoint
+// Login
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body || {};
+    const { email, password } = (req.body as any) || {};
     if (!email || !password) {
       return res.status(400).json({ error: 'Faltan campos' });
     }
 
     const lookupEmail = String(email).toLowerCase().trim();
-    
-    // Buscar usuario en MongoDB
     const user = await User.findOne({ email: lookupEmail });
 
     if (!user) {
@@ -103,10 +116,10 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    const token = sign({ sub: user.email, username: user.username });
-    return res.json({ 
-      token, 
-      user: { email: user.email, username: user.username } 
+    const token = signToken({ sub: user.email, username: user.username });
+    return res.json({
+      token,
+      user: { email: user.email, username: user.username },
     });
   } catch (e) {
     console.error('[login] error inesperado:', e);
@@ -126,37 +139,33 @@ app.get('/api/me', auth, (req, res) => {
 // Crear nuevo usuario (solo para administradores)
 app.post('/api/admin/create-user', auth, async (req, res) => {
   try {
-    // Verificar que el usuario autenticado sea administrador
-    const currentUser = (req as any).user;
+    const currentUser = (req as any).user as AuthPayload;
     if (currentUser.username !== 'Administrador') {
       return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
     }
 
-    const { email, username, password } = req.body || {};
-
+    const { email, username, password } = (req.body as any) || {};
     if (!email || !username || !password) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
-    // Verificar si el usuario ya existe
-    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ error: 'El email ya está registrado' });
     }
 
-    // Hashear la contraseña
-    const passwordHash = bcrypt.hashSync(password, 12);
+    const passwordHash = bcrypt.hashSync(String(password), 12);
 
-    // Crear el nuevo usuario
     const newUser = new User({
-      email: email.toLowerCase().trim(),
-      username: username.trim(),
+      email: normalizedEmail,
+      username: String(username).trim(),
       passwordHash,
     });
 
     await newUser.save();
 
-    console.log('[admin] Usuario creado:', email);
+    console.log('[admin] Usuario creado:', normalizedEmail);
 
     return res.json({
       success: true,
@@ -172,11 +181,10 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
   }
 });
 
-// Listar todos los usuarios (solo para administradores)
+// Listar usuarios (solo administradores)
 app.get('/api/admin/users', auth, async (req, res) => {
   try {
-    // Verificar que el usuario autenticado sea administrador
-    const currentUser = (req as any).user;
+    const currentUser = (req as any).user as AuthPayload;
     if (currentUser.username !== 'Administrador') {
       return res.status(403).json({ error: 'No tienes permisos para ver usuarios' });
     }
@@ -185,7 +193,7 @@ app.get('/api/admin/users', auth, async (req, res) => {
 
     return res.json({
       success: true,
-      users: users.map(u => ({
+      users: users.map((u: any) => ({
         id: u._id,
         email: u.email,
         username: u.username,
@@ -198,18 +206,16 @@ app.get('/api/admin/users', auth, async (req, res) => {
   }
 });
 
-// Eliminar usuario (solo para administradores)
+// Eliminar usuario (solo administradores)
 app.delete('/api/admin/users/:id', auth, async (req, res) => {
   try {
-    // Verificar que el usuario autenticado sea administrador
-    const currentUser = (req as any).user;
+    const currentUser = (req as any).user as AuthPayload;
     if (currentUser.username !== 'Administrador') {
       return res.status(403).json({ error: 'No tienes permisos para eliminar usuarios' });
     }
 
     const { id } = req.params;
 
-    // No permitir que el admin se elimine a sí mismo
     const userToDelete = await User.findById(id);
     if (userToDelete?.username === 'Administrador') {
       return res.status(400).json({ error: 'No puedes eliminar la cuenta de administrador' });
@@ -229,6 +235,9 @@ app.delete('/api/admin/users/:id', auth, async (req, res) => {
   }
 });
 
+/** =========================
+ *  Start
+ *  ========================= */
 const PORT = Number(process.env.PORT || 4000);
 app.listen(PORT, () => {
   console.log(`🚀 Auth server: http://localhost:${PORT}`);
