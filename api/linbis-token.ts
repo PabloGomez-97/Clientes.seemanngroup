@@ -1,7 +1,7 @@
 // api/linbis-token.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
-import { LinbisToken } from './models/LinbisToken.ts';
+import { LinbisToken } from './models/LinbisToken';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 const LINBIS_CLIENT_ID = process.env.LINBIS_CLIENT_ID!;
@@ -22,7 +22,7 @@ async function getLinbisToken(): Promise<string> {
   await connectDB();
 
   // Buscar el token en la base de datos
-  let tokenDoc = await LinbisToken.findById('linbis_token');
+  let tokenDoc = await LinbisToken.findById('linbis_token').exec();
 
   if (!tokenDoc) {
     throw new Error('No refresh token found in database. Please initialize it first.');

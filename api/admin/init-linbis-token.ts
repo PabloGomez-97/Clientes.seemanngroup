@@ -1,7 +1,7 @@
 // api/admin/init-linbis-token.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
-import { LinbisToken } from '../models/LinbisToken.ts';
+import { LinbisToken } from '../models/LinbisToken';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Buscar si ya existe
-    let tokenDoc = await LinbisToken.findById('linbis_token');
+    let tokenDoc = await LinbisToken.findById('linbis_token').exec();
 
     if (tokenDoc) {
       // Actualizar
