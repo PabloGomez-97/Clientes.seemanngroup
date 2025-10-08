@@ -55,12 +55,16 @@ async function getLinbisToken(): Promise<string> {
     throw new Error(`Failed to refresh Linbis token: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as {
+    access_token: string;
+    expires_in: number;
+    refresh_token?: string;
+  };
 
   // Actualizar el documento con el nuevo token
   tokenDoc.access_token = data.access_token;
   tokenDoc.access_token_expiry = now + (data.expires_in * 1000);
-  
+
   // Si viene un nuevo refresh_token, actualizarlo también
   if (data.refresh_token) {
     console.log('[linbis-token] Updating refresh token in database');
