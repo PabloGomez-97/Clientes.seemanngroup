@@ -76,7 +76,7 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
       }}
     >
       <div className="p-3 border-bottom border-secondary">
-        <h5 className="mb-0">Menú Administrador</h5>
+        <h5 className="mb-0">Menú</h5>
       </div>
 
       <nav className="flex-fill">
