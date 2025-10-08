@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.clear();  // 👈 Cambio: limpia TODO el localStorage
+    localStorage.clear();
   };
 
   return (

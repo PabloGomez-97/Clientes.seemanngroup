@@ -248,6 +248,113 @@ app.delete('/api/admin/users/:id', auth, async (req, res) => {
   }
 });
 
+// Modelo para guardar el token (en memoria para dev local)
+interface LinbisTokenCache {
+  refresh_token: string;
+  access_token?: string;
+  access_token_expiry?: number;
+}
+
+let linbisTokenCache: LinbisTokenCache = {
+  refresh_token: process.env.LINBIS_REFRESH_TOKEN || '',
+  access_token: undefined,
+  access_token_expiry: undefined
+};
+
+// GET /api/linbis-token - Obtener token (con renovación automática)
+app.get('/api/linbis-token', async (req, res) => {
+  console.log('🔵 [linbis-token] Endpoint llamado');
+  try {
+    const LINBIS_CLIENT_ID = process.env.LINBIS_CLIENT_ID;
+    const LINBIS_TOKEN_URL = process.env.LINBIS_TOKEN_URL;
+
+    if (!LINBIS_CLIENT_ID || !LINBIS_TOKEN_URL) {
+      return res.status(500).json({ 
+        error: 'Missing Linbis configuration. Set LINBIS_CLIENT_ID and LINBIS_TOKEN_URL in .env' 
+      });
+    }
+
+    if (!linbisTokenCache.refresh_token) {
+      return res.status(500).json({ 
+        error: 'No refresh token found. Please initialize it first with POST /api/admin/init-linbis-token' 
+      });
+    }
+
+    // Si el access_token aún es válido (con 5 min de margen), usarlo
+    const now = Date.now();
+    if (linbisTokenCache.access_token && 
+        linbisTokenCache.access_token_expiry && 
+        linbisTokenCache.access_token_expiry > now + 300000) {
+      console.log('[linbis-token] Using cached access token');
+      return res.json({ token: linbisTokenCache.access_token });
+    }
+
+    // Si expiró o no existe, renovar usando refresh_token
+    console.log('[linbis-token] Refreshing access token...');
+
+    const response = await fetch(LINBIS_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: LINBIS_CLIENT_ID,
+        refresh_token: linbisTokenCache.refresh_token,
+        scope: 'https://linbis.onmicrosoft.com/linbis-api/access_as_user openid profile offline_access'
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[linbis-token] Failed to refresh:', errorText);
+      return res.status(500).json({ error: 'Failed to refresh Linbis token' });
+    }
+
+    const data = await response.json();
+
+    // Actualizar el cache con el nuevo token
+    linbisTokenCache.access_token = data.access_token;
+    linbisTokenCache.access_token_expiry = now + (data.expires_in * 1000);
+    
+    // Si viene un nuevo refresh_token, actualizarlo también
+    if (data.refresh_token) {
+      console.log('[linbis-token] Updating refresh token in cache');
+      linbisTokenCache.refresh_token = data.refresh_token;
+    }
+
+    console.log('[linbis-token] Token refreshed successfully');
+    return res.json({ token: linbisTokenCache.access_token });
+
+  } catch (error) {
+    console.error('[linbis-token] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/admin/init-linbis-token - Inicializar token
+app.post('/api/admin/init-linbis-token', (req, res) => {
+  try {
+    const { refresh_token } = req.body;
+
+    if (!refresh_token) {
+      return res.status(400).json({ error: 'refresh_token is required' });
+    }
+
+    linbisTokenCache.refresh_token = refresh_token;
+    linbisTokenCache.access_token = undefined;
+    linbisTokenCache.access_token_expiry = undefined;
+
+    console.log('[init-linbis-token] Refresh token initialized successfully');
+
+    return res.json({ 
+      success: true, 
+      message: 'Refresh token initialized successfully' 
+    });
+  } catch (error) {
+    console.error('[init-linbis-token] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 /** =========================
  *  Start
  *  ========================= */
