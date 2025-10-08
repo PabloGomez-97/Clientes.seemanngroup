@@ -1,5 +1,6 @@
 // src/components/administrador/users-management.tsx
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 
 interface User {
@@ -9,11 +10,20 @@ interface User {
   createdAt: string;
 }
 
-interface UsersManagementProps {
+interface OutletContext {
   accessToken: string;
+  onLogout: () => void;
 }
 
-function UsersManagement({ accessToken }: UsersManagementProps) {
+interface User {
+  id: string;
+  email: string;
+  username: string;
+  createdAt: string;
+}
+
+function UsersManagement() {
+  const { accessToken } = useOutletContext<OutletContext>();
   const { token } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);

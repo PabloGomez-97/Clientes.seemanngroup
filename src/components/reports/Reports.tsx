@@ -1,11 +1,13 @@
+import { useOutletContext } from 'react-router-dom';
 import { useAuth } from "../../auth/AuthContext";
 
-interface ReportsProps {
+interface OutletContext {
   accessToken: string;
-  Onlogout: () => void;
+  onLogout: () => void;
 }
 
-function Reports({ accessToken }: ReportsProps) {
+function Reports() {
+  const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
   return (
     <div className="container-fluid">

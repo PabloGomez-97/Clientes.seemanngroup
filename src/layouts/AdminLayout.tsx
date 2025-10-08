@@ -1,15 +1,13 @@
-// src/AdminApp.tsx
+// src/layouts/AdminLayout.tsx
 import { useState, useEffect } from 'react';
-import NavbarAdmin from './components/layout/Navbar-admin';
-import SidebarAdmin from './components/layout/Sidebar-admin';
-import DashboardAdmin from './components/administrador/dashboard-admin';
-import UsersManagement from './components/administrador/users-management';
+import { Outlet } from 'react-router-dom';
+import NavbarAdmin from '../components/layout/Navbar-admin';
+import SidebarAdmin from '../components/layout/Sidebar-admin';
 
-function AdminApp() {
+function AdminLayout() {
   const [accessToken, setAccessToken] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Obtener token de Linbis automáticamente al cargar
@@ -37,7 +35,6 @@ function AdminApp() {
   const handleLogout = () => {
     setAccessToken('');
     setError(null);
-    setActiveView('dashboard');
   };
 
   const toggleSidebar = () => {
@@ -92,7 +89,7 @@ function AdminApp() {
     );
   }
 
-  // Mostrar error si falla (sin TokenForm)
+  // Mostrar error si falla
   if (error) {
     return (
       <div className="container py-5">
@@ -141,11 +138,7 @@ function AdminApp() {
 
   return (
     <div className="d-flex" style={{ height: '100vh' }}>
-      <SidebarAdmin 
-        activeView={activeView}
-        setActiveView={setActiveView}
-        isOpen={sidebarOpen}
-      />
+      <SidebarAdmin isOpen={sidebarOpen} />
 
       <div className="flex-fill d-flex flex-column" style={{ overflow: 'hidden' }}>
         <NavbarAdmin 
@@ -155,33 +148,11 @@ function AdminApp() {
         />
 
         <div className="flex-fill p-4" style={{ overflowY: 'auto', backgroundColor: '#f8f9fa' }}>
-          {activeView === 'dashboard' && (
-            <DashboardAdmin 
-              accessToken={accessToken}
-              onLogout={handleLogout}
-            />
-          )}
-          {activeView === 'users' && (
-            <UsersManagement 
-              accessToken={accessToken}
-            />
-          )}
-          {activeView === 'reporteria' && (
-            <div className="text-center py-5">
-              <h3 className="text-muted">Módulo de Reportería</h3>
-              <p className="text-muted">En desarrollo...</p>
-            </div>
-          )}
-          {activeView === 'soporte' && (
-            <div className="text-center py-5">
-              <h3 className="text-muted">Módulo de Soporte</h3>
-              <p className="text-muted">En desarrollo...</p>
-            </div>
-          )}
+          <Outlet context={{ accessToken, onLogout: handleLogout }} />
         </div>
       </div>
     </div>
   );
 }
 
-export default AdminApp;
+export default AdminLayout;

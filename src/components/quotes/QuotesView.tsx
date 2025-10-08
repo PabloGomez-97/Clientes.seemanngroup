@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 
-interface QuotesViewProps {
+interface OutletContext {
   accessToken: string;
   onLogout: () => void;
 }
@@ -17,8 +18,9 @@ interface Quote {
   [key: string]: any;
 }
 
-function QuotesView({ accessToken, onLogout }: QuotesViewProps) {
-  const { user } = useAuth(); // Obtener información del usuario autenticado
+function QuotesView() {
+  const { accessToken, onLogout } = useOutletContext<OutletContext>();
+  const { user } = useAuth();
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(false);

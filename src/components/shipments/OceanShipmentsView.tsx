@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 
-interface OceanShipmentsViewProps {
+interface OutletContext {
   accessToken: string;
   onLogout: () => void;
 }
@@ -48,7 +49,8 @@ interface OceanShipment {
   [key: string]: any;
 }
 
-function OceanShipmentsView({ accessToken, onLogout }: OceanShipmentsViewProps) {
+function OceanShipmentsView() {
+  const { accessToken, onLogout } = useOutletContext<OutletContext>();
   const { user } = useAuth();
   const [oceanShipments, setOceanShipments] = useState<OceanShipment[]>([]);
   const [displayedOceanShipments, setDisplayedOceanShipments] = useState<OceanShipment[]>([]);

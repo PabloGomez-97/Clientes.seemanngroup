@@ -1,19 +1,13 @@
-// src/RegularApp.tsx
+// src/layouts/UserLayout.tsx
 import { useState, useEffect } from 'react';
-import Navbar from './components/layout/Navbar';
-import Sidebar from './components/layout/Sidebar';
-import QuotesView from './components/quotes/QuotesView';
-import AirShipmentsView from './components/shipments/AirShipmentsView.tsx';
-import Reports from './components/reports/Reports.tsx';
-import Settings from './components/settings/Settings.tsx';
-import ShipmentsView from './components/shipments/Shipments.tsx';
-import OceanShipmentsView from './components/shipments/OceanShipmentsView.tsx';
+import { Outlet } from 'react-router-dom';
+import Navbar from '../components/layout/Navbar';
+import Sidebar from '../components/layout/Sidebar';
 
-function RegularApp() {
+function UserLayout() {
   const [accessToken, setAccessToken] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState('quotes');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Obtener token de Linbis automáticamente al cargar
@@ -41,7 +35,6 @@ function RegularApp() {
   const handleLogout = () => {
     setAccessToken('');
     setError(null);
-    setActiveView('quotes');
   };
 
   const toggleSidebar = () => {
@@ -96,7 +89,7 @@ function RegularApp() {
     );
   }
 
-  // Mostrar error si falla (sin TokenForm)
+  // Mostrar error si falla
   if (error) {
     return (
       <div className="container py-5">
@@ -145,11 +138,7 @@ function RegularApp() {
 
   return (
     <div className="d-flex" style={{ height: '100vh' }}>
-      <Sidebar 
-        activeView={activeView}
-        setActiveView={setActiveView}
-        isOpen={sidebarOpen}
-      />
+      <Sidebar isOpen={sidebarOpen} />
 
       <div className="flex-fill d-flex flex-column" style={{ overflow: 'hidden' }}>
         <Navbar 
@@ -159,41 +148,11 @@ function RegularApp() {
         />
 
         <div className="flex-fill p-4" style={{ overflowY: 'auto', backgroundColor: '#f8f9fa' }}>
-          {activeView === 'quotes' && (
-            <QuotesView 
-              accessToken={accessToken}
-              onLogout={handleLogout}
-            />
-          )}
-          {activeView === 'shipments' && (
-            <AirShipmentsView 
-              accessToken={accessToken}
-              onLogout={handleLogout}
-            />
-          )}
-          {activeView === 'all-shipments' && (
-            <ShipmentsView 
-              accessToken={accessToken}
-              onLogout={handleLogout}
-            />
-          )}
-          {activeView === 'ocean-shipments' && (
-            <OceanShipmentsView 
-              accessToken={accessToken}
-              onLogout={handleLogout}
-            />
-          )}
-          {activeView === 'reports' && (
-            <Reports 
-              accessToken={accessToken}
-              Onlogout={handleLogout}
-            />
-          )}
-          {activeView === 'settings' && <Settings />}
+          <Outlet context={{ accessToken, onLogout: handleLogout }} />
         </div>
       </div>
     </div>
   );
 }
 
-export default RegularApp;
+export default UserLayout;

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 
-interface AirShipmentsViewProps {
+interface OutletContext {
   accessToken: string;
   onLogout: () => void;
 }
@@ -25,7 +26,8 @@ interface AirShipment {
   [key: string]: any;
 }
 
-function AirShipmentsView({ accessToken, onLogout }: AirShipmentsViewProps) {
+function AirShipmentsView() {
+  const { accessToken, onLogout } = useOutletContext<OutletContext>();
   const { user } = useAuth();
   const [shipments, setShipments] = useState<AirShipment[]>([]);
   const [displayedShipments, setDisplayedShipments] = useState<AirShipment[]>([]);

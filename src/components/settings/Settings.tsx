@@ -1,10 +1,22 @@
+// src/components/settings/Settings.tsx
+import { useOutletContext } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
+
+interface OutletContext {
+  accessToken: string;
+  onLogout: () => void;
+}
+
 function Settings() {
+  const { accessToken, onLogout } = useOutletContext<OutletContext>();
+  const { user } = useAuth();
+
   return (
     <div className="container-fluid">
       <div className="row mb-4">
         <div className="col">
           <h2 className="mb-0">Configuración</h2>
-          <p className="text-muted">Ajustes del sistema</p>
+          <p className="text-muted">Ajustes del sistema - {user?.username}</p>
         </div>
       </div>
 
@@ -16,6 +28,9 @@ function Settings() {
           </svg>
           <h4 className="text-muted">Módulo de Configuración</h4>
           <p className="text-muted">Esta sección está pendiente de implementación</p>
+          <small className="text-muted d-block mt-3">
+            Token disponible: {accessToken ? 'Sí ✓' : 'No'}
+          </small>
         </div>
       </div>
     </div>

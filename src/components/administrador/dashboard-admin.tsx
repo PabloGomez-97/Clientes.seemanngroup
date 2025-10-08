@@ -1,12 +1,14 @@
 // src/components/administrador/dashboard-admin.tsx
+import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 
-interface DashboardAdminProps {
+interface OutletContext {
   accessToken: string;
   onLogout: () => void;
 }
 
-function DashboardAdmin({ accessToken, onLogout }: DashboardAdminProps) {
+function DashboardAdmin() {
+  const { accessToken, onLogout } = useOutletContext<OutletContext>();
   const { user } = useAuth();
 
   return (

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 
-interface ShipmentsViewProps {
+interface OutletContext {
   accessToken: string;
   onLogout: () => void;
 }
@@ -49,7 +50,8 @@ interface Shipment {
   [key: string]: any;
 }
 
-function ShipmentsView({ accessToken, onLogout }: ShipmentsViewProps) {
+function ShipmentsView() {
+  const { accessToken, onLogout } = useOutletContext<OutletContext>();
   const { user } = useAuth();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [displayedShipments, setDisplayedShipments] = useState<Shipment[]>([]);
