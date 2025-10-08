@@ -183,7 +183,12 @@ function RegularApp() {
               onLogout={handleLogout}
             />
           )}
-          {activeView === 'reports' && <Reports />}
+          {activeView === 'reports' && (
+            <Reports 
+              accessToken={accessToken}
+              Onlogout={handleLogout}
+            />
+          )}
           {activeView === 'settings' && <Settings />}
         </div>
       </div>
