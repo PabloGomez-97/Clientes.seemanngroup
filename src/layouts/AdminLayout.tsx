@@ -1,8 +1,8 @@
 // src/layouts/AdminLayout.tsx
 import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import NavbarAdmin from '../components/layout/Navbar-admin';
-import SidebarAdmin from '../components/layout/Sidebar-admin';
+import NavbarAdmin from './Navbar-admin';
+import SidebarAdmin from './Sidebar-admin';
 
 function AdminLayout() {
   const [accessToken, setAccessToken] = useState('');
