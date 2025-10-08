@@ -1,7 +1,7 @@
 // api/linbis-token.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
-import { LinbisToken } from './models/LinbisToken';
+import { LinbisToken } from './models/LinbisToken.js';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 const LINBIS_CLIENT_ID = process.env.LINBIS_CLIENT_ID!;
