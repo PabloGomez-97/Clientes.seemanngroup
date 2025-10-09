@@ -1,13 +1,12 @@
-// src/auth/Login.tsx
+// src/auth/LoginAdmin.tsx
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
+import { useNavigate, Link } from 'react-router-dom';
 import logoSeemann from './logoseemann.png';
-import backgroundImage from './imagen4.jpg'; // Renombra tu archivo de fondo como 'imagen4.png' o ajusta este import
-import { Link, useNavigate } from 'react-router-dom';
 
-export default function Login() {
-  const navigate = useNavigate();
+export default function LoginAdmin() {
   const { login, logout } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState<string | null>(null);
@@ -22,16 +21,17 @@ export default function Login() {
       // ✅ Login retorna el usuario directamente
       const loggedUser = await login(email, password);
       
-      // ✅ Si es Administrador, sugerir que use el login de ejecutivos
-      if (loggedUser.username === 'Administrador') {
+      // ✅ Validar inmediatamente si es Administrador
+      if (loggedUser.username !== 'Administrador') {
+        // ❌ No es administrador - hacer logout completo
         logout(); // ✅ ESTO limpia todo el estado
-        setErr('Detectamos que eres ejecutivo. Por favor, usa el portal administrativo para ingresar.');
+        setErr('Acceso denegado. Esta área es exclusiva para ejecutivos. Por favor, ingresa como cliente usando el enlace de abajo.');
         setLoading(false);
         return;
       }
       
-      // ✅ Usuario normal - continuar
-      // React Router manejará la redirección automáticamente
+      // ✅ Es administrador - redirigir al dashboard
+      navigate('/admin/dashboard', { replace: true });
       
     } catch (e: any) {
       setErr(e.message || 'No se pudo iniciar sesión');
@@ -45,33 +45,22 @@ export default function Login() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
       position: 'relative',
       padding: '20px'
     }}>
-      {/* Imagen de fondo */}
+      {/* Patrón de fondo sutil */}
       <div style={{
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
+        backgroundImage: `radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.05) 2%, transparent 0%), 
+                          radial-gradient(circle at 75px 75px, rgba(255, 255, 255, 0.05) 2%, transparent 0%)`,
+        backgroundSize: '100px 100px',
+        opacity: 0.3,
         zIndex: 0
-      }} />
-      
-      {/* Overlay semitransparente */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(255, 255, 255, 0.88)',
-        backdropFilter: 'blur(2px)',
-        zIndex: 1
       }} />
       
       {/* Contenido principal */}
@@ -89,34 +78,36 @@ export default function Login() {
         }}>
           <div style={{
             display: 'inline-block',
-            padding: '16px',
-            backgroundColor: 'white',
-            borderRadius: '16px',
-            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
-            marginBottom: '24px'
+            padding: '20px',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '20px',
+            boxShadow: '0 20px 40px rgba(0, 0, 0, 0.4)',
+            marginBottom: '32px',
+            border: '2px solid rgba(255, 255, 255, 0.1)'
           }}>
             <img 
               src={logoSeemann} 
               alt="Seemann Group" 
               style={{
-                height: '64px',
+                height: '70px',
                 width: 'auto',
                 display: 'block'
               }}
             />
           </div>
           <h1 style={{
-            fontSize: '28px',
+            fontSize: '32px',
             fontWeight: '700',
-            color: '#1f2937',
-            marginBottom: '8px',
-            letterSpacing: '-0.5px'
+            color: 'white',
+            marginBottom: '12px',
+            letterSpacing: '-0.5px',
+            textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
           }}>
-            Portal de Clientes
+            Portal Administrativo
           </h1>
           <p style={{
-            fontSize: '15px',
-            color: '#6b7280',
+            fontSize: '16px',
+            color: 'rgba(255, 255, 255, 0.8)',
             margin: 0,
             fontWeight: '400'
           }}>
@@ -126,27 +117,28 @@ export default function Login() {
 
         {/* Card del Formulario */}
         <div style={{
-          backgroundColor: 'white',
-          borderRadius: '16px',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.12)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '20px',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
           padding: '40px',
-          border: '1px solid rgba(0, 0, 0, 0.08)'
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          backdropFilter: 'blur(10px)'
         }}>
           {/* Error Alert */}
           {err && (
             <div style={{
               backgroundColor: '#fee2e2',
               border: '1px solid #fecaca',
-              borderRadius: '8px',
-              padding: '14px 16px',
+              borderRadius: '10px',
+              padding: '16px 18px',
               marginBottom: '24px',
               display: 'flex',
               alignItems: 'start',
               gap: '12px'
             }}>
               <svg 
-                width="20" 
-                height="20" 
+                width="22" 
+                height="22" 
                 viewBox="0 0 16 16" 
                 fill="#dc2626"
                 style={{ flexShrink: 0, marginTop: '2px' }}
@@ -159,7 +151,8 @@ export default function Login() {
                   margin: 0,
                   fontSize: '14px',
                   color: '#991b1b',
-                  fontWeight: '500'
+                  fontWeight: '500',
+                  lineHeight: '1.5'
                 }}>
                   {err}
                 </p>
@@ -176,12 +169,12 @@ export default function Login() {
                   display: 'block',
                   fontSize: '14px',
                   fontWeight: '600',
-                  color: '#374151',
+                  color: '#1f2937',
                   marginBottom: '8px',
                   letterSpacing: '-0.2px'
                 }}
               >
-                Correo electrónico
+                Correo corporativo
               </label>
               <input
                 id="email"
@@ -189,23 +182,23 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="tu@email.com"
+                placeholder="ejecutivo@seemann.com"
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
+                  padding: '14px 18px',
                   fontSize: '15px',
                   color: '#1f2937',
                   backgroundColor: '#f9fafb',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '10px',
                   outline: 'none',
                   transition: 'all 0.2s ease',
                   fontFamily: 'inherit'
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.borderColor = '#2563eb';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                  e.currentTarget.style.borderColor = '#0f3460';
+                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(15, 52, 96, 0.15)';
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.backgroundColor = '#f9fafb';
@@ -223,7 +216,7 @@ export default function Login() {
                   display: 'block',
                   fontSize: '14px',
                   fontWeight: '600',
-                  color: '#374151',
+                  color: '#1f2937',
                   marginBottom: '8px',
                   letterSpacing: '-0.2px'
                 }}
@@ -239,20 +232,20 @@ export default function Login() {
                 placeholder="••••••••"
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
+                  padding: '14px 18px',
                   fontSize: '15px',
                   color: '#1f2937',
                   backgroundColor: '#f9fafb',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '10px',
                   outline: 'none',
                   transition: 'all 0.2s ease',
                   fontFamily: 'inherit'
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.borderColor = '#2563eb';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                  e.currentTarget.style.borderColor = '#0f3460';
+                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(15, 52, 96, 0.15)';
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.backgroundColor = '#f9fafb';
@@ -268,112 +261,88 @@ export default function Login() {
               disabled={loading}
               style={{
                 width: '100%',
-                padding: '14px 24px',
-                fontSize: '15px',
+                padding: '16px 24px',
+                fontSize: '16px',
                 fontWeight: '600',
                 color: 'white',
-                backgroundColor: loading ? '#93c5fd' : '#2563eb',
+                background: loading 
+                  ? 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)' 
+                  : 'linear-gradient(135deg, #0f3460 0%, #16213e 100%)',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '10px',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.3s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px',
+                gap: '10px',
                 letterSpacing: '-0.2px',
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                boxShadow: loading ? 'none' : '0 4px 14px rgba(15, 52, 96, 0.4)'
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.backgroundColor = '#1d4ed8';
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(15, 52, 96, 0.6)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(15, 52, 96, 0.4)';
                 }
               }}
             >
               {loading ? (
                 <>
                   <div style={{
-                    width: '16px',
-                    height: '16px',
+                    width: '18px',
+                    height: '18px',
                     border: '2px solid white',
                     borderTopColor: 'transparent',
                     borderRadius: '50%',
                     animation: 'spin 0.8s linear infinite'
                   }} />
-                  Ingresando...
+                  Verificando acceso...
                 </>
               ) : (
                 <>
-                  <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"/>
-                    <path fillRule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"/>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
                   </svg>
-                  Ingresar
+                  Ingresar al Panel
                 </>
               )}
             </button>
           </form>
 
-          {/* Link a Login Administrativo */}
+          {/* Link a Login de Clientes */}
           <div style={{
-            marginTop: '24px',
+            marginTop: '28px',
             paddingTop: '24px',
-            borderTop: '1px solid #f3f4f6',
+            borderTop: '1px solid #e5e7eb',
             textAlign: 'center'
           }}>
             <p style={{
               margin: 0,
-              marginBottom: '16px',
-              fontSize: '13px',
+              fontSize: '14px',
               color: '#6b7280',
               lineHeight: '1.6'
             }}>
-              ¿Eres ejecutivo?{' '}
+              ¿Eres cliente?{' '}
               <Link 
-                to="/login-admin"
+                to="/login"
                 style={{ 
-                  color: '#2563eb', 
+                  color: '#0f3460', 
                   fontWeight: '600',
                   textDecoration: 'none',
                   transition: 'color 0.2s'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.color = '#1d4ed8'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#2563eb'}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#16213e'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#0f3460'}
               >
                 Ingresa aquí →
               </Link>
-            </p>
-          </div>
-
-          {/* Help Text */}
-          <div style={{
-            paddingTop: '16px',
-            borderTop: '1px solid #f3f4f6',
-            textAlign: 'center'
-          }}>
-            <p style={{
-              margin: 0,
-              fontSize: '13px',
-              color: '#6b7280',
-              lineHeight: '1.6'
-            }}>
-              ¿No tienes acceso?{' '}
-              <span style={{ 
-                color: '#2563eb', 
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}>
-                Contacta al administrador
-              </span>
             </p>
           </div>
         </div>
@@ -386,7 +355,7 @@ export default function Login() {
           <p style={{
             margin: 0,
             fontSize: '13px',
-            color: '#9ca3af',
+            color: 'rgba(255, 255, 255, 0.6)',
             fontWeight: '400'
           }}>
             © {new Date().getFullYear()} Seemann Group. Todos los derechos reservados.

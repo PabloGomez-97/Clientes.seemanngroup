@@ -2,6 +2,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext';
 import Login from './auth/Login';
+import LoginAdmin from './auth/LoginAdmin';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Layouts
@@ -37,6 +38,12 @@ function App() {
       <Route 
         path="/login" 
         element={user ? <Navigate to={user.username === 'Administrador' ? '/admin/dashboard' : '/quotes'} replace /> : <Login />} 
+      />
+
+      {/* Ruta de Login Administrativo */}
+      <Route 
+        path="/login-admin" 
+        element={user ? <Navigate to={user.username === 'Administrador' ? '/admin/dashboard' : '/login'} replace /> : <LoginAdmin />} 
       />
 
       {/* Rutas de Administrador */}

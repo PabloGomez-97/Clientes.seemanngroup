@@ -4,28 +4,26 @@ import { useAuth } from '../auth/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requireAdmin?: boolean;
+  requireAdmin: boolean;
 }
 
-function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user } = useAuth();
+export default function ProtectedRoute({ children, requireAdmin }: ProtectedRouteProps) {
+  const { user, token } = useAuth();
 
-  // Si no hay usuario, redirigir al login
-  if (!user) {
+  // Si no hay token, redirigir al login
+  if (!token || !user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si la ruta requiere admin y el usuario no es admin, redirigir a su home
+  // Si requiere admin pero no lo es, redirigir
   if (requireAdmin && user.username !== 'Administrador') {
     return <Navigate to="/quotes" replace />;
   }
 
-  // Si el usuario es admin intentando acceder a rutas de usuario regular, redirigir a admin home
+  // Si NO requiere admin pero ES admin, redirigir al dashboard admin
   if (!requireAdmin && user.username === 'Administrador') {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
   return <>{children}</>;
 }
-
-export default ProtectedRoute;

@@ -4,7 +4,7 @@ type User = { email: string; username: string } | null;
 type AuthCtx = {
   user: User;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ email: string; username: string }>;
   logout: () => void;
 };
 
@@ -39,6 +39,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(data.token);
     localStorage.setItem('auth_token', data.token);
     setUser(data.user);
+    
+    // ✅ RETORNAR EL USUARIO para validaciones inmediatas
+    return data.user;
   };
 
   const logout = () => {
