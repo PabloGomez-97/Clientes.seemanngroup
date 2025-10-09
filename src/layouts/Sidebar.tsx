@@ -14,8 +14,18 @@ function Sidebar({ isOpen }: SidebarProps) {
       path: '/quotes',
       name: 'Cotizaciones',
       icon: (
-        <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 15 8.586V2.5A1.5 1.5 0 0 0 13.5 1h-11z"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-folder" viewBox="0 0 16 16">
+          <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a2 2 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4zm4.69-1.707A1 1 0 0 0 6.172 2H2.5a1 1 0 0 0-1 .981l.006.139q.323-.119.684-.12h5.396z"/>
+        </svg>
+      )
+    },
+    {
+      path: '/newquotes',
+      name: 'Nuevas-Cotizaciones',
+      icon: (
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-folder-plus" viewBox="0 0 16 16">
+          <path d="m.5 3 .04.87a2 2 0 0 0-.342 1.311l.637 7A2 2 0 0 0 2.826 14H9v-1H2.826a1 1 0 0 1-.995-.91l-.637-7A1 1 0 0 1 2.19 4h11.62a1 1 0 0 1 .996 1.09L14.54 8h1.005l.256-2.819A2 2 0 0 0 13.81 3H9.828a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 6.172 1H2.5a2 2 0 0 0-2 2m5.672-1a1 1 0 0 1 .707.293L7.586 3H2.19q-.362.002-.683.12L1.5 2.98a1 1 0 0 1 1-.98z"/>
+          <path d="M13.5 9a.5.5 0 0 1 .5.5V11h1.5a.5.5 0 1 1 0 1H14v1.5a.5.5 0 1 1-1 0V12h-1.5a.5.5 0 0 1 0-1H13V9.5a.5.5 0 0 1 .5-.5"/>
         </svg>
       )
     },
@@ -67,20 +77,24 @@ function Sidebar({ isOpen }: SidebarProps) {
     }
   ];
 
-  if (!isOpen) {
-    return null;
-  }
+    if (!isOpen) return null;
 
-  // Determinar si la ruta actual coincide con el item
   const isActive = (path: string) => location.pathname === path;
 
+  const SIDEBAR_WIDTH = 250;
+
   return (
-    <div 
+    <div
       className="bg-dark text-white d-flex flex-column"
-      style={{ 
-        width: '250px', 
-        minHeight: '100vh',
-        transition: 'all 0.3s'
+      style={{
+        width: `${SIDEBAR_WIDTH}px`,
+        minWidth: `${SIDEBAR_WIDTH}px`,
+        // Fija el tamaño dentro de contenedores flex:
+        flex: `0 0 ${SIDEBAR_WIDTH}px`,
+        // Evita que el sidebar se encoja:
+        flexShrink: 0,
+        // Transiciona solo lo necesario (opcional):
+        transition: 'background-color 0.3s'
       }}
     >
       <div className="p-3 border-bottom border-secondary">
@@ -113,8 +127,16 @@ function Sidebar({ isOpen }: SidebarProps) {
                   }
                 }}
               >
-                <span className="me-3">{item.icon}</span>
-                {item.name}
+                {/* Evita que el ícono se encoja */}
+                <span className="me-3 flex-shrink-0">{item.icon}</span>
+
+                {/* Texto: no comprimir, truncar si hace falta */}
+                <span
+                  className="flex-grow-1 text-truncate"
+                  style={{ minWidth: 0, whiteSpace: 'nowrap' }}
+                >
+                  {item.name}
+                </span>
               </button>
             </li>
           ))}
@@ -122,7 +144,7 @@ function Sidebar({ isOpen }: SidebarProps) {
       </nav>
 
       <div className="p-3 border-top border-secondary">
-        <small className="text-muted">Linbis Dashboard v1.0</small>
+        <small className="text-muted">Dashboard Seemann Group v1.0</small>
       </div>
     </div>
   );

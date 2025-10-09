@@ -23,6 +23,7 @@ import ReporteriaTrends from './components/administrador/reporteria/pages/Report
 
 // User Views
 import QuotesView from './components/quotes/QuotesView';
+import Newquotes from './components/quotes/newquotes';
 import AirShipmentsView from './components/shipments/AirShipmentsView';
 import OceanShipmentsView from './components/shipments/OceanShipmentsView';
 import ShipmentsView from './components/shipments/Shipments';
@@ -82,6 +83,7 @@ function App() {
       }>
         <Route index element={<Navigate to="/quotes" replace />} />
         <Route path="quotes" element={<QuotesView />} />
+        <Route path="newquotes" element={<Newquotes />} />
         <Route path="air-shipments" element={<AirShipmentsView />} />
         <Route path="ocean-shipments" element={<OceanShipmentsView />} />
         <Route path="all-shipments" element={<ShipmentsView />} />

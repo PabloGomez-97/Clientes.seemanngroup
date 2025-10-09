@@ -59,20 +59,24 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
   }
   ];
 
-  if (!isOpen) {
-    return null;
-  }
+if (!isOpen) return null;
 
-  // Determinar si la ruta actual coincide con el item
   const isActive = (path: string) => location.pathname === path;
 
+  const SIDEBAR_WIDTH = 250;
+
   return (
-    <div 
+    <div
       className="bg-dark text-white d-flex flex-column"
-      style={{ 
-        width: '250px', 
-        minHeight: '100vh',
-        transition: 'all 0.3s'
+      style={{
+        width: `${SIDEBAR_WIDTH}px`,
+        minWidth: `${SIDEBAR_WIDTH}px`,
+        // Fija el tamaño dentro de contenedores flex:
+        flex: `0 0 ${SIDEBAR_WIDTH}px`,
+        // Evita que el sidebar se encoja:
+        flexShrink: 0,
+        // Transiciona solo lo necesario (opcional):
+        transition: 'background-color 0.3s'
       }}
     >
       <div className="p-3 border-bottom border-secondary">
@@ -105,8 +109,16 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
                   }
                 }}
               >
-                <span className="me-3">{item.icon}</span>
-                {item.name}
+                {/* Evita que el ícono se encoja */}
+                <span className="me-3 flex-shrink-0">{item.icon}</span>
+
+                {/* Texto: no comprimir, truncar si hace falta */}
+                <span
+                  className="flex-grow-1 text-truncate"
+                  style={{ minWidth: 0, whiteSpace: 'nowrap' }}
+                >
+                  {item.name}
+                </span>
               </button>
             </li>
           ))}
@@ -114,7 +126,7 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
       </nav>
 
       <div className="p-3 border-top border-secondary">
-        <small className="text-muted">Admin Panel v1.0</small>
+        <small className="text-muted">Linbis Dashboard v1.0</small>
       </div>
     </div>
   );
