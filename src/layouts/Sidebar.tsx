@@ -107,13 +107,13 @@ function Sidebar({ isOpen }: SidebarProps) {
     >
       {/* Logo Section - Sin borde */}
       <div style={{
-        padding: '24px 20px',
+        padding: '0px 20px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
       }}>
         <img 
-          src="src\layouts\logoseemann.png" 
+          src="src\layouts\logoseemann1.png" 
           alt="Seemann Logo" 
           style={{ 
             width: '180px', 

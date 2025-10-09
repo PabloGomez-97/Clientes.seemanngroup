@@ -34,9 +34,10 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
 
   return (
     <nav style={{
-      height: '90px',
+      height: '70px',
       backgroundColor: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
+      paddingBottom: '2px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
