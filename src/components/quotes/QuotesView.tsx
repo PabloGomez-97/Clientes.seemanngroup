@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -9,12 +9,45 @@ interface OutletContext {
 
 interface Quote {
   id?: string | number;
-  quoteNumber?: string;
   number?: string;
   date?: string;
-  consignee?: string;
+  time?: string;
+  validUntil_Date?: string;
+  validUntil_Time?: string;
+  transitDays?: number;
+  customerReference?: string;
+  issuingCompany?: string;
+  contact?: string;
+  contactAddress?: string;
+  carrierBroker?: string;
+  portOfReceipt?: string;
+  shipper?: string;
+  shipperAddress?: string;
+  pickupFrom?: string;
+  pickupFromAddress?: string;
+  salesRep?: string;
   origin?: string;
+  deperture_Date?: string;
+  deperture_Time?: string;
+  consignee?: string;
+  consigneeAddress?: string;
   destination?: string;
+  arrival_Date?: string;
+  arrival_Time?: string;
+  notes?: string;
+  totalCargo_Pieces?: number;
+  totalCargo_Container?: number;
+  totalCargo_WeightDisplayValue?: string;
+  totalCargo_VolumeDisplayValue?: string;
+  totalCargo_VolumeWeightDisplayValue?: string;
+  totalCharge_IncomeDisplayValue?: string;
+  totalCharge_ExpenseDisplayValue?: string;
+  totalCharge_ProfitDisplayValue?: string;
+  paymentType?: string;
+  hazardous?: string;
+  currentFlow?: string;
+  cargoStatus?: string;
+  modeOfTransportation?: string;
   [key: string]: any;
 }
 
@@ -26,24 +59,20 @@ function QuotesView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-   const filterConsignee = user?.username || '';
+  const filterConsignee = user?.username || '';
   
-  // Modal state
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   
-  // Búsqueda por fecha
   const [searchDate, setSearchDate] = useState('');
   const [searchStartDate, setSearchStartDate] = useState('');
   const [searchEndDate, setSearchEndDate] = useState('');
-  
-  // Búsqueda por número
   const [searchNumber, setSearchNumber] = useState('');
-  
+  const [searchOrigin, setSearchOrigin] = useState('');
+  const [searchDestination, setSearchDestination] = useState('');
   const [showingAll, setShowingAll] = useState(false);
 
-  // Obtener cotizaciones usando el token
   const fetchQuotes = async () => {
     if (!accessToken) {
       setError('Debes ingresar un token primero');
@@ -73,10 +102,8 @@ function QuotesView() {
       const data = await response.json();
       const quotesArray: Quote[] = Array.isArray(data) ? data : [];
       
-      // Filtrar por consignee
       const filtered = quotesArray.filter(q => q.consignee === filterConsignee);
       
-      // Ordenar por fecha (más recientes primero)
       const sorted = filtered.sort((a, b) => {
         const dateA = new Date(a.date || 0);
         const dateB = new Date(b.date || 0);
@@ -85,11 +112,9 @@ function QuotesView() {
       
       setQuotes(sorted);
       
-      // Guardar en caché
       localStorage.setItem('quotesCache', JSON.stringify(sorted));
       localStorage.setItem('quotesCacheTimestamp', new Date().getTime().toString());
       
-      // Mostrar solo las últimas 10
       setDisplayedQuotes(sorted.slice(0, 10));
       setShowingAll(false);
       
@@ -103,14 +128,11 @@ function QuotesView() {
     }
   };
 
-  // Cargar automáticamente las cotizaciones al montar el componente
   useEffect(() => {
-    // Intentar cargar desde caché primero
     const cachedQuotes = localStorage.getItem('quotesCache');
     const cacheTimestamp = localStorage.getItem('quotesCacheTimestamp');
     
     if (cachedQuotes && cacheTimestamp) {
-      // Verificar si el caché tiene menos de 1 hora
       const oneHour = 60 * 60 * 1000;
       const now = new Date().getTime();
       const cacheAge = now - parseInt(cacheTimestamp);
@@ -129,7 +151,25 @@ function QuotesView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
-  // Buscar por número de cotización
+  // Obtener orígenes y destinos únicos
+  const uniqueOrigins = useMemo(() => {
+    const origins = quotes
+      .map(q => q.origin)
+      .filter(o => o && o !== 'N/A')
+      .filter((value, index, self) => self.indexOf(value) === index)
+      .sort();
+    return origins;
+  }, [quotes]);
+
+  const uniqueDestinations = useMemo(() => {
+    const destinations = quotes
+      .map(q => q.destination)
+      .filter(d => d && d !== 'N/A')
+      .filter((value, index, self) => self.indexOf(value) === index)
+      .sort();
+    return destinations;
+  }, [quotes]);
+
   const handleSearchByNumber = () => {
     if (!searchNumber.trim()) {
       setDisplayedQuotes(quotes.slice(0, 10));
@@ -148,7 +188,6 @@ function QuotesView() {
     setShowSearchModal(false);
   };
 
-  // Buscar por fecha exacta
   const handleSearchByDate = () => {
     if (!searchDate) {
       setDisplayedQuotes(quotes.slice(0, 10));
@@ -167,7 +206,6 @@ function QuotesView() {
     setShowSearchModal(false);
   };
 
-  // Buscar por rango de fechas
   const handleSearchByDateRange = () => {
     if (!searchStartDate && !searchEndDate) {
       setDisplayedQuotes(quotes.slice(0, 10));
@@ -199,42 +237,65 @@ function QuotesView() {
     setShowSearchModal(false);
   };
 
-  // Limpiar búsqueda
+  // Buscar por origen y/o destino
+  const handleSearchByRoute = () => {
+    if (!searchOrigin && !searchDestination) {
+      setDisplayedQuotes(quotes.slice(0, 10));
+      setShowingAll(false);
+      return;
+    }
+
+    const results = quotes.filter(quote => {
+      const matchOrigin = !searchOrigin || quote.origin === searchOrigin;
+      const matchDestination = !searchDestination || quote.destination === searchDestination;
+      return matchOrigin && matchDestination;
+    });
+
+    setDisplayedQuotes(results);
+    setShowingAll(true);
+    setShowSearchModal(false);
+  };
+
   const clearSearch = () => {
     setSearchNumber('');
     setSearchDate('');
     setSearchStartDate('');
     setSearchEndDate('');
+    setSearchOrigin('');
+    setSearchDestination('');
     setDisplayedQuotes(quotes.slice(0, 10));
     setShowingAll(false);
   };
 
-  // Abrir modal con detalles
   const openQuoteDetails = (quote: Quote) => {
     setSelectedQuote(quote);
     setShowModal(true);
   };
 
-  // Cerrar modal
   const closeModal = () => {
     setShowModal(false);
     setSelectedQuote(null);
   };
 
-  // Formatear fecha para mostrar
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-CL', { 
       day: '2-digit', 
       month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
   };
 
-  // Mostrar loader mientras carga
+  const formatDateTime = (dateString: string, timeString?: string) => {
+    if (!dateString) return 'N/A';
+    const formatted = formatDate(dateString);
+    if (timeString) {
+      return `${formatted} - ${timeString}`;
+    }
+    return formatted;
+  };
+
   if (loading && quotes.length === 0) {
     return (
       <div style={{
@@ -282,7 +343,6 @@ function QuotesView() {
 
   return (
     <>
-      {/* Mensajes de Error */}
       {error && (
         <div style={{
           backgroundColor: '#fee2e2',
@@ -297,7 +357,6 @@ function QuotesView() {
         </div>
       )}
 
-      {/* Header con información y botón de búsqueda */}
       {quotes.length > 0 && (
         <div style={{
           display: 'flex',
@@ -386,7 +445,6 @@ function QuotesView() {
               </button>
             </div>
             <div style={{ padding: '20px' }}>
-              {/* Búsqueda por número de cotización */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ 
                   fontSize: '0.875rem', 
@@ -443,7 +501,6 @@ function QuotesView() {
                 o
               </div>
 
-              {/* Búsqueda por fecha exacta */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ 
                   fontSize: '0.875rem', 
@@ -494,7 +551,6 @@ function QuotesView() {
                 o
               </div>
 
-              {/* Búsqueda por rango */}
               <div style={{ marginBottom: '20px' }}>
                 <label style={{ 
                   fontSize: '0.875rem', 
@@ -568,6 +624,99 @@ function QuotesView() {
                   Buscar por rango
                 </button>
               </div>
+              <div style={{
+                textAlign: 'center', 
+                color: '#9ca3af', 
+                fontSize: '0.875rem', 
+                margin: '20px 0' 
+              }}>
+                o
+              </div>
+
+              {/* Búsqueda por Ruta */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ 
+                  fontSize: '0.875rem', 
+                  fontWeight: '500', 
+                  color: '#374151', 
+                  marginBottom: '12px', 
+                  display: 'block' 
+                }}>
+                  Ruta (Origen/Destino)
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ 
+                      fontSize: '0.8rem', 
+                      color: '#6b7280', 
+                      marginBottom: '6px', 
+                      display: 'block' 
+                    }}>
+                      Origen
+                    </label>
+                    <select
+                      value={searchOrigin}
+                      onChange={(e) => setSearchOrigin(e.target.value)}
+                      style={{
+                        width: '100%',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        fontSize: '0.9rem',
+                        backgroundColor: 'white'
+                      }}
+                    >
+                      <option value="">Todos los orígenes</option>
+                      {uniqueOrigins.map(origin => (
+                        <option key={origin} value={origin}>{origin}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ 
+                      fontSize: '0.8rem', 
+                      color: '#6b7280', 
+                      marginBottom: '6px', 
+                      display: 'block' 
+                    }}>
+                      Destino
+                    </label>
+                    <select
+                      value={searchDestination}
+                      onChange={(e) => setSearchDestination(e.target.value)}
+                      style={{
+                        width: '100%',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        fontSize: '0.9rem',
+                        backgroundColor: 'white'
+                      }}
+                    >
+                      <option value="">Todos los destinos</option>
+                      {uniqueDestinations.map(destination => (
+                        <option key={destination} value={destination}>{destination}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <button 
+                  style={{
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '10px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    width: '100%',
+                    fontSize: '0.9rem'
+                  }}
+                  onClick={handleSearchByRoute}
+                >
+                  Buscar por ruta
+                </button>
+              </div>
 
               <button 
                 style={{
@@ -626,10 +775,10 @@ function QuotesView() {
                     marginBottom: '4px',
                     margin: 0
                   }}>
-                    Cotización #{quote.number || quote.id || quote.quoteNumber || index + 1}
+                    Cotización #{quote.number || quote.id || index + 1}
                   </h6>
                   <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    {formatDate(quote.date || '')}
+                    {formatDateTime(quote.date || '', quote.time)}
                   </small>
                 </div>
                 
@@ -712,7 +861,7 @@ function QuotesView() {
         </div>
       )}
 
-      {/* Modal de Detalles */}
+      {/* 🎨 NUEVO MODAL PROFESIONAL */}
       {showModal && selectedQuote && (
         <div 
           className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
@@ -722,91 +871,346 @@ function QuotesView() {
           <div 
             className="bg-white rounded"
             style={{ 
-              maxWidth: '700px', 
+              maxWidth: '900px', 
               width: '100%', 
               maxHeight: '90vh',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              overflow: 'hidden'
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Header */}
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px',
-              borderBottom: '1px solid #e5e7eb'
+              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+              padding: '24px',
+              color: 'white'
             }}>
-              <h5 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem', fontWeight: '600' }}>
-                Cotización #{selectedQuote.number || selectedQuote.id || selectedQuote.quoteNumber || 'N/A'}
-                </h5>
-              <button 
-                onClick={closeModal}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  lineHeight: 1,
-                  padding: 0
-                }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ 
-              padding: '20px', 
-              overflowY: 'auto', 
-              maxHeight: 'calc(90vh - 140px)' 
-            }}>
-              {Object.entries(selectedQuote).map(([key, value]) => {
-                let displayValue: string;
-                if (value === null || value === undefined) {
-                  displayValue = 'N/A';
-                } else if (typeof value === 'boolean') {
-                  displayValue = value ? 'Sí' : 'No';
-                } else if (key === 'date' && value) {
-                  displayValue = formatDate(value as string);
-                } else if (typeof value === 'object') {
-                  displayValue = JSON.stringify(value, null, 2);
-                } else {
-                  displayValue = String(value);
-                }
-
-                return (
-                  <div key={key} style={{ 
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <div style={{ 
-                      textTransform: 'uppercase',
-                      color: '#6b7280',
-                      fontWeight: '600',
-                      marginBottom: '4px',
-                      fontSize: '0.75rem',
-                      letterSpacing: '0.5px'
-                    }}>
-                      {key}
-                    </div>
-                    <div style={{ 
-                      fontSize: '0.9rem',
-                      color: '#1f2937',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word'
-                    }}>
-                      {displayValue}
-                    </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                <div>
+                  <h4 style={{ margin: 0, marginBottom: '8px', fontSize: '1.5rem', fontWeight: '700' }}>
+                    COTIZACIÓN #{selectedQuote.number || 'N/A'}
+                  </h4>
+                  <div style={{ fontSize: '0.9rem', opacity: 0.95 }}>
+                    {formatDateTime(selectedQuote.date || '', selectedQuote.time)}
                   </div>
-                );
-              })}
+                </div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  {selectedQuote.currentFlow && (
+                    <div style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: '600'
+                    }}>
+                      {selectedQuote.currentFlow}
+                    </div>
+                  )}
+                  <button 
+                    onClick={closeModal}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                      border: 'none',
+                      color: 'white',
+                      fontSize: '1.5rem',
+                      cursor: 'pointer',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      lineHeight: 1,
+                      padding: 0
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
             </div>
+
+            {/* Body con scroll */}
             <div style={{ 
-              padding: '16px 20px',
+              padding: '24px', 
+              overflowY: 'auto', 
+              maxHeight: 'calc(90vh - 200px)',
+              backgroundColor: '#fafafa'
+            }}>
+              
+              {/* 📋 INFORMACIÓN GENERAL */}
+              <Section title="📋 Información General">
+                <InfoGrid>
+                  <InfoItem label="Válido hasta" value={formatDateTime(selectedQuote.validUntil_Date || '', selectedQuote.validUntil_Time)} />
+                  <InfoItem label="Días de tránsito" value={selectedQuote.transitDays?.toString() || 'N/A'} />
+                  <InfoItem label="Referencia del cliente" value={selectedQuote.customerReference} />
+                  <InfoItem label="Modo de transporte" value={selectedQuote.modeOfTransportation} />
+                </InfoGrid>
+              </Section>
+
+              {/* 🏢 COMPAÑÍA Y CONTACTO */}
+              <Section title="🏢 Compañía y Contacto">
+                <InfoGrid>
+                  <InfoItem label="Empresa emisora" value={selectedQuote.issuingCompany} />
+                  <InfoItem label="Representante de ventas" value={selectedQuote.salesRep} />
+                  <InfoItem label="Carrier/Broker" value={selectedQuote.carrierBroker} />
+                  <InfoItem label="Contacto" value={selectedQuote.contact} fullWidth />
+                </InfoGrid>
+                {selectedQuote.contactAddress && (
+                  <div style={{ 
+                    marginTop: '12px', 
+                    padding: '12px', 
+                    backgroundColor: 'white', 
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                    color: '#6b7280',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <strong style={{ color: '#374151' }}>Dirección de contacto:</strong><br/>
+                    {selectedQuote.contactAddress}
+                  </div>
+                )}
+              </Section>
+
+              {/* 👤 CLIENTE (CONSIGNEE) */}
+              <Section title="👤 Cliente (Consignee)">
+                <InfoGrid>
+                  <InfoItem label="Consignee" value={selectedQuote.consignee} fullWidth />
+                </InfoGrid>
+                {selectedQuote.consigneeAddress && (
+                  <div style={{ 
+                    marginTop: '12px', 
+                    padding: '12px', 
+                    backgroundColor: 'white', 
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                    color: '#6b7280',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    {selectedQuote.consigneeAddress}
+                  </div>
+                )}
+              </Section>
+
+              {/* 📦 SHIPPER (ORIGEN) */}
+              <Section title="📦 Shipper (Origen)">
+                <InfoGrid>
+                  <InfoItem label="Shipper" value={selectedQuote.shipper} />
+                  <InfoItem label="Puerto de recepción" value={selectedQuote.portOfReceipt} />
+                  <InfoItem label="Pickup desde" value={selectedQuote.pickupFrom} fullWidth />
+                </InfoGrid>
+                {selectedQuote.shipperAddress && (
+                  <div style={{ 
+                    marginTop: '12px', 
+                    padding: '12px', 
+                    backgroundColor: 'white', 
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                    color: '#6b7280',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    {selectedQuote.shipperAddress}
+                  </div>
+                )}
+              </Section>
+
+              {/* 🚢 RUTA */}
+              <Section title="🚢 Ruta de Envío">
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  backgroundColor: 'white',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px', fontWeight: '600' }}>
+                      ORIGEN
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                      {selectedQuote.origin || 'N/A'}
+                    </div>
+                    {selectedQuote.deperture_Date && (
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                        📅 {formatDateTime(selectedQuote.deperture_Date, selectedQuote.deperture_Time)}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div style={{
+                    fontSize: '2rem',
+                    color: '#2563eb',
+                    fontWeight: '300'
+                  }}>
+                    →
+                  </div>
+                  
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px', fontWeight: '600' }}>
+                      DESTINO
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                      {selectedQuote.destination || 'N/A'}
+                    </div>
+                    {selectedQuote.arrival_Date && (
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                        📅 {formatDateTime(selectedQuote.arrival_Date, selectedQuote.arrival_Time)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Section>
+
+              {/* 📊 DETALLES DE CARGA */}
+              <Section title="📊 Detalles de Carga">
+                <InfoGrid columns={3}>
+                  <InfoItem label="Piezas" value={selectedQuote.totalCargo_Pieces?.toString() || '0'} highlight />
+                  <InfoItem label="Contenedores" value={selectedQuote.totalCargo_Container?.toString() || '0'} highlight />
+                  <InfoItem label="Peso" value={selectedQuote.totalCargo_WeightDisplayValue || 'N/A'} highlight />
+                  <InfoItem label="Volumen" value={selectedQuote.totalCargo_VolumeDisplayValue || 'N/A'} highlight />
+                  <InfoItem label="Volumen/Peso" value={selectedQuote.totalCargo_VolumeWeightDisplayValue || 'N/A'} highlight />
+                  <InfoItem label="Tipo de pago" value={selectedQuote.paymentType} highlight />
+                </InfoGrid>
+                
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '12px', 
+                  marginTop: '16px',
+                  flexWrap: 'wrap'
+                }}>
+                  {selectedQuote.hazardous && (
+                    <div style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: '600',
+                      backgroundColor: selectedQuote.hazardous === 'Yes' ? '#fee2e2' : '#dcfce7',
+                      color: selectedQuote.hazardous === 'Yes' ? '#991b1b' : '#166534',
+                      border: `1px solid ${selectedQuote.hazardous === 'Yes' ? '#fecaca' : '#bbf7d0'}`
+                    }}>
+                      ⚠️ Peligroso: {selectedQuote.hazardous}
+                    </div>
+                  )}
+                  {selectedQuote.cargoStatus && (
+                    <div style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: '600',
+                      backgroundColor: '#dbeafe',
+                      color: '#1e40af',
+                      border: '1px solid #bfdbfe'
+                    }}>
+                      Estado: {selectedQuote.cargoStatus}
+                    </div>
+                  )}
+                </div>
+              </Section>
+
+              {/* 💰 COSTOS - SECCIÓN DESTACADA */}
+              <div style={{
+                backgroundColor: '#1f2937',
+                borderRadius: '12px',
+                padding: '24px',
+                marginTop: '24px',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+              }}>
+                <h6 style={{
+                  color: 'white',
+                  fontSize: '1.1rem',
+                  fontWeight: '700',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  💰 Resumen Financiero
+                </h6>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                  <CostBox 
+                    label="Ingreso Total" 
+                    value={selectedQuote.totalCharge_IncomeDisplayValue || '$$ 0.00'} 
+                    color="#3b82f6"
+                    bgColor="rgba(59, 130, 246, 0.1)"
+                  />
+                  <CostBox 
+                    label="Gastos" 
+                    value={selectedQuote.totalCharge_ExpenseDisplayValue || '$$ 0.00'} 
+                    color="#ef4444"
+                    bgColor="rgba(239, 68, 68, 0.1)"
+                  />
+                  <CostBox 
+                    label="Ganancia" 
+                    value={selectedQuote.totalCharge_ProfitDisplayValue || '$$ 0.00'} 
+                    color="#10b981"
+                    bgColor="rgba(16, 185, 129, 0.1)"
+                  />
+                </div>
+              </div>
+
+              {/* 📝 NOTAS */}
+              {selectedQuote.notes && selectedQuote.notes !== 'N/A' && (
+                <Section title="📝 Observaciones">
+                  <div style={{
+                    backgroundColor: '#fffbeb',
+                    border: '1px solid #fde047',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    fontSize: '0.875rem',
+                    color: '#713f12',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {selectedQuote.notes}
+                  </div>
+                </Section>
+              )}
+
+              {/* 📌 INFORMACIÓN ADICIONAL */}
+              <Section title="📌 Información Adicional">
+                <InfoGrid>
+                  {selectedQuote.cargoParcial && (
+                    <InfoItem label="Carga parcial" value={selectedQuote.cargoParcial} />
+                  )}
+                  {selectedQuote.accountingStatus && (
+                    <InfoItem label="Estado contable" value={selectedQuote.accountingStatus} />
+                  )}
+                </InfoGrid>
+              </Section>
+            </div>
+
+            {/* Footer */}
+            <div style={{ 
+              padding: '16px 24px',
               borderTop: '1px solid #e5e7eb',
               display: 'flex',
-              justifyContent: 'flex-end'
+              justifyContent: 'flex-end',
+              gap: '12px',
+              backgroundColor: 'white'
             }}>
+              {selectedQuote.view && (
+                <a
+                  href={selectedQuote.view}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    backgroundColor: 'white',
+                    color: '#2563eb',
+                    border: '1px solid #2563eb',
+                    borderRadius: '6px',
+                    padding: '10px 20px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    textDecoration: 'none',
+                    fontWeight: '500'
+                  }}
+                >
+                  Ver en Linbis →
+                </a>
+              )}
               <button 
                 onClick={closeModal}
                 style={{
@@ -814,9 +1218,10 @@ function QuotesView() {
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
-                  padding: '8px 20px',
+                  padding: '10px 24px',
                   cursor: 'pointer',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  fontWeight: '500'
                 }}
               >
                 Cerrar
@@ -826,7 +1231,6 @@ function QuotesView() {
         </div>
       )}
 
-      {/* Estado vacío - Sin resultados de búsqueda */}
       {displayedQuotes.length === 0 && !loading && quotes.length > 0 && showingAll && (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ 
@@ -859,7 +1263,6 @@ function QuotesView() {
         </div>
       )}
 
-      {/* Estado vacío - Sin cotizaciones cargadas */}
       {quotes.length === 0 && !loading && (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
           <div style={{ 
@@ -880,5 +1283,98 @@ function QuotesView() {
     </>
   );
 }
+
+// 🎨 COMPONENTES HELPER PARA EL DISEÑO
+
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <div style={{ marginBottom: '24px' }}>
+    <h6 style={{
+      fontSize: '0.9rem',
+      fontWeight: '700',
+      color: '#374151',
+      marginBottom: '12px',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px'
+    }}>
+      {title}
+    </h6>
+    {children}
+  </div>
+);
+
+const InfoGrid: React.FC<{ children: React.ReactNode; columns?: number }> = ({ children, columns = 2 }) => (
+  <div style={{
+    display: 'grid',
+    gridTemplateColumns: `repeat(auto-fit, minmax(${columns === 3 ? '150px' : '200px'}, 1fr))`,
+    gap: '12px'
+  }}>
+    {children}
+  </div>
+);
+
+const InfoItem: React.FC<{ label: string; value?: string; fullWidth?: boolean; highlight?: boolean }> = ({ 
+  label, 
+  value, 
+  fullWidth = false,
+  highlight = false
+}) => (
+  <div style={{
+    gridColumn: fullWidth ? '1 / -1' : 'auto',
+    backgroundColor: highlight ? '#f0f9ff' : 'white',
+    padding: '12px',
+    borderRadius: '6px',
+    border: '1px solid #e5e7eb'
+  }}>
+    <div style={{
+      fontSize: '0.7rem',
+      color: '#6b7280',
+      marginBottom: '4px',
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px'
+    }}>
+      {label}
+    </div>
+    <div style={{
+      fontSize: '0.9rem',
+      color: '#1f2937',
+      fontWeight: '500',
+      wordBreak: 'break-word'
+    }}>
+      {value || 'N/A'}
+    </div>
+  </div>
+);
+
+const CostBox: React.FC<{ label: string; value: string; color: string; bgColor: string }> = ({ 
+  label, 
+  value, 
+  color,
+  bgColor
+}) => (
+  <div style={{
+    backgroundColor: bgColor,
+    borderRadius: '8px',
+    padding: '16px',
+    border: `2px solid ${color}20`
+  }}>
+    <div style={{
+      fontSize: '0.75rem',
+      color: 'rgba(255, 255, 255, 0.8)',
+      marginBottom: '6px',
+      fontWeight: '600',
+      textTransform: 'uppercase'
+    }}>
+      {label}
+    </div>
+    <div style={{
+      fontSize: '1.4rem',
+      fontWeight: '700',
+      color: color
+    }}>
+      {value}
+    </div>
+  </div>
+);
 
 export default QuotesView;
