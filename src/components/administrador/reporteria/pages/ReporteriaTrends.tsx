@@ -1,4 +1,4 @@
-// src/components/pages/TrendsPage.tsx
+// src/components/administrador/reporteria/pages/ReporteriaTrends.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Minus, Plus, Search, HelpCircle } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -6,7 +6,7 @@ import { useReporteriaData } from '../context/ReporteriaDataContext';
 import { ExecutiveModal } from '../components/modals/ExecutiveModal';
 import { AdvancedTable } from '../components/AdvancedTable';
 import { formatMoney, formatPct, truncateText } from '../utils/formatters';
-import type { MonthlyAgg, WeeklyAgg } from '../utils/types';
+import type { MonthlyAgg, WeeklyAgg, MonthKey, WeekKey } from '../utils/types';
 
 type ViewMode = 'monthly' | 'weekly';
 
@@ -83,7 +83,6 @@ const SearchModal: React.FC<{
   onClose: () => void;
   children: React.ReactNode;
 }> = ({ open, title = 'Buscador', onClose, children }) => {
-  // Cerrar con ESC
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -136,10 +135,8 @@ export default function ReporteriaTrends() {
   const [trendCurrentPeriod, setTrendCurrentPeriod] = useState<string | null>(null);
   const [trendComparisonPeriod, setTrendComparisonPeriod] = useState<string | null>(null);
 
-  // NEW: estado del modal del buscador
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Trend analysis states
   const [viewMode, setViewMode] = useState<ViewMode>('monthly');
   const [currentPeriod, setCurrentPeriod] = useState<string>('latest');
   const [previousPeriod, setPreviousPeriod] = useState<string>('previous');
@@ -154,16 +151,15 @@ export default function ReporteriaTrends() {
     setSelectedExecutives([]);
   };
 
-  // Available periods
-  const availablePeriods = useMemo(() => {
+  // ✅ CAMBIO: Forzar tipo string[] explícitamente
+  const availablePeriods = useMemo((): string[] => {
     if (viewMode === 'monthly') {
-      return Array.from(new Set(monthly.map(m => m.month))).sort();
+      return Array.from(new Set(monthly.map(m => m.month as string))).sort();
     } else {
-      return Array.from(new Set(weekly.map(w => w.week))).sort();
+      return Array.from(new Set(weekly.map(w => w.week as string))).sort();
     }
   }, [viewMode, monthly, weekly]);
 
-  // Actual periods to compare
   const { actualCurrentPeriod, actualPreviousPeriod } = useMemo(() => {
     if (availablePeriods.length === 0) {
       return { actualCurrentPeriod: '', actualPreviousPeriod: '' };
@@ -188,7 +184,6 @@ export default function ReporteriaTrends() {
     return { actualCurrentPeriod: curr, actualPreviousPeriod: prev };
   }, [currentPeriod, previousPeriod, availablePeriods]);
 
-  // Calculate trend data
   const trendData: TrendData[] = useMemo(() => {
     if (!actualCurrentPeriod || !actualPreviousPeriod) return [];
 
@@ -199,18 +194,18 @@ export default function ReporteriaTrends() {
       const current = dataToUse.find(d => {
         if (d.executive !== exec) return false;
         if (viewMode === 'monthly') {
-          return (d as MonthlyAgg).month === actualCurrentPeriod;
+          return (d as MonthlyAgg).month === (actualCurrentPeriod as MonthKey);
         } else {
-          return (d as WeeklyAgg).week === actualCurrentPeriod;
+          return (d as WeeklyAgg).week === (actualCurrentPeriod as WeekKey);
         }
       });
 
       const previous = dataToUse.find(d => {
         if (d.executive !== exec) return false;
         if (viewMode === 'monthly') {
-          return (d as MonthlyAgg).month === actualPreviousPeriod;
+          return (d as MonthlyAgg).month === (actualPreviousPeriod as MonthKey);
         } else {
-          return (d as WeeklyAgg).week === actualPreviousPeriod;
+          return (d as WeeklyAgg).week === (actualPreviousPeriod as WeekKey);
         }
       });
 
@@ -241,7 +236,6 @@ export default function ReporteriaTrends() {
     }).filter(t => t.currentProfit > 0 || t.previousProfit > 0);
   }, [viewMode, monthly, weekly, actualCurrentPeriod, actualPreviousPeriod]);
 
-  // Filtered data
   const filteredData = useMemo(() => {
     let filtered = trendData;
     if (trendFilter !== 'all') {
@@ -250,7 +244,6 @@ export default function ReporteriaTrends() {
     return filtered;
   }, [trendData, trendFilter]);
 
-  // Summary stats
   const summaryStats = useMemo(() => {
     const improving = trendData.filter(d => d.trend === 'up').length;
     const declining = trendData.filter(d => d.trend === 'down').length;
@@ -272,7 +265,6 @@ export default function ReporteriaTrends() {
     };
   }, [trendData]);
 
-  // Table columns
   const columns = useMemo<ColumnDef<TrendData>[]>(
     () => [
       {
@@ -496,7 +488,6 @@ export default function ReporteriaTrends() {
 
   return (
     <div style={{ backgroundColor: '#fafafa', minHeight: '100vh', padding: '0' }}>
-      {/* Header */}
       <div className="mb-4">
         <h2 className="fw-normal mb-1" style={{ color: '#1f2937', fontSize: '1.75rem' }}>
           Análisis de Tendencias
@@ -506,11 +497,8 @@ export default function ReporteriaTrends() {
         </p>
       </div>
 
-      {/* Contenedor con botón "Buscador" en esquina superior derecha */}
-      <div className="mb-4">
-      </div>
+      <div className="mb-4"></div>
 
-      {/* Summary Cards */}
       <div className="row g-3 mb-4">
         <div className="col-lg-3 col-md-6">
           <div
@@ -597,7 +585,6 @@ export default function ReporteriaTrends() {
         </div>
         <div className="border-0">
           <div className="card-body p-4 position-relative" style={{ minHeight: '60px' }}>
-            {/* Botón flotante en borde superior derecho */}
             <button
               type="button"
               className="btn btn-dark d-inline-flex align-items-center position-absolute top-0 end-0 mt-3 me-3"
@@ -612,7 +599,6 @@ export default function ReporteriaTrends() {
         </div>
       </div>
 
-      {/* Advanced Table */}
       <AdvancedTable
         data={filteredData}
         columns={columns}
@@ -620,7 +606,6 @@ export default function ReporteriaTrends() {
         exportFileName={`tendencias_${actualCurrentPeriod}_vs_${actualPreviousPeriod}`}
       />
 
-      {/* Modal ejecutivo existente */}
       {modalExecutive && (
         <ExecutiveModal
           isOpen={showModal}
@@ -634,7 +619,6 @@ export default function ReporteriaTrends() {
         />
       )}
 
-      {/* MODAL DE BUSCADOR: aquí van todas las opciones del selector */}
       <SearchModal open={isSearchOpen} onClose={() => setIsSearchOpen(false)} title="Buscador de períodos y filtros">
         <div className="row g-3 align-items-end">
           <div className="col-md-3">
@@ -740,15 +724,12 @@ export default function ReporteriaTrends() {
             </select>
           </div>
 
-          {/* Acciones del modal */}
           <div className="col-12 d-flex justify-content-end mt-2">
              <button
                 type="button"
                 className="btn btn-link me-auto text-decoration-none"
                 onClick={() => {
                   resetFilters();
-                  // Opcional: cerrar modal automáticamente
-                  // setIsSearchOpen(false);
                 }}
                 style={{ color: '#6b7280' }}
               >

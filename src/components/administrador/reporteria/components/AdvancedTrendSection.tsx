@@ -1,8 +1,8 @@
-// src/components/AdvancedTrendSection.tsx
+// src/components/administrador/reporteria/components/AdvancedTrendSection.tsx
 import React, { useState, useMemo } from 'react';
 import { TrendIndicator } from './TrendIndicator';
 import { formatMoney, truncateText } from '../utils/formatters';
-import type { MonthlyAgg, WeeklyAgg, Operation } from '../utils/types';
+import type { MonthlyAgg, WeeklyAgg, Operation, MonthKey, WeekKey } from '../utils/types';
 
 interface AdvancedTrendSectionProps {
   monthlyData: MonthlyAgg[];
@@ -32,13 +32,13 @@ export const AdvancedTrendSection: React.FC<AdvancedTrendSectionProps> = ({
   const [currentPeriod, setCurrentPeriod] = useState<string>('latest');
   const [previousPeriod, setPreviousPeriod] = useState<string>('previous');
 
-  // Obtener períodos disponibles
-  const availablePeriods = useMemo(() => {
+  // ✅ CAMBIO: Forzar tipo string[] explícitamente
+  const availablePeriods = useMemo((): string[] => {
     if (viewMode === 'monthly') {
-      const months = Array.from(new Set(monthlyData.map(m => m.month))).sort();
+      const months = Array.from(new Set(monthlyData.map(m => m.month as string))).sort();
       return months;
     } else {
-      const weeks = Array.from(new Set(weeklyData.map(w => w.week))).sort();
+      const weeks = Array.from(new Set(weeklyData.map(w => w.week as string))).sort();
       return weeks;
     }
   }, [viewMode, monthlyData, weeklyData]);
@@ -79,18 +79,18 @@ export const AdvancedTrendSection: React.FC<AdvancedTrendSectionProps> = ({
       const current = dataToUse.find(d => {
         if (d.executive !== exec) return false;
         if (viewMode === 'monthly') {
-          return (d as MonthlyAgg).month === actualCurrentPeriod;
+          return (d as MonthlyAgg).month === (actualCurrentPeriod as MonthKey);
         } else {
-          return (d as WeeklyAgg).week === actualCurrentPeriod;
+          return (d as WeeklyAgg).week === (actualCurrentPeriod as WeekKey);
         }
       }) || null;
 
       const previous = dataToUse.find(d => {
         if (d.executive !== exec) return false;
         if (viewMode === 'monthly') {
-          return (d as MonthlyAgg).month === actualPreviousPeriod;
+          return (d as MonthlyAgg).month === (actualPreviousPeriod as MonthKey);
         } else {
-          return (d as WeeklyAgg).week === actualPreviousPeriod;
+          return (d as WeeklyAgg).week === (actualPreviousPeriod as WeekKey);
         }
       }) || null;
 
