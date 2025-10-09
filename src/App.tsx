@@ -12,6 +12,13 @@ import UserLayout from './layouts/UserLayout';
 import DashboardAdmin from './components/administrador/dashboard-admin';
 import UsersManagement from './components/administrador/users-management';
 import SettingsAdmin from './components/administrador/settings-admin';
+import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLayout';
+
+// Reportería Pages
+import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';
+import ReporteriaKPIs from './components/administrador/reporteria/pages/ReporteriaKPIs';
+import ReporteriaExecutives from './components/administrador/reporteria/pages/ReporteriaExecutives';
+import ReporteriaTrends from './components/administrador/reporteria/pages/ReporteriaTrends';
 
 // User Views
 import QuotesView from './components/quotes/QuotesView';
@@ -41,12 +48,16 @@ function App() {
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardAdmin />} />
         <Route path="users" element={<UsersManagement />} />
-        <Route path="reporteria" element={
-          <div className="text-center py-5">
-            <h3 className="text-muted">Módulo de Reportería</h3>
-            <p className="text-muted">En desarrollo...</p>
-          </div>
-        } />
+        
+        {/* Rutas de Reportería con subrutas */}
+        <Route path="reporteria" element={<ReporteriaLayout />}>
+          <Route index element={<Navigate to="/admin/reporteria/dashboard" replace />} />
+          <Route path="dashboard" element={<ReporteriaDashboard />} />
+          <Route path="kpis" element={<ReporteriaKPIs />} />
+          <Route path="ejecutivos" element={<ReporteriaExecutives />} />
+          <Route path="tendencias" element={<ReporteriaTrends />} />
+        </Route>
+        
         <Route path="soporte" element={
           <div className="text-center py-5">
             <h3 className="text-muted">Módulo de Soporte</h3>
