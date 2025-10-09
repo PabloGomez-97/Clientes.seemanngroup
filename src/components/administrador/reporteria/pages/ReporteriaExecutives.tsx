@@ -331,14 +331,17 @@ export default function ReporteriaExecutives() {
     []
   );
 
+  // CardType type moved outside for reuse
+  type CardType = 'revenue' | 'profit' | 'margin' | 'operations' | 'clients' | 'ticket' | 'efficiency';
+
   // Modal para detalles de cards
   const CardDetailModal: React.FC = () => {
     if (!cardModalOpen || !selectedCard) return null;
 
     const getCardData = () => {
       const searchLower = cardSearchQuery.trim().toLowerCase();
-      
-      switch (selectedCard) {
+
+      switch (selectedCard as CardType) {
         case 'revenue':
           return executivesArray
             .filter(([exec]) => !searchLower || exec.toLowerCase().includes(searchLower))
@@ -432,7 +435,6 @@ export default function ReporteriaExecutives() {
           return [];
       }
     };
-
     const cardTitles = {
       revenue: 'Total Revenue por Ejecutivo',
       profit: 'Total Profit por Ejecutivo',
@@ -459,7 +461,9 @@ export default function ReporteriaExecutives() {
             style={{ backgroundColor: 'white', borderRadius: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.12)' }}
           >
             <div className="card-header d-flex align-items-center justify-content-between border-0" style={{ padding: '20px' }}>
-              <h5 className="mb-0" style={{ color: '#111827' }}>{cardTitles[selectedCard]}</h5>
+              <h5 className="mb-0" style={{ color: '#111827' }}>
+                {cardTitles[selectedCard as keyof typeof cardTitles]}
+              </h5>
               <button type="button" className="btn btn-sm btn-outline-secondary" onClick={closeCardModal}>
                 Cerrar
               </button>
@@ -532,7 +536,7 @@ export default function ReporteriaExecutives() {
         isOpen={detailModalOpen}
         onClose={closeExecutiveDetailModal}
         executiveName={selectedExecutiveForDetail}
-        operations={operations}
+        operations={operations || []}
         selectedMonth={selectedMonth}
       />
     );
@@ -1297,7 +1301,7 @@ export default function ReporteriaExecutives() {
           isOpen={showModal}
           onClose={handleCloseModal}
           executiveName={modalExecutive}
-          operations={operations}
+          operations={operations || []}
           selectedMonth={selectedMonth}
         />
       )}

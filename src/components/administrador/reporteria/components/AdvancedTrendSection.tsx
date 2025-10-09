@@ -76,15 +76,23 @@ export const AdvancedTrendSection: React.FC<AdvancedTrendSectionProps> = ({
     const executives = Array.from(new Set(dataToUse.map(d => d.executive)));
 
     return executives.map(exec => {
-      const current = dataToUse.find(d => 
-        d.executive === exec && 
-        (viewMode === 'monthly' ? (d as MonthlyAgg).month === actualCurrentPeriod : (d as WeeklyAgg).week === actualCurrentPeriod)
-      ) || null;
+      const current = dataToUse.find(d => {
+        if (d.executive !== exec) return false;
+        if (viewMode === 'monthly') {
+          return (d as MonthlyAgg).month === actualCurrentPeriod;
+        } else {
+          return (d as WeeklyAgg).week === actualCurrentPeriod;
+        }
+      }) || null;
 
-      const previous = dataToUse.find(d => 
-        d.executive === exec && 
-        (viewMode === 'monthly' ? (d as MonthlyAgg).month === actualPreviousPeriod : (d as WeeklyAgg).week === actualPreviousPeriod)
-      ) || null;
+      const previous = dataToUse.find(d => {
+        if (d.executive !== exec) return false;
+        if (viewMode === 'monthly') {
+          return (d as MonthlyAgg).month === actualPreviousPeriod;
+        } else {
+          return (d as WeeklyAgg).week === actualPreviousPeriod;
+        }
+      }) || null;
 
       const profitChange = current && previous ? current.profit - previous.profit : null;
       const profitPctChange = previous && previous.profit !== 0 ? 
@@ -107,7 +115,7 @@ export const AdvancedTrendSection: React.FC<AdvancedTrendSectionProps> = ({
         opsChange,
         trend
       };
-    }).filter(t => t.current || t.previous); // Solo mostrar ejecutivos con datos
+    }).filter(t => t.current || t.previous);
   }, [viewMode, monthlyData, weeklyData, actualCurrentPeriod, actualPreviousPeriod]);
 
   // Handler para click en ejecutivo con período específico

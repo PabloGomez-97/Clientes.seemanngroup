@@ -196,15 +196,23 @@ export default function ReporteriaTrends() {
     const executives = Array.from(new Set(dataToUse.map(d => d.executive)));
 
     return executives.map(exec => {
-      const current = dataToUse.find(d =>
-        d.executive === exec &&
-        (viewMode === 'monthly' ? (d as MonthlyAgg).month === actualCurrentPeriod : (d as WeeklyAgg).week === actualCurrentPeriod)
-      );
+      const current = dataToUse.find(d => {
+        if (d.executive !== exec) return false;
+        if (viewMode === 'monthly') {
+          return (d as MonthlyAgg).month === actualCurrentPeriod;
+        } else {
+          return (d as WeeklyAgg).week === actualCurrentPeriod;
+        }
+      });
 
-      const previous = dataToUse.find(d =>
-        d.executive === exec &&
-        (viewMode === 'monthly' ? (d as MonthlyAgg).month === actualPreviousPeriod : (d as WeeklyAgg).week === actualPreviousPeriod)
-      );
+      const previous = dataToUse.find(d => {
+        if (d.executive !== exec) return false;
+        if (viewMode === 'monthly') {
+          return (d as MonthlyAgg).month === actualPreviousPeriod;
+        } else {
+          return (d as WeeklyAgg).week === actualPreviousPeriod;
+        }
+      });
 
       const profitChange = current && previous ? previous.profit - current.profit : 0;
       const profitPctChange = previous && previous.profit !== 0 ?
@@ -618,10 +626,10 @@ export default function ReporteriaTrends() {
           isOpen={showModal}
           onClose={handleCloseModal}
           executiveName={modalExecutive}
-          operations={operations}
+          operations={operations || []}
           selectedMonth="all"
-          currentPeriod={trendCurrentPeriod}
-          comparisonPeriod={trendComparisonPeriod}
+          currentPeriod={trendCurrentPeriod || undefined}
+          comparisonPeriod={trendComparisonPeriod || undefined}
           showPeriodSelector={true}
         />
       )}
@@ -765,12 +773,4 @@ export default function ReporteriaTrends() {
       </SearchModal>
     </div>
   );
-};
-function setViewMode(arg0: string) {
-  throw new Error('Function not implemented.');
 }
-
-function setPreviousPeriod(arg0: string) {
-  throw new Error('Function not implemented.');
-}
-

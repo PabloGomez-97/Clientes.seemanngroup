@@ -1,4 +1,4 @@
-// src/utils/types.ts
+// src/components/administrador/reporteria/utils/types.ts
 export type RawRow = string[];
 
 export type Operation = {
@@ -70,6 +70,20 @@ export type GlobalKPIs = {
   topClientRevenue: number;
   clientConcentrationRisk: number;
   operationalEfficiency: number;
+};
+
+// ✅ AGREGAR ESTA EXPORTACIÓN
+export type AdvancedKPIs = {
+  revenuePerExecutive: number;
+  profitPerExecutive: number;
+  opsPerExecutive: number;
+  clientsPerExecutive: number;
+  avgMarginPerDeal: number;
+  dealSuccessRate: number;
+  monthOverMonthGrowth: number | null;
+  quarterOverQuarterGrowth: number | null;
+  executiveConcentration: number;
+  monthlyVolatility: number;
 };
 
 export type WeekKey = `${number}-W${number}`;

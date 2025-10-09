@@ -1,5 +1,6 @@
 // src/components/administrador/reporteria/context/ReporteriaDataContext.tsx
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import type { Operation, MonthlyAgg, WeeklyAgg, ExecutiveSummary } from '../utils/types';
 import { aggregateMonthly, aggregateWeekly } from '../utils/dataProcessing';
 import { calculateEnhancedGlobalKPIs, calculateAdvancedKPIs } from '../utils/advancedKPIs';
