@@ -1,5 +1,6 @@
 // src/components/layout/Sidebar.tsx
 import { useLocation, useNavigate } from 'react-router-dom';
+import logoSeemann from './logoseemann.png';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -112,14 +113,14 @@ function Sidebar({ isOpen }: SidebarProps) {
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-        <img 
-          src="src\layouts\logoseemann1.png" 
-          alt="Seemann Logo" 
-          style={{ 
-            width: '180px', 
+        <img
+          src={logoSeemann} 
+          alt="Seemann Group" 
+          style={{
+            width: '180px',
             height: 'auto',
             objectFit: 'contain' 
-          }} 
+          }}
         />
       </div>
 
