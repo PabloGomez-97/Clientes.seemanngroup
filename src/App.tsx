@@ -23,7 +23,7 @@ import ReporteriaTrends from './components/administrador/reporteria/pages/Report
 
 // User Views
 import QuotesView from './components/quotes/QuotesView';
-import Newquotes from './components/quotes/newquotes';
+import Newquotes from './components/quotes/Newquotes';
 import AirShipmentsView from './components/shipments/AirShipmentsView';
 import OceanShipmentsView from './components/shipments/OceanShipmentsView';
 import ShipmentsView from './components/shipments/Shipments';
