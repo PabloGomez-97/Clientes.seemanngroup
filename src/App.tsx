@@ -22,11 +22,10 @@ import ReporteriaExecutives from './components/administrador/reporteria/pages/Re
 import ReporteriaTrends from './components/administrador/reporteria/pages/ReporteriaTrends';
 
 // Cotizador
-import CotizadorGlobal from './components/cotizador/CotizadorGlobal';
+import Cotizador from './components/cotizador/Cotizador';
 
 // User Views
 import QuotesView from './components/quotes/QuotesView';
-import Newquotes from './components/quotes/Newquotes';
 import AirShipmentsView from './components/shipments/AirShipmentsView';
 import OceanShipmentsView from './components/shipments/OceanShipmentsView';
 import ShipmentsView from './components/shipments/Shipments';
@@ -86,7 +85,7 @@ function App() {
       }>
         <Route index element={<Navigate to="/quotes" replace />} />
         <Route path="quotes" element={<QuotesView />} />
-        <Route path="newquotes" element={<CotizadorGlobal />} />
+        <Route path="newquotes" element={<Cotizador />} />
         <Route path="air-shipments" element={<AirShipmentsView />} />
         <Route path="ocean-shipments" element={<OceanShipmentsView />} />
         <Route path="all-shipments" element={<ShipmentsView />} />

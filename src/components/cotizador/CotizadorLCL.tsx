@@ -24,6 +24,7 @@ import {
   parseOVERSEAS,
   parsePLUSCARGO,
 } from './Parsers';
+import Modal from './Modal';
 
 // ============================================================================
 // CONFIGURACIÓN DE COLORES
@@ -31,7 +32,7 @@ import {
 
 const PROVIDER_COLORS_MAP: Record<Provider, string> = {
   'MSL-IMPORT': 'primary',
-  'MSL-EXPORT': 'purple',
+  'MSL-EXPORT': 'dark',
   'CRAFT': 'success',
   'ECU': 'warning',
   'CTL': 'danger',
@@ -45,7 +46,6 @@ const PROVIDER_COLORS_MAP: Record<Provider, string> = {
 
 const CotizadorGlobal: React.FC = () => {
   // Estados principales
-  const [tipoOperacion, setTipoOperacion] = useState<TipoOperacion | null>(null);
   const [rutas, setRutas] = useState<Ruta[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +62,8 @@ const CotizadorGlobal: React.FC = () => {
   const [rutasFiltradas, setRutasFiltradas] = useState<Ruta[]>([]);
   const [proveedoresSeleccionados, setProveedoresSeleccionados] = useState<Set<Provider>>(new Set());
   const [ordenarPor, setOrdenarPor] = useState<'precio' | 'tiempo'>('precio');
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [rutaSeleccionada, setRutaSeleccionada] = useState<Ruta | null>(null);
 
   // ============================================================================
   // CARGAR ARCHIVOS EXCEL
@@ -82,6 +84,7 @@ const CotizadorGlobal: React.FC = () => {
           { nombre: 'CTL.xlsx', parser: parseCTL },
           { nombre: 'OVERSEAS.xlsx', parser: parseOVERSEAS },
           { nombre: 'PLUSCARGO.xlsx', parser: parsePLUSCARGO },
+          { nombre: 'MSL-EXPORT.xlsx', parser: parseMSLEXPORT }, // Incluido para rutas de exportación también
         ];
 
         for (const archivo of archivos) {
@@ -130,17 +133,15 @@ const CotizadorGlobal: React.FC = () => {
   // ============================================================================
 
   useEffect(() => {
-    if (tipoOperacion) {
-      setRutas([]);
-      setPolSeleccionado(null);
-      setPodSeleccionado(null);
-      setOpcionesPOL([]);
-      setOpcionesPOD([]);
-      setRutasFiltradas([]);
-      setProveedoresSeleccionados(new Set());
-      cargarArchivos(tipoOperacion);
-    }
-  }, [tipoOperacion]);
+    setRutas([]);
+    setPolSeleccionado(null);
+    setPodSeleccionado(null);
+    setOpcionesPOL([]);
+    setOpcionesPOD([]);
+    setRutasFiltradas([]);
+    setProveedoresSeleccionados(new Set());
+    cargarArchivos('IMPORTACION');
+  }, []); // ← sin dependencias
 
   useEffect(() => {
     if (polSeleccionado) {
@@ -176,10 +177,6 @@ const CotizadorGlobal: React.FC = () => {
   // HANDLERS
   // ============================================================================
 
-  const handleTipoOperacionChange = (tipo: TipoOperacion) => {
-    setTipoOperacion(tipo);
-  };
-
   const handlePOLChange = (option: SelectOption | null) => {
     setPolSeleccionado(option);
     setPodSeleccionado(null);
@@ -198,6 +195,15 @@ const CotizadorGlobal: React.FC = () => {
       newSet.add(provider);
     }
     setProveedoresSeleccionados(newSet);
+  };
+
+  const handleCotizar = (ruta: Ruta) => {
+    setRutaSeleccionada(ruta);
+    setModalAbierto(true);
+  };
+
+  const handleCerrarModal = () => {
+    setModalAbierto(false);
   };
 
   // ============================================================================
@@ -556,9 +562,15 @@ const CotizadorGlobal: React.FC = () => {
   // RENDER PRINCIPAL
   // ============================================================================
 
-  const proveedoresDisponibles = tipoOperacion === 'EXPORTACION' 
-    ? ['MSL-EXPORT' as Provider]
-    : ['MSL-IMPORT', 'CRAFT', 'ECU', 'CTL', 'OVERSEAS', 'PLUSCARGO'] as Provider[];
+  const proveedoresDisponibles: Provider[] = [
+    'MSL-IMPORT',
+    'MSL-EXPORT',
+    'CRAFT',
+    'ECU',
+    'CTL',
+    'OVERSEAS',
+    'PLUSCARGO',
+  ];
 
   return (
     <div className="container mt-4 mb-5">
@@ -567,37 +579,6 @@ const CotizadorGlobal: React.FC = () => {
         <h1 className="fw-light">Cotizador Global de Rutas Marítimas</h1>
         <p className="text-muted">Sistema Unificado - Todos los Proveedores</p>
       </div>
-
-      {/* Selección Tipo de Operación */}
-      {!tipoOperacion && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body p-4 text-center">
-            <h4 className="mb-4">Selecciona el Tipo de Operación</h4>
-            <div className="row g-3">
-              <div className="col-md-6">
-                <button
-                  className="btn btn-primary btn-lg w-100 py-4"
-                  onClick={() => handleTipoOperacionChange('IMPORTACION')}
-                >
-                  <i className="bi bi-box-arrow-in-down me-2"></i>
-                  IMPORTACIÓN
-                  <div className="small mt-2">6 Proveedores Disponibles</div>
-                </button>
-              </div>
-              <div className="col-md-6">
-                <button
-                  className="btn btn-success btn-lg w-100 py-4"
-                  onClick={() => handleTipoOperacionChange('EXPORTACION')}
-                >
-                  <i className="bi bi-box-arrow-up me-2"></i>
-                  EXPORTACIÓN
-                  <div className="small mt-2">MSL Export</div>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Loading */}
       {loading && (
@@ -618,20 +599,8 @@ const CotizadorGlobal: React.FC = () => {
       )}
 
       {/* Formulario Principal */}
-      {tipoOperacion && !loading && !error && (
+      {!loading && !error && (
         <>
-          <div className="mb-3">
-            <button
-              className="btn btn-outline-secondary btn-sm"
-              onClick={() => setTipoOperacion(null)}
-            >
-              ← Cambiar Tipo de Operación
-            </button>
-            <span className="ms-3 badge bg-info text-dark">
-              {tipoOperacion}
-            </span>
-          </div>
-
           {/* Selección POL y POD */}
           <div className="card shadow-sm mb-4">
             <div className="card-body p-4">
@@ -803,7 +772,7 @@ const CotizadorGlobal: React.FC = () => {
                         <button
                           type="button"
                           className="btn btn-primary w-100"
-                          onClick={() => {}}
+                          onClick={() => handleCotizar(ruta)}
                         >
                           Cotizar
                         </button>
@@ -838,6 +807,42 @@ const CotizadorGlobal: React.FC = () => {
           )}
         </>
       )}
+
+      {/* Modal de Cotización */}
+      <Modal
+        isOpen={modalAbierto}
+        onClose={handleCerrarModal}
+        title={`Cotización LCL: ${rutaSeleccionada?.pol} → ${rutaSeleccionada?.pod}`}
+      >
+        {rutaSeleccionada && (
+          <div className="cotizacion-detalle">
+            {/* Header */}
+            <div className="mb-4 pb-3 border-bottom">
+              <div className="d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">
+                  {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
+                </h5>
+                <span className={`badge bg-${PROVIDER_COLORS_MAP[rutaSeleccionada.provider]}`}>
+                  {rutaSeleccionada.provider}
+                </span>
+              </div>
+              <div className="mt-2">
+                <small className="text-muted">Región: </small>
+                <span className="badge bg-secondary">{rutaSeleccionada.region}</span>
+                {'country' in rutaSeleccionada && rutaSeleccionada.country && (
+                  <>
+                    <small className="text-muted ms-3">País: </small>
+                    <span>{rutaSeleccionada.country}</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Contenido del Modal - Reutilizar la función renderRutaContent */}
+            {renderRutaContent(rutaSeleccionada)}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
