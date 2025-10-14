@@ -224,7 +224,7 @@ const CotizadorAereo: React.FC = () => {
       setError(null);
 
       try {
-        const response = await fetch('/src/assets/AÉREO.xlsx');
+        const response = await fetch('/assets/AÉREO.xlsx');
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -785,7 +785,7 @@ const CotizadorAereo: React.FC = () => {
           )}
         </>
       )}
-      
+
       {/* Modal de Cotización */}
       <Modal
         isOpen={modalAbierto}

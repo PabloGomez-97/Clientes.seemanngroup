@@ -89,7 +89,7 @@ const CotizadorGlobal: React.FC = () => {
 
         for (const archivo of archivos) {
           try {
-            const response = await fetch(`/src/assets/${archivo.nombre}`);
+            const response = await fetch(`/assets/${archivo.nombre}`);
             const arrayBuffer = await response.arrayBuffer();
             const workbook = XLSX.read(arrayBuffer, { type: 'array' });
             const worksheet = workbook.Sheets['TARIFARIO'];
@@ -102,7 +102,7 @@ const CotizadorGlobal: React.FC = () => {
           }
         }
       } else {
-        const response = await fetch('/src/assets/MSL-EXPORT.xlsx');
+        const response = await fetch('/assets/MSL-EXPORT.xlsx');
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const worksheet = workbook.Sheets['TARIFARIO'];

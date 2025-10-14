@@ -167,7 +167,7 @@ const CotizadorFCL: React.FC = () => {
       setError(null);
 
       try {
-        const response = await fetch('/src/assets/FCL.xlsx');
+        const response = await fetch('/assets/FCL.xlsx');
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]]; // Primera hoja
