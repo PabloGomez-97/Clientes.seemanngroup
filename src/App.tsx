@@ -23,6 +23,7 @@ import ReporteriaTrends from './components/administrador/reporteria/pages/Report
 
 // Cotizador
 import Cotizador from './components/cotizador/Cotizador';
+import Newquotes from './components/quotes/Newquotes';
 
 // User Views
 import QuotesView from './components/quotes/QuotesView';
@@ -86,6 +87,7 @@ function App() {
         <Route index element={<Navigate to="/quotes" replace />} />
         <Route path="quotes" element={<QuotesView />} />
         <Route path="newquotes" element={<Cotizador />} />
+        <Route path="crear-cotizacion" element={<Newquotes />} />
         <Route path="air-shipments" element={<AirShipmentsView />} />
         <Route path="ocean-shipments" element={<OceanShipmentsView />} />
         <Route path="all-shipments" element={<ShipmentsView />} />
