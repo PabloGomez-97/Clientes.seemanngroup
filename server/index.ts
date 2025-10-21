@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
+import chatHandler from '../api/chat.ts'; 
 
 /** =========================
  *  Entorno + JWT
@@ -42,6 +43,8 @@ function verifyToken(token: string): AuthPayload {
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.all('/api/chat', (req, res) => chatHandler(req as any, res as any));
 
 /** =========================
  *  Mongoose / Modelos tipados
