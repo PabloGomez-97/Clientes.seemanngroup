@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import NavbarAdmin from './Navbar-admin';
 import SidebarAdmin from './Sidebar-admin';
+import ChatWidget from '../components/ChatWidget';
 
 function AdminLayout() {
   const [accessToken, setAccessToken] = useState('');
@@ -151,6 +152,7 @@ function AdminLayout() {
           <Outlet context={{ accessToken, onLogout: handleLogout }} />
         </div>
       </div>
+      <ChatWidget/>
     </div>
   );
 }
