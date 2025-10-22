@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import ChatWidget from '../components/ChatWidget';
 
 function UserLayout() {
   const [accessToken, setAccessToken] = useState('');
@@ -151,6 +152,7 @@ function UserLayout() {
           <Outlet context={{ accessToken, onLogout: handleLogout }} />
         </div>
       </div>
+      <ChatWidget />
     </div>
   );
 }

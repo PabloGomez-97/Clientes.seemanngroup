@@ -95,23 +95,54 @@ export function useChatbot(): UseChatbotReturn {
       }
 
       const data = await response.json();
+      const fullMessage = data.message;
 
+      // Crear mensaje vacío del asistente
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.message,
+        content: '',
         timestamp: Date.now(),
       };
 
-      // Agregar respuesta del asistente
+      // Agregar mensaje vacío primero
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Simular escritura carácter por carácter
+      let currentIndex = 0;
+      const typingSpeed = 30; // milisegundos entre cada carácter (ajustable)
+
+      const typingInterval = setInterval(() => {
+        currentIndex++;
+        
+        if (currentIndex <= fullMessage.length) {
+          // Actualizar el último mensaje con más caracteres
+          setMessages(prev => {
+            const newMessages = [...prev];
+            newMessages[newMessages.length - 1] = {
+              ...newMessages[newMessages.length - 1],
+              content: fullMessage.substring(0, currentIndex),
+            };
+            return newMessages;
+          });
+        } else {
+          // Terminar la animación
+          clearInterval(typingInterval);
+          setIsLoading(false);
+        }
+      }, typingSpeed);
+
+      // No poner setIsLoading(false) aquí, se hace cuando termina la animación
+      return; // Salir temprano
+
     } catch (err: any) {
       console.error('Error sending message:', err);
       setError(err.message || 'Error al enviar el mensaje');
+      setIsLoading(false);
       
       // Remover el último mensaje del usuario en caso de error
       setMessages(prev => prev.slice(0, -1));
     } finally {
-      setIsLoading(false);
+      // No hacer nada aquí, el setIsLoading(false) se maneja en la animación
     }
   }, [token, messages]);
 
