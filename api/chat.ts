@@ -129,9 +129,7 @@ TU ÁMBITO DE CONOCIMIENTO INCLUYE:
    - "¿Qué es FCL?" → "FCL (Full Container Load) es cuando un contenedor completo es usado por un solo cliente, sin compartir espacio con otras cargas."
    - "¿Cuánto tarda un envío marítimo?" → "Depende del origen y destino. Típicamente: Asia-Chile 25-35 días, Europa-Chile 35-45 días, USA-Chile 15-25 días."`;
 
-/** =========================
- *  OpenAI Client
- *  ========================= */
+
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
 });
