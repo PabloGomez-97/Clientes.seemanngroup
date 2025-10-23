@@ -11,8 +11,5 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "crons": [
-    { "path": "/api/cron/linbis-refresh?secret=sjdfhuewuvnskwriowdnveorfnejinejf", "schedule": "0 */6 * * *" }
   ]
 }
