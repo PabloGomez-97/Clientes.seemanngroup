@@ -26,6 +26,366 @@ interface AirShipment {
   [key: string]: any;
 }
 
+// Componente para el Timeline Visual
+function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
+  const getTimelineSteps = () => {
+    const steps = [
+      {
+        label: 'En Tránsito',
+        date: shipment.departure,
+        completed: !!shipment.departure,
+        icon: '✈️'
+      },
+      {
+        label: 'Llegada',
+        date: shipment.arrival,
+        completed: !!shipment.arrival && new Date(shipment.arrival) <= new Date(),
+        icon: '📦'
+      },
+      {
+        label: 'Aduana',
+        date: shipment.importSection?.importDate || shipment.importSection?.amsDate,
+        completed: shipment.customsReleased || !!shipment.importSection?.entry,
+        icon: '🛃'
+      },
+      {
+        label: 'Entregado',
+        date: shipment.proofOfDelivery?.podDelivery,
+        completed: !!shipment.proofOfDelivery?.podDelivery,
+        icon: '✅'
+      }
+    ];
+    return steps;
+  };
+
+  const steps = getTimelineSteps();
+  const completedSteps = steps.filter(s => s.completed).length;
+
+  return (
+    <div style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h6 style={{ margin: 0, color: '#1f2937', fontSize: '0.9rem', fontWeight: '600' }}>
+          Estado del Envío
+        </h6>
+        <span style={{ 
+          backgroundColor: completedSteps === 4 ? '#10b981' : '#3b82f6',
+          color: 'white',
+          padding: '4px 12px',
+          borderRadius: '12px',
+          fontSize: '0.75rem',
+          fontWeight: '600'
+        }}>
+          {completedSteps === 4 ? 'Entregado' : 'En Proceso'}
+        </span>
+      </div>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
+        {/* Línea de fondo */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '5%',
+          right: '5%',
+          height: '2px',
+          backgroundColor: '#e5e7eb',
+          zIndex: 0
+        }} />
+        
+        {/* Línea de progreso */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '5%',
+          width: `${((completedSteps - 1) / 3) * 90}%`,
+          height: '2px',
+          backgroundColor: '#3b82f6',
+          zIndex: 0,
+          transition: 'width 0.3s ease'
+        }} />
+
+        {steps.map((step, index) => (
+          <div key={index} style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              backgroundColor: step.completed ? '#3b82f6' : '#e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.2rem',
+              marginBottom: '8px',
+              transition: 'all 0.3s ease',
+              boxShadow: step.completed ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none'
+            }}>
+              {step.icon}
+            </div>
+            <div style={{ 
+              fontSize: '0.75rem', 
+              fontWeight: '600',
+              color: step.completed ? '#1f2937' : '#9ca3af',
+              textAlign: 'center',
+              marginBottom: '4px'
+            }}>
+              {step.label}
+            </div>
+            {step.date && (
+              <div style={{ 
+                fontSize: '0.7rem', 
+                color: '#6b7280',
+                textAlign: 'center'
+              }}>
+                {new Date(step.date).toLocaleDateString('es-CL')}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Componente para Secciones Colapsables
+function CollapsibleSection({ 
+  title, 
+  children, 
+  defaultOpen = false,
+  icon = '📋'
+}: { 
+  title: string; 
+  children: React.ReactNode; 
+  defaultOpen?: boolean;
+  icon?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div style={{ 
+      marginBottom: '12px',
+      border: '1px solid #e5e7eb',
+      borderRadius: '8px',
+      overflow: 'hidden'
+    }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          backgroundColor: isOpen ? '#f9fafb' : 'white',
+          border: 'none',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>{icon}</span>
+          <span style={{ fontWeight: '600', color: '#1f2937', fontSize: '0.9rem' }}>
+            {title}
+          </span>
+        </div>
+        <span style={{ 
+          fontSize: '1.2rem', 
+          color: '#6b7280',
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.2s'
+        }}>
+          ▼
+        </span>
+      </button>
+      
+      {isOpen && (
+        <div style={{ padding: '16px', backgroundColor: 'white' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente para mostrar un campo
+function InfoField({ label, value, fullWidth = false }: { label: string; value: any; fullWidth?: boolean }) {
+  if (value === null || value === undefined || value === '' || value === 0) return null;
+  
+  let displayValue: string;
+  if (typeof value === 'boolean') {
+    displayValue = value ? 'Sí' : 'No';
+  } else if (typeof value === 'object') {
+    return null; // No mostramos objetos complejos como campos simples
+  } else {
+    displayValue = String(value);
+  }
+
+  return (
+    <div style={{ 
+      marginBottom: '12px',
+      flex: fullWidth ? '1 1 100%' : '1 1 48%',
+      minWidth: fullWidth ? '100%' : '200px'
+    }}>
+      <div style={{ 
+        fontSize: '0.7rem',
+        fontWeight: '600',
+        color: '#6b7280',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        marginBottom: '4px'
+      }}>
+        {label}
+      </div>
+      <div style={{ 
+        fontSize: '0.875rem',
+        color: '#1f2937',
+        wordBreak: 'break-word'
+      }}>
+        {displayValue}
+      </div>
+    </div>
+  );
+}
+
+// Componente para mostrar información de commodities
+function CommoditiesSection({ commodities }: { commodities: any[] }) {
+  if (!commodities || commodities.length === 0) return null;
+
+  return (
+    <div>
+      {commodities.map((commodity, index) => (
+        <div key={index} style={{
+          padding: '12px',
+          backgroundColor: '#f9fafb',
+          borderRadius: '6px',
+          marginBottom: index < commodities.length - 1 ? '12px' : '0'
+        }}>
+          <div style={{ 
+            fontSize: '0.8rem',
+            fontWeight: '600',
+            color: '#3b82f6',
+            marginBottom: '8px'
+          }}>
+            Ítem {index + 1}
+          </div>
+          
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+            <InfoField label="Descripción" value={commodity.description} fullWidth />
+            <InfoField label="Piezas" value={commodity.pieces} />
+            <InfoField label="Peso Total" value={commodity.totalWeightValue ? `${commodity.totalWeightValue} kg` : null} />
+            <InfoField label="Volumen Total" value={commodity.totalVolumeValue ? `${commodity.totalVolumeValue} m³` : null} />
+            <InfoField label="Tipo de Empaque" value={commodity.packageType?.description} />
+            <InfoField label="Número PO" value={commodity.poNumber} />
+            <InfoField label="Número de Factura" value={commodity.invoiceNumber} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Componente para SubShipments
+function SubShipmentsList({ subShipments }: { subShipments: any[] }) {
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  if (!subShipments || subShipments.length === 0) return null;
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <div style={{ 
+        fontSize: '0.85rem',
+        fontWeight: '600',
+        color: '#1f2937',
+        marginBottom: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px'
+      }}>
+        <span>📦</span>
+        <span>Sub-Envíos ({subShipments.length})</span>
+      </div>
+      
+      {subShipments.map((subShipment, index) => (
+        <div key={index} style={{
+          border: '1px solid #e5e7eb',
+          borderRadius: '6px',
+          marginBottom: '8px',
+          overflow: 'hidden'
+        }}>
+          <button
+            onClick={() => setExpandedIndex(expandedIndex === index ? null : index)}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              backgroundColor: expandedIndex === index ? '#f9fafb' : 'white',
+              border: 'none',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+              <span style={{ fontWeight: '600', color: '#1f2937', fontSize: '0.85rem' }}>
+                {subShipment.number || `Sub-Envío ${index + 1}`}
+              </span>
+              {subShipment.consignee?.name && (
+                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                  {subShipment.consignee.name}
+                </span>
+              )}
+            </div>
+            <span style={{ 
+              fontSize: '1rem', 
+              color: '#6b7280',
+              transform: expandedIndex === index ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s'
+            }}>
+              ▼
+            </span>
+          </button>
+          
+          {expandedIndex === index && (
+            <div style={{ padding: '12px', backgroundColor: 'white', borderTop: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                <InfoField label="Número" value={subShipment.number} />
+                <InfoField label="Waybill" value={subShipment.waybillNumber} />
+                <InfoField label="Consignatario" value={subShipment.consignee?.name} fullWidth />
+                <InfoField label="Dirección" value={subShipment.consigneeAddress} fullWidth />
+                <InfoField label="Carrier" value={subShipment.carrier?.name} />
+                <InfoField label="Descripción de Carga" value={subShipment.cargoDescription} fullWidth />
+                <InfoField label="Piezas Manifestadas" value={subShipment.manifestedPieces} />
+                <InfoField label="Peso Manifestado" value={subShipment.manifestedWeight ? `${subShipment.manifestedWeight} kg` : null} />
+                <InfoField label="Referencia Cliente" value={subShipment.customerReference} />
+              </div>
+              
+              {subShipment.commodities && subShipment.commodities.length > 0 && (
+                <div style={{ marginTop: '12px' }}>
+                  <div style={{ 
+                    fontSize: '0.8rem',
+                    fontWeight: '600',
+                    color: '#6b7280',
+                    marginBottom: '8px'
+                  }}>
+                    Commodities
+                  </div>
+                  <CommoditiesSection commodities={subShipment.commodities} />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AirShipmentsView() {
   const { accessToken, onLogout } = useOutletContext<OutletContext>();
   const { user } = useAuth();
@@ -55,6 +415,19 @@ function AirShipmentsView() {
   
   const [showingAll, setShowingAll] = useState(false);
 
+  // Función auxiliar para formatear fechas
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-CL', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   // Obtener air-shipments usando el token con paginación
   const fetchAirShipments = async (startPage: number = 1, append: boolean = false) => {
     if (!accessToken) {
@@ -67,24 +440,26 @@ function AirShipmentsView() {
     
     try {
       let allFiltered: AirShipment[] = append ? [...shipments] : [];
-      const pagesToLoad = 1000; // Cargar 10 páginas automáticamente
-      const idsSet = new Set(allFiltered.map(s => s.id)); // Para evitar duplicados
+      const pagesToLoad = 1000;
+      const idsSet = new Set(allFiltered.map(s => s.id));
       
       const filterShipmentsByConsignee = (shipment: AirShipment): boolean => {
-        if (shipment.consignee?.name === filterConsignee) {
-          return true;
-        }
+        // Filtro 1: El número debe comenzar con "SOG"
+        const numberStartsWithSOG = shipment.number?.toString().toUpperCase().startsWith('SOG');
         
-        if (shipment.subShipments && Array.isArray(shipment.subShipments)) {
-          return shipment.subShipments.some((sub: AirShipment) => 
+        // Filtro 2: Debe pertenecer al consignee
+        const belongsToConsignee = shipment.consignee?.name === filterConsignee;
+        
+        // Filtro 3: O tener subShipments que pertenezcan al consignee
+        const hasSubShipmentsForConsignee = shipment.subShipments && Array.isArray(shipment.subShipments) && 
+          shipment.subShipments.some((sub: AirShipment) => 
             sub.consignee?.name === filterConsignee
           );
-        }
         
-        return false;
+        // Solo mostrar si el número comienza con SOG Y (pertenece al consignee O tiene subShipments del consignee)
+        return numberStartsWithSOG && (belongsToConsignee || hasSubShipmentsForConsignee);
       };
       
-      // Cargar múltiples páginas
       for (let page = startPage; page < startPage + pagesToLoad; page++) {
         console.log(`Cargando página ${page}...`);
         
@@ -117,7 +492,6 @@ function AirShipmentsView() {
         
         const filtered = shipmentsArray.filter(filterShipmentsByConsignee);
         
-        // Agregar solo los que no están duplicados
         filtered.forEach(shipment => {
           if (!idsSet.has(shipment.id)) {
             allFiltered.push(shipment);
@@ -125,7 +499,7 @@ function AirShipmentsView() {
           }
         });
         
-        console.log(`Página ${page}: ${shipmentsArray.length} air-shipments totales, ${filtered.length} del consignee, ${allFiltered.length} acumulados`);
+        console.log(`Página ${page}: ${shipmentsArray.length} air-shipments totales, ${filtered.length} que comienzan con SOG y pertenecen a ${filterConsignee}, ${allFiltered.length} acumulados`);
         
         if (shipmentsArray.length < 50) {
           setHasMore(false);
@@ -134,7 +508,7 @@ function AirShipmentsView() {
       }
       
       setShipments(allFiltered);
-      setDisplayedShipments(allFiltered.slice(0, 10));
+      setDisplayedShipments(allFiltered.slice(0, 20));
       setCurrentPage(startPage + pagesToLoad);
       setShowingAll(false);
       setHasMore(true);
@@ -144,7 +518,7 @@ function AirShipmentsView() {
         localStorage.setItem('airShipmentsCacheTimestamp', new Date().getTime().toString());
       }
       
-      console.log(`Total encontrado: ${allFiltered.length} air-shipments de MCG CHILE SPA`);
+      console.log(`Total encontrado: ${allFiltered.length} air-shipments con número SOG de ${filterConsignee}`);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -154,24 +528,19 @@ function AirShipmentsView() {
     }
   };
 
-  // Cargar más páginas
   const loadMorePages = async () => {
     if (!hasMore || loading) return;
-    
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
     await fetchAirShipments(nextPage, true);
   };
 
-  // Cargar automáticamente al montar el componente
   useEffect(() => {
-    // 👇 AGREGAR ESTA VALIDACIÓN
     if (!accessToken) {
       console.log('No hay token disponible todavía');
       return;
     }
 
-    // Intentar cargar desde caché primero
     const cachedShipments = localStorage.getItem('airShipmentsCache');
     const cacheTimestamp = localStorage.getItem('airShipmentsCacheTimestamp');
     
@@ -183,7 +552,7 @@ function AirShipmentsView() {
       if (cacheAge < oneHour) {
         const parsed = JSON.parse(cachedShipments);
         setShipments(parsed);
-        setDisplayedShipments(parsed.slice(0, 10));
+        setDisplayedShipments(parsed.slice(0, 20));
         setShowingAll(false);
         console.log('Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
         return;
@@ -191,13 +560,11 @@ function AirShipmentsView() {
     }
     
     fetchAirShipments(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken]); // 👈 Asegúrate de que accessToken está en las dependencias
+  }, [accessToken]);
 
-  // Buscar por número
   const handleSearchByNumber = () => {
     if (!searchNumber.trim()) {
-      setDisplayedShipments(shipments.slice(0, 10));
+      setDisplayedShipments(shipments.slice(0, 20));
       setShowingAll(false);
       return;
     }
@@ -213,10 +580,9 @@ function AirShipmentsView() {
     setShowSearchModal(false);
   };
 
-  // Buscar por fecha exacta
   const handleSearchByDate = () => {
     if (!searchDate) {
-      setDisplayedShipments(shipments.slice(0, 10));
+      setDisplayedShipments(shipments.slice(0, 20));
       setShowingAll(false);
       return;
     }
@@ -232,10 +598,9 @@ function AirShipmentsView() {
     setShowSearchModal(false);
   };
 
-  // Buscar por rango de fechas
   const handleSearchByDateRange = () => {
     if (!searchStartDate && !searchEndDate) {
-      setDisplayedShipments(shipments.slice(0, 10));
+      setDisplayedShipments(shipments.slice(0, 20));
       setShowingAll(false);
       return;
     }
@@ -264,524 +629,605 @@ function AirShipmentsView() {
     setShowSearchModal(false);
   };
 
-  // Limpiar búsqueda
   const clearSearch = () => {
     setSearchNumber('');
     setSearchDate('');
     setSearchStartDate('');
     setSearchEndDate('');
-    setDisplayedShipments(shipments.slice(0, 10));
+    setDisplayedShipments(shipments.slice(0, 20));
     setShowingAll(false);
   };
 
-  // Abrir modal con detalles
-  const openShipmentDetails = (shipment: AirShipment) => {
+  const showAllShipments = () => {
+    setDisplayedShipments(shipments);
+    setShowingAll(true);
+  };
+
+  const openModal = (shipment: AirShipment) => {
     setSelectedShipment(shipment);
     setShowModal(true);
   };
 
-  // Cerrar modal
   const closeModal = () => {
     setShowModal(false);
     setSelectedShipment(null);
   };
 
-  // Formatear fecha para mostrar
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-CL', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const openSearchModal = () => {
+    setShowSearchModal(true);
   };
 
-  // Mostrar loader mientras carga
-  if (loading && shipments.length === 0) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '60vh',
-        gap: '20px'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '3px solid #e5e7eb',
-          borderTop: '3px solid #2563eb',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{
-            color: '#1f2937',
-            fontSize: '1rem',
-            margin: 0,
-            marginBottom: '4px'
-          }}>
-            Cargando información...
-          </p>
-          <p style={{
-            color: '#6b7280',
-            fontSize: '0.875rem',
-            margin: 0
-          }}>
-            Puede tardar unos minutos
-          </p>
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
+  const closeSearchModal = () => {
+    setShowSearchModal(false);
+  };
 
   return (
     <>
-      {/* Mensajes de Error */}
-      {error && (
-        <div style={{
-          backgroundColor: '#fee2e2',
-          border: '1px solid #ef4444',
-          borderRadius: '6px',
-          padding: '12px 16px',
-          marginBottom: '20px',
-          color: '#991b1b',
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '24px 20px',
+        marginBottom: '24px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+      }}>
+        <h4 style={{ 
+          color: 'white', 
+          margin: 0,
+          fontSize: '1.5rem',
+          fontWeight: '700',
+          marginBottom: '8px'
+        }}>
+          Mis Air Shipments
+        </h4>
+        <p style={{ 
+          color: 'rgba(255, 255, 255, 0.9)', 
+          margin: 0,
           fontSize: '0.9rem'
         }}>
-          <strong>Error:</strong> {error}
-        </div>
-      )}
+          Consulta y gestiona tus envíos aéreos
+        </p>
+      </div>
 
-      {/* Header con información y botones */}
-      {shipments.length > 0 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px',
-          paddingBottom: '16px',
-          borderBottom: '1px solid #e5e7eb',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}>
-          <div>
-            <h5 style={{ 
-              margin: 0, 
-              marginBottom: '4px',
-              color: '#1f2937',
-              fontSize: '1.1rem',
-              fontWeight: '600'
-            }}>
-              Air Shipments
-            </h5>
-            <p style={{ 
-              margin: 0, 
+      {/* Botones de acción */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '12px', 
+        marginBottom: '20px',
+        flexWrap: 'wrap'
+      }}>
+        <button 
+          onClick={() => fetchAirShipments(1)}
+          disabled={loading}
+          style={{
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 20px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            opacity: loading ? 0.6 : 1,
+            transition: 'all 0.2s',
+            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
+          }}
+        >
+          {loading ? 'Cargando...' : '🔄 Actualizar'}
+        </button>
+
+        <button 
+          onClick={openSearchModal}
+          style={{
+            backgroundColor: 'white',
+            color: '#3b82f6',
+            border: '2px solid #3b82f6',
+            borderRadius: '8px',
+            padding: '10px 20px',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            transition: 'all 0.2s'
+          }}
+        >
+          🔍 Buscar
+        </button>
+
+        {!showingAll && shipments.length > 10 && (
+          <button 
+            onClick={showAllShipments}
+            style={{
+              backgroundColor: 'white',
+              color: '#10b981',
+              border: '2px solid #10b981',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}
+          >
+            📋 Ver Todos ({shipments.length})
+          </button>
+        )}
+
+        {showingAll && (
+          <button 
+            onClick={clearSearch}
+            style={{
+              backgroundColor: 'white',
               color: '#6b7280',
-              fontSize: '0.875rem'
-            }}>
-              {showingAll 
-                ? `${displayedShipments.length} resultado${displayedShipments.length !== 1 ? 's' : ''} encontrado${displayedShipments.length !== 1 ? 's' : ''}`
-                : `Mostrando las últimas 10 de ${shipments.length} air-shipments`
-              }
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => setShowSearchModal(true)}
+              border: '2px solid #6b7280',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}
+          >
+            ✖ Limpiar Filtros
+          </button>
+        )}
+      </div>
+
+      {/* Modal de Búsqueda */}
+      {showSearchModal && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999 }}
+          onClick={closeSearchModal}
+        >
+          <div 
+            className="bg-white rounded p-4"
+            style={{ maxWidth: '500px', width: '90%', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h5 style={{ marginBottom: '20px', color: '#1f2937' }}>Buscar Air-Shipments</h5>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>
+                Por Número
+              </label>
+              <input 
+                type="text"
+                value={searchNumber}
+                onChange={(e) => setSearchNumber(e.target.value)}
+                placeholder="Ingresa el número del shipment"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem'
+                }}
+              />
+              <button 
+                onClick={handleSearchByNumber}
+                style={{
+                  marginTop: '10px',
+                  width: '100%',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Buscar por Número
+              </button>
+            </div>
+
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>
+                Por Fecha Exacta
+              </label>
+              <input 
+                type="date"
+                value={searchDate}
+                onChange={(e) => setSearchDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem'
+                }}
+              />
+              <button 
+                onClick={handleSearchByDate}
+                style={{
+                  marginTop: '10px',
+                  width: '100%',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Buscar por Fecha
+              </button>
+            </div>
+
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>
+                Por Rango de Fechas
+              </label>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Desde
+                  </label>
+                  <input 
+                    type="date"
+                    value={searchStartDate}
+                    onChange={(e) => setSearchStartDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Hasta
+                  </label>
+                  <input 
+                    type="date"
+                    value={searchEndDate}
+                    onChange={(e) => setSearchEndDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+              </div>
+              <button 
+                onClick={handleSearchByDateRange}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Buscar por Rango
+              </button>
+            </div>
+
+            <button 
+              onClick={closeSearchModal}
               style={{
-                backgroundColor: '#2563eb',
-                color: 'white',
+                marginTop: '20px',
+                width: '100%',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
                 border: 'none',
                 borderRadius: '6px',
-                padding: '10px 20px',
-                fontSize: '0.9rem',
+                padding: '10px',
                 cursor: 'pointer',
-                transition: 'background-color 0.2s'
+                fontSize: '0.9rem',
+                fontWeight: '600'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
             >
-              Buscador
+              Cerrar
             </button>
           </div>
         </div>
       )}
 
-      {/* Modal de Búsqueda */}
-      {showSearchModal && (
-        <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999 }}
-          onClick={() => setShowSearchModal(false)}
-        >
-          <div 
-            className="bg-white rounded"
-            style={{ maxWidth: '500px', width: '100%', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+      {/* Indicador de carga */}
+      {loading && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '40px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ 
+            fontSize: '3rem', 
+            marginBottom: '16px',
+            animation: 'pulse 1.5s ease-in-out infinite'
+          }}>
+            ✈️
+          </div>
+          <p style={{ color: '#6b7280', fontSize: '1rem' }}>Cargando air-shipments...</p>
+        </div>
+      )}
+
+      {/* Mensaje de error */}
+      {error && (
+        <div style={{ 
+          padding: '16px',
+          backgroundColor: '#fee2e2',
+          color: '#991b1b',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '1px solid #fecaca'
+        }}>
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Tabla de Air-Shipments */}
+      {!loading && displayedShipments.length > 0 && (
+        <div style={{ 
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #e5e7eb'
+        }}>
+          {/* Tabla */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ 
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: '0.875rem'
             }}>
-              <h5 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem', fontWeight: '600' }}>
-                Buscador
-              </h5>
-              <button 
-                onClick={() => setShowSearchModal(false)}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  lineHeight: 1,
-                  padding: 0
-                }}
-              >
-                ×
-              </button>
+              <thead>
+                <tr style={{ 
+                  backgroundColor: '#f9fafb',
+                  borderBottom: '2px solid #e5e7eb'
+                }}>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Número
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Waybill
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    minWidth: '200px'
+                  }}>
+                    Consignatario
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Fecha Salida
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    minWidth: '150px'
+                  }}>
+                    Carrier
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'center',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Estado
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedShipments.map((shipment, index) => {
+                  // Calcular estado del envío
+                  const isDelivered = !!shipment.proofOfDelivery?.podDelivery;
+                  const isInCustoms = shipment.customsReleased || !!shipment.importSection?.entry;
+                  const hasArrived = shipment.arrival && new Date(shipment.arrival) <= new Date();
+                  const inTransit = !!shipment.departure;
+                  
+                  let statusLabel = 'Pendiente';
+                  let statusColor = '#9ca3af';
+                  let statusBg = '#f3f4f6';
+                  
+                  if (isDelivered) {
+                    statusLabel = 'Entregado';
+                    statusColor = '#059669';
+                    statusBg = '#d1fae5';
+                  } else if (isInCustoms) {
+                    statusLabel = 'En Aduana';
+                    statusColor = '#d97706';
+                    statusBg = '#fef3c7';
+                  } else if (hasArrived) {
+                    statusLabel = 'Arribado';
+                    statusColor = '#2563eb';
+                    statusBg = '#dbeafe';
+                  } else if (inTransit) {
+                    statusLabel = 'En Tránsito';
+                    statusColor = '#7c3aed';
+                    statusBg = '#ede9fe';
+                  }
+
+                  return (
+                    <tr 
+                      key={shipment.id}
+                      onClick={() => openModal(shipment)}
+                      style={{
+                        borderBottom: index < displayedShipments.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s ease',
+                        backgroundColor: 'white'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                      }}
+                    >
+                      <td style={{ 
+                        padding: '16px 20px',
+                        fontWeight: '600',
+                        color: '#1f2937',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {shipment.number || 'N/A'}
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        color: '#3b82f6',
+                        fontWeight: '500',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {shipment.waybillNumber || '-'}
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        color: '#4b5563'
+                      }}>
+                        {shipment.consignee?.name || '-'}
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        color: '#4b5563',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {shipment.departure 
+                          ? new Date(shipment.departure).toLocaleDateString('es-CL', { 
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            })
+                          : '-'
+                        }
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        color: '#4b5563'
+                      }}>
+                        {shipment.carrier?.name || '-'}
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        textAlign: 'center'
+                      }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          color: statusColor,
+                          backgroundColor: statusBg,
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {statusLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer de la tabla */}
+          <div style={{
+            padding: '16px 20px',
+            backgroundColor: '#f9fafb',
+            borderTop: '1px solid #e5e7eb',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div style={{ 
+              fontSize: '0.875rem',
+              color: '#6b7280'
+            }}>
+              Mostrando <strong style={{ color: '#1f2937' }}>{displayedShipments.length}</strong> de{' '}
+              <strong style={{ color: '#1f2937' }}>{shipments.length}</strong> envíos
             </div>
-            <div style={{ padding: '20px' }}>
-              {/* Búsqueda por número */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px', 
-                  display: 'block' 
-                }}>
-                  Número de air-shipment
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    placeholder="Ej: AIR-12345"
-                    style={{
-                      flex: 1,
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      fontSize: '0.9rem'
-                    }}
-                    value={searchNumber}
-                    onChange={(e) => setSearchNumber(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSearchByNumber();
-                      }
-                    }}
-                  />
-                  <button 
-                    style={{
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 20px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
-                    onClick={handleSearchByNumber}
-                  >
-                    Buscar
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#9ca3af', 
-                fontSize: '0.875rem', 
-                margin: '20px 0' 
-              }}>
-                o
-              </div>
-
-              {/* Búsqueda por fecha exacta */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px', 
-                  display: 'block' 
-                }}>
-                  Fecha exacta
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="date"
-                    style={{
-                      flex: 1,
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      fontSize: '0.9rem'
-                    }}
-                    value={searchDate}
-                    onChange={(e) => setSearchDate(e.target.value)}
-                  />
-                  <button 
-                    style={{
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 20px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
-                    onClick={handleSearchByDate}
-                  >
-                    Buscar
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#9ca3af', 
-                fontSize: '0.875rem', 
-                margin: '20px 0' 
-              }}>
-                o
-              </div>
-
-              {/* Búsqueda por rango */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '12px', 
-                  display: 'block' 
-                }}>
-                  Rango de fechas
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <div>
-                    <label style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#6b7280', 
-                      marginBottom: '6px', 
-                      display: 'block' 
-                    }}>
-                      Desde
-                    </label>
-                    <input
-                      type="date"
-                      style={{
-                        width: '100%',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        fontSize: '0.9rem'
-                      }}
-                      value={searchStartDate}
-                      onChange={(e) => setSearchStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#6b7280', 
-                      marginBottom: '6px', 
-                      display: 'block' 
-                    }}>
-                      Hasta
-                    </label>
-                    <input
-                      type="date"
-                      style={{
-                        width: '100%',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        fontSize: '0.9rem'
-                      }}
-                      value={searchEndDate}
-                      onChange={(e) => setSearchEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <button 
-                  style={{
-                    backgroundColor: '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '10px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    width: '100%',
-                    fontSize: '0.9rem'
-                  }}
-                  onClick={handleSearchByDateRange}
-                >
-                  Buscar por rango
-                </button>
-              </div>
-
+            {!showingAll && shipments.length > displayedShipments.length && (
               <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showAllShipments();
+                }}
                 style={{
                   backgroundColor: 'white',
-                  color: '#6b7280',
-                  border: '1px solid #d1d5db',
+                  color: '#3b82f6',
+                  border: '1px solid #3b82f6',
                   borderRadius: '6px',
-                  padding: '8px 16px',
-                  fontSize: '0.875rem',
+                  padding: '6px 16px',
                   cursor: 'pointer',
-                  width: '100%'
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
                 }}
-                onClick={clearSearch}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.color = 'white';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.color = '#3b82f6';
+                }}
               >
-                Limpiar búsqueda
+                Ver todos
               </button>
-            </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Lista de Air Shipments */}
-      {displayedShipments.length > 0 && (
-        <div className="row g-3">
-          {displayedShipments.map((shipment, index) => (
-            <div key={shipment.id || index} className="col-md-6 col-lg-4">
-              <div 
-                style={{
-                  backgroundColor: 'white',
-                  borderRadius: '8px',
-                  padding: '20px',
-                  border: '1px solid #e5e7eb',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  height: '100%'
-                }}
-                onClick={() => openShipmentDetails(shipment)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.borderColor = '#2563eb';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.borderColor = '#e5e7eb';
-                }}
-              >
-                <div style={{ 
-                  marginBottom: '16px',
-                  paddingBottom: '12px',
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                  <h6 style={{ 
-                    color: '#1f2937', 
-                    fontWeight: '600',
-                    fontSize: '1rem',
-                    marginBottom: '4px',
-                    margin: 0
-                  }}>
-                    Air-Shipment #{shipment.number || shipment.id || index + 1}
-                  </h6>
-                  <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    {formatDate(shipment.date || '')}
-                  </small>
-                </div>
-                
-                <div style={{ marginBottom: '12px' }}>
-                  <small style={{ 
-                    color: '#6b7280', 
-                    textTransform: 'uppercase', 
-                    fontWeight: '600',
-                    fontSize: '0.7rem',
-                    letterSpacing: '0.5px',
-                    display: 'block',
-                    marginBottom: '4px'
-                  }}>
-                    Consignee
-                  </small>
-                  <div style={{ 
-                    color: '#1f2937',
-                    fontSize: '0.875rem',
-                    wordBreak: 'break-word'
-                  }}>
-                    {shipment.consignee?.name || 'N/A'}
-                  </div>
-                </div>
-                
-                {shipment.origin && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <small style={{ 
-                      color: '#6b7280', 
-                      textTransform: 'uppercase', 
-                      fontWeight: '600',
-                      fontSize: '0.7rem',
-                      letterSpacing: '0.5px',
-                      display: 'block',
-                      marginBottom: '4px'
-                    }}>
-                      Origen
-                    </small>
-                    <div style={{ color: '#1f2937', fontSize: '0.875rem' }}>
-                      {shipment.origin}
-                    </div>
-                  </div>
-                )}
-                
-                {shipment.destination && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <small style={{ 
-                      color: '#6b7280', 
-                      textTransform: 'uppercase', 
-                      fontWeight: '600',
-                      fontSize: '0.7rem',
-                      letterSpacing: '0.5px',
-                      display: 'block',
-                      marginBottom: '4px'
-                    }}>
-                      Destino
-                    </small>
-                    <div style={{ color: '#1f2937', fontSize: '0.875rem' }}>
-                      {shipment.destination}
-                    </div>
-                  </div>
-                )}
-                
-                <div style={{ 
-                  textAlign: 'center',
-                  marginTop: '16px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid #e5e7eb'
-                }}>
-                  <small style={{ 
-                    color: '#2563eb',
-                    fontWeight: '500',
-                    fontSize: '0.8rem'
-                  }}>
-                    Ver detalles →
-                  </small>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Modal de Detalles */}
+      {/* Modal de Detalles MEJORADO */}
       {showModal && selectedShipment && (
         <div 
           className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
@@ -791,102 +1237,202 @@ function AirShipmentsView() {
           <div 
             className="bg-white rounded"
             style={{ 
-              maxWidth: '700px', 
+              maxWidth: '900px', 
               width: '100%', 
               maxHeight: '90vh',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              display: 'flex',
+              flexDirection: 'column'
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Header del Modal */}
             <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px',
-              borderBottom: '1px solid #e5e7eb'
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              padding: '24px',
+              color: 'white'
             }}>
-              <h5 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem', fontWeight: '600' }}>
-                Air-Shipment #{selectedShipment.number || selectedShipment.id || 'N/A'}
-              </h5>
-              <button 
-                onClick={closeModal}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  lineHeight: 1,
-                  padding: 0
-                }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ 
-              padding: '20px', 
-              overflowY: 'auto', 
-              maxHeight: 'calc(90vh - 140px)' 
-            }}>
-              {Object.entries(selectedShipment).map(([key, value]) => {
-                let displayValue: string;
-                if (value === null || value === undefined) {
-                  displayValue = 'N/A';
-                } else if (typeof value === 'boolean') {
-                  displayValue = value ? 'Sí' : 'No';
-                } else if (key === 'date' && value) {
-                  displayValue = formatDate(value as string);
-                } else if (typeof value === 'object') {
-                  displayValue = JSON.stringify(value, null, 2);
-                } else {
-                  displayValue = String(value);
-                }
-
-                return (
-                  <div key={key} style={{ 
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <div style={{ 
-                      textTransform: 'uppercase',
-                      color: '#6b7280',
-                      fontWeight: '600',
-                      marginBottom: '4px',
-                      fontSize: '0.75rem',
-                      letterSpacing: '0.5px'
-                    }}>
-                      {key}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: '8px'
+              }}>
+                <div>
+                  <h5 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
+                    Air-Shipment #{selectedShipment.number || selectedShipment.id || 'N/A'}
+                  </h5>
+                  {selectedShipment.waybillNumber && (
+                    <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                      Waybill: {selectedShipment.waybillNumber}
                     </div>
-                    <div style={{ 
-                      fontSize: '0.9rem',
-                      color: '#1f2937',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word'
-                    }}>
-                      {displayValue}
+                  )}
+                </div>
+                <button 
+                  onClick={closeModal}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    width: '32px',
+                    height: '32px',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: 'white',
+                    lineHeight: 1,
+                    padding: 0,
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido del Modal con Scroll */}
+            <div style={{ 
+              padding: '24px', 
+              overflowY: 'auto', 
+              flex: 1
+            }}>
+              {/* Timeline Visual */}
+              <ShipmentTimeline shipment={selectedShipment} />
+
+              {/* Información en Secciones Colapsables */}
+              
+              {/* Información General */}
+              <CollapsibleSection title="Información General" defaultOpen={true} icon="📋">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  <InfoField label="Número de Envío" value={selectedShipment.number} />
+                  <InfoField label="Waybill" value={selectedShipment.waybillNumber} />
+                  <InfoField label="Referencia Cliente" value={selectedShipment.customerReference} />
+                  <InfoField label="Número de Booking" value={selectedShipment.bookingNumber} />
+                  <InfoField label="Carrier" value={selectedShipment.carrier?.name} fullWidth />
+                  <InfoField label="Vuelo" value={selectedShipment.flight} />
+                  <InfoField label="Aeropuerto Salida" value={selectedShipment.airportOfDeparture} />
+                  <InfoField label="Aeropuerto Llegada" value={selectedShipment.airportOfArrival} />
+                  <InfoField label="Fecha Salida" value={selectedShipment.departure ? formatDate(selectedShipment.departure) : null} />
+                  <InfoField label="Fecha Llegada" value={selectedShipment.arrival ? formatDate(selectedShipment.arrival) : null} />
+                </div>
+              </CollapsibleSection>
+
+              {/* Origen y Destino */}
+              <CollapsibleSection title="Origen y Destino" defaultOpen={true} icon="🌍">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  <InfoField label="Remitente (Shipper)" value={selectedShipment.shipper?.name} fullWidth />
+                  <InfoField label="Dirección Remitente" value={selectedShipment.shipperAddress} fullWidth />
+                  <InfoField label="Consignatario" value={selectedShipment.consignee?.name} fullWidth />
+                  <InfoField label="Dirección Consignatario" value={selectedShipment.consigneeAddress} fullWidth />
+                  <InfoField label="Notify Party" value={selectedShipment.notifyParty?.name || selectedShipment.notifyPartyAddress} fullWidth />
+                  <InfoField label="Agente Forwarding" value={selectedShipment.forwardingAgent?.name} />
+                  <InfoField label="Agente Destino" value={selectedShipment.destinationAgent?.name} />
+                </div>
+              </CollapsibleSection>
+
+              {/* Carga y Commodities */}
+              {selectedShipment.commodities && selectedShipment.commodities.length > 0 && (
+                <CollapsibleSection title="Carga" defaultOpen={false} icon="📦">
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                      <InfoField label="Descripción de Carga" value={selectedShipment.cargoDescription} fullWidth />
+                      <InfoField label="Marcas de Carga" value={selectedShipment.cargoMarks} fullWidth />
+                      <InfoField label="Piezas Manifestadas" value={selectedShipment.manifestedPieces} />
+                      <InfoField label="Peso Manifestado" value={selectedShipment.manifestedWeight ? `${selectedShipment.manifestedWeight} kg` : null} />
+                      <InfoField label="Pallets" value={selectedShipment.pallets || selectedShipment.manifestedPallets} />
+                      <InfoField label="Carga Peligrosa" value={selectedShipment.hazardous} />
                     </div>
                   </div>
-                );
-              })}
+                  <CommoditiesSection commodities={selectedShipment.commodities} />
+                </CollapsibleSection>
+              )}
+
+              {/* Importación y Aduanas */}
+              {selectedShipment.importSection && (
+                <CollapsibleSection title="Importación y Aduanas" defaultOpen={false} icon="🛃">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    <InfoField label="Número de Entry" value={selectedShipment.importSection.entry} />
+                    <InfoField label="Fecha de Importación" value={selectedShipment.importSection.importDate ? formatDate(selectedShipment.importSection.importDate) : null} />
+                    <InfoField label="Número IT" value={selectedShipment.importSection.itNumber} />
+                    <InfoField label="Fecha IT" value={selectedShipment.importSection.itDate ? formatDate(selectedShipment.importSection.itDate) : null} />
+                    <InfoField label="Puerto IT" value={selectedShipment.importSection.itPort} />
+                    <InfoField label="Número AMS" value={selectedShipment.importSection.amsNumber} />
+                    <InfoField label="Fecha AMS" value={selectedShipment.importSection.amsDate ? formatDate(selectedShipment.importSection.amsDate) : null} />
+                    <InfoField label="Número GO" value={selectedShipment.importSection.goNumber} />
+                    <InfoField label="Fecha GO" value={selectedShipment.importSection.goDate ? formatDate(selectedShipment.importSection.goDate) : null} />
+                    <InfoField label="Broker" value={selectedShipment.importSection.broker?.name} />
+                    <InfoField label="Ubicación" value={selectedShipment.importSection.location} fullWidth />
+                    <InfoField label="Comentarios Ubicación" value={selectedShipment.importSection.locationComments} fullWidth />
+                    <InfoField label="Comentarios AMS" value={selectedShipment.importSection.amsComments} fullWidth />
+                    <InfoField label="Liberado por Aduana" value={selectedShipment.customsReleased} />
+                    <InfoField label="Flete Liberado" value={selectedShipment.freightReleased} />
+                    <InfoField label="Liberado Por" value={selectedShipment.freightReleasedBy} />
+                    <InfoField label="Fecha Liberación Flete" value={selectedShipment.freightReleasedDate ? formatDate(selectedShipment.freightReleasedDate) : null} />
+                  </div>
+                </CollapsibleSection>
+              )}
+
+              {/* Entrega */}
+              {selectedShipment.proofOfDelivery && (
+                <CollapsibleSection title="Prueba de Entrega" defaultOpen={false} icon="✅">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    <InfoField label="Fecha de Entrega" value={selectedShipment.proofOfDelivery.podDelivery ? formatDate(selectedShipment.proofOfDelivery.podDelivery) : null} />
+                    <InfoField label="Recibido Por" value={selectedShipment.proofOfDelivery.podReceivedBy} />
+                    <InfoField label="Notas" value={selectedShipment.proofOfDelivery.podNotes} fullWidth />
+                    <InfoField label="Notas Internas" value={selectedShipment.proofOfDelivery.podInternalNotes} fullWidth />
+                  </div>
+                </CollapsibleSection>
+              )}
+
+              {/* Sub-Shipments */}
+              {selectedShipment.subShipments && selectedShipment.subShipments.length > 0 && (
+                <CollapsibleSection title={`Sub-Envíos (${selectedShipment.subShipments.length})`} defaultOpen={false} icon="📦">
+                  <SubShipmentsList subShipments={selectedShipment.subShipments} />
+                </CollapsibleSection>
+              )}
+
+              {/* Notas Adicionales */}
+              {selectedShipment.notes && (
+                <CollapsibleSection title="Notas" defaultOpen={false} icon="📝">
+                  <div style={{ 
+                    padding: '12px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '6px',
+                    color: '#1f2937',
+                    fontSize: '0.875rem',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {selectedShipment.notes}
+                  </div>
+                </CollapsibleSection>
+              )}
             </div>
+
+            {/* Footer del Modal */}
             <div style={{ 
-              padding: '16px 20px',
+              padding: '16px 24px',
               borderTop: '1px solid #e5e7eb',
               display: 'flex',
-              justifyContent: 'flex-end'
+              justifyContent: 'flex-end',
+              backgroundColor: '#f9fafb'
             }}>
               <button 
                 onClick={closeModal}
                 style={{
-                  backgroundColor: '#2563eb',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 20px',
+                  borderRadius: '8px',
+                  padding: '10px 24px',
                   cursor: 'pointer',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  boxShadow: '0 2px 4px rgba(102, 126, 234, 0.3)',
+                  transition: 'transform 0.2s'
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
               >
                 Cerrar
               </button>
@@ -897,64 +1443,80 @@ function AirShipmentsView() {
 
       {/* Estado vacío - Sin resultados de búsqueda */}
       {displayedShipments.length === 0 && !loading && shipments.length > 0 && showingAll && (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '60px 20px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
           <div style={{ 
-            fontSize: '3rem', 
+            fontSize: '4rem', 
             marginBottom: '16px',
-            color: '#9ca3af'
+            opacity: 0.5
           }}>
             📋
           </div>
-          <h5 style={{ color: '#1f2937', marginBottom: '8px' }}>
+          <h5 style={{ color: '#1f2937', marginBottom: '8px', fontSize: '1.2rem' }}>
             No se encontraron air-shipments
           </h5>
-          <p style={{ color: '#6b7280', marginBottom: '20px' }}>
+          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
             No hay air-shipments que coincidan con tu búsqueda
           </p>
           <button 
             onClick={clearSearch}
             style={{
-              backgroundColor: '#2563eb',
+              backgroundColor: '#3b82f6',
               color: 'white',
               border: 'none',
-              borderRadius: '6px',
-              padding: '10px 20px',
+              borderRadius: '8px',
+              padding: '12px 24px',
               cursor: 'pointer',
-              fontSize: '0.9rem'
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
             }}
           >
-            Ver las últimas 10 air-shipments
+            Ver los últimos 10 air-shipments
           </button>
         </div>
       )}
 
       {/* Estado vacío - Sin air-shipments cargados */}
       {shipments.length === 0 && !loading && (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '60px 20px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
           <div style={{ 
-            fontSize: '3rem', 
+            fontSize: '4rem', 
             marginBottom: '16px',
-            color: '#9ca3af'
+            opacity: 0.5
           }}>
             ✈️
           </div>
-          <h5 style={{ color: '#1f2937', marginBottom: '8px' }}>
-            No hay air-shipments cargados
+          <h5 style={{ color: '#1f2937', marginBottom: '8px', fontSize: '1.2rem' }}>
+            No hay air-shipments disponibles
           </h5>
-          <p style={{ color: '#6b7280', marginBottom: '20px' }}>
-            No se encontraron air-shipments para el consignee especificado
+          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+            No se encontraron air-shipments para tu cuenta
           </p>
           {hasMore && (
             <button 
               onClick={() => loadMorePages()}
               style={{
-                backgroundColor: '#2563eb',
+                backgroundColor: '#3b82f6',
                 color: 'white',
                 border: 'none',
-                borderRadius: '6px',
-                padding: '10px 20px',
+                borderRadius: '8px',
+                padding: '12px 24px',
                 cursor: 'pointer',
-                fontSize: '0.9rem'
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
               }}
             >
               Cargar más páginas

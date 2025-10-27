@@ -1,3 +1,5 @@
+// en caso que queramos ver todos los SHIPMENTS en un solo lugar
+
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';

@@ -51,6 +51,268 @@ interface Quote {
   [key: string]: any;
 }
 
+// Componente para la Ruta de Envío (visible siempre)
+function RouteDisplay({ quote }: { quote: Quote }) {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return null;
+    return new Date(dateString).toLocaleDateString('es-CL', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  return (
+    <div style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px', marginBottom: '20px' }}>
+      <h6 style={{ margin: 0, color: '#1f2937', fontSize: '0.9rem', fontWeight: '600', marginBottom: '16px' }}>
+        🚚 Ruta de Envío
+      </h6>
+      
+      {/* Origen → Destino Principal */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '16px', 
+        marginBottom: '20px',
+        padding: '16px',
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        border: '2px solid #3b82f6'
+      }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ 
+            fontSize: '0.7rem',
+            fontWeight: '600',
+            color: '#6b7280',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            marginBottom: '4px'
+          }}>
+            Origen
+          </div>
+          <div style={{ 
+            fontSize: '1.1rem',
+            fontWeight: '700',
+            color: '#1f2937'
+          }}>
+            {quote.origin || 'N/A'}
+          </div>
+          {quote.deperture_Date && (
+            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
+              📅 {formatDate(quote.deperture_Date)}
+            </div>
+          )}
+        </div>
+        
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center',
+          gap: '4px'
+        }}>
+          <div style={{ 
+            fontSize: '1.5rem',
+            color: '#3b82f6'
+          }}>
+            →
+          </div>
+          {quote.transitDays && (
+            <div style={{ 
+              fontSize: '0.7rem',
+              fontWeight: '600',
+              color: '#3b82f6',
+              backgroundColor: '#dbeafe',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              whiteSpace: 'nowrap'
+            }}>
+              {quote.transitDays} días
+            </div>
+          )}
+        </div>
+        
+        <div style={{ flex: 1, textAlign: 'right' }}>
+          <div style={{ 
+            fontSize: '0.7rem',
+            fontWeight: '600',
+            color: '#6b7280',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            marginBottom: '4px'
+          }}>
+            Destino
+          </div>
+          <div style={{ 
+            fontSize: '1.1rem',
+            fontWeight: '700',
+            color: '#1f2937'
+          }}>
+            {quote.destination || 'N/A'}
+          </div>
+          {quote.arrival_Date && (
+            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
+              📅 {formatDate(quote.arrival_Date)}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Detalles adicionales de la ruta */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+        {quote.portOfReceipt && (
+          <div style={{ 
+            padding: '12px',
+            backgroundColor: 'white',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ fontSize: '0.7rem', color: '#6b7280', fontWeight: '600', marginBottom: '4px' }}>
+              Puerto de Recepción
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#1f2937' }}>
+              {quote.portOfReceipt}
+            </div>
+          </div>
+        )}
+        
+        {quote.pickupFrom && (
+          <div style={{ 
+            padding: '12px',
+            backgroundColor: 'white',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ fontSize: '0.7rem', color: '#6b7280', fontWeight: '600', marginBottom: '4px' }}>
+              Pickup Desde
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#1f2937' }}>
+              {quote.pickupFrom}
+            </div>
+            {quote.pickupFromAddress && (
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
+                {quote.pickupFromAddress}
+              </div>
+            )}
+          </div>
+        )}
+        
+        {quote.shipper && (
+          <div style={{ 
+            padding: '12px',
+            backgroundColor: 'white',
+            borderRadius: '6px',
+            border: '1px solid #e5e7eb',
+            gridColumn: 'span 2'
+          }}>
+            <div style={{ fontSize: '0.7rem', color: '#6b7280', fontWeight: '600', marginBottom: '4px' }}>
+              Remitente (Shipper)
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#1f2937', fontWeight: '600' }}>
+              {quote.shipper}
+            </div>
+            {quote.shipperAddress && (
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
+                {quote.shipperAddress}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Componente para Secciones Colapsables
+function CollapsibleSection({ 
+  title, 
+  children, 
+  defaultOpen = false,
+  icon = '📋'
+}: { 
+  title: string; 
+  children: React.ReactNode; 
+  defaultOpen?: boolean;
+  icon?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div style={{ 
+      marginBottom: '12px',
+      border: '1px solid #e5e7eb',
+      borderRadius: '8px',
+      overflow: 'hidden'
+    }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          backgroundColor: isOpen ? '#f9fafb' : 'white',
+          border: 'none',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>{icon}</span>
+          <span style={{ fontWeight: '600', color: '#1f2937', fontSize: '0.9rem' }}>
+            {title}
+          </span>
+        </div>
+        <span style={{ 
+          fontSize: '1.2rem', 
+          color: '#6b7280',
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.2s'
+        }}>
+          ▼
+        </span>
+      </button>
+      
+      {isOpen && (
+        <div style={{ padding: '16px', backgroundColor: 'white' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente para mostrar un campo
+function InfoField({ label, value, fullWidth = false }: { label: string; value: any; fullWidth?: boolean }) {
+  if (value === null || value === undefined || value === '' || value === 'N/A') return null;
+  
+  return (
+    <div style={{ 
+      marginBottom: '12px',
+      flex: fullWidth ? '1 1 100%' : '1 1 48%',
+      minWidth: fullWidth ? '100%' : '200px'
+    }}>
+      <div style={{ 
+        fontSize: '0.7rem',
+        fontWeight: '600',
+        color: '#6b7280',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        marginBottom: '4px'
+      }}>
+        {label}
+      </div>
+      <div style={{ 
+        fontSize: '0.875rem',
+        color: '#1f2937',
+        wordBreak: 'break-word'
+      }}>
+        {String(value)}
+      </div>
+    </div>
+  );
+}
+
 function QuotesView() {
   const { accessToken, onLogout } = useOutletContext<OutletContext>();
   const { user } = useAuth();
@@ -72,6 +334,36 @@ function QuotesView() {
   const [searchOrigin, setSearchOrigin] = useState('');
   const [searchDestination, setSearchDestination] = useState('');
   const [showingAll, setShowingAll] = useState(false);
+
+  // Función para formatear precios en CLP
+  const formatCLP = (priceString?: string) => {
+    if (!priceString) return null;
+    
+    // Extraer solo los números del string
+    const numberMatch = priceString.match(/[\d.,]+/);
+    if (!numberMatch) return priceString;
+    
+    // Convertir a número, manejando tanto puntos como comas
+    const cleanNumber = numberMatch[0].replace(/,/g, '');
+    const number = parseFloat(cleanNumber);
+    
+    if (isNaN(number)) return priceString;
+    
+    // Formatear con separadores de miles
+    const formatted = new Intl.NumberFormat('es-CL').format(number);
+    
+    return `$${formatted} CLP`;
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-CL', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric'
+    });
+  };
 
   const fetchQuotes = async () => {
     if (!accessToken) {
@@ -115,10 +407,10 @@ function QuotesView() {
       localStorage.setItem('quotesCache', JSON.stringify(sorted));
       localStorage.setItem('quotesCacheTimestamp', new Date().getTime().toString());
       
-      setDisplayedQuotes(sorted.slice(0, 10));
+      setDisplayedQuotes(sorted.slice(0, 20));
       setShowingAll(false);
       
-      console.log(`${quotesArray.length} cotizaciones totales, ${filtered.length} del consignee, mostrando las 10 más recientes`);
+      console.log(`${quotesArray.length} cotizaciones totales, ${filtered.length} del consignee, mostrando las 20 más recientes`);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -129,6 +421,11 @@ function QuotesView() {
   };
 
   useEffect(() => {
+    if (!accessToken) {
+      console.log('No hay token disponible todavía');
+      return;
+    }
+
     const cachedQuotes = localStorage.getItem('quotesCache');
     const cacheTimestamp = localStorage.getItem('quotesCacheTimestamp');
     
@@ -140,7 +437,7 @@ function QuotesView() {
       if (cacheAge < oneHour) {
         const parsed = JSON.parse(cachedQuotes);
         setQuotes(parsed);
-        setDisplayedQuotes(parsed.slice(0, 10));
+        setDisplayedQuotes(parsed.slice(0, 20));
         setShowingAll(false);
         console.log('Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
         return;
@@ -148,7 +445,6 @@ function QuotesView() {
     }
     
     fetchQuotes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
   // Obtener orígenes y destinos únicos
@@ -172,7 +468,7 @@ function QuotesView() {
 
   const handleSearchByNumber = () => {
     if (!searchNumber.trim()) {
-      setDisplayedQuotes(quotes.slice(0, 10));
+      setDisplayedQuotes(quotes.slice(0, 20));
       setShowingAll(false);
       return;
     }
@@ -190,7 +486,7 @@ function QuotesView() {
 
   const handleSearchByDate = () => {
     if (!searchDate) {
-      setDisplayedQuotes(quotes.slice(0, 10));
+      setDisplayedQuotes(quotes.slice(0, 20));
       setShowingAll(false);
       return;
     }
@@ -208,7 +504,7 @@ function QuotesView() {
 
   const handleSearchByDateRange = () => {
     if (!searchStartDate && !searchEndDate) {
-      setDisplayedQuotes(quotes.slice(0, 10));
+      setDisplayedQuotes(quotes.slice(0, 20));
       setShowingAll(false);
       return;
     }
@@ -237,10 +533,9 @@ function QuotesView() {
     setShowSearchModal(false);
   };
 
-  // Buscar por origen y/o destino
   const handleSearchByRoute = () => {
     if (!searchOrigin && !searchDestination) {
-      setDisplayedQuotes(quotes.slice(0, 10));
+      setDisplayedQuotes(quotes.slice(0, 20));
       setShowingAll(false);
       return;
     }
@@ -263,11 +558,16 @@ function QuotesView() {
     setSearchEndDate('');
     setSearchOrigin('');
     setSearchDestination('');
-    setDisplayedQuotes(quotes.slice(0, 10));
+    setDisplayedQuotes(quotes.slice(0, 20));
     setShowingAll(false);
   };
 
-  const openQuoteDetails = (quote: Quote) => {
+  const showAllQuotes = () => {
+    setDisplayedQuotes(quotes);
+    setShowingAll(true);
+  };
+
+  const openModal = (quote: Quote) => {
     setSelectedQuote(quote);
     setShowModal(true);
   };
@@ -277,591 +577,618 @@ function QuotesView() {
     setSelectedQuote(null);
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-CL', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric'
-    });
+  const openSearchModal = () => {
+    setShowSearchModal(true);
   };
 
-  const formatDateTime = (dateString: string, timeString?: string) => {
-    if (!dateString) return 'N/A';
-    const formatted = formatDate(dateString);
-    if (timeString) {
-      return `${formatted} - ${timeString}`;
-    }
-    return formatted;
+  const closeSearchModal = () => {
+    setShowSearchModal(false);
   };
-
-  if (loading && quotes.length === 0) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '60vh',
-        gap: '20px'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '3px solid #e5e7eb',
-          borderTop: '3px solid #2563eb',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{
-            color: '#1f2937',
-            fontSize: '1rem',
-            margin: 0,
-            marginBottom: '4px'
-          }}>
-            Cargando información...
-          </p>
-          <p style={{
-            color: '#6b7280',
-            fontSize: '0.875rem',
-            margin: 0
-          }}>
-            Puede tardar unos minutos
-          </p>
-        </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
 
   return (
     <>
-      {error && (
-        <div style={{
-          backgroundColor: '#fee2e2',
-          border: '1px solid #ef4444',
-          borderRadius: '6px',
-          padding: '12px 16px',
-          marginBottom: '20px',
-          color: '#991b1b',
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        padding: '24px 20px',
+        marginBottom: '24px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+      }}>
+        <h4 style={{ 
+          color: 'white', 
+          margin: 0,
+          fontSize: '1.5rem',
+          fontWeight: '700',
+          marginBottom: '8px'
+        }}>
+          Mis Cotizaciones
+        </h4>
+        <p style={{ 
+          color: 'rgba(255, 255, 255, 0.9)', 
+          margin: 0,
           fontSize: '0.9rem'
+        }}>
+          Consulta y gestiona tus cotizaciones de envío
+        </p>
+      </div>
+
+      {/* Botones de acción */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '12px', 
+        marginBottom: '20px',
+        flexWrap: 'wrap'
+      }}>
+        <button 
+          onClick={fetchQuotes}
+          disabled={loading}
+          style={{
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 20px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            opacity: loading ? 0.6 : 1,
+            transition: 'all 0.2s',
+            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
+          }}
+        >
+          {loading ? 'Cargando...' : '🔄 Actualizar'}
+        </button>
+
+        <button 
+          onClick={openSearchModal}
+          style={{
+            backgroundColor: 'white',
+            color: '#3b82f6',
+            border: '2px solid #3b82f6',
+            borderRadius: '8px',
+            padding: '10px 20px',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            transition: 'all 0.2s'
+          }}
+        >
+          🔍 Buscar
+        </button>
+
+        {!showingAll && quotes.length > 20 && (
+          <button 
+            onClick={showAllQuotes}
+            style={{
+              backgroundColor: 'white',
+              color: '#10b981',
+              border: '2px solid #10b981',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}
+          >
+            📋 Ver Todas ({quotes.length})
+          </button>
+        )}
+
+        {showingAll && (
+          <button 
+            onClick={clearSearch}
+            style={{
+              backgroundColor: 'white',
+              color: '#6b7280',
+              border: '2px solid #6b7280',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}
+          >
+            ✖ Limpiar Filtros
+          </button>
+        )}
+      </div>
+
+      {/* Modal de Búsqueda */}
+      {showSearchModal && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999 }}
+          onClick={closeSearchModal}
+        >
+          <div 
+            className="bg-white rounded p-4"
+            style={{ maxWidth: '500px', width: '90%', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h5 style={{ marginBottom: '20px', color: '#1f2937' }}>Buscar Cotizaciones</h5>
+            
+            {/* Búsqueda por Número */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>
+                Por Número
+              </label>
+              <input 
+                type="text"
+                value={searchNumber}
+                onChange={(e) => setSearchNumber(e.target.value)}
+                placeholder="Ingresa el número de cotización"
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem'
+                }}
+              />
+              <button 
+                onClick={handleSearchByNumber}
+                style={{
+                  marginTop: '10px',
+                  width: '100%',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Buscar por Número
+              </button>
+            </div>
+
+            {/* Búsqueda por Ruta */}
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>
+                Por Ruta
+              </label>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                <select
+                  value={searchOrigin}
+                  onChange={(e) => setSearchOrigin(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  <option value="">Origen</option>
+                  {uniqueOrigins.map(origin => (
+                    <option key={origin} value={origin}>{origin}</option>
+                  ))}
+                </select>
+                <select
+                  value={searchDestination}
+                  onChange={(e) => setSearchDestination(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  <option value="">Destino</option>
+                  {uniqueDestinations.map(destination => (
+                    <option key={destination} value={destination}>{destination}</option>
+                  ))}
+                </select>
+              </div>
+              <button 
+                onClick={handleSearchByRoute}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Buscar por Ruta
+              </button>
+            </div>
+
+            {/* Búsqueda por Fecha */}
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px', marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>
+                Por Fecha Exacta
+              </label>
+              <input 
+                type="date"
+                value={searchDate}
+                onChange={(e) => setSearchDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '0.9rem'
+                }}
+              />
+              <button 
+                onClick={handleSearchByDate}
+                style={{
+                  marginTop: '10px',
+                  width: '100%',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Buscar por Fecha
+              </button>
+            </div>
+
+            {/* Búsqueda por Rango de Fechas */}
+            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '0.9rem', color: '#374151' }}>
+                Por Rango de Fechas
+              </label>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Desde
+                  </label>
+                  <input 
+                    type="date"
+                    value={searchStartDate}
+                    onChange={(e) => setSearchStartDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Hasta
+                  </label>
+                  <input 
+                    type="date"
+                    value={searchEndDate}
+                    onChange={(e) => setSearchEndDate(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem'
+                    }}
+                  />
+                </div>
+              </div>
+              <button 
+                onClick={handleSearchByDateRange}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '10px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Buscar por Rango
+              </button>
+            </div>
+
+            <button 
+              onClick={closeSearchModal}
+              style={{
+                marginTop: '20px',
+                width: '100%',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '10px',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                fontWeight: '600'
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Indicador de carga */}
+      {loading && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '40px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ 
+            fontSize: '3rem', 
+            marginBottom: '16px',
+            animation: 'pulse 1.5s ease-in-out infinite'
+          }}>
+            📋
+          </div>
+          <p style={{ color: '#6b7280', fontSize: '1rem' }}>Cargando cotizaciones...</p>
+        </div>
+      )}
+
+      {/* Mensaje de error */}
+      {error && (
+        <div style={{ 
+          padding: '16px',
+          backgroundColor: '#fee2e2',
+          color: '#991b1b',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '1px solid #fecaca'
         }}>
           <strong>Error:</strong> {error}
         </div>
       )}
 
-      {quotes.length > 0 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px',
-          paddingBottom: '16px',
-          borderBottom: '1px solid #e5e7eb'
+      {/* Tabla de Cotizaciones */}
+      {!loading && displayedQuotes.length > 0 && (
+        <div style={{ 
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          border: '1px solid #e5e7eb'
         }}>
-          <div>
-            <h5 style={{ 
-              margin: 0, 
-              marginBottom: '4px',
-              color: '#1f2937',
-              fontSize: '1.1rem',
-              fontWeight: '600'
-            }}>
-              Cotizaciones
-            </h5>
-            <p style={{ 
-              margin: 0, 
-              color: '#6b7280',
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ 
+              width: '100%',
+              borderCollapse: 'collapse',
               fontSize: '0.875rem'
             }}>
-              {showingAll 
-                ? `${displayedQuotes.length} resultado${displayedQuotes.length !== 1 ? 's' : ''} encontrado${displayedQuotes.length !== 1 ? 's' : ''}`
-                : `Mostrando las últimas 10 de ${quotes.length} cotizaciones`
-              }
-            </p>
+              <thead>
+                <tr style={{ 
+                  backgroundColor: '#f9fafb',
+                  borderBottom: '2px solid #e5e7eb'
+                }}>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Número
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Fecha
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    minWidth: '200px'
+                  }}>
+                    Ruta
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'center',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Piezas
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'left',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Volumen/Peso
+                  </th>
+                  <th style={{ 
+                    padding: '16px 20px',
+                    textAlign: 'right',
+                    fontWeight: '600',
+                    color: '#374151',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    Ingreso Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedQuotes.map((quote, index) => {
+                  return (
+                    <tr 
+                      key={quote.id}
+                      onClick={() => openModal(quote)}
+                      style={{
+                        borderBottom: index < displayedQuotes.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.15s ease',
+                        backgroundColor: 'white'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'white';
+                      }}
+                    >
+                      <td style={{ 
+                        padding: '16px 20px',
+                        fontWeight: '600',
+                        color: '#1f2937',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {quote.number || 'N/A'}
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        color: '#4b5563',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {quote.date 
+                          ? new Date(quote.date).toLocaleDateString('es-CL', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            })
+                          : '-'
+                        }
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        color: '#4b5563'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: '600' }}>{quote.origin || '-'}</span>
+                          <span style={{ color: '#3b82f6' }}>→</span>
+                          <span style={{ fontWeight: '600' }}>{quote.destination || '-'}</span>
+                        </div>
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        textAlign: 'center',
+                        color: '#4b5563',
+                        fontWeight: '600'
+                      }}>
+                        {quote.totalCargo_Pieces || '-'}
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        color: '#4b5563',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        <div style={{ fontSize: '0.85rem' }}>
+                          {quote.totalCargo_VolumeDisplayValue && (
+                            <div>📦 {quote.totalCargo_VolumeDisplayValue}</div>
+                          )}
+                          {quote.totalCargo_WeightDisplayValue && (
+                            <div>⚖️ {quote.totalCargo_WeightDisplayValue}</div>
+                          )}
+                          {!quote.totalCargo_VolumeDisplayValue && !quote.totalCargo_WeightDisplayValue && '-'}
+                        </div>
+                      </td>
+                      <td style={{ 
+                        padding: '16px 20px',
+                        textAlign: 'right',
+                        color: '#10b981',
+                        fontWeight: '700',
+                        fontSize: '0.95rem',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {formatCLP(quote.totalCharge_IncomeDisplayValue) || '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <button
-            onClick={() => setShowSearchModal(true)}
-            style={{
-              backgroundColor: '#2563eb',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '10px 20px',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-          >
-            Buscador
-          </button>
-        </div>
-      )}
 
-      {/* Modal de Búsqueda */}
-      {showSearchModal && (
-        <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999 }}
-          onClick={() => setShowSearchModal(false)}
-        >
-          <div 
-            className="bg-white rounded"
-            style={{ maxWidth: '500px', width: '100%', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+          {/* Footer de la tabla */}
+          <div style={{
+            padding: '16px 20px',
+            backgroundColor: '#f9fafb',
+            borderTop: '1px solid #e5e7eb',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div style={{ 
+              fontSize: '0.875rem',
+              color: '#6b7280'
             }}>
-              <h5 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem', fontWeight: '600' }}>
-                Buscador
-              </h5>
-              <button 
-                onClick={() => setShowSearchModal(false)}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  lineHeight: 1,
-                  padding: 0
-                }}
-              >
-                ×
-              </button>
+              Mostrando <strong style={{ color: '#1f2937' }}>{displayedQuotes.length}</strong> de{' '}
+              <strong style={{ color: '#1f2937' }}>{quotes.length}</strong> cotizaciones
             </div>
-            <div style={{ padding: '20px' }}>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px', 
-                  display: 'block' 
-                }}>
-                  Número de cotización
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    placeholder="Ej: QUO-12345"
-                    style={{
-                      flex: 1,
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      fontSize: '0.9rem'
-                    }}
-                    value={searchNumber}
-                    onChange={(e) => setSearchNumber(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSearchByNumber();
-                      }
-                    }}
-                  />
-                  <button 
-                    style={{
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 20px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
-                    onClick={handleSearchByNumber}
-                  >
-                    Buscar
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#9ca3af', 
-                fontSize: '0.875rem', 
-                margin: '20px 0' 
-              }}>
-                o
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px', 
-                  display: 'block' 
-                }}>
-                  Fecha exacta
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="date"
-                    style={{
-                      flex: 1,
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      fontSize: '0.9rem'
-                    }}
-                    value={searchDate}
-                    onChange={(e) => setSearchDate(e.target.value)}
-                  />
-                  <button 
-                    style={{
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 20px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
-                    onClick={handleSearchByDate}
-                  >
-                    Buscar
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#9ca3af', 
-                fontSize: '0.875rem', 
-                margin: '20px 0' 
-              }}>
-                o
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '12px', 
-                  display: 'block' 
-                }}>
-                  Rango de fechas
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <div>
-                    <label style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#6b7280', 
-                      marginBottom: '6px', 
-                      display: 'block' 
-                    }}>
-                      Desde
-                    </label>
-                    <input
-                      type="date"
-                      style={{
-                        width: '100%',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        fontSize: '0.9rem'
-                      }}
-                      value={searchStartDate}
-                      onChange={(e) => setSearchStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#6b7280', 
-                      marginBottom: '6px', 
-                      display: 'block' 
-                    }}>
-                      Hasta
-                    </label>
-                    <input
-                      type="date"
-                      style={{
-                        width: '100%',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        fontSize: '0.9rem'
-                      }}
-                      value={searchEndDate}
-                      onChange={(e) => setSearchEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <button 
-                  style={{
-                    backgroundColor: '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '10px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    width: '100%',
-                    fontSize: '0.9rem'
-                  }}
-                  onClick={handleSearchByDateRange}
-                >
-                  Buscar por rango
-                </button>
-              </div>
-              <div style={{
-                textAlign: 'center', 
-                color: '#9ca3af', 
-                fontSize: '0.875rem', 
-                margin: '20px 0' 
-              }}>
-                o
-              </div>
-
-              {/* Búsqueda por Ruta */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '12px', 
-                  display: 'block' 
-                }}>
-                  Ruta (Origen/Destino)
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <div>
-                    <label style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#6b7280', 
-                      marginBottom: '6px', 
-                      display: 'block' 
-                    }}>
-                      Origen
-                    </label>
-                    <select
-                      value={searchOrigin}
-                      onChange={(e) => setSearchOrigin(e.target.value)}
-                      style={{
-                        width: '100%',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        fontSize: '0.9rem',
-                        backgroundColor: 'white'
-                      }}
-                    >
-                      <option value="">Todos los orígenes</option>
-                      {uniqueOrigins.map(origin => (
-                        <option key={origin} value={origin}>{origin}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#6b7280', 
-                      marginBottom: '6px', 
-                      display: 'block' 
-                    }}>
-                      Destino
-                    </label>
-                    <select
-                      value={searchDestination}
-                      onChange={(e) => setSearchDestination(e.target.value)}
-                      style={{
-                        width: '100%',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        fontSize: '0.9rem',
-                        backgroundColor: 'white'
-                      }}
-                    >
-                      <option value="">Todos los destinos</option>
-                      {uniqueDestinations.map(destination => (
-                        <option key={destination} value={destination}>{destination}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <button 
-                  style={{
-                    backgroundColor: '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '10px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    width: '100%',
-                    fontSize: '0.9rem'
-                  }}
-                  onClick={handleSearchByRoute}
-                >
-                  Buscar por ruta
-                </button>
-              </div>
-
+            {!showingAll && quotes.length > displayedQuotes.length && (
               <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showAllQuotes();
+                }}
                 style={{
                   backgroundColor: 'white',
-                  color: '#6b7280',
-                  border: '1px solid #d1d5db',
+                  color: '#3b82f6',
+                  border: '1px solid #3b82f6',
                   borderRadius: '6px',
-                  padding: '8px 16px',
-                  fontSize: '0.875rem',
+                  padding: '6px 16px',
                   cursor: 'pointer',
-                  width: '100%'
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  transition: 'all 0.2s'
                 }}
-                onClick={clearSearch}
-              >
-                Limpiar búsqueda
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Lista de Cotizaciones */}
-      {displayedQuotes.length > 0 && (
-        <div className="row g-3">
-          {displayedQuotes.map((quote, index) => (
-            <div key={quote.id || index} className="col-md-6 col-lg-4">
-              <div 
-                style={{
-                  backgroundColor: 'white',
-                  borderRadius: '8px',
-                  padding: '20px',
-                  border: '1px solid #e5e7eb',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  height: '100%'
-                }}
-                onClick={() => openQuoteDetails(quote)}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.borderColor = '#2563eb';
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                  e.currentTarget.style.color = 'white';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.borderColor = '#e5e7eb';
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.color = '#3b82f6';
                 }}
               >
-                <div style={{ 
-                  marginBottom: '16px',
-                  paddingBottom: '12px',
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                  <h6 style={{ 
-                    color: '#1f2937', 
-                    fontWeight: '600',
-                    fontSize: '1rem',
-                    marginBottom: '4px',
-                    margin: 0
-                  }}>
-                    Cotización #{quote.number || quote.id || index + 1}
-                  </h6>
-                  <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    {formatDateTime(quote.date || '', quote.time)}
-                  </small>
-                </div>
-                
-                <div style={{ marginBottom: '12px' }}>
-                  <small style={{ 
-                    color: '#6b7280', 
-                    textTransform: 'uppercase', 
-                    fontWeight: '600',
-                    fontSize: '0.7rem',
-                    letterSpacing: '0.5px',
-                    display: 'block',
-                    marginBottom: '4px'
-                  }}>
-                    Consignee
-                  </small>
-                  <div style={{ 
-                    color: '#1f2937',
-                    fontSize: '0.875rem',
-                    wordBreak: 'break-word'
-                  }}>
-                    {quote.consignee || 'N/A'}
-                  </div>
-                </div>
-                
-                {quote.origin && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <small style={{ 
-                      color: '#6b7280', 
-                      textTransform: 'uppercase', 
-                      fontWeight: '600',
-                      fontSize: '0.7rem',
-                      letterSpacing: '0.5px',
-                      display: 'block',
-                      marginBottom: '4px'
-                    }}>
-                      Origen
-                    </small>
-                    <div style={{ color: '#1f2937', fontSize: '0.875rem' }}>
-                      {quote.origin}
-                    </div>
-                  </div>
-                )}
-                
-                {quote.destination && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <small style={{ 
-                      color: '#6b7280', 
-                      textTransform: 'uppercase', 
-                      fontWeight: '600',
-                      fontSize: '0.7rem',
-                      letterSpacing: '0.5px',
-                      display: 'block',
-                      marginBottom: '4px'
-                    }}>
-                      Destino
-                    </small>
-                    <div style={{ color: '#1f2937', fontSize: '0.875rem' }}>
-                      {quote.destination}
-                    </div>
-                  </div>
-                )}
-                
-                <div style={{ 
-                  textAlign: 'center',
-                  marginTop: '16px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid #e5e7eb'
-                }}>
-                  <small style={{ 
-                    color: '#2563eb',
-                    fontWeight: '500',
-                    fontSize: '0.8rem'
-                  }}>
-                    Ver detalles →
-                  </small>
-                </div>
-              </div>
-            </div>
-          ))}
+                Ver todas
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* 🎨 NUEVO MODAL PROFESIONAL */}
+      {/* Modal de Detalles */}
       {showModal && selectedQuote && (
         <div 
           className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
@@ -875,354 +1202,164 @@ function QuotesView() {
               width: '100%', 
               maxHeight: '90vh',
               boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-              overflow: 'hidden'
+              display: 'flex',
+              flexDirection: 'column'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
+            {/* Header del Modal */}
             <div style={{
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               padding: '24px',
               color: 'white'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                marginBottom: '8px'
+              }}>
                 <div>
-                  <h4 style={{ margin: 0, marginBottom: '8px', fontSize: '1.5rem', fontWeight: '700' }}>
-                    COTIZACIÓN #{selectedQuote.number || 'N/A'}
-                  </h4>
-                  <div style={{ fontSize: '0.9rem', opacity: 0.95 }}>
-                    {formatDateTime(selectedQuote.date || '', selectedQuote.time)}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  {selectedQuote.currentFlow && (
-                    <div style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                      padding: '6px 14px',
-                      borderRadius: '20px',
-                      fontSize: '0.8rem',
-                      fontWeight: '600'
-                    }}>
-                      {selectedQuote.currentFlow}
+                  <h5 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
+                    Cotización #{selectedQuote.number || selectedQuote.id || 'N/A'}
+                  </h5>
+                  {selectedQuote.date && (
+                    <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                      📅 {formatDate(selectedQuote.date)}
                     </div>
                   )}
-                  <button 
-                    onClick={closeModal}
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                      border: 'none',
-                      color: 'white',
-                      fontSize: '1.5rem',
-                      cursor: 'pointer',
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      lineHeight: 1,
-                      padding: 0
-                    }}
-                  >
-                    ×
-                  </button>
                 </div>
+                <button 
+                  onClick={closeModal}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    width: '32px',
+                    height: '32px',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: 'white',
+                    lineHeight: 1,
+                    padding: 0,
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+                >
+                  ×
+                </button>
               </div>
             </div>
 
-            {/* Body con scroll */}
+            {/* Contenido del Modal con Scroll */}
             <div style={{ 
               padding: '24px', 
               overflowY: 'auto', 
-              maxHeight: 'calc(90vh - 200px)',
-              backgroundColor: '#fafafa'
+              flex: 1
             }}>
-              
-              {/* 📋 INFORMACIÓN GENERAL */}
-              <Section title="📋 Información General">
-                <InfoGrid>
-                  <InfoItem label="Válido hasta" value={formatDateTime(selectedQuote.validUntil_Date || '', selectedQuote.validUntil_Time)} />
-                  <InfoItem label="Días de tránsito" value={selectedQuote.transitDays?.toString() || 'N/A'} />
-                  <InfoItem label="Referencia del cliente" value={selectedQuote.customerReference} />
-                  <InfoItem label="Modo de transporte" value={selectedQuote.modeOfTransportation} />
-                </InfoGrid>
-              </Section>
+              {/* Ruta de Envío - VISIBLE SIEMPRE */}
+              <RouteDisplay quote={selectedQuote} />
 
-              {/* 🏢 COMPAÑÍA Y CONTACTO */}
-              <Section title="🏢 Compañía y Contacto">
-                <InfoGrid>
-                  <InfoItem label="Empresa emisora" value={selectedQuote.issuingCompany} />
-                  <InfoItem label="Representante de ventas" value={selectedQuote.salesRep} />
-                  <InfoItem label="Carrier/Broker" value={selectedQuote.carrierBroker} />
-                  <InfoItem label="Contacto" value={selectedQuote.contact} fullWidth />
-                </InfoGrid>
-                {selectedQuote.contactAddress && (
-                  <div style={{ 
-                    marginTop: '12px', 
-                    padding: '12px', 
-                    backgroundColor: 'white', 
-                    borderRadius: '6px',
-                    fontSize: '0.85rem',
-                    color: '#6b7280',
-                    border: '1px solid #e5e7eb'
-                  }}>
-                    <strong style={{ color: '#374151' }}>Dirección de contacto:</strong><br/>
-                    {selectedQuote.contactAddress}
-                  </div>
-                )}
-              </Section>
+              {/* Información General */}
+              <CollapsibleSection title="Información General" defaultOpen={true} icon="📋">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  <InfoField label="Número de Cotización" value={selectedQuote.number} />
+                  <InfoField label="Fecha de Emisión" value={selectedQuote.date ? formatDate(selectedQuote.date) : null} />
+                  <InfoField label="Válida Hasta" value={selectedQuote.validUntil_Date ? formatDate(selectedQuote.validUntil_Date) : null} />
+                  <InfoField label="Días de Tránsito" value={selectedQuote.transitDays} />
+                  <InfoField label="Referencia Cliente" value={selectedQuote.customerReference} />
+                  <InfoField label="Modo de Transporte" value={selectedQuote.modeOfTransportation} />
+                  <InfoField label="Tipo de Pago" value={selectedQuote.paymentType} />
+                  <InfoField label="Carrier/Broker" value={selectedQuote.carrierBroker} fullWidth />
+                </div>
+              </CollapsibleSection>
 
-              {/* 👤 CLIENTE (CONSIGNEE) */}
-              <Section title="👤 Cliente (Consignee)">
-                <InfoGrid>
-                  <InfoItem label="Consignee" value={selectedQuote.consignee} fullWidth />
-                </InfoGrid>
-                {selectedQuote.consigneeAddress && (
-                  <div style={{ 
-                    marginTop: '12px', 
-                    padding: '12px', 
-                    backgroundColor: 'white', 
-                    borderRadius: '6px',
-                    fontSize: '0.85rem',
-                    color: '#6b7280',
-                    border: '1px solid #e5e7eb'
-                  }}>
-                    {selectedQuote.consigneeAddress}
-                  </div>
-                )}
-              </Section>
+              {/* Información de Carga */}
+              <CollapsibleSection title="Información de Carga" defaultOpen={false} icon="📦">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  <InfoField label="Total de Piezas" value={selectedQuote.totalCargo_Pieces} />
+                  <InfoField label="Contenedores" value={selectedQuote.totalCargo_Container} />
+                  <InfoField label="Peso Total" value={selectedQuote.totalCargo_WeightDisplayValue} />
+                  <InfoField label="Volumen Total" value={selectedQuote.totalCargo_VolumeDisplayValue} />
+                  <InfoField label="Peso Volumétrico" value={selectedQuote.totalCargo_VolumeWeightDisplayValue} />
+                  <InfoField label="Carga Peligrosa" value={selectedQuote.hazardous} />
+                  <InfoField label="Estado de Carga" value={selectedQuote.cargoStatus} />
+                </div>
+              </CollapsibleSection>
 
-              {/* 📦 SHIPPER (ORIGEN) */}
-              <Section title="📦 Shipper (Origen)">
-                <InfoGrid>
-                  <InfoItem label="Shipper" value={selectedQuote.shipper} />
-                  <InfoItem label="Puerto de recepción" value={selectedQuote.portOfReceipt} />
-                  <InfoItem label="Pickup desde" value={selectedQuote.pickupFrom} fullWidth />
-                </InfoGrid>
-                {selectedQuote.shipperAddress && (
-                  <div style={{ 
-                    marginTop: '12px', 
-                    padding: '12px', 
-                    backgroundColor: 'white', 
-                    borderRadius: '6px',
-                    fontSize: '0.85rem',
-                    color: '#6b7280',
-                    border: '1px solid #e5e7eb'
-                  }}>
-                    {selectedQuote.shipperAddress}
-                  </div>
-                )}
-              </Section>
-
-              {/* 🚢 RUTA */}
-              <Section title="🚢 Ruta de Envío">
+              {/* Resumen Financiero - SOLO INGRESO */}
+              <CollapsibleSection title="Resumen Financiero" defaultOpen={false} icon="💰">
                 <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  backgroundColor: 'white',
-                  padding: '20px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
                   borderRadius: '8px',
-                  border: '1px solid #e5e7eb'
+                  padding: '20px',
+                  border: '2px solid rgba(16, 185, 129, 0.2)',
+                  textAlign: 'center'
                 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px', fontWeight: '600' }}>
-                      ORIGEN
-                    </div>
-                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                      {selectedQuote.origin || 'N/A'}
-                    </div>
-                    {selectedQuote.deperture_Date && (
-                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                        📅 {formatDateTime(selectedQuote.deperture_Date, selectedQuote.deperture_Time)}
-                      </div>
-                    )}
+                  <div style={{
+                    fontSize: '0.85rem',
+                    color: '#6b7280',
+                    marginBottom: '8px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Ingreso Total
                   </div>
-                  
                   <div style={{
                     fontSize: '2rem',
-                    color: '#2563eb',
-                    fontWeight: '300'
+                    fontWeight: '700',
+                    color: '#10b981'
                   }}>
-                    →
-                  </div>
-                  
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px', fontWeight: '600' }}>
-                      DESTINO
-                    </div>
-                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                      {selectedQuote.destination || 'N/A'}
-                    </div>
-                    {selectedQuote.arrival_Date && (
-                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                        📅 {formatDateTime(selectedQuote.arrival_Date, selectedQuote.arrival_Time)}
-                      </div>
-                    )}
+                    {formatCLP(selectedQuote.totalCharge_IncomeDisplayValue) || '$0 CLP'}
                   </div>
                 </div>
-              </Section>
+              </CollapsibleSection>
 
-              {/* 📊 DETALLES DE CARGA */}
-              <Section title="📊 Detalles de Carga">
-                <InfoGrid columns={3}>
-                  <InfoItem label="Piezas" value={selectedQuote.totalCargo_Pieces?.toString() || '0'} highlight />
-                  <InfoItem label="Contenedores" value={selectedQuote.totalCargo_Container?.toString() || '0'} highlight />
-                  <InfoItem label="Peso" value={selectedQuote.totalCargo_WeightDisplayValue || 'N/A'} highlight />
-                  <InfoItem label="Volumen" value={selectedQuote.totalCargo_VolumeDisplayValue || 'N/A'} highlight />
-                  <InfoItem label="Volumen/Peso" value={selectedQuote.totalCargo_VolumeWeightDisplayValue || 'N/A'} highlight />
-                  <InfoItem label="Tipo de pago" value={selectedQuote.paymentType} highlight />
-                </InfoGrid>
-                
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '12px', 
-                  marginTop: '16px',
-                  flexWrap: 'wrap'
-                }}>
-                  {selectedQuote.hazardous && (
-                    <div style={{
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      fontWeight: '600',
-                      backgroundColor: selectedQuote.hazardous === 'Yes' ? '#fee2e2' : '#dcfce7',
-                      color: selectedQuote.hazardous === 'Yes' ? '#991b1b' : '#166534',
-                      border: `1px solid ${selectedQuote.hazardous === 'Yes' ? '#fecaca' : '#bbf7d0'}`
-                    }}>
-                      ⚠️ Peligroso: {selectedQuote.hazardous}
-                    </div>
-                  )}
-                  {selectedQuote.cargoStatus && (
-                    <div style={{
-                      padding: '8px 16px',
-                      borderRadius: '6px',
-                      fontSize: '0.8rem',
-                      fontWeight: '600',
-                      backgroundColor: '#dbeafe',
-                      color: '#1e40af',
-                      border: '1px solid #bfdbfe'
-                    }}>
-                      Estado: {selectedQuote.cargoStatus}
-                    </div>
-                  )}
-                </div>
-              </Section>
-
-              {/* 💰 COSTOS - SECCIÓN DESTACADA */}
-              <div style={{
-                backgroundColor: '#1f2937',
-                borderRadius: '12px',
-                padding: '24px',
-                marginTop: '24px',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
-              }}>
-                <h6 style={{
-                  color: 'white',
-                  fontSize: '1.1rem',
-                  fontWeight: '700',
-                  marginBottom: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  💰 Resumen Financiero
-                </h6>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                  <CostBox 
-                    label="Ingreso Total" 
-                    value={selectedQuote.totalCharge_IncomeDisplayValue || '$$ 0.00'} 
-                    color="#3b82f6"
-                    bgColor="rgba(59, 130, 246, 0.1)"
-                  />
-                  <CostBox 
-                    label="Gastos" 
-                    value={selectedQuote.totalCharge_ExpenseDisplayValue || '$$ 0.00'} 
-                    color="#ef4444"
-                    bgColor="rgba(239, 68, 68, 0.1)"
-                  />
-                  <CostBox 
-                    label="Ganancia" 
-                    value={selectedQuote.totalCharge_ProfitDisplayValue || '$$ 0.00'} 
-                    color="#10b981"
-                    bgColor="rgba(16, 185, 129, 0.1)"
-                  />
-                </div>
-              </div>
-
-              {/* 📝 NOTAS */}
+              {/* Notas */}
               {selectedQuote.notes && selectedQuote.notes !== 'N/A' && (
-                <Section title="📝 Observaciones">
-                  <div style={{
+                <CollapsibleSection title="Notas" defaultOpen={false} icon="📝">
+                  <div style={{ 
+                    padding: '12px',
                     backgroundColor: '#fffbeb',
+                    borderRadius: '6px',
                     border: '1px solid #fde047',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    fontSize: '0.875rem',
                     color: '#713f12',
-                    lineHeight: '1.6',
-                    whiteSpace: 'pre-wrap'
+                    fontSize: '0.875rem',
+                    whiteSpace: 'pre-wrap',
+                    lineHeight: '1.6'
                   }}>
                     {selectedQuote.notes}
                   </div>
-                </Section>
+                </CollapsibleSection>
               )}
-
-              {/* 📌 INFORMACIÓN ADICIONAL */}
-              <Section title="📌 Información Adicional">
-                <InfoGrid>
-                  {selectedQuote.cargoParcial && (
-                    <InfoItem label="Carga parcial" value={selectedQuote.cargoParcial} />
-                  )}
-                  {selectedQuote.accountingStatus && (
-                    <InfoItem label="Estado contable" value={selectedQuote.accountingStatus} />
-                  )}
-                </InfoGrid>
-              </Section>
             </div>
 
-            {/* Footer */}
+            {/* Footer del Modal */}
             <div style={{ 
               padding: '16px 24px',
               borderTop: '1px solid #e5e7eb',
               display: 'flex',
               justifyContent: 'flex-end',
-              gap: '12px',
-              backgroundColor: 'white'
+              backgroundColor: '#f9fafb'
             }}>
-              {selectedQuote.view && (
-                <a
-                  href={selectedQuote.view}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    backgroundColor: 'white',
-                    color: '#2563eb',
-                    border: '1px solid #2563eb',
-                    borderRadius: '6px',
-                    padding: '10px 20px',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    textDecoration: 'none',
-                    fontWeight: '500'
-                  }}
-                >
-                  Ver en Linbis →
-                </a>
-              )}
               <button 
                 onClick={closeModal}
                 style={{
-                  backgroundColor: '#2563eb',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   padding: '10px 24px',
                   cursor: 'pointer',
                   fontSize: '0.9rem',
-                  fontWeight: '500'
+                  fontWeight: '600',
+                  boxShadow: '0 2px 4px rgba(102, 126, 234, 0.3)',
+                  transition: 'transform 0.2s'
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
               >
                 Cerrar
               </button>
@@ -1231,150 +1368,73 @@ function QuotesView() {
         </div>
       )}
 
+      {/* Estado vacío - Sin resultados de búsqueda */}
       {displayedQuotes.length === 0 && !loading && quotes.length > 0 && showingAll && (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '60px 20px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
           <div style={{ 
-            fontSize: '3rem', 
+            fontSize: '4rem', 
             marginBottom: '16px',
-            color: '#9ca3af'
+            opacity: 0.5
           }}>
             📋
           </div>
-          <h5 style={{ color: '#1f2937', marginBottom: '8px' }}>
+          <h5 style={{ color: '#1f2937', marginBottom: '8px', fontSize: '1.2rem' }}>
             No se encontraron cotizaciones
           </h5>
-          <p style={{ color: '#6b7280', marginBottom: '20px' }}>
+          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
             No hay cotizaciones que coincidan con tu búsqueda
           </p>
           <button 
             onClick={clearSearch}
             style={{
-              backgroundColor: '#2563eb',
+              backgroundColor: '#3b82f6',
               color: 'white',
               border: 'none',
-              borderRadius: '6px',
-              padding: '10px 20px',
+              borderRadius: '8px',
+              padding: '12px 24px',
               cursor: 'pointer',
-              fontSize: '0.9rem'
+              fontSize: '0.9rem',
+              fontWeight: '600',
+              boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
             }}
           >
-            Ver las últimas 10 cotizaciones
+            Ver las últimas 20 cotizaciones
           </button>
         </div>
       )}
 
+      {/* Estado vacío - Sin cotizaciones cargadas */}
       {quotes.length === 0 && !loading && (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '60px 20px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
           <div style={{ 
-            fontSize: '3rem', 
+            fontSize: '4rem', 
             marginBottom: '16px',
-            color: '#9ca3af'
+            opacity: 0.5
           }}>
             📦
           </div>
-          <h5 style={{ color: '#1f2937', marginBottom: '8px' }}>
-            No hay cotizaciones cargadas
+          <h5 style={{ color: '#1f2937', marginBottom: '8px', fontSize: '1.2rem' }}>
+            No hay cotizaciones disponibles
           </h5>
           <p style={{ color: '#6b7280' }}>
-            Esperando datos del servidor
+            No se encontraron cotizaciones para tu cuenta
           </p>
         </div>
       )}
     </>
   );
 }
-
-// 🎨 COMPONENTES HELPER PARA EL DISEÑO
-
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div style={{ marginBottom: '24px' }}>
-    <h6 style={{
-      fontSize: '0.9rem',
-      fontWeight: '700',
-      color: '#374151',
-      marginBottom: '12px',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px'
-    }}>
-      {title}
-    </h6>
-    {children}
-  </div>
-);
-
-const InfoGrid: React.FC<{ children: React.ReactNode; columns?: number }> = ({ children, columns = 2 }) => (
-  <div style={{
-    display: 'grid',
-    gridTemplateColumns: `repeat(auto-fit, minmax(${columns === 3 ? '150px' : '200px'}, 1fr))`,
-    gap: '12px'
-  }}>
-    {children}
-  </div>
-);
-
-const InfoItem: React.FC<{ label: string; value?: string; fullWidth?: boolean; highlight?: boolean }> = ({ 
-  label, 
-  value, 
-  fullWidth = false,
-  highlight = false
-}) => (
-  <div style={{
-    gridColumn: fullWidth ? '1 / -1' : 'auto',
-    backgroundColor: highlight ? '#f0f9ff' : 'white',
-    padding: '12px',
-    borderRadius: '6px',
-    border: '1px solid #e5e7eb'
-  }}>
-    <div style={{
-      fontSize: '0.7rem',
-      color: '#6b7280',
-      marginBottom: '4px',
-      fontWeight: '600',
-      textTransform: 'uppercase',
-      letterSpacing: '0.5px'
-    }}>
-      {label}
-    </div>
-    <div style={{
-      fontSize: '0.9rem',
-      color: '#1f2937',
-      fontWeight: '500',
-      wordBreak: 'break-word'
-    }}>
-      {value || 'N/A'}
-    </div>
-  </div>
-);
-
-const CostBox: React.FC<{ label: string; value: string; color: string; bgColor: string }> = ({ 
-  label, 
-  value, 
-  color,
-  bgColor
-}) => (
-  <div style={{
-    backgroundColor: bgColor,
-    borderRadius: '8px',
-    padding: '16px',
-    border: `2px solid ${color}20`
-  }}>
-    <div style={{
-      fontSize: '0.75rem',
-      color: 'rgba(255, 255, 255, 0.8)',
-      marginBottom: '6px',
-      fontWeight: '600',
-      textTransform: 'uppercase'
-    }}>
-      {label}
-    </div>
-    <div style={{
-      fontSize: '1.4rem',
-      fontWeight: '700',
-      color: color
-    }}>
-      {value}
-    </div>
-  </div>
-);
 
 export default QuotesView;

@@ -1,33 +1,1809 @@
+import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useAuth } from "../../auth/AuthContext";
+import { useAuth } from '../../auth/AuthContext';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface OutletContext {
   accessToken: string;
   onLogout: () => void;
 }
 
-function Reports() {
-  const { accessToken } = useOutletContext<OutletContext>();
-  const { user } = useAuth();
+interface Invoice {
+  id?: number;
+  number?: string;
+  type?: number;
+  date?: string;
+  dueDate?: string;
+  status?: number;
+  billTo?: {
+    name?: string;
+    identificationNumber?: string;
+  };
+  billToAddress?: string;
+  currency?: {
+    abbr?: string;
+    name?: string;
+  };
+  amount?: {
+    value?: number;
+    userString?: string;
+  };
+  taxAmount?: {
+    value?: number;
+    userString?: string;
+  };
+  totalAmount?: {
+    value?: number;
+    userString?: string;
+  };
+  balanceDue?: {
+    value?: number;
+    userString?: string;
+  };
+  charges?: Array<{
+    description?: string;
+    quantity?: number;
+    unit?: string;
+    rate?: number;
+    amount?: number;
+  }>;
+  shipment?: {
+    number?: string;
+    waybillNumber?: string;
+    consignee?: {
+      name?: string;
+    };
+    departure?: string;
+    arrival?: string;
+    customerReference?: string;
+  };
+  notes?: string;
+  [key: string]: any;
+}
+
+interface ShipmentModalData {
+  type: 'air' | 'ocean';
+  number: string;
+}
+
+// Componente para Cards de Métricas
+function MetricCard({ 
+  title, 
+  value, 
+  icon, 
+  color,
+  subtitle 
+}: { 
+  title: string; 
+  value: string | number; 
+  icon: string; 
+  color: string;
+  subtitle?: string;
+}) {
   return (
-    <div className="container-fluid">
-      <div className="row mb-4">
-        <div className="col">
-          <h2 className="mb-0">Reportes</h2>
-          <p className="text-muted">Análisis y reportes de datos</p>
+    <div style={{
+      backgroundColor: 'white',
+      borderRadius: '12px',
+      padding: '20px',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      border: '1px solid #e5e7eb',
+      transition: 'transform 0.2s',
+      cursor: 'default'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+        <div style={{
+          fontSize: '2rem',
+          color: color
+        }}>
+          {icon}
+        </div>
+      </div>
+      <div style={{
+        fontSize: '0.75rem',
+        fontWeight: '600',
+        color: '#6b7280',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        marginBottom: '8px'
+      }}>
+        {title}
+      </div>
+      <div style={{
+        fontSize: '1.8rem',
+        fontWeight: '700',
+        color: '#1f2937',
+        marginBottom: subtitle ? '4px' : '0'
+      }}>
+        {value}
+      </div>
+      {subtitle && (
+        <div style={{
+          fontSize: '0.75rem',
+          color: '#6b7280'
+        }}>
+          {subtitle}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Componente para Secciones Colapsables
+function CollapsibleSection({ 
+  title, 
+  children, 
+  defaultOpen = false,
+  icon = '📋'
+}: { 
+  title: string; 
+  children: React.ReactNode; 
+  defaultOpen?: boolean;
+  icon?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <div style={{ 
+      marginBottom: '12px',
+      border: '1px solid #e5e7eb',
+      borderRadius: '8px',
+      overflow: 'hidden'
+    }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          padding: '12px 16px',
+          backgroundColor: isOpen ? '#f9fafb' : 'white',
+          border: 'none',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>{icon}</span>
+          <span style={{ fontWeight: '600', color: '#1f2937', fontSize: '0.9rem' }}>
+            {title}
+          </span>
+        </div>
+        <span style={{ 
+          fontSize: '1.2rem', 
+          color: '#6b7280',
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.2s'
+        }}>
+          ▼
+        </span>
+      </button>
+      
+      {isOpen && (
+        <div style={{ padding: '16px', backgroundColor: 'white' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Reports() {
+  const { accessToken, onLogout } = useOutletContext<OutletContext>();
+  const { user } = useAuth();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [displayedInvoices, setDisplayedInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const filterConsignee = user?.username || '';
+  
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreInvoices, setHasMoreInvoices] = useState(true);
+  const INVOICES_PER_BATCH = 300; // 3 páginas de 100
+  
+  // Filtros
+  const [periodFilter, setPeriodFilter] = useState<'month' | '3months' | '6months' | 'year' | 'all'>('month');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
+  
+  // Modales
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [showShipmentModal, setShowShipmentModal] = useState(false);
+  const [shipmentModalData, setShipmentModalData] = useState<ShipmentModalData | null>(null);
+
+  // Función para formatear fechas
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-CL', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric'
+    });
+  };
+
+  // Función para formatear moneda
+  const formatCurrency = (value: number, currency: string) => {
+    const formatted = new Intl.NumberFormat('es-CL').format(value);
+    return `${currency} $${formatted}`;
+  };
+
+  // Función para determinar el estado de la factura
+  const getInvoiceStatus = (invoice: Invoice): 'paid' | 'pending' | 'overdue' => {
+    const balanceDue = invoice.balanceDue?.value || 0;
+    
+    if (balanceDue === 0) return 'paid';
+    
+    if (invoice.dueDate) {
+      const dueDate = new Date(invoice.dueDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (dueDate < today) return 'overdue';
+    }
+    
+    return 'pending';
+  };
+
+  // Función para determinar el tipo de servicio (Air o Ocean)
+  const getServiceType = (shipmentNumber?: string): 'Air' | 'Ocean' | 'Unknown' => {
+    if (!shipmentNumber) return 'Unknown';
+    if (shipmentNumber.startsWith('SOG')) return 'Air';
+    if (shipmentNumber.startsWith('HBLI')) return 'Ocean';
+    return 'Unknown';
+  };
+
+  // Obtener facturas (carga inicial - solo 300 facturas)
+  const fetchInvoices = async (resetData: boolean = true) => {
+    if (!accessToken) {
+      setError('Debes ingresar un token primero');
+      return;
+    }
+    
+    if (resetData) {
+      setLoading(true);
+      setCurrentPage(1);
+      setInvoices([]);
+      setHasMoreInvoices(true);
+    } else {
+      setLoadingMore(true);
+    }
+    
+    setError(null);
+    
+    try {
+      const startPage = resetData ? 1 : currentPage;
+      const pagesToLoad = 3; // Cargar 3 páginas = 300 facturas
+      let batchInvoices: Invoice[] = [];
+      
+      // Cargar 3 páginas en paralelo para mayor velocidad
+      const requests = [];
+      for (let i = 0; i < pagesToLoad; i++) {
+        const page = startPage + i;
+        requests.push(
+          fetch(
+            `https://api.linbis.com/invoices?Page=${page}&ItemsPerPage=100&SortBy=newest`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            }
+          )
+        );
+      }
+      
+      const responses = await Promise.all(requests);
+      
+      for (const response of responses) {
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('Token inválido o expirado.');
+          }
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const invoicesArray: Invoice[] = Array.isArray(data) ? data : [];
+        
+        if (invoicesArray.length < 100) {
+          setHasMoreInvoices(false);
+        }
+        
+        batchInvoices = [...batchInvoices, ...invoicesArray];
+      }
+      
+      // Filtrar por consignee
+      const filtered = batchInvoices.filter(inv => 
+        inv.billTo?.name === filterConsignee || 
+        inv.shipment?.consignee?.name === filterConsignee
+      );
+      
+      if (resetData) {
+        setInvoices(filtered);
+        setDisplayedInvoices(filtered);
+        
+        // Guardar en caché solo la primera carga
+        localStorage.setItem('invoicesCache', JSON.stringify(filtered));
+        localStorage.setItem('invoicesCacheTimestamp', new Date().getTime().toString());
+        localStorage.setItem('invoicesCachePage', '3');
+        
+        console.log(`Carga inicial: ${filtered.length} facturas del consignee`);
+      } else {
+        // Agregar a las facturas existentes
+        const updatedInvoices = [...invoices, ...filtered];
+        setInvoices(updatedInvoices);
+        setDisplayedInvoices(updatedInvoices);
+        
+        console.log(`Cargadas ${filtered.length} facturas más. Total: ${updatedInvoices.length}`);
+      }
+      
+      setCurrentPage(startPage + pagesToLoad);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      console.error('Error completo:', err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  // Cargar más facturas
+  const loadMoreInvoices = () => {
+    fetchInvoices(false);
+  };
+
+  useEffect(() => {
+    if (!accessToken) {
+      console.log('No hay token disponible todavía');
+      return;
+    }
+
+    const cachedInvoices = localStorage.getItem('invoicesCache');
+    const cacheTimestamp = localStorage.getItem('invoicesCacheTimestamp');
+    const cachedPage = localStorage.getItem('invoicesCachePage');
+    
+    if (cachedInvoices && cacheTimestamp) {
+      const oneHour = 60 * 60 * 1000;
+      const now = new Date().getTime();
+      const cacheAge = now - parseInt(cacheTimestamp);
+      
+      if (cacheAge < oneHour) {
+        const parsed = JSON.parse(cachedInvoices);
+        setInvoices(parsed);
+        setDisplayedInvoices(parsed);
+        setCurrentPage(parseInt(cachedPage || '3') + 1);
+        console.log('Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
+        return;
+      }
+    }
+    
+    fetchInvoices(true);
+  }, [accessToken]);
+
+  // Filtrar facturas por período
+  const filteredByPeriod = useMemo(() => {
+    const now = new Date();
+    let startDate = new Date();
+    
+    switch (periodFilter) {
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case '3months':
+        startDate.setMonth(now.getMonth() - 3);
+        break;
+      case '6months':
+        startDate.setMonth(now.getMonth() - 6);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      case 'all':
+        return invoices;
+    }
+    
+    return invoices.filter(inv => {
+      if (!inv.date) return false;
+      const invDate = new Date(inv.date);
+      return invDate >= startDate;
+    });
+  }, [invoices, periodFilter]);
+
+  // Filtrar por estado
+  const filteredByStatus = useMemo(() => {
+    if (statusFilter === 'all') return filteredByPeriod;
+    
+    return filteredByPeriod.filter(inv => {
+      const status = getInvoiceStatus(inv);
+      return status === statusFilter;
+    });
+  }, [filteredByPeriod, statusFilter]);
+
+  useEffect(() => {
+    setDisplayedInvoices(filteredByStatus);
+  }, [filteredByStatus]);
+
+  // Calcular métricas por moneda
+  const metricsByCurrency = useMemo(() => {
+    const currencies: { [key: string]: {
+      totalBilled: number;
+      totalPending: number;
+      totalPaid: number;
+      count: number;
+      overdueCount: number;
+    }} = {};
+    
+    filteredByPeriod.forEach(inv => {
+      const currency = inv.currency?.abbr || 'USD';
+      
+      if (!currencies[currency]) {
+        currencies[currency] = {
+          totalBilled: 0,
+          totalPending: 0,
+          totalPaid: 0,
+          count: 0,
+          overdueCount: 0
+        };
+      }
+      
+      const total = inv.totalAmount?.value || 0;
+      const balance = inv.balanceDue?.value || 0;
+      const status = getInvoiceStatus(inv);
+      
+      currencies[currency].totalBilled += total;
+      currencies[currency].totalPending += balance;
+      currencies[currency].totalPaid += (total - balance);
+      currencies[currency].count += 1;
+      
+      if (status === 'overdue') {
+        currencies[currency].overdueCount += 1;
+      }
+    });
+    
+    return currencies;
+  }, [filteredByPeriod]);
+
+  // Datos para gráfico de gastos mensuales
+  const monthlyData = useMemo(() => {
+    const months: { [key: string]: { [currency: string]: number } } = {};
+    
+    filteredByPeriod.forEach(inv => {
+      if (!inv.date) return;
+      
+      const date = new Date(inv.date);
+      const monthKey = date.toLocaleDateString('es-CL', { month: 'short', year: 'numeric' });
+      const currency = inv.currency?.abbr || 'USD';
+      const amount = inv.totalAmount?.value || 0;
+      
+      if (!months[monthKey]) {
+        months[monthKey] = {};
+      }
+      
+      if (!months[monthKey][currency]) {
+        months[monthKey][currency] = 0;
+      }
+      
+      months[monthKey][currency] += amount;
+    });
+    
+    return Object.entries(months).map(([month, currencies]) => ({
+      month,
+      ...currencies
+    }));
+  }, [filteredByPeriod]);
+
+  // Datos para gráfico de desglose por servicio
+  const serviceData = useMemo(() => {
+    const services: { [key: string]: number } = {
+      Air: 0,
+      Ocean: 0,
+      Unknown: 0
+    };
+    
+    filteredByPeriod.forEach(inv => {
+      const serviceType = getServiceType(inv.shipment?.number);
+      const amount = inv.totalAmount?.value || 0;
+      services[serviceType] += amount;
+    });
+    
+    return [
+      { name: 'Air Shipments', value: services.Air, color: '#3b82f6' },
+      { name: 'Ocean Shipments', value: services.Ocean, color: '#0ea5e9' },
+      { name: 'Otros', value: services.Unknown, color: '#9ca3af' }
+    ].filter(item => item.value > 0);
+  }, [filteredByPeriod]);
+
+  // Top 5 envíos más costosos
+  const topExpensiveShipments = useMemo(() => {
+    return [...filteredByPeriod]
+      .sort((a, b) => (b.totalAmount?.value || 0) - (a.totalAmount?.value || 0))
+      .slice(0, 5);
+  }, [filteredByPeriod]);
+
+  const openInvoiceModal = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setShowInvoiceModal(true);
+  };
+
+  const closeInvoiceModal = () => {
+    setShowInvoiceModal(false);
+    setSelectedInvoice(null);
+  };
+
+  const openShipmentModal = (shipmentNumber: string) => {
+    const type = shipmentNumber.startsWith('SOG') ? 'air' : 'ocean';
+    setShipmentModalData({ type, number: shipmentNumber });
+    setShowShipmentModal(true);
+  };
+
+  const closeShipmentModal = () => {
+    setShowShipmentModal(false);
+    setShipmentModalData(null);
+  };
+
+  // Función para generar y descargar PDF del reporte
+  const generatePDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Por favor, permite las ventanas emergentes para descargar el PDF');
+      return;
+    }
+
+    const periodLabel = {
+      month: 'Último Mes',
+      '3months': 'Últimos 3 Meses',
+      '6months': 'Últimos 6 Meses',
+      year: 'Último Año',
+      all: 'Todo el Período'
+    }[periodFilter];
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Reporte Financiero - ${user?.username}</title>
+        <style>
+          @media print {
+            @page { margin: 1cm; }
+            body { margin: 0; }
+          }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            padding: 20px;
+            color: #1f2937;
+            line-height: 1.6;
+          }
+          .header {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+          }
+          .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2rem;
+          }
+          .header p {
+            margin: 0;
+            opacity: 0.9;
+          }
+          .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+          }
+          .metric-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+          }
+          .metric-card h3 {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 10px 0;
+          }
+          .metric-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+          }
+          .currency-section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+          }
+          .currency-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            page-break-inside: avoid;
+          }
+          th {
+            background-color: #f9fafb;
+            padding: 12px;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            border-bottom: 2px solid #e5e7eb;
+          }
+          td {
+            padding: 12px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.875rem;
+          }
+          .status-paid { color: #10b981; font-weight: 600; }
+          .status-pending { color: #f59e0b; font-weight: 600; }
+          .status-overdue { color: #ef4444; font-weight: 600; }
+          .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.875rem;
+          }
+          .print-button {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 20px 0;
+          }
+          @media print {
+            .print-button { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>📊 Reporte Financiero</h1>
+          <p><strong>Cliente:</strong> ${user?.username || 'N/A'}</p>
+          <p><strong>Período:</strong> ${periodLabel}</p>
+          <p><strong>Fecha de generación:</strong> ${new Date().toLocaleDateString('es-CL', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })}</p>
+        </div>
+
+        <button class="print-button" onclick="window.print()">🖨️ Imprimir / Guardar como PDF</button>
+
+        ${Object.entries(metricsByCurrency).map(([currency, metrics]) => `
+          <div class="currency-section">
+            <h2 class="currency-title">💱 Resumen en ${currency}</h2>
+            
+            <div class="metrics">
+              <div class="metric-card">
+                <h3>Total Facturado</h3>
+                <div class="value">${formatCurrency(metrics.totalBilled, currency)}</div>
+                <p style="margin: 5px 0 0 0; font-size: 0.875rem; color: #6b7280;">${metrics.count} facturas</p>
+              </div>
+              <div class="metric-card">
+                <h3>Pendiente de Pago</h3>
+                <div class="value" style="color: #f59e0b;">${formatCurrency(metrics.totalPending, currency)}</div>
+              </div>
+              <div class="metric-card">
+                <h3>Total Pagado</h3>
+                <div class="value" style="color: #10b981;">${formatCurrency(metrics.totalPaid, currency)}</div>
+              </div>
+              <div class="metric-card">
+                <h3>Facturas Vencidas</h3>
+                <div class="value" style="color: #ef4444;">${metrics.overdueCount}</div>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+
+        <div style="margin-top: 40px;">
+          <h2 style="font-size: 1.2rem; font-weight: 600; color: #1f2937; margin-bottom: 15px;">
+            💰 Detalle de Facturas
+          </h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Fecha</th>
+                <th>Shipment</th>
+                <th style="text-align: right;">Total</th>
+                <th style="text-align: right;">Saldo</th>
+                <th style="text-align: center;">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${displayedInvoices.map(invoice => {
+                const status = getInvoiceStatus(invoice);
+                const statusClass = `status-${status}`;
+                const statusLabel = {
+                  paid: 'Pagada',
+                  pending: 'Pendiente',
+                  overdue: 'Vencida'
+                }[status];
+                
+                return `
+                  <tr>
+                    <td><strong>${invoice.number || 'N/A'}</strong></td>
+                    <td>${invoice.date ? new Date(invoice.date).toLocaleDateString('es-CL') : '-'}</td>
+                    <td>${invoice.shipment?.number || '-'}</td>
+                    <td style="text-align: right;">${formatCurrency(invoice.totalAmount?.value || 0, invoice.currency?.abbr || 'USD')}</td>
+                    <td style="text-align: right;" class="${statusClass}">${formatCurrency(invoice.balanceDue?.value || 0, invoice.currency?.abbr || 'USD')}</td>
+                    <td style="text-align: center;" class="${statusClass}">${statusLabel}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="footer">
+          <p>Reporte generado por el Sistema de Gestión de Envíos</p>
+          <p>Total de facturas en este reporte: <strong>${displayedInvoices.length}</strong></p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  return (
+    <>
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+        padding: '24px 20px',
+        marginBottom: '24px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+      }}>
+        <h4 style={{ 
+          color: 'white', 
+          margin: 0,
+          fontSize: '1.5rem',
+          fontWeight: '700',
+          marginBottom: '8px'
+        }}>
+          Reportes Financieros
+        </h4>
+        <p style={{ 
+          color: 'rgba(255, 255, 255, 0.9)', 
+          margin: 0,
+          fontSize: '0.9rem'
+        }}>
+          Control de gastos y análisis de facturas
+        </p>
+      </div>
+
+      {/* Filtros */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '12px', 
+        marginBottom: '24px',
+        flexWrap: 'wrap',
+        alignItems: 'center'
+      }}>
+        <button 
+          onClick={() => fetchInvoices(true)}
+          disabled={loading}
+          style={{
+            backgroundColor: '#8b5cf6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 20px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            opacity: loading ? 0.6 : 1
+          }}
+        >
+          {loading ? 'Cargando...' : '🔄 Actualizar'}
+        </button>
+
+        <button 
+          onClick={generatePDF}
+          disabled={loading || invoices.length === 0}
+          style={{
+            backgroundColor: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 20px',
+            cursor: (loading || invoices.length === 0) ? 'not-allowed' : 'pointer',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            opacity: (loading || invoices.length === 0) ? 0.6 : 1
+          }}
+        >
+          📥 Descargar Reporte PDF
+        </button>
+
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: '600' }}>Período:</span>
+          {[
+            { value: 'month', label: 'Último Mes' },
+            { value: '3months', label: '3 Meses' },
+            { value: '6months', label: '6 Meses' },
+            { value: 'year', label: 'Año' },
+            { value: 'all', label: 'Todo' }
+          ].map(period => (
+            <button
+              key={period.value}
+              onClick={() => setPeriodFilter(period.value as any)}
+              style={{
+                backgroundColor: periodFilter === period.value ? '#8b5cf6' : 'white',
+                color: periodFilter === period.value ? 'white' : '#6b7280',
+                border: periodFilter === period.value ? 'none' : '1px solid #d1d5db',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '600'
+              }}
+            >
+              {period.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: '600' }}>Estado:</span>
+          {[
+            { value: 'all', label: 'Todas' },
+            { value: 'paid', label: 'Pagadas' },
+            { value: 'pending', label: 'Pendientes' },
+            { value: 'overdue', label: 'Vencidas' }
+          ].map(status => (
+            <button
+              key={status.value}
+              onClick={() => setStatusFilter(status.value as any)}
+              style={{
+                backgroundColor: statusFilter === status.value ? '#8b5cf6' : 'white',
+                color: statusFilter === status.value ? 'white' : '#6b7280',
+                border: statusFilter === status.value ? 'none' : '1px solid #d1d5db',
+                borderRadius: '6px',
+                padding: '6px 12px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '600'
+              }}
+            >
+              {status.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="card shadow-sm">
-        <div className="card-body text-center py-5">
-          <svg width="64" height="64" fill="currentColor" className="text-muted mb-3" viewBox="0 0 16 16">
-            <path d="M4 11H2v3h2v-3zm5-4H7v7h2V7zm5-5v12h-2V2h2z"/>
-          </svg>
-          <h4 className="text-muted">Módulo de Reportes</h4>
-          <p className="text-muted">Esta sección está pendiente de implementación, {user?.username}</p>
+      {/* Indicador de carga */}
+      {loading && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '40px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📊</div>
+          <p style={{ color: '#6b7280', fontSize: '1rem' }}>Cargando facturas...</p>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Mensaje de error */}
+      {error && (
+        <div style={{ 
+          padding: '16px',
+          backgroundColor: '#fee2e2',
+          color: '#991b1b',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: '1px solid #fecaca'
+        }}>
+          <strong>Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Dashboard */}
+      {!loading && invoices.length > 0 && (
+        <>
+          {/* Cards de Métricas por Moneda */}
+          {Object.entries(metricsByCurrency).map(([currency, metrics]) => (
+            <div key={currency} style={{ marginBottom: '32px' }}>
+              <h5 style={{ 
+                fontSize: '1rem', 
+                fontWeight: '600', 
+                color: '#1f2937', 
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span>💱</span>
+                Resumen en {currency}
+              </h5>
+              
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '20px',
+                marginBottom: '24px'
+              }}>
+                <MetricCard
+                  title="Total Facturado"
+                  value={formatCurrency(metrics.totalBilled, currency)}
+                  icon="💰"
+                  color="#8b5cf6"
+                  subtitle={`${metrics.count} facturas`}
+                />
+                <MetricCard
+                  title="Pendiente de Pago"
+                  value={formatCurrency(metrics.totalPending, currency)}
+                  icon="⏳"
+                  color="#f59e0b"
+                />
+                <MetricCard
+                  title="Total Pagado"
+                  value={formatCurrency(metrics.totalPaid, currency)}
+                  icon="✅"
+                  color="#10b981"
+                />
+                <MetricCard
+                  title="Facturas Vencidas"
+                  value={metrics.overdueCount}
+                  icon="⚠️"
+                  color="#ef4444"
+                  subtitle={metrics.overdueCount > 0 ? 'Requieren atención' : 'Todo al día'}
+                />
+              </div>
+            </div>
+          ))}
+
+          {/* Gráficos */}
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+            gap: '20px',
+            marginBottom: '32px'
+          }}>
+            {/* Gráfico de Gastos Mensuales */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <h6 style={{ 
+                fontSize: '0.9rem', 
+                fontWeight: '600', 
+                color: '#1f2937', 
+                marginBottom: '16px' 
+              }}>
+                📈 Gastos Mensuales
+              </h6>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" style={{ fontSize: '0.75rem' }} />
+                  <YAxis style={{ fontSize: '0.75rem' }} />
+                  <Tooltip />
+                  <Legend />
+                  {Object.keys(metricsByCurrency).map((currency, index) => (
+                    <Bar 
+                      key={currency}
+                      dataKey={currency} 
+                      fill={index === 0 ? '#8b5cf6' : '#3b82f6'} 
+                      name={currency}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Gráfico de Desglose por Servicio */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <h6 style={{ 
+                fontSize: '0.9rem', 
+                fontWeight: '600', 
+                color: '#1f2937', 
+                marginBottom: '16px' 
+              }}>
+                🛫 Desglose por Servicio
+              </h6>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={serviceData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {serviceData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => formatCurrency(value, 'USD')} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Top 5 Envíos Más Costosos */}
+          {topExpensiveShipments.length > 0 && (
+            <div style={{ marginBottom: '32px' }}>
+              <h5 style={{ 
+                fontSize: '1rem', 
+                fontWeight: '600', 
+                color: '#1f2937', 
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span>🏆</span>
+                Top 5 Envíos Más Costosos
+              </h5>
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: '16px'
+              }}>
+                {topExpensiveShipments.map((invoice, index) => (
+                  <div
+                    key={invoice.id}
+                    onClick={() => openInvoiceModal(invoice)}
+                    style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                      border: '1px solid #e5e7eb',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <div style={{
+                        fontSize: '1.5rem',
+                        fontWeight: '700',
+                        color: '#8b5cf6'
+                      }}>
+                        #{index + 1}
+                      </div>
+                      <div style={{
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        backgroundColor: invoice.shipment?.number?.startsWith('SOG') ? '#dbeafe' : '#e0f2fe',
+                        color: invoice.shipment?.number?.startsWith('SOG') ? '#1e40af' : '#075985'
+                      }}>
+                        {getServiceType(invoice.shipment?.number)}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
+                      {invoice.number}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '8px' }}>
+                      {invoice.shipment?.number || 'N/A'}
+                    </div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#10b981' }}>
+                      {formatCurrency(invoice.totalAmount?.value || 0, invoice.currency?.abbr || 'USD')}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tabla de Facturas */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ 
+              padding: '16px 20px',
+              borderBottom: '1px solid #e5e7eb',
+              backgroundColor: '#f9fafb'
+            }}>
+              <h5 style={{ 
+                fontSize: '1rem', 
+                fontWeight: '600', 
+                color: '#1f2937', 
+                margin: 0
+              }}>
+                💰 Facturas
+              </h5>
+            </div>
+            
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ 
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.875rem'
+              }}>
+                <thead>
+                  <tr style={{ 
+                    backgroundColor: '#f9fafb',
+                    borderBottom: '2px solid #e5e7eb'
+                  }}>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Número
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Fecha
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Shipment
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'right',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Total
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'right',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Saldo
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      Estado
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedInvoices.map((invoice, index) => {
+                    const status = getInvoiceStatus(invoice);
+                    const statusConfig = {
+                      paid: { label: 'Pagada', color: '#10b981', bg: '#d1fae5' },
+                      pending: { label: 'Pendiente', color: '#f59e0b', bg: '#fef3c7' },
+                      overdue: { label: 'Vencida', color: '#ef4444', bg: '#fee2e2' }
+                    };
+                    const config = statusConfig[status];
+
+                    return (
+                      <tr 
+                        key={invoice.id}
+                        onClick={() => openInvoiceModal(invoice)}
+                        style={{
+                          borderBottom: index < displayedInvoices.length - 1 ? '1px solid #f3f4f6' : 'none',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease',
+                          backgroundColor: 'white'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }}
+                      >
+                        <td style={{ 
+                          padding: '16px 20px',
+                          fontWeight: '600',
+                          color: '#1f2937'
+                        }}>
+                          {invoice.number}
+                        </td>
+                        <td style={{ 
+                          padding: '16px 20px',
+                          color: '#4b5563'
+                        }}>
+                          {invoice.date 
+                            ? new Date(invoice.date).toLocaleDateString('es-CL', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })
+                            : '-'
+                          }
+                        </td>
+                        <td style={{ 
+                          padding: '16px 20px',
+                          color: '#4b5563'
+                        }}>
+                          {invoice.shipment?.number ? (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openShipmentModal(invoice.shipment!.number!);
+                              }}
+                              style={{
+                                color: '#3b82f6',
+                                textDecoration: 'underline',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                              }}
+                            >
+                              {invoice.shipment.number}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td style={{ 
+                          padding: '16px 20px',
+                          textAlign: 'right',
+                          color: '#1f2937',
+                          fontWeight: '600'
+                        }}>
+                          {formatCurrency(invoice.totalAmount?.value || 0, invoice.currency?.abbr || 'USD')}
+                        </td>
+                        <td style={{ 
+                          padding: '16px 20px',
+                          textAlign: 'right',
+                          color: status === 'paid' ? '#10b981' : '#f59e0b',
+                          fontWeight: '700'
+                        }}>
+                          {formatCurrency(invoice.balanceDue?.value || 0, invoice.currency?.abbr || 'USD')}
+                        </td>
+                        <td style={{ 
+                          padding: '16px 20px',
+                          textAlign: 'center'
+                        }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            color: config.color,
+                            backgroundColor: config.bg
+                          }}>
+                            {config.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer de la tabla */}
+            <div style={{
+              padding: '16px 20px',
+              backgroundColor: '#f9fafb',
+              borderTop: '1px solid #e5e7eb'
+            }}>
+              <div style={{ 
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <div style={{ 
+                  fontSize: '0.875rem',
+                  color: '#6b7280'
+                }}>
+                  Mostrando <strong style={{ color: '#1f2937' }}>{displayedInvoices.length}</strong> facturas
+                </div>
+                
+                {hasMoreInvoices && (
+                  <button 
+                    onClick={loadMoreInvoices}
+                    disabled={loadingMore}
+                    style={{
+                      backgroundColor: '#8b5cf6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '8px 20px',
+                      cursor: loadingMore ? 'not-allowed' : 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: '600',
+                      opacity: loadingMore ? 0.6 : 1,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {loadingMore ? '⏳ Cargando más...' : '📥 Cargar 300 Facturas Más'}
+                  </button>
+                )}
+                
+                {!hasMoreInvoices && invoices.length >= 300 && (
+                  <div style={{ 
+                    fontSize: '0.85rem',
+                    color: '#10b981',
+                    fontWeight: '600'
+                  }}>
+                    ✅ Todas las facturas cargadas
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Modal de Detalles de Factura */}
+      {showInvoiceModal && selectedInvoice && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, overflowY: 'auto' }}
+          onClick={closeInvoiceModal}
+        >
+          <div 
+            className="bg-white rounded"
+            style={{ 
+              maxWidth: '900px', 
+              width: '100%', 
+              maxHeight: '90vh',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del Modal */}
+            <div style={{
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+              padding: '24px',
+              color: 'white'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start'
+              }}>
+                <div>
+                  <h5 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
+                    Factura {selectedInvoice.number}
+                  </h5>
+                  {selectedInvoice.date && (
+                    <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                      📅 {formatDate(selectedInvoice.date)}
+                    </div>
+                  )}
+                </div>
+                <button 
+                  onClick={closeInvoiceModal}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    width: '32px',
+                    height: '32px',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: 'white',
+                    lineHeight: 1,
+                    padding: 0
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div style={{ 
+              padding: '24px', 
+              overflowY: 'auto', 
+              flex: 1
+            }}>
+              {/* Información de la Factura */}
+              <CollapsibleSection title="Información de la Factura" defaultOpen={true} icon="📄">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                      NÚMERO DE FACTURA
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#1f2937', fontWeight: '600' }}>
+                      {selectedInvoice.number}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                      FECHA DE EMISIÓN
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>
+                      {formatDate(selectedInvoice.date)}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                      FECHA DE VENCIMIENTO
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>
+                      {formatDate(selectedInvoice.dueDate)}
+                    </div>
+                  </div>
+                  <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                      MONEDA
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>
+                      {selectedInvoice.currency?.name || 'N/A'} ({selectedInvoice.currency?.abbr || 'USD'})
+                    </div>
+                  </div>
+                  {selectedInvoice.shipment?.number && (
+                    <div style={{ flex: '1 1 100%' }}>
+                      <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                        SHIPMENT ASOCIADO
+                      </div>
+                      <span
+                        onClick={() => openShipmentModal(selectedInvoice.shipment!.number!)}
+                        style={{
+                          fontSize: '0.875rem',
+                          color: '#3b82f6',
+                          textDecoration: 'underline',
+                          cursor: 'pointer',
+                          fontWeight: '600'
+                        }}
+                      >
+                        {selectedInvoice.shipment.number}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleSection>
+
+              {/* Detalles de Cobros */}
+              {selectedInvoice.charges && selectedInvoice.charges.length > 0 && (
+                <CollapsibleSection title="Detalles de Cobros" defaultOpen={true} icon="📋">
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '8px', textAlign: 'left', fontSize: '0.7rem', color: '#6b7280' }}>DESCRIPCIÓN</th>
+                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>CANTIDAD</th>
+                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>TARIFA</th>
+                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>MONTO</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedInvoice.charges.map((charge, index) => (
+                          <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '8px', color: '#1f2937' }}>{charge.description}</td>
+                            <td style={{ padding: '8px', textAlign: 'right', color: '#4b5563' }}>
+                              {charge.quantity} {charge.unit}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', color: '#4b5563' }}>
+                              {formatCurrency(charge.rate || 0, selectedInvoice.currency?.abbr || 'USD')}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', color: '#1f2937', fontWeight: '600' }}>
+                              {formatCurrency(charge.amount || 0, selectedInvoice.currency?.abbr || 'USD')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CollapsibleSection>
+              )}
+
+              {/* Totales */}
+              <CollapsibleSection title="Resumen de Totales" defaultOpen={true} icon="💰">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>Subtotal:</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>
+                      {formatCurrency(selectedInvoice.amount?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
+                    <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>IVA:</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>
+                      {formatCurrency(selectedInvoice.taxAmount?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: '#8b5cf6', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: '600', color: 'white' }}>Total:</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: '700', color: 'white' }}>
+                      {formatCurrency(selectedInvoice.totalAmount?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: getInvoiceStatus(selectedInvoice) === 'paid' ? '#d1fae5' : '#fef3c7', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: '600', color: getInvoiceStatus(selectedInvoice) === 'paid' ? '#10b981' : '#f59e0b' }}>Saldo Pendiente:</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: '700', color: getInvoiceStatus(selectedInvoice) === 'paid' ? '#10b981' : '#f59e0b' }}>
+                      {formatCurrency(selectedInvoice.balanceDue?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                    </span>
+                  </div>
+                </div>
+              </CollapsibleSection>
+            </div>
+
+            {/* Footer del Modal */}
+            <div style={{ 
+              padding: '16px 24px',
+              borderTop: '1px solid #e5e7eb',
+              backgroundColor: '#f9fafb'
+            }}>
+              <button 
+                onClick={closeInvoiceModal}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 24px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Indicador de carga de más facturas */}
+      {loadingMore && (
+        <div style={{ 
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          backgroundColor: '#8b5cf6',
+          color: 'white',
+          padding: '16px 24px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          zIndex: 1000,
+          animation: 'fadeIn 0.3s ease'
+        }}>
+          <div style={{
+            width: '20px',
+            height: '20px',
+            border: '3px solid rgba(255, 255, 255, 0.3)',
+            borderTopColor: 'white',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>
+            Cargando más facturas...
+          </span>
+        </div>
+      )}
+
+      {/* Modal de Shipment (Air o Ocean) */}
+      {showShipmentModal && shipmentModalData && (
+        <div 
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10000, overflowY: 'auto' }}
+          onClick={closeShipmentModal}
+        >
+          <div 
+            className="bg-white rounded"
+            style={{ 
+              maxWidth: '700px', 
+              width: '100%', 
+              maxHeight: '90vh',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              background: shipmentModalData.type === 'air' 
+                ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+              padding: '24px',
+              color: 'white'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start'
+              }}>
+                <div>
+                  <h5 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
+                    {shipmentModalData.type === 'air' ? '✈️' : '🚢'} {shipmentModalData.type === 'air' ? 'Air' : 'Ocean'} Shipment
+                  </h5>
+                  <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                    {shipmentModalData.number}
+                  </div>
+                </div>
+                <button 
+                  onClick={closeShipmentModal}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    width: '32px',
+                    height: '32px',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: 'white',
+                    lineHeight: 1,
+                    padding: 0
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido */}
+            <div style={{ 
+              padding: '24px', 
+              overflowY: 'auto', 
+              flex: 1,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '16px', opacity: 0.5 }}>
+                {shipmentModalData.type === 'air' ? '✈️' : '🚢'}
+              </div>
+              <h6 style={{ color: '#1f2937', marginBottom: '8px' }}>
+                Información del Envío
+              </h6>
+              <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '20px' }}>
+                Para ver los detalles completos de este envío, dirígete a la sección de{' '}
+                <strong>{shipmentModalData.type === 'air' ? 'Air Shipments' : 'Ocean Shipments'}</strong>{' '}
+                y busca el número: <strong>{shipmentModalData.number}</strong>
+              </p>
+              
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px' }}>
+                  NÚMERO DE ENVÍO
+                </div>
+                <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1f2937' }}>
+                  {shipmentModalData.number}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ 
+              padding: '16px 24px',
+              borderTop: '1px solid #e5e7eb',
+              backgroundColor: '#f9fafb'
+            }}>
+              <button 
+                onClick={closeShipmentModal}
+                style={{
+                  width: '100%',
+                  background: shipmentModalData.type === 'air' 
+                    ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                    : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 24px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Estado vacío */}
+      {!loading && invoices.length === 0 && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '60px 20px',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ fontSize: '4rem', marginBottom: '16px', opacity: 0.5 }}>📊</div>
+          <h5 style={{ color: '#1f2937', marginBottom: '8px', fontSize: '1.2rem' }}>
+            No hay facturas disponibles
+          </h5>
+          <p style={{ color: '#6b7280' }}>
+            No se encontraron facturas para tu cuenta
+          </p>
+        </div>
+      )}
+    </>
   );
 }
 

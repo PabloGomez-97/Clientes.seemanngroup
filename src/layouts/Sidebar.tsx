@@ -67,15 +67,6 @@ function Sidebar({ isOpen }: SidebarProps) {
           )
         },
         {
-          path: '/all-shipments',
-          name: 'All Shipments',
-          icon: (
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M0 3a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3zm1.5.5A.5.5 0 0 0 1 4v1.528l7.614 4.57a.5.5 0 0 0 .772-.416V4a.5.5 0 0 0-.5-.5H1.5zm13 .5h-6v1.528l6 3.6V4a.5.5 0 0 0-.5-.5zM15 8.528l-6 3.6v2.372a.5.5 0 0 0 .772.416L15 10.472v-1.944zm-13 1.944 6 3.6a.5.5 0 0 0 .772-.416v-2.372l-6-3.6v2.388z"/>
-            </svg>
-          )
-        },
-        {
           path: '/reports',
           name: 'Reportes',
           icon: (

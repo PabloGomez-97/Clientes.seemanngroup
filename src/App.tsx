@@ -29,7 +29,6 @@ import Newquotes from './components/quotes/Newquotes';
 import QuotesView from './components/quotes/QuotesView';
 import AirShipmentsView from './components/shipments/AirShipmentsView';
 import OceanShipmentsView from './components/shipments/OceanShipmentsView';
-import ShipmentsView from './components/shipments/Shipments';
 import Reports from './components/reports/Reports';
 import Settings from './components/settings/Settings';
 
@@ -90,7 +89,6 @@ function App() {
         <Route path="crear-cotizacion" element={<Newquotes />} />
         <Route path="air-shipments" element={<AirShipmentsView />} />
         <Route path="ocean-shipments" element={<OceanShipmentsView />} />
-        <Route path="all-shipments" element={<ShipmentsView />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />
       </Route>
