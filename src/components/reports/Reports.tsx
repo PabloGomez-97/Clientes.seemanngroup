@@ -230,6 +230,27 @@ function Reports() {
     return `${currency} $${formatted}`;
   };
 
+  // Función para eliminar duplicados de charges sin modificar valores
+  const processCharges = (charges: any[]) => {
+    if (!charges || charges.length === 0) return [];
+    
+    // Eliminar duplicados basándose en descripción, cantidad, rate y amount
+    const uniqueCharges: any[] = [];
+    const seenCharges = new Set<string>();
+    
+    charges.forEach(charge => {
+      // Crear una key única para cada charge
+      const key = `${charge.description}-${charge.quantity}-${charge.rate}-${charge.amount}`;
+      
+      if (!seenCharges.has(key)) {
+        seenCharges.add(key);
+        uniqueCharges.push(charge);
+      }
+    });
+    
+    return uniqueCharges;
+  };
+
   // Función para determinar el estado de la factura
   const getInvoiceStatus = (invoice: Invoice): 'paid' | 'pending' | 'overdue' => {
     const balanceDue = invoice.balanceDue?.value || 0;
@@ -1548,22 +1569,22 @@ function Reports() {
                         <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                           <th style={{ padding: '8px', textAlign: 'left', fontSize: '0.7rem', color: '#6b7280' }}>DESCRIPCIÓN</th>
                           <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>CANTIDAD</th>
-                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>TARIFA</th>
-                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>MONTO</th>
+                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>TARIFA (USD)</th>
+                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>MONTO (USD)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedInvoice.charges.map((charge, index) => (
+                        {processCharges(selectedInvoice.charges).map((charge, index) => (
                           <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
                             <td style={{ padding: '8px', color: '#1f2937' }}>{charge.description}</td>
                             <td style={{ padding: '8px', textAlign: 'right', color: '#4b5563' }}>
                               {charge.quantity} {charge.unit}
                             </td>
                             <td style={{ padding: '8px', textAlign: 'right', color: '#4b5563' }}>
-                              {formatCurrency(charge.rate || 0, selectedInvoice.currency?.abbr || 'USD')}
+                              {formatCurrency(charge.rate || 0, 'USD')}
                             </td>
                             <td style={{ padding: '8px', textAlign: 'right', color: '#1f2937', fontWeight: '600' }}>
-                              {formatCurrency(charge.amount || 0, selectedInvoice.currency?.abbr || 'USD')}
+                              {formatCurrency(charge.amount || 0, 'USD')}
                             </td>
                           </tr>
                         ))}
