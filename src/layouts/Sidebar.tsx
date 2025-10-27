@@ -11,7 +11,7 @@ function Sidebar({ isOpen }: SidebarProps) {
   const navigate = useNavigate();
 
   const menuSections = [
-    {
+    /*{
       title: 'GENERAL',
       items: [
         {
@@ -35,9 +35,9 @@ function Sidebar({ isOpen }: SidebarProps) {
           )
         }
       ]
-    },
+    },*/
     {
-      title: 'MODULES',
+      title: 'GENERAL',
       items: [
         {
           path: '/quotes',
