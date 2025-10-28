@@ -1518,7 +1518,7 @@ function Reports() {
       {showInvoiceModal && selectedInvoice && (
         <div 
           className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, overflowY: 'auto' }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, overflowY: 'auto', animation: 'fadeIn 0.3s ease-in-out' }}
           onClick={closeInvoiceModal}
         >
           <div 
@@ -1887,7 +1887,7 @@ function Reports() {
       {showOverdueModal && overdueCurrency && (
         <div
           className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10001, overflowY: 'auto' }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10001, overflowY: 'auto', animation: 'fadeIn 0.3s ease-in-out' }}
           onClick={closeOverdueModal}
         >
           <div
