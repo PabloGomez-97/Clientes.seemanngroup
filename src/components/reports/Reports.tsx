@@ -67,66 +67,117 @@ interface ShipmentModalData {
 }
 
 // Componente para Cards de Métricas
-function MetricCard({ 
-  title, 
-  value, 
-  icon, 
+function MetricCard({
+  title,
+  value,
+  icon,
   color,
-  subtitle 
-}: { 
-  title: string; 
-  value: string | number; 
-  icon: string; 
+  subtitle,
+  onClick, // opcional: si viene, la card queda clickeable
+}: {
+  title: string;
+  value: string | number;
+  icon: string;
   color: string;
   subtitle?: string;
+  onClick?: () => void;
 }) {
   return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      padding: '20px',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e5e7eb',
-      transition: 'transform 0.2s',
-      cursor: 'default'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-        <div style={{
-          fontSize: '2rem',
-          color: color
-        }}>
-          {icon}
+    <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') onClick();
+            }
+          : undefined
+      }
+      style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e5e7eb',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        cursor: onClick ? 'pointer' : 'default',
+        outline: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px',
+      }}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+        }
+      }}
+    >
+      {/* Icono */}
+      <div
+        aria-hidden
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: '10px',
+          backgroundColor: color,
+          display: 'grid',
+          placeItems: 'center',
+          color: 'white',
+          fontSize: '22px',
+          fontWeight: 700,
+          flex: '0 0 auto',
+        }}
+      >
+        {icon}
+      </div>
+
+      {/* Texto */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+        <div
+          title={title}
+          style={{ color: '#6b7280', fontSize: 12, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}
+        >
+          {title}
         </div>
-      </div>
-      <div style={{
-        fontSize: '0.75rem',
-        fontWeight: '600',
-        color: '#6b7280',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
-        marginBottom: '8px'
-      }}>
-        {title}
-      </div>
-      <div style={{
-        fontSize: '1.8rem',
-        fontWeight: '700',
-        color: '#1f2937',
-        marginBottom: subtitle ? '4px' : '0'
-      }}>
-        {value}
-      </div>
-      {subtitle && (
-        <div style={{
-          fontSize: '0.75rem',
-          color: '#6b7280'
-        }}>
-          {subtitle}
+        <div
+          style={{
+            color: '#111827',
+            fontSize: 22,
+            fontWeight: 700,
+            lineHeight: 1.1,
+            wordBreak: 'break-word',
+          }}
+        >
+          {typeof value === 'number' ? value.toLocaleString('es-CL') : value}
         </div>
-      )}
+        {subtitle ? (
+          <div
+            style={{
+              color: '#6b7280',
+              fontSize: 12,
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+              textOverflow: 'ellipsis',
+              overflow: 'hidden',
+            }}
+          >
+            {subtitle}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
+
+
 
 // Componente para Secciones Colapsables
 function CollapsibleSection({ 
@@ -212,6 +263,20 @@ function Reports() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showShipmentModal, setShowShipmentModal] = useState(false);
   const [shipmentModalData, setShipmentModalData] = useState<ShipmentModalData | null>(null);
+  // Modal de facturas vencidas por moneda
+  const [showOverdueModal, setShowOverdueModal] = useState(false);
+  const [overdueCurrency, setOverdueCurrency] = useState<string | null>(null);
+
+  const openOverdueModal = (currency: string) => {
+    setOverdueCurrency(currency);
+    setShowOverdueModal(true);
+  };
+
+  const closeOverdueModal = () => {
+    setShowOverdueModal(false);
+    setOverdueCurrency(null);
+  };
+
 
   // Función para formatear fechas
   const formatDate = (dateString?: string) => {
@@ -436,6 +501,15 @@ function Reports() {
     });
   }, [invoices, periodFilter]);
 
+  const overdueInvoices = useMemo(() => {
+    if (!overdueCurrency) return [];
+    return filteredByPeriod.filter(
+      (inv) =>
+        getInvoiceStatus(inv) === 'overdue' &&
+        (inv.currency?.abbr || 'USD') === overdueCurrency
+    );
+  }, [filteredByPeriod, overdueCurrency]);
+
   // Filtrar por estado
   const filteredByStatus = useMemo(() => {
     if (statusFilter === 'all') return filteredByPeriod;
@@ -513,9 +587,9 @@ function Reports() {
       months[monthKey][currency] += amount;
     });
     
-    return Object.entries(months).map(([month, currencies]) => ({
+    return Object.entries(months).map(([month, curr]) => ({
       month,
-      ...currencies
+      ...curr
     }));
   }, [filteredByPeriod]);
 
@@ -1011,6 +1085,9 @@ function Reports() {
                   icon="⚠️"
                   color="#ef4444"
                   subtitle={metrics.overdueCount > 0 ? 'Requieren atención' : 'Todo al día'}
+                  onClick={() => {
+                    if (metrics.overdueCount > 0) openOverdueModal(currency);
+                  }}
                 />
               </div>
             </div>
@@ -1790,6 +1867,149 @@ function Reports() {
                   background: shipmentModalData.type === 'air' 
                     ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
                     : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '10px 24px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '600'
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Facturas Vencidas por moneda */}
+      {showOverdueModal && overdueCurrency && (
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10001, overflowY: 'auto' }}
+          onClick={closeOverdueModal}
+        >
+          <div
+            className="bg-white rounded"
+            style={{
+              maxWidth: '1000px',
+              width: '100%',
+              maxHeight: '90vh',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                padding: '24px',
+                color: 'white'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h5 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
+                    ⚠️ Facturas Vencidas – {overdueCurrency}
+                  </h5>
+                  <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                    {overdueInvoices.length} {overdueInvoices.length === 1 ? 'factura' : 'facturas'} encontradas
+                  </div>
+                </div>
+                <button
+                  onClick={closeOverdueModal}
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '6px',
+                    width: '32px',
+                    height: '32px',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    color: 'white',
+                    lineHeight: 1,
+                    padding: 0
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido */}
+            <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+              {overdueInvoices.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#6b7280' }}>No hay facturas vencidas en {overdueCurrency}.</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Número</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Fecha</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Vencimiento</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left' }}>Shipment</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right' }}>Total</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right' }}>Saldo</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'center' }}>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overdueInvoices
+                        .sort((a, b) => new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime())
+                        .map((inv, idx) => (
+                          <tr key={`${inv.id}-${idx}`} style={{ borderBottom: '1px solid #f3f4f6', background: 'white' }}>
+                            <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1f2937' }}>{inv.number || '-'}</td>
+                            <td style={{ padding: '12px 16px', color: '#4b5563' }}>
+                              {inv.date ? new Date(inv.date).toLocaleDateString('es-CL') : '-'}
+                            </td>
+                            <td style={{ padding: '12px 16px', color: '#b91c1c', fontWeight: 600 }}>
+                              {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('es-CL') : '-'}
+                            </td>
+                            <td style={{ padding: '12px 16px', color: '#4b5563' }}>{inv.shipment?.number || '-'}</td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right', color: '#1f2937', fontWeight: 600 }}>
+                              {formatCurrency(inv.totalAmount?.value || 0, inv.currency?.abbr || 'USD')}
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right', color: '#ef4444', fontWeight: 700 }}>
+                              {formatCurrency(inv.balanceDue?.value || 0, inv.currency?.abbr || 'USD')}
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                              <button
+                                onClick={() => {
+                                  openInvoiceModal(inv);
+                                }}
+                                style={{
+                                  backgroundColor: '#8b5cf6',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  padding: '6px 12px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8rem',
+                                  fontWeight: 600
+                                }}
+                              >
+                                Ver detalle
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+              <button
+                onClick={closeOverdueModal}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
