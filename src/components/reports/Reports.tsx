@@ -1764,7 +1764,7 @@ function Reports() {
       {showShipmentModal && shipmentModalData && (
         <div 
           className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10000, overflowY: 'auto' }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10000, overflowY: 'auto', animation: 'fadeIn 0.3s ease-in-out' }}
           onClick={closeShipmentModal}
         >
           <div 

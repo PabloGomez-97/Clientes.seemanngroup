@@ -776,7 +776,7 @@ function AirShipmentsView() {
       {showSearchModal && (
         <div 
           className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999 }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, animation: 'fadeIn 0.3s ease-in-out' }}
           onClick={closeSearchModal}
         >
           <div 
@@ -1231,7 +1231,7 @@ function AirShipmentsView() {
       {showModal && selectedShipment && (
         <div 
           className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, overflowY: 'auto' }}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, overflowY: 'auto', animation: 'fadeIn 0.3s ease-in-out' }}
           onClick={closeModal}
         >
           <div 
