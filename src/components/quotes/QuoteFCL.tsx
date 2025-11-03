@@ -17,7 +17,7 @@ function QuoteAPITester() {
   
   // Estado para el packageType seleccionado
   const [selectedPackageType, setSelectedPackageType] = useState(40); // Por defecto 20 FT. STANDARD CONTAINER
-
+  
   // Opciones de packageType
   const packageTypeOptions = [
     { id: 15, name: "40 FT. VENTILATED" },
@@ -65,7 +65,7 @@ function QuoteAPITester() {
           name: "SAN ANTONIO"
       },
       modeOfTransportation: {
-          id: 1
+          id: 2
       },
       rateCategoryId: 2,
       portOfReceipt: {
@@ -89,6 +89,29 @@ function QuoteAPITester() {
               packageType: {
                 id: selectedPackageType
               }
+          }
+      ],
+      charges: [
+          {
+            service: {
+              id: 168,
+              code: "B"
+            },
+            description: "BL",
+            income: {
+              quantity: 1,
+              unit: "BL",
+              rate: 60,
+              autoUpdate: true,
+              payment: "Prepaid",
+              billApplyTo: "Shipper",
+              Currency: {
+                abbr: "CLP",
+              },
+              reference: "TEST-REF-CLAUDE",
+              showOnDocument: true,
+              notes: "Charge created via API Tester"
+            }
           }
       ]
     };
