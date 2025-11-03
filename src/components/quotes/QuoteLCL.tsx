@@ -113,7 +113,93 @@ function QuoteAPITester() {
                 totalVolumeWeightValue: totalVolumeWeight,
                 totalVolumeWeightUOM: "kg"
             }
-        ]
+        ],
+        charges: [
+          // Cobro de BL en MODO NORMAL
+          {
+            service: {
+              id: 168,
+              code: "B"
+            },
+            income: {
+              quantity: 1,
+              unit: "BL",
+              rate: 60,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
+              },
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF",
+              showOnDocument: true,
+              notes: "Charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
+            }
+          },
+          // Cobro de Handling en MODO NORMAL
+          {
+            service: {
+              id: 162,
+              code: "H"
+            },
+            income: {
+              quantity: 1,
+              unit: "HL",
+              rate: 45,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
+              },
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF-HANDLING",
+              showOnDocument: true,
+              notes: "Handling charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
+            }
+          },
+          // Cobro de EXW en MODO NORMAL
+          {
+            service: {
+              id: 271,
+              code: "EC"
+            },
+            income: {
+              quantity: 1,
+              unit: "EXW CHARGES",
+              rate: 45,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
+              },
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF-HANDLING",
+              showOnDocument: true,
+              notes: "EXW CHARGES charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
+            }
+          }
+      ]
       };
     }
     
@@ -168,6 +254,92 @@ function QuoteAPITester() {
               volumeUOM: "m3",
               totalVolumeValue: manualVolume,
               totalVolumeUOM: "m3"
+          }
+      ],
+      charges: [
+        // Cobro de BL en MODO OVERALL
+          {
+            service: {
+              id: 168,
+              code: "B"
+            },
+            income: {
+              quantity: 1,
+              unit: "BL",
+              rate: 60,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
+              },
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF",
+              showOnDocument: true,
+              notes: "Charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
+            }
+          },
+          // Cobro de Handling en MODO OVERALL
+          {
+            service: {
+              id: 162,
+              code: "H"
+            },
+            income: {
+              quantity: 1,
+              unit: "HL",
+              rate: 45,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
+              },
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF-HANDLING",
+              showOnDocument: true,
+              notes: "Handling charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
+            }
+          },
+          // Cobro de EXW en MODO OVERALL
+          {
+            service: {
+              id: 271,
+              code: "EC"
+            },
+            income: {
+              quantity: 1,
+              unit: "EXW CHARGES",
+              rate: 45,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
+              },
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF-HANDLING",
+              showOnDocument: true,
+              notes: "EXW CHARGES charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
+            }
           }
       ]
     };
@@ -436,7 +608,7 @@ function QuoteAPITester() {
                 Probando...
               </>
             ) : (
-              <>🚀 Probar API</>
+              <>Generar Cotización</>
             )}
           </button>
 

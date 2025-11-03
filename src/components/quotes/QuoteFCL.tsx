@@ -97,20 +97,53 @@ function QuoteAPITester() {
               id: 168,
               code: "B"
             },
-            description: "BL",
             income: {
               quantity: 1,
               unit: "BL",
               rate: 60,
-              autoUpdate: true,
               payment: "Prepaid",
-              billApplyTo: "Shipper",
-              Currency: {
-                abbr: "CLP",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
               },
-              reference: "TEST-REF-CLAUDE",
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF",
               showOnDocument: true,
-              notes: "Charge created via API Tester"
+              notes: "Charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
+            }
+          },
+          {
+            service: {
+              id: 162,
+              code: "H"
+            },
+            income: {
+              quantity: 1,
+              unit: "HL",
+              rate: 45,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
+              },
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF-HANDLING",
+              showOnDocument: true,
+              notes: "Handling charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
             }
           }
       ]
@@ -226,7 +259,7 @@ function QuoteAPITester() {
                 Probando...
               </>
             ) : (
-              <>🚀 Probar API</>
+              <>Generar Cotización</>
             )}
           </button>
 
