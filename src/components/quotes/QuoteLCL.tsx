@@ -15,6 +15,10 @@ function QuoteAPITester() {
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Estados para validaciones
+  const [weightError, setWeightError] = useState<string | null>(null);
+  const [dimensionError, setDimensionError] = useState<string | null>(null);
+
   // Estados para el commodity
   const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
   const [pieces, setPieces] = useState(1);
@@ -49,11 +53,45 @@ function QuoteAPITester() {
   const totalWeight = weight * pieces;
   const totalVolumeWeight = volumeWeight * pieces;
 
+  // Función para calcular el rate de EXW según el peso chargeable (mayor entre peso real y volumétrico)
+  const calculateEXWRate = (weightKg: number, volumeWeightKg: number) => {
+    // Usar el mayor entre peso real y peso volumétrico
+    const chargeableWeight = Math.max(weightKg, volumeWeightKg);
+    
+    let ratePerKg = 0;
+    
+    // Determinar el rate por kg según el rango de peso
+    if (chargeableWeight >= 1000) {
+      ratePerKg = 0.6;
+    } else if (chargeableWeight >= 500) {
+      ratePerKg = 0.65;
+    } else if (chargeableWeight >= 250) {
+      ratePerKg = 0.75;
+    } else {
+      // 0-250KG (incluyendo 100-250 y 0-100)
+      ratePerKg = 0.8;
+    }
+    
+    // Calcular el rate total
+    const calculatedRate = chargeableWeight * ratePerKg;
+    
+    // Aplicar el mínimo de US$150
+    return Math.max(calculatedRate, 150);
+  };
+
+  // Función para calcular el rate de AWB (US$0.15 por kg chargeable)
+  const calculateAWBRate = (weightKg: number, volumeWeightKg: number) => {
+    // Usar el mayor entre peso real y peso volumétrico
+    const chargeableWeight = Math.max(weightKg, volumeWeightKg);
+    
+    // AWB es US$0.15 por kg
+    return chargeableWeight * 0.15;
+  };
+
   const getTestPayload = () => {
     // MODO NORMAL - Con dimensiones
     if (!overallDimsAndWeight) {
       return {
-        id: 14169,
         date: new Date().toISOString(),
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
@@ -180,7 +218,7 @@ function QuoteAPITester() {
             income: {
               quantity: 1,
               unit: "EXW CHARGES",
-              rate: 45,
+              rate: calculateEXWRate(totalWeight, totalVolumeWeight),
               payment: "Prepaid",
               billApplyTo: "Other",
               billTo: {
@@ -198,6 +236,34 @@ function QuoteAPITester() {
                 abbr: "USD"
               }
             }
+          },
+          // Cobro de AWB en MODO NORMAL
+          {
+            service: {
+              id: 10,
+              code: "AWB"
+            },
+            income: {
+              quantity: 1,
+              unit: "AIRWAY BILL FEE",
+              rate: calculateAWBRate(totalWeight, totalVolumeWeight),
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
+              },
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF-AWB",
+              showOnDocument: true,
+              notes: "AWB charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
+            }
           }
       ]
       };
@@ -205,7 +271,6 @@ function QuoteAPITester() {
     
     // MODO OVERALL - Sin dimensiones ni peso volumétrico
     return {
-      id: 14169,
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
@@ -322,7 +387,7 @@ function QuoteAPITester() {
             income: {
               quantity: 1,
               unit: "EXW CHARGES",
-              rate: 45,
+              rate: calculateEXWRate(manualWeight, manualVolume * 167),
               payment: "Prepaid",
               billApplyTo: "Other",
               billTo: {
@@ -334,6 +399,34 @@ function QuoteAPITester() {
               reference: "TEST-REF-HANDLING",
               showOnDocument: true,
               notes: "EXW CHARGES charge created via API"
+            },
+            expense: {
+              currency: {
+                abbr: "USD"
+              }
+            }
+          },
+          // Cobro de AWB en MODO OVERALL
+          {
+            service: {
+              id: 10,
+              code: "AWB"
+            },
+            income: {
+              quantity: 1,
+              unit: "AIRWAY BILL FEE",
+              rate: calculateAWBRate(manualWeight, manualVolume * 167),
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: user?.username
+              },
+              currency: {
+                abbr: "USD"
+              },
+              reference: "TEST-REF-AWB",
+              showOnDocument: true,
+              notes: "AWB charge created via API"
             },
             expense: {
               currency: {
@@ -360,7 +453,7 @@ function QuoteAPITester() {
     try {
       console.log('🚀 Enviando payload de prueba:', payload);
       
-      const res = await fetch('https://api.linbis.com/Quotes/update', {
+      const res = await fetch('https://api.linbis.com/Quotes/create', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -425,7 +518,19 @@ function QuoteAPITester() {
                   type="number" 
                   className="form-control" 
                   value={pieces}
-                  onChange={(e) => setPieces(Number(e.target.value))}
+                  onChange={(e) => {
+                    const newPieces = Number(e.target.value);
+                    setPieces(newPieces);
+                    // Validar peso total
+                    if (!overallDimsAndWeight) {
+                      const newTotalWeight = weight * newPieces;
+                      if (newTotalWeight > 2000) {
+                        setWeightError('El peso total no puede exceder 2000 kg');
+                      } else {
+                        setWeightError(null);
+                      }
+                    }
+                  }}
                   min="1"
                 />
               </div>
@@ -478,48 +583,97 @@ function QuoteAPITester() {
                     <label className="form-label">Largo (cm)</label>
                     <input 
                       type="number" 
-                      className="form-control" 
+                      className={`form-control ${dimensionError && dimensionError.includes('Largo') ? 'is-invalid' : ''}`}
                       value={length}
-                      onChange={(e) => setLength(Number(e.target.value))}
+                      onChange={(e) => {
+                        const newLength = Number(e.target.value);
+                        setLength(newLength);
+                        if (newLength > 290) {
+                          setDimensionError('El largo no puede exceder 290 cm');
+                        } else if (width > 290 || height > 160) {
+                          // Mantener error si hay otros problemas
+                        } else {
+                          setDimensionError(null);
+                        }
+                      }}
                       min="0"
                       step="0.01"
                     />
+                    {dimensionError && dimensionError.includes('largo') && (
+                      <div className="invalid-feedback">{dimensionError}</div>
+                    )}
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label">Ancho (cm)</label>
                     <input 
                       type="number" 
-                      className="form-control" 
+                      className={`form-control ${dimensionError && dimensionError.includes('Ancho') ? 'is-invalid' : ''}`}
                       value={width}
-                      onChange={(e) => setWidth(Number(e.target.value))}
+                      onChange={(e) => {
+                        const newWidth = Number(e.target.value);
+                        setWidth(newWidth);
+                        if (newWidth > 290) {
+                          setDimensionError('El ancho no puede exceder 290 cm');
+                        } else if (length > 290 || height > 160) {
+                          // Mantener error si hay otros problemas
+                        } else {
+                          setDimensionError(null);
+                        }
+                      }}
                       min="0"
                       step="0.01"
                     />
+                    {dimensionError && dimensionError.includes('ancho') && (
+                      <div className="invalid-feedback">{dimensionError}</div>
+                    )}
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label">Alto (cm)</label>
                     <input 
                       type="number" 
-                      className="form-control" 
+                      className={`form-control ${dimensionError && dimensionError.includes('Alto') ? 'is-invalid' : ''}`}
                       value={height}
-                      onChange={(e) => setHeight(Number(e.target.value))}
+                      onChange={(e) => {
+                        const newHeight = Number(e.target.value);
+                        setHeight(newHeight);
+                        if (newHeight > 160) {
+                          setDimensionError('El alto no puede exceder 160 cm');
+                        } else if (length > 290 || width > 290) {
+                          // Mantener error si hay otros problemas
+                        } else {
+                          setDimensionError(null);
+                        }
+                      }}
                       min="0"
                       step="0.01"
                     />
+                    {dimensionError && dimensionError.includes('alto') && (
+                      <div className="invalid-feedback">{dimensionError}</div>
+                    )}
                   </div>
 
                   <div className="col-md-3">
                     <label className="form-label">Peso por pieza (kg)</label>
                     <input 
                       type="number" 
-                      className="form-control" 
+                      className={`form-control ${weightError ? 'is-invalid' : ''}`}
                       value={weight}
-                      onChange={(e) => setWeight(Number(e.target.value))}
+                      onChange={(e) => {
+                        const newWeight = Number(e.target.value);
+                        setWeight(newWeight);
+                        const newTotalWeight = newWeight * pieces;
+                        if (newTotalWeight > 2000) {
+                          setWeightError('El peso total no puede exceder 2000 kg');
+                        } else {
+                          setWeightError(null);
+                        }
+                      }}
                       min="0"
                       step="0.01"
                     />
+                    {weightError && <div className="invalid-feedback">{weightError}</div>}
                   </div>
                 </>
               )}
@@ -531,13 +685,22 @@ function QuoteAPITester() {
                     <label className="form-label">Peso Total (kg)</label>
                     <input 
                       type="number" 
-                      className="form-control" 
+                      className={`form-control ${weightError ? 'is-invalid' : ''}`}
                       value={manualWeight}
-                      onChange={(e) => setManualWeight(Number(e.target.value))}
+                      onChange={(e) => {
+                        const newManualWeight = Number(e.target.value);
+                        setManualWeight(newManualWeight);
+                        if (newManualWeight > 2000) {
+                          setWeightError('El peso total no puede exceder 2000 kg');
+                        } else {
+                          setWeightError(null);
+                        }
+                      }}
                       min="0"
                       step="0.01"
                     />
                     <small className="text-muted">Este es el peso total de todas las piezas</small>
+                    {weightError && <div className="invalid-feedback">{weightError}</div>}
                   </div>
 
                   <div className="col-md-6">
@@ -599,7 +762,7 @@ function QuoteAPITester() {
 
           <button
             onClick={testAPI}
-            disabled={loading || !accessToken}
+            disabled={loading || !accessToken || weightError !== null || dimensionError !== null}
             className="btn btn-lg btn-success"
           >
             {loading ? (
@@ -611,6 +774,12 @@ function QuoteAPITester() {
               <>Generar Cotización</>
             )}
           </button>
+
+          {(weightError || dimensionError) && (
+            <div className="alert alert-warning mt-3">
+              ⚠️ <strong>Corrección necesaria:</strong> {weightError || dimensionError}
+            </div>
+          )}
 
           {!accessToken && (
             <div className="alert alert-danger mt-3">

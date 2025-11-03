@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from "../../auth/AuthContext";
+import { packageTypeOptions } from './PackageTypes/Containertypes';
 
 interface OutletContext {
   accessToken: string;
@@ -17,135 +18,217 @@ function QuoteAPITester() {
   
   // Estado para el packageType seleccionado
   const [selectedPackageType, setSelectedPackageType] = useState(40); // Por defecto 20 FT. STANDARD CONTAINER
-  
-  // Opciones de packageType
-  const packageTypeOptions = [
-    { id: 15, name: "40 FT. VENTILATED" },
-    { id: 16, name: "40 FT. TANK" },
-    { id: 17, name: "40 FT. INSULATED" },
-    { id: 18, name: "40 FT. HIGH CUBE HARD TOP" },
-    { id: 19, name: "40 FT. HARD TOP" },
-    { id: 20, name: "40 FT. COLLAPSIBLE FLAT RACK" },
-    { id: 21, name: "40 FT. PLATFORM" },
-    { id: 22, name: "40 FT. FLAT RACK" },
-    { id: 23, name: "40 FT. OPEN TOP" },
-    { id: 24, name: "40 FT. HC REFRIGERATED (ALUMINIUM)" },
-    { id: 25, name: "40 FT. REFRIGERATED (ALUMINIUM)" },
-    { id: 26, name: "40 FT. DRY FREIGHT" },
-    { id: 27, name: "40 FT. HIGH CUBE" },
-    { id: 28, name: "40 FT. STANDARD CONTAINER" },
-    { id: 29, name: "20 FT. VENTILATED" },
-    { id: 30, name: "20 FT. TANK" },
-    { id: 31, name: "20 FT. PLATFORM" },
-    { id: 32, name: "20 FT. INSULATED" },
-    { id: 33, name: "20 FT. HARD TOP" },
-    { id: 34, name: "20 FT. COLLAPSIBLE FLAT RACK" },
-    { id: 35, name: "20 FT. BULK" },
-    { id: 36, name: "20 FT. FLAT RACK" },
-    { id: 37, name: "20 FT. OPEN TOP" },
-    { id: 38, name: "20 FT. REFRIGERATED (ALUMINIUM)" },
-    { id: 39, name: "20 FT. DRY FREIGHT" },
-    { id: 40, name: "20 FT. STANDARD CONTAINER" }
-  ];
 
   const getTestPayload = () => {
     return {
-      id: 14169,
+      id: 14184,
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
       customerReference: "TEST-REF-CLAUDE",
       contact: {
-          name: user?.username
+        name: "SCANCONTROLS INGENIERIA LTDA"
       },
       origin: {
-          name: "PUERTO DE SHANGHAI"
+        name: "FRA"
       },
       destination: {
-          name: "SAN ANTONIO"
+        name: "SCL"
       },
       modeOfTransportation: {
-          id: 2
+        id: 1
       },
       rateCategoryId: 2,
       portOfReceipt: {
-          name: "PUERTO DE SHANGHAI"
+        name: "FRA"
       },
       shipper: {
-          name: "SEEMANN Y CIA LTDA"
+        name: "SEEMANN Y CIA LTDA"
       },
       consignee: {
-          name: user?.username
+        name: "SCANCONTROLS INGENIERIA LTDA"
       },
       issuingCompany: {
-          name: "MUELLER-GYSIN LIMITED"
+        name: "MUELLER-GYSIN LIMITED"
       },
       salesRep: {
-          name: "Ignacio Maldonado"
+        name: "Ignacio Maldonado"
       },
       commodities: [
-          {
-              commodityTypeName: "Container",
-              packageType: {
-                id: selectedPackageType
-              }
-          }
+        {
+          commodityType: "Standard",
+          packageType: {
+            id: 97
+          },
+          pieces: 1,
+          description: "Test Cargo - Claude Tester",
+          weightPerUnitValue: 50,
+          weightPerUnitUOM: "kg",
+          totalWeightValue: 50,
+          totalWeightUOM: "kg",
+          lengthValue: 100,
+          lengthUOM: "cm",
+          widthValue: 80,
+          widthUOM: "cm",
+          heightValue: 60,
+          heightUOM: "cm",
+          volumeValue: 0.48,
+          volumeUOM: "m3",
+          totalVolumeValue: 0.48,
+          totalVolumeUOM: "m3",
+          volumeWeightValue: 80.16,
+          volumeWeightUOM: "kg",
+          totalVolumeWeightValue: 80.16,
+          totalVolumeWeightUOM: "kg"
+        }
       ],
       charges: [
-          {
-            service: {
-              id: 168,
-              code: "B"
-            },
-            income: {
-              quantity: 1,
-              unit: "BL",
-              rate: 60,
-              payment: "Prepaid",
-              billApplyTo: "Other",
-              billTo: {
-                name: user?.username
-              },
-              currency: {
-                abbr: "USD"
-              },
-              reference: "TEST-REF",
-              showOnDocument: true,
-              notes: "Charge created via API"
-            },
-            expense: {
-              currency: {
-                abbr: "USD"
-              }
-            }
+        {
+          service: {
+            id: 168,
+            code: "B"
           },
-          {
-            service: {
-              id: 162,
-              code: "H"
+          income: {
+            quantity: 1,
+            unit: "BL",
+            rate: 60,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: "SCANCONTROLS INGENIERIA LTDA"
             },
-            income: {
-              quantity: 1,
-              unit: "HL",
-              rate: 45,
-              payment: "Prepaid",
-              billApplyTo: "Other",
-              billTo: {
-                name: user?.username
-              },
-              currency: {
-                abbr: "USD"
-              },
-              reference: "TEST-REF-HANDLING",
-              showOnDocument: true,
-              notes: "Handling charge created via API"
+            currency: {
+              abbr: "USD"
             },
-            expense: {
-              currency: {
-                abbr: "USD"
-              }
+            reference: "TEST-REF",
+            showOnDocument: true,
+            notes: "Charge created via API"
+          },
+          expense: {
+            currency: {
+              abbr: "USD"
             }
           }
+        },
+        {
+          service: {
+            id: 162,
+            code: "H"
+          },
+          income: {
+            quantity: 1,
+            unit: "HL",
+            rate: 45,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: "SCANCONTROLS INGENIERIA LTDA"
+            },
+            currency: {
+              abbr: "USD"
+            },
+            reference: "TEST-REF-HANDLING",
+            showOnDocument: true,
+            notes: "Handling charge created via API"
+          },
+          expense: {
+            currency: {
+              abbr: "USD"
+            }
+          }
+        },
+        {
+          service: {
+            id: 271,
+            code: "EC"
+          },
+          income: {
+            quantity: 1,
+            unit: "EXW CHARGES",
+            rate: 150,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: "SCANCONTROLS INGENIERIA LTDA"
+            },
+            currency: {
+              abbr: "USD"
+            },
+            reference: "TEST-REF-EXW",
+            showOnDocument: true,
+            notes: "EXW charge created via API"
+          },
+          expense: {
+            currency: {
+              abbr: "USD"
+            }
+          }
+        },
+        {
+          service: {
+            id: 335,
+            code: "AWB"
+          },
+          income: {
+            quantity: 1,
+            unit: "AWB",
+            rate: 12.024,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: "SCANCONTROLS INGENIERIA LTDA"
+            },
+            currency: {
+              abbr: "USD"
+            },
+            reference: "TEST-REF-AWB",
+            showOnDocument: true,
+            notes: "AWB charge created via API"
+          },
+          expense: {
+            currency: {
+              abbr: "USD"
+            }
+          }
+        },
+        {
+          service: {
+            id: 4,
+            code: "AF"
+          },
+          income: {
+            quantity: 80.16,
+            unit: "AIR FREIGHT",
+            rate: 3.3925,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: "SCANCONTROLS INGENIERIA LTDA"
+            },
+            currency: {
+              abbr: "USD"
+            },
+            reference: "TEST-REF-AIRFREIGHT",
+            showOnDocument: true,
+            notes: "AIR FREIGHT charge - Tarifa: EUR 2.95/kg + 15%"
+          },
+          expense: {
+            quantity: 80.16,
+            unit: "AIR FREIGHT",
+            rate: 2.95,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: "SCANCONTROLS INGENIERIA LTDA"
+            },
+            currency: {
+              abbr: "USD"
+            },
+            reference: "TEST-REF-AIRFREIGHT",
+            showOnDocument: true,
+            notes: "AIR FREIGHT expense - Tarifa: EUR 2.95/kg"
+          }
+        }
       ]
     };
   };
@@ -221,7 +304,7 @@ function QuoteAPITester() {
         <div className="card-body">
           {/* Selector de Package Type */}
           <div className="border rounded p-3 mb-3" style={{ backgroundColor: '#f8f9fa' }}>
-            <h6 className="mb-3">📦 Seleccionar Tipo de Contenedor</h6>
+            <h6 className="mb-3">Seleccionar Tipo de Contenedor</h6>
             
             <div className="row g-3">
               <div className="col-12">
@@ -265,7 +348,7 @@ function QuoteAPITester() {
 
           {!accessToken && (
             <div className="alert alert-danger mt-3">
-              ⚠️ No hay token de acceso. Asegúrate de estar autenticado.
+              âš ï¸ No hay token de acceso. AsegÃºrate de estar autenticado.
             </div>
           )}
         </div>
