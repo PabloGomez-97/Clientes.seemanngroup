@@ -699,7 +699,7 @@ function QuoteAPITester() {
         }
       });
 
-      // Cobro de EXW - Usar peso real y volumen sin conversión
+      // Cobro de EXW - Usar peso real y volumen sin conversións
       charges.push({
         service: {
           id: 271,
