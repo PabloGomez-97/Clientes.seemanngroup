@@ -441,7 +441,7 @@ function QuoteAPITester() {
     try {
       const payload = getTestPayload();
       
-      const res = await fetch('https://api.linbis.com/Quotes/update', {
+      const res = await fetch('https://api.linbis.com/Quotes/create', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -602,7 +602,6 @@ function QuoteAPITester() {
       });
 
       return {
-        id: 14184,
         date: new Date().toISOString(),
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
@@ -798,7 +797,6 @@ function QuoteAPITester() {
       });
 
       return {
-        id: 14184,
         date: new Date().toISOString(),
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
