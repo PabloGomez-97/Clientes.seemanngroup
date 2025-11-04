@@ -84,4 +84,5 @@ export const packageTypeOptions: PackageType[] = [
   { id: 107, name: "CAMION BAUL REEFER DE 40" },
   { id: 108, name: "CAMION CAMA BAJA" },
   { id: 109, name: "CAMION GRÚA" },
+  { id: 110, name: "CARGA GENERAL" },
 ];

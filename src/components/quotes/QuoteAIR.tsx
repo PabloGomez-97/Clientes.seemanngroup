@@ -45,7 +45,7 @@ interface SelectOption {
   label: string;
 }
 
-type Currency = 'USD' | 'EUR' | 'GBP';
+type Currency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'CHF' | 'CLP' | 'SEK';
 
 // ============================================================================
 // FUNCIONES HELPER PARA RUTAS AÉREAS
@@ -65,6 +65,10 @@ const extractCurrency = (priceStr: string | null): Currency => {
   
   if (str.includes('EUR')) return 'EUR';
   if (str.includes('GBP')) return 'GBP';
+  if (str.includes('CAD')) return 'CAD';
+  if (str.includes('CHF')) return 'CHF';
+  if (str.includes('CLP')) return 'CLP';
+  if (str.includes('SEK')) return 'SEK';
   return 'USD';
 };
 
@@ -257,7 +261,7 @@ function QuoteAPITester() {
   const [opcionesDestination, setOpcionesDestination] = useState<SelectOption[]>([]);
   
   const [carriersActivos, setCarriersActivos] = useState<Set<string>>(new Set());
-  const [monedasActivas, setMonedasActivas] = useState<Set<Currency>>(new Set(['USD', 'EUR', 'GBP']));
+  const [monedasActivas, setMonedasActivas] = useState<Set<Currency>>(new Set(['USD', 'EUR', 'GBP', 'CAD', 'CHF', 'CLP', 'SEK']));
   const [carriersDisponibles, setCarriersDisponibles] = useState<string[]>([]);
 
   // ============================================================================
@@ -373,14 +377,19 @@ function QuoteAPITester() {
   // Cálculo del peso chargeable (para ambos modos)
   const getPesoChargeable = () => {
     if (overallDimsAndWeight) {
-      const volumeWeightOverall = manualVolume * 167;
-      return Math.max(manualWeight, volumeWeightOverall);
+      // En modo Overall: comparar numéricamente peso vs volumen (sin conversión)
+      return Math.max(manualWeight, manualVolume);
     } else {
       return Math.max(totalWeight, totalVolumeWeight);
     }
   };
 
   const pesoChargeable = getPesoChargeable();
+  
+  // Determinar si se cobra por peso o volumen en modo Overall
+  const chargeableUnit = overallDimsAndWeight 
+    ? (manualWeight >= manualVolume ? 'kg' : 'm³')
+    : 'kg';
 
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
   const tarifaAirFreight = rutaSeleccionada 
@@ -432,7 +441,7 @@ function QuoteAPITester() {
     try {
       const payload = getTestPayload();
       
-      const res = await fetch('https://api.linbis.com/Quotes/create', {
+      const res = await fetch('https://api.linbis.com/Quotes/update', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -464,34 +473,6 @@ function QuoteAPITester() {
 
     // MODO NORMAL
     if (!overallDimsAndWeight) {
-      // Cobro de BL
-      charges.push({
-        service: {
-          id: 168,
-          code: "B"
-        },
-        income: {
-          quantity: 1,
-          unit: "BL",
-          rate: 60,
-          payment: "Prepaid",
-          billApplyTo: "Other",
-          billTo: {
-            name: user?.username
-          },
-          currency: {
-            abbr: "USD"
-          },
-          reference: "TEST-REF",
-          showOnDocument: true,
-          notes: "Charge created via API"
-        },
-        expense: {
-          currency: {
-            abbr: "USD"
-          }
-        }
-      });
 
       // Cobro de Handling
       charges.push({
@@ -509,7 +490,7 @@ function QuoteAPITester() {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-HANDLING",
           showOnDocument: true,
@@ -517,7 +498,7 @@ function QuoteAPITester() {
         },
         expense: {
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           }
         }
       });
@@ -538,7 +519,7 @@ function QuoteAPITester() {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-EXW",
           showOnDocument: true,
@@ -546,7 +527,7 @@ function QuoteAPITester() {
         },
         expense: {
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           }
         }
       });
@@ -560,14 +541,14 @@ function QuoteAPITester() {
         income: {
           quantity: 1,
           unit: "AWB",
-          rate: calculateAWBRate(totalWeight, totalVolumeWeight),
+          rate: 30,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-AWB",
           showOnDocument: true,
@@ -575,7 +556,7 @@ function QuoteAPITester() {
         },
         expense: {
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           }
         }
       });
@@ -596,7 +577,7 @@ function QuoteAPITester() {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-AIRFREIGHT",
           showOnDocument: true,
@@ -612,7 +593,7 @@ function QuoteAPITester() {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-AIRFREIGHT",
           showOnDocument: true,
@@ -621,6 +602,7 @@ function QuoteAPITester() {
       });
 
       return {
+        id: 14184,
         date: new Date().toISOString(),
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
@@ -686,36 +668,7 @@ function QuoteAPITester() {
     } 
     // MODO OVERALL
     else {
-      const volumeWeightOverall = manualVolume * 167;
-
-      // Cobro de BL
-      charges.push({
-        service: {
-          id: 168,
-          code: "B"
-        },
-        income: {
-          quantity: 1,
-          unit: "BL",
-          rate: 60,
-          payment: "Prepaid",
-          billApplyTo: "Other",
-          billTo: {
-            name: user?.username
-          },
-          currency: {
-            abbr: "USD"
-          },
-          reference: "TEST-REF-OVERALL",
-          showOnDocument: true,
-          notes: "Charge created via API (Overall mode)"
-        },
-        expense: {
-          currency: {
-            abbr: "USD"
-          }
-        }
-      });
+      // En modo Overall: el chargeable es el mayor numéricamente entre peso y volumen
 
       // Cobro de Handling
       charges.push({
@@ -733,7 +686,7 @@ function QuoteAPITester() {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-HANDLING-OVERALL",
           showOnDocument: true,
@@ -741,12 +694,12 @@ function QuoteAPITester() {
         },
         expense: {
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           }
         }
       });
 
-      // Cobro de EXW
+      // Cobro de EXW - Usar peso real y volumen sin conversión
       charges.push({
         service: {
           id: 271,
@@ -755,14 +708,14 @@ function QuoteAPITester() {
         income: {
           quantity: 1,
           unit: "EXW CHARGES",
-          rate: calculateEXWRate(manualWeight, volumeWeightOverall),
+          rate: calculateEXWRate(manualWeight, manualVolume),
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-EXW-OVERALL",
           showOnDocument: true,
@@ -770,12 +723,12 @@ function QuoteAPITester() {
         },
         expense: {
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           }
         }
       });
 
-      // Cobro de AWB
+      // Cobro de AWB - Usar peso real y volumen sin conversión
       charges.push({
         service: {
           id: 335,
@@ -784,14 +737,14 @@ function QuoteAPITester() {
         income: {
           quantity: 1,
           unit: "AWB",
-          rate: calculateAWBRate(manualWeight, volumeWeightOverall),
+          rate: 30,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-AWB-OVERALL",
           showOnDocument: true,
@@ -799,7 +752,7 @@ function QuoteAPITester() {
         },
         expense: {
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           }
         }
       });
@@ -812,7 +765,7 @@ function QuoteAPITester() {
         },
         income: {
           quantity: pesoChargeable,
-          unit: "AIR FREIGHT",
+          unit: chargeableUnit === 'kg' ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
           rate: tarifaAirFreight.precioConMarkup,
           payment: "Prepaid",
           billApplyTo: "Other",
@@ -820,15 +773,15 @@ function QuoteAPITester() {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-AIRFREIGHT-OVERALL",
           showOnDocument: true,
-          notes: `AIR FREIGHT charge - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg + 15%`
+          notes: `AIR FREIGHT charge (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} + 15% - Cobrado por ${chargeableUnit === 'kg' ? 'peso' : 'volumen'}`
         },
         expense: {
           quantity: pesoChargeable,
-          unit: "AIR FREIGHT",
+          unit: chargeableUnit === 'kg' ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
           rate: tarifaAirFreight.precio,
           payment: "Prepaid",
           billApplyTo: "Other",
@@ -836,15 +789,16 @@ function QuoteAPITester() {
             name: user?.username
           },
           currency: {
-            abbr: "USD"
+            abbr: rutaSeleccionada.currency
           },
           reference: "TEST-REF-AIRFREIGHT-OVERALL",
           showOnDocument: true,
-          notes: `AIR FREIGHT expense - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg`
+          notes: `AIR FREIGHT expense (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === 'kg' ? 'peso' : 'volumen'}`
         }
       });
 
       return {
+        id: 14184,
         date: new Date().toISOString(),
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
@@ -1008,7 +962,7 @@ function QuoteAPITester() {
                     <div className="col-md-6">
                       <label className="form-label fw-semibold mb-2">Monedas</label>
                       <div className="d-flex flex-wrap gap-2">
-                        {(['USD', 'EUR', 'GBP'] as Currency[]).map(moneda => (
+                        {(['USD', 'EUR', 'GBP', 'CAD', 'CHF', 'CLP', 'SEK'] as Currency[]).map(moneda => (
                           <button
                             key={moneda}
                             type="button"
@@ -1388,12 +1342,14 @@ function QuoteAPITester() {
                     <div className="col-md-6">
                       <strong>Peso total:</strong> {manualWeight.toFixed(2)} kg
                     </div>
-                    <div className="col-md-6">
-                      <strong>Peso volumétrico:</strong> {(manualVolume * 167).toFixed(2)} kg
-                    </div>
-                    <div className="col-md-6">
-                      <strong className="text-primary">Peso Chargeable:</strong>{' '}
-                      <span className="text-primary fw-bold">{pesoChargeable.toFixed(2)} kg</span>
+                    <div className="col-12">
+                      <strong className="text-primary">Chargeable:</strong>{' '}
+                      <span className="text-primary fw-bold">
+                        {pesoChargeable.toFixed(2)} {chargeableUnit}
+                      </span>
+                      <small className="text-muted d-block mt-1">
+                        (Se cobra por el mayor numéricamente: {manualWeight.toFixed(2)} kg vs {manualVolume.toFixed(2)} m³)
+                      </small>
                     </div>
                   </>
                 )}
@@ -1416,13 +1372,13 @@ function QuoteAPITester() {
                     <div className="col-md-6">
                       <strong>Expense (tarifa × peso):</strong>{' '}
                       <span className="text-info">
-                        USD {(tarifaAirFreight.precio * pesoChargeable).toFixed(2)}
+                        {rutaSeleccionada.currency} {(tarifaAirFreight.precio * pesoChargeable).toFixed(2)}
                       </span>
                     </div>
                     <div className="col-md-6">
                       <strong>Income (tarifa + 15% × peso):</strong>{' '}
                       <span className="text-success fw-bold">
-                        USD {(tarifaAirFreight.precioConMarkup * pesoChargeable).toFixed(2)}
+                        {rutaSeleccionada.currency} {(tarifaAirFreight.precioConMarkup * pesoChargeable).toFixed(2)}
                       </span>
                     </div>
                   </div>
