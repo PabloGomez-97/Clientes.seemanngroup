@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from "../../auth/AuthContext";
+import {packageTypeOptions} from './PackageTypes/PiecestypesLCL';
 
 interface OutletContext {
   accessToken: string;
@@ -30,11 +31,6 @@ function QuoteAPITester() {
   const [manualVolume, setManualVolume] = useState(0.48); // m³ (para cuando overall está activo)
   const [manualWeight, setManualWeight] = useState(100); // kg (para cuando overall está activo)
   const [selectedPackageType, setSelectedPackageType] = useState(97); // Por defecto 
-
-  const packageTypeOptions = [
-    { id: 97, name: "BOX" },
-    { id: 57, name: "CARTON" }
-  ];
 
   // Cálculos automáticos
   const calculateVolume = () => {
