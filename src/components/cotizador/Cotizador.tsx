@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import CotizadorAereo from './CotizadorAereo';
-import CotizadorFCL from './CotizadorFCL';
-import CotizadorLCL from './CotizadorLCL';
+import CotizadorAereo from '../quotes/QuoteAIR';
+import CotizadorFCL from '../quotes/QuoteFCL';
+import CotizadorLCL from '../quotes/QuoteLCL';
 
 type TipoCotizacion = 'AEREO' | 'FCL' | 'LCL' | null;
 
@@ -151,16 +151,15 @@ const Cotizador: React.FC = () => {
 
   // Renderizar el componente seleccionado
   return (
-    <div>
-      {/* Botón para volver */}
-      <div className="container mt-3">
-        <button 
-          className="btn btn-outline-secondary mb-3"
-          onClick={handleVolver}
-        >
-          ← Volver a selección
-        </button>
-      </div>
+    <div className="container mt-4">
+      {/* Botón para volver (más elegante) */}
+      <button
+        className="btn btn-link text-secondary text-decoration-none mb-3"
+        onClick={handleVolver}
+      >
+        <i className="bi bi-arrow-left me-2"></i>
+        ← Volver a selección
+      </button>
 
       {/* Componente seleccionado */}
       {tipoCotizacion === 'AEREO' && <CotizadorAereo key="aereo" />}
