@@ -14,7 +14,7 @@ function Sidebar({ isOpen }: SidebarProps) {
     {
       title: 'GENERAL',
       items: [
-        {
+        /*{
           path: '/newquotes',
           name: 'Cotizador',
           icon: (
@@ -24,7 +24,7 @@ function Sidebar({ isOpen }: SidebarProps) {
             </svg>
           )
         },
-        /*{
+        {
           path: '/QuoteAIR',
           name: 'Cotizador Aéreo',
           icon: (
