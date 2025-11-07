@@ -66,119 +66,6 @@ interface ShipmentModalData {
   number: string;
 }
 
-// Componente para Cards de Métricas
-function MetricCard({
-  title,
-  value,
-  icon,
-  color,
-  subtitle,
-  onClick, // opcional: si viene, la card queda clickeable
-}: {
-  title: string;
-  value: string | number;
-  icon: string;
-  color: string;
-  subtitle?: string;
-  onClick?: () => void;
-}) {
-  return (
-    <div
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={
-        onClick
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') onClick();
-            }
-          : undefined
-      }
-      style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '20px',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        border: '1px solid #e5e7eb',
-        transition: 'transform 0.2s, box-shadow 0.2s',
-        cursor: onClick ? 'pointer' : 'default',
-        outline: 'none',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-      }}
-      onMouseEnter={(e) => {
-        if (onClick) {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (onClick) {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-        }
-      }}
-    >
-      {/* Icono */}
-      <div
-        aria-hidden
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: '10px',
-          backgroundColor: color,
-          display: 'grid',
-          placeItems: 'center',
-          color: 'white',
-          fontSize: '22px',
-          fontWeight: 700,
-          flex: '0 0 auto',
-        }}
-      >
-        {icon}
-      </div>
-
-      {/* Texto */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-        <div
-          title={title}
-          style={{ color: '#6b7280', fontSize: 12, fontWeight: 600, letterSpacing: 0.3, textTransform: 'uppercase' }}
-        >
-          {title}
-        </div>
-        <div
-          style={{
-            color: '#111827',
-            fontSize: 22,
-            fontWeight: 700,
-            lineHeight: 1.1,
-            wordBreak: 'break-word',
-          }}
-        >
-          {typeof value === 'number' ? value.toLocaleString('es-CL') : value}
-        </div>
-        {subtitle ? (
-          <div
-            style={{
-              color: '#6b7280',
-              fontSize: 12,
-              lineHeight: 1.2,
-              whiteSpace: 'nowrap',
-              textOverflow: 'ellipsis',
-              overflow: 'hidden',
-            }}
-          >
-            {subtitle}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-
-
 // Componente para Secciones Colapsables
 function CollapsibleSection({ 
   title, 
@@ -290,8 +177,25 @@ function Reports() {
   };
 
   // Función para formatear moneda
-  const formatCurrency = (value: number, currency: string) => {
-    const formatted = new Intl.NumberFormat('es-CL').format(value);
+  const formatCurrency = (value: number, currency: string = 'CLP'): string => {
+    // protecciones básicas
+    const numeric = Number.isFinite(value) ? value : 0;
+
+    // redondear al entero más cercano
+    const rounded = Math.round(numeric);
+
+    // formatear sin decimales (separador de miles según locale 'es-CL')
+    const formatted = new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(rounded);
+
+    // si currency es el símbolo '$', no duplicar
+    if (currency === '$') {
+      return `$${formatted}`;
+    }
+
+    // ejemplo: "CLP $520.212"
     return `${currency} $${formatted}`;
   };
 
@@ -1038,61 +942,6 @@ function Reports() {
       {/* Dashboard */}
       {!loading && invoices.length > 0 && (
         <>
-          {/* Cards de Métricas por Moneda */}
-          {Object.entries(metricsByCurrency).map(([currency, metrics]) => (
-            <div key={currency} style={{ marginBottom: '32px' }}>
-              <h5 style={{ 
-                fontSize: '1rem', 
-                fontWeight: '600', 
-                color: '#1f2937', 
-                marginBottom: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <span>💱</span>
-                Resumen en {currency}
-              </h5>
-              
-              <div style={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                gap: '20px',
-                marginBottom: '24px'
-              }}>
-                <MetricCard
-                  title="Total Facturado"
-                  value={formatCurrency(metrics.totalBilled, currency)}
-                  icon="💰"
-                  color="#8b5cf6"
-                  subtitle={`${metrics.count} facturas`}
-                />
-                <MetricCard
-                  title="Pendiente de Pago"
-                  value={formatCurrency(metrics.totalPending, currency)}
-                  icon="⏳"
-                  color="#f59e0b"
-                />
-                <MetricCard
-                  title="Total Pagado"
-                  value={formatCurrency(metrics.totalPaid, currency)}
-                  icon="✅"
-                  color="#10b981"
-                />
-                <MetricCard
-                  title="Facturas Vencidas"
-                  value={metrics.overdueCount}
-                  icon="⚠️"
-                  color="#ef4444"
-                  subtitle={metrics.overdueCount > 0 ? 'Requieren atención' : 'Todo al día'}
-                  onClick={() => {
-                    if (metrics.overdueCount > 0) openOverdueModal(currency);
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-
           {/* Gráficos */}
           <div style={{ 
             display: 'grid',
@@ -1173,82 +1022,6 @@ function Reports() {
             </div>
           </div>
 
-          {/* Top 5 Envíos Más Costosos */}
-          {topExpensiveShipments.length > 0 && (
-            <div style={{ marginBottom: '32px' }}>
-              <h5 style={{ 
-                fontSize: '1rem', 
-                fontWeight: '600', 
-                color: '#1f2937', 
-                marginBottom: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                <span>🏆</span>
-                Top 5 Envíos Más Costosos
-              </h5>
-              <div style={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '16px'
-              }}>
-                {topExpensiveShipments.map((invoice, index) => (
-                  <div
-                    key={invoice.id}
-                    onClick={() => openInvoiceModal(invoice)}
-                    style={{
-                      backgroundColor: 'white',
-                      borderRadius: '8px',
-                      padding: '16px',
-                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-                      border: '1px solid #e5e7eb',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                      <div style={{
-                        fontSize: '1.5rem',
-                        fontWeight: '700',
-                        color: '#8b5cf6'
-                      }}>
-                        #{index + 1}
-                      </div>
-                      <div style={{
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        backgroundColor: invoice.shipment?.number?.startsWith('SOG') ? '#dbeafe' : '#e0f2fe',
-                        color: invoice.shipment?.number?.startsWith('SOG') ? '#1e40af' : '#075985'
-                      }}>
-                        {getServiceType(invoice.shipment?.number)}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#1f2937', marginBottom: '4px' }}>
-                      {invoice.number}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '8px' }}>
-                      {invoice.shipment?.number || 'N/A'}
-                    </div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#10b981' }}>
-                      {formatCurrency(invoice.totalAmount?.value || 0, invoice.currency?.abbr || 'USD')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Tabla de Facturas */}
           <div style={{
             backgroundColor: 'white',
@@ -1292,7 +1065,7 @@ function Reports() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
                     }}>
-                      Número
+                      N° Factura
                     </th>
                     <th style={{ 
                       padding: '16px 20px',
@@ -1383,7 +1156,7 @@ function Reports() {
                           fontWeight: '600',
                           color: '#1f2937'
                         }}>
-                          {invoice.number}
+                          {invoice.notes ? invoice.notes.split('@')[0] : ''}
                         </td>
                         <td style={{ 
                           padding: '16px 20px',
@@ -1425,15 +1198,35 @@ function Reports() {
                           color: '#1f2937',
                           fontWeight: '600'
                         }}>
-                          {formatCurrency(invoice.totalAmount?.value || 0, invoice.currency?.abbr || 'USD')}
+                          {formatCurrency(invoice.totalAmount?.value || 0, 'CLP')}
                         </td>
-                        <td style={{ 
+                        <td style={{
                           padding: '16px 20px',
                           textAlign: 'right',
                           color: status === 'paid' ? '#10b981' : '#f59e0b',
                           fontWeight: '700'
                         }}>
-                          {formatCurrency(invoice.balanceDue?.value || 0, invoice.currency?.abbr || 'USD')}
+                          {(() => {
+                            // Calculamos el tipo de cambio usando la misma lógica que en la vista detallada
+                            if (invoice.charges && invoice.charges.length > 0 && invoice.totalAmount?.value) {
+                              const totalCharges = invoice.charges.reduce(
+                                (sum, charge) => sum + (charge.amount || 0), 0
+                              );
+                              
+                              if (totalCharges > 0) {
+                                // Calculamos el tipo de cambio
+                                const exchangeRate = invoice.totalAmount.value / totalCharges * 2;
+                                
+                                // Aplicamos el tipo de cambio al saldo pendiente
+                                const convertedBalance = (invoice.balanceDue?.value || 0) * exchangeRate;
+                                
+                                return formatCurrency(convertedBalance, 'CLP');
+                              }
+                            }
+                            
+                            // Si no podemos calcular el tipo de cambio, mostramos el valor original
+                            return formatCurrency(invoice.balanceDue?.value || 0, 'CLP');
+                          })()}
                         </td>
                         <td style={{ 
                           padding: '16px 20px',
@@ -1546,7 +1339,7 @@ function Reports() {
               }}>
                 <div>
                   <h5 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
-                    Factura {selectedInvoice.number}
+                    Factura {selectedInvoice.notes ? selectedInvoice.notes.split('@')[0] : '0'}
                   </h5>
                   {selectedInvoice.date && (
                     <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
@@ -1646,8 +1439,8 @@ function Reports() {
                         <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
                           <th style={{ padding: '8px', textAlign: 'left', fontSize: '0.7rem', color: '#6b7280' }}>DESCRIPCIÓN</th>
                           <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>CANTIDAD</th>
-                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>TARIFA (USD)</th>
-                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>MONTO (USD)</th>
+                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>TARIFA ({selectedInvoice.currency?.abbr})</th>
+                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>MONTO ({selectedInvoice.currency?.abbr})</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1658,13 +1451,45 @@ function Reports() {
                               {charge.quantity} {charge.unit}
                             </td>
                             <td style={{ padding: '8px', textAlign: 'right', color: '#4b5563' }}>
-                              {formatCurrency(charge.rate || 0, 'USD')}
+                              {formatCurrency(charge.rate || 0, selectedInvoice.currency?.abbr)}
                             </td>
                             <td style={{ padding: '8px', textAlign: 'right', color: '#1f2937', fontWeight: '600' }}>
-                              {formatCurrency(charge.amount || 0, 'USD')}
+                              {formatCurrency(charge.amount || 0, selectedInvoice.currency?.abbr)}
                             </td>
                           </tr>
                         ))}
+                        {/* Fila de total */}
+                        <tr style={{ borderTop: '2px solid #e5e7eb' }}>
+                          <td colSpan={3} style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: '#1f2937' }}>
+                            TOTAL:
+                          </td>
+                          <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: '#1f2937', fontSize: '0.95rem' }}>
+                            {formatCurrency(
+                              processCharges(selectedInvoice.charges).reduce((sum, charge) => sum + (charge.amount || 0), 0),
+                              selectedInvoice.currency?.abbr
+                            )}
+                          </td>
+                        </tr>
+                        
+                        {/* Fila de conversión de divisa */}
+                        {selectedInvoice.totalAmount?.value && (
+                          <tr style={{ borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                            <td colSpan={3} style={{ padding: '10px 8px', textAlign: 'right', color: '#4b5563', fontSize: '0.8rem' }}>
+                              TIPO DE CAMBIO:
+                            </td>
+                            <td style={{ padding: '10px 8px', textAlign: 'right', color: '#4b5563', fontSize: '0.8rem' }}>
+                              {(() => {
+                                const totalCharges = processCharges(selectedInvoice.charges).reduce(
+                                  (sum, charge) => sum + (charge.amount || 0), 0
+                                );
+                                const exchangeRate = totalCharges > 0 
+                                  ? (selectedInvoice.totalAmount?.value / totalCharges).toFixed(2)
+                                  : 0;
+                                return `${exchangeRate} CLP / ${selectedInvoice.currency?.abbr}`;
+                              })()}
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1677,25 +1502,46 @@ function Reports() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
                     <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>Subtotal:</span>
                     <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>
-                      {formatCurrency(selectedInvoice.amount?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                      {formatCurrency(selectedInvoice.amount?.value || 0, 'CLP')}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
                     <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>IVA:</span>
                     <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>
-                      {formatCurrency(selectedInvoice.taxAmount?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                      {formatCurrency(selectedInvoice.taxAmount?.value || 0, 'CLP')}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: '#8b5cf6', borderRadius: '8px' }}>
                     <span style={{ fontSize: '1rem', fontWeight: '600', color: 'white' }}>Total:</span>
                     <span style={{ fontSize: '1.2rem', fontWeight: '700', color: 'white' }}>
-                      {formatCurrency(selectedInvoice.totalAmount?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                      {formatCurrency(selectedInvoice.totalAmount?.value || 0, 'CLP')}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: getInvoiceStatus(selectedInvoice) === 'paid' ? '#d1fae5' : '#fef3c7', borderRadius: '8px' }}>
                     <span style={{ fontSize: '1rem', fontWeight: '600', color: getInvoiceStatus(selectedInvoice) === 'paid' ? '#10b981' : '#f59e0b' }}>Saldo Pendiente:</span>
                     <span style={{ fontSize: '1.2rem', fontWeight: '700', color: getInvoiceStatus(selectedInvoice) === 'paid' ? '#10b981' : '#f59e0b' }}>
-                      {formatCurrency(selectedInvoice.balanceDue?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                      {(() => {
+
+                        // Calculamos el tipo de cambio de divisa
+                        if (selectedInvoice.charges && selectedInvoice.charges.length > 0 && selectedInvoice.totalAmount?.value) {
+                          const totalCharges = selectedInvoice.charges.reduce(
+                            (sum, charge) => sum + (charge.amount || 0), 0
+                          );
+                          
+                          if (totalCharges > 0) {
+                            // Calculamos el tipo de cambio con el factor de multiplicación por 2
+                            const exchangeRate = selectedInvoice.totalAmount.value / totalCharges * 2;
+                            
+                            // Aplicamos el tipo de cambio al saldo pendiente
+                            const convertedBalance = (selectedInvoice.balanceDue?.value || 0) * exchangeRate;
+                            
+                            return formatCurrency(convertedBalance, 'CLP');
+                          }
+                        }
+                        
+                        // Si no podemos calcular el tipo de cambio, mostramos el valor original
+                        return formatCurrency(selectedInvoice.balanceDue?.value || 0, 'CLP');
+                      })()}
                     </span>
                   </div>
                 </div>
