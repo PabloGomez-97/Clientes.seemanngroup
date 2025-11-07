@@ -2,7 +2,7 @@
 // LCLHelpers.ts - Funciones Helper y Lógica de Negocio para LCL
 // ============================================================================
 
-import type { Ruta } from '../cotizador/Types';
+import type { Ruta } from './Types';
 
 // ============================================================================
 // TIPOS ESPECÍFICOS PARA LCL

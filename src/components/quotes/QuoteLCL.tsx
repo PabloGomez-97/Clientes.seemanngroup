@@ -3,8 +3,8 @@ import { useOutletContext } from 'react-router-dom';
 import { useAuth } from "../../auth/AuthContext";
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
-import type { Ruta, SelectOption, TipoOperacion, Provider } from '../cotizador/Types';
-import { getPriceForComparison } from '../cotizador/Types';
+import type { Ruta, SelectOption, TipoOperacion, Provider } from './HelpersLCL/Types';
+import { getPriceForComparison } from './HelpersLCL/Types';
 import {
   parseMSLIMPORT,
   parseMSLEXPORT,
@@ -13,7 +13,7 @@ import {
   parseCTL,
   parseOVERSEAS,
   parsePLUSCARGO,
-} from '../cotizador/Parsers';
+} from './HelpersLCL/Parsers';
 import {
   calcularOceanFreight,
   getChargeableVolume,
@@ -27,7 +27,7 @@ import {
   formatPrice,
   getProviderColor,
   type TarifaCalculada
-} from './LCLHelpers';
+} from './HelpersLCL/LCLHelpers';
 import { packageTypeOptions } from './PackageTypes/PiecestypesLCL';
 
 interface OutletContext {

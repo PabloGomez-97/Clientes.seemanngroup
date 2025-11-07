@@ -21,17 +21,17 @@ import ReporteriaKPIs from './components/administrador/reporteria/pages/Reporter
 import ReporteriaExecutives from './components/administrador/reporteria/pages/ReporteriaExecutives';
 import ReporteriaTrends from './components/administrador/reporteria/pages/ReporteriaTrends';
 
-// Cotizador
-import Cotizador from './components/cotizador/Cotizador';
+// Sidebar
+import Cotizador from './components/Sidebar/Cotizador';
 import QuoteLCL from './components/quotes/QuoteLCL';
 import QuoteFCL from './components/quotes/QuoteFCL';
 import QuoteAIR from './components/quotes/QuoteAIR';
 
 // User Views
-import QuotesView from './components/quotes/QuotesView';
+import QuotesView from './components/Sidebar/QuotesView';
 import AirShipmentsView from './components/shipments/AirShipmentsView';
 import OceanShipmentsView from './components/shipments/OceanShipmentsView';
-import Reports from './components/reports/Reports';
+import Reports from './components/Sidebar/Reports';
 import Settings from './components/settings/Settings';
 
 function App() {
