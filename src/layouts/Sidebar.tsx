@@ -88,10 +88,19 @@ function Sidebar({ isOpen }: SidebarProps) {
         },
         {
           path: '/reports',
-          name: 'Reportes',
+          name: 'Reportería Financiera',
           icon: (
             <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
               <path d="M4 11H2v3h2v-3zm5-4H7v7h2V7zm5-5v12h-2V2h2zm-2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1h-2zM6 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm-5 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3z"/>
+            </svg>
+          )
+        },
+        {
+          path: '/reportsoperational',
+          name: 'Reportería Operacional',
+          icon: (
+            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/>
             </svg>
           )
         },
