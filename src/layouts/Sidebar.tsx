@@ -11,10 +11,10 @@ function Sidebar({ isOpen }: SidebarProps) {
   const navigate = useNavigate();
 
   const menuSections = [
-    {
+    /*{
       title: 'GENERAL',
       items: [
-        /*{
+        {
           path: '/newquotes',
           name: 'Cotizador',
           icon: (
@@ -53,9 +53,9 @@ function Sidebar({ isOpen }: SidebarProps) {
               <path d="M13.5 9a.5.5 0 0 1 .5.5V11h1.5a.5.5 0 1 1 0 1H14v1.5a.5.5 0 1 1-1 0V12h-1.5a.5.5 0 0 1 0-1H13V9.5a.5.5 0 0 1 .5-.5"/>
             </svg>
           )
-        }*/
+        }
       ]
-    },
+    },*/
     {
       title: 'GENERAL',
       items: [
