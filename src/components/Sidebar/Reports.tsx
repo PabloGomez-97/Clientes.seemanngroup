@@ -176,26 +176,26 @@ function Reports() {
     });
   };
 
-  // Función para formatear moneda
-  const formatCurrency = (value: number, currency: string = 'CLP'): string => {
+  // Función para formatear moneda con soporte para decimales
+  const formatCurrency = (value: number, currency: string = 'CLP', decimals: number = 0): string => {
     // protecciones básicas
     const numeric = Number.isFinite(value) ? value : 0;
 
-    // redondear al entero más cercano
-    const rounded = Math.round(numeric);
+    // solo redondear si decimals es 0
+    const amount = decimals === 0 ? Math.round(numeric) : numeric;
 
-    // formatear sin decimales (separador de miles según locale 'es-CL')
+    // formatear con los decimales especificados
     const formatted = new Intl.NumberFormat('es-CL', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(rounded);
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(amount);
 
     // si currency es el símbolo '$', no duplicar
     if (currency === '$') {
       return `$${formatted}`;
     }
 
-    // ejemplo: "CLP $520.212"
+    // ejemplo: "CLP $520.212" o "USD $0.780" con decimales
     return `${currency} $${formatted}`;
   };
 
@@ -1451,7 +1451,7 @@ function Reports() {
                               {charge.quantity} {charge.unit}
                             </td>
                             <td style={{ padding: '8px', textAlign: 'right', color: '#4b5563' }}>
-                              {formatCurrency(charge.rate || 0, selectedInvoice.currency?.abbr)}
+                              {formatCurrency(charge.rate || 0, selectedInvoice.currency?.abbr, 3)}
                             </td>
                             <td style={{ padding: '8px', textAlign: 'right', color: '#1f2937', fontWeight: '600' }}>
                               {formatCurrency(charge.amount || 0, selectedInvoice.currency?.abbr)}
