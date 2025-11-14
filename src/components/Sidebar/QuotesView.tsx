@@ -1305,7 +1305,7 @@ function QuotesView() {
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
                     }}>
-                      Ingreso Total
+                      Gasto Total (No incluye impuestos)
                     </div>
                     <div style={{
                       fontSize: '2rem',
