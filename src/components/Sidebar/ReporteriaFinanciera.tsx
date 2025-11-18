@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { COLORS, GRADIENTS } from '../../themes/reportTheme';
+
 
 interface OutletContext {
   accessToken: string;
@@ -83,7 +85,7 @@ function CollapsibleSection({
   return (
     <div style={{ 
       marginBottom: '12px',
-      border: '1px solid #e5e7eb',
+      border: `1px solid ${COLORS.border}`,
       borderRadius: '8px',
       overflow: 'hidden'
     }}>
@@ -109,7 +111,7 @@ function CollapsibleSection({
         </div>
         <span style={{ 
           fontSize: '1.2rem', 
-          color: '#6b7280',
+          color: COLORS.textSecondary,
           transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
           transition: 'transform 0.2s'
         }}>
@@ -512,9 +514,9 @@ function ReporteriaFinanciera() {
     });
     
     return [
-      { name: 'Air Shipments', value: services.Air, color: '#3b82f6' },
-      { name: 'Ocean Shipments', value: services.Ocean, color: '#0ea5e9' },
-      { name: 'Otros', value: services.Unknown, color: '#9ca3af' }
+      { name: 'Air Shipments', value: services.Air, color: COLORS.air },
+      { name: 'Ocean Shipments', value: services.Ocean, color: COLORS.ocean },
+      { name: 'Otros', value: services.Unknown, color: COLORS.neutralGrey }
     ].filter(item => item.value > 0);
   }, [filteredByPeriod]);
 
@@ -787,7 +789,7 @@ function ReporteriaFinanciera() {
       
       {/* Header */}
       <div style={{
-        background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+        background: GRADIENTS.purple,
         padding: '24px 20px',
         marginBottom: '24px',
         borderRadius: '12px',
@@ -823,7 +825,7 @@ function ReporteriaFinanciera() {
           onClick={() => fetchInvoices(true)}
           disabled={loading}
           style={{
-            backgroundColor: '#8b5cf6',
+            backgroundColor: COLORS.secondary,
             color: 'white',
             border: 'none',
             borderRadius: '8px',
@@ -841,7 +843,7 @@ function ReporteriaFinanciera() {
           onClick={generatePDF}
           disabled={loading || invoices.length === 0}
           style={{
-            backgroundColor: '#10b981',
+            backgroundColor: COLORS.success,
             color: 'white',
             border: 'none',
             borderRadius: '8px',
@@ -856,7 +858,7 @@ function ReporteriaFinanciera() {
         </button>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: '600' }}>Período:</span>
+          <span style={{ fontSize: '0.85rem', color: COLORS.textSecondary, fontWeight: '600' }}>Período:</span>
           {[
             { value: 'month', label: 'Último Mes' },
             { value: '3months', label: '3 Meses' },
@@ -868,9 +870,9 @@ function ReporteriaFinanciera() {
               key={period.value}
               onClick={() => setPeriodFilter(period.value as any)}
               style={{
-                backgroundColor: periodFilter === period.value ? '#8b5cf6' : 'white',
-                color: periodFilter === period.value ? 'white' : '#6b7280',
-                border: periodFilter === period.value ? 'none' : '1px solid #d1d5db',
+                backgroundColor: periodFilter === period.value ? COLORS.secondary : COLORS.cardBg,
+                color: periodFilter === period.value ? 'white' : COLORS.textSecondary,
+                border: periodFilter === period.value ? 'none' : `1px solid ${COLORS.border}`,
                 borderRadius: '6px',
                 padding: '6px 12px',
                 cursor: 'pointer',
@@ -884,7 +886,7 @@ function ReporteriaFinanciera() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: '600' }}>Estado:</span>
+          <span style={{ fontSize: '0.85rem', color: COLORS.textSecondary, fontWeight: '600' }}>Estado:</span>
           {[
             { value: 'all', label: 'Todas' },
             { value: 'paid', label: 'Pagadas' },
@@ -896,7 +898,7 @@ function ReporteriaFinanciera() {
               onClick={() => setStatusFilter(status.value as any)}
               style={{
                 backgroundColor: statusFilter === status.value ? '#8b5cf6' : 'white',
-                color: statusFilter === status.value ? 'white' : '#6b7280',
+                color: statusFilter === status.value ? 'white' : COLORS.textSecondary,
                 border: statusFilter === status.value ? 'none' : '1px solid #d1d5db',
                 borderRadius: '6px',
                 padding: '6px 12px',
@@ -916,12 +918,12 @@ function ReporteriaFinanciera() {
         <div style={{ 
           textAlign: 'center', 
           padding: '40px',
-          backgroundColor: 'white',
+          backgroundColor: COLORS.cardBg,
           borderRadius: '12px',
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
         }}>
           <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📊</div>
-          <p style={{ color: '#6b7280', fontSize: '1rem' }}>Cargando facturas...</p>
+          <p style={{ color: COLORS.textSecondary, fontSize: '1rem' }}>Cargando facturas...</p>
         </div>
       )}
 
@@ -951,7 +953,7 @@ function ReporteriaFinanciera() {
           }}>
             {/* Gráfico de Gastos Mensuales */}
             <div style={{
-              backgroundColor: 'white',
+              backgroundColor: COLORS.cardBg,
               borderRadius: '12px',
               padding: '20px',
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
@@ -976,7 +978,7 @@ function ReporteriaFinanciera() {
                     <Bar 
                       key={currency}
                       dataKey={currency} 
-                      fill={index === 0 ? '#8b5cf6' : '#3b82f6'} 
+                      fill={COLORS.chart[index % COLORS.chart.length]}
                       name={currency}
                     />
                   ))}
@@ -986,7 +988,7 @@ function ReporteriaFinanciera() {
 
             {/* Gráfico de Desglose por Servicio */}
             <div style={{
-              backgroundColor: 'white',
+              backgroundColor: COLORS.cardBg,
               borderRadius: '12px',
               padding: '20px',
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
@@ -1024,7 +1026,7 @@ function ReporteriaFinanciera() {
 
           {/* Tabla de Facturas */}
           <div style={{
-            backgroundColor: 'white',
+            backgroundColor: COLORS.cardBg,
             borderRadius: '12px',
             overflow: 'hidden',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
@@ -1053,14 +1055,14 @@ function ReporteriaFinanciera() {
               }}>
                 <thead>
                   <tr style={{ 
-                    backgroundColor: '#f9fafb',
-                    borderBottom: '2px solid #e5e7eb'
+                    backgroundColor: COLORS.tableHeaderBg,
+                    borderBottom: `2px solid ${COLORS.border}`
                   }}>
                     <th style={{ 
                       padding: '16px 20px',
                       textAlign: 'left',
                       fontWeight: '600',
-                      color: '#374151',
+                      color: COLORS.neutralDark,
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
@@ -1071,7 +1073,7 @@ function ReporteriaFinanciera() {
                       padding: '16px 20px',
                       textAlign: 'left',
                       fontWeight: '600',
-                      color: '#374151',
+                      color: COLORS.neutralDark,
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
@@ -1082,7 +1084,7 @@ function ReporteriaFinanciera() {
                       padding: '16px 20px',
                       textAlign: 'left',
                       fontWeight: '600',
-                      color: '#374151',
+                      color: COLORS.neutralDark,
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
@@ -1093,7 +1095,7 @@ function ReporteriaFinanciera() {
                       padding: '16px 20px',
                       textAlign: 'right',
                       fontWeight: '600',
-                      color: '#374151',
+                      color: COLORS.neutralDark,
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
@@ -1104,7 +1106,7 @@ function ReporteriaFinanciera() {
                       padding: '16px 20px',
                       textAlign: 'right',
                       fontWeight: '600',
-                      color: '#374151',
+                      color: COLORS.neutralDark,
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
@@ -1115,7 +1117,7 @@ function ReporteriaFinanciera() {
                       padding: '16px 20px',
                       textAlign: 'center',
                       fontWeight: '600',
-                      color: '#374151',
+                      color: COLORS.neutralDark,
                       fontSize: '0.75rem',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
@@ -1254,7 +1256,7 @@ function ReporteriaFinanciera() {
             {/* Footer de la tabla */}
             <div style={{
               padding: '16px 20px',
-              backgroundColor: '#f9fafb',
+              backgroundColor: COLORS.tableHeaderBg,
               borderTop: '1px solid #e5e7eb'
             }}>
               <div style={{ 
@@ -1276,7 +1278,7 @@ function ReporteriaFinanciera() {
                     onClick={loadMoreInvoices}
                     disabled={loadingMore}
                     style={{
-                      backgroundColor: '#8b5cf6',
+                      backgroundColor: COLORS.secondary,
                       color: 'white',
                       border: 'none',
                       borderRadius: '6px',
@@ -1328,7 +1330,7 @@ function ReporteriaFinanciera() {
           >
             {/* Header del Modal */}
             <div style={{
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+              background: GRADIENTS.purple,
               padding: '24px',
               color: 'white'
             }}>
@@ -1377,7 +1379,7 @@ function ReporteriaFinanciera() {
               <CollapsibleSection title="Información de la Factura" defaultOpen={true} icon="📄">
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
                   <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: COLORS.textSecondary, marginBottom: '4px' }}>
                       NÚMERO DE FACTURA
                     </div>
                     <div style={{ fontSize: '0.875rem', color: '#1f2937', fontWeight: '600' }}>
@@ -1385,7 +1387,7 @@ function ReporteriaFinanciera() {
                     </div>
                   </div>
                   <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: COLORS.textSecondary, marginBottom: '4px' }}>
                       FECHA DE EMISIÓN
                     </div>
                     <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>
@@ -1393,7 +1395,7 @@ function ReporteriaFinanciera() {
                     </div>
                   </div>
                   <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: COLORS.textSecondary, marginBottom: '4px' }}>
                       FECHA DE VENCIMIENTO
                     </div>
                     <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>
@@ -1401,7 +1403,7 @@ function ReporteriaFinanciera() {
                     </div>
                   </div>
                   <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: '600', color: COLORS.textSecondary, marginBottom: '4px' }}>
                       MONEDA
                     </div>
                     <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>
@@ -1410,7 +1412,7 @@ function ReporteriaFinanciera() {
                   </div>
                   {selectedInvoice.shipment?.number && (
                     <div style={{ flex: '1 1 100%' }}>
-                      <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                      <div style={{ fontSize: '0.7rem', fontWeight: '600', color: COLORS.textSecondary, marginBottom: '4px' }}>
                         SHIPMENT ASOCIADO
                       </div>
                       <span
@@ -1436,7 +1438,7 @@ function ReporteriaFinanciera() {
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', fontSize: '0.85rem' }}>
                       <thead>
-                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                        <tr style={{ borderBottom: `2px solid ${COLORS.border}` }}>
                           <th style={{ padding: '8px', textAlign: 'left', fontSize: '0.7rem', color: '#6b7280' }}>DESCRIPCIÓN</th>
                           <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>CANTIDAD</th>
                           <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>TARIFA ({selectedInvoice.currency?.abbr})</th>
@@ -1499,19 +1501,19 @@ function ReporteriaFinanciera() {
               {/* Totales */}
               <CollapsibleSection title="Resumen de Totales" defaultOpen={true} icon="💰">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: COLORS.tableHeaderBg, borderRadius: '6px' }}>
                     <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>Subtotal:</span>
                     <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>
                       {formatCurrency(selectedInvoice.amount?.value || 0, 'CLP')}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: COLORS.tableHeaderBg, borderRadius: '6px' }}>
                     <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>IVA:</span>
                     <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>
                       {formatCurrency(selectedInvoice.taxAmount?.value || 0, 'CLP')}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: '#8b5cf6', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: COLORS.secondary, borderRadius: '8px' }}>
                     <span style={{ fontSize: '1rem', fontWeight: '600', color: 'white' }}>Total:</span>
                     <span style={{ fontSize: '1.2rem', fontWeight: '700', color: 'white' }}>
                       {formatCurrency(selectedInvoice.totalAmount?.value || 0, 'CLP')}
@@ -1558,7 +1560,7 @@ function ReporteriaFinanciera() {
                 onClick={closeInvoiceModal}
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  background: GRADIENTS.purple,
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1581,7 +1583,7 @@ function ReporteriaFinanciera() {
           position: 'fixed',
           bottom: '20px',
           right: '20px',
-          backgroundColor: '#8b5cf6',
+          backgroundColor: COLORS.secondary,
           color: 'white',
           padding: '16px 24px',
           borderRadius: '12px',
@@ -1628,8 +1630,8 @@ function ReporteriaFinanciera() {
             {/* Header */}
             <div style={{
               background: shipmentModalData.type === 'air' 
-                ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                ? GRADIENTS.blue
+                : GRADIENTS.cyan,
               padding: '24px',
               color: 'white'
             }}>
@@ -1679,7 +1681,7 @@ function ReporteriaFinanciera() {
               <h6 style={{ color: '#1f2937', marginBottom: '8px' }}>
                 Información del Envío
               </h6>
-              <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '20px' }}>
+              <p style={{ color: COLORS.textSecondary, fontSize: '0.9rem', marginBottom: '20px' }}>
                 Para ver los detalles completos de este envío, dirígete a la sección de{' '}
                 <strong>{shipmentModalData.type === 'air' ? 'Air Shipments' : 'Ocean Shipments'}</strong>{' '}
                 y busca el número: <strong>{shipmentModalData.number}</strong>
@@ -1687,11 +1689,11 @@ function ReporteriaFinanciera() {
               
               <div style={{
                 padding: '16px',
-                backgroundColor: '#f9fafb',
+                backgroundColor: COLORS.tableHeaderBg,
                 borderRadius: '8px',
                 border: '1px solid #e5e7eb'
               }}>
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '4px' }}>
+                <div style={{ fontSize: '0.75rem', color: COLORS.textSecondary, marginBottom: '4px' }}>
                   NÚMERO DE ENVÍO
                 </div>
                 <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1f2937' }}>
@@ -1711,8 +1713,8 @@ function ReporteriaFinanciera() {
                 style={{
                   width: '100%',
                   background: shipmentModalData.type === 'air' 
-                    ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                    : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                    ? GRADIENTS.blue
+                    : GRADIENTS.cyan,
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1751,7 +1753,7 @@ function ReporteriaFinanciera() {
             {/* Header */}
             <div
               style={{
-                background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                background: GRADIENTS.danger,
                 padding: '24px',
                 color: 'white'
               }}
@@ -1793,7 +1795,7 @@ function ReporteriaFinanciera() {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead>
-                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                      <tr style={{ backgroundColor: COLORS.tableHeaderBg, borderBottom: `2px solid ${COLORS.border}` }}>
                         <th style={{ padding: '12px 16px', textAlign: 'left' }}>Número</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left' }}>Fecha</th>
                         <th style={{ padding: '12px 16px', textAlign: 'left' }}>Vencimiento</th>
@@ -1828,7 +1830,7 @@ function ReporteriaFinanciera() {
                                   openInvoiceModal(inv);
                                 }}
                                 style={{
-                                  backgroundColor: '#8b5cf6',
+                                  backgroundColor: COLORS.secondary,
                                   color: 'white',
                                   border: 'none',
                                   borderRadius: '6px',
@@ -1855,7 +1857,7 @@ function ReporteriaFinanciera() {
                 onClick={closeOverdueModal}
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                  background: GRADIENTS.danger,
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1877,7 +1879,7 @@ function ReporteriaFinanciera() {
         <div style={{ 
           textAlign: 'center', 
           padding: '60px 20px',
-          backgroundColor: 'white',
+          backgroundColor: COLORS.cardBg,
           borderRadius: '12px',
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
         }}>
