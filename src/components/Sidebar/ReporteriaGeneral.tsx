@@ -526,7 +526,8 @@ const ReporteriaGeneral = () => {
     const routeCount: { [key: string]: { count: number; isAir: boolean } } = {};
     
     filteredAir.forEach(shipment => {
-      const route = `${shipment.from} → ${shipment.to}`;
+      const airShipment = shipment as AirShipment;
+      const route = `${airShipment.from} → ${airShipment.to}`;
       if (routeCount[route]) {
         routeCount[route].count += 1;
       } else {
@@ -535,7 +536,8 @@ const ReporteriaGeneral = () => {
     });
     
     filteredOcean.forEach(shipment => {
-      const route = `${shipment.portOfLoading} → ${shipment.portOfUnloading}`;
+      const oceanShipment = shipment as OceanShipment;
+      const route = `${oceanShipment.portOfLoading} → ${oceanShipment.portOfUnloading}`;
       if (routeCount[route]) {
         routeCount[route].count += 1;
       } else {
@@ -603,7 +605,8 @@ const ReporteriaGeneral = () => {
     
     // Agregar tipos de envíos marítimos (FCL, LCL, etc.)
     filteredOcean.forEach(shipment => {
-      const type = shipment.typeOfMove || 'Desconocido';
+      const oceanShipment = shipment as OceanShipment;
+      const type = oceanShipment.typeOfMove || 'Desconocido';
       typeCount[type] = (typeCount[type] || 0) + 1;
     });
     
@@ -952,7 +955,7 @@ const ReporteriaGeneral = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       outerRadius={90}
                       fill="#8884d8"
                       dataKey="value"
