@@ -12,9 +12,9 @@ function Sidebar({ isOpen }: SidebarProps) {
 
   const menuSections = [
     {
-      title: 'GENERAL',
+      title: 'Cotizador',
       items: [
-        {
+        /*{
           path: '/newquotes',
           name: 'Cotizador',
           icon: (
@@ -53,7 +53,7 @@ function Sidebar({ isOpen }: SidebarProps) {
               <path d="M13.5 9a.5.5 0 0 1 .5.5V11h1.5a.5.5 0 1 1 0 1H14v1.5a.5.5 0 1 1-1 0V12h-1.5a.5.5 0 0 1 0-1H13V9.5a.5.5 0 0 1 .5-.5"/>
             </svg>
           )
-        }
+        }*/
       ]
     },
     {
@@ -87,7 +87,7 @@ function Sidebar({ isOpen }: SidebarProps) {
           )
         },
         {
-          path: '/reports',
+          path: '/financiera',
           name: 'Reportería Financiera',
           icon: (
             <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
@@ -95,33 +95,6 @@ function Sidebar({ isOpen }: SidebarProps) {
             </svg>
           )
         },
-        /*{
-          path: '/operacionales',
-          name: 'Reportería Operacional',
-          icon: (
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/>
-            </svg>
-          )
-        },
-        {
-          path: '/envios',
-          name: 'Envios Aereos',
-          icon: (
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/>
-            </svg>
-          )
-        },
-        {
-          path: '/enviosmaritimos',
-          name: 'Envios Maritimos',
-          icon: (
-            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm14.817 3.113a.5.5 0 0 1 .07.704l-4.5 5.5a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61 4.15-5.073a.5.5 0 0 1 .704-.07"/>
-            </svg>
-          )
-        },*/
         {
           path: '/reporteriageneral',
           name: 'Reportería General',

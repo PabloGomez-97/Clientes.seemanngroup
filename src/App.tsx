@@ -31,11 +31,11 @@ import QuoteAIR from './components/quotes/QuoteAIR';
 import QuotesView from './components/Sidebar/QuotesView';
 import AirShipmentsView from './components/shipments/AirShipmentsView';
 import OceanShipmentsView from './components/shipments/OceanShipmentsView';
-import Reports from './components/Sidebar/Reports';
 import Operacionales from './components/Sidebar/ReporteriaOperacional';
 import Envios from './components/Sidebar/EnviosAereos';
 import EnviosMaritimos from './components/Sidebar/EnviosMaritimos';
 import Reporteriageneral from './components/Sidebar/ReporteriaGeneral';
+import Financiera from './components/Sidebar/ReporteriaFinanciera';
 import Settings from './components/settings/Settings';
 
 function App() {
@@ -97,11 +97,11 @@ function App() {
         <Route path="QuoteFCL" element={<QuoteFCL />} />
         <Route path="air-shipments" element={<AirShipmentsView />} />
         <Route path="ocean-shipments" element={<OceanShipmentsView />} />
-        <Route path="reports" element={<Reports />} />
         <Route path="operacionales" element={<Operacionales />} />
         <Route path="envios" element={<Envios />} />
         <Route path="enviosmaritimos" element={<EnviosMaritimos />} />
         <Route path="reporteriageneral" element={<Reporteriageneral />} />
+        <Route path="financiera" element={<Financiera />} />
         <Route path="settings" element={<Settings />} />
       </Route>
 

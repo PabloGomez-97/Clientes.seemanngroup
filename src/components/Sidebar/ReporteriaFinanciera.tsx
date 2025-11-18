@@ -66,6 +66,145 @@ interface ShipmentModalData {
   number: string;
 }
 
+// ============= PALETA DE COLORES MODERNA =============
+const COLORS = {
+  primary: '#6366f1',
+  secondary: '#8b5cf6',
+  air: '#3b82f6',
+  ocean: '#06b6d4',
+  chart: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'],
+  background: '#f8fafc',
+  cardBg: '#ffffff',
+  textPrimary: '#1e293b',
+  textSecondary: '#64748b',
+  textMuted: '#94a3b8',
+  border: '#e2e8f0',
+};
+
+const GRADIENTS = {
+  purple: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  blue: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+  cyan: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+  pink: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+  orange: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+  green: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+  red: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+};
+
+// ============= ESTILOS =============
+const styles = {
+  container: {
+    backgroundColor: COLORS.background,
+    minHeight: '100vh',
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  },
+  header: {
+    marginBottom: '2rem',
+  },
+  title: {
+    fontSize: '2rem',
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: '0.5rem',
+  },
+  subtitle: {
+    color: COLORS.textSecondary,
+    fontSize: '0.95rem',
+  },
+  metricCard: {
+    borderRadius: '16px',
+    border: 'none',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    cursor: 'pointer',
+    overflow: 'hidden',
+  },
+  chartCard: {
+    borderRadius: '16px',
+    border: 'none',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    backgroundColor: COLORS.cardBg,
+    height: '100%',
+  },
+  chartTitle: {
+    fontSize: '1.1rem',
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: '1.5rem',
+  },
+  filterButton: {
+    position: 'fixed' as 'fixed',
+    top: '6rem',
+    right: '2rem',
+    zIndex: 1000,
+    padding: '0.875rem 1.75rem',
+    fontSize: '0.95rem',
+    fontWeight: '600',
+    borderRadius: '50px',
+    border: 'none',
+    background: GRADIENTS.purple,
+    color: 'white',
+    boxShadow: '0 4px 12px rgba(102, 102, 234, 0.4)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    cursor: 'pointer',
+  },
+  modalOverlay: {
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backdropFilter: 'blur(4px)',
+  },
+  emptyState: {
+    padding: '4rem 2rem',
+    textAlign: 'center' as 'center',
+    backgroundColor: COLORS.cardBg,
+    borderRadius: '20px',
+    border: `2px dashed ${COLORS.border}`,
+  },
+};
+
+// ============= COMPONENTE CUSTOM TOOLTIP =============
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        backgroundColor: 'white',
+        padding: '12px 16px',
+        borderRadius: '12px',
+        border: `1px solid ${COLORS.border}`,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+      }}>
+        <p style={{ 
+          margin: '0 0 8px 0', 
+          fontWeight: '600', 
+          color: COLORS.textPrimary,
+          fontSize: '0.9rem' 
+        }}>
+          {label}
+        </p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} style={{ 
+            margin: '4px 0', 
+            color: entry.color,
+            fontSize: '0.875rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: entry.color,
+              display: 'inline-block'
+            }}></span>
+            {entry.name}: <strong>{entry.value}</strong>
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 // Componente para Secciones Colapsables
 function CollapsibleSection({ 
   title, 
@@ -126,7 +265,7 @@ function CollapsibleSection({
   );
 }
 
-function Reports() {
+function ReporteriaFinanciera() {
   const { accessToken, onLogout } = useOutletContext<OutletContext>();
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -139,18 +278,18 @@ function Reports() {
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreInvoices, setHasMoreInvoices] = useState(true);
-  const INVOICES_PER_BATCH = 300; // 3 páginas de 100
+  const INVOICES_PER_BATCH = 300;
   
   // Filtros
   const [periodFilter, setPeriodFilter] = useState<'month' | '3months' | '6months' | 'year' | 'all'>('month');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
+  const [showFilters, setShowFilters] = useState(false);
   
   // Modales
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showShipmentModal, setShowShipmentModal] = useState(false);
   const [shipmentModalData, setShipmentModalData] = useState<ShipmentModalData | null>(null);
-  // Modal de facturas vencidas por moneda
   const [showOverdueModal, setShowOverdueModal] = useState(false);
   const [overdueCurrency, setOverdueCurrency] = useState<string | null>(null);
 
@@ -163,7 +302,6 @@ function Reports() {
     setShowOverdueModal(false);
     setOverdueCurrency(null);
   };
-
 
   // Función para formatear fechas
   const formatDate = (dateString?: string) => {
@@ -178,24 +316,17 @@ function Reports() {
 
   // Función para formatear moneda con soporte para decimales
   const formatCurrency = (value: number, currency: string = 'CLP', decimals: number = 0): string => {
-    // protecciones básicas
     const numeric = Number.isFinite(value) ? value : 0;
-
-    // solo redondear si decimals es 0
     const amount = decimals === 0 ? Math.round(numeric) : numeric;
-
-    // formatear con los decimales especificados
     const formatted = new Intl.NumberFormat('es-CL', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     }).format(amount);
 
-    // si currency es el símbolo '$', no duplicar
     if (currency === '$') {
       return `$${formatted}`;
     }
 
-    // ejemplo: "CLP $520.212" o "USD $0.780" con decimales
     return `${currency} $${formatted}`;
   };
 
@@ -203,12 +334,10 @@ function Reports() {
   const processCharges = (charges: any[]) => {
     if (!charges || charges.length === 0) return [];
     
-    // Eliminar duplicados basándose en descripción, cantidad, rate y amount
     const uniqueCharges: any[] = [];
     const seenCharges = new Set<string>();
     
     charges.forEach(charge => {
-      // Crear una key única para cada charge
       const key = `${charge.description}-${charge.quantity}-${charge.rate}-${charge.amount}`;
       
       if (!seenCharges.has(key)) {
@@ -245,7 +374,7 @@ function Reports() {
     return 'Unknown';
   };
 
-  // Obtener facturas (carga inicial - solo 300 facturas)
+  // Obtener facturas
   const fetchInvoices = async (resetData: boolean = true) => {
     if (!accessToken) {
       setError('Debes ingresar un token primero');
@@ -265,10 +394,9 @@ function Reports() {
     
     try {
       const startPage = resetData ? 1 : currentPage;
-      const pagesToLoad = 3; // Cargar 3 páginas = 300 facturas
+      const pagesToLoad = 3;
       let batchInvoices: Invoice[] = [];
       
-      // Cargar 3 páginas en paralelo para mayor velocidad
       const requests = [];
       for (let i = 0; i < pagesToLoad; i++) {
         const page = startPage + i;
@@ -307,7 +435,6 @@ function Reports() {
         batchInvoices = [...batchInvoices, ...invoicesArray];
       }
       
-      // Filtrar por consignee
       const filtered = batchInvoices.filter(inv => 
         inv.billTo?.name === filterConsignee || 
         inv.shipment?.consignee?.name === filterConsignee
@@ -317,14 +444,12 @@ function Reports() {
         setInvoices(filtered);
         setDisplayedInvoices(filtered);
         
-        // Guardar en caché solo la primera carga
         localStorage.setItem('invoicesCache', JSON.stringify(filtered));
         localStorage.setItem('invoicesCacheTimestamp', new Date().getTime().toString());
         localStorage.setItem('invoicesCachePage', '3');
         
         console.log(`Carga inicial: ${filtered.length} facturas del consignee`);
       } else {
-        // Agregar a las facturas existentes
         const updatedInvoices = [...invoices, ...filtered];
         setInvoices(updatedInvoices);
         setDisplayedInvoices(updatedInvoices);
@@ -512,9 +637,9 @@ function Reports() {
     });
     
     return [
-      { name: 'Air Shipments', value: services.Air, color: '#3b82f6' },
-      { name: 'Ocean Shipments', value: services.Ocean, color: '#0ea5e9' },
-      { name: 'Otros', value: services.Unknown, color: '#9ca3af' }
+      { name: 'Air Shipments', value: services.Air, color: COLORS.air },
+      { name: 'Ocean Shipments', value: services.Ocean, color: COLORS.ocean },
+      { name: 'Otros', value: services.Unknown, color: COLORS.textMuted }
     ].filter(item => item.value > 0);
   }, [filteredByPeriod]);
 
@@ -772,9 +897,93 @@ function Reports() {
     printWindow.document.close();
   };
 
+    // Estado de carga
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '70vh',
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: COLORS.cardBg,
+            borderRadius: '20px',
+            padding: '3rem 4rem',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            textAlign: 'center',
+            border: `1px solid ${COLORS.border}`,
+          }}
+        >
+          {/* Icono de reportería con animación */}
+          <div
+            style={{
+              fontSize: '4rem',
+              marginBottom: '1.5rem',
+              animation: 'pulse 2s ease-in-out infinite',
+            }}
+          >
+            📊
+          </div>
+
+          {/* Texto de carga */}
+          <h4
+            style={{
+              color: COLORS.textPrimary,
+              fontWeight: '600',
+              marginBottom: '1rem',
+              fontSize: '1.25rem',
+            }}
+          >
+            Cargando Información
+          </h4>
+
+          {/* Spinner de carga */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: '1.5rem',
+            }}
+          >
+            <div
+              className="spinner-border"
+              style={{
+                width: '3rem',
+                height: '3rem',
+                color: COLORS.primary,
+                borderWidth: '0.3rem',
+              }}
+              role="status"
+            >
+              <span className="visually-hidden">Cargando...</span>
+            </div>
+          </div>
+
+          {/* Texto adicional */}
+          <p
+            style={{
+              color: COLORS.textSecondary,
+              fontSize: '0.9rem',
+              marginTop: '1.5rem',
+              marginBottom: 0,
+            }}
+          >
+            Obteniendo datos del sistema...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+
   return (
-    <>
+    <div style={styles.container} className="container-fluid p-4">
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
@@ -783,159 +992,31 @@ function Reports() {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.08); }
+          100% { transform: scale(1); }
+        }
       `}</style>
       
       {/* Header */}
-      <div style={{
-        background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-        padding: '24px 20px',
-        marginBottom: '24px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-      }}>
-        <h4 style={{ 
-          color: 'white', 
-          margin: 0,
-          fontSize: '1.5rem',
-          fontWeight: '700',
-          marginBottom: '8px'
-        }}>
-          Reportes Financieros
-        </h4>
-        <p style={{ 
-          color: 'rgba(255, 255, 255, 0.9)', 
-          margin: 0,
-          fontSize: '0.9rem'
-        }}>
-          Control de gastos y análisis de facturas
-        </p>
+      <div style={styles.header}>
+        <h1 style={styles.title}>Reportería Financiera</h1>
+        <p style={styles.subtitle}>Control de gastos y análisis de facturas</p>
       </div>
-
-      {/* Filtros */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '12px', 
-        marginBottom: '24px',
-        flexWrap: 'wrap',
-        alignItems: 'center'
-      }}>
-        <button 
-          onClick={() => fetchInvoices(true)}
-          disabled={loading}
-          style={{
-            backgroundColor: '#8b5cf6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 20px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            opacity: loading ? 0.6 : 1
-          }}
-        >
-          {loading ? 'Cargando...' : '🔄 Actualizar'}
-        </button>
-
-        <button 
-          onClick={generatePDF}
-          disabled={loading || invoices.length === 0}
-          style={{
-            backgroundColor: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 20px',
-            cursor: (loading || invoices.length === 0) ? 'not-allowed' : 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            opacity: (loading || invoices.length === 0) ? 0.6 : 1
-          }}
-        >
-          📥 Descargar Reporte PDF
-        </button>
-
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: '600' }}>Período:</span>
-          {[
-            { value: 'month', label: 'Último Mes' },
-            { value: '3months', label: '3 Meses' },
-            { value: '6months', label: '6 Meses' },
-            { value: 'year', label: 'Año' },
-            { value: 'all', label: 'Todo' }
-          ].map(period => (
-            <button
-              key={period.value}
-              onClick={() => setPeriodFilter(period.value as any)}
-              style={{
-                backgroundColor: periodFilter === period.value ? '#8b5cf6' : 'white',
-                color: periodFilter === period.value ? 'white' : '#6b7280',
-                border: periodFilter === period.value ? 'none' : '1px solid #d1d5db',
-                borderRadius: '6px',
-                padding: '6px 12px',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: '600'
-              }}
-            >
-              {period.label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: '600' }}>Estado:</span>
-          {[
-            { value: 'all', label: 'Todas' },
-            { value: 'paid', label: 'Pagadas' },
-            { value: 'pending', label: 'Pendientes' },
-            { value: 'overdue', label: 'Vencidas' }
-          ].map(status => (
-            <button
-              key={status.value}
-              onClick={() => setStatusFilter(status.value as any)}
-              style={{
-                backgroundColor: statusFilter === status.value ? '#8b5cf6' : 'white',
-                color: statusFilter === status.value ? 'white' : '#6b7280',
-                border: statusFilter === status.value ? 'none' : '1px solid #d1d5db',
-                borderRadius: '6px',
-                padding: '6px 12px',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: '600'
-              }}
-            >
-              {status.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Indicador de carga */}
-      {loading && (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '40px',
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-        }}>
-          <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📊</div>
-          <p style={{ color: '#6b7280', fontSize: '1rem' }}>Cargando facturas...</p>
-        </div>
-      )}
 
       {/* Mensaje de error */}
       {error && (
-        <div style={{ 
-          padding: '16px',
-          backgroundColor: '#fee2e2',
-          color: '#991b1b',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          border: '1px solid #fecaca'
-        }}>
-          <strong>Error:</strong> {error}
+        <div 
+          className="alert alert-danger" 
+          style={{ 
+            borderRadius: '12px', 
+            border: 'none',
+            backgroundColor: '#fee2e2',
+            color: '#991b1b'
+          }}
+        >
+          <strong>⚠️ Error:</strong> {error}
         </div>
       )}
 
@@ -943,368 +1024,534 @@ function Reports() {
       {!loading && invoices.length > 0 && (
         <>
           {/* Gráficos */}
-          <div style={{ 
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-            gap: '20px',
-            marginBottom: '32px'
-          }}>
+          <div className="row g-4 mb-4">
             {/* Gráfico de Gastos Mensuales */}
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '20px',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-              border: '1px solid #e5e7eb'
-            }}>
-              <h6 style={{ 
-                fontSize: '0.9rem', 
-                fontWeight: '600', 
-                color: '#1f2937', 
-                marginBottom: '16px' 
-              }}>
-                📈 Gastos Mensuales
-              </h6>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" style={{ fontSize: '0.75rem' }} />
-                  <YAxis style={{ fontSize: '0.75rem' }} />
-                  <Tooltip />
-                  <Legend />
-                  {Object.keys(metricsByCurrency).map((currency, index) => (
-                    <Bar 
-                      key={currency}
-                      dataKey={currency} 
-                      fill={index === 0 ? '#8b5cf6' : '#3b82f6'} 
-                      name={currency}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="col-12 col-lg-8">
+              <div className="card" style={styles.chartCard}>
+                <div className="card-body p-4">
+                  <h5 style={styles.chartTitle}>📈 Gastos Mensuales</h5>
+                  <div style={{ width: '100%', height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={monthlyData}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                      >
+                        <defs>
+                          {Object.keys(metricsByCurrency).map((currency, index) => (
+                            <linearGradient key={currency} id={`color${currency}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={COLORS.chart[index % COLORS.chart.length]} stopOpacity={0.9}/>
+                              <stop offset="95%" stopColor={COLORS.chart[index % COLORS.chart.length]} stopOpacity={0.6}/>
+                            </linearGradient>
+                          ))}
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
+                        <XAxis 
+                          dataKey="month" 
+                          tick={{ fill: COLORS.textSecondary, fontSize: 12 }}
+                          axisLine={{ stroke: COLORS.border }}
+                        />
+                        <YAxis 
+                          tick={{ fill: COLORS.textSecondary, fontSize: 12 }}
+                          axisLine={{ stroke: COLORS.border }}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend wrapperStyle={{ fontSize: '0.875rem', fontWeight: '500' }} />
+                        {Object.keys(metricsByCurrency).map((currency, index) => (
+                          <Bar 
+                            key={currency}
+                            dataKey={currency} 
+                            fill={`url(#color${currency})`}
+                            name={currency}
+                            radius={[8, 8, 0, 0]}
+                          />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Gráfico de Desglose por Servicio */}
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '20px',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-              border: '1px solid #e5e7eb'
-            }}>
-              <h6 style={{ 
-                fontSize: '0.9rem', 
-                fontWeight: '600', 
-                color: '#1f2937', 
-                marginBottom: '16px' 
-              }}>
-                🛫 Desglose por Servicio
-              </h6>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={serviceData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry: any) => `${entry.name}: ${((entry.percent as number) * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {serviceData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value, 'USD')} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="col-12 col-lg-4">
+              <div className="card" style={styles.chartCard}>
+                <div className="card-body p-4">
+                  <h5 style={styles.chartTitle}>🛫 Desglose por Servicio</h5>
+                  <div style={{ width: '100%', height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={serviceData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={(entry: any) => `${entry.name}: ${((entry.percent as number) * 100).toFixed(0)}%`}
+                          outerRadius={90}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {serviceData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Tabla de Facturas */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            overflow: 'hidden',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ 
-              padding: '16px 20px',
-              borderBottom: '1px solid #e5e7eb',
-              backgroundColor: '#f9fafb'
-            }}>
-              <h5 style={{ 
-                fontSize: '1rem', 
-                fontWeight: '600', 
-                color: '#1f2937', 
-                margin: 0
-              }}>
-                💰 Facturas
-              </h5>
-            </div>
-            
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ 
-                width: '100%',
-                borderCollapse: 'collapse',
-                fontSize: '0.875rem'
-              }}>
-                <thead>
-                  <tr style={{ 
-                    backgroundColor: '#f9fafb',
-                    borderBottom: '2px solid #e5e7eb'
-                  }}>
-                    <th style={{ 
-                      padding: '16px 20px',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#374151',
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      N° Factura
-                    </th>
-                    <th style={{ 
-                      padding: '16px 20px',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#374151',
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      Fecha
-                    </th>
-                    <th style={{ 
-                      padding: '16px 20px',
-                      textAlign: 'left',
-                      fontWeight: '600',
-                      color: '#374151',
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      Shipment
-                    </th>
-                    <th style={{ 
-                      padding: '16px 20px',
-                      textAlign: 'right',
-                      fontWeight: '600',
-                      color: '#374151',
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      Total
-                    </th>
-                    <th style={{ 
-                      padding: '16px 20px',
-                      textAlign: 'right',
-                      fontWeight: '600',
-                      color: '#374151',
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      Saldo
-                    </th>
-                    <th style={{ 
-                      padding: '16px 20px',
-                      textAlign: 'center',
-                      fontWeight: '600',
-                      color: '#374151',
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      Estado
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayedInvoices.map((invoice, index) => {
-                    const status = getInvoiceStatus(invoice);
-                    const statusConfig = {
-                      paid: { label: 'Pagada', color: '#10b981', bg: '#d1fae5' },
-                      pending: { label: 'Pendiente', color: '#f59e0b', bg: '#fef3c7' },
-                      overdue: { label: 'Vencida', color: '#ef4444', bg: '#fee2e2' }
-                    };
-                    const config = statusConfig[status];
-
-                    return (
-                      <tr 
-                        key={invoice.id}
-                        onClick={() => openInvoiceModal(invoice)}
-                        style={{
-                          borderBottom: index < displayedInvoices.length - 1 ? '1px solid #f3f4f6' : 'none',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.15s ease',
-                          backgroundColor: 'white'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'white';
-                        }}
-                      >
-                        <td style={{ 
-                          padding: '16px 20px',
-                          fontWeight: '600',
-                          color: '#1f2937'
-                        }}>
-                          {invoice.notes ? invoice.notes.split('@')[0] : ''}
-                        </td>
-                        <td style={{ 
-                          padding: '16px 20px',
-                          color: '#4b5563'
-                        }}>
-                          {invoice.date 
-                            ? new Date(invoice.date).toLocaleDateString('es-CL', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                              })
-                            : '-'
-                          }
-                        </td>
-                        <td style={{ 
-                          padding: '16px 20px',
-                          color: '#4b5563'
-                        }}>
-                          {invoice.shipment?.number ? (
-                            <span
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openShipmentModal(invoice.shipment!.number!);
-                              }}
-                              style={{
-                                color: '#3b82f6',
-                                textDecoration: 'underline',
-                                cursor: 'pointer',
-                                fontWeight: '600'
-                              }}
-                            >
-                              {invoice.shipment.number}
-                            </span>
-                          ) : '-'}
-                        </td>
-                        <td style={{ 
-                          padding: '16px 20px',
-                          textAlign: 'right',
-                          color: '#1f2937',
-                          fontWeight: '600'
-                        }}>
-                          {formatCurrency(invoice.totalAmount?.value || 0, 'CLP')}
-                        </td>
-                        <td style={{
-                          padding: '16px 20px',
-                          textAlign: 'right',
-                          color: status === 'paid' ? '#10b981' : '#f59e0b',
-                          fontWeight: '700'
-                        }}>
-                          {(() => {
-                            // Calculamos el tipo de cambio usando la misma lógica que en la vista detallada
-                            if (invoice.charges && invoice.charges.length > 0 && invoice.totalAmount?.value) {
-                              const totalCharges = invoice.charges.reduce(
-                                (sum, charge) => sum + (charge.amount || 0), 0
-                              );
-                              
-                              if (totalCharges > 0) {
-                                // Calculamos el tipo de cambio
-                                const exchangeRate = invoice.totalAmount.value / totalCharges * 2;
-                                
-                                // Aplicamos el tipo de cambio al saldo pendiente
-                                const convertedBalance = (invoice.balanceDue?.value || 0) * exchangeRate;
-                                
-                                return formatCurrency(convertedBalance, 'CLP');
-                              }
-                            }
-                            
-                            // Si no podemos calcular el tipo de cambio, mostramos el valor original
-                            return formatCurrency(invoice.balanceDue?.value || 0, 'CLP');
-                          })()}
-                        </td>
-                        <td style={{ 
-                          padding: '16px 20px',
-                          textAlign: 'center'
-                        }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '4px 12px',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            color: config.color,
-                            backgroundColor: config.bg
-                          }}>
-                            {config.label}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Footer de la tabla */}
-            <div style={{
-              padding: '16px 20px',
-              backgroundColor: '#f9fafb',
-              borderTop: '1px solid #e5e7eb'
-            }}>
+          <div className="card" style={styles.chartCard}>
+            <div className="card-body p-0">
               <div style={{ 
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px'
+                padding: '16px 20px',
+                borderBottom: `1px solid ${COLORS.border}`,
+                backgroundColor: '#f9fafb'
+              }}>
+                <h5 style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: '600', 
+                  color: COLORS.textPrimary, 
+                  margin: 0
+                }}>
+                  💰 Facturas
+                </h5>
+              </div>
+              
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ 
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: '0.875rem'
+                }}>
+                  <thead>
+                    <tr style={{ 
+                      backgroundColor: '#f9fafb',
+                      borderBottom: `2px solid ${COLORS.border}`
+                    }}>
+                      <th style={{ 
+                        padding: '16px 20px',
+                        textAlign: 'left',
+                        fontWeight: '600',
+                        color: '#374151',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        N° Factura
+                      </th>
+                      <th style={{ 
+                        padding: '16px 20px',
+                        textAlign: 'left',
+                        fontWeight: '600',
+                        color: '#374151',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Fecha
+                      </th>
+                      <th style={{ 
+                        padding: '16px 20px',
+                        textAlign: 'left',
+                        fontWeight: '600',
+                        color: '#374151',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Shipment
+                      </th>
+                      <th style={{ 
+                        padding: '16px 20px',
+                        textAlign: 'right',
+                        fontWeight: '600',
+                        color: '#374151',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Total
+                      </th>
+                      <th style={{ 
+                        padding: '16px 20px',
+                        textAlign: 'right',
+                        fontWeight: '600',
+                        color: '#374151',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Saldo
+                      </th>
+                      <th style={{ 
+                        padding: '16px 20px',
+                        textAlign: 'center',
+                        fontWeight: '600',
+                        color: '#374151',
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        Estado
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedInvoices.map((invoice, index) => {
+                      const status = getInvoiceStatus(invoice);
+                      const statusConfig = {
+                        paid: { label: 'Pagada', color: '#10b981', bg: '#d1fae5' },
+                        pending: { label: 'Pendiente', color: '#f59e0b', bg: '#fef3c7' },
+                        overdue: { label: 'Vencida', color: '#ef4444', bg: '#fee2e2' }
+                      };
+                      const config = statusConfig[status];
+
+                      return (
+                        <tr 
+                          key={invoice.id}
+                          onClick={() => openInvoiceModal(invoice)}
+                          style={{
+                            borderBottom: index < displayedInvoices.length - 1 ? '1px solid #f3f4f6' : 'none',
+                            cursor: 'pointer',
+                            transition: 'background-color 0.15s ease',
+                            backgroundColor: 'white'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'white';
+                          }}
+                        >
+                          <td style={{ 
+                            padding: '16px 20px',
+                            fontWeight: '600',
+                            color: '#1f2937'
+                          }}>
+                            {invoice.notes ? invoice.notes.split('@')[0] : ''}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#4b5563'
+                          }}>
+                            {invoice.date 
+                              ? new Date(invoice.date).toLocaleDateString('es-CL', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric'
+                                })
+                              : '-'
+                            }
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#4b5563'
+                          }}>
+                            {invoice.shipment?.number ? (
+                              <span
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openShipmentModal(invoice.shipment!.number!);
+                                }}
+                                style={{
+                                  color: COLORS.air,
+                                  textDecoration: 'underline',
+                                  cursor: 'pointer',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                {invoice.shipment.number}
+                              </span>
+                            ) : '-'}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'right',
+                            color: '#1f2937',
+                            fontWeight: '600'
+                          }}>
+                            {formatCurrency(invoice.totalAmount?.value || 0, 'CLP')}
+                          </td>
+                          <td style={{
+                            padding: '16px 20px',
+                            textAlign: 'right',
+                            color: status === 'paid' ? '#10b981' : '#f59e0b',
+                            fontWeight: '700'
+                          }}>
+                            {(() => {
+                              if (invoice.charges && invoice.charges.length > 0 && invoice.totalAmount?.value) {
+                                const totalCharges = invoice.charges.reduce(
+                                  (sum, charge) => sum + (charge.amount || 0), 0
+                                );
+                                
+                                if (totalCharges > 0) {
+                                  const exchangeRate = invoice.totalAmount.value / totalCharges * 2;
+                                  const convertedBalance = (invoice.balanceDue?.value || 0) * exchangeRate;
+                                  return formatCurrency(convertedBalance, 'CLP');
+                                }
+                              }
+                              
+                              return formatCurrency(invoice.balanceDue?.value || 0, 'CLP');
+                            })()}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'center'
+                          }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              color: config.color,
+                              backgroundColor: config.bg
+                            }}>
+                              {config.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer de la tabla */}
+              <div style={{
+                padding: '16px 20px',
+                backgroundColor: '#f9fafb',
+                borderTop: `1px solid ${COLORS.border}`
               }}>
                 <div style={{ 
-                  fontSize: '0.875rem',
-                  color: '#6b7280'
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '12px'
                 }}>
-                  Mostrando <strong style={{ color: '#1f2937' }}>{displayedInvoices.length}</strong> facturas
-                </div>
-                
-                {hasMoreInvoices && (
-                  <button 
-                    onClick={loadMoreInvoices}
-                    disabled={loadingMore}
-                    style={{
-                      backgroundColor: '#8b5cf6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 20px',
-                      cursor: loadingMore ? 'not-allowed' : 'pointer',
-                      fontSize: '0.85rem',
-                      fontWeight: '600',
-                      opacity: loadingMore ? 0.6 : 1,
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    {loadingMore ? '⏳ Cargando más...' : '📥 Cargar 300 Facturas Más'}
-                  </button>
-                )}
-                
-                {!hasMoreInvoices && invoices.length >= 300 && (
                   <div style={{ 
-                    fontSize: '0.85rem',
-                    color: '#10b981',
-                    fontWeight: '600'
+                    fontSize: '0.875rem',
+                    color: COLORS.textSecondary
                   }}>
-                    ✅ Todas las facturas cargadas
+                    Mostrando <strong style={{ color: COLORS.textPrimary }}>{displayedInvoices.length}</strong> facturas
                   </div>
-                )}
+                  
+                  {hasMoreInvoices && (
+                    <button 
+                      onClick={loadMoreInvoices}
+                      disabled={loadingMore}
+                      style={{
+                        background: GRADIENTS.purple,
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '8px 20px',
+                        cursor: loadingMore ? 'not-allowed' : 'pointer',
+                        fontSize: '0.85rem',
+                        fontWeight: '600',
+                        opacity: loadingMore ? 0.6 : 1,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {loadingMore ? '⏳ Cargando más...' : '📥 Cargar 300 Facturas Más'}
+                    </button>
+                  )}
+                  
+                  {!hasMoreInvoices && invoices.length >= 300 && (
+                    <div style={{ 
+                      fontSize: '0.85rem',
+                      color: '#10b981',
+                      fontWeight: '600'
+                    }}>
+                      ✅ Todas las facturas cargadas
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </>
+      )}
+
+      {/* Botón Flotante de Filtros */}
+      <button
+        onClick={() => setShowFilters(true)}
+        style={styles.filterButton}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 102, 234, 0.5)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 102, 234, 0.4)';
+        }}
+      >
+        <span style={{ marginRight: '8px' }}>🔍</span>
+        Filtros
+      </button>
+      
+      {/* Modal de Filtros */}
+      {showFilters && (
+        <div 
+          className="modal fade show d-block" 
+          style={styles.modalOverlay}
+          onClick={() => setShowFilters(false)}
+        >
+          <div 
+            className="modal-dialog modal-dialog-centered"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '20px' }}>
+              <div className="modal-header" style={{ borderBottom: `1px solid ${COLORS.border}`, padding: '1.5rem' }}>
+                <h5 className="modal-title" style={{ fontSize: '1.25rem', fontWeight: '700', color: COLORS.textPrimary }}>
+                  Filtros y Acciones
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={() => setShowFilters(false)}
+                  style={{ fontSize: '0.875rem' }}
+                ></button>
+              </div>
+              <div className="modal-body p-4">
+                {/* Acciones */}
+                <div className="mb-4">
+                  <label style={{ fontSize: '0.875rem', fontWeight: '600', color: COLORS.textSecondary, marginBottom: '0.75rem' }}>
+                    Acciones
+                  </label>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button 
+                      onClick={() => { fetchInvoices(true); setShowFilters(false); }}
+                      disabled={loading}
+                      style={{
+                        background: GRADIENTS.purple,
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '10px 20px',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                        opacity: loading ? 0.6 : 1
+                      }}
+                    >
+                      {loading ? 'Cargando...' : '🔄 Actualizar'}
+                    </button>
+
+                    <button 
+                      onClick={() => { generatePDF(); setShowFilters(false); }}
+                      disabled={loading || invoices.length === 0}
+                      style={{
+                        background: GRADIENTS.green,
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '10px 20px',
+                        cursor: (loading || invoices.length === 0) ? 'not-allowed' : 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                        opacity: (loading || invoices.length === 0) ? 0.6 : 1
+                      }}
+                    >
+                      📥 Descargar PDF
+                    </button>
+                  </div>
+                </div>
+
+                {/* Período */}
+                <div className="mb-4">
+                  <label style={{ fontSize: '0.875rem', fontWeight: '600', color: COLORS.textSecondary, marginBottom: '0.75rem' }}>
+                    Período
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {[
+                      { value: 'month', label: 'Último Mes' },
+                      { value: '3months', label: '3 Meses' },
+                      { value: '6months', label: '6 Meses' },
+                      { value: 'year', label: 'Año' },
+                      { value: 'all', label: 'Todo' }
+                    ].map(period => (
+                      <button
+                        key={period.value}
+                        onClick={() => setPeriodFilter(period.value as any)}
+                        style={{
+                          backgroundColor: periodFilter === period.value ? COLORS.primary : 'white',
+                          color: periodFilter === period.value ? 'white' : COLORS.textSecondary,
+                          border: periodFilter === period.value ? 'none' : `1px solid ${COLORS.border}`,
+                          borderRadius: '8px',
+                          padding: '8px 16px',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {period.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Estado */}
+                <div className="mb-3">
+                  <label style={{ fontSize: '0.875rem', fontWeight: '600', color: COLORS.textSecondary, marginBottom: '0.75rem' }}>
+                    Estado
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {[
+                      { value: 'all', label: 'Todas' },
+                      { value: 'paid', label: 'Pagadas' },
+                      { value: 'pending', label: 'Pendientes' },
+                      { value: 'overdue', label: 'Vencidas' }
+                    ].map(status => (
+                      <button
+                        key={status.value}
+                        onClick={() => setStatusFilter(status.value as any)}
+                        style={{
+                          backgroundColor: statusFilter === status.value ? COLORS.primary : 'white',
+                          color: statusFilter === status.value ? 'white' : COLORS.textSecondary,
+                          border: statusFilter === status.value ? 'none' : `1px solid ${COLORS.border}`,
+                          borderRadius: '8px',
+                          padding: '8px 16px',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: '600',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {status.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer border-0 p-4 pt-0">
+                <button 
+                  type="button" 
+                  className="btn"
+                  onClick={() => setShowFilters(false)}
+                  style={{
+                    background: GRADIENTS.purple,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '0.625rem 1.5rem',
+                    fontWeight: '600',
+                    fontSize: '0.9rem',
+                    width: '100%'
+                  }}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal de Detalles de Factura */}
@@ -1322,15 +1569,17 @@ function Reports() {
               maxHeight: '90vh',
               boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              borderRadius: '20px'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header del Modal */}
             <div style={{
-              background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+              background: GRADIENTS.purple,
               padding: '24px',
-              color: 'white'
+              color: 'white',
+              borderRadius: '20px 20px 0 0'
             }}>
               <div style={{
                 display: 'flex',
@@ -1402,94 +1651,111 @@ function Reports() {
                   </div>
                   <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
-                      MONEDA
+                      ESTADO
                     </div>
-                    <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>
-                      {selectedInvoice.currency?.name || 'N/A'} ({selectedInvoice.currency?.abbr || 'USD'})
+                    <div>
+                      {(() => {
+                        const status = getInvoiceStatus(selectedInvoice);
+                        const statusConfig = {
+                          paid: { label: 'Pagada', color: '#10b981', bg: '#d1fae5' },
+                          pending: { label: 'Pendiente', color: '#f59e0b', bg: '#fef3c7' },
+                          overdue: { label: 'Vencida', color: '#ef4444', bg: '#fee2e2' }
+                        };
+                        const config = statusConfig[status];
+                        return (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            color: config.color,
+                            backgroundColor: config.bg
+                          }}>
+                            {config.label}
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
-                  {selectedInvoice.shipment?.number && (
-                    <div style={{ flex: '1 1 100%' }}>
-                      <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
-                        SHIPMENT ASOCIADO
-                      </div>
-                      <span
-                        onClick={() => openShipmentModal(selectedInvoice.shipment!.number!)}
-                        style={{
-                          fontSize: '0.875rem',
-                          color: '#3b82f6',
-                          textDecoration: 'underline',
-                          cursor: 'pointer',
-                          fontWeight: '600'
-                        }}
-                      >
-                        {selectedInvoice.shipment.number}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </CollapsibleSection>
 
-              {/* Detalles de Cobros */}
+              {/* Información del Envío */}
+              {selectedInvoice.shipment && (
+                <CollapsibleSection title="Información del Envío" defaultOpen={false} icon="📦">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
+                      <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                        NÚMERO DE ENVÍO
+                      </div>
+                      <div 
+                        onClick={() => openShipmentModal(selectedInvoice.shipment!.number!)}
+                        style={{
+                          fontSize: '0.875rem',
+                          color: COLORS.air,
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        {selectedInvoice.shipment.number}
+                      </div>
+                    </div>
+                    {selectedInvoice.shipment.departure && (
+                      <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                          ORIGEN
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>
+                          {selectedInvoice.shipment.departure}
+                        </div>
+                      </div>
+                    )}
+                    {selectedInvoice.shipment.arrival && (
+                      <div style={{ flex: '1 1 48%', minWidth: '200px' }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: '600', color: '#6b7280', marginBottom: '4px' }}>
+                          DESTINO
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: '#1f2937' }}>
+                          {selectedInvoice.shipment.arrival}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleSection>
+              )}
+
+              {/* Cargos */}
               {selectedInvoice.charges && selectedInvoice.charges.length > 0 && (
-                <CollapsibleSection title="Detalles de Cobros" defaultOpen={true} icon="📋">
+                <CollapsibleSection title={`Cargos (${processCharges(selectedInvoice.charges).length})`} defaultOpen={false} icon="💵">
                   <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', fontSize: '0.85rem' }}>
+                    <table style={{ 
+                      width: '100%',
+                      fontSize: '0.8rem',
+                      borderCollapse: 'collapse'
+                    }}>
                       <thead>
-                        <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                          <th style={{ padding: '8px', textAlign: 'left', fontSize: '0.7rem', color: '#6b7280' }}>DESCRIPCIÓN</th>
-                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>CANTIDAD</th>
-                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>TARIFA ({selectedInvoice.currency?.abbr})</th>
-                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem', color: '#6b7280' }}>MONTO ({selectedInvoice.currency?.abbr})</th>
+                        <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '8px', textAlign: 'left', fontSize: '0.7rem' }}>Descripción</th>
+                          <th style={{ padding: '8px', textAlign: 'center', fontSize: '0.7rem' }}>Cantidad</th>
+                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem' }}>Tarifa</th>
+                          <th style={{ padding: '8px', textAlign: 'right', fontSize: '0.7rem' }}>Total</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {processCharges(selectedInvoice.charges).map((charge, index) => (
-                          <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '8px', color: '#1f2937' }}>{charge.description}</td>
-                            <td style={{ padding: '8px', textAlign: 'right', color: '#4b5563' }}>
-                              {charge.quantity} {charge.unit}
+                        {processCharges(selectedInvoice.charges).map((charge, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '8px' }}>{charge.description || '-'}</td>
+                            <td style={{ padding: '8px', textAlign: 'center' }}>{charge.quantity || '-'} {charge.unit || ''}</td>
+                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                              {charge.rate !== undefined ? formatCurrency(charge.rate, selectedInvoice.currency?.abbr || 'USD', 2) : '-'}
                             </td>
-                            <td style={{ padding: '8px', textAlign: 'right', color: '#4b5563' }}>
-                              {formatCurrency(charge.rate || 0, selectedInvoice.currency?.abbr, 3)}
-                            </td>
-                            <td style={{ padding: '8px', textAlign: 'right', color: '#1f2937', fontWeight: '600' }}>
-                              {formatCurrency(charge.amount || 0, selectedInvoice.currency?.abbr)}
+                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '600' }}>
+                              {charge.amount !== undefined ? formatCurrency(charge.amount, selectedInvoice.currency?.abbr || 'USD', 2) : '-'}
                             </td>
                           </tr>
                         ))}
-                        {/* Fila de total */}
-                        <tr style={{ borderTop: '2px solid #e5e7eb' }}>
-                          <td colSpan={3} style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: '#1f2937' }}>
-                            TOTAL:
-                          </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: '#1f2937', fontSize: '0.95rem' }}>
-                            {formatCurrency(
-                              processCharges(selectedInvoice.charges).reduce((sum, charge) => sum + (charge.amount || 0), 0),
-                              selectedInvoice.currency?.abbr
-                            )}
-                          </td>
-                        </tr>
-                        
-                        {/* Fila de conversión de divisa */}
-                        {selectedInvoice.totalAmount?.value && (
-                          <tr style={{ borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                            <td colSpan={3} style={{ padding: '10px 8px', textAlign: 'right', color: '#4b5563', fontSize: '0.8rem' }}>
-                              TIPO DE CAMBIO:
-                            </td>
-                            <td style={{ padding: '10px 8px', textAlign: 'right', color: '#4b5563', fontSize: '0.8rem' }}>
-                              {(() => {
-                                const totalCharges = processCharges(selectedInvoice.charges).reduce(
-                                  (sum, charge) => sum + (charge.amount || 0), 0
-                                );
-                                const exchangeRate = totalCharges > 0 
-                                  ? (selectedInvoice.totalAmount?.value / totalCharges).toFixed(2)
-                                  : 0;
-                                return `${exchangeRate} CLP / ${selectedInvoice.currency?.abbr}`;
-                              })()}
-                            </td>
-                          </tr>
-                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1497,68 +1763,52 @@ function Reports() {
               )}
 
               {/* Totales */}
-              <CollapsibleSection title="Resumen de Totales" defaultOpen={true} icon="💰">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>Subtotal:</span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>
-                      {formatCurrency(selectedInvoice.amount?.value || 0, 'CLP')}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', backgroundColor: '#f9fafb', borderRadius: '6px' }}>
-                    <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>IVA:</span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#1f2937' }}>
-                      {formatCurrency(selectedInvoice.taxAmount?.value || 0, 'CLP')}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: '#8b5cf6', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: '600', color: 'white' }}>Total:</span>
-                    <span style={{ fontSize: '1.2rem', fontWeight: '700', color: 'white' }}>
-                      {formatCurrency(selectedInvoice.totalAmount?.value || 0, 'CLP')}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px', backgroundColor: getInvoiceStatus(selectedInvoice) === 'paid' ? '#d1fae5' : '#fef3c7', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '1rem', fontWeight: '600', color: getInvoiceStatus(selectedInvoice) === 'paid' ? '#10b981' : '#f59e0b' }}>Saldo Pendiente:</span>
-                    <span style={{ fontSize: '1.2rem', fontWeight: '700', color: getInvoiceStatus(selectedInvoice) === 'paid' ? '#10b981' : '#f59e0b' }}>
-                      {(() => {
-
-                        // Calculamos el tipo de cambio de divisa
-                        if (selectedInvoice.charges && selectedInvoice.charges.length > 0 && selectedInvoice.totalAmount?.value) {
-                          const totalCharges = selectedInvoice.charges.reduce(
-                            (sum, charge) => sum + (charge.amount || 0), 0
-                          );
-                          
-                          if (totalCharges > 0) {
-                            // Calculamos el tipo de cambio con el factor de multiplicación por 2
-                            const exchangeRate = selectedInvoice.totalAmount.value / totalCharges * 2;
-                            
-                            // Aplicamos el tipo de cambio al saldo pendiente
-                            const convertedBalance = (selectedInvoice.balanceDue?.value || 0) * exchangeRate;
-                            
-                            return formatCurrency(convertedBalance, 'CLP');
-                          }
-                        }
-                        
-                        // Si no podemos calcular el tipo de cambio, mostramos el valor original
-                        return formatCurrency(selectedInvoice.balanceDue?.value || 0, 'CLP');
-                      })()}
-                    </span>
-                  </div>
+              <div style={{
+                marginTop: '20px',
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: '600', color: '#6b7280', fontSize: '0.875rem' }}>Subtotal:</span>
+                  <span style={{ fontWeight: '600', color: '#1f2937' }}>
+                    {formatCurrency(selectedInvoice.amount?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                  </span>
                 </div>
-              </CollapsibleSection>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontWeight: '600', color: '#6b7280', fontSize: '0.875rem' }}>Impuestos:</span>
+                  <span style={{ fontWeight: '600', color: '#1f2937' }}>
+                    {formatCurrency(selectedInvoice.taxAmount?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '2px solid #e5e7eb' }}>
+                  <span style={{ fontWeight: '700', color: '#1f2937', fontSize: '1rem' }}>Total:</span>
+                  <span style={{ fontWeight: '700', color: '#1f2937', fontSize: '1rem' }}>
+                    {formatCurrency(selectedInvoice.totalAmount?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e5e7eb' }}>
+                  <span style={{ fontWeight: '700', color: '#f59e0b', fontSize: '1rem' }}>Saldo Pendiente:</span>
+                  <span style={{ fontWeight: '700', color: '#f59e0b', fontSize: '1rem' }}>
+                    {formatCurrency(selectedInvoice.balanceDue?.value || 0, selectedInvoice.currency?.abbr || 'USD')}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Footer del Modal */}
             <div style={{ 
               padding: '16px 24px',
-              borderTop: '1px solid #e5e7eb',
-              backgroundColor: '#f9fafb'
+              borderTop: `1px solid ${COLORS.border}`,
+              backgroundColor: '#f9fafb',
+              borderRadius: '0 0 20px 20px'
             }}>
               <button 
                 onClick={closeInvoiceModal}
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  background: GRADIENTS.purple,
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1575,78 +1825,40 @@ function Reports() {
         </div>
       )}
 
-      {/* Indicador de carga de más facturas */}
-      {loadingMore && (
-        <div style={{ 
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          backgroundColor: '#8b5cf6',
-          color: 'white',
-          padding: '16px 24px',
-          borderRadius: '12px',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          zIndex: 1000,
-          animation: 'fadeIn 0.3s ease'
-        }}>
-          <div style={{
-            width: '20px',
-            height: '20px',
-            border: '3px solid rgba(255, 255, 255, 0.3)',
-            borderTopColor: 'white',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }} />
-          <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>
-            Cargando más facturas...
-          </span>
-        </div>
-      )}
-
-      {/* Modal de Shipment (Air o Ocean) */}
+      {/* Modal de Envío */}
       {showShipmentModal && shipmentModalData && (
-        <div 
+        <div
           className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
           style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 10000, overflowY: 'auto', animation: 'fadeIn 0.3s ease-in-out' }}
           onClick={closeShipmentModal}
         >
-          <div 
+          <div
             className="bg-white rounded"
-            style={{ 
-              maxWidth: '700px', 
-              width: '100%', 
-              maxHeight: '90vh',
+            style={{
+              maxWidth: '600px',
+              width: '100%',
               boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-              display: 'flex',
-              flexDirection: 'column'
+              borderRadius: '20px'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div style={{
-              background: shipmentModalData.type === 'air' 
-                ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+              background: shipmentModalData.type === 'air' ? GRADIENTS.blue : GRADIENTS.cyan,
               padding: '24px',
-              color: 'white'
+              color: 'white',
+              borderRadius: '20px 20px 0 0'
             }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start'
-              }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <h5 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
-                    {shipmentModalData.type === 'air' ? '✈️' : '🚢'} {shipmentModalData.type === 'air' ? 'Air' : 'Ocean'} Shipment
+                    {shipmentModalData.type === 'air' ? '✈️ Envío Aéreo' : '🚢 Envío Marítimo'}
                   </h5>
                   <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                    {shipmentModalData.number}
+                    Información no disponible en esta vista
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={closeShipmentModal}
                   style={{
                     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -1667,19 +1879,8 @@ function Reports() {
             </div>
 
             {/* Contenido */}
-            <div style={{ 
-              padding: '24px', 
-              overflowY: 'auto', 
-              flex: 1,
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '3rem', marginBottom: '16px', opacity: 0.5 }}>
-                {shipmentModalData.type === 'air' ? '✈️' : '🚢'}
-              </div>
-              <h6 style={{ color: '#1f2937', marginBottom: '8px' }}>
-                Información del Envío
-              </h6>
-              <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '20px' }}>
+            <div style={{ padding: '24px' }}>
+              <p style={{ color: '#6b7280', marginBottom: '16px' }}>
                 Para ver los detalles completos de este envío, dirígete a la sección de{' '}
                 <strong>{shipmentModalData.type === 'air' ? 'Air Shipments' : 'Ocean Shipments'}</strong>{' '}
                 y busca el número: <strong>{shipmentModalData.number}</strong>
@@ -1704,15 +1905,14 @@ function Reports() {
             <div style={{ 
               padding: '16px 24px',
               borderTop: '1px solid #e5e7eb',
-              backgroundColor: '#f9fafb'
+              backgroundColor: '#f9fafb',
+              borderRadius: '0 0 20px 20px'
             }}>
               <button 
                 onClick={closeShipmentModal}
                 style={{
                   width: '100%',
-                  background: shipmentModalData.type === 'air' 
-                    ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                    : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+                  background: shipmentModalData.type === 'air' ? GRADIENTS.blue : GRADIENTS.cyan,
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1744,16 +1944,18 @@ function Reports() {
               maxHeight: '90vh',
               boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              borderRadius: '20px'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div
               style={{
-                background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                background: GRADIENTS.red,
                 padding: '24px',
-                color: 'white'
+                color: 'white',
+                borderRadius: '20px 20px 0 0'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1828,7 +2030,7 @@ function Reports() {
                                   openInvoiceModal(inv);
                                 }}
                                 style={{
-                                  backgroundColor: '#8b5cf6',
+                                  backgroundColor: COLORS.secondary,
                                   color: 'white',
                                   border: 'none',
                                   borderRadius: '6px',
@@ -1850,12 +2052,12 @@ function Reports() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', backgroundColor: '#f9fafb', borderRadius: '0 0 20px 20px' }}>
               <button
                 onClick={closeOverdueModal}
                 style={{
                   width: '100%',
-                  background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                  background: GRADIENTS.red,
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1874,24 +2076,22 @@ function Reports() {
 
       {/* Estado vacío */}
       {!loading && invoices.length === 0 && (
-        <div style={{ 
-          textAlign: 'center', 
-          padding: '60px 20px',
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-        }}>
-          <div style={{ fontSize: '4rem', marginBottom: '16px', opacity: 0.5 }}>📊</div>
-          <h5 style={{ color: '#1f2937', marginBottom: '8px', fontSize: '1.2rem' }}>
+        <div style={styles.emptyState}>
+          <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>📊</div>
+          <h5 style={{ 
+            color: COLORS.textPrimary, 
+            fontWeight: '600', 
+            marginBottom: '0.75rem' 
+          }}>
             No hay facturas disponibles
           </h5>
-          <p style={{ color: '#6b7280' }}>
+          <p style={{ color: COLORS.textSecondary, marginBottom: 0 }}>
             No se encontraron facturas para tu cuenta
           </p>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
-export default Reports;
+export default ReporteriaFinanciera;
