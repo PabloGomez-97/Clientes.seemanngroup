@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -334,6 +334,139 @@ function QuotesView() {
   const [searchOrigin, setSearchOrigin] = useState('');
   const [searchDestination, setSearchDestination] = useState('');
   const [showingAll, setShowingAll] = useState(false);
+
+  // Tooltips estado
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Define los mensajes de ayuda para cada columna
+  const tooltipMessages = {
+    numero: "Número único de identificación de la cotización",
+    gasto: "Se excluyen impuestos asociados"
+  };
+
+  // Componente de Tooltip mejorado con posicionamiento inteligente
+  const TooltipIcon = ({ id, message }: { id: string; message: string }) => {
+    const iconRef = useRef<HTMLDivElement>(null);
+
+    const handleMouseEnter = () => {
+      if (iconRef.current) {
+        const rect = iconRef.current.getBoundingClientRect();
+        setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top });
+        setActiveTooltip(id);
+      }
+    };
+
+    const handleMouseLeave = () => {
+      setActiveTooltip(null);
+      setTooltipPosition(null);
+    };
+
+    // Calcular si el tooltip debe ir a la izquierda o derecha
+    const getTooltipStyle = () => {
+      if (!tooltipPosition) return {};
+      
+      const windowWidth = window.innerWidth;
+      const tooltipWidth = 280; // maxWidth del tooltip
+      const shouldAlignRight = tooltipPosition.x + tooltipWidth / 2 > windowWidth - 20;
+      const shouldAlignLeft = tooltipPosition.x - tooltipWidth / 2 < 20;
+
+      let transform = 'translate(-50%, -100%)';
+      let left = tooltipPosition.x;
+
+      if (shouldAlignRight) {
+        // Si está muy a la derecha, alinear el tooltip a la derecha
+        transform = 'translate(-100%, -100%)';
+        left = tooltipPosition.x + 8; // pequeño offset
+      } else if (shouldAlignLeft) {
+        // Si está muy a la izquierda, alinear el tooltip a la izquierda
+        transform = 'translate(0%, -100%)';
+        left = tooltipPosition.x - 8;
+      }
+
+      return {
+        position: 'fixed' as const,
+        left: `${left}px`,
+        top: `${tooltipPosition.y}px`,
+        transform: transform,
+        marginTop: '-12px'
+      };
+    };
+
+    return (
+      <div 
+        ref={iconRef}
+        style={{ 
+          position: 'relative',
+          display: 'inline-block',
+          marginLeft: '6px',
+          zIndex: 9999
+        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '16px',
+          height: '16px',
+          backgroundColor: '#3b82f6',
+          color: 'white',
+          borderRadius: '50%',
+          fontSize: '11px',
+          fontWeight: 'bold',
+          cursor: 'help',
+          userSelect: 'none'
+        }}>
+          ?
+        </span>
+        {activeTooltip === id && tooltipPosition && (
+          <div style={{
+            ...getTooltipStyle(),
+            padding: '10px 14px',
+            backgroundColor: '#1f2937',
+            color: 'white',
+            borderRadius: '8px',
+            fontSize: '0.8rem',
+            lineHeight: '1.4',
+            whiteSpace: 'normal',
+            maxWidth: '280px',
+            minWidth: '200px',
+            width: 'max-content',
+            zIndex: 99999,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            pointerEvents: 'none',
+            textAlign: 'center',
+            wordWrap: 'break-word'
+          }}>
+            {message}
+            {/* Flecha del tooltip - ajustar posición según alineación */}
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: tooltipPosition.x + 280 / 2 > window.innerWidth - 20 
+                ? 'auto' 
+                : tooltipPosition.x - 280 / 2 < 20 
+                  ? '20px' 
+                  : '50%',
+              right: tooltipPosition.x + 280 / 2 > window.innerWidth - 20 
+                ? '20px' 
+                : 'auto',
+              transform: tooltipPosition.x + 280 / 2 > window.innerWidth - 20 || tooltipPosition.x - 280 / 2 < 20
+                ? 'none'
+                : 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: '6px solid #1f2937'
+            }} />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Función para formatear precios en CLP
   const formatCLP = (priceString?: string) => {
@@ -959,7 +1092,7 @@ function QuotesView() {
           <div style={{ 
             backgroundColor: 'white',
             borderRadius: '12px',
-            overflow: 'hidden',
+            overflow: 'visible',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
             border: '1px solid #e5e7eb'
           }}>
@@ -985,6 +1118,7 @@ function QuotesView() {
                       whiteSpace: 'nowrap'
                     }}>
                       Número
+                      <TooltipIcon id="numero" message={tooltipMessages.numero} />
                     </th>
                     <th style={{ 
                       padding: '16px 20px',
@@ -1044,7 +1178,8 @@ function QuotesView() {
                       letterSpacing: '0.5px',
                       whiteSpace: 'nowrap'
                     }}>
-                      Ingreso Total
+                      Gasto Parcial
+                      <TooltipIcon id="gasto" message={tooltipMessages.gasto} />
                     </th>
                   </tr>
                 </thead>

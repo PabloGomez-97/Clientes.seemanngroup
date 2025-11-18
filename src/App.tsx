@@ -21,22 +21,24 @@ import ReporteriaKPIs from './components/administrador/reporteria/pages/Reporter
 import ReporteriaExecutives from './components/administrador/reporteria/pages/ReporteriaExecutives';
 import ReporteriaTrends from './components/administrador/reporteria/pages/ReporteriaTrends';
 
-// Sidebar
-import Cotizador from './components/Sidebar/Cotizador';
+// Quotes View
 import QuoteLCL from './components/quotes/QuoteLCL';
 import QuoteFCL from './components/quotes/QuoteFCL';
 import QuoteAIR from './components/quotes/QuoteAIR';
 
 // User Views
+import Cotizador from './components/Sidebar/Cotizador';
 import QuotesView from './components/Sidebar/QuotesView';
 import AirShipmentsView from './components/shipments/AirShipmentsView';
 import OceanShipmentsView from './components/shipments/OceanShipmentsView';
-import Operacionales from './components/Sidebar/ReporteriaOperacional';
-import Envios from './components/Sidebar/EnviosAereos';
-import EnviosMaritimos from './components/Sidebar/EnviosMaritimos';
-import Reporteriageneral from './components/Sidebar/ReporteriaGeneral';
+import ReporteriaOperacional from './components/Sidebar/ReporteriaOperacional';
 import Financiera from './components/Sidebar/ReporteriaFinanciera';
 import Settings from './components/settings/Settings';
+
+// OFF
+import Operacionales from './components/Sidebar/RO2';
+import Envios from './components/Sidebar/EnviosAereos';
+import EnviosMaritimos from './components/Sidebar/EnviosMaritimos';
 
 function App() {
   const { user } = useAuth();
@@ -100,7 +102,7 @@ function App() {
         <Route path="operacionales" element={<Operacionales />} />
         <Route path="envios" element={<Envios />} />
         <Route path="enviosmaritimos" element={<EnviosMaritimos />} />
-        <Route path="reporteriageneral" element={<Reporteriageneral />} />
+        <Route path="reporteriaoperacional" element={<ReporteriaOperacional />} />
         <Route path="financiera" element={<Financiera />} />
         <Route path="settings" element={<Settings />} />
       </Route>
