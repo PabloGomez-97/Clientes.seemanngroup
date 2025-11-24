@@ -14,6 +14,7 @@ import DashboardAdmin from './components/administrador/dashboard-admin';
 import UsersManagement from './components/administrador/users-management';
 import SettingsAdmin from './components/administrador/settings-admin';
 import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLayout';
+import ReporteriaPersonalizado from './components/administrador/ReporteriaPersonalizado';
 
 // Reportería Pages
 import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';
@@ -57,6 +58,10 @@ function App() {
         element={user ? <Navigate to={user.username === 'Administrador' ? '/admin/dashboard' : '/login'} replace /> : <LoginAdmin />} 
       />
 
+
+
+
+
       {/* Rutas de Administrador */}
       <Route path="/admin" element={
         <ProtectedRoute requireAdmin={true}>
@@ -66,6 +71,7 @@ function App() {
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardAdmin />} />
         <Route path="users" element={<UsersManagement />} />
+        <Route path="reportespersonalizado" element={<ReporteriaPersonalizado />} />
         
         {/* Rutas de Reportería con subrutas */}
         <Route path="reporteria" element={<ReporteriaLayout />}>
@@ -74,16 +80,16 @@ function App() {
           <Route path="kpis" element={<ReporteriaKPIs />} />
           <Route path="ejecutivos" element={<ReporteriaExecutives />} />
           <Route path="tendencias" element={<ReporteriaTrends />} />
+
         </Route>
-        
-        <Route path="soporte" element={
-          <div className="text-center py-5">
-            <h3 className="text-muted">Módulo de Soporte</h3>
-            <p className="text-muted">En desarrollo...</p>
-          </div>
-        } />
         <Route path="settings" element={<SettingsAdmin />} />
       </Route>
+
+
+
+
+
+
 
       {/* Rutas de Usuario Regular */}
       <Route path="/" element={

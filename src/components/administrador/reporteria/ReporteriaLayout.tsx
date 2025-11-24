@@ -77,6 +77,27 @@ export default function ReporteriaLayout() {
   const isActive = (path: string) => location.pathname === path;
 
   return (
+    <div className="container-fluid">
+      {/* Header */}
+      <div className="row mb-4">
+        <div className="col">
+          <h2 style={{
+            fontSize: '28px',
+            fontWeight: '700',
+            color: '#1f2937',
+            marginBottom: '8px',
+            letterSpacing: '-0.5px'
+          }}>
+            Configuración de Administrador
+          </h2>
+          <p style={{
+            fontSize: '15px',
+            color: '#6b7280',
+            margin: 0
+          }}>
+          </p>
+        </div>
+      </div>
     <ReporteriaDataProvider operations={operations} setOperations={setOperations}>
       <div style={{ backgroundColor: '#fafafa', minHeight: 'calc(100vh - 60px)' }}>
         {/* Si no hay datos cargados, mostrar uploader */}
@@ -265,5 +286,6 @@ export default function ReporteriaLayout() {
         )}
       </div>
     </ReporteriaDataProvider>
+    </div>
   );
 }
