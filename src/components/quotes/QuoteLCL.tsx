@@ -3,37 +3,112 @@ import { useOutletContext } from 'react-router-dom';
 import { useAuth } from "../../auth/AuthContext";
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
-import type { Ruta, SelectOption, TipoOperacion, Provider } from './HelpersLCL/Types';
-import { getPriceForComparison } from './HelpersLCL/Types';
-import {
-  parseMSLIMPORT,
-  parseMSLEXPORT,
-  parseCRAFT,
-  parseECU,
-  parseCTL,
-  parseOVERSEAS,
-  parsePLUSCARGO,
-} from './HelpersLCL/Parsers';
-import {
-  calcularOceanFreight,
-  getChargeableVolume,
-  kgToTons,
-  getCurrency,
-  getTransitTime,
-  getFrequency,
-  getViaInfo,
-  getRutaInfo,
-  validarCommodity,
-  formatPrice,
-  getProviderColor,
-  type TarifaCalculada
-} from './HelpersLCL/LCLHelpers';
 import { packageTypeOptions } from './PackageTypes/PiecestypesLCL';
 
 interface OutletContext {
   accessToken: string;
   onLogout: () => void;
 }
+
+// ============================================================================
+// TIPOS E INTERFACES PARA RUTAS LCL
+// ============================================================================
+
+interface RutaLCL {
+  id: string;
+  pol: string;
+  polNormalized: string;
+  pod: string;
+  podNormalized: string;
+  servicio: string | null;
+  ofWM: number;
+  ofWMString: string;
+  currency: 'USD' | 'EUR';
+  frecuencia: string | null;
+  agente: string | null;
+  ttAprox: string | null;
+  operador: string;
+  operadorNormalized: string;
+  row_number: number;
+}
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+type Currency = 'USD' | 'EUR';
+type Operador = string;
+
+// ============================================================================
+// FUNCIONES HELPER PARA RUTAS LCL
+// ============================================================================
+
+const extractPrice = (priceValue: any): number => {
+  if (!priceValue) return 0;
+  if (typeof priceValue === 'number') return priceValue;
+  const match = priceValue.toString().match(/[\d,]+\.?\d*/);
+  if (!match) return 0;
+  return parseFloat(match[0].replace(/,/g, ''));
+};
+
+const normalize = (str: string | null): string => {
+  if (!str) return '';
+  return str.toString().toLowerCase().trim();
+};
+
+const capitalize = (str: string): string => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+const parseLCL = (data: any[]): RutaLCL[] => {
+  const rutas: RutaLCL[] = [];
+  let idCounter = 1;
+
+  for (let i = 2; i < data.length; i++) {
+    const row: any = data[i];
+    if (!row) continue;
+
+    const pol = row[1];
+    const servicio = row[2];
+    const pod = row[3];
+    const ofWM = row[4];
+    const currency = row[5];
+    const frecuencia = row[6];
+    const agente = row[7];
+    const ttAprox = row[8];
+    const operador = row[9];
+
+    if (pol && pod && typeof pol === 'string' && typeof pod === 'string' && ofWM && operador) {
+      const ofWMNumber = extractPrice(ofWM);
+      
+      rutas.push({
+        id: `LCL-${idCounter++}`,
+        pol: pol.trim(),
+        polNormalized: normalize(pol),
+        pod: pod.trim(),
+        podNormalized: normalize(pod),
+        servicio: servicio ? servicio.toString().trim() : null,
+        ofWM: ofWMNumber,
+        ofWMString: ofWM.toString().trim(),
+        currency: currency && currency.toString().toUpperCase() === 'EUR' ? 'EUR' : 'USD',
+        frecuencia: frecuencia ? frecuencia.toString().trim() : null,
+        agente: agente ? agente.toString().trim() : null,
+        ttAprox: ttAprox ? ttAprox.toString().trim() : null,
+        operador: operador.toString().trim(),
+        operadorNormalized: normalize(operador),
+        row_number: i + 1
+      });
+    }
+  }
+
+  return rutas;
+};
 
 // ============================================================================
 // COMPONENTE PRINCIPAL
@@ -43,7 +118,6 @@ function QuoteLCL() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
   
-  // Estados de API
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,184 +126,213 @@ function QuoteLCL() {
   // ESTADOS PARA RUTAS LCL
   // ============================================================================
   
-  const [rutas, setRutas] = useState<Ruta[]>([]);
+  const [rutas, setRutas] = useState<RutaLCL[]>([]);
   const [loadingRutas, setLoadingRutas] = useState(true);
   const [errorRutas, setErrorRutas] = useState<string | null>(null);
   
-  const [tipoOperacion, setTipoOperacion] = useState<TipoOperacion>('IMPORTACION');
   const [polSeleccionado, setPolSeleccionado] = useState<SelectOption | null>(null);
   const [podSeleccionado, setPodSeleccionado] = useState<SelectOption | null>(null);
-  const [rutaSeleccionada, setRutaSeleccionada] = useState<Ruta | null>(null);
+  const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaLCL | null>(null);
   
   const [opcionesPOL, setOpcionesPOL] = useState<SelectOption[]>([]);
   const [opcionesPOD, setOpcionesPOD] = useState<SelectOption[]>([]);
   
-  const [proveedoresActivos, setProveedoresActivos] = useState<Set<Provider>>(new Set());
-  const [proveedoresDisponibles, setProveedoresDisponibles] = useState<Provider[]>([]);
+  const [operadoresActivos, setOperadoresActivos] = useState<Set<Operador>>(new Set());
+  const [operadoresDisponibles, setOperadoresDisponibles] = useState<Operador[]>([]);
 
   // ============================================================================
   // ESTADOS PARA COMMODITY
   // ============================================================================
   
-  const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
   const [pieces, setPieces] = useState(1);
   const [description, setDescription] = useState("LCL Cargo - Test");
   const [selectedPackageType, setSelectedPackageType] = useState(97);
   
-  // Modo Normal
   const [length, setLength] = useState(100); // cm
   const [width, setWidth] = useState(80); // cm
   const [height, setHeight] = useState(60); // cm
   const [weight, setWeight] = useState(500); // kg
-  
-  // Modo Overall
-  const [manualVolume, setManualVolume] = useState(0.48); // m³
-  const [manualWeight, setManualWeight] = useState(500); // kg
+
+  // ============================================================================
+  // CARGA DE DATOS LCL.XLSX
+  // ============================================================================
+
+  useEffect(() => {
+    const cargarRutas = async () => {
+      try {
+        setLoadingRutas(true);
+        const response = await fetch('/assets/LCL.xlsx');
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        const rutasParsed = parseLCL(data);
+        setRutas(rutasParsed);
+
+        // Extraer POLs únicos
+        const polMap = new Map<string, string>();
+        rutasParsed.forEach(r => {
+          if (!polMap.has(r.polNormalized)) {
+            polMap.set(r.polNormalized, r.pol);
+          }
+        });
+        const polsUnicos = Array.from(polMap.entries())
+          .map(([normalized, original]) => ({
+            value: normalized,
+            label: capitalize(original)
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+        setOpcionesPOL(polsUnicos);
+
+        // Extraer operadores únicos
+        const operadoresUnicos = Array.from(
+          new Set(
+            rutasParsed
+              .map(r => r.operador)
+              .filter(o => o)
+          )
+        ).sort() as string[];
+        setOperadoresDisponibles(operadoresUnicos);
+        setOperadoresActivos(new Set(operadoresUnicos));
+
+        setLoadingRutas(false);
+      } catch (err) {
+        console.error('Error al cargar LCL.xlsx:', err);
+        setErrorRutas('No se pudo cargar el archivo LCL.xlsx');
+        setLoadingRutas(false);
+      }
+    };
+
+    cargarRutas();
+  }, []);
+
+  // ============================================================================
+  // ACTUALIZAR PODs CUANDO CAMBIA POL
+  // ============================================================================
+
+  useEffect(() => {
+    if (polSeleccionado) {
+      const podsParaPOL = rutas
+        .filter(r => r.polNormalized === polSeleccionado.value)
+        .map(r => r.pod);
+      
+      const podsUnicos = Array.from(new Set(podsParaPOL))
+        .sort()
+        .map(pod => ({
+          value: normalize(pod),
+          label: capitalize(pod)
+        }));
+      
+      setOpcionesPOD(podsUnicos);
+      setPodSeleccionado(null);
+      setRutaSeleccionada(null);
+    } else {
+      setOpcionesPOD([]);
+      setPodSeleccionado(null);
+      setRutaSeleccionada(null);
+    }
+  }, [polSeleccionado, rutas]);
 
   // ============================================================================
   // CÁLCULOS
   // ============================================================================
 
   const calculateVolume = () => {
-    return (length * width * height) / 1000000;
+    return (length * width * height) / 1000000; // m³
   };
 
   const volume = calculateVolume();
-  const totalVolume = overallDimsAndWeight ? manualVolume : volume * pieces;
-  const totalWeight = overallDimsAndWeight ? manualWeight : weight * pieces;
-  const totalWeightTons = kgToTons(totalWeight);
+  const totalVolume = volume * pieces;
+  const totalWeight = weight * pieces;
+  const totalWeightTons = totalWeight / 1000; // Convertir kg a toneladas
   
   // W/M Chargeable: Mayor entre peso (en toneladas) y volumen (en m³)
-  const chargeableVolume = getChargeableVolume(totalWeightTons, totalVolume);
+  const chargeableVolume = Math.max(totalWeightTons, totalVolume);
 
   // ============================================================================
-  // CARGA DE RUTAS LCL
+  // FILTRAR RUTAS
   // ============================================================================
 
-  const cargarArchivos = async (tipo: TipoOperacion) => {
-    setLoadingRutas(true);
-    setErrorRutas(null);
+  const rutasFiltradas = rutas.filter(ruta => {
+    if (!polSeleccionado || !podSeleccionado) return false;
+    
+    const matchPOL = ruta.polNormalized === polSeleccionado.value;
+    const matchPOD = ruta.podNormalized === podSeleccionado.value;
+    const matchOperador = operadoresActivos.has(ruta.operador);
+    
+    return matchPOL && matchPOD && matchOperador;
+  }).sort((a, b) => a.ofWM - b.ofWM);
+
+  // ============================================================================
+  // CALCULAR TARIFA OCEAN FREIGHT
+  // ============================================================================
+
+  const calcularOceanFreight = () => {
+    if (!rutaSeleccionada) return null;
+
+    const expense = rutaSeleccionada.ofWM * chargeableVolume;
+    const income = expense * 1.15;
+
+    return {
+      expense,
+      income,
+      currency: rutaSeleccionada.currency
+    };
+  };
+
+  const tarifaOceanFreight = calcularOceanFreight();
+
+  // ============================================================================
+  // FUNCIÓN DE TEST API
+  // ============================================================================
+
+  const testAPI = async () => {
+    if (!rutaSeleccionada) {
+      setError('Debes seleccionar una ruta antes de generar la cotización');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setResponse(null);
 
     try {
-      const todasLasRutas: Ruta[] = [];
+      const payload = getTestPayload();
+      
+      const res = await fetch('https://api.linbis.com/Quotes/create', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
 
-      if (tipo === 'IMPORTACION') {
-        const archivos = [
-          { nombre: 'MSL-IMPORT.xlsx', parser: parseMSLIMPORT },
-          { nombre: 'CRAFT.xlsx', parser: parseCRAFT },
-          { nombre: 'ECU.xlsx', parser: parseECU },
-          { nombre: 'CTL.xlsx', parser: parseCTL },
-          { nombre: 'OVERSEAS.xlsx', parser: parseOVERSEAS },
-          { nombre: 'PLUSCARGO.xlsx', parser: parsePLUSCARGO },
-        ];
-
-        for (const archivo of archivos) {
-          try {
-            const response = await fetch(`/assets/${archivo.nombre}`);
-            const arrayBuffer = await response.arrayBuffer();
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            const worksheet = workbook.Sheets['TARIFARIO'];
-            const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
-            
-            const rutasParsed = archivo.parser(data as any);
-            todasLasRutas.push(...rutasParsed);
-          } catch (err) {
-            console.error(`Error cargando ${archivo.nombre}:`, err);
-          }
-        }
-      } else {
-        const response = await fetch('/assets/MSL-EXPORT.xlsx');
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const worksheet = workbook.Sheets['TARIFARIO'];
-        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
-        
-        const rutasParsed = parseMSLEXPORT(data as any);
-        todasLasRutas.push(...rutasParsed);
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errorText}`);
       }
 
-      setRutas(todasLasRutas);
-
-      // Extraer POLs únicos
-      const polsUnicos = Array.from(new Set(todasLasRutas.map(r => r.pol))).sort();
-      setOpcionesPOL(polsUnicos.map(pol => ({ value: pol, label: pol })));
-
-      // Extraer providers únicos
-      const providersSet = new Set(todasLasRutas.map(r => r.provider)) as Set<Provider>;
-      const providersArray = Array.from(providersSet);
-      setProveedoresDisponibles(providersArray);
-      setProveedoresActivos(providersSet);
-
-      setLoadingRutas(false);
-    } catch (err) {
-      console.error('Error al cargar archivos:', err);
-      setErrorRutas('No se pudo cargar las rutas. Verifica que los archivos estén en /assets/');
-      setLoadingRutas(false);
+      const data = await res.json();
+      setResponse(data);
+    } catch (err: any) {
+      setError(err.message || 'Error desconocido');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ============================================================================
-  // EFECTOS
-  // ============================================================================
-
-  useEffect(() => {
-    cargarArchivos(tipoOperacion);
-  }, [tipoOperacion]);
-
-  useEffect(() => {
-    if (polSeleccionado) {
-      const rutasDelPOL = rutas.filter(r => r.pol === polSeleccionado.value);
-      const podsUnicos = Array.from(new Set(rutasDelPOL.map(r => r.pod))).sort();
-      setOpcionesPOD(podsUnicos.map(pod => ({ value: pod, label: pod })));
-    } else {
-      setOpcionesPOD([]);
-    }
-    setPodSeleccionado(null);
-    setRutaSeleccionada(null);
-  }, [polSeleccionado, rutas]);
-
-  useEffect(() => {
-    setRutaSeleccionada(null);
-  }, [podSeleccionado]);
-
-  // ============================================================================
-  // FILTRAR Y ORDENAR RUTAS
-  // ============================================================================
-
-  const rutasFiltradas = rutas
-    .filter(ruta => {
-      if (!polSeleccionado || !podSeleccionado) return false;
-      
-      const matchPOL = ruta.pol === polSeleccionado.value;
-      const matchPOD = ruta.pod === podSeleccionado.value;
-      const matchProvider = proveedoresActivos.has(ruta.provider);
-      
-      return matchPOL && matchPOD && matchProvider;
-    })
-    .sort((a, b) => getPriceForComparison(a) - getPriceForComparison(b));
-
-  // ============================================================================
-  // CALCULAR TARIFA PARA LA RUTA SELECCIONADA
-  // ============================================================================
-
-  const tarifaCalculada: TarifaCalculada | null = rutaSeleccionada 
-    ? calcularOceanFreight(rutaSeleccionada, chargeableVolume)
-    : null;
-
-  // ============================================================================
-  // FUNCIÓN PARA GENERAR PAYLOAD
-  // ============================================================================
-
   const getTestPayload = () => {
-    if (!rutaSeleccionada || !tarifaCalculada) return null;
+    if (!rutaSeleccionada || !tarifaOceanFreight) {
+      return null;
+    }
 
-    const divisa = tarifaCalculada.divisa;
-    const oceanFreightExpense = tarifaCalculada.precio;
-    const oceanFreightIncome = tarifaCalculada.precioConMarkup;
-    
     const charges = [];
+    const divisa = rutaSeleccionada.currency;
 
-    // ========== 1. BL ==========
+    // Cobro de BL
     charges.push({
       service: {
         id: 168,
@@ -258,7 +361,7 @@ function QuoteLCL() {
       }
     });
 
-    // ========== 2. HANDLING ==========
+    // Cobro de Handling
     charges.push({
       service: {
         id: 162,
@@ -287,7 +390,7 @@ function QuoteLCL() {
       }
     });
 
-    // ========== 3. EXW CHARGES ==========
+    // Cobro de EXW
     charges.push({
       service: {
         id: 271,
@@ -316,7 +419,7 @@ function QuoteLCL() {
       }
     });
 
-    // ========== 4. OCEAN FREIGHT ==========
+    // Cobro de OCEAN FREIGHT
     charges.push({
       service: {
         id: 106,
@@ -325,7 +428,7 @@ function QuoteLCL() {
       income: {
         quantity: chargeableVolume,
         unit: "OCEAN FREIGHT",
-        rate: oceanFreightIncome / chargeableVolume,
+        rate: tarifaOceanFreight.income / chargeableVolume,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -336,12 +439,12 @@ function QuoteLCL() {
         },
         reference: "LCL-OCEANFREIGHT-REF",
         showOnDocument: true,
-        notes: `OCEAN FREIGHT charge - ${rutaSeleccionada.provider} - W/M: ${chargeableVolume.toFixed(2)} - Rango: ${tarifaCalculada.rangoAplicado}${tarifaCalculada.minimoAplicado ? ' (Mínimo aplicado)' : ''} - Tarifa: ${formatPrice(oceanFreightExpense, divisa)} + 15%`
+        notes: `OCEAN FREIGHT charge - ${rutaSeleccionada.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)} + 15%`
       },
       expense: {
         quantity: chargeableVolume,
         unit: "OCEAN FREIGHT",
-        rate: oceanFreightExpense / chargeableVolume,
+        rate: tarifaOceanFreight.expense / chargeableVolume,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -352,98 +455,11 @@ function QuoteLCL() {
         },
         reference: "LCL-OCEANFREIGHT-REF",
         showOnDocument: true,
-        notes: `OCEAN FREIGHT expense - ${rutaSeleccionada.provider} - W/M: ${chargeableVolume.toFixed(2)} - Rango: ${tarifaCalculada.rangoAplicado}${tarifaCalculada.minimoAplicado ? ' (Mínimo aplicado)' : ''} - Tarifa: ${formatPrice(oceanFreightExpense, divisa)}`
+        notes: `OCEAN FREIGHT expense - ${rutaSeleccionada.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)}`
       }
     });
-
-    // ========== CARGO ADICIONAL (COMENTADO - EJEMPLO) ==========
-    /*
-    charges.push({
-      service: {
-        id: XXX,  // ID del servicio adicional
-        code: "XX"
-      },
-      income: {
-        quantity: 1,
-        unit: "UNIDAD",
-        rate: 50,
-        payment: "Prepaid",
-        billApplyTo: "Other",
-        billTo: {
-          name: user?.username
-        },
-        currency: {
-          abbr: divisa
-        },
-        reference: "LCL-ADICIONAL-REF",
-        showOnDocument: true,
-        notes: "Cargo adicional"
-      },
-      expense: {
-        currency: {
-          abbr: divisa
-        }
-      }
-    });
-    */
-
-    // ========== COMMODITY ==========
-    const commodity: any = {
-      commodityType: "Standard",
-      packageType: {
-        id: selectedPackageType
-      },
-      pieces: pieces,
-      description: description
-    };
-
-    // Modo Normal - Con dimensiones
-    if (!overallDimsAndWeight) {
-      commodity.weightPerUnitValue = weight;
-      commodity.weightPerUnitUOM = "kg";
-      commodity.totalWeightValue = totalWeight;
-      commodity.totalWeightUOM = "kg";
-      commodity.lengthValue = length;
-      commodity.lengthUOM = "cm";
-      commodity.widthValue = width;
-      commodity.widthUOM = "cm";
-      commodity.heightValue = height;
-      commodity.heightUOM = "cm";
-      commodity.volumeValue = volume;
-      commodity.volumeUOM = "m3";
-      commodity.totalVolumeValue = totalVolume;
-      commodity.totalVolumeUOM = "m3";
-    } 
-    // Modo Overall - Sin dimensiones individuales
-    else {
-      commodity.totalWeightValue = manualWeight;
-      commodity.totalWeightUOM = "kg";
-      commodity.totalVolumeValue = manualVolume;
-      commodity.totalVolumeUOM = "m3";
-    }
-
-    // ========== INFORMACIÓN ADICIONAL DE LA RUTA (COMENTADO) ==========
-    // Esta información puede agregarse a commodities o en otro campo según necesites:
-    /*
-    const rutaInfo = getRutaInfo(rutaSeleccionada);
-    
-    // Ejemplos de campos que podrías agregar:
-    // commodity.provider = rutaInfo.provider;
-    // commodity.region = rutaInfo.region;
-    // commodity.country = rutaInfo.country;
-    // commodity.via = rutaInfo.via;
-    // commodity.transitTime = rutaInfo.transitTime;
-    // commodity.frequency = rutaInfo.frequency;
-    // commodity.service = rutaInfo.service;
-    // commodity.agente = rutaInfo.agente;
-    // commodity.observaciones = rutaInfo.observaciones;
-    // commodity.remarks = rutaInfo.remarks;
-    // commodity.firstleg = rutaInfo.firstleg;
-    // commodity.servicio = rutaInfo.servicio;
-    */
 
     return {
-      id: 14184,
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
@@ -458,7 +474,7 @@ function QuoteLCL() {
         name: rutaSeleccionada.pod
       },
       modeOfTransportation: {
-        id: 1
+        id: 2
       },
       rateCategoryId: 2,
       portOfReceipt: {
@@ -476,75 +492,32 @@ function QuoteLCL() {
       salesRep: {
         name: "Ignacio Maldonado"
       },
-      commodities: [commodity],
+      commodities: [
+        {
+          commodityType: "Standard",
+          packageType: {
+            id: selectedPackageType
+          },
+          pieces: pieces,
+          description: description,
+          weightPerUnitValue: weight,
+          weightPerUnitUOM: "kg",
+          totalWeightValue: totalWeight,
+          totalWeightUOM: "kg",
+          lengthValue: length,
+          lengthUOM: "cm",
+          widthValue: width,
+          widthUOM: "cm",
+          heightValue: height,
+          heightUOM: "cm",
+          volumeValue: volume,
+          volumeUOM: "m3",
+          totalVolumeValue: totalVolume,
+          totalVolumeUOM: "m3"
+        }
+      ],
       charges
     };
-  };
-
-  // ============================================================================
-  // FUNCIÓN DE TEST API
-  // ============================================================================
-
-  const testAPI = async () => {
-    if (!rutaSeleccionada) {
-      setError('Debes seleccionar una ruta antes de generar la cotización');
-      return;
-    }
-
-    const validacion = validarCommodity(totalWeight, totalVolume, pieces);
-    if (!validacion.valid) {
-      setError(validacion.error || 'Error de validación');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setResponse(null);
-
-    try {
-      const payload = getTestPayload();
-      
-      const res = await fetch('https://api.linbis.com/Quotes/update', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errorText}`);
-      }
-
-      const data = await res.json();
-      setResponse(data);
-    } catch (err: any) {
-      setError(err.message || 'Error desconocido');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ============================================================================
-  // HANDLERS
-  // ============================================================================
-
-  const handleSeleccionarRuta = (ruta: Ruta) => {
-    setRutaSeleccionada(ruta);
-    setError(null);
-    setResponse(null);
-  };
-
-  const toggleProveedor = (provider: Provider) => {
-    const newSet = new Set(proveedoresActivos);
-    if (newSet.has(provider)) {
-      newSet.delete(provider);
-    } else {
-      newSet.add(provider);
-    }
-    setProveedoresActivos(newSet);
   };
 
   // ============================================================================
@@ -555,53 +528,18 @@ function QuoteLCL() {
     <div className="container-fluid py-4">
       <div className="row mb-4">
         <div className="col">
-          <h2 className="mb-1">🚢 Cotizador LCL</h2>
+          <h2 className="mb-1">📦 Cotizador LCL</h2>
           <p className="text-muted mb-0">Genera cotizaciones para envíos Less than Container Load</p>
         </div>
       </div>
 
       {/* ============================================================================ */}
-      {/* PASO 1: TIPO DE OPERACIÓN */}
+      {/* SECCIÓN 1: SELECCIÓN DE RUTA */}
       {/* ============================================================================ */}
 
       <div className="card shadow-sm mb-4">
         <div className="card-body">
-          <h5 className="card-title mb-3">📋 Paso 1: Tipo de Operación</h5>
-          <div className="btn-group w-100" role="group">
-            <input
-              type="radio"
-              className="btn-check"
-              name="tipoOperacion"
-              id="tipo-importacion"
-              checked={tipoOperacion === 'IMPORTACION'}
-              onChange={() => setTipoOperacion('IMPORTACION')}
-            />
-            <label className="btn btn-outline-primary" htmlFor="tipo-importacion">
-              📥 IMPORTACIÓN
-            </label>
-
-            <input
-              type="radio"
-              className="btn-check"
-              name="tipoOperacion"
-              id="tipo-exportacion"
-              checked={tipoOperacion === 'EXPORTACION'}
-              onChange={() => setTipoOperacion('EXPORTACION')}
-            />
-            <label className="btn btn-outline-primary" htmlFor="tipo-exportacion">
-              📤 EXPORTACIÓN
-            </label>
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================================================ */}
-      {/* PASO 2: SELECCIÓN DE RUTA */}
-      {/* ============================================================================ */}
-
-      <div className="card shadow-sm mb-4">
-        <div className="card-body">
-          <h5 className="card-title mb-4">📍 Paso 2: Selecciona Ruta</h5>
+          <h5 className="card-title mb-4">📍 Paso 1: Selecciona Ruta</h5>
 
           {loadingRutas ? (
             <div className="text-center py-5">
@@ -626,7 +564,6 @@ function QuoteLCL() {
                     options={opcionesPOL}
                     placeholder="Selecciona puerto de origen..."
                     isClearable
-                    isSearchable
                     styles={{
                       control: (base) => ({
                         ...base,
@@ -635,7 +572,6 @@ function QuoteLCL() {
                       })
                     }}
                   />
-                  <small className="text-muted">{opcionesPOL.length} puertos disponibles</small>
                 </div>
 
                 <div className="col-md-6">
@@ -646,7 +582,6 @@ function QuoteLCL() {
                     options={opcionesPOD}
                     placeholder={polSeleccionado ? "Selecciona puerto de destino..." : "Primero selecciona origen"}
                     isClearable
-                    isSearchable
                     isDisabled={!polSeleccionado}
                     styles={{
                       control: (base) => ({
@@ -656,29 +591,34 @@ function QuoteLCL() {
                       })
                     }}
                   />
-                  <small className="text-muted">
-                    {polSeleccionado ? `${opcionesPOD.length} destinos disponibles` : 'Selecciona POL primero'}
-                  </small>
                 </div>
               </div>
 
-              {/* Filtro de Proveedores */}
+              {/* Filtro de Operadores */}
               {polSeleccionado && podSeleccionado && (
                 <div className="border-top pt-3 mb-4">
-                  <label className="form-label fw-semibold mb-2">Proveedores</label>
+                  <label className="form-label fw-semibold mb-2">Operadores</label>
                   <div className="d-flex flex-wrap gap-2">
-                    {proveedoresDisponibles.map(provider => (
+                    {operadoresDisponibles.map(operador => (
                       <button
-                        key={provider}
+                        key={operador}
                         type="button"
                         className={`btn btn-sm ${
-                          proveedoresActivos.has(provider)
-                            ? `btn-${getProviderColor(provider)}`
+                          operadoresActivos.has(operador)
+                            ? 'btn-primary'
                             : 'btn-outline-secondary'
                         }`}
-                        onClick={() => toggleProveedor(provider)}
+                        onClick={() => {
+                          const newSet = new Set(operadoresActivos);
+                          if (newSet.has(operador)) {
+                            newSet.delete(operador);
+                          } else {
+                            newSet.add(operador);
+                          }
+                          setOperadoresActivos(newSet);
+                        }}
                       >
-                        {provider}
+                        {operador}
                       </button>
                     ))}
                   </div>
@@ -698,76 +638,88 @@ function QuoteLCL() {
                     </div>
                   ) : (
                     <div className="row g-3">
-                      {rutasFiltradas.map(ruta => {
-                        const via = getViaInfo(ruta);
-                        const transitTime = getTransitTime(ruta);
-                        const frequency = getFrequency(ruta);
-                        const currency = getCurrency(ruta);
-                        const isSelected = rutaSeleccionada?.id === ruta.id;
-                        
-                        return (
-                          <div key={ruta.id} className="col-12">
-                            <div 
-                              className={`card border ${isSelected ? 'border-success border-2' : ''}`}
-                              style={{ cursor: 'pointer' }}
-                              onClick={() => handleSeleccionarRuta(ruta)}
-                            >
-                              <div className="card-body">
-                                <div className="d-flex justify-content-between align-items-start mb-2">
-                                  <div>
-                                    <span className={`badge bg-${getProviderColor(ruta.provider)} me-2`}>
-                                      {ruta.provider}
-                                    </span>
-                                    {'country' in ruta && ruta.country && (
-                                      <span className="badge bg-secondary me-2">{ruta.country}</span>
-                                    )}
-                                    <span className="badge bg-light text-dark">{ruta.region}</span>
-                                  </div>
-                                  {isSelected && (
-                                    <span className="badge bg-success">✓ Seleccionada</span>
-                                  )}
-                                </div>
-                                
-                                <div className="row g-2 small">
-                                  {via && (
-                                    <div className="col-md-6">
-                                      <strong>Vía:</strong> {via}
-                                    </div>
-                                  )}
-                                  <div className="col-md-6">
-                                    <strong>Transit Time:</strong> {transitTime}
-                                  </div>
-                                  {frequency !== 'N/A' && (
-                                    <div className="col-md-6">
-                                      <strong>Frecuencia:</strong> {frequency}
-                                    </div>
-                                  )}
-                                  <div className="col-md-6">
-                                    <strong>Divisa:</strong> {currency}
-                                  </div>
-                                </div>
+                      {rutasFiltradas.map(ruta => (
+                        <div key={ruta.id} className="col-md-6 col-lg-4">
+                          <div 
+                            className={`card h-100 ${
+                              rutaSeleccionada?.id === ruta.id 
+                                ? 'border-success border-2 shadow' 
+                                : 'border'
+                            }`}
+                            style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+                            onClick={() => {
+                              setRutaSeleccionada(ruta);
+                              setError(null);
+                              setResponse(null);
+                            }}
+                          >
+                            <div className="card-body">
+                              <div className="d-flex justify-content-between align-items-start mb-2">
+                                <span className="badge bg-primary">
+                                  {ruta.operador}
+                                </span>
+                                {rutaSeleccionada?.id === ruta.id && (
+                                  <span className="badge bg-success">✓ Seleccionada</span>
+                                )}
                               </div>
+
+                              <div className="mb-3">
+                                <small className="text-muted d-block mb-1">Tarifa OF W/M:</small>
+                                <h5 className="mb-0 text-success">
+                                  {ruta.currency} {ruta.ofWM}
+                                  <small className="text-muted">/W/M</small>
+                                </h5>
+                              </div>
+
+                              {ruta.servicio && (
+                                <p className="small mb-2">
+                                  <strong>Servicio:</strong> {ruta.servicio}
+                                </p>
+                              )}
+
+                              {ruta.ttAprox && (
+                                <p className="small mb-2">
+                                  <strong>Transit Time:</strong> {ruta.ttAprox}
+                                </p>
+                              )}
+
+                              {ruta.frecuencia && (
+                                <p className="small mb-2">
+                                  <strong>Frecuencia:</strong> {ruta.frecuencia}
+                                </p>
+                              )}
+
+                              {ruta.agente && (
+                                <p className="small mb-0 text-muted">
+                                  <strong>Agente:</strong> {ruta.agente}
+                                </p>
+                              )}
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Confirmación de selección */}
-              {rutaSeleccionada && tarifaCalculada && (
+              {/* Información de ruta seleccionada */}
+              {rutaSeleccionada && (
                 <div className="alert alert-success mt-4 mb-0">
                   <h6 className="alert-heading">✓ Ruta Seleccionada</h6>
                   <p className="mb-2">
                     <strong>Ruta:</strong> {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
                   </p>
                   <p className="mb-2">
-                    <strong>Proveedor:</strong> {rutaSeleccionada.provider}
+                    <strong>Operador:</strong> {rutaSeleccionada.operador}
                   </p>
+                  {rutaSeleccionada.servicio && (
+                    <p className="mb-2">
+                      <strong>Servicio:</strong> {rutaSeleccionada.servicio}
+                    </p>
+                  )}
                   <p className="mb-0">
-                    <strong>Divisa:</strong> {tarifaCalculada.divisa}
+                    <strong>Tarifa:</strong> {rutaSeleccionada.currency} {rutaSeleccionada.ofWM}/W/M
                   </p>
                 </div>
               )}
@@ -777,193 +729,143 @@ function QuoteLCL() {
       </div>
 
       {/* ============================================================================ */}
-      {/* PASO 3: DETALLES DEL COMMODITY */}
+      {/* SECCIÓN 2: DATOS DEL COMMODITY */}
       {/* ============================================================================ */}
 
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
-            <h5 className="card-title mb-4">📦 Paso 3: Detalles del Envío</h5>
+            <h5 className="card-title mb-4">📦 Paso 2: Datos del Commodity</h5>
 
-            {/* Overall Dimensions Toggle */}
-            <div className="form-check form-switch mb-4">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="overallToggle"
-                checked={overallDimsAndWeight}
-                onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
-              />
-              <label className="form-check-label" htmlFor="overallToggle">
-                <strong>Overall Dimensions & Weight</strong>
-                <br />
-                <small className="text-muted">
-                  {overallDimsAndWeight 
-                    ? 'Ingresa peso y volumen total directamente'
-                    : 'Calcula automáticamente desde dimensiones individuales'}
-                </small>
-              </label>
-            </div>
-
+            {/* Formulario */}
             <div className="row g-3">
-              {/* Campos comunes */}
-              <div className="col-md-4">
-                <label className="form-label">Número de piezas</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={pieces}
-                  onChange={(e) => setPieces(Number(e.target.value))}
-                  min="1"
-                />
-              </div>
-
-              <div className="col-md-8">
-                <label className="form-label">Descripción</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-
-              <div className="col-12">
+              <div className="col-md-6">
                 <label className="form-label">Tipo de Paquete</label>
                 <select
                   className="form-select"
                   value={selectedPackageType}
                   onChange={(e) => setSelectedPackageType(Number(e.target.value))}
                 >
-                  {packageTypeOptions.map(option => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
+                  {packageTypeOptions.map(opt => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Modo Normal - Con dimensiones */}
-              {!overallDimsAndWeight && (
-                <>
-                  <div className="col-md-3">
-                    <label className="form-label">Largo (cm)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={length}
-                      onChange={(e) => setLength(Number(e.target.value))}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
+              <div className="col-md-6">
+                <label className="form-label">Número de Piezas</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={pieces}
+                  onChange={(e) => setPieces(Number(e.target.value))}
+                  min="1"
+                  step="1"
+                />
+              </div>
 
-                  <div className="col-md-3">
-                    <label className="form-label">Ancho (cm)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={width}
-                      onChange={(e) => setWidth(Number(e.target.value))}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
+              <div className="col-12">
+                <label className="form-label">Descripción</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Descripción de la carga"
+                />
+              </div>
 
-                  <div className="col-md-3">
-                    <label className="form-label">Alto (cm)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={height}
-                      onChange={(e) => setHeight(Number(e.target.value))}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
+              <div className="col-md-3">
+                <label className="form-label">Largo (cm)</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={length}
+                  onChange={(e) => setLength(Number(e.target.value))}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
 
-                  <div className="col-md-3">
-                    <label className="form-label">Peso por pieza (kg)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={weight}
-                      onChange={(e) => setWeight(Number(e.target.value))}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                </>
-              )}
+              <div className="col-md-3">
+                <label className="form-label">Ancho (cm)</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={width}
+                  onChange={(e) => setWidth(Number(e.target.value))}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
 
-              {/* Modo Overall */}
-              {overallDimsAndWeight && (
-                <>
-                  <div className="col-md-6">
-                    <label className="form-label">Peso Total (kg)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={manualWeight}
-                      onChange={(e) => setManualWeight(Number(e.target.value))}
-                      min="0"
-                      step="0.01"
-                    />
-                    <small className="text-muted">Peso total de todas las piezas</small>
-                  </div>
+              <div className="col-md-3">
+                <label className="form-label">Alto (cm)</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={height}
+                  onChange={(e) => setHeight(Number(e.target.value))}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
 
-                  <div className="col-md-6">
-                    <label className="form-label">Volumen Total (m³)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={manualVolume}
-                      onChange={(e) => setManualVolume(Number(e.target.value))}
-                      min="0"
-                      step="0.0001"
-                    />
-                    <small className="text-muted">Volumen total de todas las piezas</small>
-                  </div>
-                </>
-              )}
+              <div className="col-md-3">
+                <label className="form-label">Peso por pieza (kg)</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={weight}
+                  onChange={(e) => setWeight(Number(e.target.value))}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
             </div>
 
             {/* Cálculos */}
             <div className="mt-4 p-3 border rounded" style={{ backgroundColor: '#e7f5ff' }}>
-              <h6 className="mb-3">🧮 Cálculos W/M {overallDimsAndWeight ? '(Modo Overall)' : '(Modo Normal)'}</h6>
+              <h6 className="mb-3">🧮 Cálculos W/M</h6>
               <div className="row g-2" style={{ fontSize: '0.9rem' }}>
                 <div className="col-md-4">
-                  <strong>Volumen Total:</strong> {totalVolume.toFixed(4)} m³
+                  <strong>Volumen por pieza:</strong> {volume.toFixed(4)} m³
                 </div>
                 <div className="col-md-4">
-                  <strong>Peso Total:</strong> {totalWeight.toFixed(2)} kg ({totalWeightTons.toFixed(3)} ton)
+                  <strong>Volumen total:</strong> {totalVolume.toFixed(4)} m³
                 </div>
                 <div className="col-md-4">
+                  <strong>Peso total:</strong> {totalWeight.toFixed(2)} kg ({totalWeightTons.toFixed(3)} ton)
+                </div>
+                <div className="col-12 mt-3 pt-3 border-top">
                   <strong className="text-primary">W/M Chargeable:</strong>{' '}
-                  <span className="text-primary fw-bold">{chargeableVolume.toFixed(3)}</span>
+                  <span className="text-primary fw-bold fs-5">{chargeableVolume.toFixed(3)}</span>
                   {' '}({chargeableVolume === totalWeightTons ? 'PESO' : 'VOLUMEN'})
                 </div>
                 
-                {tarifaCalculada && (
+                {tarifaOceanFreight && (
                   <>
                     <div className="col-12 mt-3 pt-3 border-top">
                       <h6 className="mb-2">💰 Tarifa OCEAN FREIGHT</h6>
                     </div>
                     <div className="col-md-6">
-                      <strong>Rango aplicado:</strong> {tarifaCalculada.rangoAplicado}
+                      <strong>Tarifa base:</strong> {rutaSeleccionada.currency} {rutaSeleccionada.ofWM}/W/M
                     </div>
                     <div className="col-md-6">
-                      <strong>Expense:</strong> {formatPrice(tarifaCalculada.precio, tarifaCalculada.divisa)}
+                      <strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(3)}
                     </div>
                     <div className="col-md-6">
-                      {tarifaCalculada.minimoAplicado && (
-                        <span className="badge bg-warning text-dark">Mínimo Aplicado</span>
-                      )}
+                      <strong>Expense:</strong>{' '}
+                      <span className="text-info">
+                        {rutaSeleccionada.currency} {tarifaOceanFreight.expense.toFixed(2)}
+                      </span>
                     </div>
                     <div className="col-md-6">
                       <strong className="text-success">Income (+15%):</strong>{' '}
                       <span className="text-success fw-bold">
-                        {formatPrice(tarifaCalculada.precioConMarkup, tarifaCalculada.divisa)}
+                        {rutaSeleccionada.currency} {tarifaOceanFreight.income.toFixed(2)}
                       </span>
                     </div>
                   </>
@@ -975,14 +877,14 @@ function QuoteLCL() {
       )}
 
       {/* ============================================================================ */}
-      {/* PASO 4: GENERAR COTIZACIÓN */}
+      {/* PASO 3: GENERAR COTIZACIÓN */}
       {/* ============================================================================ */}
 
-      {rutaSeleccionada && tarifaCalculada && (
+      {rutaSeleccionada && tarifaOceanFreight && (
         <>
           <div className="card shadow-sm mb-4">
             <div className="card-body">
-              <h5 className="card-title mb-4">🚀 Paso 4: Generar Cotización</h5>
+              <h5 className="card-title mb-4">🚀 Paso 3: Generar Cotización</h5>
 
               <button
                 onClick={testAPI}
@@ -1027,7 +929,7 @@ function QuoteLCL() {
       )}
 
       {/* ============================================================================ */}
-      {/* RESULTADOS */}
+      {/* SECCIÓN 4: RESULTADOS */}
       {/* ============================================================================ */}
 
       {/* Error */}

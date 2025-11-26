@@ -617,7 +617,7 @@ function QuoteAPITester() {
           name: rutaSeleccionada.destination
         },
         modeOfTransportation: {
-          id: 1
+          id: 8
         },
         rateCategoryId: 2,
         portOfReceipt: {
