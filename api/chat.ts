@@ -1,4 +1,5 @@
 // api/chat.ts
+//¿Qué hacemos acá? - Este endpoint maneja las solicitudes de chat, autenticando al usuario mediante JWT y utilizando la API de OpenAI para generar respuestas basadas en un prompt del sistema especializado en logística y Seemann Group.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
 import OpenAI from 'openai';

@@ -1,4 +1,5 @@
 // api/admin/init-linbis-token.ts
+//¿Qué hacemos acá? - Este endpoint permite inicializar o actualizar el token de refresco de Linbis en la base de datos.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import { LinbisToken } from '../models/LinbisToken.js';

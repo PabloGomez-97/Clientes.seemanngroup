@@ -1,4 +1,6 @@
 // api/index.ts - Serverless function para Vercel
+//¿Qué hacemos acá? - Este endpoint maneja múltiples rutas relacionadas con autenticación y administración de usuarios, utilizando JWT para la autenticación y Mongoose para la gestión de datos en MongoDB.
+// Esto es para vercel serverless functions, no para local
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';

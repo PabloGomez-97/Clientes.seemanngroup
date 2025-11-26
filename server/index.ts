@@ -1,4 +1,6 @@
 // server/index.ts
+//¿Qué hacemos acá? - Este es el servidor principal que maneja la autenticación de usuarios, administración y el endpoint de chat, utilizando Express, JWT y Mongoose para MongoDB.
+//Esto es en local, no para Vercel.
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
