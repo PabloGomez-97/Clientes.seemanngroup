@@ -1,10 +1,23 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
-type User = { email: string; username: string } | null;
+type User = { 
+  email: string; 
+  username: string;
+  ejecutivoNombre?: string;    // ✅ NUEVO
+  ejecutivoEmail?: string;     // ✅ NUEVO
+  ejecutivoTelefono?: string;  // ✅ NUEVO
+} | null;
+
 type AuthCtx = {
   user: User;
   token: string | null;
-  login: (email: string, password: string) => Promise<{ email: string; username: string }>;
+  login: (email: string, password: string) => Promise<{ 
+    email: string; 
+    username: string;
+    ejecutivoNombre?: string;
+    ejecutivoEmail?: string;
+    ejecutivoTelefono?: string;
+  }>;
   logout: () => void;
 };
 
@@ -18,7 +31,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!token) return;
     fetch('/api/me', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => (r.ok ? r.json() : Promise.reject()))
-      .then(d => setUser({ email: d.user.sub, username: d.user.username }))
+      .then(d => setUser({ 
+        email: d.user.sub, 
+        username: d.user.username,
+        ejecutivoNombre: d.user.ejecutivoNombre,    // ✅ NUEVO
+        ejecutivoEmail: d.user.ejecutivoEmail,      // ✅ NUEVO
+        ejecutivoTelefono: d.user.ejecutivoTelefono // ✅ NUEVO
+      }))
       .catch(() => {
         setToken(null);
         localStorage.removeItem('auth_token');

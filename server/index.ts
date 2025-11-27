@@ -1,6 +1,4 @@
 // server/index.ts
-//¿Qué hacemos acá? - Este es el servidor principal que maneja la autenticación de usuarios, administración y el endpoint de chat, utilizando Express, JWT y Mongoose para MongoDB.
-//Esto es en local, no para Vercel.
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -55,6 +53,9 @@ interface IUser {
   email: string;
   username: string;
   passwordHash: string;
+  ejecutivoNombre?: string;    // ✅ NUEVO
+  ejecutivoEmail?: string;     // ✅ NUEVO
+  ejecutivoTelefono?: string;  // ✅ NUEVO
 }
 
 interface IUserDoc extends IUser, mongoose.Document {
@@ -69,6 +70,9 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
+    ejecutivoNombre: { type: String, trim: true },      // ✅ NUEVO
+    ejecutivoEmail: { type: String, lowercase: true, trim: true },   // ✅ NUEVO
+    ejecutivoTelefono: { type: String, trim: true },    // ✅ NUEVO
   },
   { timestamps: true }
 );
@@ -135,9 +139,17 @@ app.post('/api/login', async (req, res) => {
     }
 
     const token = signToken({ sub: user.email, username: user.username });
+    
+    // ✅ MODIFICADO: Retornar también los datos del ejecutivo
     return res.json({
       token,
-      user: { email: user.email, username: user.username },
+      user: { 
+        email: user.email, 
+        username: user.username,
+        ejecutivoNombre: user.ejecutivoNombre,
+        ejecutivoEmail: user.ejecutivoEmail,
+        ejecutivoTelefono: user.ejecutivoTelefono
+      },
     });
   } catch (e) {
     console.error('[login] error inesperado:', e);
@@ -146,8 +158,29 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Verificar token
-app.get('/api/me', auth, (req, res) => {
-  res.json({ user: (req as any).user });
+app.get('/api/me', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const user = await User.findOne({ email: currentUser.sub });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // ✅ MODIFICADO: Retornar también los datos del ejecutivo
+    res.json({ 
+      user: {
+        sub: user.email,
+        username: user.username,
+        ejecutivoNombre: user.ejecutivoNombre,
+        ejecutivoEmail: user.ejecutivoEmail,
+        ejecutivoTelefono: user.ejecutivoTelefono
+      }
+    });
+  } catch (e) {
+    console.error('[me] error:', e);
+    return res.status(500).json({ error: 'Error interno' });
+  }
 });
 
 // ============================================================
@@ -162,7 +195,8 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
     }
 
-    const { email, username, password } = (req.body as any) || {};
+    // ✅ MODIFICADO: Agregar campos del ejecutivo
+    const { email, username, password, ejecutivoNombre, ejecutivoEmail, ejecutivoTelefono } = (req.body as any) || {};
     if (!email || !username || !password) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
@@ -179,6 +213,9 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       email: normalizedEmail,
       username: String(username).trim(),
       passwordHash,
+      ejecutivoNombre: ejecutivoNombre ? String(ejecutivoNombre).trim() : undefined,
+      ejecutivoEmail: ejecutivoEmail ? String(ejecutivoEmail).toLowerCase().trim() : undefined,
+      ejecutivoTelefono: ejecutivoTelefono ? String(ejecutivoTelefono).trim() : undefined,
     });
 
     await newUser.save();
@@ -191,6 +228,9 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       user: {
         email: newUser.email,
         username: newUser.username,
+        ejecutivoNombre: newUser.ejecutivoNombre,
+        ejecutivoEmail: newUser.ejecutivoEmail,
+        ejecutivoTelefono: newUser.ejecutivoTelefono,
       },
     });
   } catch (e) {
@@ -216,6 +256,9 @@ app.get('/api/admin/users', auth, async (req, res) => {
         email: u.email,
         username: u.username,
         createdAt: u.createdAt,
+        ejecutivoNombre: u.ejecutivoNombre,      // ✅ MODIFICADO
+        ejecutivoEmail: u.ejecutivoEmail,        // ✅ MODIFICADO
+        ejecutivoTelefono: u.ejecutivoTelefono,  // ✅ MODIFICADO
       })),
     });
   } catch (e) {

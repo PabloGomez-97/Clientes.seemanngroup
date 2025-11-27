@@ -460,14 +460,6 @@ function ReporteriaPersonalizable() {
     });
   }, [filteredInvoices, overdueCurrency]);
 
-  // Función para determinar el tipo de servicio (Air o Ocean)
-  const getServiceType = (shipmentNumber?: string): 'Air' | 'Ocean' | 'Unknown' => {
-    if (!shipmentNumber) return 'Unknown';
-    if (shipmentNumber.startsWith('SOG')) return 'Air';
-    if (shipmentNumber.startsWith('HBLI')) return 'Ocean';
-    return 'Unknown';
-  };
-
   // Datos para gráfico de desglose por servicio
   const serviceBreakdownData = useMemo(() => {
     const serviceMap: { [key: string]: number } = {};
@@ -618,11 +610,6 @@ function ReporteriaPersonalizable() {
     setSelectedInvoice(null);
   };
 
-  const openShipmentModal = (type: 'air' | 'ocean', number: string) => {
-    setShipmentModalData({ type, number });
-    setShowShipmentModal(true);
-  };
-
   const closeShipmentModal = () => {
     setShowShipmentModal(false);
     setShipmentModalData(null);
@@ -634,7 +621,7 @@ function ReporteriaPersonalizable() {
     <>
       {/* Header */}
       <div style={{
-        background: GRADIENTS.primary,
+        background: GRADIENTS.purple,
         padding: '24px',
         borderRadius: '12px',
         marginBottom: '24px',
@@ -939,7 +926,11 @@ function ReporteriaPersonalizable() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                        label={(props: any) => {
+                          const name = props?.name || 'Otros';
+                          const percent = (props?.percent ?? 0) as number;
+                          return `${name}: ${(percent * 100).toFixed(0)}%`;
+                        }}
                         outerRadius={120}
                         fill="#8884d8"
                         dataKey="value"
@@ -1745,7 +1736,7 @@ function ReporteriaPersonalizable() {
             {/* Header */}
             <div
               style={{
-                background: GRADIENTS.primary,
+                background: GRADIENTS.purple,
                 padding: '24px',
                 color: 'white'
               }}
@@ -2009,7 +2000,7 @@ function ReporteriaPersonalizable() {
                 onClick={() => setShowComparativeModal(false)}
                 style={{
                   width: '100%',
-                  background: GRADIENTS.primary,
+                  background: GRADIENTS.purple,
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',

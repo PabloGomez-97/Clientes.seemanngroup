@@ -1,6 +1,4 @@
 // api/index.ts - Serverless function para Vercel
-//¿Qué hacemos acá? - Este endpoint maneja múltiples rutas relacionadas con autenticación y administración de usuarios, utilizando JWT para la autenticación y Mongoose para la gestión de datos en MongoDB.
-// Esto es para vercel serverless functions, no para local
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
@@ -43,6 +41,9 @@ interface IUser {
   email: string;
   username: string;
   passwordHash: string;
+  ejecutivoNombre?: string;    // ✅ NUEVO
+  ejecutivoEmail?: string;     // ✅ NUEVO
+  ejecutivoTelefono?: string;  // ✅ NUEVO
 }
 
 interface IUserDoc extends IUser, mongoose.Document {
@@ -57,6 +58,9 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
+    ejecutivoNombre: { type: String, trim: true },      // ✅ NUEVO
+    ejecutivoEmail: { type: String, lowercase: true, trim: true },   // ✅ NUEVO
+    ejecutivoTelefono: { type: String, trim: true },    // ✅ NUEVO
   },
   { timestamps: true }
 );
@@ -147,9 +151,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const token = signToken({ sub: user.email, username: user.username });
+      
+      // ✅ MODIFICADO: Retornar también los datos del ejecutivo
       return res.json({
         token,
-        user: { email: user.email, username: user.username },
+        user: { 
+          email: user.email, 
+          username: user.username,
+          ejecutivoNombre: user.ejecutivoNombre,
+          ejecutivoEmail: user.ejecutivoEmail,
+          ejecutivoTelefono: user.ejecutivoTelefono
+        },
       });
     }
 
@@ -162,7 +174,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       try {
         const decoded = verifyToken(token);
-        return res.json({ user: decoded });
+        const user = await User.findOne({ email: decoded.sub });
+        
+        if (!user) {
+          return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        // ✅ MODIFICADO: Retornar también los datos del ejecutivo
+        return res.json({ 
+          user: {
+            sub: user.email,
+            username: user.username,
+            ejecutivoNombre: user.ejecutivoNombre,
+            ejecutivoEmail: user.ejecutivoEmail,
+            ejecutivoTelefono: user.ejecutivoTelefono
+          }
+        });
       } catch {
         return res.status(401).json({ error: 'Invalid token' });
       }
@@ -181,7 +208,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
         }
 
-        const { email, username, password } = (req.body as any) || {};
+        // ✅ MODIFICADO: Agregar campos del ejecutivo
+        const { email, username, password, ejecutivoNombre, ejecutivoEmail, ejecutivoTelefono } = (req.body as any) || {};
         if (!email || !username || !password) {
           return res.status(400).json({ error: 'Faltan campos requeridos' });
         }
@@ -198,6 +226,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           email: normalizedEmail,
           username: String(username).trim(),
           passwordHash,
+          ejecutivoNombre: ejecutivoNombre ? String(ejecutivoNombre).trim() : undefined,
+          ejecutivoEmail: ejecutivoEmail ? String(ejecutivoEmail).toLowerCase().trim() : undefined,
+          ejecutivoTelefono: ejecutivoTelefono ? String(ejecutivoTelefono).trim() : undefined,
         });
 
         await newUser.save();
@@ -210,6 +241,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           user: {
             email: newUser.email,
             username: newUser.username,
+            ejecutivoNombre: newUser.ejecutivoNombre,
+            ejecutivoEmail: newUser.ejecutivoEmail,
+            ejecutivoTelefono: newUser.ejecutivoTelefono,
           },
         });
       } catch (e: any) {
@@ -239,6 +273,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             email: u.email,
             username: u.username,
             createdAt: u.createdAt,
+            ejecutivoNombre: u.ejecutivoNombre,      // ✅ MODIFICADO
+            ejecutivoEmail: u.ejecutivoEmail,        // ✅ MODIFICADO
+            ejecutivoTelefono: u.ejecutivoTelefono,  // ✅ MODIFICADO
           })),
         });
       } catch (e: any) {
