@@ -20,11 +20,9 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
   const username = user?.username || 'Usuario';
   const email = user?.email || 'usuario@ejemplo.com';
 
-  // ✅ NUEVO: Datos del ejecutivo
-  const ejecutivoNombre = user?.ejecutivoNombre;
-  const ejecutivoEmail = user?.ejecutivoEmail;
-  const ejecutivoTelefono = user?.ejecutivoTelefono;
-  const hasEjecutivo = ejecutivoNombre || ejecutivoEmail || ejecutivoTelefono;
+  // ✅ Datos del ejecutivo desde objeto
+  const ejecutivo = user?.ejecutivo;
+  const hasEjecutivo = !!ejecutivo;
 
   // Obtener iniciales del usuario
   const getInitials = (name: string) => {
@@ -259,8 +257,8 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
                   </div>
                 </div>
 
-                {/* ✅ NUEVO: Sección del Ejecutivo */}
-                {hasEjecutivo && (
+                {/* ✅ Sección del Ejecutivo */}
+                {hasEjecutivo && ejecutivo && (
                   <div style={{
                     padding: '16px',
                     borderBottom: '1px solid #e5e7eb',
@@ -292,76 +290,70 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
                       padding: '12px',
                       border: '1px solid #bae6fd'
                     }}>
-                      {ejecutivoNombre && (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          marginBottom: ejecutivoEmail || ejecutivoTelefono ? '8px' : '0'
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '8px'
+                      }}>
+                        <svg width="14" height="14" fill="#0284c7" viewBox="0 0 16 16">
+                          <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
+                        </svg>
+                        <span style={{
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#0c4a6e'
                         }}>
-                          <svg width="14" height="14" fill="#0284c7" viewBox="0 0 16 16">
-                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/>
-                          </svg>
-                          <span style={{
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: '#0c4a6e'
-                          }}>
-                            {ejecutivoNombre}
-                          </span>
-                        </div>
-                      )}
+                          {ejecutivo.nombre}
+                        </span>
+                      </div>
 
-                      {ejecutivoEmail && (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          marginBottom: ejecutivoTelefono ? '8px' : '0'
-                        }}>
-                          <svg width="14" height="14" fill="#0284c7" viewBox="0 0 16 16">
-                            <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555zM0 4.697v7.104l5.803-3.558L0 4.697zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757zm3.436-.586L16 11.801V4.697l-5.803 3.546z"/>
-                          </svg>
-                          <a
-                            href={`mailto:${ejecutivoEmail}`}
-                            style={{
-                              fontSize: '13px',
-                              color: '#0284c7',
-                              textDecoration: 'none',
-                              transition: 'color 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#0369a1'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#0284c7'}
-                          >
-                            {ejecutivoEmail}
-                          </a>
-                        </div>
-                      )}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '8px'
+                      }}>
+                        <svg width="14" height="14" fill="#0284c7" viewBox="0 0 16 16">
+                          <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555zM0 4.697v7.104l5.803-3.558L0 4.697zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757zm3.436-.586L16 11.801V4.697l-5.803 3.546z"/>
+                        </svg>
+                        <a
+                          href={`mailto:${ejecutivo.email}`}
+                          style={{
+                            fontSize: '13px',
+                            color: '#0284c7',
+                            textDecoration: 'none',
+                            transition: 'color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#0369a1'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#0284c7'}
+                        >
+                          {ejecutivo.email}
+                        </a>
+                      </div>
 
-                      {ejecutivoTelefono && (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}>
-                          <svg width="14" height="14" fill="#0284c7" viewBox="0 0 16 16">
-                            <path fillRule="evenodd" d="M1.885.511a1.745 1.745 0 0 1 2.61.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z"/>
-                          </svg>
-                          <a
-                            href={`tel:${ejecutivoTelefono}`}
-                            style={{
-                              fontSize: '13px',
-                              color: '#0284c7',
-                              textDecoration: 'none',
-                              transition: 'color 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#0369a1'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#0284c7'}
-                          >
-                            {ejecutivoTelefono}
-                          </a>
-                        </div>
-                      )}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <svg width="14" height="14" fill="#0284c7" viewBox="0 0 16 16">
+                          <path fillRule="evenodd" d="M1.885.511a1.745 1.745 0 0 1 2.61.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z"/>
+                        </svg>
+                        <a
+                          href={`tel:${ejecutivo.telefono}`}
+                          style={{
+                            fontSize: '13px',
+                            color: '#0284c7',
+                            textDecoration: 'none',
+                            transition: 'color 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#0369a1'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#0284c7'}
+                        >
+                          {ejecutivo.telefono}
+                        </a>
+                      </div>
                     </div>
                   </div>
                 )}

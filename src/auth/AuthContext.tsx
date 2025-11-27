@@ -1,11 +1,16 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
+type Ejecutivo = {
+  id: string;
+  nombre: string;
+  email: string;
+  telefono: string;
+} | null;
+
 type User = { 
   email: string; 
   username: string;
-  ejecutivoNombre?: string;    // ✅ NUEVO
-  ejecutivoEmail?: string;     // ✅ NUEVO
-  ejecutivoTelefono?: string;  // ✅ NUEVO
+  ejecutivo?: Ejecutivo;
 } | null;
 
 type AuthCtx = {
@@ -14,9 +19,7 @@ type AuthCtx = {
   login: (email: string, password: string) => Promise<{ 
     email: string; 
     username: string;
-    ejecutivoNombre?: string;
-    ejecutivoEmail?: string;
-    ejecutivoTelefono?: string;
+    ejecutivo?: Ejecutivo;
   }>;
   logout: () => void;
 };
@@ -34,9 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(d => setUser({ 
         email: d.user.sub, 
         username: d.user.username,
-        ejecutivoNombre: d.user.ejecutivoNombre,    // ✅ NUEVO
-        ejecutivoEmail: d.user.ejecutivoEmail,      // ✅ NUEVO
-        ejecutivoTelefono: d.user.ejecutivoTelefono // ✅ NUEVO
+        ejecutivo: d.user.ejecutivo || null
       }))
       .catch(() => {
         setToken(null);
@@ -59,7 +60,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('auth_token', data.token);
     setUser(data.user);
     
-    // ✅ RETORNAR EL USUARIO para validaciones inmediatas
     return data.user;
   };
 

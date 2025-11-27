@@ -37,13 +37,40 @@ function verifyToken(token: string): AuthPayload {
 /** =========================
  *  Mongoose / Modelos tipados
  *  ========================= */
+
+// ✅ NUEVO: Modelo Ejecutivo
+interface IEjecutivo {
+  nombre: string;
+  email: string;
+  telefono: string;
+  activo: boolean;
+}
+
+interface IEjecutivoDoc extends IEjecutivo, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type EjecutivoModel = mongoose.Model<IEjecutivoDoc>;
+
+const EjecutivoSchema = new mongoose.Schema<IEjecutivoDoc>(
+  {
+    nombre: { type: String, required: true, trim: true },
+    email: { type: String, required: true, lowercase: true, trim: true },
+    telefono: { type: String, required: true, trim: true },
+    activo: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
+
+const Ejecutivo = (mongoose.models.Ejecutivo || mongoose.model<IEjecutivoDoc>('Ejecutivo', EjecutivoSchema)) as EjecutivoModel;
+
+// ✅ MODIFICADO: Modelo User con referencia a Ejecutivo
 interface IUser {
   email: string;
   username: string;
   passwordHash: string;
-  ejecutivoNombre?: string;    // ✅ NUEVO
-  ejecutivoEmail?: string;     // ✅ NUEVO
-  ejecutivoTelefono?: string;  // ✅ NUEVO
+  ejecutivoId?: mongoose.Types.ObjectId;
 }
 
 interface IUserDoc extends IUser, mongoose.Document {
@@ -58,15 +85,13 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
-    ejecutivoNombre: { type: String, trim: true },      // ✅ NUEVO
-    ejecutivoEmail: { type: String, lowercase: true, trim: true },   // ✅ NUEVO
-    ejecutivoTelefono: { type: String, trim: true },    // ✅ NUEVO
+    ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
   },
   { timestamps: true }
 );
 
-// Evitar unión de tipos: forzar el tipo explícito del modelo
 const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchema)) as UserModel;
+
 // Reutilizar la conexión de mongoose en serverless
 let cachedDb: typeof mongoose | null = null;
 
@@ -132,7 +157,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const lookupEmail = String(email).toLowerCase().trim();
-      const user = await User.findOne({ email: lookupEmail });
+      const user = await User.findOne({ email: lookupEmail }).populate('ejecutivoId');
 
       if (!user) {
         console.log('[login] email no encontrado:', lookupEmail);
@@ -152,15 +177,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const token = signToken({ sub: user.email, username: user.username });
       
-      // ✅ MODIFICADO: Retornar también los datos del ejecutivo
+      const ejecutivo = user.ejecutivoId as any;
       return res.json({
         token,
         user: { 
           email: user.email, 
           username: user.username,
-          ejecutivoNombre: user.ejecutivoNombre,
-          ejecutivoEmail: user.ejecutivoEmail,
-          ejecutivoTelefono: user.ejecutivoTelefono
+          ejecutivo: ejecutivo ? {
+            id: ejecutivo._id,
+            nombre: ejecutivo.nombre,
+            email: ejecutivo.email,
+            telefono: ejecutivo.telefono
+          } : null
         },
       });
     }
@@ -174,20 +202,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       try {
         const decoded = verifyToken(token);
-        const user = await User.findOne({ email: decoded.sub });
+        const user = await User.findOne({ email: decoded.sub }).populate('ejecutivoId');
         
         if (!user) {
           return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
-        // ✅ MODIFICADO: Retornar también los datos del ejecutivo
+        const ejecutivo = user.ejecutivoId as any;
         return res.json({ 
           user: {
             sub: user.email,
             username: user.username,
-            ejecutivoNombre: user.ejecutivoNombre,
-            ejecutivoEmail: user.ejecutivoEmail,
-            ejecutivoTelefono: user.ejecutivoTelefono
+            ejecutivo: ejecutivo ? {
+              id: ejecutivo._id,
+              nombre: ejecutivo.nombre,
+              email: ejecutivo.email,
+              telefono: ejecutivo.telefono
+            } : null
           }
         });
       } catch {
@@ -196,20 +227,184 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ============================================================
-    // RUTAS DE ADMINISTRACIÓN
+    // RUTAS DE EJECUTIVOS
+    // ============================================================
+
+    // GET /api/admin/ejecutivos
+    if (path === '/api/admin/ejecutivos' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        if (currentUser.username !== 'Administrador') {
+          return res.status(403).json({ error: 'No tienes permisos' });
+        }
+
+        const ejecutivos = await Ejecutivo.find().sort({ nombre: 1 });
+
+        const ejecutivosConContador = await Promise.all(
+          ejecutivos.map(async (ej) => {
+            const count = await User.countDocuments({ ejecutivoId: ej._id });
+            return {
+              id: ej._id,
+              nombre: ej.nombre,
+              email: ej.email,
+              telefono: ej.telefono,
+              activo: ej.activo,
+              clientesAsignados: count,
+              createdAt: ej.createdAt
+            };
+          })
+        );
+
+        return res.json({
+          success: true,
+          ejecutivos: ejecutivosConContador
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[admin] Error listando ejecutivos:', e);
+        return res.status(500).json({ error: 'Error al listar ejecutivos' });
+      }
+    }
+
+    // POST /api/admin/ejecutivos
+    if (path === '/api/admin/ejecutivos' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+        if (currentUser.username !== 'Administrador') {
+          return res.status(403).json({ error: 'No tienes permisos' });
+        }
+
+        const { nombre, email, telefono } = (req.body as any) || {};
+        if (!nombre || !email || !telefono) {
+          return res.status(400).json({ error: 'Faltan campos requeridos' });
+        }
+
+        const nuevoEjecutivo = new Ejecutivo({
+          nombre: String(nombre).trim(),
+          email: String(email).toLowerCase().trim(),
+          telefono: String(telefono).trim(),
+          activo: true
+        });
+
+        await nuevoEjecutivo.save();
+
+        return res.json({
+          success: true,
+          message: 'Ejecutivo creado exitosamente',
+          ejecutivo: {
+            id: nuevoEjecutivo._id,
+            nombre: nuevoEjecutivo.nombre,
+            email: nuevoEjecutivo.email,
+            telefono: nuevoEjecutivo.telefono,
+            activo: nuevoEjecutivo.activo
+          }
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[admin] Error creando ejecutivo:', e);
+        return res.status(500).json({ error: 'Error al crear ejecutivo' });
+      }
+    }
+
+    // PUT /api/admin/ejecutivos/:id
+    if (path?.startsWith('/api/admin/ejecutivos/') && method === 'PUT') {
+      try {
+        const currentUser = requireAuth(req);
+        if (currentUser.username !== 'Administrador') {
+          return res.status(403).json({ error: 'No tienes permisos' });
+        }
+
+        const id = path.split('/').pop();
+        const { nombre, email, telefono, activo } = (req.body as any) || {};
+
+        if (!nombre || !email || !telefono) {
+          return res.status(400).json({ error: 'Faltan campos requeridos' });
+        }
+
+        const ejecutivo = await Ejecutivo.findByIdAndUpdate(
+          id,
+          {
+            nombre: String(nombre).trim(),
+            email: String(email).toLowerCase().trim(),
+            telefono: String(telefono).trim(),
+            activo: activo !== undefined ? activo : true
+          },
+          { new: true }
+        );
+
+        if (!ejecutivo) {
+          return res.status(404).json({ error: 'Ejecutivo no encontrado' });
+        }
+
+        return res.json({
+          success: true,
+          message: 'Ejecutivo actualizado exitosamente',
+          ejecutivo: {
+            id: ejecutivo._id,
+            nombre: ejecutivo.nombre,
+            email: ejecutivo.email,
+            telefono: ejecutivo.telefono,
+            activo: ejecutivo.activo
+          }
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[admin] Error actualizando ejecutivo:', e);
+        return res.status(500).json({ error: 'Error al actualizar ejecutivo' });
+      }
+    }
+
+    // DELETE /api/admin/ejecutivos/:id
+    if (path?.startsWith('/api/admin/ejecutivos/') && method === 'DELETE') {
+      try {
+        const currentUser = requireAuth(req);
+        if (currentUser.username !== 'Administrador') {
+          return res.status(403).json({ error: 'No tienes permisos' });
+        }
+
+        const id = path.split('/').pop();
+
+        const clientesAsignados = await User.countDocuments({ ejecutivoId: id });
+        if (clientesAsignados > 0) {
+          return res.status(400).json({ 
+            error: `No se puede eliminar. Hay ${clientesAsignados} cliente(s) asignado(s) a este ejecutivo.` 
+          });
+        }
+
+        await Ejecutivo.findByIdAndDelete(id);
+
+        return res.json({
+          success: true,
+          message: 'Ejecutivo eliminado exitosamente'
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[admin] Error eliminando ejecutivo:', e);
+        return res.status(500).json({ error: 'Error al eliminar ejecutivo' });
+      }
+    }
+
+    // ============================================================
+    // RUTAS DE ADMINISTRACIÓN DE USUARIOS
     // ============================================================
 
     // POST /api/admin/create-user
     if (path === '/api/admin/create-user' && method === 'POST') {
       try {
         const currentUser = requireAuth(req);
-
         if (currentUser.username !== 'Administrador') {
           return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
         }
 
-        // ✅ MODIFICADO: Agregar campos del ejecutivo
-        const { email, username, password, ejecutivoNombre, ejecutivoEmail, ejecutivoTelefono } = (req.body as any) || {};
+        const { email, username, password, ejecutivoId } = (req.body as any) || {};
         if (!email || !username || !password) {
           return res.status(400).json({ error: 'Faltan campos requeridos' });
         }
@@ -226,25 +421,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           email: normalizedEmail,
           username: String(username).trim(),
           passwordHash,
-          ejecutivoNombre: ejecutivoNombre ? String(ejecutivoNombre).trim() : undefined,
-          ejecutivoEmail: ejecutivoEmail ? String(ejecutivoEmail).toLowerCase().trim() : undefined,
-          ejecutivoTelefono: ejecutivoTelefono ? String(ejecutivoTelefono).trim() : undefined,
+          ejecutivoId: ejecutivoId || undefined
         });
 
         await newUser.save();
-
-        console.log('[admin] Usuario creado:', normalizedEmail);
 
         return res.json({
           success: true,
           message: 'Usuario creado exitosamente',
           user: {
             email: newUser.email,
-            username: newUser.username,
-            ejecutivoNombre: newUser.ejecutivoNombre,
-            ejecutivoEmail: newUser.ejecutivoEmail,
-            ejecutivoTelefono: newUser.ejecutivoTelefono,
-          },
+            username: newUser.username
+          }
         });
       } catch (e: any) {
         if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
@@ -259,24 +447,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path === '/api/admin/users' && method === 'GET') {
       try {
         const currentUser = requireAuth(req);
-
         if (currentUser.username !== 'Administrador') {
           return res.status(403).json({ error: 'No tienes permisos para ver usuarios' });
         }
 
-        const users = await User.find({}, { passwordHash: 0 }).sort({ createdAt: -1 });
+        const users = await User.find({}, { passwordHash: 0 })
+          .populate('ejecutivoId')
+          .sort({ createdAt: -1 });
 
         return res.json({
           success: true,
-          users: users.map((u: IUserDoc) => ({
+          users: users.map((u: any) => ({
             id: u._id,
             email: u.email,
             username: u.username,
             createdAt: u.createdAt,
-            ejecutivoNombre: u.ejecutivoNombre,      // ✅ MODIFICADO
-            ejecutivoEmail: u.ejecutivoEmail,        // ✅ MODIFICADO
-            ejecutivoTelefono: u.ejecutivoTelefono,  // ✅ MODIFICADO
-          })),
+            ejecutivo: u.ejecutivoId ? {
+              id: u.ejecutivoId._id,
+              nombre: u.ejecutivoId.nombre,
+              email: u.ejecutivoId.email,
+              telefono: u.ejecutivoId.telefono
+            } : null
+          }))
         });
       } catch (e: any) {
         if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
@@ -287,11 +479,66 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // PUT /api/admin/users/:id
+    if (path?.startsWith('/api/admin/users/') && method === 'PUT') {
+      try {
+        const currentUser = requireAuth(req);
+        if (currentUser.username !== 'Administrador') {
+          return res.status(403).json({ error: 'No tienes permisos para actualizar usuarios' });
+        }
+
+        const id = path.split('/').pop();
+        const { username, password, ejecutivoId } = (req.body as any) || {};
+
+        const userToUpdate = await User.findById(id);
+        if (!userToUpdate) {
+          return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        if (userToUpdate.username === 'Administrador') {
+          return res.status(400).json({ error: 'No puedes modificar la cuenta de administrador' });
+        }
+
+        // Actualizar campos
+        if (username) {
+          userToUpdate.username = String(username).trim();
+        }
+
+        if (password) {
+          userToUpdate.passwordHash = bcrypt.hashSync(String(password), 12);
+        }
+
+        // Actualizar ejecutivoId (puede ser null para "sin asignar")
+        if (ejecutivoId !== undefined) {
+          userToUpdate.ejecutivoId = ejecutivoId ? ejecutivoId : undefined;
+        }
+
+        await userToUpdate.save();
+
+        console.log('[admin] Usuario actualizado:', userToUpdate.email);
+
+        return res.json({
+          success: true,
+          message: 'Usuario actualizado exitosamente',
+          user: {
+            id: userToUpdate._id,
+            email: userToUpdate.email,
+            username: userToUpdate.username
+          }
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[admin] Error actualizando usuario:', e);
+        return res.status(500).json({ error: 'Error al actualizar usuario' });
+      }
+    }
+
     // DELETE /api/admin/users/:id
     if (path?.startsWith('/api/admin/users/') && method === 'DELETE') {
       try {
         const currentUser = requireAuth(req);
-
         if (currentUser.username !== 'Administrador') {
           return res.status(403).json({ error: 'No tienes permisos para eliminar usuarios' });
         }
@@ -305,11 +552,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         await User.findByIdAndDelete(id);
 
-        console.log('[admin] Usuario eliminado:', id);
-
         return res.json({
           success: true,
-          message: 'Usuario eliminado exitosamente',
+          message: 'Usuario eliminado exitosamente'
         });
       } catch (e: any) {
         if (e?.message === 'No auth token' || e?.message === 'Invalid token') {

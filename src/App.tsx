@@ -15,6 +15,7 @@ import UsersManagement from './components/administrador/users-management';
 import SettingsAdmin from './components/administrador/settings-admin';
 import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLayout';
 import ReporteriaPersonalizado from './components/administrador/ReporteriaPersonalizado';
+import EjecutivosManagement from './components/administrador/ejecutivos-management';
 
 // Reportería Pages
 import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';
@@ -72,6 +73,7 @@ function App() {
         <Route path="dashboard" element={<DashboardAdmin />} />
         <Route path="users" element={<UsersManagement />} />
         <Route path="reportespersonalizado" element={<ReporteriaPersonalizado />} />
+        <Route path="ejecutivos" element={<EjecutivosManagement />} />
         
         {/* Rutas de Reportería con subrutas */}
         <Route path="reporteria" element={<ReporteriaLayout />}>

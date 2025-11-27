@@ -49,13 +49,40 @@ app.all('/api/chat', (req, res) => chatHandler(req as any, res as any));
 /** =========================
  *  Mongoose / Modelos tipados
  *  ========================= */
+
+// ✅ NUEVO: Modelo Ejecutivo
+interface IEjecutivo {
+  nombre: string;
+  email: string;
+  telefono: string;
+  activo: boolean;
+}
+
+interface IEjecutivoDoc extends IEjecutivo, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type EjecutivoModel = mongoose.Model<IEjecutivoDoc>;
+
+const EjecutivoSchema = new mongoose.Schema<IEjecutivoDoc>(
+  {
+    nombre: { type: String, required: true, trim: true },
+    email: { type: String, required: true, lowercase: true, trim: true },
+    telefono: { type: String, required: true, trim: true },
+    activo: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
+
+const Ejecutivo = (mongoose.models.Ejecutivo || mongoose.model<IEjecutivoDoc>('Ejecutivo', EjecutivoSchema)) as EjecutivoModel;
+
+// ✅ MODIFICADO: Modelo User con referencia a Ejecutivo
 interface IUser {
   email: string;
   username: string;
   passwordHash: string;
-  ejecutivoNombre?: string;    // ✅ NUEVO
-  ejecutivoEmail?: string;     // ✅ NUEVO
-  ejecutivoTelefono?: string;  // ✅ NUEVO
+  ejecutivoId?: mongoose.Types.ObjectId;  // Referencia al ejecutivo
 }
 
 interface IUserDoc extends IUser, mongoose.Document {
@@ -70,15 +97,13 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
-    ejecutivoNombre: { type: String, trim: true },      // ✅ NUEVO
-    ejecutivoEmail: { type: String, lowercase: true, trim: true },   // ✅ NUEVO
-    ejecutivoTelefono: { type: String, trim: true },    // ✅ NUEVO
+    ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
   },
   { timestamps: true }
 );
 
-// Evita redefinir el modelo y, sobre todo, evita unión de tipos
 const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchema)) as UserModel;
+
 // Conectar a MongoDB
 mongoose
   .connect(MONGODB_URI, { bufferCommands: false })
@@ -120,7 +145,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     const lookupEmail = String(email).toLowerCase().trim();
-    const user = await User.findOne({ email: lookupEmail });
+    const user = await User.findOne({ email: lookupEmail }).populate('ejecutivoId');
 
     if (!user) {
       console.log('[login] email no encontrado:', lookupEmail);
@@ -140,15 +165,19 @@ app.post('/api/login', async (req, res) => {
 
     const token = signToken({ sub: user.email, username: user.username });
     
-    // ✅ MODIFICADO: Retornar también los datos del ejecutivo
+    // ✅ MODIFICADO: Retornar datos del ejecutivo si existe
+    const ejecutivo = user.ejecutivoId as any;
     return res.json({
       token,
       user: { 
         email: user.email, 
         username: user.username,
-        ejecutivoNombre: user.ejecutivoNombre,
-        ejecutivoEmail: user.ejecutivoEmail,
-        ejecutivoTelefono: user.ejecutivoTelefono
+        ejecutivo: ejecutivo ? {
+          id: ejecutivo._id,
+          nombre: ejecutivo.nombre,
+          email: ejecutivo.email,
+          telefono: ejecutivo.telefono
+        } : null
       },
     });
   } catch (e) {
@@ -161,20 +190,24 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/me', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    const user = await User.findOne({ email: currentUser.sub });
+    const user = await User.findOne({ email: currentUser.sub }).populate('ejecutivoId');
     
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // ✅ MODIFICADO: Retornar también los datos del ejecutivo
+    // ✅ MODIFICADO: Retornar datos del ejecutivo si existe
+    const ejecutivo = user.ejecutivoId as any;
     res.json({ 
       user: {
         sub: user.email,
         username: user.username,
-        ejecutivoNombre: user.ejecutivoNombre,
-        ejecutivoEmail: user.ejecutivoEmail,
-        ejecutivoTelefono: user.ejecutivoTelefono
+        ejecutivo: ejecutivo ? {
+          id: ejecutivo._id,
+          nombre: ejecutivo.nombre,
+          email: ejecutivo.email,
+          telefono: ejecutivo.telefono
+        } : null
       }
     });
   } catch (e) {
@@ -184,7 +217,169 @@ app.get('/api/me', auth, async (req, res) => {
 });
 
 // ============================================================
-// ENDPOINTS DE ADMINISTRACIÓN
+// ENDPOINTS DE EJECUTIVOS
+// ============================================================
+
+// Listar ejecutivos (solo administradores)
+app.get('/api/admin/ejecutivos', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Administrador') {
+      return res.status(403).json({ error: 'No tienes permisos' });
+    }
+
+    const ejecutivos = await Ejecutivo.find().sort({ nombre: 1 });
+
+    // Contar clientes por ejecutivo
+    const ejecutivosConContador = await Promise.all(
+      ejecutivos.map(async (ej) => {
+        const count = await User.countDocuments({ ejecutivoId: ej._id });
+        return {
+          id: ej._id,
+          nombre: ej.nombre,
+          email: ej.email,
+          telefono: ej.telefono,
+          activo: ej.activo,
+          clientesAsignados: count,
+          createdAt: ej.createdAt
+        };
+      })
+    );
+
+    return res.json({
+      success: true,
+      ejecutivos: ejecutivosConContador
+    });
+  } catch (e) {
+    console.error('[admin] Error listando ejecutivos:', e);
+    return res.status(500).json({ error: 'Error al listar ejecutivos' });
+  }
+});
+
+// Crear ejecutivo (solo administradores)
+app.post('/api/admin/ejecutivos', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Administrador') {
+      return res.status(403).json({ error: 'No tienes permisos' });
+    }
+
+    const { nombre, email, telefono } = (req.body as any) || {};
+    if (!nombre || !email || !telefono) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+
+    const nuevoEjecutivo = new Ejecutivo({
+      nombre: String(nombre).trim(),
+      email: String(email).toLowerCase().trim(),
+      telefono: String(telefono).trim(),
+      activo: true
+    });
+
+    await nuevoEjecutivo.save();
+
+    console.log('[admin] Ejecutivo creado:', nuevoEjecutivo.nombre);
+
+    return res.json({
+      success: true,
+      message: 'Ejecutivo creado exitosamente',
+      ejecutivo: {
+        id: nuevoEjecutivo._id,
+        nombre: nuevoEjecutivo.nombre,
+        email: nuevoEjecutivo.email,
+        telefono: nuevoEjecutivo.telefono,
+        activo: nuevoEjecutivo.activo
+      }
+    });
+  } catch (e) {
+    console.error('[admin] Error creando ejecutivo:', e);
+    return res.status(500).json({ error: 'Error al crear ejecutivo' });
+  }
+});
+
+// Actualizar ejecutivo (solo administradores)
+app.put('/api/admin/ejecutivos/:id', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Administrador') {
+      return res.status(403).json({ error: 'No tienes permisos' });
+    }
+
+    const { id } = req.params;
+    const { nombre, email, telefono, activo } = (req.body as any) || {};
+
+    if (!nombre || !email || !telefono) {
+      return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+
+    const ejecutivo = await Ejecutivo.findByIdAndUpdate(
+      id,
+      {
+        nombre: String(nombre).trim(),
+        email: String(email).toLowerCase().trim(),
+        telefono: String(telefono).trim(),
+        activo: activo !== undefined ? activo : true
+      },
+      { new: true }
+    );
+
+    if (!ejecutivo) {
+      return res.status(404).json({ error: 'Ejecutivo no encontrado' });
+    }
+
+    console.log('[admin] Ejecutivo actualizado:', ejecutivo.nombre);
+
+    return res.json({
+      success: true,
+      message: 'Ejecutivo actualizado exitosamente',
+      ejecutivo: {
+        id: ejecutivo._id,
+        nombre: ejecutivo.nombre,
+        email: ejecutivo.email,
+        telefono: ejecutivo.telefono,
+        activo: ejecutivo.activo
+      }
+    });
+  } catch (e) {
+    console.error('[admin] Error actualizando ejecutivo:', e);
+    return res.status(500).json({ error: 'Error al actualizar ejecutivo' });
+  }
+});
+
+// Eliminar ejecutivo (solo administradores)
+app.delete('/api/admin/ejecutivos/:id', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Administrador') {
+      return res.status(403).json({ error: 'No tienes permisos' });
+    }
+
+    const { id } = req.params;
+
+    // Verificar si hay usuarios asignados
+    const clientesAsignados = await User.countDocuments({ ejecutivoId: id });
+    if (clientesAsignados > 0) {
+      return res.status(400).json({ 
+        error: `No se puede eliminar. Hay ${clientesAsignados} cliente(s) asignado(s) a este ejecutivo.` 
+      });
+    }
+
+    await Ejecutivo.findByIdAndDelete(id);
+
+    console.log('[admin] Ejecutivo eliminado:', id);
+
+    return res.json({
+      success: true,
+      message: 'Ejecutivo eliminado exitosamente'
+    });
+  } catch (e) {
+    console.error('[admin] Error eliminando ejecutivo:', e);
+    return res.status(500).json({ error: 'Error al eliminar ejecutivo' });
+  }
+});
+
+// ============================================================
+// ENDPOINTS DE ADMINISTRACIÓN DE USUARIOS
 // ============================================================
 
 // Crear nuevo usuario (solo para administradores)
@@ -195,8 +390,8 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
     }
 
-    // ✅ MODIFICADO: Agregar campos del ejecutivo
-    const { email, username, password, ejecutivoNombre, ejecutivoEmail, ejecutivoTelefono } = (req.body as any) || {};
+    // ✅ MODIFICADO: Recibir ejecutivoId en lugar de campos individuales
+    const { email, username, password, ejecutivoId } = (req.body as any) || {};
     if (!email || !username || !password) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
@@ -213,9 +408,7 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       email: normalizedEmail,
       username: String(username).trim(),
       passwordHash,
-      ejecutivoNombre: ejecutivoNombre ? String(ejecutivoNombre).trim() : undefined,
-      ejecutivoEmail: ejecutivoEmail ? String(ejecutivoEmail).toLowerCase().trim() : undefined,
-      ejecutivoTelefono: ejecutivoTelefono ? String(ejecutivoTelefono).trim() : undefined,
+      ejecutivoId: ejecutivoId || undefined
     });
 
     await newUser.save();
@@ -227,11 +420,8 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       message: 'Usuario creado exitosamente',
       user: {
         email: newUser.email,
-        username: newUser.username,
-        ejecutivoNombre: newUser.ejecutivoNombre,
-        ejecutivoEmail: newUser.ejecutivoEmail,
-        ejecutivoTelefono: newUser.ejecutivoTelefono,
-      },
+        username: newUser.username
+      }
     });
   } catch (e) {
     console.error('[admin] Error creando usuario:', e);
@@ -247,23 +437,81 @@ app.get('/api/admin/users', auth, async (req, res) => {
       return res.status(403).json({ error: 'No tienes permisos para ver usuarios' });
     }
 
-    const users = await User.find({}, { passwordHash: 0 }).sort({ createdAt: -1 });
+    const users = await User.find({}, { passwordHash: 0 })
+      .populate('ejecutivoId')
+      .sort({ createdAt: -1 });
 
     return res.json({
       success: true,
-      users: users.map((u: IUserDoc) => ({
+      users: users.map((u: any) => ({
         id: u._id,
         email: u.email,
         username: u.username,
         createdAt: u.createdAt,
-        ejecutivoNombre: u.ejecutivoNombre,      // ✅ MODIFICADO
-        ejecutivoEmail: u.ejecutivoEmail,        // ✅ MODIFICADO
-        ejecutivoTelefono: u.ejecutivoTelefono,  // ✅ MODIFICADO
-      })),
+        ejecutivo: u.ejecutivoId ? {
+          id: u.ejecutivoId._id,
+          nombre: u.ejecutivoId.nombre,
+          email: u.ejecutivoId.email,
+          telefono: u.ejecutivoId.telefono
+        } : null
+      }))
     });
   } catch (e) {
     console.error('[admin] Error listando usuarios:', e);
     return res.status(500).json({ error: 'Error al listar usuarios' });
+  }
+});
+
+// Actualizar usuario (solo administradores)
+app.put('/api/admin/users/:id', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Administrador') {
+      return res.status(403).json({ error: 'No tienes permisos para actualizar usuarios' });
+    }
+
+    const { id } = req.params;
+    const { username, password, ejecutivoId } = (req.body as any) || {};
+
+    const userToUpdate = await User.findById(id);
+    if (!userToUpdate) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (userToUpdate.username === 'Administrador') {
+      return res.status(400).json({ error: 'No puedes modificar la cuenta de administrador' });
+    }
+
+    // Actualizar campos
+    if (username) {
+      userToUpdate.username = String(username).trim();
+    }
+
+    if (password) {
+      userToUpdate.passwordHash = bcrypt.hashSync(String(password), 12);
+    }
+
+    // Actualizar ejecutivoId (puede ser null para "sin asignar")
+    if (ejecutivoId !== undefined) {
+      userToUpdate.ejecutivoId = ejecutivoId ? ejecutivoId : undefined;
+    }
+
+    await userToUpdate.save();
+
+    console.log('[admin] Usuario actualizado:', userToUpdate.email);
+
+    return res.json({
+      success: true,
+      message: 'Usuario actualizado exitosamente',
+      user: {
+        id: userToUpdate._id,
+        email: userToUpdate.email,
+        username: userToUpdate.username
+      }
+    });
+  } catch (e) {
+    console.error('[admin] Error actualizando usuario:', e);
+    return res.status(500).json({ error: 'Error al actualizar usuario' });
   }
 });
 
@@ -288,7 +536,7 @@ app.delete('/api/admin/users/:id', auth, async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Usuario eliminado exitosamente',
+      message: 'Usuario eliminado exitosamente'
     });
   } catch (e) {
     console.error('[admin] Error eliminando usuario:', e);
@@ -328,7 +576,6 @@ app.get('/api/linbis-token', async (req, res) => {
       });
     }
 
-    // Si el access_token aún es válido (con 5 min de margen), usarlo
     const now = Date.now();
     if (linbisTokenCache.access_token && 
         linbisTokenCache.access_token_expiry && 
@@ -337,7 +584,6 @@ app.get('/api/linbis-token', async (req, res) => {
       return res.json({ token: linbisTokenCache.access_token });
     }
 
-    // Si expiró o no existe, renovar usando refresh_token
     console.log('[linbis-token] Refreshing access token...');
 
     const response = await fetch(LINBIS_TOKEN_URL, {
@@ -363,11 +609,9 @@ app.get('/api/linbis-token', async (req, res) => {
       refresh_token?: string;
     };
 
-    // Actualizar el cache con el nuevo token
     linbisTokenCache.access_token = data.access_token;
     linbisTokenCache.access_token_expiry = now + (data.expires_in * 1000);
 
-    // Si viene un nuevo refresh_token, actualizarlo también
     if (data.refresh_token) {
       console.log('[linbis-token] Updating refresh token in cache');
       linbisTokenCache.refresh_token = data.refresh_token;
