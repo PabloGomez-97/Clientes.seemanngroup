@@ -173,7 +173,6 @@ function Sidebar({ isOpen }: SidebarProps) {
                       key={item.path}
                       onClick={() => navigate(item.path)}
                       style={{
-                        width: '100%',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '10px',
