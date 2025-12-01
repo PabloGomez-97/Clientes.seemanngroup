@@ -8,13 +8,28 @@ interface SidebarProps {
   onToggle?: () => void;
 }
 
+interface MenuItem {
+  path: string;
+  name: string;
+  icon: JSX.Element;
+  count?: number;
+  badge?: string;
+  shortcut?: string;
+}
+
+interface MenuSection {
+  title: string;
+  color: string;
+  items: MenuItem[];
+}
+
 function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const menuSections = [
+  const menuSections: MenuSection[] = [
     /*{
       title: 'Cotizador',
       color: '#8b5cf6',
