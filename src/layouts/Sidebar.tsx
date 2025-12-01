@@ -1,5 +1,5 @@
 // src/components/layout/Sidebar.tsx - PREMIUM VERSION
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logoSeemann from './logoseemann.png';
 
