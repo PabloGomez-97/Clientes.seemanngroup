@@ -225,6 +225,7 @@ const seleccionarTarifaPorPeso = (ruta: RutaAerea, pesoChargeable: number): Tari
 function QuoteAPITester() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
+  const ejecutivo = user?.ejecutivo;
   
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -378,8 +379,8 @@ function QuoteAPITester() {
   // Cálculo del peso chargeable (para ambos modos)
   const getPesoChargeable = () => {
     if (overallDimsAndWeight) {
-      // En modo Overall: comparar numéricamente peso vs volumen (sin conversión)
-      return Math.max(manualWeight, manualVolume);
+      const pesoVolumetricoOverall = manualVolume * 167;
+      return Math.max(manualWeight, pesoVolumetricoOverall);
     } else {
       return Math.max(totalWeight, totalVolumeWeight);
     }
@@ -387,9 +388,12 @@ function QuoteAPITester() {
 
   const pesoChargeable = getPesoChargeable();
   
+  // Calcular peso volumétrico para determinar la unidad de cobro en modo Overall
+  const pesoVolumetricoOverall = overallDimsAndWeight ? manualVolume * 167 : 0;
+  
   // Determinar si se cobra por peso o volumen en modo Overall
   const chargeableUnit = overallDimsAndWeight 
-    ? (manualWeight >= manualVolume ? 'kg' : 'm³')
+    ? (manualWeight >= pesoVolumetricoOverall ? 'kg' : 'kg')
     : 'kg';
 
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
@@ -606,7 +610,7 @@ function QuoteAPITester() {
         date: new Date().toISOString(),
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
-        customerReference: "TEST-REF-CLAUDE",
+        customerReference: "Portal-Created [AIR]",
         contact: {
           name: user?.username
         },
@@ -633,7 +637,7 @@ function QuoteAPITester() {
           name: "MUELLER-GYSIN LIMITED"
         },
         salesRep: {
-          name: "Ignacio Maldonado"
+          name: ejecutivo?.nombre || "Ignacio Maldonado"
         },
         commodities: [
           {
@@ -828,7 +832,7 @@ function QuoteAPITester() {
           name: "MUELLER-GYSIN LIMITED"
         },
         salesRep: {
-          name: "Ignacio Maldonado"
+          name: ejecutivo?.nombre || "Ignacio Maldonado"
         },
         commodities: [
           {
@@ -1344,10 +1348,10 @@ function QuoteAPITester() {
                     <div className="col-12">
                       <strong className="text-primary">Chargeable:</strong>{' '}
                       <span className="text-primary fw-bold">
-                        {pesoChargeable.toFixed(2)} {chargeableUnit}
+                        {pesoChargeable.toFixed(2)} kg
                       </span>
                       <small className="text-muted d-block mt-1">
-                        (Se cobra por el mayor numéricamente: {manualWeight.toFixed(2)} kg vs {manualVolume.toFixed(2)} m³)
+                        (Se cobra por el mayor entre: {manualWeight.toFixed(2)} kg vs {(manualVolume * 167).toFixed(2)} kg [peso volumétrico = {manualVolume.toFixed(2)} m³ × 167])
                       </small>
                     </div>
                   </>

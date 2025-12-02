@@ -151,6 +151,7 @@ const parseFCL = (data: any[]): RutaFCL[] => {
 function QuoteFCL() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
+  const ejecutivo = user?.ejecutivo;
   
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -495,7 +496,7 @@ function QuoteFCL() {
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
-      customerReference: "TEST-REF-CLAUDE-FCL",
+      customerReference: "Portal-Created [FCL]",
       contact: {
         name: user?.username
       },
@@ -522,7 +523,7 @@ function QuoteFCL() {
         name: "MUELLER-GYSIN LIMITED"
       },
       salesRep: {
-        name: "Ignacio Maldonado"
+        name: ejecutivo?.nombre || "Ignacio Maldonado"
       },
       commodities: [
         {

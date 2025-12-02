@@ -117,6 +117,7 @@ const parseLCL = (data: any[]): RutaLCL[] => {
 function QuoteLCL() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
+  const ejecutivo = user?.ejecutivo;
   
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -145,7 +146,7 @@ function QuoteLCL() {
   // ============================================================================
   
   const [pieces, setPieces] = useState(1);
-  const [description, setDescription] = useState("LCL Cargo - Test");
+  const [description, setDescription] = useState("LCL Cargo");
   const [selectedPackageType, setSelectedPackageType] = useState(97);
   
   const [length, setLength] = useState(100); // cm
@@ -463,7 +464,7 @@ function QuoteLCL() {
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
-      customerReference: "LCL-TEST-REF",
+      customerReference: "Portal-Created [LCL]",
       contact: {
         name: user?.username
       },
@@ -490,7 +491,7 @@ function QuoteLCL() {
         name: "MUELLER-GYSIN LIMITED"
       },
       salesRep: {
-        name: "Ignacio Maldonado"
+        name: ejecutivo?.nombre || "Ignacio Maldonado"
       },
       commodities: [
         {
