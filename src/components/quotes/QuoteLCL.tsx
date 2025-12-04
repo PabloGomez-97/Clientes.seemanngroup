@@ -146,7 +146,7 @@ function QuoteLCL() {
   // ============================================================================
   
   const [pieces, setPieces] = useState(1);
-  const [description, setDescription] = useState("LCL Cargo");
+  const [description, setDescription] = useState("Cargamento Marítimo LCL");
   const [selectedPackageType, setSelectedPackageType] = useState(97);
   
   const [length, setLength] = useState(100); // cm
@@ -343,6 +343,8 @@ function QuoteLCL() {
         quantity: 1,
         unit: "BL",
         rate: 60,
+        amount: 60,
+        showamount: 60,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -372,6 +374,8 @@ function QuoteLCL() {
         quantity: 1,
         unit: "HL",
         rate: 45,
+        amount: 45,
+        showamount: 45,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -401,6 +405,8 @@ function QuoteLCL() {
         quantity: 1,
         unit: "EXW CHARGES",
         rate: 100,
+        amount: 100,
+        showamount: 100,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -429,7 +435,9 @@ function QuoteLCL() {
       income: {
         quantity: chargeableVolume,
         unit: "OCEAN FREIGHT",
-        rate: tarifaOceanFreight.income / chargeableVolume,
+        rate: rutaSeleccionada.ofWM * 1.15,
+        amount: tarifaOceanFreight.income,
+        showamount: tarifaOceanFreight.income,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -445,7 +453,9 @@ function QuoteLCL() {
       expense: {
         quantity: chargeableVolume,
         unit: "OCEAN FREIGHT",
-        rate: tarifaOceanFreight.expense / chargeableVolume,
+        rate: rutaSeleccionada.ofWM,
+        amount: tarifaOceanFreight.expense,
+        showamount: tarifaOceanFreight.expense,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -464,7 +474,7 @@ function QuoteLCL() {
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
-      customerReference: "Portal-Created [LCL]",
+      customerReference: "Portal Created [LCL]",
       contact: {
         name: user?.username
       },
@@ -475,20 +485,26 @@ function QuoteLCL() {
         name: rutaSeleccionada.pod
       },
       modeOfTransportation: {
-        id: 2
+        id: 1
       },
       rateCategoryId: 2,
       portOfReceipt: {
         name: rutaSeleccionada.pol
       },
       shipper: {
-        name: "SEEMANN Y CIA LTDA"
+        name: user?.username
       },
       consignee: {
         name: user?.username
       },
       issuingCompany: {
-        name: "MUELLER-GYSIN LIMITED"
+        name: rutaSeleccionada?.operador || "Por Confirmar"
+      },
+      serviceType: {
+        name: "LCL"
+      },
+      PaymentTerms: {
+        name: "Prepaid"
       },
       salesRep: {
         name: ejecutivo?.nombre || "Ignacio Maldonado"

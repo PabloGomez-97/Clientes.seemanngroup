@@ -372,6 +372,7 @@ function QuoteFCL() {
         quantity: 1,
         unit: "BL",
         rate: 60,
+        amount: 60,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -401,6 +402,7 @@ function QuoteFCL() {
         quantity: 1,
         unit: "HL",
         rate: 45,
+        amount: 45,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -430,6 +432,7 @@ function QuoteFCL() {
         quantity: 1,
         unit: "EXW CHARGES",
         rate: 100,
+        amount: 100,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -462,6 +465,7 @@ function QuoteFCL() {
         quantity: 1,
         unit: "CONTAINER",
         rate: oceanFreightRateIncome,
+        amount: oceanFreightRateIncome,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -478,6 +482,7 @@ function QuoteFCL() {
         quantity: 1,
         unit: "CONTAINER",
         rate: oceanFreightRate,
+        amount: oceanFreightRate,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -496,7 +501,10 @@ function QuoteFCL() {
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
-      customerReference: "Portal-Created [FCL]",
+      project: {
+        name: "OCEAN"
+      },
+      customerReference: "Portal Created [FCL]",
       contact: {
         name: user?.username
       },
@@ -507,23 +515,29 @@ function QuoteFCL() {
         name: rutaSeleccionada.pod
       },
       modeOfTransportation: {
-        id: 1
+        id: 2
       },
       rateCategoryId: 2,
       portOfReceipt: {
         name: rutaSeleccionada.pol
       },
       shipper: {
-        name: "SEEMANN Y CIA LTDA"
+        name: user?.username
       },
       consignee: {
         name: user?.username
       },
       issuingCompany: {
-        name: "MUELLER-GYSIN LIMITED"
+        name: rutaSeleccionada?.carrier || ""
+      },
+      serviceType: {
+        name: "FCL"
       },
       salesRep: {
         name: ejecutivo?.nombre || "Ignacio Maldonado"
+      },
+      PaymentTerms: {
+        name: "Prepaid"
       },
       commodities: [
         {

@@ -238,7 +238,7 @@ function QuoteAPITester() {
   // Estados para el commodity
   const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
   const [pieces, setPieces] = useState(1);
-  const [description, setDescription] = useState("Test Cargo - Claude Tester");
+  const [description, setDescription] = useState("Cargamento Aéreo");
   const [length, setLength] = useState(100);
   const [width, setWidth] = useState(80);
   const [height, setHeight] = useState(60);
@@ -489,6 +489,8 @@ function QuoteAPITester() {
           quantity: 1,
           unit: "HL",
           rate: 45,
+          amount: 45,
+          showamount: 45,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -518,6 +520,8 @@ function QuoteAPITester() {
           quantity: 1,
           unit: "EXW CHARGES",
           rate: calculateEXWRate(totalWeight, totalVolumeWeight),
+          amount: calculateEXWRate(totalWeight, totalVolumeWeight),
+          showamount: calculateEXWRate(totalWeight, totalVolumeWeight),
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -547,6 +551,8 @@ function QuoteAPITester() {
           quantity: 1,
           unit: "AWB",
           rate: 30,
+          amount: 30,
+          showamount: 30,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -566,7 +572,7 @@ function QuoteAPITester() {
         }
       });
 
-      // Cobro de AIR FREIGHT - NUEVO
+      // Cobro de AIR FREIGHT
       charges.push({
         service: {
           id: 4,
@@ -576,6 +582,8 @@ function QuoteAPITester() {
           quantity: pesoChargeable,
           unit: "AIR FREIGHT",
           rate: tarifaAirFreight.precioConMarkup,
+          amount: pesoChargeable * tarifaAirFreight.precioConMarkup,
+          showamount: pesoChargeable * tarifaAirFreight.precioConMarkup,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -592,6 +600,8 @@ function QuoteAPITester() {
           quantity: pesoChargeable,
           unit: "AIR FREIGHT",
           rate: tarifaAirFreight.precio,
+          amount: pesoChargeable * tarifaAirFreight.precio,
+          showamount: pesoChargeable * tarifaAirFreight.precio,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -610,7 +620,7 @@ function QuoteAPITester() {
         date: new Date().toISOString(),
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
-        customerReference: "Portal-Created [AIR]",
+        customerReference: "Portal Created [AIR]",
         contact: {
           name: user?.username
         },
@@ -628,13 +638,16 @@ function QuoteAPITester() {
           name: rutaSeleccionada.origin
         },
         shipper: {
-          name: "SEEMANN Y CIA LTDA"
+          name: user?.username
         },
         consignee: {
           name: user?.username
         },
         issuingCompany: {
-          name: "MUELLER-GYSIN LIMITED"
+          name: rutaSeleccionada?.carrier || "Por Confirmar"
+        },
+        serviceType: {
+          name: "Overall Dims & Weight"
         },
         salesRep: {
           name: ejecutivo?.nombre || "Ignacio Maldonado"
@@ -684,6 +697,8 @@ function QuoteAPITester() {
           quantity: 1,
           unit: "HL",
           rate: 45,
+          amount: 45,
+          showamount: 45,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -713,6 +728,8 @@ function QuoteAPITester() {
           quantity: 1,
           unit: "EXW CHARGES",
           rate: calculateEXWRate(manualWeight, manualVolume),
+          amount: calculateEXWRate(manualWeight, manualVolume),
+          showamount: calculateEXWRate(manualWeight, manualVolume),
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -742,6 +759,8 @@ function QuoteAPITester() {
           quantity: 1,
           unit: "AWB",
           rate: 30,
+          amount: 30,
+          showamount: 30,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -771,6 +790,8 @@ function QuoteAPITester() {
           quantity: pesoChargeable,
           unit: chargeableUnit === 'kg' ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
           rate: tarifaAirFreight.precioConMarkup,
+          amount: pesoChargeable * tarifaAirFreight.precioConMarkup,
+          showamount: pesoChargeable * tarifaAirFreight.precioConMarkup,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -787,6 +808,8 @@ function QuoteAPITester() {
           quantity: pesoChargeable,
           unit: chargeableUnit === 'kg' ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
           rate: tarifaAirFreight.precio,
+          amount: pesoChargeable * tarifaAirFreight.precio,
+          showamount: pesoChargeable * tarifaAirFreight.precio,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -805,7 +828,7 @@ function QuoteAPITester() {
         date: new Date().toISOString(),
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
-        customerReference: "TEST-REF-CLAUDE-OVERALL",
+        customerReference: "Portal-Created [AIR-OVERALL]",
         contact: {
           name: user?.username
         },
@@ -823,13 +846,16 @@ function QuoteAPITester() {
           name: rutaSeleccionada.origin
         },
         shipper: {
-          name: "SEEMANN Y CIA LTDA"
+          name: user?.username
         },
         consignee: {
           name: user?.username
         },
         issuingCompany: {
-          name: "MUELLER-GYSIN LIMITED"
+          name: rutaSeleccionada?.carrier || "Por Confirmar"
+        },
+        serviceType: {
+          name: "Overall Dims & Weight"
         },
         salesRep: {
           name: ejecutivo?.nombre || "Ignacio Maldonado"
@@ -934,7 +960,7 @@ function QuoteAPITester() {
                   <div className="row g-3">
                     {/* Filtro de Carriers */}
                     <div className="col-md-6">
-                      <label className="form-label fw-semibold mb-2">Carriers</label>
+                      <label className="form-label fw-semibold mb-2">Carriers Disponibles</label>
                       <div className="d-flex flex-wrap gap-2">
                         {carriersDisponibles.map(carrier => (
                           <button
