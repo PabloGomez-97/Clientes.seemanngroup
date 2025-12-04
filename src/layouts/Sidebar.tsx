@@ -30,7 +30,7 @@ function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const menuSections: MenuSection[] = [
-    {
+    /*{
       title: 'Cotizador',
       color: '#8b5cf6',
       items: [
@@ -46,7 +46,7 @@ function Sidebar({ isOpen, onToggle }: SidebarProps) {
           )
         }
       ]
-    },
+    },*/
     {
       title: 'General',
       color: '#3b82f6',
