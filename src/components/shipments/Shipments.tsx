@@ -1,8 +1,22 @@
-// en caso que queramos ver todos los SHIPMENTS en un solo lugar
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import { COLORS, GRADIENTS } from '../../themes/reportTheme';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 interface OutletContext {
   accessToken: string;
@@ -12,71 +26,72 @@ interface OutletContext {
 interface Shipment {
   id?: number;
   number?: string;
-  accountingStatus?: string;
-  masterNumber?: string;
-  wayBillMasterNumber?: string;
   customerReference?: string;
   waybillNumber?: string;
   bookingNumber?: string;
   currentFlow?: string;
   departure?: string;
   arrival?: string;
-  placeOfDelivery?: string;
-  finalDestination?: string;
-  placeOfDelivery_Date?: string;
-  finalDestination_Date?: string;
-  customer?: string;
-  salesRep?: string;
-  shipper?: string;
-  consignee?: string;
-  division?: string;
+  createdOn?: string;
+  updateOn?: string;
+  origin?: string;
+  destination?: string;
+  serviceType?: string;
+  modeOfTransportation?: string;
+  lastEvent?: string;
   totalCargo_Pieces?: number;
   totalCargo_WeightValue?: number;
   totalCargo_VolumeWeightValue?: number;
   containerNumber?: string;
-  totalCharge_IncomeValue?: number;
-  totalCharge_ExpenseValue?: number;
-  totalCharge_ProfitValue?: number;
-  createdBy?: string;
-  createdOn?: string;
-  updatedBy?: string;
-  updateOn?: string;
-  origin?: string;
-  destination?: string;
-  moduleType?: string;
-  serviceType?: string;
-  modeOfTransportation?: string;
-  lastEvent?: string;
-  view?: string;
-  ownerId?: string;
+  division?: string;
+  salesRep?: string;
+  shipper?: string;
+  consignee?: string;
   [key: string]: any;
 }
 
+type TabType = 'general' | 'routes' | 'performance' | 'recent';
+type ModalType = 'total' | 'air' | 'sea' | 'pieces' | 'weight' | 'volume' | 'transit' | 'avgWeight' | 'containers' | 'divisions' | 'reps' | null;
+
+const styles = {
+  metricCard: {
+    borderRadius: '12px',
+    border: 'none',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    cursor: 'pointer'
+  },
+  chartCard: {
+    borderRadius: '12px',
+    border: `1px solid ${COLORS.border}`,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+  },
+  chartTitle: {
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: '1rem'
+  }
+};
+
 function ShipmentsView() {
-  const { accessToken, onLogout } = useOutletContext<OutletContext>();
+  const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
   const [shipments, setShipments] = useState<Shipment[]>([]);
-  const [displayedShipments, setDisplayedShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const filterConsignee = user?.username || '';
   
+  // Filter states
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [activeTab, setActiveTab] = useState<TabType>('general');
+  const [showFilters, setShowFilters] = useState(false);
+  
   // Modal state
-  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  
-  // Búsqueda por fecha
-  const [searchDate, setSearchDate] = useState('');
-  const [searchStartDate, setSearchStartDate] = useState('');
-  const [searchEndDate, setSearchEndDate] = useState('');
-  
-  // Búsqueda por número
-  const [searchNumber, setSearchNumber] = useState('');
-  
-  const [showingAll, setShowingAll] = useState(false);
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
 
-  // Obtener shipments usando el token
+  // Fetch shipments
   const fetchShipments = async () => {
     if (!accessToken) {
       setError('Debes ingresar un token primero');
@@ -98,7 +113,7 @@ function ShipmentsView() {
       
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('Token inválido o expirado. Obtén un nuevo token desde Postman.');
+          throw new Error('Token inválido o expirado');
         }
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
@@ -106,27 +121,18 @@ function ShipmentsView() {
       const data = await response.json();
       const shipmentsArray: Shipment[] = Array.isArray(data) ? data : [];
       
-      // Filtrar por consignee
       const filtered = shipmentsArray.filter(s => s.consignee === filterConsignee);
       
-      // Ordenar por última actualización (más recientes primero)
       const sorted = filtered.sort((a, b) => {
-        const dateA = new Date(a.updateOn || a.createdOn || 0);
-        const dateB = new Date(b.updateOn || b.createdOn || 0);
+        const dateA = new Date(a.createdOn || 0);
+        const dateB = new Date(b.createdOn || 0);
         return dateB.getTime() - dateA.getTime();
       });
       
       setShipments(sorted);
       
-      // Guardar en caché
       localStorage.setItem('shipmentsCache', JSON.stringify(sorted));
       localStorage.setItem('shipmentsCacheTimestamp', new Date().getTime().toString());
-      
-      // Mostrar solo los últimos 10
-      setDisplayedShipments(sorted.slice(0, 10));
-      setShowingAll(false);
-      
-      console.log(`${shipmentsArray.length} shipments totales, ${filtered.length} del consignee, mostrando los 10 más recientes`);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -136,14 +142,11 @@ function ShipmentsView() {
     }
   };
 
-  // Cargar automáticamente los shipments al montar el componente
   useEffect(() => {
-    // Intentar cargar desde caché primero
     const cachedShipments = localStorage.getItem('shipmentsCache');
     const cacheTimestamp = localStorage.getItem('shipmentsCacheTimestamp');
     
     if (cachedShipments && cacheTimestamp) {
-      // Verificar si el caché tiene menos de 1 hora
       const oneHour = 60 * 60 * 1000;
       const now = new Date().getTime();
       const cacheAge = now - parseInt(cacheTimestamp);
@@ -151,9 +154,6 @@ function ShipmentsView() {
       if (cacheAge < oneHour) {
         const parsed = JSON.parse(cachedShipments);
         setShipments(parsed);
-        setDisplayedShipments(parsed.slice(0, 10));
-        setShowingAll(false);
-        console.log('Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
         return;
       }
     }
@@ -162,788 +162,1417 @@ function ShipmentsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
-  // Buscar por número de shipment
-  const handleSearchByNumber = () => {
-    if (!searchNumber.trim()) {
-      setDisplayedShipments(shipments.slice(0, 10));
-      setShowingAll(false);
-      return;
-    }
-
-    const searchTerm = searchNumber.trim().toLowerCase();
-    const results = shipments.filter(shipment => {
-      const number = (shipment.number || '').toString().toLowerCase();
-      return number.includes(searchTerm);
-    });
-
-    setDisplayedShipments(results);
-    setShowingAll(true);
-    setShowSearchModal(false);
-  };
-
-  // Buscar por fecha exacta (basado en updateOn)
-  const handleSearchByDate = () => {
-    if (!searchDate) {
-      setDisplayedShipments(shipments.slice(0, 10));
-      setShowingAll(false);
-      return;
-    }
-
-    const results = shipments.filter(shipment => {
-      const dateField = shipment.updateOn || shipment.createdOn;
-      if (!dateField) return false;
-      const shipmentDate = new Date(dateField).toISOString().split('T')[0];
-      return shipmentDate === searchDate;
-    });
-
-    setDisplayedShipments(results);
-    setShowingAll(true);
-    setShowSearchModal(false);
-  };
-
-  // Buscar por rango de fechas
-  const handleSearchByDateRange = () => {
-    if (!searchStartDate && !searchEndDate) {
-      setDisplayedShipments(shipments.slice(0, 10));
-      setShowingAll(false);
-      return;
-    }
-
-    const results = shipments.filter(shipment => {
-      const dateField = shipment.updateOn || shipment.createdOn;
-      if (!dateField) return false;
-      const shipmentDate = new Date(dateField);
+  // Filtered shipments by date range
+  const filteredShipments = useMemo(() => {
+    if (!startDate && !endDate) return shipments;
+    
+    return shipments.filter(shipment => {
+      const shipmentDate = new Date(shipment.createdOn || 0);
       
-      if (searchStartDate && searchEndDate) {
-        const start = new Date(searchStartDate);
-        const end = new Date(searchEndDate);
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
         return shipmentDate >= start && shipmentDate <= end;
-      } else if (searchStartDate) {
-        return shipmentDate >= new Date(searchStartDate);
-      } else if (searchEndDate) {
-        const end = new Date(searchEndDate);
+      } else if (startDate) {
+        return shipmentDate >= new Date(startDate);
+      } else if (endDate) {
+        const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
         return shipmentDate <= end;
       }
-      return false;
+      
+      return true;
     });
+  }, [shipments, startDate, endDate]);
 
-    setDisplayedShipments(results);
-    setShowingAll(true);
-    setShowSearchModal(false);
+  // Helper to detect air shipments
+  const isAirShipment = (mode: string | undefined): boolean => {
+    if (!mode) return false;
+    const modeStr = mode.toLowerCase();
+    return modeStr.includes('40 - air') || modeStr.includes('41 - air');
   };
 
-  // Limpiar búsqueda
-  const clearSearch = () => {
-    setSearchNumber('');
-    setSearchDate('');
-    setSearchStartDate('');
-    setSearchEndDate('');
-    setDisplayedShipments(shipments.slice(0, 10));
-    setShowingAll(false);
+  // Helper to detect sea shipments
+  const isSeaShipment = (mode: string | undefined): boolean => {
+    if (!mode) return false;
+    const modeStr = mode.toLowerCase();
+    return modeStr.includes('10 - vessel') || modeStr.includes('11 - vessel');
   };
 
-  // Abrir modal con detalles
-  const openShipmentDetails = (shipment: Shipment) => {
-    setSelectedShipment(shipment);
-    setShowModal(true);
+  // KPIs calculation
+  const kpis = useMemo(() => {
+    const total = filteredShipments.length;
+    
+    const air = filteredShipments.filter(s => isAirShipment(s.modeOfTransportation)).length;
+    const sea = filteredShipments.filter(s => isSeaShipment(s.modeOfTransportation)).length;
+    
+    const totalPieces = filteredShipments.reduce((sum, s) => sum + (s.totalCargo_Pieces || 0), 0);
+    const totalWeight = filteredShipments.reduce((sum, s) => sum + (s.totalCargo_WeightValue || 0), 0);
+    const totalVolume = filteredShipments.reduce((sum, s) => sum + (s.totalCargo_VolumeWeightValue || 0), 0);
+    
+    const shipmentsWithTransit = filteredShipments.filter(s => s.departure && s.arrival);
+    const avgTransitDays = shipmentsWithTransit.length > 0
+      ? shipmentsWithTransit.reduce((sum, s) => {
+          const dep = new Date(s.departure!);
+          const arr = new Date(s.arrival!);
+          const days = (arr.getTime() - dep.getTime()) / (1000 * 60 * 60 * 24);
+          return sum + days;
+        }, 0) / shipmentsWithTransit.length
+      : 0;
+    
+    const avgWeight = total > 0 ? totalWeight / total : 0;
+    
+    // New metrics
+    const containersCount = filteredShipments.filter(s => s.containerNumber && s.containerNumber !== '').length;
+    const uniqueDivisions = new Set(filteredShipments.map(s => s.division).filter(d => d)).size;
+    const uniqueReps = new Set(filteredShipments.map(s => s.salesRep).filter(r => r)).size;
+    
+    return {
+      total,
+      air,
+      sea,
+      totalPieces,
+      totalWeight,
+      totalVolume,
+      avgTransitDays,
+      avgWeight,
+      containersCount,
+      uniqueDivisions,
+      uniqueReps
+    };
+  }, [filteredShipments]);
+
+  // Monthly data for charts
+  const monthlyData = useMemo(() => {
+    const monthMap = new Map<string, { air: number; sea: number }>();
+    
+    filteredShipments.forEach(shipment => {
+      const date = new Date(shipment.createdOn || 0);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      const isAir = isAirShipment(shipment.modeOfTransportation);
+      const isSea = isSeaShipment(shipment.modeOfTransportation);
+      
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { air: 0, sea: 0 });
+      }
+      
+      const current = monthMap.get(monthKey)!;
+      if (isAir) {
+        current.air++;
+      } else if (isSea) {
+        current.sea++;
+      }
+    });
+    
+    const sortedData = Array.from(monthMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, data]) => ({
+        month: new Date(month + '-01').toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
+        Aéreos: data.air,
+        Marítimos: data.sea,
+        Total: data.air + data.sea
+      }));
+    
+    return sortedData;
+  }, [filteredShipments]);
+
+  // Pie chart data
+  const pieData = [
+    { name: 'Aéreos', value: kpis.air, color: COLORS.air },
+    { name: 'Marítimos', value: kpis.sea, color: COLORS.ocean }
+  ];
+
+  // Helper to shorten route names
+  const shortenRouteName = (route: string): string => {
+    const parts = route.split(' → ');
+    if (parts.length !== 2) return route;
+    
+    const shortenLocation = (location: string): string => {
+      // Remove common airport/port suffixes
+      let short = location
+        .replace(/International Airport/gi, '')
+        .replace(/Airport/gi, '')
+        .replace(/Arturo Merino Benitez/gi, '')
+        .replace(/Executive\/Airport/gi, '')
+        .replace(/O'Hare/gi, '')
+        .trim();
+      
+      // If still too long, take first 25 chars
+      if (short.length > 25) {
+        short = short.substring(0, 25) + '...';
+      }
+      
+      return short;
+    };
+    
+    return `${shortenLocation(parts[0])} → ${shortenLocation(parts[1])}`;
   };
 
-  // Cerrar modal
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedShipment(null);
+  // Top routes data with shortened names
+  const topRoutes = useMemo(() => {
+    const routeMap = new Map<string, number>();
+    
+    filteredShipments.forEach(shipment => {
+      if (shipment.origin && shipment.destination) {
+        const route = `${shipment.origin} → ${shipment.destination}`;
+        routeMap.set(route, (routeMap.get(route) || 0) + 1);
+      }
+    });
+    
+    return Array.from(routeMap.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([route, count]) => ({ 
+        route: shortenRouteName(route), 
+        fullRoute: route,
+        count 
+      }));
+  }, [filteredShipments]);
+
+  // Top destinations
+  const topDestinations = useMemo(() => {
+    const destMap = new Map<string, number>();
+    
+    filteredShipments.forEach(shipment => {
+      if (shipment.destination) {
+        destMap.set(shipment.destination, (destMap.get(shipment.destination) || 0) + 1);
+      }
+    });
+    
+    return Array.from(destMap.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([destination, count]) => ({ destination, count }));
+  }, [filteredShipments]);
+
+  // Top shippers
+  const topShippers = useMemo(() => {
+    const shipperMap = new Map<string, number>();
+    
+    filteredShipments.forEach(shipment => {
+      if (shipment.shipper) {
+        shipperMap.set(shipment.shipper, (shipperMap.get(shipment.shipper) || 0) + 1);
+      }
+    });
+    
+    return Array.from(shipperMap.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([shipper, count]) => ({ shipper, count }));
+  }, [filteredShipments]);
+
+  // Performance by transport mode
+  const performanceByMode = useMemo(() => {
+    const airShipments = filteredShipments.filter(s => isAirShipment(s.modeOfTransportation));
+    const seaShipments = filteredShipments.filter(s => isSeaShipment(s.modeOfTransportation));
+    
+    const calcAvgTransit = (ships: Shipment[]) => {
+      const withTransit = ships.filter(s => s.departure && s.arrival);
+      if (withTransit.length === 0) return 0;
+      
+      return withTransit.reduce((sum, s) => {
+        const dep = new Date(s.departure!);
+        const arr = new Date(s.arrival!);
+        const days = (arr.getTime() - dep.getTime()) / (1000 * 60 * 60 * 24);
+        return sum + days;
+      }, 0) / withTransit.length;
+    };
+    
+    const calcAvgWeight = (ships: Shipment[]) => {
+      if (ships.length === 0) return 0;
+      const totalWeight = ships.reduce((sum, s) => sum + (s.totalCargo_WeightValue || 0), 0);
+      return totalWeight / ships.length;
+    };
+    
+    return {
+      air: {
+        avgTransit: calcAvgTransit(airShipments),
+        avgWeight: calcAvgWeight(airShipments),
+        count: airShipments.length
+      },
+      sea: {
+        avgTransit: calcAvgTransit(seaShipments),
+        avgWeight: calcAvgWeight(seaShipments),
+        count: seaShipments.length
+      }
+    };
+  }, [filteredShipments]);
+
+  // Recent shipments
+  const recentShipments = useMemo(() => {
+    return filteredShipments.slice(0, 5);
+  }, [filteredShipments]);
+
+  // Year comparison
+  const yearComparison = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const previousYear = currentYear - 1;
+    
+    const currentYearShipments = filteredShipments.filter(s => {
+      const year = new Date(s.createdOn || 0).getFullYear();
+      return year === currentYear;
+    });
+    
+    const previousYearShipments = filteredShipments.filter(s => {
+      const year = new Date(s.createdOn || 0).getFullYear();
+      return year === previousYear;
+    });
+    
+    const growth = previousYearShipments.length > 0
+      ? ((currentYearShipments.length - previousYearShipments.length) / previousYearShipments.length) * 100
+      : 0;
+    
+    return {
+      current: currentYearShipments.length,
+      previous: previousYearShipments.length,
+      growth
+    };
+  }, [filteredShipments]);
+
+  // Clear filters
+  const clearFilters = () => {
+    setStartDate('');
+    setEndDate('');
   };
 
-  // Formatear fecha para mostrar
-  const formatDate = (dateString: string) => {
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = ['Número', 'Fecha', 'Origen', 'Destino', 'Modo', 'Piezas', 'Peso (kg)', 'Volumen'];
+    const rows = filteredShipments.map(s => [
+      s.number || s.id || '',
+      new Date(s.createdOn || '').toLocaleDateString('es-ES'),
+      s.origin || '',
+      s.destination || '',
+      s.modeOfTransportation || '',
+      s.totalCargo_Pieces || 0,
+      s.totalCargo_WeightValue || 0,
+      s.totalCargo_VolumeWeightValue || 0
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reporte_operacional_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Format number
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('es-ES', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(num);
+  };
+
+  // Format date
+  const formatDate = (dateString?: string) => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-CL', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  // Formatear valores numéricos
-  const formatNumber = (value: any) => {
-    if (value === null || value === undefined) return 'N/A';
-    if (typeof value === 'number') {
-      return value.toLocaleString('es-CL');
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return 'N/A';
     }
-    return value;
   };
 
-  // Mostrar loader mientras carga
-  if (loading && shipments.length === 0) {
+  // Get modal data based on type
+  const getModalData = (type: ModalType) => {
+    switch (type) {
+      case 'total':
+        return filteredShipments.slice(0, 20);
+      case 'air':
+        return filteredShipments.filter(s => isAirShipment(s.modeOfTransportation)).slice(0, 20);
+      case 'sea':
+        return filteredShipments.filter(s => isSeaShipment(s.modeOfTransportation)).slice(0, 20);
+      case 'pieces':
+        return [...filteredShipments]
+          .filter(s => s.totalCargo_Pieces && s.totalCargo_Pieces > 0)
+          .sort((a, b) => (b.totalCargo_Pieces || 0) - (a.totalCargo_Pieces || 0))
+          .slice(0, 20);
+      case 'weight':
+        return [...filteredShipments]
+          .filter(s => s.totalCargo_WeightValue && s.totalCargo_WeightValue > 0)
+          .sort((a, b) => (b.totalCargo_WeightValue || 0) - (a.totalCargo_WeightValue || 0))
+          .slice(0, 20);
+      case 'volume':
+        return [...filteredShipments]
+          .filter(s => s.totalCargo_VolumeWeightValue && s.totalCargo_VolumeWeightValue > 0)
+          .sort((a, b) => (b.totalCargo_VolumeWeightValue || 0) - (a.totalCargo_VolumeWeightValue || 0))
+          .slice(0, 20);
+      case 'containers':
+        return filteredShipments.filter(s => s.containerNumber && s.containerNumber !== '').slice(0, 20);
+      default:
+        return [];
+    }
+  };
+
+  // Get modal title
+  const getModalTitle = (type: ModalType): string => {
+    const titles: Record<string, string> = {
+      total: 'Envíos Totales',
+      air: 'Envíos Aéreos',
+      sea: 'Envíos Marítimos',
+      pieces: 'Top Envíos por Piezas',
+      weight: 'Top Envíos por Peso',
+      volume: 'Top Envíos por Volumen',
+      containers: 'Envíos con Contenedor'
+    };
+    return titles[type || ''] || '';
+  };
+
+  // Render modal
+  const renderModal = () => {
+    if (!activeModal) return null;
+    
+    const data = getModalData(activeModal);
+    
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '60vh',
-        gap: '20px'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '3px solid #e5e7eb',
-          borderTop: '3px solid #2563eb',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{
-            color: '#1f2937',
-            fontSize: '1rem',
-            margin: 0,
-            marginBottom: '4px'
+      <div
+        onClick={() => setActiveModal(null)}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          zIndex: 9999,
+          animation: 'fadeIn 0.2s ease'
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            maxWidth: '900px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            animation: 'slideUp 0.3s ease',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Modal header */}
+          <div style={{
+            background: GRADIENTS.purple,
+            padding: '24px',
+            color: 'white',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            Cargando shipments...
-          </p>
-          <p style={{
-            color: '#6b7280',
-            fontSize: '0.875rem',
-            margin: 0
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>
+              {getModalTitle(activeModal)}
+            </h3>
+            <button
+              onClick={() => setActiveModal(null)}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                border: 'none',
+                borderRadius: '6px',
+                width: '32px',
+                height: '32px',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                color: 'white',
+                padding: 0
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Modal body */}
+          <div style={{
+            padding: '24px',
+            overflowY: 'auto',
+            flex: 1
           }}>
-            Puede tardar unos minutos
-          </p>
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead style={{ backgroundColor: COLORS.tableHeaderBg }}>
+                  <tr>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>N° OPERACIÓN</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>ORIGEN</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>DESTINO</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>PIEZAS</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>PESO (KG)</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>FECHA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((shipment, index) => (
+                    <tr key={shipment.id || index}>
+                      <td style={{ fontSize: '0.875rem', fontWeight: '600', color: COLORS.textPrimary }}>
+                        {shipment.number || `OP-${shipment.id}`}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {shipment.origin || 'N/A'}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {shipment.destination || 'N/A'}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {shipment.totalCargo_Pieces || 0}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {formatNumber(shipment.totalCargo_WeightValue || 0)}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {formatDate(shipment.createdOn)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {data.length === 0 && (
+              <div className="text-center py-4">
+                <p style={{ color: COLORS.textSecondary }}>No hay datos disponibles</p>
+              </div>
+            )}
+            {data.length === 20 && (
+              <div className="text-center mt-3">
+                <small style={{ color: COLORS.textSecondary }}>
+                  Mostrando los primeros 20 resultados
+                </small>
+              </div>
+            )}
+          </div>
+
+          {/* Modal footer */}
+          <div style={{
+            padding: '16px 24px',
+            borderTop: `1px solid ${COLORS.border}`,
+            backgroundColor: COLORS.background,
+            display: 'flex',
+            justifyContent: 'flex-end'
+          }}>
+            <button
+              onClick={() => setActiveModal(null)}
+              className="btn"
+              style={{
+                background: GRADIENTS.purple,
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 24px',
+                fontWeight: '600'
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
       </div>
     );
-  }
+  };
 
   return (
     <>
-      {/* Mensajes de Error */}
-      {error && (
-        <div style={{
-          backgroundColor: '#fee2e2',
-          border: '1px solid #ef4444',
-          borderRadius: '6px',
-          padding: '12px 16px',
-          marginBottom: '20px',
-          color: '#991b1b',
-          fontSize: '0.9rem'
-        }}>
-          <strong>Error:</strong> {error}
-        </div>
-      )}
-
-      {/* Header con información y botón de búsqueda */}
-      {shipments.length > 0 && (
+      {/* Header */}
+      <div style={{
+        background: GRADIENTS.purple,
+        padding: '32px 24px',
+        marginBottom: '24px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 6px rgba(102, 126, 234, 0.3)',
+        color: 'white'
+      }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '24px',
-          paddingBottom: '16px',
-          borderBottom: '1px solid #e5e7eb'
+          flexWrap: 'wrap',
+          gap: '16px'
         }}>
           <div>
-            <h5 style={{ 
-              margin: 0, 
-              marginBottom: '4px',
-              color: '#1f2937',
-              fontSize: '1.1rem',
-              fontWeight: '600'
-            }}>
-              Shipments
-            </h5>
-            <p style={{ 
-              margin: 0, 
-              color: '#6b7280',
-              fontSize: '0.875rem'
-            }}>
-              {showingAll 
-                ? `${displayedShipments.length} resultado${displayedShipments.length !== 1 ? 's' : ''} encontrado${displayedShipments.length !== 1 ? 's' : ''}`
-                : `Mostrando los últimos 10 de ${shipments.length} shipments`
-              }
+            <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: '700', marginBottom: '8px' }}>
+              📊 Reportería Operacional
+            </h2>
+            <p style={{ margin: 0, opacity: 0.9, fontSize: '1rem' }}>
+              Análisis completo de tus operaciones de envío
             </p>
           </div>
-          <button
-            onClick={() => setShowSearchModal(true)}
-            style={{
-              backgroundColor: '#2563eb',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '10px 20px',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-          >
-            Buscador
-          </button>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="btn"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '8px',
+                fontWeight: '600'
+              }}
+            >
+              🔍 {showFilters ? 'Ocultar' : 'Filtros'}
+            </button>
+            <button
+              onClick={exportToCSV}
+              disabled={filteredShipments.length === 0}
+              className="btn"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '8px',
+                fontWeight: '600',
+                opacity: filteredShipments.length === 0 ? 0.5 : 1
+              }}
+            >
+              📥 Exportar CSV
+            </button>
+            <button
+              onClick={fetchShipments}
+              disabled={loading}
+              className="btn"
+              style={{
+                backgroundColor: 'white',
+                color: COLORS.primary,
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: '600'
+              }}
+            >
+              {loading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2"></span>
+                  Actualizando...
+                </>
+              ) : (
+                <>🔄 Actualizar</>
+              )}
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* Modal de Búsqueda */}
-      {showSearchModal && (
-        <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999 }}
-          onClick={() => setShowSearchModal(false)}
-        >
-          <div 
-            className="bg-white rounded"
-            style={{ maxWidth: '500px', width: '100%', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <h5 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem', fontWeight: '600' }}>
-                Buscador
-              </h5>
-              <button 
-                onClick={() => setShowSearchModal(false)}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  lineHeight: 1,
-                  padding: 0
-                }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ padding: '20px' }}>
-              {/* Búsqueda por número de shipment */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px', 
-                  display: 'block' 
-                }}>
-                  Número de shipment
+        {/* Filters */}
+        {showFilters && (
+          <div style={{
+            marginTop: '24px',
+            padding: '20px',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }}>
+            <div className="row g-3 align-items-end">
+              <div className="col-12 col-md-4">
+                <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>
+                  Fecha Inicio
                 </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    placeholder="Ej: SHIP-12345"
-                    style={{
-                      flex: 1,
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      fontSize: '0.9rem'
-                    }}
-                    value={searchNumber}
-                    onChange={(e) => setSearchNumber(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleSearchByNumber();
-                      }
-                    }}
-                  />
-                  <button 
-                    style={{
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 20px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
-                    onClick={handleSearchByNumber}
-                  >
-                    Buscar
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#9ca3af', 
-                fontSize: '0.875rem', 
-                margin: '20px 0' 
-              }}>
-                o
-              </div>
-
-              {/* Búsqueda por fecha exacta */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '8px', 
-                  display: 'block' 
-                }}>
-                  Fecha exacta (última actualización)
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="date"
-                    style={{
-                      flex: 1,
-                      border: '1px solid #d1d5db',
-                      borderRadius: '6px',
-                      padding: '8px 12px',
-                      fontSize: '0.9rem'
-                    }}
-                    value={searchDate}
-                    onChange={(e) => setSearchDate(e.target.value)}
-                  />
-                  <button 
-                    style={{
-                      backgroundColor: '#2563eb',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '8px 20px',
-                      fontWeight: '500',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
-                    onClick={handleSearchByDate}
-                  >
-                    Buscar
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ 
-                textAlign: 'center', 
-                color: '#9ca3af', 
-                fontSize: '0.875rem', 
-                margin: '20px 0' 
-              }}>
-                o
-              </div>
-
-              {/* Búsqueda por rango */}
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ 
-                  fontSize: '0.875rem', 
-                  fontWeight: '500', 
-                  color: '#374151', 
-                  marginBottom: '12px', 
-                  display: 'block' 
-                }}>
-                  Rango de fechas
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <div>
-                    <label style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#6b7280', 
-                      marginBottom: '6px', 
-                      display: 'block' 
-                    }}>
-                      Desde
-                    </label>
-                    <input
-                      type="date"
-                      style={{
-                        width: '100%',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        fontSize: '0.9rem'
-                      }}
-                      value={searchStartDate}
-                      onChange={(e) => setSearchStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ 
-                      fontSize: '0.8rem', 
-                      color: '#6b7280', 
-                      marginBottom: '6px', 
-                      display: 'block' 
-                    }}>
-                      Hasta
-                    </label>
-                    <input
-                      type="date"
-                      style={{
-                        width: '100%',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        padding: '8px 12px',
-                        fontSize: '0.9rem'
-                      }}
-                      value={searchEndDate}
-                      onChange={(e) => setSearchEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <button 
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="form-control"
                   style={{
-                    backgroundColor: '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '10px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    width: '100%',
-                    fontSize: '0.9rem'
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)'
                   }}
-                  onClick={handleSearchByDateRange}
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>
+                  Fecha Fin
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="form-control"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)'
+                  }}
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <button
+                  onClick={clearFilters}
+                  className="btn w-100"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    color: 'white',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    fontWeight: '600'
+                  }}
                 >
-                  Buscar por rango
+                  Limpiar
                 </button>
               </div>
-
-              <button 
-                style={{
-                  backgroundColor: 'white',
-                  color: '#6b7280',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  padding: '8px 16px',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  width: '100%'
-                }}
-                onClick={clearSearch}
-              >
-                Limpiar búsqueda
-              </button>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          <strong>⚠️ Error:</strong> {error}
         </div>
       )}
 
-      {/* Lista de Shipments */}
-      {displayedShipments.length > 0 && (
-        <div className="row g-3">
-          {displayedShipments.map((shipment, index) => (
-            <div key={shipment.id || index} className="col-md-6 col-lg-4">
+      {/* Loading state */}
+      {loading && (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }} role="status">
+            <span className="visually-hidden">Cargando...</span>
+          </div>
+          <p className="mt-3" style={{ color: COLORS.textSecondary }}>Cargando datos...</p>
+        </div>
+      )}
+
+      {/* Main content */}
+      {!loading && shipments.length > 0 && (
+        <div style={{ paddingTop: '1rem' }}>
+          {/* Cards de Métricas */}
+          <div className="row g-4 mb-4">
+            {/* Total Shipments */}
+            <div className="col-12 col-sm-6 col-lg-4">
               <div 
+                className="card" 
                 style={{
-                  backgroundColor: 'white',
-                  borderRadius: '8px',
-                  padding: '20px',
-                  border: '1px solid #e5e7eb',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  height: '100%'
+                  ...styles.metricCard,
+                  background: GRADIENTS.purple,
+                  color: 'white',
                 }}
-                onClick={() => openShipmentDetails(shipment)}
+                onClick={() => setActiveModal('total')}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.borderColor = '#2563eb';
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 102, 234, 0.3)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.borderColor = '#e5e7eb';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
                 }}
               >
-                <div style={{ 
-                  marginBottom: '16px',
-                  paddingBottom: '12px',
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                  <h6 style={{ 
-                    color: '#1f2937', 
-                    fontWeight: '600',
-                    fontSize: '1rem',
-                    marginBottom: '4px',
-                    margin: 0
-                  }}>
-                    Shipment #{shipment.number || shipment.id || index + 1}
-                  </h6>
-                  <small style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    Actualizado: {formatDate(shipment.updateOn || shipment.createdOn || '')}
-                  </small>
-                </div>
-                
-                {shipment.currentFlow && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <small style={{ 
-                      color: '#6b7280', 
-                      textTransform: 'uppercase', 
-                      fontWeight: '600',
-                      fontSize: '0.7rem',
-                      letterSpacing: '0.5px',
-                      display: 'block',
-                      marginBottom: '4px'
-                    }}>
-                      Estado Actual
-                    </small>
-                    <div style={{ 
-                      color: '#1f2937',
-                      fontSize: '0.875rem',
-                      fontWeight: '500'
-                    }}>
-                      {shipment.currentFlow}
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Envíos Totales
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(kpis.total)}
+                      </h2>
+                      {yearComparison.growth !== 0 && (
+                        <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                          {yearComparison.growth > 0 ? '↑' : '↓'} {Math.abs(yearComparison.growth).toFixed(1)}% vs año anterior
+                        </div>
+                      )}
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      📦
                     </div>
                   </div>
-                )}
-                
-                {shipment.origin && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <small style={{ 
-                      color: '#6b7280', 
-                      textTransform: 'uppercase', 
-                      fontWeight: '600',
-                      fontSize: '0.7rem',
-                      letterSpacing: '0.5px',
-                      display: 'block',
-                      marginBottom: '4px'
-                    }}>
-                      Origen
-                    </small>
-                    <div style={{ color: '#1f2937', fontSize: '0.875rem' }}>
-                      {shipment.origin}
-                    </div>
-                  </div>
-                )}
-                
-                {shipment.destination && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <small style={{ 
-                      color: '#6b7280', 
-                      textTransform: 'uppercase', 
-                      fontWeight: '600',
-                      fontSize: '0.7rem',
-                      letterSpacing: '0.5px',
-                      display: 'block',
-                      marginBottom: '4px'
-                    }}>
-                      Destino
-                    </small>
-                    <div style={{ color: '#1f2937', fontSize: '0.875rem' }}>
-                      {shipment.destination}
-                    </div>
-                  </div>
-                )}
-
-                {shipment.serviceType && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <small style={{ 
-                      color: '#6b7280', 
-                      textTransform: 'uppercase', 
-                      fontWeight: '600',
-                      fontSize: '0.7rem',
-                      letterSpacing: '0.5px',
-                      display: 'block',
-                      marginBottom: '4px'
-                    }}>
-                      Tipo de Servicio
-                    </small>
-                    <div style={{ color: '#1f2937', fontSize: '0.875rem' }}>
-                      {shipment.serviceType}
-                    </div>
-                  </div>
-                )}
-                
-                <div style={{ 
-                  textAlign: 'center',
-                  marginTop: '16px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid #e5e7eb'
-                }}>
-                  <small style={{ 
-                    color: '#2563eb',
-                    fontWeight: '500',
-                    fontSize: '0.8rem'
-                  }}>
-                    Ver detalles →
-                  </small>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Modal de Detalles */}
-      {showModal && selectedShipment && (
-        <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, overflowY: 'auto' }}
-          onClick={closeModal}
-        >
-          <div 
-            className="bg-white rounded"
-            style={{ 
-              maxWidth: '700px', 
-              width: '100%', 
-              maxHeight: '90vh',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '20px',
-              borderBottom: '1px solid #e5e7eb'
-            }}>
-              <h5 style={{ margin: 0, color: '#1f2937', fontSize: '1.1rem', fontWeight: '600' }}>
-                Shipment #{selectedShipment.number || selectedShipment.id || 'N/A'}
-              </h5>
-              <button 
-                onClick={closeModal}
+            
+            {/* Air Shipments */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
                 style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  lineHeight: 1,
-                  padding: 0
+                  ...styles.metricCard,
+                  background: GRADIENTS.blue,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('air')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(59, 130, 246, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
                 }}
               >
-                ×
-              </button>
-            </div>
-            <div style={{ 
-              padding: '20px', 
-              overflowY: 'auto', 
-              maxHeight: 'calc(90vh - 140px)' 
-            }}>
-              {Object.entries(selectedShipment).map(([key, value]) => {
-                let displayValue: string;
-                if (value === null || value === undefined) {
-                  displayValue = 'N/A';
-                } else if (typeof value === 'boolean') {
-                  displayValue = value ? 'Sí' : 'No';
-                } else if (key.toLowerCase().includes('date') || key === 'createdOn' || key === 'updateOn' || key === 'departure' || key === 'arrival') {
-                  displayValue = formatDate(value as string);
-                } else if (typeof value === 'number') {
-                  displayValue = formatNumber(value);
-                } else if (typeof value === 'object') {
-                  displayValue = JSON.stringify(value, null, 2);
-                } else {
-                  displayValue = String(value);
-                }
-
-                return (
-                  <div key={key} style={{ 
-                    paddingTop: '12px',
-                    paddingBottom: '12px',
-                    borderBottom: '1px solid #e5e7eb'
-                  }}>
-                    <div style={{ 
-                      textTransform: 'uppercase',
-                      color: '#6b7280',
-                      fontWeight: '600',
-                      marginBottom: '4px',
-                      fontSize: '0.75rem',
-                      letterSpacing: '0.5px'
-                    }}>
-                      {key.replace(/_/g, ' ')}
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Envíos Aéreos
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(kpis.air)}
+                      </h2>
+                      <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                        {kpis.total > 0 ? ((kpis.air / kpis.total) * 100).toFixed(1) : 0}% del total
+                      </div>
                     </div>
-                    <div style={{ 
-                      fontSize: '0.9rem',
-                      color: '#1f2937',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word'
-                    }}>
-                      {displayValue}
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      ✈️
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              </div>
             </div>
-            <div style={{ 
-              padding: '16px 20px',
-              borderTop: '1px solid #e5e7eb',
-              display: 'flex',
-              justifyContent: 'flex-end'
-            }}>
-              <button 
-                onClick={closeModal}
+            
+            {/* Sea Shipments */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
                 style={{
-                  backgroundColor: '#2563eb',
+                  ...styles.metricCard,
+                  background: GRADIENTS.cyan,
                   color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 20px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
+                }}
+                onClick={() => setActiveModal('sea')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(6, 182, 212, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
                 }}
               >
-                Cerrar
-              </button>
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Envíos Marítimos
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(kpis.sea)}
+                      </h2>
+                      <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                        {kpis.total > 0 ? ((kpis.sea / kpis.total) * 100).toFixed(1) : 0}% del total
+                      </div>
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      🚢
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Total Pieces */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
+                style={{
+                  ...styles.metricCard,
+                  background: GRADIENTS.pink,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('pieces')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(236, 72, 153, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Total Piezas
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(kpis.totalPieces)}
+                      </h2>
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      📊
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Total Weight */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
+                style={{
+                  ...styles.metricCard,
+                  background: GRADIENTS.orange,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('weight')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(245, 158, 11, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Peso Total (kg)
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(Math.round(kpis.totalWeight))}
+                      </h2>
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      ⚖️
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Total Volume */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
+                style={{
+                  ...styles.metricCard,
+                  background: GRADIENTS.green,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('volume')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Volumen Total
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(Math.round(kpis.totalVolume))}
+                      </h2>
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      📐
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* Tabs */}
+          <div className="card mb-4" style={{ ...styles.chartCard, borderRadius: '12px 12px 0 0', marginBottom: 0 }}>
+            <div className="card-body p-0">
+              <div style={{
+                display: 'flex',
+                gap: '4px',
+                padding: '16px 16px 0 16px',
+                borderBottom: `1px solid ${COLORS.border}`,
+                flexWrap: 'wrap'
+              }}>
+                {[
+                  { id: 'general', label: '📊 Análisis General' },
+                  { id: 'routes', label: '🗺️ Rutas y Destinos' },
+                  { id: 'performance', label: '⚡ Rendimiento' },
+                  { id: 'recent', label: '📅 Actividad Reciente' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as TabType)}
+                    className="btn"
+                    style={{
+                      padding: '12px 24px',
+                      background: activeTab === tab.id ? GRADIENTS.purple : 'transparent',
+                      color: activeTab === tab.id ? 'white' : COLORS.textSecondary,
+                      border: 'none',
+                      borderRadius: '8px 8px 0 0',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      boxShadow: activeTab === tab.id ? '0 -2px 4px rgba(102, 126, 234, 0.2)' : 'none'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="card" style={{ ...styles.chartCard, borderRadius: '0 0 12px 12px' }}>
+            <div className="card-body p-4">
+              {/* General Tab */}
+              {activeTab === 'general' && (
+                <div className="row g-4">
+                  {/* Monthly Line Chart */}
+                  <div className="col-12">
+                    <h5 style={styles.chartTitle}>📈 Tendencia de Envíos por Mes</h5>
+                    <ResponsiveContainer width="100%" height={320}>
+                      <LineChart data={monthlyData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
+                        <XAxis 
+                          dataKey="month" 
+                          stroke={COLORS.textSecondary}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <YAxis 
+                          stroke={COLORS.textSecondary}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <Tooltip />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="Aéreos" 
+                          stroke={COLORS.air} 
+                          strokeWidth={3}
+                          dot={{ fill: COLORS.air, r: 4 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="Marítimos" 
+                          stroke={COLORS.ocean} 
+                          strokeWidth={3}
+                          dot={{ fill: COLORS.ocean, r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="col-12 col-lg-6">
+                    <h5 style={styles.chartTitle}>🍩 Distribución por Tipo</h5>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, value, percent }) => 
+                            `${name}: ${value} (${(percent * 100).toFixed(1)}%)`
+                          }
+                          outerRadius={90}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="col-12 col-lg-6">
+                    <h5 style={styles.chartTitle}>📊 Envíos Mensuales Apilados</h5>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={monthlyData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
+                        <XAxis 
+                          dataKey="month" 
+                          stroke={COLORS.textSecondary}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <YAxis 
+                          stroke={COLORS.textSecondary}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="Aéreos" stackId="a" fill={COLORS.air} radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="Marítimos" stackId="a" fill={COLORS.ocean} radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Routes Tab */}
+              {activeTab === 'routes' && (
+                <div className="row g-4">
+                  <div className="col-12">
+                    <h5 style={styles.chartTitle}>🛤️ Top 10 Rutas Más Utilizadas</h5>
+                    <ResponsiveContainer width="100%" height={500}>
+                      <BarChart data={topRoutes} layout="vertical" margin={{ top: 5, right: 30, left: 150, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
+                        <XAxis type="number" stroke={COLORS.textSecondary} />
+                        <YAxis 
+                          type="category" 
+                          dataKey="route" 
+                          stroke={COLORS.textSecondary}
+                          width={140}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <Tooltip content={({ active, payload }: any) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div style={{
+                                backgroundColor: 'white',
+                                padding: '10px',
+                                border: `1px solid ${COLORS.border}`,
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                              }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '4px' }}>
+                                  {payload[0].payload.fullRoute}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                                  Envíos: {payload[0].value}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }} />
+                        <Bar dataKey="count" fill={COLORS.primary} radius={[0, 8, 8, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <h5 style={styles.chartTitle}>🎯 Top 5 Destinos Más Frecuentes</h5>
+                    <div className="row g-3">
+                      {topDestinations.map((dest, index) => (
+                        <div key={index} className="col-12">
+                          <div className="d-flex justify-content-between align-items-center p-3"
+                            style={{
+                              backgroundColor: COLORS.background,
+                              borderRadius: '8px',
+                              border: `1px solid ${COLORS.border}`
+                            }}
+                          >
+                            <div className="d-flex align-items-center gap-3">
+                              <div 
+                                className="rounded-circle d-flex align-items-center justify-content-center"
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  background: GRADIENTS.purple,
+                                  color: 'white',
+                                  fontWeight: '700'
+                                }}
+                              >
+                                {index + 1}
+                              </div>
+                              <span style={{ fontWeight: '600', color: COLORS.textPrimary }}>
+                                {dest.destination}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.primary }}>
+                              {dest.count}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <h5 style={styles.chartTitle}>📤 Top 5 Embarcadores</h5>
+                    <div className="row g-3">
+                      {topShippers.map((shipper, index) => (
+                        <div key={index} className="col-12">
+                          <div className="d-flex justify-content-between align-items-center p-3"
+                            style={{
+                              backgroundColor: COLORS.background,
+                              borderRadius: '8px',
+                              border: `1px solid ${COLORS.border}`
+                            }}
+                          >
+                            <div className="d-flex align-items-center gap-3">
+                              <div 
+                                className="rounded-circle d-flex align-items-center justify-content-center"
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  background: GRADIENTS.blue,
+                                  color: 'white',
+                                  fontWeight: '700'
+                                }}
+                              >
+                                {index + 1}
+                              </div>
+                              <span style={{ fontWeight: '600', color: COLORS.textPrimary }}>
+                                {shipper.shipper}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.air }}>
+                              {shipper.count}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Performance Tab */}
+              {activeTab === 'performance' && (
+                <div className="row g-4">
+                  <div className="col-12">
+                    <h5 style={styles.chartTitle}>⚡ Comparativa de Rendimiento</h5>
+                  </div>
+                  
+                  <div className="col-12 col-md-6">
+                    <div className="p-4" style={{
+                      backgroundColor: '#eff6ff',
+                      borderRadius: '12px',
+                      border: `2px solid ${COLORS.air}`
+                    }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '12px' }}>✈️</div>
+                      <h5 style={{ color: COLORS.air, marginBottom: '16px' }}>Transporte Aéreo</h5>
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>TRÁNSITO PROMEDIO</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.air }}>
+                            {formatNumber(performanceByMode.air.avgTransit)} días
+                          </div>
+                        </div>
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>PESO PROMEDIO</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.air }}>
+                            {formatNumber(performanceByMode.air.avgWeight)} kg
+                          </div>
+                        </div>
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>TOTAL ENVÍOS</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.air }}>
+                            {performanceByMode.air.count}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <div className="p-4" style={{
+                      backgroundColor: '#f0fdfa',
+                      borderRadius: '12px',
+                      border: `2px solid ${COLORS.ocean}`
+                    }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🚢</div>
+                      <h5 style={{ color: COLORS.ocean, marginBottom: '16px' }}>Transporte Marítimo</h5>
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>TRÁNSITO PROMEDIO</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.ocean }}>
+                            {formatNumber(performanceByMode.sea.avgTransit)} días
+                          </div>
+                        </div>
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>PESO PROMEDIO</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.ocean }}>
+                            {formatNumber(performanceByMode.sea.avgWeight)} kg
+                          </div>
+                        </div>
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>TOTAL ENVÍOS</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.ocean }}>
+                            {performanceByMode.sea.count}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <h5 style={styles.chartTitle}>📅 Comparativa Año a Año</h5>
+                    <div className="p-4" style={{
+                      backgroundColor: COLORS.background,
+                      borderRadius: '12px',
+                      border: `2px solid ${COLORS.border}`
+                    }}>
+                      <div className="row g-4 text-center">
+                        <div className="col-12 col-md-4">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>
+                            AÑO {new Date().getFullYear() - 1}
+                          </small>
+                          <div style={{ fontSize: '2.5rem', fontWeight: '700', color: COLORS.textSecondary }}>
+                            {yearComparison.previous}
+                          </div>
+                        </div>
+                        <div className="col-12 col-md-4">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>
+                            AÑO {new Date().getFullYear()}
+                          </small>
+                          <div style={{ fontSize: '2.5rem', fontWeight: '700', color: COLORS.primary }}>
+                            {yearComparison.current}
+                          </div>
+                        </div>
+                        <div className="col-12 col-md-4">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>
+                            CRECIMIENTO
+                          </small>
+                          <div style={{
+                            fontSize: '2.5rem',
+                            fontWeight: '700',
+                            color: yearComparison.growth >= 0 ? COLORS.success : COLORS.danger
+                          }}>
+                            {yearComparison.growth >= 0 ? '+' : ''}{yearComparison.growth.toFixed(1)}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Tab */}
+              {activeTab === 'recent' && (
+                <div>
+                  <h5 style={styles.chartTitle}>📅 Últimos 5 Envíos</h5>
+                  <div className="row g-3">
+                    {recentShipments.map((shipment, index) => {
+                      const isAir = isAirShipment(shipment.modeOfTransportation);
+                      const color = isAir ? COLORS.air : COLORS.ocean;
+                      const icon = isAir ? '✈️' : '🚢';
+                      
+                      return (
+                        <div key={shipment.id || index} className="col-12">
+                          <div className="p-3" style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            border: `2px solid ${color}`,
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                          }}>
+                            <div className="row align-items-center g-3">
+                              <div className="col-auto">
+                                <div style={{ fontSize: '2rem' }}>{icon}</div>
+                              </div>
+                              <div className="col">
+                                <div style={{ fontWeight: '700', color: COLORS.textPrimary, marginBottom: '4px' }}>
+                                  {shipment.number || `OP-${shipment.id}`}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: COLORS.textSecondary, marginBottom: '8px' }}>
+                                  {shipment.origin || 'N/A'} → {shipment.destination || 'N/A'}
+                                </div>
+                                <div className="d-flex gap-3 flex-wrap" style={{ fontSize: '0.75rem', color: COLORS.textSecondary }}>
+                                  {shipment.totalCargo_Pieces && (
+                                    <span>📦 {shipment.totalCargo_Pieces} piezas</span>
+                                  )}
+                                  {shipment.totalCargo_WeightValue && (
+                                    <span>⚖️ {formatNumber(shipment.totalCargo_WeightValue)} kg</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="col-auto text-end">
+                                <div style={{ fontSize: '0.75rem', color: COLORS.textSecondary, marginBottom: '4px' }}>
+                                  {formatDate(shipment.createdOn)}
+                                </div>
+                                {shipment.currentFlow && (
+                                  <span className="badge" style={{
+                                    backgroundColor: COLORS.background,
+                                    color: color,
+                                    fontWeight: '600'
+                                  }}>
+                                    {shipment.currentFlow}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Empty state for no data */}
+          {kpis.total === 0 && (
+            <div className="text-center py-5">
+              <div style={{ fontSize: '4rem', marginBottom: '1.5rem', opacity: 0.5 }}>📊</div>
+              <h5 style={{ color: COLORS.textPrimary, fontWeight: '600', marginBottom: '0.75rem' }}>
+                No hay datos disponibles
+              </h5>
+              <p style={{ color: COLORS.textSecondary }}>
+                Intenta cambiar los filtros o verifica que existan envíos registrados
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Estado vacío - Sin resultados de búsqueda */}
-      {displayedShipments.length === 0 && !loading && shipments.length > 0 && showingAll && (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ 
-            fontSize: '3rem', 
-            marginBottom: '16px',
-            color: '#9ca3af'
-          }}>
-            📦
-          </div>
-          <h5 style={{ color: '#1f2937', marginBottom: '8px' }}>
-            No se encontraron shipments
+      {/* Empty state */}
+      {!loading && shipments.length === 0 && (
+        <div className="text-center py-5">
+          <div style={{ fontSize: '4rem', marginBottom: '1.5rem', opacity: 0.5 }}>📦</div>
+          <h5 style={{ color: COLORS.textPrimary, fontWeight: '600', marginBottom: '0.75rem' }}>
+            No hay operaciones disponibles
           </h5>
-          <p style={{ color: '#6b7280', marginBottom: '20px' }}>
-            No hay shipments que coincidan con tu búsqueda
+          <p style={{ color: COLORS.textSecondary }}>
+            Aún no tienes operaciones registradas
           </p>
-          <button 
-            onClick={clearSearch}
-            style={{
-              backgroundColor: '#2563eb',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '10px 20px',
-              cursor: 'pointer',
-              fontSize: '0.9rem'
-            }}
-          >
-            Ver los últimos 10 shipments
-          </button>
         </div>
       )}
 
-      {/* Estado vacío - Sin shipments cargados */}
-      {shipments.length === 0 && !loading && (
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ 
-            fontSize: '3rem', 
-            marginBottom: '16px',
-            color: '#9ca3af'
-          }}>
-            🚢
-          </div>
-          <h5 style={{ color: '#1f2937', marginBottom: '8px' }}>
-            No hay shipments cargados
-          </h5>
-          <p style={{ color: '#6b7280' }}>
-            Esperando datos del servidor
-          </p>
-        </div>
-      )}
+      {/* Modal */}
+      {renderModal()}
+
+      {/* CSS animations */}
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes slideUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
     </>
   );
 }

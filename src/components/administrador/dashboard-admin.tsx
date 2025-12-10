@@ -251,7 +251,7 @@ function DashboardAdmin() {
         </div>
       </div>
 
-      {/* Sección de contenido principal */}
+      {/* Sección de contenido principal
       <div className="row">
         <div className="col-12">
           <div style={{
@@ -301,7 +301,7 @@ function DashboardAdmin() {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

@@ -36,6 +36,7 @@ import OceanShipmentsView from './components/shipments/OceanShipmentsView';
 import ReporteriaOperacional from './components/Sidebar/ReporteriaOperacional';
 import Financiera from './components/Sidebar/ReporteriaFinanciera';
 import Settings from './components/settings/Settings';
+import ShipmentsView from './components/shipments/Shipments';
 
 // OFF
 import Operacionales from './components/Sidebar/RO2';
@@ -113,6 +114,7 @@ function App() {
         <Route path="reporteriaoperacional" element={<ReporteriaOperacional />} />
         <Route path="financiera" element={<Financiera />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="shipments" element={<ShipmentsView />} />
       </Route>
 
       {/* Ruta por defecto */}

@@ -130,7 +130,7 @@ const Cotizador: React.FC = () => {
                 marginBottom: '12px',
                 letterSpacing: '-0.5px'
               }}>
-                AÉREO
+                Aéreo
               </h2>
 
               {/* Descripción */}
@@ -158,7 +158,7 @@ const Cotizador: React.FC = () => {
                     backgroundColor: '#3b82f6'
                   }} />
                   <span style={{ fontSize: '14px', color: '#4b5563' }}>
-                    Entrega en 3-7 días
+                    Entregas tempranas y rápidas
                   </span>
                 </div>
                 <div style={{
@@ -292,7 +292,7 @@ const Cotizador: React.FC = () => {
                 marginBottom: '12px',
                 letterSpacing: '-0.5px'
               }}>
-                FCL
+                Marítimo FCL
               </h2>
 
               {/* Descripción */}
@@ -351,7 +351,7 @@ const Cotizador: React.FC = () => {
                     backgroundColor: '#10b981'
                   }} />
                   <span style={{ fontSize: '14px', color: '#4b5563' }}>
-                    Entrega en 25-40 días
+                    Entrega en mayores tiempos y menor costo
                   </span>
                 </div>
               </div>
@@ -454,7 +454,7 @@ const Cotizador: React.FC = () => {
                 marginBottom: '12px',
                 letterSpacing: '-0.5px'
               }}>
-                LCL
+                Marítimo LCL
               </h2>
 
               {/* Descripción */}
@@ -618,7 +618,7 @@ const Cotizador: React.FC = () => {
                     color: '#1f2937',
                     margin: 0
                   }}>
-                    AÉREO
+                    Aéreo
                   </h4>
                 </div>
                 <p style={{

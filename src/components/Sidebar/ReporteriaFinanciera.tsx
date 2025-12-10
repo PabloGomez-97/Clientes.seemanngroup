@@ -136,12 +136,10 @@ function ReporteriaFinanciera() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const filterConsignee = user?.username || '';
   
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreInvoices, setHasMoreInvoices] = useState(true);
-  const INVOICES_PER_BATCH = 300; // 3 páginas de 100
   
   // Filtros
   const [periodFilter, setPeriodFilter] = useState<'month' | '3months' | '6months' | 'year' | 'all'>('month');
@@ -247,18 +245,21 @@ function ReporteriaFinanciera() {
     return 'Unknown';
   };
 
-  // Obtener facturas (carga inicial - solo 300 facturas)
-  const fetchInvoices = async (resetData: boolean = true) => {
+  // Obtener facturas usando el nuevo endpoint con ConsigneeName
+  const fetchInvoices = async (page: number = 1, append: boolean = false) => {
     if (!accessToken) {
       setError('Debes ingresar un token primero');
       return;
     }
     
-    if (resetData) {
+    if (!user?.username) {
+      setError('No se pudo obtener el nombre de usuario');
+      return;
+    }
+    
+    // Si es la primera página, mostrar loading completo
+    if (page === 1) {
       setLoading(true);
-      setCurrentPage(1);
-      setInvoices([]);
-      setHasMoreInvoices(true);
     } else {
       setLoadingMore(true);
     }
@@ -266,75 +267,72 @@ function ReporteriaFinanciera() {
     setError(null);
     
     try {
-      const startPage = resetData ? 1 : currentPage;
-      const pagesToLoad = 3; // Cargar 3 páginas = 300 facturas
-      let batchInvoices: Invoice[] = [];
+      // Construir URL con query parameters
+      const queryParams = new URLSearchParams({
+        ConsigneeName: user.username,
+        Page: page.toString(),
+        ItemsPerPage: '50',
+        SortBy: 'newest'
+      });
       
-      // Cargar 3 páginas en paralelo para mayor velocidad
-      const requests = [];
-      for (let i = 0; i < pagesToLoad; i++) {
-        const page = startPage + i;
-        requests.push(
-          fetch(
-            `https://api.linbis.com/invoices?Page=${page}&ItemsPerPage=100&SortBy=newest`,
-            {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-              }
-            }
-          )
-        );
+      const response = await fetch(`https://api.linbis.com/invoices?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Token inválido o expirado. Obtén un nuevo token desde Postman.');
+        }
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
       
-      const responses = await Promise.all(requests);
+      const data = await response.json();
+      const invoicesArray: Invoice[] = Array.isArray(data) ? data : [];
       
-      for (const response of responses) {
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('Token inválido o expirado.');
-          }
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        const invoicesArray: Invoice[] = Array.isArray(data) ? data : [];
-        
-        if (invoicesArray.length < 100) {
-          setHasMoreInvoices(false);
-        }
-        
-        batchInvoices = [...batchInvoices, ...invoicesArray];
-      }
+      // Ordenar las facturas por date (más nueva primero)
+      const sortedInvoices = invoicesArray.sort((a, b) => {
+        const dateA = a.date ? new Date(a.date) : new Date(0);
+        const dateB = b.date ? new Date(b.date) : new Date(0);
+        return dateB.getTime() - dateA.getTime(); // Descendente (más nueva primero)
+      });
       
-      // Filtrar por consignee
-      const filtered = batchInvoices.filter(inv => 
-        inv.billTo?.name === filterConsignee || 
-        inv.shipment?.consignee?.name === filterConsignee
-      );
+      // Si recibimos menos de 50 facturas, no hay más páginas
+      setHasMoreInvoices(invoicesArray.length === 50);
       
-      if (resetData) {
-        setInvoices(filtered);
-        setDisplayedInvoices(filtered);
+      if (append && page > 1) {
+        // Agregar las nuevas facturas a las existentes y re-ordenar todo
+        const combined = [...invoices, ...sortedInvoices];
+        const resorted = combined.sort((a, b) => {
+          const dateA = a.date ? new Date(a.date) : new Date(0);
+          const dateB = b.date ? new Date(b.date) : new Date(0);
+          return dateB.getTime() - dateA.getTime();
+        });
+        setInvoices(resorted);
+        setDisplayedInvoices(resorted);
         
-        // Guardar en caché solo la primera carga
-        localStorage.setItem('invoicesCache', JSON.stringify(filtered));
-        localStorage.setItem('invoicesCacheTimestamp', new Date().getTime().toString());
-        localStorage.setItem('invoicesCachePage', '3');
-        
-        console.log(`Carga inicial: ${filtered.length} facturas del consignee`);
+        // Guardar en caché con el username del usuario
+        const cacheKey = `invoicesCache_${user.username}`;
+        localStorage.setItem(cacheKey, JSON.stringify(resorted));
+        localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
+        localStorage.setItem(`${cacheKey}_page`, page.toString());
       } else {
-        // Agregar a las facturas existentes
-        const updatedInvoices = [...invoices, ...filtered];
-        setInvoices(updatedInvoices);
-        setDisplayedInvoices(updatedInvoices);
+        // Primera carga: reemplazar todo
+        setInvoices(sortedInvoices);
+        setDisplayedInvoices(sortedInvoices);
         
-        console.log(`Cargadas ${filtered.length} facturas más. Total: ${updatedInvoices.length}`);
+        // Guardar en caché con el username del usuario
+        const cacheKey = `invoicesCache_${user.username}`;
+        localStorage.setItem(cacheKey, JSON.stringify(sortedInvoices));
+        localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
+        localStorage.setItem(`${cacheKey}_page`, page.toString());
       }
       
-      setCurrentPage(startPage + pagesToLoad);
+      console.log(`Página ${page}: ${invoicesArray.length} facturas cargadas`);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -345,9 +343,11 @@ function ReporteriaFinanciera() {
     }
   };
 
-  // Cargar más facturas
+  // Cargar más facturas (paginación)
   const loadMoreInvoices = () => {
-    fetchInvoices(false);
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchInvoices(nextPage, true);
   };
 
   useEffect(() => {
@@ -356,27 +356,54 @@ function ReporteriaFinanciera() {
       return;
     }
 
-    const cachedInvoices = localStorage.getItem('invoicesCache');
-    const cacheTimestamp = localStorage.getItem('invoicesCacheTimestamp');
-    const cachedPage = localStorage.getItem('invoicesCachePage');
+    if (!user?.username) {
+      console.log('No hay usuario disponible todavía');
+      return;
+    }
+    
+    // Intentar cargar desde caché primero
+    const cacheKey = `invoicesCache_${user.username}`;
+    const cachedInvoices = localStorage.getItem(cacheKey);
+    const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+    const cachedPage = localStorage.getItem(`${cacheKey}_page`);
     
     if (cachedInvoices && cacheTimestamp) {
-      const oneHour = 60 * 60 * 1000;
+      const oneHour = 60 * 60 * 1000; // 1 hora en milisegundos
       const now = new Date().getTime();
       const cacheAge = now - parseInt(cacheTimestamp);
       
       if (cacheAge < oneHour) {
+        // El caché es válido (menos de 1 hora)
         const parsed = JSON.parse(cachedInvoices);
         setInvoices(parsed);
         setDisplayedInvoices(parsed);
-        setCurrentPage(parseInt(cachedPage || '3') + 1);
-        console.log('Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
+        
+        // Restaurar la página actual
+        if (cachedPage) {
+          setCurrentPage(parseInt(cachedPage));
+        }
+        
+        // Verificar si hay más facturas disponibles
+        const lastPageSize = parsed.length % 50;
+        setHasMoreInvoices(lastPageSize === 0 && parsed.length >= 50);
+        
+        setLoading(false);
+        console.log('✅ Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
+        console.log(`💰 ${parsed.length} facturas en caché`);
         return;
+      } else {
+        // El caché expiró, limpiarlo
+        console.log('🗑️ Caché expirado, limpiando...');
+        localStorage.removeItem(cacheKey);
+        localStorage.removeItem(`${cacheKey}_timestamp`);
+        localStorage.removeItem(`${cacheKey}_page`);
       }
     }
     
-    fetchInvoices(true);
-  }, [accessToken]);
+    // No hay caché válido, cargar desde la API
+    setCurrentPage(1);
+    fetchInvoices(1, false);
+  }, [accessToken, user?.username]);
 
   // Filtrar facturas por período
   const filteredByPeriod = useMemo(() => {
@@ -526,6 +553,25 @@ function ReporteriaFinanciera() {
       .sort((a, b) => (b.totalAmount?.value || 0) - (a.totalAmount?.value || 0))
       .slice(0, 5);
   }, [filteredByPeriod]);
+
+  // Función para refrescar datos (limpiar caché y recargar)
+  const refreshInvoices = () => {
+    if (!user?.username) return;
+    
+    // Limpiar caché del usuario actual
+    const cacheKey = `invoicesCache_${user.username}`;
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(`${cacheKey}_timestamp`);
+    localStorage.removeItem(`${cacheKey}_page`);
+    
+    // Recargar desde la API
+    setCurrentPage(1);
+    setInvoices([]);
+    setDisplayedInvoices([]);
+    fetchInvoices(1, false);
+    
+    console.log('🔄 Datos refrescados desde la API');
+  };
 
   const openInvoiceModal = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -822,7 +868,7 @@ function ReporteriaFinanciera() {
         alignItems: 'center'
       }}>
         <button 
-          onClick={() => fetchInvoices(true)}
+          onClick={refreshInvoices}
           disabled={loading}
           style={{
             backgroundColor: COLORS.secondary,
@@ -1271,9 +1317,10 @@ function ReporteriaFinanciera() {
                   color: '#6b7280'
                 }}>
                   Mostrando <strong style={{ color: '#1f2937' }}>{displayedInvoices.length}</strong> facturas
+                  {!hasMoreInvoices && <span> (todas cargadas)</span>}
                 </div>
                 
-                {hasMoreInvoices && (
+                {hasMoreInvoices && !loadingMore && (
                   <button 
                     onClick={loadMoreInvoices}
                     disabled={loadingMore}
@@ -1290,17 +1337,17 @@ function ReporteriaFinanciera() {
                       transition: 'all 0.2s'
                     }}
                   >
-                    {loadingMore ? '⏳ Cargando más...' : '📥 Cargar 300 Facturas Más'}
+                    💰 Cargar Más Facturas
                   </button>
                 )}
                 
-                {!hasMoreInvoices && invoices.length >= 300 && (
+                {loadingMore && (
                   <div style={{ 
                     fontSize: '0.85rem',
-                    color: '#10b981',
+                    color: '#6b7280',
                     fontWeight: '600'
                   }}>
-                    ✅ Todas las facturas cargadas
+                    ⏳ Cargando más facturas...
                   </div>
                 )}
               </div>
