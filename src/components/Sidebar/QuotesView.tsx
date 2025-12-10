@@ -321,7 +321,10 @@ function QuotesView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const filterConsignee = user?.username || '';
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreQuotes, setHasMoreQuotes] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -498,17 +501,36 @@ function QuotesView() {
     });
   };
 
-  const fetchQuotes = async () => {
+  const fetchQuotes = async (page: number = 1, append: boolean = false) => {
     if (!accessToken) {
       setError('Debes ingresar un token primero');
       return;
     }
     
-    setLoading(true);
+    if (!user?.username) {
+      setError('No se pudo obtener el nombre de usuario');
+      return;
+    }
+    
+    // Si es la primera página, mostrar loading completo
+    if (page === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+    
     setError(null);
     
     try {
-      const response = await fetch('https://api.linbis.com/Quotes', {
+      // Construir URL con query parameters
+      const queryParams = new URLSearchParams({
+        ConsigneeName: user.username,
+        Page: page.toString(),
+        ItemsPerPage: '50',
+        SortBy: 'newest'
+      });
+      
+      const response = await fetch(`https://api.linbis.com/Quotes?${queryParams}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -527,29 +549,53 @@ function QuotesView() {
       const data = await response.json();
       const quotesArray: Quote[] = Array.isArray(data) ? data : [];
       
-      const filtered = quotesArray.filter(q => q.consignee === filterConsignee);
-      
-      const sorted = filtered.sort((a, b) => {
+      // Ordenar las cotizaciones por fecha (más nueva primero)
+      const sortedQuotes = quotesArray.sort((a, b) => {
         const dateA = new Date(a.date || 0);
         const dateB = new Date(b.date || 0);
-        return dateB.getTime() - dateA.getTime();
+        return dateB.getTime() - dateA.getTime(); // Descendente (más nueva primero)
       });
       
-      setQuotes(sorted);
+      // Si recibimos menos de 50 cotizaciones, no hay más páginas
+      setHasMoreQuotes(quotesArray.length === 50);
       
-      localStorage.setItem('quotesCache', JSON.stringify(sorted));
-      localStorage.setItem('quotesCacheTimestamp', new Date().getTime().toString());
+      if (append && page > 1) {
+        // Agregar las nuevas cotizaciones a las existentes y re-ordenar todo
+        const combined = [...quotes, ...sortedQuotes];
+        const resorted = combined.sort((a, b) => {
+          const dateA = new Date(a.date || 0);
+          const dateB = new Date(b.date || 0);
+          return dateB.getTime() - dateA.getTime();
+        });
+        setQuotes(resorted);
+        setDisplayedQuotes(resorted);
+        
+        // Guardar en caché con el username del usuario
+        const cacheKey = `quotesCache_${user.username}`;
+        localStorage.setItem(cacheKey, JSON.stringify(resorted));
+        localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
+        localStorage.setItem(`${cacheKey}_page`, page.toString());
+      } else {
+        // Primera carga: reemplazar todo
+        setQuotes(sortedQuotes);
+        setDisplayedQuotes(sortedQuotes);
+        setShowingAll(false);
+        
+        // Guardar en caché con el username del usuario
+        const cacheKey = `quotesCache_${user.username}`;
+        localStorage.setItem(cacheKey, JSON.stringify(sortedQuotes));
+        localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
+        localStorage.setItem(`${cacheKey}_page`, page.toString());
+      }
       
-      setDisplayedQuotes(sorted.slice(0, 20));
-      setShowingAll(false);
-      
-      console.log(`${quotesArray.length} cotizaciones totales, ${filtered.length} del consignee, mostrando las 20 más recientes`);
+      console.log(`Página ${page}: ${quotesArray.length} cotizaciones cargadas`);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       console.error('Error completo:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -559,26 +605,56 @@ function QuotesView() {
       return;
     }
 
-    const cachedQuotes = localStorage.getItem('quotesCache');
-    const cacheTimestamp = localStorage.getItem('quotesCacheTimestamp');
+    if (!user?.username) {
+      console.log('No hay usuario disponible todavía');
+      return;
+    }
+    
+    // Intentar cargar desde caché primero
+    const cacheKey = `quotesCache_${user.username}`;
+    const cachedQuotes = localStorage.getItem(cacheKey);
+    const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+    const cachedPage = localStorage.getItem(`${cacheKey}_page`);
     
     if (cachedQuotes && cacheTimestamp) {
-      const oneHour = 60 * 60 * 1000;
+      const oneHour = 60 * 60 * 1000; // 1 hora en milisegundos
       const now = new Date().getTime();
       const cacheAge = now - parseInt(cacheTimestamp);
       
       if (cacheAge < oneHour) {
+        // El caché es válido (menos de 1 hora)
         const parsed = JSON.parse(cachedQuotes);
         setQuotes(parsed);
-        setDisplayedQuotes(parsed.slice(0, 20));
+        setDisplayedQuotes(parsed);
         setShowingAll(false);
-        console.log('Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
+        
+        // Restaurar la página actual
+        if (cachedPage) {
+          setCurrentPage(parseInt(cachedPage));
+        }
+        
+        // Verificar si hay más cotizaciones disponibles
+        // Si la última carga fue de 50 cotizaciones, probablemente hay más
+        const lastPageSize = parsed.length % 50;
+        setHasMoreQuotes(lastPageSize === 0 && parsed.length >= 50);
+        
+        setLoading(false);
+        console.log('✅ Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
+        console.log(`📋 ${parsed.length} cotizaciones en caché`);
         return;
+      } else {
+        // El caché expiró, limpiarlo
+        console.log('🗑️ Caché expirado, limpiando...');
+        localStorage.removeItem(cacheKey);
+        localStorage.removeItem(`${cacheKey}_timestamp`);
+        localStorage.removeItem(`${cacheKey}_page`);
       }
     }
     
-    fetchQuotes();
-  }, [accessToken]);
+    // No hay caché válido, cargar desde la API
+    setCurrentPage(1);
+    fetchQuotes(1, false);
+  }, [accessToken, user?.username]);
 
   // Obtener orígenes y destinos únicos
   const uniqueOrigins = useMemo(() => {
@@ -599,9 +675,16 @@ function QuotesView() {
     return destinations;
   }, [quotes]);
 
+  // Función para cargar más cotizaciones (paginación)
+  const loadMoreQuotes = () => {
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchQuotes(nextPage, true);
+  };
+
   const handleSearchByNumber = () => {
     if (!searchNumber.trim()) {
-      setDisplayedQuotes(quotes.slice(0, 20));
+      setDisplayedQuotes(quotes);
       setShowingAll(false);
       return;
     }
@@ -619,7 +702,7 @@ function QuotesView() {
 
   const handleSearchByDate = () => {
     if (!searchDate) {
-      setDisplayedQuotes(quotes.slice(0, 20));
+      setDisplayedQuotes(quotes);
       setShowingAll(false);
       return;
     }
@@ -637,7 +720,7 @@ function QuotesView() {
 
   const handleSearchByDateRange = () => {
     if (!searchStartDate && !searchEndDate) {
-      setDisplayedQuotes(quotes.slice(0, 20));
+      setDisplayedQuotes(quotes);
       setShowingAll(false);
       return;
     }
@@ -668,7 +751,7 @@ function QuotesView() {
 
   const handleSearchByRoute = () => {
     if (!searchOrigin && !searchDestination) {
-      setDisplayedQuotes(quotes.slice(0, 20));
+      setDisplayedQuotes(quotes);
       setShowingAll(false);
       return;
     }
@@ -691,13 +774,27 @@ function QuotesView() {
     setSearchEndDate('');
     setSearchOrigin('');
     setSearchDestination('');
-    setDisplayedQuotes(quotes.slice(0, 20));
+    setDisplayedQuotes(quotes);
     setShowingAll(false);
   };
 
-  const showAllQuotes = () => {
-    setDisplayedQuotes(quotes);
-    setShowingAll(true);
+  // Función para refrescar datos (limpiar caché y recargar)
+  const refreshQuotes = () => {
+    if (!user?.username) return;
+    
+    // Limpiar caché del usuario actual
+    const cacheKey = `quotesCache_${user.username}`;
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(`${cacheKey}_timestamp`);
+    localStorage.removeItem(`${cacheKey}_page`);
+    
+    // Recargar desde la API
+    setCurrentPage(1);
+    setQuotes([]);
+    setDisplayedQuotes([]);
+    fetchQuotes(1, false);
+    
+    console.log('🔄 Datos refrescados desde la API');
   };
 
   const openModal = (quote: Quote) => {
@@ -754,7 +851,7 @@ function QuotesView() {
           flexWrap: 'wrap'
         }}>
           <button 
-            onClick={fetchQuotes}
+            onClick={refreshQuotes}
             disabled={loading}
             style={{
               backgroundColor: '#3b82f6',
@@ -790,23 +887,38 @@ function QuotesView() {
             🔍 Buscar
           </button>
 
-          {!showingAll && quotes.length > 20 && (
+          {/* Botón Cargar Más - muestra si hay más cotizaciones disponibles */}
+          {hasMoreQuotes && !loadingMore && (
             <button 
-              onClick={showAllQuotes}
+              onClick={loadMoreQuotes}
+              disabled={loadingMore}
               style={{
                 backgroundColor: 'white',
                 color: '#10b981',
                 border: '2px solid #10b981',
                 borderRadius: '8px',
                 padding: '10px 20px',
-                cursor: 'pointer',
+                cursor: loadingMore ? 'not-allowed' : 'pointer',
                 fontSize: '0.9rem',
                 fontWeight: '600',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                opacity: loadingMore ? 0.6 : 1
               }}
             >
-              📋 Ver Todas ({quotes.length})
+              📋 Cargar Más Cotizaciones
             </button>
+          )}
+
+          {/* Indicador de carga al cargar más */}
+          {loadingMore && (
+            <div style={{
+              padding: '10px 20px',
+              color: '#6b7280',
+              fontSize: '0.9rem',
+              fontWeight: '600'
+            }}>
+              ⏳ Cargando más cotizaciones...
+            </div>
           )}
 
           {showingAll && (
@@ -1287,14 +1399,14 @@ function QuotesView() {
                 fontSize: '0.875rem',
                 color: '#6b7280'
               }}>
-                Mostrando <strong style={{ color: '#1f2937' }}>{displayedQuotes.length}</strong> de{' '}
-                <strong style={{ color: '#1f2937' }}>{quotes.length}</strong> cotizaciones
+                Mostrando <strong style={{ color: '#1f2937' }}>{displayedQuotes.length}</strong> cotizaciones
+                {!hasMoreQuotes && <span> (todas cargadas)</span>}
               </div>
-              {!showingAll && quotes.length > displayedQuotes.length && (
+              {hasMoreQuotes && !loadingMore && (
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    showAllQuotes();
+                    loadMoreQuotes();
                   }}
                   style={{
                     backgroundColor: 'white',
@@ -1316,8 +1428,13 @@ function QuotesView() {
                     e.currentTarget.style.color = '#3b82f6';
                   }}
                 >
-                  Ver todas
+                  Cargar más
                 </button>
+              )}
+              {loadingMore && (
+                <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                  Cargando...
+                </div>
               )}
             </div>
           </div>
@@ -1539,7 +1656,7 @@ function QuotesView() {
                 boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
               }}
             >
-              Ver las últimas 20 cotizaciones
+              Ver todas las cotizaciones
             </button>
           </div>
         )}

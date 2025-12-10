@@ -393,12 +393,11 @@ function AirShipmentsView() {
   const [displayedShipments, setDisplayedShipments] = useState<AirShipment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const filterConsignee = user?.username || '';
   
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(50);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMoreShipments, setHasMoreShipments] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   
   // Modal state
   const [selectedShipment, setSelectedShipment] = useState<AirShipment | null>(null);
@@ -429,110 +428,109 @@ function AirShipmentsView() {
   };
 
   // Obtener air-shipments usando el token con paginación
-  const fetchAirShipments = async (startPage: number = 1, append: boolean = false) => {
+  const fetchAirShipments = async (page: number = 1, append: boolean = false) => {
     if (!accessToken) {
       setError('Debes ingresar un token primero');
       return;
     }
     
-    setLoading(true);
+    if (!user?.username) {
+      setError('No se pudo obtener el nombre de usuario');
+      return;
+    }
+    
+    // Si es la primera página, mostrar loading completo
+    if (page === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+    
     setError(null);
     
     try {
-      let allFiltered: AirShipment[] = append ? [...shipments] : [];
-      const pagesToLoad = 1000;
-      const idsSet = new Set(allFiltered.map(s => s.id));
+      // Construir URL con query parameters
+      const queryParams = new URLSearchParams({
+        ConsigneeName: user.username,
+        Page: page.toString(),
+        ItemsPerPage: '50',
+        SortBy: 'newest'
+      });
       
-      const filterShipmentsByConsignee = (shipment: AirShipment): boolean => {
-        // Filtro 1: El número debe comenzar con "SOG"
-        const numberStartsWithSOG = shipment.number?.toString().toUpperCase().startsWith('SOG');
-        
-        // Filtro 2: Debe pertenecer al consignee
-        const belongsToConsignee = shipment.consignee?.name === filterConsignee;
-        
-        // Filtro 3: O tener subShipments que pertenezcan al consignee
-        const hasSubShipmentsForConsignee = shipment.subShipments && Array.isArray(shipment.subShipments) && 
-          shipment.subShipments.some((sub: AirShipment) => 
-            sub.consignee?.name === filterConsignee
-          );
-        
-        // Solo mostrar si el número comienza con SOG Y (pertenece al consignee O tiene subShipments del consignee)
-        return numberStartsWithSOG && (belongsToConsignee || hasSubShipmentsForConsignee);
-      };
+      const response = await fetch(`https://api.linbis.com/air-shipments?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
       
-      for (let page = startPage; page < startPage + pagesToLoad; page++) {
-        console.log(`Cargando página ${page}...`);
-        
-        const response = await fetch(
-          `https://api.linbis.com/air-shipments?Page=${page}&ItemsPerPage=100`,
-          {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('Token inválido o expirado.');
-          }
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Token inválido o expirado. Obtén un nuevo token desde Postman.');
         }
-        
-        const data = await response.json();
-        const shipmentsArray: AirShipment[] = Array.isArray(data) ? data : [];
-        
-        if (shipmentsArray.length === 0) {
-          setHasMore(false);
-          break;
-        }
-        
-        const filtered = shipmentsArray.filter(filterShipmentsByConsignee);
-        
-        filtered.forEach(shipment => {
-          if (!idsSet.has(shipment.id)) {
-            allFiltered.push(shipment);
-            idsSet.add(shipment.id);
-          }
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      const shipmentsArray: AirShipment[] = Array.isArray(data) ? data : [];
+      
+      // Ordenar los shipments por departure.date (más nueva primero)
+      const sortedShipments = shipmentsArray.sort((a, b) => {
+        const dateA = a.departure?.date ? new Date(a.departure.date) : new Date(0);
+        const dateB = b.departure?.date ? new Date(b.departure.date) : new Date(0);
+        return dateB.getTime() - dateA.getTime(); // Descendente (más nueva primero)
+      });
+      
+      // Si recibimos menos de 50 shipments, no hay más páginas
+      setHasMoreShipments(shipmentsArray.length === 50);
+      
+      if (append && page > 1) {
+        // Agregar los nuevos shipments a los existentes y re-ordenar todo
+        const combined = [...shipments, ...sortedShipments];
+        const resorted = combined.sort((a, b) => {
+          const dateA = a.departure?.date ? new Date(a.departure.date) : new Date(0);
+          const dateB = b.departure?.date ? new Date(b.departure.date) : new Date(0);
+          return dateB.getTime() - dateA.getTime();
         });
+        setShipments(resorted);
+        setDisplayedShipments(resorted);
         
-        console.log(`Página ${page}: ${shipmentsArray.length} air-shipments totales, ${filtered.length} que comienzan con SOG y pertenecen a ${filterConsignee}, ${allFiltered.length} acumulados`);
+        // Guardar en caché con el username del usuario
+        const cacheKey = `airShipmentsCache_${user.username}`;
+        localStorage.setItem(cacheKey, JSON.stringify(resorted));
+        localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
+        localStorage.setItem(`${cacheKey}_page`, page.toString());
+      } else {
+        // Primera carga: reemplazar todo
+        setShipments(sortedShipments);
+        setDisplayedShipments(sortedShipments);
+        setShowingAll(false);
         
-        if (shipmentsArray.length < 50) {
-          setHasMore(false);
-          break;
-        }
+        // Guardar en caché con el username del usuario
+        const cacheKey = `airShipmentsCache_${user.username}`;
+        localStorage.setItem(cacheKey, JSON.stringify(sortedShipments));
+        localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
+        localStorage.setItem(`${cacheKey}_page`, page.toString());
       }
       
-      setShipments(allFiltered);
-      setDisplayedShipments(allFiltered.slice(0, 20));
-      setCurrentPage(startPage + pagesToLoad);
-      setShowingAll(false);
-      setHasMore(true);
-      
-      if (!append) {
-        localStorage.setItem('airShipmentsCache', JSON.stringify(allFiltered));
-        localStorage.setItem('airShipmentsCacheTimestamp', new Date().getTime().toString());
-      }
-      
-      console.log(`Total encontrado: ${allFiltered.length} air-shipments con número SOG de ${filterConsignee}`);
+      console.log(`Página ${page}: ${shipmentsArray.length} air-shipments cargados`);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       console.error('Error completo:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
-  const loadMorePages = async () => {
-    if (!hasMore || loading) return;
+  // Función para cargar más shipments (paginación)
+  const loadMoreShipments = () => {
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
-    await fetchAirShipments(nextPage, true);
+    fetchAirShipments(nextPage, true);
   };
 
   useEffect(() => {
@@ -541,30 +539,59 @@ function AirShipmentsView() {
       return;
     }
 
-    const cachedShipments = localStorage.getItem('airShipmentsCache');
-    const cacheTimestamp = localStorage.getItem('airShipmentsCacheTimestamp');
+    if (!user?.username) {
+      console.log('No hay usuario disponible todavía');
+      return;
+    }
+    
+    // Intentar cargar desde caché primero
+    const cacheKey = `airShipmentsCache_${user.username}`;
+    const cachedShipments = localStorage.getItem(cacheKey);
+    const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+    const cachedPage = localStorage.getItem(`${cacheKey}_page`);
     
     if (cachedShipments && cacheTimestamp) {
-      const oneHour = 60 * 60 * 1000;
+      const oneHour = 60 * 60 * 1000; // 1 hora en milisegundos
       const now = new Date().getTime();
       const cacheAge = now - parseInt(cacheTimestamp);
       
       if (cacheAge < oneHour) {
+        // El caché es válido (menos de 1 hora)
         const parsed = JSON.parse(cachedShipments);
         setShipments(parsed);
-        setDisplayedShipments(parsed.slice(0, 20));
+        setDisplayedShipments(parsed);
         setShowingAll(false);
-        console.log('Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
+        
+        // Restaurar la página actual
+        if (cachedPage) {
+          setCurrentPage(parseInt(cachedPage));
+        }
+        
+        // Verificar si hay más shipments disponibles
+        const lastPageSize = parsed.length % 50;
+        setHasMoreShipments(lastPageSize === 0 && parsed.length >= 50);
+        
+        setLoading(false);
+        console.log('✅ Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
+        console.log(`📦 ${parsed.length} air-shipments en caché`);
         return;
+      } else {
+        // El caché expiró, limpiarlo
+        console.log('🗑️ Caché expirado, limpiando...');
+        localStorage.removeItem(cacheKey);
+        localStorage.removeItem(`${cacheKey}_timestamp`);
+        localStorage.removeItem(`${cacheKey}_page`);
       }
     }
     
-    fetchAirShipments(1);
-  }, [accessToken]);
+    // No hay caché válido, cargar desde la API
+    setCurrentPage(1);
+    fetchAirShipments(1, false);
+  }, [accessToken, user?.username]);
 
   const handleSearchByNumber = () => {
     if (!searchNumber.trim()) {
-      setDisplayedShipments(shipments.slice(0, 20));
+      setDisplayedShipments(shipments);
       setShowingAll(false);
       return;
     }
@@ -582,7 +609,7 @@ function AirShipmentsView() {
 
   const handleSearchByDate = () => {
     if (!searchDate) {
-      setDisplayedShipments(shipments.slice(0, 20));
+      setDisplayedShipments(shipments);
       setShowingAll(false);
       return;
     }
@@ -600,7 +627,7 @@ function AirShipmentsView() {
 
   const handleSearchByDateRange = () => {
     if (!searchStartDate && !searchEndDate) {
-      setDisplayedShipments(shipments.slice(0, 20));
+      setDisplayedShipments(shipments);
       setShowingAll(false);
       return;
     }
@@ -634,13 +661,27 @@ function AirShipmentsView() {
     setSearchDate('');
     setSearchStartDate('');
     setSearchEndDate('');
-    setDisplayedShipments(shipments.slice(0, 20));
+    setDisplayedShipments(shipments);
     setShowingAll(false);
   };
 
-  const showAllShipments = () => {
-    setDisplayedShipments(shipments);
-    setShowingAll(true);
+  // Función para refrescar datos (limpiar caché y recargar)
+  const refreshShipments = () => {
+    if (!user?.username) return;
+    
+    // Limpiar caché del usuario actual
+    const cacheKey = `airShipmentsCache_${user.username}`;
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(`${cacheKey}_timestamp`);
+    localStorage.removeItem(`${cacheKey}_page`);
+    
+    // Recargar desde la API
+    setCurrentPage(1);
+    setShipments([]);
+    setDisplayedShipments([]);
+    fetchAirShipments(1, false);
+    
+    console.log('🔄 Datos refrescados desde la API');
   };
 
   const openModal = (shipment: AirShipment) => {
@@ -697,7 +738,7 @@ function AirShipmentsView() {
         flexWrap: 'wrap'
       }}>
         <button 
-          onClick={() => fetchAirShipments(1)}
+          onClick={refreshShipments}
           disabled={loading}
           style={{
             backgroundColor: '#3b82f6',
@@ -733,23 +774,38 @@ function AirShipmentsView() {
           🔍 Buscar
         </button>
 
-        {!showingAll && shipments.length > 10 && (
+        {/* Botón Cargar Más - muestra si hay más shipments disponibles */}
+        {hasMoreShipments && !loadingMore && (
           <button 
-            onClick={showAllShipments}
+            onClick={loadMoreShipments}
+            disabled={loadingMore}
             style={{
               backgroundColor: 'white',
               color: '#10b981',
               border: '2px solid #10b981',
               borderRadius: '8px',
               padding: '10px 20px',
-              cursor: 'pointer',
+              cursor: loadingMore ? 'not-allowed' : 'pointer',
               fontSize: '0.9rem',
               fontWeight: '600',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              opacity: loadingMore ? 0.6 : 1
             }}
           >
-            📋 Ver Todos ({shipments.length})
+            📦 Cargar Más Envíos
           </button>
+        )}
+
+        {/* Indicador de carga al cargar más */}
+        {loadingMore && (
+          <div style={{
+            padding: '10px 20px',
+            color: '#6b7280',
+            fontSize: '0.9rem',
+            fontWeight: '600'
+          }}>
+            ⏳ Cargando más envíos...
+          </div>
         )}
 
         {showingAll && (
@@ -1191,14 +1247,14 @@ function AirShipmentsView() {
               fontSize: '0.875rem',
               color: '#6b7280'
             }}>
-              Mostrando <strong style={{ color: '#1f2937' }}>{displayedShipments.length}</strong> de{' '}
-              <strong style={{ color: '#1f2937' }}>{shipments.length}</strong> envíos
+              Mostrando <strong style={{ color: '#1f2937' }}>{displayedShipments.length}</strong> envíos
+              {!hasMoreShipments && <span> (todos cargados)</span>}
             </div>
-            {!showingAll && shipments.length > displayedShipments.length && (
+            {hasMoreShipments && !loadingMore && (
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  showAllShipments();
+                  loadMoreShipments();
                 }}
                 style={{
                   backgroundColor: 'white',
@@ -1220,8 +1276,13 @@ function AirShipmentsView() {
                   e.currentTarget.style.color = '#3b82f6';
                 }}
               >
-                Ver todos
+                Cargar más
               </button>
+            )}
+            {loadingMore && (
+              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                Cargando...
+              </div>
             )}
           </div>
         </div>
@@ -1504,9 +1565,9 @@ function AirShipmentsView() {
           <p style={{ color: '#6b7280', marginBottom: '24px' }}>
             No se encontraron air-shipments para tu cuenta
           </p>
-          {hasMore && (
+          {hasMoreShipments && (
             <button 
-              onClick={() => loadMorePages()}
+              onClick={() => loadMoreShipments()}
               style={{
                 backgroundColor: '#3b82f6',
                 color: 'white',

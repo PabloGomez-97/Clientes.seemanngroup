@@ -39,8 +39,8 @@ import Settings from './components/settings/Settings';
 
 // OFF
 import Operacionales from './components/Sidebar/RO2';
-import Envios from './components/Sidebar/EnviosAereos';
-import EnviosMaritimos from './components/Sidebar/EnviosMaritimos';
+import Envios from './components/Sidebar/EnviosAereos OFF';
+import EnviosMaritimos from './components/Sidebar/EnviosMaritimos OFF';
 
 function App() {
   const { user } = useAuth();

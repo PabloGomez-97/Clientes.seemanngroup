@@ -7,8 +7,8 @@ import {
 } from 'recharts';
 
 // Importación de los componentes de envíos
-import ReportsOperations from './EnviosAereos';
-import ReportsOperationsOcean from './EnviosMaritimos';
+import ReportsOperations from './EnviosAereos OFF';
+import ReportsOperationsOcean from './EnviosMaritimos OFF';
 
 // Interfaces
 interface OutletContext {
