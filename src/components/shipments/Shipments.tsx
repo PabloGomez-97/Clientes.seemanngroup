@@ -1191,7 +1191,7 @@ function ShipmentsView() {
                           cy="50%"
                           labelLine={false}
                           label={({ name, value, percent }) => 
-                            `${name}: ${value} (${(percent * 100).toFixed(1)}%)`
+                            `${name}: ${value} (${((percent as number) * 100).toFixed(1)}%)`
                           }
                           outerRadius={90}
                           dataKey="value"

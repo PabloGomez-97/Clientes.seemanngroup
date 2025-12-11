@@ -59,7 +59,7 @@ export default function ReporteriaLayout() {
               setLoading(false);
             }
           },
-          error: (error) => {
+          error: (error: any) => {
             console.error('Error leyendo CSV:', error);
             setError('No se pudo leer el CSV. Revisa el formato.');
             setLoading(false);
