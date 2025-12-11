@@ -252,6 +252,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
         {/* Right Section - Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {/* Notifications */}
+          {/*{
           <div style={{ position: 'relative' }}>
             <button
               className="notification-button"
@@ -314,7 +315,6 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
               )}
             </button>
 
-            {/* Notifications Dropdown */}
             {showNotifications && (
               <div
                 className="notification-dropdown"
@@ -493,6 +493,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
               </div>
             )}
           </div>
+          */}
 
           {/* Divider */}
           <div style={{
