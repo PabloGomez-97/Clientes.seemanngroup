@@ -1,406 +1,131 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line
+import { COLORS, GRADIENTS } from '../../themes/reportTheme';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
 } from 'recharts';
 
-// Importación de los componentes de envíos
-import ReportsOperations from './EnviosAereos OFF';
-import ReportsOperationsOcean from './EnviosMaritimos OFF';
-
-// Interfaces
 interface OutletContext {
   accessToken: string;
   onLogout: () => void;
 }
 
-// Interface para AirShipment
-interface AirShipment {
-  id: number;
-  number: string;
-  operationFlow: string;
-  shipmentType: string;
-  departure: string;
-  arrival: string;
-  from: string;
-  to: string;
-  carrier: string;
-  waybillNumber: string;
-  consignee: string;
-  shipper: string;
-  salesRep: string;
-  totalCharge_IncomeDisplayValue: string;
-  totalCharge_ExpenseDisplayValue: string;
-  totalCharge_ProfitDisplayValue: string;
-  cargoDescription: string;
-  cargoStatus: string;
-  createdOn: string;
-  totalCargo_Pieces: number;
-  totalCargo_WeightValue: number;
-  totalCargo_VolumeValue: number;
+interface Shipment {
+  id?: number;
+  number?: string;
+  customerReference?: string;
+  waybillNumber?: string;
+  bookingNumber?: string;
+  currentFlow?: string;
+  departure?: string;
+  arrival?: string;
+  createdOn?: string;
+  updateOn?: string;
+  origin?: string;
+  destination?: string;
+  serviceType?: string;
+  modeOfTransportation?: string;
+  lastEvent?: string;
+  totalCargo_Pieces?: number;
+  totalCargo_WeightValue?: number;
+  totalCargo_VolumeWeightValue?: number;
+  containerNumber?: string;
+  division?: string;
+  salesRep?: string;
+  shipper?: string;
+  consignee?: string;
+  [key: string]: any;
 }
 
-// Interface para OceanShipment
-interface OceanShipment {
-  id: number;
-  number: string;
-  operationFlow: string;
-  shipmentType: string;
-  departure: string;
-  arrival: string;
-  portOfLoading: string;
-  portOfUnloading: string;
-  typeOfMove: string;
-  vessel: string;
-  voyage: string | null;
-  carrier: string;
-  fowaredBl: string;
-  waybillNumber: string;
-  containerNumber: string | null;
-  consignee: string;
-  shipper: string;
-  totalCharge_IncomeDisplayValue: string;
-  totalCharge_ExpenseDisplayValue: string;
-  totalCharge_ProfitDisplayValue: string;
-  cargoDescription: string;
-  cargoStatus: string;
-  createdOn: string;
-  totalCargo_Pieces: number;
-  totalCargo_WeightValue: number;
-  totalCargo_VolumeValue: number;
-}
+type TabType = 'general' | 'routes' | 'performance' | 'recent';
+type ModalType = 'total' | 'air' | 'sea' | 'pieces' | 'weight' | 'volume' | 'transit' | 'avgWeight' | 'containers' | 'divisions' | 'reps' | null;
 
-// Interface para los filtros
-interface FilterOptions {
-  year: number;
-  month: number | null;
-}
-
-// Interface para las métricas resumen
-interface SummaryMetrics {
-  totalAirShipments: number;
-  totalOceanShipments: number;
-  totalShipments: number;
-  totalPieces: number;
-  totalWeight: number;
-  totalVolume: number;
-}
-
-// Interface para análisis de ruta
-interface RouteAnalysis {
-  route: string;
-  count: number;
-  isAir: boolean;
-}
-
-// ============= PALETA DE COLORES MODERNA =============
-const COLORS = {
-  primary: '#6366f1',
-  secondary: '#8b5cf6',
-  air: '#3b82f6',
-  ocean: '#06b6d4',
-  chart: ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'],
-  background: '#f8fafc',
-  cardBg: '#ffffff',
-  textPrimary: '#1e293b',
-  textSecondary: '#64748b',
-  textMuted: '#94a3b8',
-  border: '#e2e8f0',
-};
-
-// Gradientes para las cards
-const GRADIENTS = {
-  purple: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  blue: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-  cyan: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-  pink: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-  orange: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-  green: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-};
-
-// ============= ESTILOS CSS EN JS =============
 const styles = {
-  container: {
-    backgroundColor: COLORS.background,
-    minHeight: '100vh',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-  },
-  header: {
-    marginBottom: '2rem',
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: '0.5rem',
-  },
-  subtitle: {
-    color: COLORS.textSecondary,
-    fontSize: '0.95rem',
-  },
   metricCard: {
-    borderRadius: '16px',
+    borderRadius: '12px',
     border: 'none',
+    transition: 'all 0.3s ease',
     boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    cursor: 'pointer',
-    overflow: 'hidden',
+    cursor: 'pointer'
   },
   chartCard: {
-    borderRadius: '16px',
-    border: 'none',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-    backgroundColor: COLORS.cardBg,
-    height: '100%',
+    borderRadius: '12px',
+    border: `1px solid ${COLORS.border}`,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
   },
   chartTitle: {
-    fontSize: '1.1rem',
+    fontSize: '1.125rem',
     fontWeight: '600',
     color: COLORS.textPrimary,
-    marginBottom: '1.5rem',
-  },
-  filterButton: {
-    position: 'fixed' as 'fixed',
-    top: '6rem',
-    right: '2rem',
-    zIndex: 1000,
-    padding: '0.875rem 1.75rem',
-    fontSize: '0.95rem',
-    fontWeight: '600',
-    borderRadius: '50px',
-    border: 'none',
-    background: GRADIENTS.purple,
-    color: 'white',
-    boxShadow: '0 4px 12px rgba(102, 102, 234, 0.4)',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  },
-  modalOverlay: {
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    backdropFilter: 'blur(4px)',
-  },
-  modalContent: {
-    borderRadius: '20px',
-    border: 'none',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-  },
-  modalHeader: {
-    borderBottom: `1px solid ${COLORS.border}`,
-    padding: '1.5rem',
-  },
-  modalTitle: {
-    fontSize: '1.25rem',
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  formLabel: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-    marginBottom: '0.5rem',
-  },
-  formSelect: {
-    borderRadius: '10px',
-    border: `1px solid ${COLORS.border}`,
-    padding: '0.625rem 0.875rem',
-    fontSize: '0.9rem',
-    transition: 'border-color 0.2s, box-shadow 0.2s',
-  },
-  emptyState: {
-    padding: '4rem 2rem',
-    textAlign: 'center' as 'center',
-    backgroundColor: COLORS.cardBg,
-    borderRadius: '20px',
-    border: `2px dashed ${COLORS.border}`,
-  },
-};
-
-// ============= ESTILOS CSS PARA ANIMACIONES =============
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.7;
-      transform: scale(1.05);
-    }
+    marginBottom: '1rem'
   }
-`;
-if (!document.head.querySelector('style[data-loading-animation]')) {
-  styleSheet.setAttribute('data-loading-animation', 'true');
-  document.head.appendChild(styleSheet);
-}
-
-// ============= COMPONENTE CUSTOM TOOLTIP =============
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div style={{
-        backgroundColor: 'white',
-        padding: '12px 16px',
-        borderRadius: '12px',
-        border: `1px solid ${COLORS.border}`,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-      }}>
-        <p style={{ 
-          margin: '0 0 8px 0', 
-          fontWeight: '600', 
-          color: COLORS.textPrimary,
-          fontSize: '0.9rem' 
-        }}>
-          {label}
-        </p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} style={{ 
-            margin: '4px 0', 
-            color: entry.color,
-            fontSize: '0.875rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: entry.color,
-              display: 'inline-block'
-            }}></span>
-            {entry.name}: <strong>{entry.value}</strong>
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
 };
 
-// ============= COMPONENTE CUSTOM Y-AXIS TICK =============
-const CustomYAxisTick = (props: any) => {
-  const { x, y, payload } = props;
-  const maxLength = 20;
-  const text = payload.value.length > maxLength 
-    ? payload.value.substring(0, maxLength) + '...' 
-    : payload.value;
-  
-  return (
-    <text 
-      x={x} 
-      y={y} 
-      dy={4} 
-      textAnchor="end" 
-      fill={COLORS.textSecondary}
-      fontSize={11}
-      fontWeight="500"
-    >
-      {text}
-    </text>
-  );
-};
-
-const ReporteriaOperacional = () => {
-  const { accessToken, onLogout } = useOutletContext<OutletContext>();
+function ShipmentsView() {
+  const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
-  
-  // Estados para almacenar los datos de envíos
-  const [airShipments, setAirShipments] = useState<AirShipment[]>([]);
-  const [oceanShipments, setOceanShipments] = useState<OceanShipment[]>([]);
-  
-  // Estado para los filtros
-  const [filters, setFilters] = useState<FilterOptions>({
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
-  });
-  
-  // Estado para métricas calculadas
-  const [summaryMetrics, setSummaryMetrics] = useState<SummaryMetrics>({
-    totalAirShipments: 0,
-    totalOceanShipments: 0,
-    totalShipments: 0,
-    totalPieces: 0,
-    totalWeight: 0,
-    totalVolume: 0,
-  });
-  
-  const [loading, setLoading] = useState<boolean>(true);
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showFilters, setShowFilters] = useState<boolean>(false);
+  
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreShipments, setHasMoreShipments] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  
+  // Filter states
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [activeTab, setActiveTab] = useState<TabType>('general');
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Modal state
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
 
-  // Estados para datos procesados para gráficos
-  const [monthlyShipments, setMonthlyShipments] = useState<any[]>([]);
-  const [topRoutes, setTopRoutes] = useState<RouteAnalysis[]>([]);
-  const [shipperDistribution, setShipperDistribution] = useState<any[]>([]);
-  const [typeDistribution, setTypeDistribution] = useState<any[]>([]);
-  
-  // Estado para controlar qué vista detallada se muestra
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'air' | 'ocean'>('dashboard');
-  
-  // Función para cargar datos desde el caché
-  const loadFromCache = () => {
-    const cacheKey = `shipmentsCache_${user?.username || 'default'}`;
-    const cachedData = localStorage.getItem(cacheKey);
-    const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
-    
-    if (cachedData && cacheTimestamp) {
-      try {
-        const now = new Date().getTime();
-        const cacheAge = now - parseInt(cacheTimestamp);
-        const maxCacheAge = 24 * 60 * 60 * 1000; // 24 horas
-        
-        if (cacheAge < maxCacheAge) {
-          const parsedData = JSON.parse(cachedData);
-          console.log('Cargando datos desde caché');
-          setAirShipments(parsedData.airShipments || []);
-          setOceanShipments(parsedData.oceanShipments || []);
-          return true;
-        } else {
-          console.log('Caché expirado, limpiando...');
-          localStorage.removeItem(cacheKey);
-          localStorage.removeItem(`${cacheKey}_timestamp`);
-        }
-      } catch (error) {
-        console.error('Error al parsear datos del caché:', error);
-        localStorage.removeItem(cacheKey);
-        localStorage.removeItem(`${cacheKey}_timestamp`);
-      }
-    }
-    
-    return false;
-  };
-  
-  // Función para guardar datos en el caché
-  const saveToCache = (airData: AirShipment[], oceanData: OceanShipment[]) => {
-    try {
-      const cacheKey = `shipmentsCache_${user?.username || 'default'}`;
-      const dataToCache = {
-        airShipments: airData,
-        oceanShipments: oceanData,
-      };
-      
-      localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
-      localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
-      console.log('Datos guardados en caché');
-    } catch (error) {
-      console.error('Error al guardar en caché:', error);
-    }
-  };
-  
-  // Función para obtener datos de la API
-  const fetchShipmentData = async () => {
+  // Fetch shipments usando el nuevo endpoint con ConsigneeName
+  const fetchShipments = async (page: number = 1, append: boolean = false) => {
     if (!accessToken) {
       setError('Debes ingresar un token primero');
       return;
     }
-
-    try {
+    
+    if (!user?.username) {
+      setError('No se pudo obtener el nombre de usuario');
+      return;
+    }
+    
+    // Si es la primera página, mostrar loading completo
+    if (page === 1) {
       setLoading(true);
-      setError(null);
+    } else {
+      setLoadingMore(true);
+    }
+    
+    setError(null);
+    
+    try {
+      // Construir URL con query parameters
+      const queryParams = new URLSearchParams({
+        ConsigneeName: user.username,
+        Page: page.toString(),
+        ItemsPerPage: '50',
+        SortBy: 'newest'
+      });
       
-      const airResponse = await fetch('https://api.linbis.com/air-shipments/all', {
+      const response = await fetch(`https://api.linbis.com/shipments/all?${queryParams}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -408,896 +133,1609 @@ const ReporteriaOperacional = () => {
           'Content-Type': 'application/json'
         }
       });
-
-      const oceanResponse = await fetch('https://api.linbis.com/ocean-shipments/all', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Token inválido o expirado');
         }
-      });
-
-      if (!airResponse.ok || !oceanResponse.ok) {
-        if (airResponse.status === 401 || oceanResponse.status === 401) {
-          throw new Error('Token inválido o expirado.');
-        }
-        throw new Error(`Error obteniendo datos de la API`);
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-
-      const airData = await airResponse.json();
-      const oceanData = await oceanResponse.json();
       
-      const filterConsignee = user?.username || '';
-      const filteredAirShipments = airData.filter((as: AirShipment) => as.consignee === filterConsignee);
-      const filteredOceanShipments = oceanData.filter((os: OceanShipment) => os.consignee === filterConsignee);
+      const data = await response.json();
+      const shipmentsArray: Shipment[] = Array.isArray(data) ? data : [];
       
-      setAirShipments(filteredAirShipments);
-      setOceanShipments(filteredOceanShipments);
+      // Ordenar los shipments por createdOn (más nueva primero)
+      const sortedShipments = shipmentsArray.sort((a, b) => {
+        const dateA = new Date(a.createdOn || 0);
+        const dateB = new Date(b.createdOn || 0);
+        return dateB.getTime() - dateA.getTime(); // Descendente (más nueva primero)
+      });
       
-      // Guardar en caché
-      saveToCache(filteredAirShipments, filteredOceanShipments);
+      // Si recibimos menos de 50 shipments, no hay más páginas
+      setHasMoreShipments(shipmentsArray.length === 50);
       
-      console.log(`Datos cargados: ${filteredAirShipments.length} aéreos, ${filteredOceanShipments.length} marítimos`);
-    } catch (err: any) {
-      setError(err.message || 'Error desconocido');
+      if (append && page > 1) {
+        // Agregar los nuevos shipments a los existentes y re-ordenar todo
+        const combined = [...shipments, ...sortedShipments];
+        const resorted = combined.sort((a, b) => {
+          const dateA = new Date(a.createdOn || 0);
+          const dateB = new Date(b.createdOn || 0);
+          return dateB.getTime() - dateA.getTime();
+        });
+        setShipments(resorted);
+        
+        // Guardar en caché con el username del usuario
+        const cacheKey = `shipmentsCache_${user.username}`;
+        localStorage.setItem(cacheKey, JSON.stringify(resorted));
+        localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
+        localStorage.setItem(`${cacheKey}_page`, page.toString());
+      } else {
+        // Primera carga: reemplazar todo
+        setShipments(sortedShipments);
+        
+        // Guardar en caché con el username del usuario
+        const cacheKey = `shipmentsCache_${user.username}`;
+        localStorage.setItem(cacheKey, JSON.stringify(sortedShipments));
+        localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
+        localStorage.setItem(`${cacheKey}_page`, page.toString());
+      }
+      
+      console.log(`Página ${page}: ${shipmentsArray.length} shipments cargados`);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
       console.error('Error completo:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
-  
-  // Filtrar envíos por fecha
-  const filterShipmentsByDate = (
-    shipments: (AirShipment | OceanShipment)[], 
-    year: number, 
-    month: number | null
-  ): (AirShipment | OceanShipment)[] => {
-    return shipments.filter(shipment => {
-      const date = new Date(shipment.createdOn);
+
+  useEffect(() => {
+    if (!accessToken) {
+      console.log('No hay token disponible todavía');
+      return;
+    }
+
+    if (!user?.username) {
+      console.log('No hay usuario disponible todavía');
+      return;
+    }
+    
+    // Intentar cargar desde caché primero
+    const cacheKey = `shipmentsCache_${user.username}`;
+    const cachedShipments = localStorage.getItem(cacheKey);
+    const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+    const cachedPage = localStorage.getItem(`${cacheKey}_page`);
+    
+    if (cachedShipments && cacheTimestamp) {
+      const oneHour = 60 * 60 * 1000; // 1 hora en milisegundos
+      const now = new Date().getTime();
+      const cacheAge = now - parseInt(cacheTimestamp);
       
-      if (month === null) {
-        return date.getFullYear() === year;
+      if (cacheAge < oneHour) {
+        // El caché es válido (menos de 1 hora)
+        const parsed = JSON.parse(cachedShipments);
+        setShipments(parsed);
+        
+        // Restaurar la página actual
+        if (cachedPage) {
+          setCurrentPage(parseInt(cachedPage));
+        }
+        
+        // Verificar si hay más shipments disponibles
+        const lastPageSize = parsed.length % 50;
+        setHasMoreShipments(lastPageSize === 0 && parsed.length >= 50);
+        
+        setLoading(false);
+        console.log('✅ Cargando desde caché - datos guardados hace', Math.floor(cacheAge / 60000), 'minutos');
+        console.log(`🚢 ${parsed.length} shipments en caché`);
+        return;
+      } else {
+        // El caché expiró, limpiarlo
+        console.log('🗑️ Caché expirado, limpiando...');
+        localStorage.removeItem(cacheKey);
+        localStorage.removeItem(`${cacheKey}_timestamp`);
+        localStorage.removeItem(`${cacheKey}_page`);
+      }
+    }
+    
+    // No hay caché válido, cargar desde la API
+    setCurrentPage(1);
+    fetchShipments(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessToken, user?.username]);
+
+  // Función para cargar más shipments (paginación)
+  const loadMoreShipments = () => {
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchShipments(nextPage, true);
+  };
+
+  // Función para refrescar datos (limpiar caché y recargar)
+  const refreshShipments = () => {
+    if (!user?.username) return;
+    
+    // Limpiar caché del usuario actual
+    const cacheKey = `shipmentsCache_${user.username}`;
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(`${cacheKey}_timestamp`);
+    localStorage.removeItem(`${cacheKey}_page`);
+    
+    // Recargar desde la API
+    setCurrentPage(1);
+    setShipments([]);
+    fetchShipments(1, false);
+    
+    console.log('🔄 Datos refrescados desde la API');
+  };
+
+  // Filtered shipments by date range
+  const filteredShipments = useMemo(() => {
+    if (!startDate && !endDate) return shipments;
+    
+    return shipments.filter(shipment => {
+      const shipmentDate = new Date(shipment.createdOn || 0);
+      
+      if (startDate && endDate) {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return shipmentDate >= start && shipmentDate <= end;
+      } else if (startDate) {
+        return shipmentDate >= new Date(startDate);
+      } else if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return shipmentDate <= end;
       }
       
-      return date.getFullYear() === year && (date.getMonth() + 1) === month;
+      return true;
     });
+  }, [shipments, startDate, endDate]);
+
+  // Helper to detect air shipments
+  const isAirShipment = (mode: string | undefined): boolean => {
+    if (!mode) return false;
+    const modeStr = mode.toLowerCase();
+    return modeStr.includes('40 - air') || modeStr.includes('41 - air');
   };
-  
-  // Calcular métricas resumen
-  const calculateSummaryMetrics = () => {
-    const filteredAir = filterShipmentsByDate(airShipments, filters.year, filters.month);
-    const filteredOcean = filterShipmentsByDate(oceanShipments, filters.year, filters.month);
+
+  // Helper to detect sea shipments
+  const isSeaShipment = (mode: string | undefined): boolean => {
+    if (!mode) return false;
+    const modeStr = mode.toLowerCase();
+    return modeStr.includes('10 - vessel') || modeStr.includes('11 - vessel');
+  };
+
+  // KPIs calculation
+  const kpis = useMemo(() => {
+    const total = filteredShipments.length;
     
-    const metrics: SummaryMetrics = {
-      totalAirShipments: filteredAir.length,
-      totalOceanShipments: filteredOcean.length,
-      totalShipments: filteredAir.length + filteredOcean.length,
-      totalPieces: 0,
-      totalWeight: 0,
-      totalVolume: 0,
+    const air = filteredShipments.filter(s => isAirShipment(s.modeOfTransportation)).length;
+    const sea = filteredShipments.filter(s => isSeaShipment(s.modeOfTransportation)).length;
+    
+    const totalPieces = filteredShipments.reduce((sum, s) => sum + (s.totalCargo_Pieces || 0), 0);
+    const totalWeight = filteredShipments.reduce((sum, s) => sum + (s.totalCargo_WeightValue || 0), 0);
+    const totalVolume = filteredShipments.reduce((sum, s) => sum + (s.totalCargo_VolumeWeightValue || 0), 0);
+    
+    const shipmentsWithTransit = filteredShipments.filter(s => s.departure && s.arrival);
+    const avgTransitDays = shipmentsWithTransit.length > 0
+      ? shipmentsWithTransit.reduce((sum, s) => {
+          const dep = new Date(s.departure!);
+          const arr = new Date(s.arrival!);
+          const days = (arr.getTime() - dep.getTime()) / (1000 * 60 * 60 * 24);
+          return sum + days;
+        }, 0) / shipmentsWithTransit.length
+      : 0;
+    
+    const avgWeight = total > 0 ? totalWeight / total : 0;
+    
+    // New metrics
+    const containersCount = filteredShipments.filter(s => s.containerNumber && s.containerNumber !== '').length;
+    const uniqueDivisions = new Set(filteredShipments.map(s => s.division).filter(d => d)).size;
+    const uniqueReps = new Set(filteredShipments.map(s => s.salesRep).filter(r => r)).size;
+    
+    return {
+      total,
+      air,
+      sea,
+      totalPieces,
+      totalWeight,
+      totalVolume,
+      avgTransitDays,
+      avgWeight,
+      containersCount,
+      uniqueDivisions,
+      uniqueReps
+    };
+  }, [filteredShipments]);
+
+  // Monthly data for charts
+  const monthlyData = useMemo(() => {
+    const monthMap = new Map<string, { air: number; sea: number }>();
+    
+    filteredShipments.forEach(shipment => {
+      const date = new Date(shipment.createdOn || 0);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      const isAir = isAirShipment(shipment.modeOfTransportation);
+      const isSea = isSeaShipment(shipment.modeOfTransportation);
+      
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { air: 0, sea: 0 });
+      }
+      
+      const current = monthMap.get(monthKey)!;
+      if (isAir) {
+        current.air++;
+      } else if (isSea) {
+        current.sea++;
+      }
+    });
+    
+    const sortedData = Array.from(monthMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, data]) => ({
+        month: new Date(month + '-01').toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
+        Aéreos: data.air,
+        Marítimos: data.sea,
+        Total: data.air + data.sea
+      }));
+    
+    return sortedData;
+  }, [filteredShipments]);
+
+  // Pie chart data
+  const pieData = [
+    { name: 'Aéreos', value: kpis.air, color: COLORS.air },
+    { name: 'Marítimos', value: kpis.sea, color: COLORS.ocean }
+  ];
+
+  // Helper to shorten route names
+  const shortenRouteName = (route: string): string => {
+    const parts = route.split(' → ');
+    if (parts.length !== 2) return route;
+    
+    const shortenLocation = (location: string): string => {
+      // Remove common airport/port suffixes
+      let short = location
+        .replace(/International Airport/gi, '')
+        .replace(/Airport/gi, '')
+        .replace(/Arturo Merino Benitez/gi, '')
+        .replace(/Executive\/Airport/gi, '')
+        .replace(/O'Hare/gi, '')
+        .trim();
+      
+      // If still too long, take first 25 chars
+      if (short.length > 25) {
+        short = short.substring(0, 25) + '...';
+      }
+      
+      return short;
     };
     
-    filteredAir.forEach(shipment => {
-      metrics.totalPieces += shipment.totalCargo_Pieces || 0;
-      metrics.totalWeight += shipment.totalCargo_WeightValue || 0;
-      metrics.totalVolume += shipment.totalCargo_VolumeValue || 0;
-    });
-    
-    filteredOcean.forEach(shipment => {
-      metrics.totalPieces += shipment.totalCargo_Pieces || 0;
-      metrics.totalWeight += shipment.totalCargo_WeightValue || 0;
-      metrics.totalVolume += shipment.totalCargo_VolumeValue || 0;
-    });
-    
-    setSummaryMetrics(metrics);
+    return `${shortenLocation(parts[0])} → ${shortenLocation(parts[1])}`;
   };
-  
-  // Preparar datos para el gráfico mensual
-  const prepareMonthlyData = () => {
-    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const monthlyData = months.map((month, index) => ({
-      month,
-      air: 0,
-      ocean: 0,
-    }));
+
+  // Top routes data with shortened names
+  const topRoutes = useMemo(() => {
+    const routeMap = new Map<string, number>();
     
-    const filteredAir = filterShipmentsByDate(airShipments, filters.year, null);
-    const filteredOcean = filterShipmentsByDate(oceanShipments, filters.year, null);
-    
-    filteredAir.forEach(shipment => {
-      const month = new Date(shipment.createdOn).getMonth();
-      monthlyData[month].air += 1;
-    });
-    
-    filteredOcean.forEach(shipment => {
-      const month = new Date(shipment.createdOn).getMonth();
-      monthlyData[month].ocean += 1;
-    });
-    
-    setMonthlyShipments(monthlyData);
-  };
-  
-  // Analizar las rutas más utilizadas
-  const analyzeTopRoutes = () => {
-    const filteredAir = filterShipmentsByDate(airShipments, filters.year, filters.month);
-    const filteredOcean = filterShipmentsByDate(oceanShipments, filters.year, filters.month);
-    
-    const routeCount: { [key: string]: { count: number; isAir: boolean } } = {};
-    
-    filteredAir.forEach(shipment => {
-      const airShipment = shipment as AirShipment;
-      const route = `${airShipment.from} → ${airShipment.to}`;
-      if (routeCount[route]) {
-        routeCount[route].count += 1;
-      } else {
-        routeCount[route] = { count: 1, isAir: true };
+    filteredShipments.forEach(shipment => {
+      if (shipment.origin && shipment.destination) {
+        const route = `${shipment.origin} → ${shipment.destination}`;
+        routeMap.set(route, (routeMap.get(route) || 0) + 1);
       }
     });
     
-    filteredOcean.forEach(shipment => {
-      const oceanShipment = shipment as OceanShipment;
-      const route = `${oceanShipment.portOfLoading} → ${oceanShipment.portOfUnloading}`;
-      if (routeCount[route]) {
-        routeCount[route].count += 1;
-      } else {
-        routeCount[route] = { count: 1, isAir: false };
+    return Array.from(routeMap.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .map(([route, count]) => ({ 
+        route: shortenRouteName(route), 
+        fullRoute: route,
+        count 
+      }));
+  }, [filteredShipments]);
+
+  // Top destinations
+  const topDestinations = useMemo(() => {
+    const destMap = new Map<string, number>();
+    
+    filteredShipments.forEach(shipment => {
+      if (shipment.destination) {
+        destMap.set(shipment.destination, (destMap.get(shipment.destination) || 0) + 1);
       }
     });
     
-    const sortedRoutes = Object.entries(routeCount)
-      .map(([route, data]) => ({ route, count: data.count, isAir: data.isAir }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+    return Array.from(destMap.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([destination, count]) => ({ destination, count }));
+  }, [filteredShipments]);
+
+  // Top shippers
+  const topShippers = useMemo(() => {
+    const shipperMap = new Map<string, number>();
     
-    setTopRoutes(sortedRoutes);
+    filteredShipments.forEach(shipment => {
+      if (shipment.shipper) {
+        shipperMap.set(shipment.shipper, (shipperMap.get(shipment.shipper) || 0) + 1);
+      }
+    });
+    
+    return Array.from(shipperMap.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([shipper, count]) => ({ shipper, count }));
+  }, [filteredShipments]);
+
+  // Performance by transport mode
+  const performanceByMode = useMemo(() => {
+    const airShipments = filteredShipments.filter(s => isAirShipment(s.modeOfTransportation));
+    const seaShipments = filteredShipments.filter(s => isSeaShipment(s.modeOfTransportation));
+    
+    const calcAvgTransit = (ships: Shipment[]) => {
+      const withTransit = ships.filter(s => s.departure && s.arrival);
+      if (withTransit.length === 0) return 0;
+      
+      return withTransit.reduce((sum, s) => {
+        const dep = new Date(s.departure!);
+        const arr = new Date(s.arrival!);
+        const days = (arr.getTime() - dep.getTime()) / (1000 * 60 * 60 * 24);
+        return sum + days;
+      }, 0) / withTransit.length;
+    };
+    
+    const calcAvgWeight = (ships: Shipment[]) => {
+      if (ships.length === 0) return 0;
+      const totalWeight = ships.reduce((sum, s) => sum + (s.totalCargo_WeightValue || 0), 0);
+      return totalWeight / ships.length;
+    };
+    
+    return {
+      air: {
+        avgTransit: calcAvgTransit(airShipments),
+        avgWeight: calcAvgWeight(airShipments),
+        count: airShipments.length
+      },
+      sea: {
+        avgTransit: calcAvgTransit(seaShipments),
+        avgWeight: calcAvgWeight(seaShipments),
+        count: seaShipments.length
+      }
+    };
+  }, [filteredShipments]);
+
+  // Recent shipments
+  const recentShipments = useMemo(() => {
+    return filteredShipments.slice(0, 5);
+  }, [filteredShipments]);
+
+  // Year comparison
+  const yearComparison = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const previousYear = currentYear - 1;
+    
+    const currentYearShipments = filteredShipments.filter(s => {
+      const year = new Date(s.createdOn || 0).getFullYear();
+      return year === currentYear;
+    });
+    
+    const previousYearShipments = filteredShipments.filter(s => {
+      const year = new Date(s.createdOn || 0).getFullYear();
+      return year === previousYear;
+    });
+    
+    const growth = previousYearShipments.length > 0
+      ? ((currentYearShipments.length - previousYearShipments.length) / previousYearShipments.length) * 100
+      : 0;
+    
+    return {
+      current: currentYearShipments.length,
+      previous: previousYearShipments.length,
+      growth
+    };
+  }, [filteredShipments]);
+
+  // Clear filters
+  const clearFilters = () => {
+    setStartDate('');
+    setEndDate('');
   };
-  
-  // Analizar distribución de embarcadores
-  const analyzeShipperDistribution = () => {
-    const filteredAir = filterShipmentsByDate(airShipments, filters.year, filters.month);
-    const filteredOcean = filterShipmentsByDate(oceanShipments, filters.year, filters.month);
+
+  // Export to CSV
+  const exportToCSV = () => {
+    const headers = ['Número', 'Fecha', 'Origen', 'Destino', 'Modo', 'Piezas', 'Peso (kg)', 'Volumen'];
+    const rows = filteredShipments.map(s => [
+      s.number || s.id || '',
+      new Date(s.createdOn || '').toLocaleDateString('es-ES'),
+      s.origin || '',
+      s.destination || '',
+      s.modeOfTransportation || '',
+      s.totalCargo_Pieces || 0,
+      s.totalCargo_WeightValue || 0,
+      s.totalCargo_VolumeWeightValue || 0
+    ]);
     
-    const shipperCount: { [key: string]: { air: number; ocean: number } } = {};
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
     
-    filteredAir.forEach(shipment => {
-      const shipper = shipment.shipper || 'Desconocido';
-      if (shipperCount[shipper]) {
-        shipperCount[shipper].air += 1;
-      } else {
-        shipperCount[shipper] = { air: 1, ocean: 0 };
-      }
-    });
-    
-    filteredOcean.forEach(shipment => {
-      const shipper = shipment.shipper || 'Desconocido';
-      if (shipperCount[shipper]) {
-        shipperCount[shipper].ocean += 1;
-      } else {
-        shipperCount[shipper] = { air: 0, ocean: 1 };
-      }
-    });
-    
-    const sortedShippers = Object.entries(shipperCount)
-      .map(([name, counts]) => ({
-        name: name.length > 15 ? name.substring(0, 15) + '...' : name,
-        air: counts.air,
-        ocean: counts.ocean,
-        total: counts.air + counts.ocean,
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-    
-    setShipperDistribution(sortedShippers);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reporte_operacional_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
-  
-  // Analizar distribución por tipo de envío (marítimo y aéreo)
-  const analyzeTypeDistribution = () => {
-    const filteredAir = filterShipmentsByDate(airShipments, filters.year, filters.month);
-    const filteredOcean = filterShipmentsByDate(oceanShipments, filters.year, filters.month);
-    
-    const typeCount: { [key: string]: number } = {};
-    
-    // Agregar envíos aéreos como categoría "AIR"
-    if (filteredAir.length > 0) {
-      typeCount['AIR'] = filteredAir.length;
+
+  // Format number
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('es-ES', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(num);
+  };
+
+  // Format date
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return 'N/A';
     }
-    
-    // Agregar tipos de envíos marítimos (FCL, LCL, etc.)
-    filteredOcean.forEach(shipment => {
-      const oceanShipment = shipment as OceanShipment;
-      const type = oceanShipment.typeOfMove || 'Desconocido';
-      typeCount[type] = (typeCount[type] || 0) + 1;
-    });
-    
-    const distribution = Object.entries(typeCount).map(([name, value]) => ({
-      name,
-      value,
-    }));
-    
-    setTypeDistribution(distribution);
   };
-  
-  // Cargar datos al montar el componente
-  useEffect(() => {
-    const hasCachedData = loadFromCache();
-    
-    if (!hasCachedData) {
-      fetchShipmentData();
-    } else {
-      setLoading(false);
+
+  // Get modal data based on type
+  const getModalData = (type: ModalType) => {
+    switch (type) {
+      case 'total':
+        return filteredShipments.slice(0, 20);
+      case 'air':
+        return filteredShipments.filter(s => isAirShipment(s.modeOfTransportation)).slice(0, 20);
+      case 'sea':
+        return filteredShipments.filter(s => isSeaShipment(s.modeOfTransportation)).slice(0, 20);
+      case 'pieces':
+        return [...filteredShipments]
+          .filter(s => s.totalCargo_Pieces && s.totalCargo_Pieces > 0)
+          .sort((a, b) => (b.totalCargo_Pieces || 0) - (a.totalCargo_Pieces || 0))
+          .slice(0, 20);
+      case 'weight':
+        return [...filteredShipments]
+          .filter(s => s.totalCargo_WeightValue && s.totalCargo_WeightValue > 0)
+          .sort((a, b) => (b.totalCargo_WeightValue || 0) - (a.totalCargo_WeightValue || 0))
+          .slice(0, 20);
+      case 'volume':
+        return [...filteredShipments]
+          .filter(s => s.totalCargo_VolumeWeightValue && s.totalCargo_VolumeWeightValue > 0)
+          .sort((a, b) => (b.totalCargo_VolumeWeightValue || 0) - (a.totalCargo_VolumeWeightValue || 0))
+          .slice(0, 20);
+      case 'containers':
+        return filteredShipments.filter(s => s.containerNumber && s.containerNumber !== '').slice(0, 20);
+      default:
+        return [];
     }
-  }, [accessToken]);
-  
-  // Recalcular métricas y gráficos cuando cambien los datos o filtros
-  useEffect(() => {
-    if (airShipments.length > 0 || oceanShipments.length > 0) {
-      calculateSummaryMetrics();
-      prepareMonthlyData();
-      analyzeTopRoutes();
-      analyzeShipperDistribution();
-      analyzeTypeDistribution();
-    }
-  }, [airShipments, oceanShipments, filters]);
-  
-  // Manejadores de cambio de filtros
-  const handleYearChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setFilters({ ...filters, year: parseInt(event.target.value) });
   };
-  
-  const handleMonthChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value;
-    setFilters({ ...filters, month: value === 'all' ? null : parseInt(value) });
+
+  // Get modal title
+  const getModalTitle = (type: ModalType): string => {
+    const titles: Record<string, string> = {
+      total: 'Envíos Totales',
+      air: 'Envíos Aéreos',
+      sea: 'Envíos Marítimos',
+      pieces: 'Top Envíos por Piezas',
+      weight: 'Top Envíos por Peso',
+      volume: 'Top Envíos por Volumen',
+      containers: 'Envíos con Contenedor'
+    };
+    return titles[type || ''] || '';
   };
-  
-  // Formatear números con separadores de miles
-  const formatNumber = (num: number): string => {
-    return num.toLocaleString('es-CL');
-  };
-  
-  // Renderizar el dashboard principal
-  const renderDashboard = () => {
+
+  // Render modal
+  const renderModal = () => {
+    if (!activeModal) return null;
+    
+    const data = getModalData(activeModal);
+    
     return (
-    <div style={{ paddingTop: '1rem' }}>
-      {/* Cards de Métricas */}
-      <div className="row g-4 mb-4">
-        {/* Envíos Totales */}
-        <div className="col-12 col-sm-6 col-lg-4">
-          <div 
-            className="card" 
-            style={{
-              ...styles.metricCard,
-              background: GRADIENTS.purple,
-              color: 'white',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 102, 234, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-            }}
-          >
-            <div className="card-body p-4">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
-                    Envíos Totales
-                  </p>
-                  <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
-                    {formatNumber(summaryMetrics.totalShipments)}
-                  </h2>
-                </div>
-                <div 
-                  className="rounded-circle p-3" 
-                  style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
-                >
-                  📦
-                </div>
-              </div>
-            </div>
+      <div
+        onClick={() => setActiveModal(null)}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          zIndex: 9999,
+          animation: 'fadeIn 0.2s ease'
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            maxWidth: '900px',
+            width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            animation: 'slideUp 0.3s ease',
+            overflow: 'hidden'
+          }}
+        >
+          {/* Modal header */}
+          <div style={{
+            background: GRADIENTS.purple,
+            padding: '24px',
+            color: 'white',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>
+              {getModalTitle(activeModal)}
+            </h3>
+            <button
+              onClick={() => setActiveModal(null)}
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                border: 'none',
+                borderRadius: '6px',
+                width: '32px',
+                height: '32px',
+                fontSize: '1.5rem',
+                cursor: 'pointer',
+                color: 'white',
+                padding: 0
+              }}
+            >
+              ×
+            </button>
           </div>
-        </div>
-        
-        {/* Envíos Aéreos */}
-        <div className="col-12 col-sm-6 col-lg-4">
-          <div 
-            className="card" 
-            style={{
-              ...styles.metricCard,
-              background: GRADIENTS.blue,
-              color: 'white',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(59, 130, 246, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-            }}
-          >
-            <div className="card-body p-4">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
-                    Envíos Aéreos
-                  </p>
-                  <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
-                    {formatNumber(summaryMetrics.totalAirShipments)}
-                  </h2>
-                </div>
-                <div 
-                  className="rounded-circle p-3" 
-                  style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
-                >
-                  ✈️
-                </div>
-              </div>
+
+          {/* Modal body */}
+          <div style={{
+            padding: '24px',
+            overflowY: 'auto',
+            flex: 1
+          }}>
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead style={{ backgroundColor: COLORS.tableHeaderBg }}>
+                  <tr>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>N° OPERACIÓN</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>ORIGEN</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>DESTINO</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>PIEZAS</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>PESO (KG)</th>
+                    <th style={{ fontSize: '0.75rem', fontWeight: '600', color: COLORS.textSecondary }}>FECHA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((shipment, index) => (
+                    <tr key={shipment.id || index}>
+                      <td style={{ fontSize: '0.875rem', fontWeight: '600', color: COLORS.textPrimary }}>
+                        {shipment.number || `OP-${shipment.id}`}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {shipment.origin || 'N/A'}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {shipment.destination || 'N/A'}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {shipment.totalCargo_Pieces || 0}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {formatNumber(shipment.totalCargo_WeightValue || 0)}
+                      </td>
+                      <td style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                        {formatDate(shipment.createdOn)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+            {data.length === 0 && (
+              <div className="text-center py-4">
+                <p style={{ color: COLORS.textSecondary }}>No hay datos disponibles</p>
+              </div>
+            )}
+            {data.length === 20 && (
+              <div className="text-center mt-3">
+                <small style={{ color: COLORS.textSecondary }}>
+                  Mostrando los primeros 20 resultados
+                </small>
+              </div>
+            )}
           </div>
-        </div>
-        
-        {/* Envíos Marítimos */}
-        <div className="col-12 col-sm-6 col-lg-4">
-          <div 
-            className="card" 
-            style={{
-              ...styles.metricCard,
-              background: GRADIENTS.cyan,
-              color: 'white',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(6, 182, 212, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-            }}
-          >
-            <div className="card-body p-4">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
-                    Envíos Marítimos
-                  </p>
-                  <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
-                    {formatNumber(summaryMetrics.totalOceanShipments)}
-                  </h2>
-                </div>
-                <div 
-                  className="rounded-circle p-3" 
-                  style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
-                >
-                  🚢
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Total Piezas */}
-        <div className="col-12 col-sm-6 col-lg-4">
-          <div 
-            className="card" 
-            style={{
-              ...styles.metricCard,
-              background: GRADIENTS.pink,
-              color: 'white',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(236, 72, 153, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-            }}
-          >
-            <div className="card-body p-4">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
-                    Total Piezas
-                  </p>
-                  <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
-                    {formatNumber(summaryMetrics.totalPieces)}
-                  </h2>
-                </div>
-                <div 
-                  className="rounded-circle p-3" 
-                  style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
-                >
-                  📊
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Peso Total */}
-        <div className="col-12 col-sm-6 col-lg-4">
-          <div 
-            className="card" 
-            style={{
-              ...styles.metricCard,
-              background: GRADIENTS.orange,
-              color: 'white',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(245, 158, 11, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-            }}
-          >
-            <div className="card-body p-4">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
-                    Peso Total (kg)
-                  </p>
-                  <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
-                    {formatNumber(Math.round(summaryMetrics.totalWeight))}
-                  </h2>
-                </div>
-                <div 
-                  className="rounded-circle p-3" 
-                  style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
-                >
-                  ⚖️
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Volumen Total */}
-        <div className="col-12 col-sm-6 col-lg-4">
-          <div 
-            className="card" 
-            style={{
-              ...styles.metricCard,
-              background: GRADIENTS.green,
-              color: 'white',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
-            }}
-          >
-            <div className="card-body p-4">
-              <div className="d-flex justify-content-between align-items-start">
-                <div>
-                  <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
-                    Volumen (m³)
-                  </p>
-                  <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
-                    {formatNumber(Math.round(summaryMetrics.totalVolume))}
-                  </h2>
-                </div>
-                <div 
-                  className="rounded-circle p-3" 
-                  style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
-                >
-                  📐
-                </div>
-              </div>
-            </div>
+
+          {/* Modal footer */}
+          <div style={{
+            padding: '16px 24px',
+            borderTop: `1px solid ${COLORS.border}`,
+            backgroundColor: COLORS.background,
+            display: 'flex',
+            justifyContent: 'flex-end'
+          }}>
+            <button
+              onClick={() => setActiveModal(null)}
+              className="btn"
+              style={{
+                background: GRADIENTS.purple,
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 24px',
+                fontWeight: '600'
+              }}
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       </div>
-      
-      {/* Gráficos */}
-      <div className="row g-4 mb-4">
-        {/* Gráfico de Envíos Mensuales */}
-        <div className="col-12 col-lg-8">
-          <div className="card" style={styles.chartCard}>
-            <div className="card-body p-4">
-              <h5 style={styles.chartTitle}>Envíos por Mes ({filters.year})</h5>
-              <div style={{ width: '100%', height: 320 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={monthlyShipments}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorAir" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.air} stopOpacity={0.9}/>
-                        <stop offset="95%" stopColor={COLORS.air} stopOpacity={0.6}/>
-                      </linearGradient>
-                      <linearGradient id="colorOcean" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.ocean} stopOpacity={0.9}/>
-                        <stop offset="95%" stopColor={COLORS.ocean} stopOpacity={0.6}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
-                    <XAxis 
-                      dataKey="month" 
-                      tick={{ fill: COLORS.textSecondary, fontSize: 12 }}
-                      axisLine={{ stroke: COLORS.border }}
-                    />
-                    <YAxis 
-                      tick={{ fill: COLORS.textSecondary, fontSize: 12 }}
-                      axisLine={{ stroke: COLORS.border }}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend 
-                      wrapperStyle={{ fontSize: '0.875rem', fontWeight: '500' }}
-                    />
-                    <Bar dataKey="air" name="Aéreos" fill="url(#colorAir)" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="ocean" name="Marítimos" fill="url(#colorOcean)" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+    );
+  };
+
+  return (
+    <>
+      {/* Header */}
+      <div style={{
+        background: GRADIENTS.purple,
+        padding: '32px 24px',
+        marginBottom: '24px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 6px rgba(102, 126, 234, 0.3)',
+        color: 'white'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: '700', marginBottom: '8px' }}>
+              📊 Reportería Operacional
+            </h2>
+            <p style={{ margin: 0, opacity: 0.9, fontSize: '1rem' }}>
+              Análisis completo de tus operaciones de envío
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="btn"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '8px',
+                fontWeight: '600'
+              }}
+            >
+              🔍 {showFilters ? 'Ocultar' : 'Filtros'}
+            </button>
+            <button
+              onClick={exportToCSV}
+              disabled={filteredShipments.length === 0}
+              className="btn"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '8px',
+                fontWeight: '600',
+                opacity: filteredShipments.length === 0 ? 0.5 : 1
+              }}
+            >
+              📥 Exportar CSV
+            </button>
+            <button
+              onClick={refreshShipments}
+              disabled={loading}
+              className="btn"
+              style={{
+                backgroundColor: 'white',
+                color: COLORS.primary,
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: '600'
+              }}
+            >
+              {loading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2"></span>
+                  Actualizando...
+                </>
+              ) : (
+                <>🔄 Actualizar</>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        {showFilters && (
+          <div style={{
+            marginTop: '24px',
+            padding: '20px',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '8px',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }}>
+            <div className="row g-3 align-items-end">
+              <div className="col-12 col-md-4">
+                <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>
+                  Fecha Inicio
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="form-control"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)'
+                  }}
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: '600', opacity: 0.9 }}>
+                  Fecha Fin
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="form-control"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)'
+                  }}
+                />
+              </div>
+              <div className="col-12 col-md-4">
+                <button
+                  onClick={clearFilters}
+                  className="btn w-100"
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    color: 'white',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    fontWeight: '600'
+                  }}
+                >
+                  Limpiar
+                </button>
               </div>
             </div>
           </div>
-        </div>
-        
-        {/* Gráfico de Distribución FCL/LCL */}
-        <div className="col-12 col-lg-4">
-          <div className="card" style={styles.chartCard}>
-            <div className="card-body p-4">
-              <h5 style={styles.chartTitle}>Tipo de Envío</h5>
-              <div style={{ width: '100%', height: 320 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={typeDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }: any) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={90}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {typeDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS.chart[index % COLORS.chart.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="row g-4 mb-4">
-        {/* Gráfico de Top Rutas - MEJORADO */}
-        <div className="col-12 col-lg-8">
-          <div className="card" style={styles.chartCard}>
-            <div className="card-body p-4">
-              <h5 style={styles.chartTitle}>Top 10 Rutas Más Utilizadas</h5>
-              <div style={{ width: '100%', height: 400 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    layout="vertical"
-                    data={topRoutes}
-                    margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
-                    <XAxis 
-                      type="number" 
-                      tick={{ fill: COLORS.textSecondary, fontSize: 12 }}
-                      axisLine={{ stroke: COLORS.border }}
-                    />
-                    <YAxis 
-                      type="category" 
-                      dataKey="route" 
-                      tick={<CustomYAxisTick />}
-                      width={140}
-                      axisLine={{ stroke: COLORS.border }}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar 
-                      dataKey="count" 
-                      name="Envíos" 
-                      radius={[0, 8, 8, 0]}
-                    >
-                      {topRoutes.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.isAir ? COLORS.air : COLORS.ocean} 
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        {/* Gráfico de Top Embarcadores */}
-        <div className="col-12 col-lg-4">
-          <div className="card" style={styles.chartCard}>
-            <div className="card-body p-4">
-              <h5 style={styles.chartTitle}>Top 5 Embarcadores</h5>
-              <div style={{ width: '100%', height: 400 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={shipperDistribution}
-                    margin={{ top: 20, right: 20, left: 20, bottom: 80 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorAir2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.air} stopOpacity={0.9}/>
-                        <stop offset="95%" stopColor={COLORS.air} stopOpacity={0.6}/>
-                      </linearGradient>
-                      <linearGradient id="colorOcean2" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS.ocean} stopOpacity={0.9}/>
-                        <stop offset="95%" stopColor={COLORS.ocean} stopOpacity={0.6}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
-                    <XAxis 
-                      dataKey="name" 
-                      angle={-45} 
-                      textAnchor="end" 
-                      height={90}
-                      tick={{ fill: COLORS.textSecondary, fontSize: 11 }}
-                      axisLine={{ stroke: COLORS.border }}
-                    />
-                    <YAxis 
-                      tick={{ fill: COLORS.textSecondary, fontSize: 12 }}
-                      axisLine={{ stroke: COLORS.border }}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: '0.875rem', fontWeight: '500' }} />
-                    <Bar dataKey="air" name="Aéreos" fill="url(#colorAir2)" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="ocean" name="Marítimos" fill="url(#colorOcean2)" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Mensaje si no hay datos */}
-      {summaryMetrics.totalShipments === 0 && !loading && (
-        <div style={styles.emptyState}>
-          <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>📊</div>
-          <h5 style={{ 
-            color: COLORS.textPrimary, 
-            fontWeight: '600', 
-            marginBottom: '0.75rem' 
+      {/* Error state */}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          <strong>⚠️ Error:</strong> {error}
+        </div>
+      )}
+
+      {/* Loading state */}
+      {loading && (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }} role="status">
+            <span className="visually-hidden">Cargando...</span>
+          </div>
+          <p className="mt-3" style={{ color: COLORS.textSecondary }}>Cargando datos...</p>
+        </div>
+      )}
+
+      {/* Main content */}
+      {!loading && shipments.length > 0 && (
+        <div style={{ paddingTop: '1rem' }}>
+          {/* Cards de Métricas */}
+          <div className="row g-4 mb-4">
+            {/* Total Shipments */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
+                style={{
+                  ...styles.metricCard,
+                  background: GRADIENTS.purple,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('total')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 102, 234, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Envíos Totales
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(kpis.total)}
+                      </h2>
+                      {yearComparison.growth !== 0 && (
+                        <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                          {yearComparison.growth > 0 ? '↑' : '↓'} {Math.abs(yearComparison.growth).toFixed(1)}% vs año anterior
+                        </div>
+                      )}
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      📦
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Air Shipments */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
+                style={{
+                  ...styles.metricCard,
+                  background: GRADIENTS.blue,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('air')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(59, 130, 246, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Envíos Aéreos
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(kpis.air)}
+                      </h2>
+                      <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                        {kpis.total > 0 ? ((kpis.air / kpis.total) * 100).toFixed(1) : 0}% del total
+                      </div>
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      ✈️
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Sea Shipments */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
+                style={{
+                  ...styles.metricCard,
+                  background: GRADIENTS.cyan,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('sea')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(6, 182, 212, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Envíos Marítimos
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(kpis.sea)}
+                      </h2>
+                      <div style={{ fontSize: '0.875rem', opacity: 0.9, marginTop: '0.5rem' }}>
+                        {kpis.total > 0 ? ((kpis.sea / kpis.total) * 100).toFixed(1) : 0}% del total
+                      </div>
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      🚢
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Total Pieces */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
+                style={{
+                  ...styles.metricCard,
+                  background: GRADIENTS.pink,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('pieces')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(236, 72, 153, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Total Piezas
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(kpis.totalPieces)}
+                      </h2>
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      📊
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Total Weight */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
+                style={{
+                  ...styles.metricCard,
+                  background: GRADIENTS.orange,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('weight')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(245, 158, 11, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Peso Total (kg)
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(Math.round(kpis.totalWeight))}
+                      </h2>
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      ⚖️
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Total Volume */}
+            <div className="col-12 col-sm-6 col-lg-4">
+              <div 
+                className="card" 
+                style={{
+                  ...styles.metricCard,
+                  background: GRADIENTS.green,
+                  color: 'white',
+                }}
+                onClick={() => setActiveModal('volume')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)';
+                }}
+              >
+                <div className="card-body p-4">
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div>
+                      <p className="mb-1" style={{ opacity: 0.9, fontSize: '0.875rem', fontWeight: '500' }}>
+                        Volumen Total
+                      </p>
+                      <h2 className="mb-0 fw-bold" style={{ fontSize: '2.5rem' }}>
+                        {formatNumber(Math.round(kpis.totalVolume))}
+                      </h2>
+                    </div>
+                    <div 
+                      className="rounded-circle p-3" 
+                      style={{ backgroundColor: 'rgba(255,255,255,0.2)', fontSize: '1.5rem' }}
+                    >
+                      📐
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="card mb-4" style={{ ...styles.chartCard, borderRadius: '12px 12px 0 0', marginBottom: 0 }}>
+            <div className="card-body p-0">
+              <div style={{
+                display: 'flex',
+                gap: '4px',
+                padding: '16px 16px 0 16px',
+                borderBottom: `1px solid ${COLORS.border}`,
+                flexWrap: 'wrap'
+              }}>
+                {[
+                  { id: 'general', label: '📊 Análisis General' },
+                  { id: 'routes', label: '🗺️ Rutas y Destinos' },
+                  { id: 'performance', label: '⚡ Rendimiento' },
+                  { id: 'recent', label: '📅 Actividad Reciente' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as TabType)}
+                    className="btn"
+                    style={{
+                      padding: '12px 24px',
+                      background: activeTab === tab.id ? GRADIENTS.purple : 'transparent',
+                      color: activeTab === tab.id ? 'white' : COLORS.textSecondary,
+                      border: 'none',
+                      borderRadius: '8px 8px 0 0',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      transition: 'all 0.2s',
+                      boxShadow: activeTab === tab.id ? '0 -2px 4px rgba(102, 126, 234, 0.2)' : 'none'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="card" style={{ ...styles.chartCard, borderRadius: '0 0 12px 12px' }}>
+            <div className="card-body p-4">
+              {/* General Tab */}
+              {activeTab === 'general' && (
+                <div className="row g-4">
+                  {/* Monthly Line Chart */}
+                  <div className="col-12">
+                    <h5 style={styles.chartTitle}>📈 Tendencia de Envíos por Mes</h5>
+                    <ResponsiveContainer width="100%" height={320}>
+                      <LineChart data={monthlyData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
+                        <XAxis 
+                          dataKey="month" 
+                          stroke={COLORS.textSecondary}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <YAxis 
+                          stroke={COLORS.textSecondary}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <Tooltip />
+                        <Legend />
+                        <Line 
+                          type="monotone" 
+                          dataKey="Aéreos" 
+                          stroke={COLORS.air} 
+                          strokeWidth={3}
+                          dot={{ fill: COLORS.air, r: 4 }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="Marítimos" 
+                          stroke={COLORS.ocean} 
+                          strokeWidth={3}
+                          dot={{ fill: COLORS.ocean, r: 4 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="col-12 col-lg-6">
+                    <h5 style={styles.chartTitle}>🍩 Distribución por Tipo</h5>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, value, percent }) => 
+                            `${name}: ${value} (${((percent as number) * 100).toFixed(1)}%)`
+                          }
+                          outerRadius={90}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="col-12 col-lg-6">
+                    <h5 style={styles.chartTitle}>📊 Envíos Mensuales Apilados</h5>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={monthlyData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
+                        <XAxis 
+                          dataKey="month" 
+                          stroke={COLORS.textSecondary}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <YAxis 
+                          stroke={COLORS.textSecondary}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="Aéreos" stackId="a" fill={COLORS.air} radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="Marítimos" stackId="a" fill={COLORS.ocean} radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Routes Tab */}
+              {activeTab === 'routes' && (
+                <div className="row g-4">
+                  <div className="col-12">
+                    <h5 style={styles.chartTitle}>🛤️ Top 10 Rutas Más Utilizadas</h5>
+                    <ResponsiveContainer width="100%" height={500}>
+                      <BarChart data={topRoutes} layout="vertical" margin={{ top: 5, right: 30, left: 150, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={COLORS.border} />
+                        <XAxis type="number" stroke={COLORS.textSecondary} />
+                        <YAxis 
+                          type="category" 
+                          dataKey="route" 
+                          stroke={COLORS.textSecondary}
+                          width={140}
+                          style={{ fontSize: '0.75rem' }}
+                        />
+                        <Tooltip content={({ active, payload }: any) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div style={{
+                                backgroundColor: 'white',
+                                padding: '10px',
+                                border: `1px solid ${COLORS.border}`,
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                              }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '4px' }}>
+                                  {payload[0].payload.fullRoute}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
+                                  Envíos: {payload[0].value}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }} />
+                        <Bar dataKey="count" fill={COLORS.primary} radius={[0, 8, 8, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <h5 style={styles.chartTitle}>🎯 Top 5 Destinos Más Frecuentes</h5>
+                    <div className="row g-3">
+                      {topDestinations.map((dest, index) => (
+                        <div key={index} className="col-12">
+                          <div className="d-flex justify-content-between align-items-center p-3"
+                            style={{
+                              backgroundColor: COLORS.background,
+                              borderRadius: '8px',
+                              border: `1px solid ${COLORS.border}`
+                            }}
+                          >
+                            <div className="d-flex align-items-center gap-3">
+                              <div 
+                                className="rounded-circle d-flex align-items-center justify-content-center"
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  background: GRADIENTS.purple,
+                                  color: 'white',
+                                  fontWeight: '700'
+                                }}
+                              >
+                                {index + 1}
+                              </div>
+                              <span style={{ fontWeight: '600', color: COLORS.textPrimary }}>
+                                {dest.destination}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.primary }}>
+                              {dest.count}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <h5 style={styles.chartTitle}>📤 Top 5 Embarcadores</h5>
+                    <div className="row g-3">
+                      {topShippers.map((shipper, index) => (
+                        <div key={index} className="col-12">
+                          <div className="d-flex justify-content-between align-items-center p-3"
+                            style={{
+                              backgroundColor: COLORS.background,
+                              borderRadius: '8px',
+                              border: `1px solid ${COLORS.border}`
+                            }}
+                          >
+                            <div className="d-flex align-items-center gap-3">
+                              <div 
+                                className="rounded-circle d-flex align-items-center justify-content-center"
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  background: GRADIENTS.blue,
+                                  color: 'white',
+                                  fontWeight: '700'
+                                }}
+                              >
+                                {index + 1}
+                              </div>
+                              <span style={{ fontWeight: '600', color: COLORS.textPrimary }}>
+                                {shipper.shipper}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.air }}>
+                              {shipper.count}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Performance Tab */}
+              {activeTab === 'performance' && (
+                <div className="row g-4">
+                  <div className="col-12">
+                    <h5 style={styles.chartTitle}>⚡ Comparativa de Rendimiento</h5>
+                  </div>
+                  
+                  <div className="col-12 col-md-6">
+                    <div className="p-4" style={{
+                      backgroundColor: '#eff6ff',
+                      borderRadius: '12px',
+                      border: `2px solid ${COLORS.air}`
+                    }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '12px' }}>✈️</div>
+                      <h5 style={{ color: COLORS.air, marginBottom: '16px' }}>Transporte Aéreo</h5>
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>TRÁNSITO PROMEDIO</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.air }}>
+                            {formatNumber(performanceByMode.air.avgTransit)} días
+                          </div>
+                        </div>
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>PESO PROMEDIO</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.air }}>
+                            {formatNumber(performanceByMode.air.avgWeight)} kg
+                          </div>
+                        </div>
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>TOTAL ENVÍOS</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.air }}>
+                            {performanceByMode.air.count}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-12 col-md-6">
+                    <div className="p-4" style={{
+                      backgroundColor: '#f0fdfa',
+                      borderRadius: '12px',
+                      border: `2px solid ${COLORS.ocean}`
+                    }}>
+                      <div style={{ fontSize: '2rem', marginBottom: '12px' }}>🚢</div>
+                      <h5 style={{ color: COLORS.ocean, marginBottom: '16px' }}>Transporte Marítimo</h5>
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>TRÁNSITO PROMEDIO</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.ocean }}>
+                            {formatNumber(performanceByMode.sea.avgTransit)} días
+                          </div>
+                        </div>
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>PESO PROMEDIO</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.ocean }}>
+                            {formatNumber(performanceByMode.sea.avgWeight)} kg
+                          </div>
+                        </div>
+                        <div className="col-12">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>TOTAL ENVÍOS</small>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '700', color: COLORS.ocean }}>
+                            {performanceByMode.sea.count}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="col-12">
+                    <h5 style={styles.chartTitle}>📅 Comparativa Año a Año</h5>
+                    <div className="p-4" style={{
+                      backgroundColor: COLORS.background,
+                      borderRadius: '12px',
+                      border: `2px solid ${COLORS.border}`
+                    }}>
+                      <div className="row g-4 text-center">
+                        <div className="col-12 col-md-4">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>
+                            AÑO {new Date().getFullYear() - 1}
+                          </small>
+                          <div style={{ fontSize: '2.5rem', fontWeight: '700', color: COLORS.textSecondary }}>
+                            {yearComparison.previous}
+                          </div>
+                        </div>
+                        <div className="col-12 col-md-4">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>
+                            AÑO {new Date().getFullYear()}
+                          </small>
+                          <div style={{ fontSize: '2.5rem', fontWeight: '700', color: COLORS.primary }}>
+                            {yearComparison.current}
+                          </div>
+                        </div>
+                        <div className="col-12 col-md-4">
+                          <small style={{ color: COLORS.textSecondary, fontWeight: '600' }}>
+                            CRECIMIENTO
+                          </small>
+                          <div style={{
+                            fontSize: '2.5rem',
+                            fontWeight: '700',
+                            color: yearComparison.growth >= 0 ? COLORS.success : COLORS.danger
+                          }}>
+                            {yearComparison.growth >= 0 ? '+' : ''}{yearComparison.growth.toFixed(1)}%
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Tab */}
+              {activeTab === 'recent' && (
+                <div>
+                  <h5 style={styles.chartTitle}>📅 Últimos 5 Envíos</h5>
+                  <div className="row g-3">
+                    {recentShipments.map((shipment, index) => {
+                      const isAir = isAirShipment(shipment.modeOfTransportation);
+                      const color = isAir ? COLORS.air : COLORS.ocean;
+                      const icon = isAir ? '✈️' : '🚢';
+                      
+                      return (
+                        <div key={shipment.id || index} className="col-12">
+                          <div className="p-3" style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            border: `2px solid ${color}`,
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                          }}>
+                            <div className="row align-items-center g-3">
+                              <div className="col-auto">
+                                <div style={{ fontSize: '2rem' }}>{icon}</div>
+                              </div>
+                              <div className="col">
+                                <div style={{ fontWeight: '700', color: COLORS.textPrimary, marginBottom: '4px' }}>
+                                  {shipment.number || `OP-${shipment.id}`}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: COLORS.textSecondary, marginBottom: '8px' }}>
+                                  {shipment.origin || 'N/A'} → {shipment.destination || 'N/A'}
+                                </div>
+                                <div className="d-flex gap-3 flex-wrap" style={{ fontSize: '0.75rem', color: COLORS.textSecondary }}>
+                                  {shipment.totalCargo_Pieces && (
+                                    <span>📦 {shipment.totalCargo_Pieces} piezas</span>
+                                  )}
+                                  {shipment.totalCargo_WeightValue && (
+                                    <span>⚖️ {formatNumber(shipment.totalCargo_WeightValue)} kg</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="col-auto text-end">
+                                <div style={{ fontSize: '0.75rem', color: COLORS.textSecondary, marginBottom: '4px' }}>
+                                  {formatDate(shipment.createdOn)}
+                                </div>
+                                {shipment.currentFlow && (
+                                  <span className="badge" style={{
+                                    backgroundColor: COLORS.background,
+                                    color: color,
+                                    fontWeight: '600'
+                                  }}>
+                                    {shipment.currentFlow}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Empty state for no data */}
+          {kpis.total === 0 && (
+            <div className="text-center py-5">
+              <div style={{ fontSize: '4rem', marginBottom: '1.5rem', opacity: 0.5 }}>📊</div>
+              <h5 style={{ color: COLORS.textPrimary, fontWeight: '600', marginBottom: '0.75rem' }}>
+                No hay datos disponibles
+              </h5>
+              <p style={{ color: COLORS.textSecondary }}>
+                Intenta cambiar los filtros o verifica que existan envíos registrados
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Botón Cargar Más */}
+      {!loading && shipments.length > 0 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '16px',
+          padding: '24px',
+          marginTop: '24px'
+        }}>
+          <div style={{ 
+            fontSize: '0.9rem',
+            color: COLORS.textSecondary,
+            fontWeight: '600'
           }}>
-            No hay datos disponibles
+            Mostrando <strong style={{ color: COLORS.primary }}>{shipments.length}</strong> operaciones
+            {!hasMoreShipments && <span> (todas cargadas)</span>}
+          </div>
+          
+          {hasMoreShipments && !loadingMore && (
+            <button
+              onClick={loadMoreShipments}
+              disabled={loadingMore}
+              className="btn"
+              style={{
+                background: GRADIENTS.purple,
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 24px',
+                fontWeight: '600',
+                cursor: loadingMore ? 'not-allowed' : 'pointer',
+                opacity: loadingMore ? 0.6 : 1,
+                transition: 'all 0.2s'
+              }}
+            >
+              🚢 Cargar Más Operaciones
+            </button>
+          )}
+          
+          {loadingMore && (
+            <div style={{ 
+              fontSize: '0.9rem',
+              color: COLORS.textSecondary,
+              fontWeight: '600'
+            }}>
+              ⏳ Cargando más operaciones...
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && shipments.length === 0 && (
+        <div className="text-center py-5">
+          <div style={{ fontSize: '4rem', marginBottom: '1.5rem', opacity: 0.5 }}>📦</div>
+          <h5 style={{ color: COLORS.textPrimary, fontWeight: '600', marginBottom: '0.75rem' }}>
+            No hay operaciones disponibles
           </h5>
-          <p style={{ color: COLORS.textSecondary, marginBottom: 0 }}>
-            Intenta cambiar los filtros o verifica que existan envíos registrados
+          <p style={{ color: COLORS.textSecondary }}>
+            Aún no tienes operaciones registradas
           </p>
         </div>
       )}
-    </div>
-    );
-  };
 
-   if (loading) {
-    return (
-      <div style={styles.container} className="container-fluid p-4">
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '70vh',
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: COLORS.cardBg,
-              borderRadius: '20px',
-              padding: '3rem 4rem',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-              textAlign: 'center',
-              border: `1px solid ${COLORS.border}`,
-            }}
-          >
-            {/* Icono de reportería con animación */}
-            <div
-              style={{
-                fontSize: '4rem',
-                marginBottom: '1.5rem',
-                animation: 'pulse 2s ease-in-out infinite',
-              }}
-            >
-              📊
-            </div>
+      {/* Modal */}
+      {renderModal()}
 
-            {/* Texto de carga */}
-            <h4
-              style={{
-                color: COLORS.textPrimary,
-                fontWeight: '600',
-                marginBottom: '1rem',
-                fontSize: '1.25rem',
-              }}
-            >
-              Cargando Información
-            </h4>
-
-            {/* Spinner de carga */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                marginTop: '1.5rem',
-              }}
-            >
-              <div
-                className="spinner-border"
-                style={{
-                  width: '3rem',
-                  height: '3rem',
-                  color: COLORS.primary,
-                  borderWidth: '0.3rem',
-                }}
-                role="status"
-              >
-                <span className="visually-hidden">Cargando...</span>
-              </div>
-            </div>
-
-            {/* Texto adicional */}
-            <p
-              style={{
-                color: COLORS.textSecondary,
-                fontSize: '0.9rem',
-                marginTop: '1.5rem',
-                marginBottom: 0,
-              }}
-            >
-              Obteniendo datos del sistema...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div style={styles.container} className="container-fluid p-4">
-      {/* Header */}
-      <div style={styles.header}>
-        <h1 style={styles.title}>Dashboard Operacional</h1>
-        <p style={styles.subtitle}>
-          Vista general de tus operaciones logísticas
-        </p>
-      </div>
-      
-      {/* Contenido basado en la pestaña activa */}
-      {activeTab === 'dashboard' && renderDashboard()}
-      {activeTab === 'air' && <ReportsOperations />}
-      {activeTab === 'ocean' && <ReportsOperationsOcean />}
-      
-      {/* Botón Flotante de Filtros */}
-      <button
-        onClick={() => setShowFilters(true)}
-        style={styles.filterButton}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
-          e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 102, 234, 0.5)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 102, 234, 0.4)';
-        }}
-      >
-        <span style={{ marginRight: '8px' }}>🔍</span>
-        Filtros
-      </button>
-      
-      {/* Modal de Filtros */}
-      {showFilters && (
-        <div 
-          className="modal fade show d-block" 
-          style={styles.modalOverlay}
-          onClick={() => setShowFilters(false)}
-        >
-          <div 
-            className="modal-dialog modal-dialog-centered"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-content" style={styles.modalContent}>
-              <div className="modal-header" style={styles.modalHeader}>
-                <h5 className="modal-title" style={styles.modalTitle}>
-                  Filtros de Búsqueda
-                </h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={() => setShowFilters(false)}
-                  style={{ fontSize: '0.875rem' }}
-                ></button>
-              </div>
-              <div className="modal-body p-4">
-                <div className="mb-4">
-                  <label style={styles.formLabel}>Año</label>
-                  <select 
-                    className="form-select" 
-                    style={styles.formSelect}
-                    value={filters.year}
-                    onChange={handleYearChange}
-                  >
-                    {[2023, 2024, 2025].map(year => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label style={styles.formLabel}>Mes</label>
-                  <select 
-                    className="form-select" 
-                    style={styles.formSelect}
-                    value={filters.month === null ? 'all' : filters.month}
-                    onChange={handleMonthChange}
-                  >
-                    <option value="all">Todos los meses</option>
-                    <option value="1">Enero</option>
-                    <option value="2">Febrero</option>
-                    <option value="3">Marzo</option>
-                    <option value="4">Abril</option>
-                    <option value="5">Mayo</option>
-                    <option value="6">Junio</option>
-                    <option value="7">Julio</option>
-                    <option value="8">Agosto</option>
-                    <option value="9">Septiembre</option>
-                    <option value="10">Octubre</option>
-                    <option value="11">Noviembre</option>
-                    <option value="12">Diciembre</option>
-                  </select>
-                </div>
-              </div>
-              <div className="modal-footer border-0 p-4 pt-0">
-                <button 
-                  type="button" 
-                  className="btn btn-light"
-                  onClick={() => setShowFilters(false)}
-                  style={{
-                    borderRadius: '10px',
-                    padding: '0.625rem 1.5rem',
-                    fontWeight: '600',
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  Cerrar
-                </button>
-                <button 
-                  type="button" 
-                  className="btn"
-                  onClick={() => setShowFilters(false)}
-                  style={{
-                    background: GRADIENTS.purple,
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '10px',
-                    padding: '0.625rem 1.5rem',
-                    fontWeight: '600',
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  Aplicar Filtros
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* CSS animations */}
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          @keyframes slideUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}
+      </style>
+    </>
   );
-};
+}
 
-export default ReporteriaOperacional;
+export default ShipmentsView;

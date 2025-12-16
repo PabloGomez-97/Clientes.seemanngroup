@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from "../../auth/AuthContext";
 import { packageTypeOptions } from './PackageTypes/PiecestypesAIR';
@@ -880,6 +880,39 @@ function QuoteAPITester() {
     }
   };
 
+  // Primero: Rutas SOLO filtradas por origen y destino (sin carriers ni monedas)
+  const rutasPorOrigenDestino = useMemo(() => {
+    if (!originSeleccionado || !destinationSeleccionado) return [];
+    
+    return rutas.filter(ruta => {
+      const matchOrigin = ruta.originNormalized === originSeleccionado.value;
+      const matchDestination = ruta.destinationNormalized === destinationSeleccionado.value;
+      return matchOrigin && matchDestination;
+    });
+  }, [rutas, originSeleccionado, destinationSeleccionado]);
+
+  // Extraer TODOS los carriers disponibles para origen-destino
+  const carriersDisponiblesEnRutas = useMemo(() => {
+    const carriers = new Set<string>();
+    rutasPorOrigenDestino.forEach(ruta => {
+      if (ruta.carrier) {
+        carriers.add(ruta.carrier);
+      }
+    });
+    return Array.from(carriers).sort();
+  }, [rutasPorOrigenDestino]);
+
+  // Extraer TODAS las monedas disponibles para origen-destino
+  const monedasDisponiblesEnRutas = useMemo(() => {
+    const monedas = new Set<Currency>();
+    rutasPorOrigenDestino.forEach(ruta => {
+      if (ruta.currency) {
+        monedas.add(ruta.currency as Currency);
+      }
+    });
+    return Array.from(monedas).sort();
+  }, [rutasPorOrigenDestino]);
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -962,7 +995,7 @@ function QuoteAPITester() {
                     <div className="col-md-6">
                       <label className="form-label fw-semibold mb-2">Carriers Disponibles</label>
                       <div className="d-flex flex-wrap gap-2">
-                        {carriersDisponibles.map(carrier => (
+                        {carriersDisponiblesEnRutas.map(carrier => (
                           <button
                             key={carrier}
                             type="button"
@@ -991,7 +1024,7 @@ function QuoteAPITester() {
                     <div className="col-md-6">
                       <label className="form-label fw-semibold mb-2">Monedas</label>
                       <div className="d-flex flex-wrap gap-2">
-                        {(['USD', 'EUR', 'GBP', 'CAD', 'CHF', 'CLP', 'SEK'] as Currency[]).map(moneda => (
+                        {monedasDisponiblesEnRutas.map(moneda => (
                           <button
                             key={moneda}
                             type="button"
@@ -1022,60 +1055,197 @@ function QuoteAPITester() {
               {/* Rutas Disponibles */}
               {originSeleccionado && destinationSeleccionado && (
                 <div className="mt-4">
-                  <h6 className="mb-3">
-                    Rutas Disponibles ({rutasFiltradas.length})
-                  </h6>
+                  {/* Header mejorado */}
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="mb-0 d-flex align-items-center gap-2">
+                      <i className="bi bi-airplane"></i>
+                      Rutas Disponibles 
+                      <span className="badge bg-light text-dark border">{rutasFiltradas.length}</span>
+                    </h6>
+                    
+                    {rutasFiltradas.length > 0 && (
+                      <small className="text-muted">
+                        Selecciona la mejor opción para tu envío
+                      </small>
+                    )}
+                  </div>
 
                   {rutasFiltradas.length === 0 ? (
-                    <div className="alert alert-warning">
-                      No se encontraron rutas con los filtros seleccionados
+                    <div className="alert alert-light border-0 shadow-sm">
+                      <div className="d-flex align-items-center gap-3">
+                        <i className="bi bi-search text-muted fs-3"></i>
+                        <div>
+                          <p className="mb-1 fw-semibold">No se encontraron rutas</p>
+                          <small className="text-muted">
+                            Intenta ajustar los filtros o seleccionar otras ubicaciones
+                          </small>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="row g-3">
-                      {rutasFiltradas.map(ruta => (
+                      {rutasFiltradas.map((ruta, index) => (
                         <div key={ruta.id} className="col-md-6 col-lg-4">
                           <div 
-                            className={`card h-100 ${
+                            className={`card h-100 position-relative ${
                               rutaSeleccionada?.id === ruta.id 
-                                ? 'border-primary border-2 shadow' 
-                                : 'border'
+                                ? 'border-primary border-2 shadow-lg' 
+                                : 'border-0 shadow-sm'
                             }`}
-                            style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+                            style={{ 
+                              cursor: 'pointer', 
+                              transition: 'all 0.3s ease',
+                              transform: rutaSeleccionada?.id === ruta.id ? 'translateY(-4px)' : 'none'
+                            }}
                             onClick={() => setRutaSeleccionada(ruta)}
+                            onMouseEnter={(e) => {
+                              if (rutaSeleccionada?.id !== ruta.id) {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.classList.add('shadow');
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (rutaSeleccionada?.id !== ruta.id) {
+                                e.currentTarget.style.transform = 'none';
+                                e.currentTarget.classList.remove('shadow');
+                              }
+                            }}
                           >
+                            {/* Badge de "Mejor Opción" para la primera ruta */}
+                            {index === 0 && (
+                              <div 
+                                className="position-absolute top-0 end-0 badge bg-warning text-dark"
+                                style={{ 
+                                  borderTopRightRadius: '0.375rem',
+                                  borderBottomLeftRadius: '0.375rem',
+                                  fontSize: '0.7rem'
+                                }}
+                              >
+                                <i className="bi bi-star-fill"></i> Mejor Opción
+                              </div>
+                            )}
+
                             <div className="card-body">
-                              <div className="d-flex justify-content-between align-items-start mb-2">
-                                <span className="badge bg-primary">
-                                  {ruta.carrier || 'Por Confirmar'}
-                                </span>
+                              {/* Header del carrier con logo */}
+                              <div className="d-flex justify-content-between align-items-start mb-3">
+                                <div className="d-flex align-items-center gap-2">
+                                  {/* Logo del carrier */}
+                                  {ruta.carrier && ruta.carrier !== 'Por Confirmar' ? (
+                                    <div 
+                                      className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
+                                      style={{ 
+                                        width: '50px', 
+                                        height: '50px',
+                                        overflow: 'hidden'
+                                      }}
+                                    >
+                                      <img 
+                                        src={`/logoscarrier/${ruta.carrier.toLowerCase()}.png`}
+                                        alt={ruta.carrier}
+                                        style={{ 
+                                          maxWidth: '150%', 
+                                          maxHeight: '150%',
+                                          objectFit: 'contain'
+                                        }}
+                                        onError={(e) => {
+                                          // Fallback si la imagen no carga
+                                          e.currentTarget.style.display = 'none';
+                                          e.currentTarget.parentElement.innerHTML = `
+                                            <i class="bi bi-box-seam text-primary fs-4"></i>
+                                          `;
+                                        }}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div 
+                                      className="rounded-circle bg-primary bg-opacity-10 p-2 d-flex align-items-center justify-content-center"
+                                      style={{ width: '50px', height: '50px' }}
+                                    >
+                                      <i className="bi bi-box-seam text-primary fs-5"></i>
+                                    </div>
+                                  )}
+                                  
+                                  <div>
+                                    <span className="badge bg-primary bg-opacity-10 text-primary border border-primary">
+                                      {ruta.carrier || 'Por Confirmar'}
+                                    </span>
+                                  </div>
+                                </div>
+                                
                                 {rutaSeleccionada?.id === ruta.id && (
-                                  <span className="badge bg-success">✓ Seleccionada</span>
+                                  <div className="position-relative">
+                                    <span className="badge bg-success">
+                                      <i className="bi bi-check-circle-fill"></i> Seleccionada
+                                    </span>
+                                  </div>
                                 )}
                               </div>
 
-                              <div className="mb-3">
-                                <small className="text-muted d-block mb-1">Precio desde:</small>
-                                <h5 className="mb-0 text-primary">
-                                  {ruta.currency} {ruta.priceForComparison.toFixed(2)}
+                              {/* Precio destacado */}
+                              <div className="mb-3 p-3 bg-light rounded">
+                                <small className="text-muted text-uppercase d-block mb-1" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>
+                                  Precio desde
+                                </small>
+                                <div className="d-flex align-items-baseline gap-1">
+                                  <h4 className="mb-0 text-primary fw-bold">
+                                    {ruta.currency} {ruta.priceForComparison.toFixed(2)}
+                                  </h4>
                                   <small className="text-muted">/kg</small>
-                                </h5>
+                                </div>
                               </div>
 
-                              {ruta.transitTime && (
-                                <p className="small mb-2">
-                                  <strong>Tiempo:</strong> {ruta.transitTime}
-                                </p>
-                              )}
+                              {/* Detalles en grid */}
+                              <div className="row g-2">
+                                {ruta.transitTime && (
+                                  <div className="col-12">
+                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
+                                      <i className="bi bi-clock text-primary"></i>
+                                      <div className="flex-grow-1">
+                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
+                                          Tiempo de tránsito
+                                        </small>
+                                        <small className="fw-semibold">{ruta.transitTime}</small>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
 
-                              {ruta.frequency && (
-                                <p className="small mb-0">
-                                  <strong>Frecuencia:</strong> {ruta.frequency}
-                                </p>
+                                {ruta.frequency && (
+                                  <div className="col-12">
+                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
+                                      <i className="bi bi-calendar-check text-primary"></i>
+                                      <div className="flex-grow-1">
+                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
+                                          Frecuencia
+                                        </small>
+                                        <small className="fw-semibold">{ruta.frequency}</small>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Call to action sutil */}
+                              {rutaSeleccionada?.id !== ruta.id && (
+                                <div className="mt-3 text-center">
+                                  <small className="text-muted">
+                                    <i className="bi bi-hand-index"></i> Click para seleccionar
+                                  </small>
+                                </div>
                               )}
                             </div>
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Footer informativo si hay rutas */}
+                  {rutasFiltradas.length > 0 && (
+                    <div className="alert alert-light border-0 mt-3">
+                      <small className="text-muted">
+                        <i className="bi bi-info-circle"></i> Los precios son referenciales y pueden variar según dimensiones y servicios adicionales
+                      </small>
                     </div>
                   )}
                 </div>

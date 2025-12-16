@@ -33,15 +33,14 @@ import Cotizador from './components/Sidebar/Cotizador';
 import QuotesView from './components/Sidebar/QuotesView';
 import AirShipmentsView from './components/shipments/AirShipmentsView';
 import OceanShipmentsView from './components/shipments/OceanShipmentsView';
-import ReporteriaOperacional from './components/Sidebar/ReporteriaOperacional';
 import Financiera from './components/Sidebar/ReporteriaFinanciera';
 import Settings from './components/settings/Settings';
-import ShipmentsView from './components/shipments/Shipments';
+import ReporteriaOperacional from './components/Sidebar/ReporteriaOperacional';
 
 // OFF
 import Operacionales from './components/Sidebar/RO2';
-import Envios from './components/Sidebar/EnviosAereos OFF';
-import EnviosMaritimos from './components/Sidebar/EnviosMaritimos OFF';
+import Envios from './components/deprecated/EnviosAereos OFF';
+import EnviosMaritimos from './components/deprecated/EnviosMaritimos OFF';
 
 function App() {
   const { user } = useAuth();
@@ -111,10 +110,9 @@ function App() {
         <Route path="operacionales" element={<Operacionales />} />
         <Route path="envios" element={<Envios />} />
         <Route path="enviosmaritimos" element={<EnviosMaritimos />} />
-        <Route path="reporteriaoperacional" element={<ReporteriaOperacional />} />
         <Route path="financiera" element={<Financiera />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="shipments" element={<ShipmentsView />} />
+        <Route path="operacional" element={<ReporteriaOperacional />} />
       </Route>
 
       {/* Ruta por defecto */}

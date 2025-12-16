@@ -91,7 +91,7 @@ function Sidebar({ isOpen, onToggle }: SidebarProps) {
           )
         },
         {
-          path: '/shipments',
+          path: '/operacional',
           name: 'Reportería Operacional',
           icon: (
             <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
