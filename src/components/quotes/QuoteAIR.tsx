@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { packageTypeOptions } from './PackageTypes/PiecestypesAIR';
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
+import { Modal, Button } from 'react-bootstrap';
 
 interface OutletContext {
   accessToken: string;
@@ -265,6 +266,9 @@ function QuoteAPITester() {
   const [carriersActivos, setCarriersActivos] = useState<Set<string>>(new Set());
   const [monedasActivas, setMonedasActivas] = useState<Set<Currency>>(new Set(['USD', 'EUR', 'GBP', 'CAD', 'CHF', 'CLP', 'SEK']));
   const [carriersDisponibles, setCarriersDisponibles] = useState<string[]>([]);
+  
+  // Estado para modal de precio 0
+  const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
 
   // ============================================================================
   // CARGA DE DATOS AEREO.XLSX
@@ -1097,7 +1101,14 @@ function QuoteAPITester() {
                               transition: 'all 0.3s ease',
                               transform: rutaSeleccionada?.id === ruta.id ? 'translateY(-4px)' : 'none'
                             }}
-                            onClick={() => setRutaSeleccionada(ruta)}
+                            onClick={() => {
+                              // Verificar si la ruta tiene precio 0
+                              if (ruta.priceForComparison === 0) {
+                                setShowPriceZeroModal(true);
+                                return;
+                              }
+                              setRutaSeleccionada(ruta);
+                            }}
                             onMouseEnter={(e) => {
                               if (rutaSeleccionada?.id !== ruta.id) {
                                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -1680,6 +1691,27 @@ function QuoteAPITester() {
           </div>
         </div>
       )}
+
+      {/* Modal para rutas con precio 0 */}
+      <Modal show={showPriceZeroModal} onHide={() => setShowPriceZeroModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>📋 Cotización Personalizada Requerida</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-2">
+            <strong>Esta ruta requiere análisis caso a caso.</strong>
+          </p>
+          <p className="mb-0">
+            Por favor, contacta a tu ejecutivo comercial para obtener una cotización personalizada 
+            que se ajuste a las características específicas de tu envío.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={() => setShowPriceZeroModal(false)}>
+            Entendido
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }
