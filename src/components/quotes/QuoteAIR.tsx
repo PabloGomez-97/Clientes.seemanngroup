@@ -1151,7 +1151,7 @@ function QuoteAPITester() {
                                       }}
                                     >
                                       <img 
-                                        src={`/logoscarrier/${ruta.carrier.toLowerCase()}.png`}
+                                        src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
                                         alt={ruta.carrier}
                                         style={{ 
                                           maxWidth: '150%', 
@@ -1264,41 +1264,62 @@ function QuoteAPITester() {
 
               {/* Información de ruta seleccionada */}
               {rutaSeleccionada && (
-                <div className="alert alert-success mt-4 mb-0">
-                  <h6 className="alert-heading">✓ Ruta Seleccionada</h6>
-                  <p className="mb-2">
-                    <strong>Origen:</strong> {rutaSeleccionada.origin} →{' '}
-                    <strong>Destino:</strong> {rutaSeleccionada.destination}
-                  </p>
-                  <p className="mb-2">
-                    <strong>Carrier:</strong> {rutaSeleccionada.carrier || 'Por Confirmar'}
-                  </p>
+                <div className="alert alert-success mt-4 mb-0 border-0 shadow-sm">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <i className="bi bi-check-circle-fill"></i>
+                      <strong>✓ Ruta Seleccionada</strong>
+                    </div>
+                    <button 
+                      className="btn btn-sm btn-outline-success"
+                      onClick={() => setRutaSeleccionada(null)}
+                      style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                    >
+                      Cambiar
+                    </button>
+                  </div>
                   
-                  <div className="mt-3">
-                    <strong className="d-block mb-2">Tarifas disponibles:</strong>
-                    <div className="d-flex flex-wrap gap-2">
+                  <div className="small">
+                    <strong>Origen:</strong> {rutaSeleccionada.origin} → <strong>Destino:</strong> {rutaSeleccionada.destination}
+                  </div>
+                  
+                  <div className="small mt-1">
+                    <strong>Carrier:</strong> {rutaSeleccionada.carrier || 'Por Confirmar'}
+                  </div>
+                  
+                  {(rutaSeleccionada.transitTime || rutaSeleccionada.frequency) && (
+                    <div className="small mt-1 text-success-emphasis">
+                      {rutaSeleccionada.transitTime && `⏱️ ${rutaSeleccionada.transitTime}`}
+                      {rutaSeleccionada.transitTime && rutaSeleccionada.frequency && ' • '}
+                      {rutaSeleccionada.frequency && `📅 ${rutaSeleccionada.frequency}`}
+                    </div>
+                  )}
+                  
+                  <div className="mt-2">
+                    <strong className="small">Tarifas disponibles:</strong>
+                    <div className="d-flex flex-wrap gap-1 mt-1">
                       {rutaSeleccionada.kg45 && (
-                        <span className="badge bg-light text-dark border">
+                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
                           45kg: {rutaSeleccionada.kg45}
                         </span>
                       )}
                       {rutaSeleccionada.kg100 && (
-                        <span className="badge bg-light text-dark border">
+                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
                           100kg: {rutaSeleccionada.kg100}
                         </span>
                       )}
                       {rutaSeleccionada.kg300 && (
-                        <span className="badge bg-light text-dark border">
+                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
                           300kg: {rutaSeleccionada.kg300}
                         </span>
                       )}
                       {rutaSeleccionada.kg500 && (
-                        <span className="badge bg-light text-dark border">
+                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
                           500kg: {rutaSeleccionada.kg500}
                         </span>
                       )}
                       {rutaSeleccionada.kg1000 && (
-                        <span className="badge bg-light text-dark border">
+                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
                           1000kg: {rutaSeleccionada.kg1000}
                         </span>
                       )}

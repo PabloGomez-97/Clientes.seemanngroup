@@ -659,102 +659,233 @@ function QuoteFCL() {
               {/* Rutas Disponibles */}
               {polSeleccionado && podSeleccionado && (
                 <div className="mt-4">
-                  <h6 className="mb-3">
-                    Rutas Disponibles ({rutasFiltradas.length})
-                  </h6>
+                  {/* Header mejorado */}
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="mb-0 d-flex align-items-center gap-2">
+                      <i className="bi bi-ship"></i>
+                      Rutas Disponibles 
+                      <span className="badge bg-light text-dark border">{rutasFiltradas.length}</span>
+                    </h6>
+                    
+                    {rutasFiltradas.length > 0 && (
+                      <small className="text-muted">
+                        Selecciona la mejor opción para tu envío
+                      </small>
+                    )}
+                  </div>
 
                   {rutasFiltradas.length === 0 ? (
-                    <div className="alert alert-warning">
-                      No se encontraron rutas con los filtros seleccionados
+                    <div className="alert alert-light border-0 shadow-sm">
+                      <div className="d-flex align-items-center gap-3">
+                        <i className="bi bi-search text-muted fs-3"></i>
+                        <div>
+                          <p className="mb-1 fw-semibold">No se encontraron rutas</p>
+                          <small className="text-muted">
+                            Intenta ajustar los filtros o seleccionar otras ubicaciones
+                          </small>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="row g-3">
-                      {rutasFiltradas.map(ruta => (
-                        <div key={ruta.id} className="col-12">
-                          <div className="card border">
+                      {rutasFiltradas.map((ruta, index) => (
+                        <div key={ruta.id} className="col-md-6 col-lg-4">
+                          <div 
+                            className={`card h-100 position-relative ${
+                              rutaSeleccionada?.id === ruta.id 
+                                ? 'border-primary border-2 shadow-lg' 
+                                : 'border-0 shadow-sm'
+                            }`}
+                            style={{ 
+                              transition: 'all 0.3s ease',
+                              transform: rutaSeleccionada?.id === ruta.id ? 'translateY(-4px)' : 'none'
+                            }}
+                          >
+                            {/* Badge de "Mejor Opción" */}
+                            {index === 0 && (
+                              <div 
+                                className="position-absolute top-0 end-0 badge bg-warning text-dark"
+                                style={{ 
+                                  borderTopRightRadius: '0.375rem',
+                                  borderBottomLeftRadius: '0.375rem',
+                                  fontSize: '0.7rem',
+                                  zIndex: 1
+                                }}
+                              >
+                                <i className="bi bi-star-fill"></i> Mejor Opción
+                              </div>
+                            )}
+
                             <div className="card-body">
-                              <div className="row align-items-center">
-                                {/* Información de la Ruta */}
-                                <div className="col-md-4">
-                                  <h6 className="mb-2">
-                                    <span className="badge bg-primary">{ruta.carrier}</span>
-                                  </h6>
-                                  {ruta.tt && (
-                                    <p className="small mb-1">
-                                      <strong>Transit Time:</strong> {ruta.tt}
-                                    </p>
-                                  )}
-                                  {ruta.company && (
-                                    <p className="small mb-0 text-muted">{ruta.company}</p>
-                                  )}
+                              {/* Header del carrier con logo */}
+                              <div className="d-flex justify-content-between align-items-start mb-3">
+                                <div className="d-flex align-items-center gap-2">
+                                  {/* Logo del carrier */}
+                                  <div 
+                                    className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
+                                    style={{ 
+                                      width: '50px', 
+                                      height: '50px',
+                                      minWidth: '50px',
+                                      overflow: 'hidden'
+                                    }}
+                                  >
+                                    <img 
+                                      src={`/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`}
+                                      alt={ruta.carrier}
+                                      style={{ 
+                                        maxWidth: '150%', 
+                                        maxHeight: '150%',
+                                        objectFit: 'contain'
+                                      }}
+                                      onError={(e) => {
+                                        const target = e.currentTarget;
+                                        target.style.display = 'none';
+                                        const parent = target.parentElement;
+                                        if (parent) {
+                                          parent.innerHTML = '<i class="bi bi-box-seam text-primary fs-4"></i>';
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                  
+                                  <div>
+                                    <span className="badge bg-primary bg-opacity-10 text-primary border border-primary">
+                                      {ruta.carrier}
+                                    </span>
+                                  </div>
                                 </div>
+                                
+                                {rutaSeleccionada?.id === ruta.id && (
+                                  <span className="badge bg-success">
+                                    <i className="bi bi-check-circle-fill"></i> Seleccionada
+                                  </span>
+                                )}
+                              </div>
 
-                                {/* Botones de Contenedores */}
-                                <div className="col-md-8">
-                                  <div className="row g-2">
-                                    {/* 20GP */}
-                                    <div className="col-md-4">
-                                      <button
-                                        type="button"
-                                        className={`btn w-100 ${
-                                          rutaSeleccionada?.id === ruta.id && containerSeleccionado?.type === '20GP'
-                                            ? 'btn-success'
-                                            : 'btn-outline-primary'
-                                        }`}
-                                        onClick={() => handleSeleccionarContainer(ruta, '20GP')}
-                                      >
-                                        <div className="d-flex flex-column">
-                                          <span className="fw-bold">20GP</span>
-                                          <span className="small">{ruta.gp20}</span>
-                                        </div>
-                                      </button>
-                                    </div>
-
-                                    {/* 40HQ */}
-                                    <div className="col-md-4">
-                                      <button
-                                        type="button"
-                                        className={`btn w-100 ${
-                                          rutaSeleccionada?.id === ruta.id && containerSeleccionado?.type === '40HQ'
-                                            ? 'btn-success'
-                                            : 'btn-outline-primary'
-                                        }`}
-                                        onClick={() => handleSeleccionarContainer(ruta, '40HQ')}
-                                      >
-                                        <div className="d-flex flex-column">
-                                          <span className="fw-bold">40HQ</span>
-                                          <span className="small">{ruta.hq40}</span>
-                                        </div>
-                                      </button>
-                                    </div>
-
-                                    {/* 40NOR */}
-                                    <div className="col-md-4">
-                                      <button
-                                        type="button"
-                                        className={`btn w-100 ${
-                                          rutaSeleccionada?.id === ruta.id && containerSeleccionado?.type === '40NOR'
-                                            ? 'btn-success'
-                                            : ruta.nor40
-                                            ? 'btn-outline-primary'
-                                            : 'btn-outline-secondary'
-                                        }`}
-                                        onClick={() => handleSeleccionarContainer(ruta, '40NOR')}
-                                        disabled={!ruta.nor40}
-                                      >
-                                        <div className="d-flex flex-column">
-                                          <span className="fw-bold">40NOR</span>
-                                          <span className="small">{ruta.nor40 || 'N/A'}</span>
-                                        </div>
-                                      </button>
+                              {/* Transit Time y Company */}
+                              {ruta.tt && (
+                                <div className="mb-3">
+                                  <div className="d-flex align-items-center gap-2 p-2 bg-light rounded">
+                                    <i className="bi bi-clock text-primary"></i>
+                                    <div className="flex-grow-1">
+                                      <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
+                                        Tiempo de tránsito
+                                      </small>
+                                      <small className="fw-semibold">{ruta.tt}</small>
                                     </div>
                                   </div>
                                 </div>
+                              )}
+
+                              {ruta.company && (
+                                <p className="small text-muted mb-3">
+                                  <i className="bi bi-building"></i> {ruta.company}
+                                </p>
+                              )}
+
+                              {/* Botones de Contenedores */}
+                              <div className="d-flex flex-column gap-2">
+                                {/* 20GP */}
+                                {ruta.gp20 && ruta.gp20 !== 'N/A' && ruta.gp20 !== '-' && (
+                                  <button
+                                    type="button"
+                                    className={`btn ${
+                                      rutaSeleccionada?.id === ruta.id && containerSeleccionado?.type === '20GP'
+                                        ? 'btn-success'
+                                        : 'btn-outline-primary'
+                                    }`}
+                                    onClick={() => handleSeleccionarContainer(ruta, '20GP')}
+                                    style={{ transition: 'all 0.2s' }}
+                                  >
+                                    <div className="d-flex justify-content-between align-items-center">
+                                      <span className="fw-bold">
+                                        <i className="bi bi-box"></i> 20GP
+                                      </span>
+                                      <span className="badge bg-light text-dark">
+                                        {ruta.gp20}
+                                      </span>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {/* 40HQ */}
+                                {ruta.hq40 && ruta.hq40 !== 'N/A' && ruta.hq40 !== '-' && (
+                                  <button
+                                    type="button"
+                                    className={`btn ${
+                                      rutaSeleccionada?.id === ruta.id && containerSeleccionado?.type === '40HQ'
+                                        ? 'btn-success'
+                                        : 'btn-outline-primary'
+                                    }`}
+                                    onClick={() => handleSeleccionarContainer(ruta, '40HQ')}
+                                    style={{ transition: 'all 0.2s' }}
+                                  >
+                                    <div className="d-flex justify-content-between align-items-center">
+                                      <span className="fw-bold">
+                                        <i className="bi bi-box"></i> 40HQ
+                                      </span>
+                                      <span className="badge bg-light text-dark">
+                                        {ruta.hq40}
+                                      </span>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {/* 40NOR */}
+                                {ruta.nor40 && ruta.nor40 !== 'N/A' && ruta.nor40 !== '-' && (
+                                  <button
+                                    type="button"
+                                    className={`btn ${
+                                      rutaSeleccionada?.id === ruta.id && containerSeleccionado?.type === '40NOR'
+                                        ? 'btn-success'
+                                        : 'btn-outline-primary'
+                                    }`}
+                                    onClick={() => handleSeleccionarContainer(ruta, '40NOR')}
+                                    style={{ transition: 'all 0.2s' }}
+                                  >
+                                    <div className="d-flex justify-content-between align-items-center">
+                                      <span className="fw-bold">
+                                        <i className="bi bi-box"></i> 40NOR
+                                      </span>
+                                      <span className="badge bg-light text-dark">
+                                        {ruta.nor40}
+                                      </span>
+                                    </div>
+                                  </button>
+                                )}
                               </div>
+
+                              {/* Mensaje si no hay contenedores disponibles */}
+                              {!ruta.gp20 && !ruta.hq40 && !ruta.nor40 && (
+                                <div className="alert alert-warning mb-0 mt-2">
+                                  <small>
+                                    <i className="bi bi-exclamation-triangle"></i> No hay contenedores disponibles para esta ruta
+                                  </small>
+                                </div>
+                              )}
+
+                              {/* Call to action sutil */}
+                              {rutaSeleccionada?.id !== ruta.id && (
+                                <div className="mt-3 text-center">
+                                  <small className="text-muted">
+                                    <i className="bi bi-hand-index"></i> Selecciona un contenedor
+                                  </small>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Footer informativo */}
+                  {rutasFiltradas.length > 0 && (
+                    <div className="alert alert-light border-0 mt-3">
+                      <small className="text-muted">
+                        <i className="bi bi-info-circle"></i> Las tarifas son referenciales y pueden variar según condiciones comerciales
+                      </small>
                     </div>
                   )}
                 </div>

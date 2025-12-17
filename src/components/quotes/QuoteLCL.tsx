@@ -645,76 +645,221 @@ function QuoteLCL() {
               {/* Rutas Disponibles */}
               {polSeleccionado && podSeleccionado && (
                 <div className="mt-4">
-                  <h6 className="mb-3">
-                    Rutas Disponibles ({rutasFiltradas.length})
-                  </h6>
+                  {/* Header mejorado */}
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="mb-0 d-flex align-items-center gap-2">
+                      <i className="bi bi-boxes"></i>
+                      Rutas Disponibles 
+                      <span className="badge bg-light text-dark border">{rutasFiltradas.length}</span>
+                    </h6>
+                    
+                    {rutasFiltradas.length > 0 && (
+                      <small className="text-muted">
+                        Selecciona la mejor opción para tu envío
+                      </small>
+                    )}
+                  </div>
 
                   {rutasFiltradas.length === 0 ? (
-                    <div className="alert alert-warning">
-                      No se encontraron rutas con los filtros seleccionados
+                    <div className="alert alert-light border-0 shadow-sm">
+                      <div className="d-flex align-items-center gap-3">
+                        <i className="bi bi-search text-muted fs-3"></i>
+                        <div>
+                          <p className="mb-1 fw-semibold">No se encontraron rutas</p>
+                          <small className="text-muted">
+                            Intenta ajustar los filtros o seleccionar otras ubicaciones
+                          </small>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="row g-3">
-                      {rutasFiltradas.map(ruta => (
+                      {rutasFiltradas.map((ruta, index) => (
                         <div key={ruta.id} className="col-md-6 col-lg-4">
                           <div 
-                            className={`card h-100 ${
+                            className={`card h-100 position-relative ${
                               rutaSeleccionada?.id === ruta.id 
-                                ? 'border-success border-2 shadow' 
-                                : 'border'
+                                ? 'border-success border-2 shadow-lg' 
+                                : 'border-0 shadow-sm'
                             }`}
-                            style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+                            style={{ 
+                              cursor: 'pointer',
+                              transition: 'all 0.3s ease',
+                              transform: rutaSeleccionada?.id === ruta.id ? 'translateY(-4px)' : 'none'
+                            }}
                             onClick={() => {
                               setRutaSeleccionada(ruta);
                               setError(null);
                               setResponse(null);
                             }}
+                            onMouseEnter={(e) => {
+                              if (rutaSeleccionada?.id !== ruta.id) {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.classList.add('shadow');
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (rutaSeleccionada?.id !== ruta.id) {
+                                e.currentTarget.style.transform = 'none';
+                                e.currentTarget.classList.remove('shadow');
+                              }
+                            }}
                           >
+                            {/* Badge de "Mejor Opción" */}
+                            {index === 0 && (
+                              <div 
+                                className="position-absolute top-0 end-0 badge bg-warning text-dark"
+                                style={{ 
+                                  borderTopRightRadius: '0.375rem',
+                                  borderBottomLeftRadius: '0.375rem',
+                                  fontSize: '0.7rem',
+                                  zIndex: 1
+                                }}
+                              >
+                                <i className="bi bi-star-fill"></i> Mejor Opción
+                              </div>
+                            )}
+
                             <div className="card-body">
-                              <div className="d-flex justify-content-between align-items-start mb-2">
-                                <span className="badge bg-primary">
-                                  {ruta.operador}
-                                </span>
+                              {/* Header del operador con logo */}
+                              <div className="d-flex justify-content-between align-items-start mb-3">
+                                <div className="d-flex align-items-center gap-2">
+                                  {/* Logo del operador */}
+                                  <div 
+                                    className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
+                                    style={{ 
+                                      width: '50px', 
+                                      height: '50px',
+                                      minWidth: '50px',
+                                      overflow: 'hidden'
+                                    }}
+                                  >
+                                    <img 
+                                      src={`/logoscarrierlcl/${ruta.operador.toLowerCase().replace(/\s+/g, '_')}.png`}
+                                      alt={ruta.operador}
+                                      style={{ 
+                                        maxWidth: '150%', 
+                                        maxHeight: '150%',
+                                        objectFit: 'contain'
+                                      }}
+                                      onError={(e) => {
+                                        const target = e.currentTarget;
+                                        target.style.display = 'none';
+                                        const parent = target.parentElement;
+                                        if (parent) {
+                                          parent.innerHTML = '<i class="bi bi-boxes text-primary fs-4"></i>';
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                  
+                                  <div>
+                                    <span className="badge bg-primary bg-opacity-10 text-primary border border-primary">
+                                      {ruta.operador}
+                                    </span>
+                                  </div>
+                                </div>
+                                
                                 {rutaSeleccionada?.id === ruta.id && (
-                                  <span className="badge bg-success">✓ Seleccionada</span>
+                                  <span className="badge bg-success">
+                                    <i className="bi bi-check-circle-fill"></i> Seleccionada
+                                  </span>
                                 )}
                               </div>
 
-                              <div className="mb-3">
-                                <small className="text-muted d-block mb-1">Tarifa OF W/M:</small>
-                                <h5 className="mb-0 text-success">
-                                  {ruta.currency} {ruta.ofWM}
+                              {/* Precio destacado */}
+                              <div className="mb-3 p-3 bg-light rounded">
+                                <small className="text-muted text-uppercase d-block mb-1" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>
+                                  Tarifa OF W/M
+                                </small>
+                                <div className="d-flex align-items-baseline gap-1">
+                                  <h4 className="mb-0 text-success fw-bold">
+                                    {ruta.currency} {ruta.ofWM}
+                                  </h4>
                                   <small className="text-muted">/W/M</small>
-                                </h5>
+                                </div>
                               </div>
 
-                              {ruta.servicio && (
-                                <p className="small mb-2">
-                                  <strong>Servicio:</strong> {ruta.servicio}
-                                </p>
-                              )}
+                              {/* Detalles en grid */}
+                              <div className="row g-2">
+                                {ruta.servicio && (
+                                  <div className="col-12">
+                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
+                                      <i className="bi bi-truck text-primary"></i>
+                                      <div className="flex-grow-1">
+                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
+                                          Servicio
+                                        </small>
+                                        <small className="fw-semibold">{ruta.servicio}</small>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
 
-                              {ruta.ttAprox && (
-                                <p className="small mb-2">
-                                  <strong>Transit Time:</strong> {ruta.ttAprox}
-                                </p>
-                              )}
+                                {ruta.ttAprox && (
+                                  <div className="col-12">
+                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
+                                      <i className="bi bi-clock text-primary"></i>
+                                      <div className="flex-grow-1">
+                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
+                                          Transit Time
+                                        </small>
+                                        <small className="fw-semibold">{ruta.ttAprox}</small>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
 
-                              {ruta.frecuencia && (
-                                <p className="small mb-2">
-                                  <strong>Frecuencia:</strong> {ruta.frecuencia}
-                                </p>
-                              )}
+                                {ruta.frecuencia && (
+                                  <div className="col-12">
+                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
+                                      <i className="bi bi-calendar-check text-primary"></i>
+                                      <div className="flex-grow-1">
+                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
+                                          Frecuencia
+                                        </small>
+                                        <small className="fw-semibold">{ruta.frecuencia}</small>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
 
-                              {ruta.agente && (
-                                <p className="small mb-0 text-muted">
-                                  <strong>Agente:</strong> {ruta.agente}
-                                </p>
+                                {ruta.agente && (
+                                  <div className="col-12">
+                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
+                                      <i className="bi bi-building text-primary"></i>
+                                      <div className="flex-grow-1">
+                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
+                                          Agente
+                                        </small>
+                                        <small className="fw-semibold">{ruta.agente}</small>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Call to action sutil */}
+                              {rutaSeleccionada?.id !== ruta.id && (
+                                <div className="mt-3 text-center">
+                                  <small className="text-muted">
+                                    <i className="bi bi-hand-index"></i> Click para seleccionar
+                                  </small>
+                                </div>
                               )}
                             </div>
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Footer informativo */}
+                  {rutasFiltradas.length > 0 && (
+                    <div className="alert alert-light border-0 mt-3">
+                      <small className="text-muted">
+                        <i className="bi bi-info-circle"></i> Las tarifas son referenciales y pueden variar según volumen y servicios adicionales
+                      </small>
                     </div>
                   )}
                 </div>
