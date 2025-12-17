@@ -4,6 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
 import { packageTypeOptions } from './PackageTypes/PiecestypesLCL';
+import { Modal, Button } from 'react-bootstrap';
 
 interface OutletContext {
   accessToken: string;
@@ -140,6 +141,9 @@ function QuoteLCL() {
   
   const [operadoresActivos, setOperadoresActivos] = useState<Set<Operador>>(new Set());
   const [operadoresDisponibles, setOperadoresDisponibles] = useState<Operador[]>([]);
+  
+  // Estado para modal de precio 0
+  const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
 
   // ============================================================================
   // ESTADOS PARA COMMODITY
@@ -688,6 +692,11 @@ function QuoteLCL() {
                               transform: rutaSeleccionada?.id === ruta.id ? 'translateY(-4px)' : 'none'
                             }}
                             onClick={() => {
+                              // Verificar si la tarifa OF W/M es 0
+                              if (ruta.ofWM === 0) {
+                                setShowPriceZeroModal(true);
+                                return;
+                              }
                               setRutaSeleccionada(ruta);
                               setError(null);
                               setResponse(null);
@@ -1136,6 +1145,27 @@ function QuoteLCL() {
           </div>
         </div>
       )}
+
+      {/* Modal para rutas con tarifa OF W/M en 0 */}
+      <Modal show={showPriceZeroModal} onHide={() => setShowPriceZeroModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>📋 Cotización Personalizada Requerida</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-2">
+            <strong>Esta ruta requiere análisis caso a caso.</strong>
+          </p>
+          <p className="mb-0">
+            Por favor, contacta a tu ejecutivo comercial para obtener una cotización personalizada 
+            que se ajuste a las características específicas de tu envío.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={() => setShowPriceZeroModal(false)}>
+            Entendido
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }
