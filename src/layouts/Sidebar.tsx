@@ -3,6 +3,7 @@ import { useState, type JSX } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logoSeemann from './logoseemann.png';
 
+
 interface SidebarProps {
   isOpen: boolean;
   onToggle?: () => void;
@@ -551,7 +552,25 @@ function Sidebar({ isOpen, onToggle }: SidebarProps) {
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text'
                   }}>
-                    Dashboard v2.0
+                    {/* Necesito hacer que aquí al presionar dashboard v2.0 lo mande a changelog, pero desde el import*/}
+
+                    <button
+                      onClick={() => navigate('/changelog')}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        padding: 0,
+                        margin: 0,
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        color: '#1e293b',
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                      title="Ver Changelog"
+                    >
+                      Dashboard v2.2.0
+                    </button>
                   </div>
                   <div style={{
                     fontSize: '11px',
@@ -583,7 +602,7 @@ function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 alignItems: 'center',
                 justifyContent: 'space-between'
               }}>
-                <span>© 2024 Seemann Group</span>
+                <span>© 2025 Seemann Group</span>
                 <div style={{
                   display: 'flex',
                   gap: '4px'

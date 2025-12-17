@@ -917,6 +917,44 @@ function QuoteAPITester() {
     return Array.from(monedas).sort();
   }, [rutasPorOrigenDestino]);
 
+  // Función para encontrar el índice de la ruta con menor tiempo de tránsito
+  const fastestRouteIndex = useMemo(() => {
+    let fastestIndex = -1;
+    let minDays = Infinity;
+
+    rutasFiltradas.forEach((ruta, index) => {  // ✅ CORRECTO
+      if (ruta.transitTime) {
+        // Extraer los días del string (ej: "15-20 días" -> toma 15)
+        const match = ruta.transitTime.match(/(\d+)/);
+        if (match) {
+          const days = parseInt(match[1]);
+          if (days < minDays) {
+            minDays = days;
+            fastestIndex = index;
+          }
+        }
+      }
+    });
+
+    return fastestIndex;
+  }, [rutasFiltradas]);  // ✅ CORRECTO
+
+  // Función para encontrar el índice de la ruta con menor precio (excluyendo precio 0)
+  const bestPriceRouteIndex = useMemo(() => {
+    let bestIndex = -1;
+    let minPrice = Infinity;
+
+    rutasFiltradas.forEach((ruta, index) => {
+      // Solo considerar rutas con precio mayor a 0
+      if (ruta.priceForComparison > 0 && ruta.priceForComparison < minPrice) {
+        minPrice = ruta.priceForComparison;
+        bestIndex = index;
+      }
+    });
+
+    return bestIndex;
+  }, [rutasFiltradas]);
+
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -1122,8 +1160,8 @@ function QuoteAPITester() {
                               }
                             }}
                           >
-                            {/* Badge de "Mejor Opción" para la primera ruta */}
-                            {index === 0 && (
+                            {/* Badge de "Mejor Opción" para la ruta más barata (excluyendo precio 0) */}
+                            {index === bestPriceRouteIndex && (
                               <div 
                                 className="position-absolute top-0 end-0 badge bg-warning text-dark"
                                 style={{ 
@@ -1133,6 +1171,38 @@ function QuoteAPITester() {
                                 }}
                               >
                                 <i className="bi bi-star-fill"></i> Mejor Opción
+                              </div>
+                            )}
+
+                            {/* Badge de "Menor tiempo" para la ruta más rápida */}
+                            {index === fastestRouteIndex && index !== 0 && (
+                              <div 
+                                className="position-absolute badge bg-success text-white"
+                                style={{ 
+                                  top: '0',
+                                  right: '0',
+                                  borderTopRightRadius: '0.375rem',
+                                  borderBottomLeftRadius: '0.375rem',
+                                  fontSize: '0.7rem'
+                                }}
+                              >
+                                <i className="bi bi-lightning-fill"></i> Menor tiempo
+                              </div>
+                            )}
+
+                            {/* Si la ruta es tanto la mejor opción como la más rápida */}
+                            {index === 0 && index === fastestRouteIndex && (
+                              <div 
+                                className="position-absolute badge bg-success text-white"
+                                style={{ 
+                                  top: '2rem',
+                                  right: '0',
+                                  borderTopRightRadius: '0.375rem',
+                                  borderBottomLeftRadius: '0.375rem',
+                                  fontSize: '0.7rem'
+                                }}
+                              >
+                                <i className="bi bi-lightning-fill"></i> Menor tiempo
                               </div>
                             )}
 

@@ -67,6 +67,66 @@ const capitalize = (str: string): string => {
     .join(' ');
 };
 
+// ============================================================================
+// NORMALIZACIÓN ESPECIAL PARA PODs - MAPEO DE VARIANTES
+// ============================================================================
+
+/**
+ * Normaliza los nombres de PODs agrupando variantes del mismo puerto
+ * bajo un nombre canónico único
+ */
+const normalizePOD = (pod: string): string => {
+  if (!pod) return '';
+  
+  const podLower = pod.toLowerCase().trim();
+  
+  // Definir mapeo de variantes a nombres canónicos
+  const podMapping: { [key: string]: string } = {
+    // Grupo: San Antonio - Valparaíso
+    'san antonio - valparaiso': 'san antonio - valparaiso',
+    'san antonio / valparaiso': 'san antonio - valparaiso',
+    'vap / sai': 'san antonio - valparaiso',
+    'sai / vap': 'san antonio - valparaiso',
+    'valparaiso - san antonio': 'san antonio - valparaiso',
+    'valparaiso / san antonio': 'san antonio - valparaiso',
+    
+    // Puertos individuales (mantener por si acaso)
+    'valparaiso': 'valparaiso',
+    'san antonio': 'san antonio',
+    'iquique': 'iquique',
+    'iquique via san antonio': 'iquique via san antonio',
+    'santos': 'santos',
+    'callao': 'callao',
+    'tbc': 'tbc',
+  };
+  
+  // Buscar coincidencia en el mapeo
+  if (podMapping[podLower]) {
+    return podMapping[podLower];
+  }
+  
+  // Si no hay coincidencia específica, devolver normalizado estándar
+  return podLower;
+};
+
+/**
+ * Obtiene el nombre de display preferido para un POD normalizado
+ */
+const getPODDisplayName = (podNormalized: string): string => {
+  const displayNames: { [key: string]: string } = {
+    'san antonio - valparaiso': 'SAN ANTONIO - VALPARAISO',
+    'valparaiso': 'VALPARAISO',
+    'san antonio': 'SAN ANTONIO',
+    'iquique': 'IQUIQUE',
+    'iquique via san antonio': 'IQUIQUE VIA SAN ANTONIO',
+    'santos': 'SANTOS',
+    'callao': 'CALLAO',
+    'tbc': 'TBC',
+  };
+  
+  return displayNames[podNormalized] || capitalize(podNormalized);
+};
+
 const parseLCL = (data: any[]): RutaLCL[] => {
   const rutas: RutaLCL[] = [];
   let idCounter = 1;
@@ -93,7 +153,7 @@ const parseLCL = (data: any[]): RutaLCL[] => {
         pol: pol.trim(),
         polNormalized: normalize(pol),
         pod: pod.trim(),
-        podNormalized: normalize(pod),
+        podNormalized: normalizePOD(pod),
         servicio: servicio ? servicio.toString().trim() : null,
         ofWM: ofWMNumber,
         ofWMString: ofWM.toString().trim(),
@@ -219,16 +279,26 @@ function QuoteLCL() {
 
   useEffect(() => {
     if (polSeleccionado) {
-      const podsParaPOL = rutas
-        .filter(r => r.polNormalized === polSeleccionado.value)
-        .map(r => r.pod);
+      // Filtrar rutas por POL seleccionado
+      const rutasParaPOL = rutas.filter(r => r.polNormalized === polSeleccionado.value);
       
-      const podsUnicos = Array.from(new Set(podsParaPOL))
-        .sort()
-        .map(pod => ({
-          value: normalize(pod),
-          label: capitalize(pod)
-        }));
+      // Agrupar por podNormalized y obtener el nombre de display preferido
+      const podMap = new Map<string, string>();
+      
+      rutasParaPOL.forEach(r => {
+        if (!podMap.has(r.podNormalized)) {
+          // Usar el nombre de display preferido basado en la normalización
+          podMap.set(r.podNormalized, getPODDisplayName(r.podNormalized));
+        }
+      });
+      
+      // Crear opciones únicas ordenadas alfabéticamente
+      const podsUnicos = Array.from(podMap.entries())
+        .map(([normalized, displayName]) => ({
+          value: normalized,
+          label: displayName
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
       
       setOpcionesPOD(podsUnicos);
       setPodSeleccionado(null);
@@ -239,7 +309,7 @@ function QuoteLCL() {
       setRutaSeleccionada(null);
     }
   }, [polSeleccionado, rutas]);
-
+  
   // ============================================================================
   // CÁLCULOS
   // ============================================================================
