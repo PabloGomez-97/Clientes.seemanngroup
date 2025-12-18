@@ -16,7 +16,7 @@ import SettingsAdmin from './components/administrador/settings-admin';
 import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLayout';
 import ReporteriaPersonalizado from './components/administrador/ReporteriaPersonalizado';
 import EjecutivosManagement from './components/administrador/ejecutivos-management';
-import ReportExecutive from './components/administrador/natalia/reportExecutive';
+import ReportExecutive from "./components/administrador/natalia/reportExecutive"
 
 // Reportería Pages
 import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';
