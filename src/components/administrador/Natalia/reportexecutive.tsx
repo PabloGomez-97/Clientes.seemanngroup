@@ -8,7 +8,7 @@ interface OutletContext {
 }
 
 function SettingsAdmin() {
-  const { accessToken, onLogout } = useOutletContext<OutletContext>();
+  const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
 
   return (
