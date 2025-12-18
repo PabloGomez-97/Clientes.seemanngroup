@@ -1,4 +1,4 @@
-// src/components/administrador/settings-admin.tsx
+// src/components/administrador/natalia/reportExecutive.tsx
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../../auth/AuthContext';
 
@@ -7,7 +7,7 @@ interface OutletContext {
   onLogout: () => void;
 }
 
-function SettingsAdmin() {
+function ReportExecutive() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
 
@@ -107,4 +107,4 @@ function SettingsAdmin() {
   );
 }
 
-export default SettingsAdmin;
+export default ReportExecutive;
