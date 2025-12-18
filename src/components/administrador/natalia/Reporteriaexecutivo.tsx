@@ -81,7 +81,7 @@ function ReportExecutive() {
             marginRight: 'auto',
             marginBottom: '24px'
           }}>
-            Esta sección está pendiente de implementación. Aquí podrás configurar parámetros del sistema.
+            Esta secciónss está pendiente de implementación. Aquí podrás configurar parámetros del sistema.
           </p>
 
           {/* Info adicional */}
