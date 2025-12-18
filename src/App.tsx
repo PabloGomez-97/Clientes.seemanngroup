@@ -55,7 +55,7 @@ function App() {
         element={user ? <Navigate to={user.username === 'Administrador' ? '/admin/dashboard' : '/quotes'} replace /> : <Login />} 
       />
 
-      {/* Ruta de Login Administrativo */}
+      {/* Ruta de Login Administrativo */ }
       <Route 
         path="/login-admin" 
         element={user ? <Navigate to={user.username === 'Administrador' ? '/admin/dashboard' : '/login'} replace /> : <LoginAdmin />} 
