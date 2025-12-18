@@ -11,9 +11,10 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const username = user?.email || 'Administrador';
+  const username = user?.nombreuser || 'Administrador';
 
-  const menuItems = [
+  // Definir todos los ítems de menú
+  const allMenuItems = [
     {
       path: '/admin/dashboard',
       name: 'Dashboard',
@@ -30,7 +31,8 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
         <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
           <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
         </svg>
-      )
+      ),
+      restrictedTo: 'superadmin@sphereglobal.io'
     },
     {
       path: '/admin/ejecutivos',
@@ -39,7 +41,8 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
         <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
           <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
         </svg>
-      )
+      ),
+      restrictedTo: 'superadmin@sphereglobal.io'
     },
     {
       path: '/admin/reporteria',
@@ -61,16 +64,27 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
       )
     },
     {
-    path: '/admin/reportexecutive',
-    name: 'Reportes Ejecutivos',
-    icon: (
-      <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-        <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
-      </svg>
-    )
+      path: '/admin/reportexecutive',
+      name: 'Reportes Ejecutivos',
+      icon: (
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+          <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
+        </svg>
+      ),
+      restrictedTo: 'natalia@seemanngroup.com' // Solo visible para este usuario
     }
   ];
+
+  // Filtrar ítems de menú basados en permisos del usuario
+  const menuItems = allMenuItems.filter(item => {
+    // Si el ítem tiene restricción, verificar que el usuario coincida
+    if (item.restrictedTo) {
+      return user?.email === item.restrictedTo;
+    }
+    // Si no tiene restricción, mostrar a todos
+    return true;
+  });
 
 if (!isOpen) return null;
 
@@ -146,7 +160,7 @@ if (!isOpen) return null;
           </svg>
           <small className="text-white text-truncate">{username}</small>
         </div>
-        <small className="text-muted">Seemann Dashboard v1.0</small>
+        <small className="text-muted">Linbis Dashboard v1.0</small>
       </div>
     </div>
   );

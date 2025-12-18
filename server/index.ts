@@ -80,6 +80,7 @@ const Ejecutivo = (mongoose.models.Ejecutivo || mongoose.model<IEjecutivoDoc>('E
 // ✅ MODIFICADO: Modelo User con referencia a Ejecutivo
 interface IUser {
   email: string;
+  nombreuser: string;
   username: string;
   passwordHash: string;
   ejecutivoId?: mongoose.Types.ObjectId;  // Referencia al ejecutivo
@@ -96,6 +97,7 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
+    nombreuser: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
     ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
   },
@@ -172,6 +174,7 @@ app.post('/api/login', async (req, res) => {
       user: { 
         email: user.email, 
         username: user.username,
+        nombreuser: user.nombreuser,
         ejecutivo: ejecutivo ? {
           id: ejecutivo._id,
           nombre: ejecutivo.nombre,
@@ -202,6 +205,7 @@ app.get('/api/me', auth, async (req, res) => {
       user: {
         sub: user.email,
         username: user.username,
+        nombreuser: user.nombreuser,
         ejecutivo: ejecutivo ? {
           id: ejecutivo._id,
           nombre: ejecutivo.nombre,

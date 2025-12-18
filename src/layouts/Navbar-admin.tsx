@@ -15,7 +15,7 @@ function NavbarAdmin({ accessToken, onLogout, toggleSidebar }: NavbarAdminProps)
     if (onLogout) onLogout();
   };
 
-  const username = user?.email || 'Administrador';
+  const username = user?.nombreuser || 'Administrador';
   const tokenPreview = accessToken ? `${accessToken.substring(0, 15)}...` : 'No definido';
 
   return (

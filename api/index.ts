@@ -69,6 +69,7 @@ const Ejecutivo = (mongoose.models.Ejecutivo || mongoose.model<IEjecutivoDoc>('E
 interface IUser {
   email: string;
   username: string;
+  nombreuser: string;
   passwordHash: string;
   ejecutivoId?: mongoose.Types.ObjectId;
 }
@@ -84,6 +85,7 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
+    nombreuser: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
     ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
   },
@@ -183,6 +185,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         user: { 
           email: user.email, 
           username: user.username,
+          nombreuser: user.nombreuser,
           ejecutivo: ejecutivo ? {
             id: ejecutivo._id,
             nombre: ejecutivo.nombre,
@@ -213,6 +216,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           user: {
             sub: user.email,
             username: user.username,
+            nombreuser: user.nombreuser,
             ejecutivo: ejecutivo ? {
               id: ejecutivo._id,
               nombre: ejecutivo.nombre,
