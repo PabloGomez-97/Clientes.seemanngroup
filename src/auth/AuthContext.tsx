@@ -24,6 +24,7 @@ type AuthCtx = {
     ejecutivo?: Ejecutivo;
   }>;
   logout: () => void;
+  getEjecutivos: () => Promise<Ejecutivo[]>;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -72,8 +73,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.clear();
   };
 
+  const getEjecutivos = async (): Promise<Ejecutivo[]> => {
+    if (!token) {
+      throw new Error('No hay sesión activa');
+    }
+    
+    const r = await fetch('/api/ejecutivos', {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!r.ok) {
+      throw new Error('Error al obtener ejecutivos');
+    }
+    
+    const data = await r.json();
+    return data.ejecutivos || [];
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout }}>
+    <AuthContext.Provider value={{ user, token, login, logout, getEjecutivos }}>
       {children}
     </AuthContext.Provider>
   );

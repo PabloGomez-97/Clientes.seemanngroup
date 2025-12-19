@@ -234,6 +234,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // RUTAS DE EJECUTIVOS
     // ============================================================
 
+    // GET /api/ejecutivos (pública para usuarios autenticados)
+    if (path === '/api/ejecutivos' && method === 'GET') {
+      try {
+        requireAuth(req); // Solo requiere estar autenticado
+        
+        const ejecutivos = await Ejecutivo.find({ activo: true }).sort({ nombre: 1 });
+
+        return res.json({
+          success: true,
+          ejecutivos: ejecutivos.map(ej => ({
+            id: ej._id,
+            nombre: ej.nombre,
+            email: ej.email,
+            telefono: ej.telefono
+          }))
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[ejecutivos] Error listando ejecutivos:', e);
+        return res.status(500).json({ error: 'Error al listar ejecutivos' });
+      }
+    }
+
     // GET /api/admin/ejecutivos
     if (path === '/api/admin/ejecutivos' && method === 'GET') {
       try {

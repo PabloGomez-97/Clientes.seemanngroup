@@ -224,6 +224,26 @@ app.get('/api/me', auth, async (req, res) => {
 // ENDPOINTS DE EJECUTIVOS
 // ============================================================
 
+// Listar ejecutivos (usuarios autenticados)
+app.get('/api/ejecutivos', auth, async (req, res) => {
+  try {
+    const ejecutivos = await Ejecutivo.find({ activo: true }).sort({ nombre: 1 });
+
+    return res.json({
+      success: true,
+      ejecutivos: ejecutivos.map(ej => ({
+        id: ej._id,
+        nombre: ej.nombre,
+        email: ej.email,
+        telefono: ej.telefono
+      }))
+    });
+  } catch (e) {
+    console.error('[ejecutivos] Error listando ejecutivos:', e);
+    return res.status(500).json({ error: 'Error al listar ejecutivos' });
+  }
+});
+
 // Listar ejecutivos (solo administradores)
 app.get('/api/admin/ejecutivos', auth, async (req, res) => {
   try {

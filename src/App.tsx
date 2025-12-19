@@ -14,7 +14,7 @@ import DashboardAdmin from './components/administrador/dashboard-admin';
 import UsersManagement from './components/administrador/users-management';
 import SettingsAdmin from './components/administrador/settings-admin';
 import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLayout';
-import ReporteriaPersonalizado from './components/administrador/ReporteriaPersonalizado';
+import ReporteriaPersonalizado from './components/administrador/deprecated-admin/ReporteriaPersonalizado';
 import EjecutivosManagement from './components/administrador/ejecutivos-management';
 import ReportExecutive from "./components/administrador/natalia/Reporteriaexecutivo"
 
