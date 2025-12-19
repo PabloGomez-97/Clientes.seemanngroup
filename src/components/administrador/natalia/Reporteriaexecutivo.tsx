@@ -79,6 +79,7 @@ function ReportExecutive() {
   const [compStartDate, setCompStartDate] = useState<string>('');
   const [compEndDate, setCompEndDate] = useState<string>('');
   const [comparativeData, setComparativeData] = useState<ExecutiveComparison[]>([]);
+  const [allComparativeQuotes, setAllComparativeQuotes] = useState<Quote[]>([]);
   const [loadingComparative, setLoadingComparative] = useState(false);
   const [errorComparative, setErrorComparative] = useState<string | null>(null);
   const [hasSearchedComparative, setHasSearchedComparative] = useState(false);
@@ -91,6 +92,7 @@ function ReportExecutive() {
   const [doubleStartDate, setDoubleStartDate] = useState<string>('');
   const [doubleEndDate, setDoubleEndDate] = useState<string>('');
   const [doubleData, setDoubleData] = useState<ExecutiveComparison[]>([]);
+  const [allDoubleQuotes, setAllDoubleQuotes] = useState<Quote[]>([]);
   const [loadingDouble, setLoadingDouble] = useState(false);
   const [errorDouble, setErrorDouble] = useState<string | null>(null);
   const [hasSearchedDouble, setHasSearchedDouble] = useState(false);
@@ -235,6 +237,7 @@ function ReportExecutive() {
       setHasSearchedComparative(true);
 
       const comparisons: ExecutiveComparison[] = [];
+      const allQuotes: Quote[] = [];
 
       for (const ejecutivo of ejecutivos) {
         const params = new URLSearchParams({ SalesRepName: ejecutivo.nombre });
@@ -253,6 +256,7 @@ function ReportExecutive() {
         if (response.ok) {
           const data = await response.json();
           const quotesArray: Quote[] = Array.isArray(data) ? data : [];
+          allQuotes.push(...quotesArray);
           comparisons.push({
             nombre: ejecutivo.nombre,
             stats: calculateStats(quotesArray)
@@ -261,6 +265,7 @@ function ReportExecutive() {
       }
 
       setComparativeData(comparisons);
+      setAllComparativeQuotes(allQuotes);
       localStorage.setItem(cacheKey, JSON.stringify(comparisons));
       localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
 
@@ -299,6 +304,7 @@ function ReportExecutive() {
       setHasSearchedDouble(true);
 
       const comparisons: ExecutiveComparison[] = [];
+      const allQuotes: Quote[] = [];
 
       for (const ejeName of [ejecutivo1, ejecutivo2]) {
         const params = new URLSearchParams({ SalesRepName: ejeName });
@@ -317,6 +323,7 @@ function ReportExecutive() {
         if (response.ok) {
           const data = await response.json();
           const quotesArray: Quote[] = Array.isArray(data) ? data : [];
+          allQuotes.push(...quotesArray);
           comparisons.push({
             nombre: ejeName,
             stats: calculateStats(quotesArray)
@@ -325,6 +332,7 @@ function ReportExecutive() {
       }
 
       setDoubleData(comparisons);
+      setAllDoubleQuotes(allQuotes);
       localStorage.setItem(cacheKey, JSON.stringify(comparisons));
       localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
 
@@ -394,6 +402,124 @@ function ReportExecutive() {
       month: '2-digit',
       year: 'numeric'
     });
+  };
+
+  // Función para exportar a Excel (CSV)
+  const exportToExcel = (data: Quote[], filename: string) => {
+    const headers = ['Número', 'Fecha', 'Estado', 'Tipo', 'Shipper', 'Consignee', 'Origen', 'Destino', 'Income', 'Expense', 'Profit'];
+    const rows = data.map(q => [
+      q.number,
+      formatDate(q.date),
+      q.status,
+      q.modeOfTransportation,
+      q.shipper,
+      q.consignee,
+      q.origin,
+      q.destination,
+      q.totalIncome,
+      q.totalExpense,
+      q.profit
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Función para exportar comparativa a Excel
+  const exportComparativeToExcel = (data: ExecutiveComparison[], filename: string) => {
+    const headers = ['Ejecutivo', 'Total Quotes', 'Completadas', '% Completado', 'Aéreas', 'Marítimas', 'Clientes Únicos', 'Income', 'Expense', 'Profit', 'Margen %', 'Promedio/Quote'];
+    const rows = data.map(exec => [
+      exec.nombre,
+      exec.stats.totalQuotes,
+      exec.stats.completedQuotes,
+      exec.stats.completionRate.toFixed(1) + '%',
+      exec.stats.airQuotes,
+      exec.stats.seaQuotes,
+      exec.stats.uniqueConsignees,
+      exec.stats.totalIncome,
+      exec.stats.totalExpense,
+      exec.stats.totalProfit,
+      exec.stats.profitMargin.toFixed(1) + '%',
+      exec.stats.averagePerQuote
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Análisis de Top Clientes
+  const getTopConsignees = (quotesData: Quote[], limit: number = 10) => {
+    const consigneeMap = new Map<string, { count: number; income: number; profit: number }>();
+    
+    quotesData.forEach(q => {
+      const consignee = q.consignee?.trim();
+      if (consignee && consignee.length > 0) {
+        const existing = consigneeMap.get(consignee) || { count: 0, income: 0, profit: 0 };
+        consigneeMap.set(consignee, {
+          count: existing.count + 1,
+          income: existing.income + q.totalIncome,
+          profit: existing.profit + q.profit
+        });
+      }
+    });
+
+    return Array.from(consigneeMap.entries())
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.income - a.income)
+      .slice(0, limit);
+  };
+
+  // Análisis de Top Rutas
+  const getTopRoutes = (quotesData: Quote[], limit: number = 10) => {
+    const routeMap = new Map<string, { count: number; income: number }>();
+    
+    quotesData.forEach(q => {
+      const route = `${q.origin} → ${q.destination}`;
+      const existing = routeMap.get(route) || { count: 0, income: 0 };
+      routeMap.set(route, {
+        count: existing.count + 1,
+        income: existing.income + q.totalIncome
+      });
+    });
+
+    return Array.from(routeMap.entries())
+      .map(([route, data]) => ({ route, ...data }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+  };
+
+  // Función para obtener todos los quotes de comparativa (para análisis global)
+  const getAllComparativeQuotes = (): Quote[] => {
+    const allQuotes: Quote[] = [];
+    comparativeData.forEach(exec => {
+      // Aquí necesitaríamos acceso a los quotes individuales
+      // Por ahora usaremos un placeholder
+    });
+    return allQuotes;
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
@@ -767,7 +893,138 @@ function ReportExecutive() {
           </h4>
           {/* Gráficos Individual */}
           {hasSearched && !loading && quotes.length > 0 && (
-            <ChartExecutivo type="individual" data={stats} />
+            <>
+              <ChartExecutivo type="individual" data={stats} />
+              
+              {/* Botón Exportar */}
+              <div className="row mb-4">
+                <div className="col-12" style={{ textAlign: 'right' }}>
+                  <button
+                    className="btn btn-outline-primary"
+                    onClick={() => exportToExcel(quotes, `reporte_${selectedEjecutivo}_${new Date().toISOString().split('T')[0]}`)}
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      padding: '10px 24px',
+                      borderRadius: '6px',
+                      border: '2px solid #3b82f6',
+                      color: '#3b82f6',
+                      backgroundColor: 'white',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#3b82f6';
+                      e.currentTarget.style.color = 'white';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                      e.currentTarget.style.color = '#3b82f6';
+                    }}
+                  >
+                    📥 Exportar a Excel
+                  </button>
+                </div>
+              </div>
+
+              {/* Top Clientes y Top Rutas */}
+              <div className="row g-4 mb-4">
+                {/* Top 10 Clientes */}
+                <div className="col-md-6">
+                  <div style={{
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    padding: '24px',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}>
+                    <h5 style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#1f2937',
+                      marginBottom: '20px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      👥 Top 10 Clientes por Income
+                    </h5>
+                    <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                      <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
+                        <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                          <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
+                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Cliente</th>
+                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
+                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getTopConsignees(quotes, 10).map((consignee, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
+                              <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
+                                {consignee.name.length > 30 ? consignee.name.substring(0, 30) + '...' : consignee.name}
+                              </td>
+                              <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{consignee.count}</td>
+                              <td style={{ padding: '10px 8px', color: '#10b981', fontWeight: '600', textAlign: 'right' }}>
+                                {formatCurrency(consignee.income)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top 10 Rutas */}
+                <div className="col-md-6">
+                  <div style={{
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    padding: '24px',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}>
+                    <h5 style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#1f2937',
+                      marginBottom: '20px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      🌍 Top 10 Rutas Más Cotizadas
+                    </h5>
+                    <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                      <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
+                        <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                          <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
+                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Ruta</th>
+                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
+                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getTopRoutes(quotes, 10).map((route, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
+                              <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
+                                {route.route}
+                              </td>
+                              <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{route.count}</td>
+                              <td style={{ padding: '10px 8px', color: '#3b82f6', fontWeight: '600', textAlign: 'right' }}>
+                                {formatCurrency(route.income)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Mensaje inicial Individual */}
@@ -989,7 +1246,215 @@ function ReportExecutive() {
           </h4>
           {/* Gráficos Comparativa */}
           {hasSearchedComparative && !loadingComparative && comparativeData.length > 0 && (
-            <ChartExecutivo type="comparativa" comparativeData={comparativeData} />
+            <>
+              <ChartExecutivo type="comparativa" comparativeData={comparativeData} />
+              
+              {/* Botón Exportar */}
+              <div className="row mb-4">
+                <div className="col-12" style={{ textAlign: 'right' }}>
+                  <button
+                    className="btn btn-outline-primary"
+                    onClick={() => exportComparativeToExcel(comparativeData, `comparativa_ejecutivos_${new Date().toISOString().split('T')[0]}`)}
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      padding: '10px 24px',
+                      borderRadius: '6px',
+                      border: '2px solid #3b82f6',
+                      color: '#3b82f6',
+                      backgroundColor: 'white',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#3b82f6';
+                      e.currentTarget.style.color = 'white';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                      e.currentTarget.style.color = '#3b82f6';
+                    }}
+                  >
+                    📥 Exportar a Excel
+                  </button>
+                </div>
+              </div>
+
+              {/* Ranking de Ejecutivos */}
+              <div className="row g-4 mb-4">
+                <div className="col-12">
+                  <div style={{
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    padding: '24px',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                  }}>
+                    <h5 style={{
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      color: '#1f2937',
+                      marginBottom: '20px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}>
+                      🏆 Ranking de Ejecutivos
+                    </h5>
+
+                    <div className="row g-3">
+                      {[...comparativeData]
+                        .sort((a, b) => b.stats.totalProfit - a.stats.totalProfit)
+                        .slice(0, 5)
+                        .map((exec, idx) => {
+                          const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
+                          return (
+                            <div className="col-md-4" key={idx}>
+                              <div style={{
+                                backgroundColor: idx < 3 ? '#f9fafb' : 'white',
+                                border: `2px solid ${idx === 0 ? '#fbbf24' : idx === 1 ? '#9ca3af' : idx === 2 ? '#d97706' : '#e5e7eb'}`,
+                                borderRadius: '8px',
+                                padding: '16px',
+                                position: 'relative'
+                              }}>
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '-12px',
+                                  right: '12px',
+                                  backgroundColor: 'white',
+                                  padding: '4px 12px',
+                                  borderRadius: '12px',
+                                  border: '2px solid #e5e7eb',
+                                  fontSize: '20px'
+                                }}>
+                                  {medal || `#${idx + 1}`}
+                                </div>
+                                <div style={{
+                                  fontSize: '18px',
+                                  fontWeight: '700',
+                                  color: '#1f2937',
+                                  marginBottom: '8px',
+                                  paddingRight: '50px'
+                                }}>
+                                  {exec.nombre}
+                                </div>
+                                <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
+                                  Profit: <span style={{ fontWeight: '700', color: '#8b5cf6' }}>{formatCurrency(exec.stats.totalProfit)}</span>
+                                </div>
+                                <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
+                                  Cotizaciones: <span style={{ fontWeight: '600' }}>{exec.stats.totalQuotes}</span>
+                                </div>
+                                <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                                  Margen: <span style={{ fontWeight: '600', color: '#10b981' }}>{exec.stats.profitMargin.toFixed(1)}%</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Top Clientes y Top Rutas - Nivel Global */}
+              {allComparativeQuotes.length > 0 && (
+                <div className="row g-4 mb-4">
+                  {/* Top 10 Clientes */}
+                  <div className="col-md-6">
+                    <div style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      padding: '24px',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                    }}>
+                      <h5 style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#1f2937',
+                        marginBottom: '20px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        👥 Top 10 Clientes (Global)
+                      </h5>
+                      <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                        <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
+                          <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Cliente</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getTopConsignees(allComparativeQuotes, 10).map((consignee, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
+                                <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
+                                  {consignee.name.length > 30 ? consignee.name.substring(0, 30) + '...' : consignee.name}
+                                </td>
+                                <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{consignee.count}</td>
+                                <td style={{ padding: '10px 8px', color: '#10b981', fontWeight: '600', textAlign: 'right' }}>
+                                  {formatCurrency(consignee.income)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top 10 Rutas */}
+                  <div className="col-md-6">
+                    <div style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      padding: '24px',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                    }}>
+                      <h5 style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#1f2937',
+                        marginBottom: '20px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        🌍 Top 10 Rutas (Global)
+                      </h5>
+                      <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                        <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
+                          <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Ruta</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getTopRoutes(allComparativeQuotes, 10).map((route, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
+                                <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
+                                  {route.route}
+                                </td>
+                                <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{route.count}</td>
+                                <td style={{ padding: '10px 8px', color: '#3b82f6', fontWeight: '600', textAlign: 'right' }}>
+                                  {formatCurrency(route.income)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Mensaje inicial Comparativa */}
@@ -1118,11 +1583,6 @@ function ReportExecutive() {
             </div>
           )}
 
-          {/* Gráficos Doble */}
-          {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
-            <ChartExecutivo type="doble" doubleData={doubleData} />
-          )}
-
           {/* Comparación Doble - Tabla */}
           {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
             <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
@@ -1222,6 +1682,126 @@ function ReportExecutive() {
                 </table>
               </div>
             </div>
+          )}
+
+
+          {/* Diseñame un titulo bonito para anunciar las tablas y hazme un vspace */}
+          <div style={{ marginTop: '24px', marginBottom: '16px' }}>
+            <h4 style={{
+              fontSize: '18px',
+              fontWeight: '700',
+              color: '#1f2937',
+              textAlign: 'center'
+            }}>
+              📊 Análisis Comparativo entre  {doubleData[0].nombre} y {doubleData[1].nombre}
+            </h4>
+          </div>
+          {/* Gráficos Doble */}
+          {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
+            <>
+              <ChartExecutivo type="doble" doubleData={doubleData} />
+              
+              {/* Análisis Adicional para Doble */}
+              {allDoubleQuotes.length > 0 && (
+                <div className="row g-4 mb-4">
+                  {/* Top 10 Clientes */}
+                  <div className="col-md-6">
+                    <div style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      padding: '24px',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                    }}>
+                      <h5 style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#1f2937',
+                        marginBottom: '20px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        👥 Top 10 Clientes (Ambos Ejecutivos)
+                      </h5>
+                      <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                        <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
+                          <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Cliente</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getTopConsignees(allDoubleQuotes, 10).map((consignee, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
+                                <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
+                                  {consignee.name.length > 30 ? consignee.name.substring(0, 30) + '...' : consignee.name}
+                                </td>
+                                <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{consignee.count}</td>
+                                <td style={{ padding: '10px 8px', color: '#10b981', fontWeight: '600', textAlign: 'right' }}>
+                                  {formatCurrency(consignee.income)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top 10 Rutas */}
+                  <div className="col-md-6">
+                    <div style={{
+                      backgroundColor: 'white',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      padding: '24px',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                    }}>
+                      <h5 style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#1f2937',
+                        marginBottom: '20px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}>
+                        🌍 Top 10 Rutas (Ambos Ejecutivos)
+                      </h5>
+                      <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
+                        <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
+                          <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Ruta</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
+                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getTopRoutes(allDoubleQuotes, 10).map((route, idx) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
+                                <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
+                                  {route.route}
+                                </td>
+                                <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{route.count}</td>
+                                <td style={{ padding: '10px 8px', color: '#3b82f6', fontWeight: '600', textAlign: 'right' }}>
+                                  {formatCurrency(route.income)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Mensaje inicial Doble */}
