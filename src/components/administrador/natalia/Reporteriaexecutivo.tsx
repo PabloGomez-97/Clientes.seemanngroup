@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../../auth/AuthContext';
+import ChartExecutivo from './Chartexecutivo';
 
 interface OutletContext {
   accessToken: string;
@@ -760,6 +761,15 @@ function ReportExecutive() {
             </div>
           )}
 
+          {/* Diseñame un titulo bonito para anunciar las tablas y hazme un vspace */}
+          <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '25px', marginTop: '20px' }}>
+            Gráficos de Reporte Individual
+          </h4>
+          {/* Gráficos Individual */}
+          {hasSearched && !loading && quotes.length > 0 && (
+            <ChartExecutivo type="individual" data={stats} />
+          )}
+
           {/* Mensaje inicial Individual */}
           {!hasSearched && !loading && (
             <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '60px 20px', textAlign: 'center' }}>
@@ -918,9 +928,6 @@ function ReportExecutive() {
                       <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('totalQuotes')}>
                         Total <SortIcon field="totalQuotes" />
                       </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('uniqueConsignees')}>
-                        👥 Clientes <SortIcon field="uniqueConsignees" />
-                      </th>
                       <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('completedQuotes')}>
                         Completadas <SortIcon field="completedQuotes" />
                       </th>
@@ -932,6 +939,9 @@ function ReportExecutive() {
                       </th>
                       <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('seaQuotes')}>
                         🚢 Marít. <SortIcon field="seaQuotes" />
+                      </th>
+                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('uniqueConsignees')}>
+                        👥 Clientes <SortIcon field="uniqueConsignees" />
                       </th>
                       <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'right' }} onClick={() => handleSort('totalIncome')}>
                         Income <SortIcon field="totalIncome" />
@@ -955,11 +965,11 @@ function ReportExecutive() {
                       <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '12px 16px', fontWeight: '600', color: '#1f2937' }}>{exec.nombre}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', color: '#374151', fontWeight: '600' }}>{exec.stats.totalQuotes}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#f59e0b', fontWeight: '600' }}>{exec.stats.uniqueConsignees}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', color: '#10b981', fontWeight: '600' }}>{exec.stats.completedQuotes}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{exec.stats.completionRate.toFixed(1)}%</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', color: '#3b82f6', fontWeight: '600' }}>{exec.stats.airQuotes}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center', color: '#0ea5e9', fontWeight: '600' }}>{exec.stats.seaQuotes}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#f59e0b', fontWeight: '600' }}>{exec.stats.uniqueConsignees}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>{formatCurrency(exec.stats.totalIncome)}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'right', color: '#ef4444', fontWeight: '600' }}>{formatCurrency(exec.stats.totalExpense)}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'right', color: '#8b5cf6', fontWeight: '700' }}>{formatCurrency(exec.stats.totalProfit)}</td>
@@ -971,6 +981,15 @@ function ReportExecutive() {
                 </table>
               </div>
             </div>
+          )}
+
+          {/* Diseñame un titulo bonito para anunciar las tablas y hazme un vspace */}
+          <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '25px', marginTop: '20px' }}>
+            Gráficos de Comparativa de Ejecutivos
+          </h4>
+          {/* Gráficos Comparativa */}
+          {hasSearchedComparative && !loadingComparative && comparativeData.length > 0 && (
+            <ChartExecutivo type="comparativa" comparativeData={comparativeData} />
           )}
 
           {/* Mensaje inicial Comparativa */}
@@ -1099,7 +1118,12 @@ function ReportExecutive() {
             </div>
           )}
 
-          {/* Comparación Doble */}
+          {/* Gráficos Doble */}
+          {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
+            <ChartExecutivo type="doble" doubleData={doubleData} />
+          )}
+
+          {/* Comparación Doble - Tabla */}
           {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
             <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
               <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
