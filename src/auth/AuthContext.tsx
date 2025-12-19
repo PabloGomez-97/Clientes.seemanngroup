@@ -10,7 +10,7 @@ type Ejecutivo = {
 type User = { 
   email: string; 
   username: string;
-  nombreuser: string;  // ✅ Agregar aquí
+  nombreuser: string;
   ejecutivo?: Ejecutivo;
 } | null;
 
@@ -20,7 +20,7 @@ type AuthCtx = {
   login: (email: string, password: string) => Promise<{ 
     email: string; 
     username: string;
-    nombreuser: string;  // ✅ Agregar aquí también
+    nombreuser: string;
     ejecutivo?: Ejecutivo;
   }>;
   logout: () => void;
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(d => setUser({ 
         email: d.user.sub, 
         username: d.user.username,
-        nombreuser: d.user.nombreuser,  // ✅ Incluir en el objeto user
+        nombreuser: d.user.nombreuser,
         ejecutivo: d.user.ejecutivo || null
       }))
       .catch(() => {
