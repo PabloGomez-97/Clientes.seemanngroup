@@ -853,7 +853,7 @@ function QuoteLCL() {
                                 </small>
                                 <div className="d-flex align-items-baseline gap-1">
                                   <h4 className="mb-0 text-success fw-bold">
-                                    {ruta.currency} {ruta.ofWM}
+                                    {ruta.currency} {(ruta.ofWM * 1.15).toFixed(2)}
                                   </h4>
                                   <small className="text-muted">/W/M</small>
                                 </div>

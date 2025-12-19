@@ -803,7 +803,7 @@ function QuoteFCL() {
                                         <i className="bi bi-box"></i> 20GP
                                       </span>
                                       <span className="badge bg-light text-dark">
-                                        {ruta.gp20}
+                                        {ruta.currency} {(extractPrice(ruta.gp20) * 1.15).toFixed(0)}
                                       </span>
                                     </div>
                                   </button>
@@ -826,7 +826,7 @@ function QuoteFCL() {
                                         <i className="bi bi-box"></i> 40HQ
                                       </span>
                                       <span className="badge bg-light text-dark">
-                                        {ruta.hq40}
+                                        {ruta.currency} {(extractPrice(ruta.hq40) * 1.15).toFixed(0)}
                                       </span>
                                     </div>
                                   </button>
@@ -849,7 +849,7 @@ function QuoteFCL() {
                                         <i className="bi bi-box"></i> 40NOR
                                       </span>
                                       <span className="badge bg-light text-dark">
-                                        {ruta.nor40}
+                                        {ruta.currency} {(extractPrice(ruta.nor40) * 1.15).toFixed(0)}
                                       </span>
                                     </div>
                                   </button>

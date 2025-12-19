@@ -1269,7 +1269,7 @@ function QuoteAPITester() {
                                 </small>
                                 <div className="d-flex align-items-baseline gap-1">
                                   <h4 className="mb-0 text-primary fw-bold">
-                                    {ruta.currency} {ruta.priceForComparison.toFixed(2)}
+                                    {ruta.currency} {(ruta.priceForComparison * 1.15).toFixed(2)}
                                   </h4>
                                   <small className="text-muted">/kg</small>
                                 </div>
