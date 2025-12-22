@@ -115,6 +115,14 @@ function ReportExecutive() {
     fetchEjecutivos();
   }, []);
 
+  useEffect(() => {
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach(el => {
+      new (window as any).bootstrap.Tooltip(el);
+    });
+  }, []);
+
+
   // Función para calcular estadísticas de un array de quotes
   const calculateStats = (quotesArray: Quote[]): QuoteStats => {
     const totalQuotes = quotesArray.length;
@@ -829,7 +837,7 @@ function ReportExecutive() {
             <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
               <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
                 <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
-                  Detalle de Cotizaciones ({quotes.length})
+                  Detalle de Cotizaciones (6) {/* ({quotes.length}) */}
                 </h4>
               </div>
 
@@ -851,7 +859,7 @@ function ReportExecutive() {
                     </tr>
                   </thead>
                   <tbody>
-                    {quotes.map((quote, idx) => (
+                    {quotes.slice(0, 6).map((quote, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '12px 16px', fontWeight: '600', color: '#3b82f6' }}>{quote.number}</td>
                         <td style={{ padding: '12px 16px', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatDate(quote.date)}</td>
@@ -1197,8 +1205,33 @@ function ReportExecutive() {
                       <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('seaQuotes')}>
                         🚢 Marít. <SortIcon field="seaQuotes" />
                       </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('uniqueConsignees')}>
+                      <th
+                        style={{
+                          padding: '12px 16px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          whiteSpace: 'nowrap'
+                        }}
+                        onClick={() => handleSort('uniqueConsignees')}
+                      >
                         👥 Clientes <SortIcon field="uniqueConsignees" />
+
+                        <span
+                          data-bs-toggle="tooltip"
+                          data-bs-placement="top"
+                          title="Clientes únicos"
+                          style={{
+                            marginLeft: '6px',
+                            cursor: 'help',
+                            color: '#9ca3af',
+                            fontSize: '12px'
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          ⓘ
+                        </span>
                       </th>
                       <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'right' }} onClick={() => handleSort('totalIncome')}>
                         Income <SortIcon field="totalIncome" />
