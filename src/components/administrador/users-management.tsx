@@ -14,6 +14,7 @@ interface User {
   id: string;
   email: string;
   username: string;
+  nombreuser: string;
   createdAt: string;
   ejecutivo: Ejecutivo | null;
 }
@@ -40,6 +41,7 @@ function UsersManagement() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
+  const [nombreuser, setNombreuser] = useState('');
   const [password, setPassword] = useState('');
   const [ejecutivoId, setEjecutivoId] = useState<string>('');
   const [formLoading, setFormLoading] = useState(false);
@@ -104,6 +106,7 @@ function UsersManagement() {
   const resetForm = () => {
     setEmail('');
     setUsername('');
+    setNombreuser('');
     setPassword('');
     setEjecutivoId('');
     setEditingUserId(null);
@@ -114,6 +117,7 @@ function UsersManagement() {
     setEditingUserId(user.id);
     setEmail(user.email);
     setUsername(user.username);
+    setNombreuser(user.nombreuser);
     setPassword('');
     setEjecutivoId(user.ejecutivo?.id || '');
     setShowForm(true);
@@ -135,7 +139,8 @@ function UsersManagement() {
         },
         body: JSON.stringify({ 
           email, 
-          username, 
+          username,
+          nombreuser, 
           password,
           ejecutivoId: ejecutivoId || undefined
         }),
@@ -166,6 +171,7 @@ function UsersManagement() {
     try {
       const updateData: any = {
         username,
+        nombreuser,
         ejecutivoId: ejecutivoId || null
       };
 
@@ -608,6 +614,41 @@ function UsersManagement() {
                       El email no se puede modificar
                     </p>
                   )}
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151'
+                  }}>
+                    Nombre del Cliente *
+                  </label>
+                  <input
+                    type="text"
+                    value={nombreuser}
+                    onChange={(e) => setNombreuser(e.target.value)}
+                    required
+                    placeholder="Ej: Juan Pérez / Empresa S.A."
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      fontSize: '14px',
+                      transition: 'all 0.2s'
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#3b82f6';
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#d1d5db';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  />
                 </div>
 
                 <div style={{ marginBottom: '16px' }}>

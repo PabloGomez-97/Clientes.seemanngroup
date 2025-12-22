@@ -414,9 +414,9 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
     }
 
-    // ✅ MODIFICADO: Recibir ejecutivoId en lugar de campos individuales
-    const { email, username, password, ejecutivoId } = (req.body as any) || {};
-    if (!email || !username || !password) {
+    // ✅ MODIFICADO: Recibir ejecutivoId y nombreuser
+    const { email, username, nombreuser, password, ejecutivoId } = (req.body as any) || {}; // ✅ AGREGADO nombreuser
+    if (!email || !username || !nombreuser || !password) { // ✅ AGREGADO nombreuser
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
@@ -431,6 +431,7 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
     const newUser = new User({
       email: normalizedEmail,
       username: String(username).trim(),
+      nombreuser: String(nombreuser).trim(), // ✅ AGREGADO
       passwordHash,
       ejecutivoId: ejecutivoId || undefined
     });
@@ -471,6 +472,7 @@ app.get('/api/admin/users', auth, async (req, res) => {
         id: u._id,
         email: u.email,
         username: u.username,
+        nombreuser: u.nombreuser,
         createdAt: u.createdAt,
         ejecutivo: u.ejecutivoId ? {
           id: u.ejecutivoId._id,
@@ -495,7 +497,7 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
     }
 
     const { id } = req.params;
-    const { username, password, ejecutivoId } = (req.body as any) || {};
+    const { username, nombreuser, password, ejecutivoId } = (req.body as any) || {}; // ✅ AGREGADO nombreuser
 
     const userToUpdate = await User.findById(id);
     if (!userToUpdate) {
@@ -509,6 +511,11 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
     // Actualizar campos
     if (username) {
       userToUpdate.username = String(username).trim();
+    }
+
+    // ✅ AGREGADO: Actualizar nombreuser
+    if (nombreuser) {
+      userToUpdate.nombreuser = String(nombreuser).trim();
     }
 
     if (password) {

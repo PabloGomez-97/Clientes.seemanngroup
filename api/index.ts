@@ -433,8 +433,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
         }
 
-        const { email, username, password, ejecutivoId } = (req.body as any) || {};
-        if (!email || !username || !password) {
+        const { email, username, nombreuser, password, ejecutivoId } = (req.body as any) || {}; // ✅ AGREGADO nombreuser
+        if (!email || !username || !nombreuser || !password) { // ✅ AGREGADO nombreuser
           return res.status(400).json({ error: 'Faltan campos requeridos' });
         }
 
@@ -449,6 +449,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const newUser = new User({
           email: normalizedEmail,
           username: String(username).trim(),
+          nombreuser: String(nombreuser).trim(), // ✅ AGREGADO
           passwordHash,
           ejecutivoId: ejecutivoId || undefined
         });
@@ -490,6 +491,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             id: u._id,
             email: u.email,
             username: u.username,
+            nombreuser: u.nombreuser,
             createdAt: u.createdAt,
             ejecutivo: u.ejecutivoId ? {
               id: u.ejecutivoId._id,
@@ -517,7 +519,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const id = path.split('/').pop();
-        const { username, password, ejecutivoId } = (req.body as any) || {};
+        const { username, nombreuser, password, ejecutivoId } = (req.body as any) || {}; // ✅ AGREGADO nombreuser
 
         const userToUpdate = await User.findById(id);
         if (!userToUpdate) {
@@ -531,6 +533,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Actualizar campos
         if (username) {
           userToUpdate.username = String(username).trim();
+        }
+
+        // ✅ AGREGADO: Actualizar nombreuser
+        if (nombreuser) {
+          userToUpdate.nombreuser = String(nombreuser).trim();
         }
 
         if (password) {
