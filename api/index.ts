@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
-import chatHandler from '../api/chat.ts'; 
+import chatHandler from '../api/chat.js'; 
 
 /** =========================
  *  Entorno + JWT
