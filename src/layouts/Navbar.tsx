@@ -25,7 +25,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // User data
-  const username = user?.username || 'Usuario';
+  const username = user?.username || 'Usuarios';
   const email = user?.email || 'usuario@ejemplo.com';
   const ejecutivo = user?.ejecutivo;
   const hasEjecutivo = !!ejecutivo;
