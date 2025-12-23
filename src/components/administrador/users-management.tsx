@@ -949,6 +949,19 @@ function UsersManagement() {
                       }}>
                         Nombre / Empresa
                       </th>
+                      {showAdmins && (
+                        <th style={{
+                          padding: '12px 24px',
+                          textAlign: 'left',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: '#6b7280',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          Nombre del Ejecutivo
+                        </th>
+                      )}
                       {!showAdmins && (
                         <th style={{
                           padding: '12px 24px',
@@ -1024,6 +1037,16 @@ function UsersManagement() {
                             </span>
                           )}
                         </td>
+                        {showAdmins && (
+                          <td style={{
+                            padding: '16px 24px',
+                            fontSize: '14px',
+                            color: '#1f2937',
+                            fontWeight: '500'
+                          }}>
+                            {user.nombreuser || '-'}
+                          </td>
+                        )}
                         {!showAdmins && (
                           <td style={{
                             padding: '16px 24px',

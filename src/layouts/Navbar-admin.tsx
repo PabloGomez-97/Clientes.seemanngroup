@@ -9,6 +9,7 @@ interface NavbarAdminProps {
 
 function NavbarAdmin({ accessToken, onLogout, toggleSidebar }: NavbarAdminProps) {
   const { user, logout } = useAuth();
+  console.log(user);
 
   const handleLogout = () => {
     logout();

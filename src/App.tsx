@@ -17,6 +17,7 @@ import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLa
 import ReporteriaPersonalizado from './components/administrador/deprecated-admin/ReporteriaPersonalizado';
 import EjecutivosManagement from './components/administrador/ejecutivos-management';
 import ReportExecutive from "./components/administrador/natalia/Reporteriaexecutivo"
+import Cotizadoradministrador from './components/administrador/Cotizador-admin';
 
 // Reportería Pages
 import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';
@@ -71,6 +72,7 @@ function App() {
           <AdminLayout />
         </ProtectedRoute>
       }>
+        <Route path="cotizador-administrador" element={<Cotizadoradministrador />} />
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardAdmin />} />
         <Route path="users" element={<UsersManagement />} />
