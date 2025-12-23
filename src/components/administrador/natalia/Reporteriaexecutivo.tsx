@@ -1718,20 +1718,21 @@ function ReportExecutive() {
           )}
 
 
-          {/* Diseñame un titulo bonito para anunciar las tablas y hazme un vspace */}
-          <div style={{ marginTop: '24px', marginBottom: '16px' }}>
-            <h4 style={{
-              fontSize: '18px',
-              fontWeight: '700',
-              color: '#1f2937',
-              textAlign: 'center'
-            }}>
-              📊 Análisis Comparativo entre  {doubleData[0].nombre} y {doubleData[1].nombre}
-            </h4>
-          </div>
           {/* Gráficos Doble */}
           {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
             <>
+              {/* Diseñame un titulo bonito para anunciar las tablas y hazme un vspace */}
+              <div style={{ marginTop: '24px', marginBottom: '16px' }}>
+                <h4 style={{
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  color: '#1f2937',
+                  textAlign: 'center'
+                }}>
+                  📊 Análisis Comparativo entre  {doubleData[0].nombre} y {doubleData[1].nombre}
+                </h4>
+              </div>
+              
               <ChartExecutivo type="doble" doubleData={doubleData} />
               
               {/* Análisis Adicional para Doble */}

@@ -14,6 +14,15 @@ type User = {
   ejecutivo?: Ejecutivo;
 } | null;
 
+// ✅ NUEVO: Tipo para los clientes
+type Cliente = {
+  id: string;
+  email: string;
+  username: string;
+  nombreuser: string;
+  createdAt: string;
+};
+
 type AuthCtx = {
   user: User;
   token: string | null;
@@ -25,6 +34,7 @@ type AuthCtx = {
   }>;
   logout: () => void;
   getEjecutivos: () => Promise<Ejecutivo[]>;
+  getMisClientes: () => Promise<Cliente[]>; // ✅ NUEVA FUNCIÓN
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -93,8 +103,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return data.ejecutivos || [];
   };
 
+  // ✅ NUEVA FUNCIÓN: Obtener clientes asignados al ejecutivo autenticado
+  const getMisClientes = async (): Promise<Cliente[]> => {
+    if (!token) {
+      throw new Error('No hay sesión activa');
+    }
+    
+    const r = await fetch('/api/ejecutivo/clientes', {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!r.ok) {
+      const errorData = await r.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Error al obtener clientes');
+    }
+    
+    const data = await r.json();
+    return data.clientes || [];
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, getEjecutivos }}>
+    <AuthContext.Provider value={{ user, token, login, logout, getEjecutivos, getMisClientes }}>
       {children}
     </AuthContext.Provider>
   );
