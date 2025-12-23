@@ -221,71 +221,6 @@ app.get('/api/me', auth, async (req, res) => {
 });
 
 // ============================================================
-// ENDPOINTS DEL EJECUTIVO (ver sus clientes)
-// ============================================================
-
-app.get('/api/ejecutivo/clientes', auth, async (req, res) => {
-  try {
-    const currentUser = (req as any).user as AuthPayload;
-
-    // Buscar el usuario logueado en la colección users
-    const me = await User.findOne({ email: currentUser.sub }).populate('ejecutivoId');
-
-    if (!me) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    // Resolver el _id del ejecutivo:
-    // 1) si el user tiene ejecutivoId, usamos ese
-    // 2) si no, intentamos encontrar un Ejecutivo cuyo email coincida con el del user logueado (caso "ejecutivo con cuenta")
-    let ejecutivoObjectId: any = null;
-
-    if (me.ejecutivoId) {
-      // Cuando está populado, me.ejecutivoId es el doc; cuando no, es ObjectId.
-      ejecutivoObjectId = (me.ejecutivoId as any)._id ?? me.ejecutivoId;
-    } else {
-      const lookupEmail = String(me.email).toLowerCase().trim();
-      const ej = await Ejecutivo.findOne({ email: lookupEmail });
-      if (ej) ejecutivoObjectId = ej._id;
-    }
-
-    if (!ejecutivoObjectId) {
-      // No hay ejecutivo asociado => no hay clientes que mostrar
-      return res.json({ success: true, clientes: [] });
-    }
-
-    // Buscar clientes asociados a ese ejecutivoId
-    const clientes = await User.find(
-      { ejecutivoId: ejecutivoObjectId, username: { $ne: 'Administrador' } },
-      { passwordHash: 0 }
-    )
-      .populate('ejecutivoId')
-      .sort({ createdAt: -1 });
-
-    return res.json({
-      success: true,
-      clientes: clientes.map((u: any) => ({
-        id: u._id,
-        email: u.email,
-        username: u.username,
-        nombreuser: u.nombreuser,
-        createdAt: u.createdAt,
-        ejecutivo: u.ejecutivoId ? {
-          id: u.ejecutivoId._id,
-          nombre: u.ejecutivoId.nombre,
-          email: u.ejecutivoId.email,
-          telefono: u.ejecutivoId.telefono
-        } : null
-      }))
-    });
-  } catch (e) {
-    console.error('[ejecutivo] Error listando clientes:', e);
-    return res.status(500).json({ error: 'Error al listar clientes del ejecutivo' });
-  }
-});
-
-
-// ============================================================
 // ENDPOINTS DE EJECUTIVOS
 // ============================================================
 
@@ -479,9 +414,9 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
     }
 
-    // ✅ MODIFICADO: Recibir ejecutivoId y nombreuser
-    const { email, username, nombreuser, password, ejecutivoId } = (req.body as any) || {}; // ✅ AGREGADO nombreuser
-    if (!email || !username || !nombreuser || !password) { // ✅ AGREGADO nombreuser
+    // ✅ MODIFICADO: Recibir ejecutivoId en lugar de campos individuales
+    const { email, username, password, ejecutivoId } = (req.body as any) || {};
+    if (!email || !username || !password) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
@@ -496,7 +431,6 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
     const newUser = new User({
       email: normalizedEmail,
       username: String(username).trim(),
-      nombreuser: String(nombreuser).trim(), // ✅ AGREGADO
       passwordHash,
       ejecutivoId: ejecutivoId || undefined
     });
@@ -537,7 +471,6 @@ app.get('/api/admin/users', auth, async (req, res) => {
         id: u._id,
         email: u.email,
         username: u.username,
-        nombreuser: u.nombreuser,
         createdAt: u.createdAt,
         ejecutivo: u.ejecutivoId ? {
           id: u.ejecutivoId._id,
@@ -562,7 +495,7 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
     }
 
     const { id } = req.params;
-    const { username, nombreuser, password, ejecutivoId } = (req.body as any) || {}; // ✅ AGREGADO nombreuser
+    const { username, password, ejecutivoId } = (req.body as any) || {};
 
     const userToUpdate = await User.findById(id);
     if (!userToUpdate) {
@@ -576,11 +509,6 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
     // Actualizar campos
     if (username) {
       userToUpdate.username = String(username).trim();
-    }
-
-    // ✅ AGREGADO: Actualizar nombreuser
-    if (nombreuser) {
-      userToUpdate.nombreuser = String(nombreuser).trim();
     }
 
     if (password) {

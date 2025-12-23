@@ -1,107 +1,143 @@
-// src/components/administrador/settings-admin.tsx
-import { useOutletContext } from 'react-router-dom';
+// src/components/administrador/clientes-ejecutivos.tsx
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 
-interface OutletContext {
-  accessToken: string;
-  onLogout: () => void;
-}
+type Cliente = {
+  id: string;
+  email: string;
+  username: string;
+  nombreuser?: string;
+  createdAt: string;
+};
 
 function Clientesejecutivos() {
-  const { accessToken, onLogout } = useOutletContext<OutletContext>();
-  const { user } = useAuth();
+  const { token } = useAuth();
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchClientes = async () => {
+    if (!token) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const resp = await fetch('/api/ejecutivo/clientes', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        throw new Error(data?.error || 'Error al cargar clientes');
+      }
+
+      setClientes(Array.isArray(data?.clientes) ? data.clientes : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error desconocido');
+      setClientes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClientes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const rows = useMemo(() => {
+    return clientes.map((c) => ({
+      ...c,
+      createdAtFmt: new Date(c.createdAt).toLocaleString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    }));
+  }, [clientes]);
 
   return (
     <div className="container-fluid">
-      {/* Header */}
-      <div className="row mb-4">
-        <div className="col">
-          <h2 style={{
-            fontSize: '28px',
-            fontWeight: '700',
-            color: '#1f2937',
-            marginBottom: '8px',
-            letterSpacing: '-0.5px'
-          }}>
-            Encuentra a tus clientes
-          </h2>
-          <p style={{
-            fontSize: '15px',
-            color: '#6b7280',
-            margin: 0
-          }}>
-            Ajustes del sistema - {user?.nombreuser}
-          </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 18 }}>
+        <div>
+          <h2 style={{ fontSize: 26, fontWeight: 700, color: '#1f2937', marginBottom: 6 }}>Mis clientes</h2>
+          <p style={{ color: '#6b7280', margin: 0 }}>Clientes asociados a su ejecutivo</p>
         </div>
+
+        <button
+          onClick={fetchClientes}
+          disabled={loading}
+          style={{
+            backgroundColor: loading ? '#93c5fd' : '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: 8,
+            padding: '10px 16px',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {loading ? 'Actualizando…' : 'Actualizar'}
+        </button>
       </div>
 
-      {/* Card Principal */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e5e7eb',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          padding: '60px 20px',
-          textAlign: 'center'
-        }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            backgroundColor: '#eff6ff',
-            borderRadius: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 24px'
-          }}>
-            <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
-              <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-              <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
-            </svg>
-          </div>
-          
-          <h4 style={{
-            fontSize: '20px',
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '8px'
-          }}>
-            Módulo de Clientes 
-          </h4>
-          
-          <p style={{
-            fontSize: '15px',
-            color: '#6b7280',
-            margin: 0,
-            maxWidth: '500px',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-            marginBottom: '24px'
-          }}>
-            Esta sección está pendiente de implementación. Aquí podrás configurar parámetros del sistema.
-          </p>
+      {error && (
+        <div style={{ backgroundColor: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8, padding: 12, color: '#991b1b', marginBottom: 16 }}>
+          {error}
+        </div>
+      )}
 
-          {/* Info adicional */}
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            backgroundColor: '#f3f4f6',
-            padding: '8px 16px',
-            borderRadius: '8px',
-            fontSize: '13px',
-            color: '#6b7280'
-          }}>
-            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-              <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-            </svg>
-            Token de API: {accessToken ? '✓ Disponible' : '✗ No disponible'}
+      <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h5 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>Clientes asociados</h5>
+            <span style={{ fontSize: 13, color: '#6b7280' }}>{rows.length}</span>
           </div>
         </div>
+
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>Cargando…</div>
+        ) : rows.length === 0 ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#6b7280' }}>
+            No hay clientes asociados a este ejecutivo.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#fff' }}>
+                  <th style={{ padding: '12px 18px', textAlign: 'left', fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Cliente
+                  </th>
+                  <th style={{ padding: '12px 18px', textAlign: 'left', fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Email
+                  </th>
+                  <th style={{ padding: '12px 18px', textAlign: 'left', fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Creado
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((c) => (
+                  <tr key={c.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '14px 18px', fontSize: 14, color: '#111827', fontWeight: 600 }}>
+                      {c.username}
+                      {c.nombreuser ? (
+                        <div style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', marginTop: 2 }}>{c.nombreuser}</div>
+                      ) : null}
+                    </td>
+                    <td style={{ padding: '14px 18px', fontSize: 14, color: '#374151' }}>{c.email}</td>
+                    <td style={{ padding: '14px 18px', fontSize: 14, color: '#6b7280' }}>{(c as any).createdAtFmt}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
