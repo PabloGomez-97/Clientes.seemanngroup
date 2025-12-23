@@ -7,7 +7,7 @@ interface OutletContext {
   onLogout: () => void;
 }
 
-function SettingsAdmin() {
+function Clientesejecutivos() {
   const { accessToken, onLogout } = useOutletContext<OutletContext>();
   const { user } = useAuth();
 
@@ -23,14 +23,14 @@ function SettingsAdmin() {
             marginBottom: '8px',
             letterSpacing: '-0.5px'
           }}>
-            Configuración de Administrador
+            Encuentra a tus clientes
           </h2>
           <p style={{
             fontSize: '15px',
             color: '#6b7280',
             margin: 0
           }}>
-            Ajustes del sistema - {user?.username}
+            Ajustes del sistema - {user?.nombreuser}
           </p>
         </div>
       </div>
@@ -69,7 +69,7 @@ function SettingsAdmin() {
             color: '#1f2937',
             marginBottom: '8px'
           }}>
-            Módulo de Configuración
+            Módulo de Clientes 
           </h4>
           
           <p style={{
@@ -107,4 +107,4 @@ function SettingsAdmin() {
   );
 }
 
-export default SettingsAdmin;
+export default Clientesejecutivos;

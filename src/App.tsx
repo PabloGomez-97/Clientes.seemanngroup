@@ -12,12 +12,13 @@ import UserLayout from './layouts/UserLayout';
 // Admin Views
 import DashboardAdmin from './components/administrador/dashboard-admin';
 import UsersManagement from './components/administrador/users-management';
-import SettingsAdmin from './components/administrador/settings-admin';
+import SettingsAdmin from './components/administrador/clientes-ejecutivos';
 import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLayout';
 import ReporteriaPersonalizado from './components/administrador/deprecated-admin/ReporteriaPersonalizado';
 import EjecutivosManagement from './components/administrador/ejecutivos-management';
 import ReportExecutive from "./components/administrador/natalia/Reporteriaexecutivo"
 import Cotizadoradministrador from './components/administrador/Cotizador-admin';
+import Clientesejecutivos from './components/administrador/clientes-ejecutivos';
 
 // Reportería Pages
 import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';
@@ -73,6 +74,7 @@ function App() {
         </ProtectedRoute>
       }>
         <Route path="cotizador-administrador" element={<Cotizadoradministrador />} />
+        <Route path="tusclientes" element={<Clientesejecutivos />} />
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardAdmin />} />
         <Route path="users" element={<UsersManagement />} />
