@@ -77,7 +77,7 @@ function UserLayout() {
             fontSize: '0.875rem',
             margin: 0
           }}>
-            Conectando con Linbis
+            Conectando con Seemann Group
           </p>
         </div>
         <style>{`

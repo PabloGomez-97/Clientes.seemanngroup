@@ -114,7 +114,7 @@ function AdminLayout() {
             Iniciando Dashboard
           </h4>
           <p className="text-secondary mb-0" style={{ fontSize: '0.95rem', fontWeight: '500' }}>
-            Conectando con Linbis...
+            Conectando con Seemann Group...
           </p>
 
           {/* Progress dots */}
