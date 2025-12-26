@@ -298,8 +298,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ============================================================
-    // RUTAS DE EJECUTIVOS (ADMIN)
+    // RUTAS DE EJECUTIVOS
     // ============================================================
+
+    // GET /api/ejecutivos - ✅ NUEVO ENDPOINT AGREGADO
+    if (path === '/api/ejecutivos' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        if (currentUser.username !== 'Administrador') {
+          return res.status(403).json({ error: 'No tienes permisos' });
+        }
+        
+        const ejecutivos = await Ejecutivo.find({ activo: true })
+          .select('nombre email telefono')
+          .sort({ nombre: 1 });
+
+        return res.json({
+          ejecutivos: ejecutivos.map(ej => ({
+            id: ej._id,
+            nombre: ej.nombre,
+            email: ej.email,
+            telefono: ej.telefono
+          }))
+        });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[ejecutivos] Error:', e);
+        return res.status(500).json({ error: 'Error al obtener ejecutivos' });
+      }
+    }
 
     // GET /api/admin/ejecutivos
     if (path === '/api/admin/ejecutivos' && method === 'GET') {
