@@ -39,7 +39,16 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
       {
         label: 'Llegada',
         date: shipment.arrival,
-        completed: !!shipment.arrival && new Date(shipment.arrival) <= new Date(),
+        completed: (() => {
+          if (!shipment.arrival || !shipment.arrival.displayDate) return false;
+          try {
+            const [month, day, year] = shipment.arrival.displayDate.split('/');
+            const arrivalDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+            return arrivalDate <= new Date();
+          } catch {
+            return false;
+          }
+        })(),
         icon: '📦'
       },
       {
@@ -75,7 +84,7 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
           fontSize: '0.75rem',
           fontWeight: '600'
         }}>
-          {completedSteps === 4 ? 'Entregado' : 'En Proceso'}
+          {completedSteps === 4 ? 'Entregado' : ''}
         </span>
       </div>
       
@@ -136,13 +145,24 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
             }}>
               {step.label}
             </div>
-            {step.date && (
+            {step.date && step.date.displayDate && step.date.displayDate.trim() !== '' && (
               <div style={{ 
                 fontSize: '0.7rem', 
                 color: '#6b7280',
                 textAlign: 'center'
               }}>
-                {new Date(step.date).toLocaleDateString('es-CL')}
+                {(() => {
+                  try {
+                    const [month, day, year] = step.date.displayDate.split('/');
+                    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                    return date.toLocaleDateString('es-CL', {
+                      day: 'numeric',
+                      month: 'short'
+                    });
+                  } catch {
+                    return step.date.displayDate;
+                  }
+                })()}
               </div>
             )}
           </div>
@@ -415,16 +435,30 @@ function AirShipmentsView() {
   const [showingAll, setShowingAll] = useState(false);
 
   // Función auxiliar para formatear fechas
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-CL', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatDate = (dateObj: any) => {
+    // Si es null, undefined o no tiene displayDate, retornar guión
+    if (!dateObj || !dateObj.displayDate) return '-';
+    
+    // Si displayDate está vacío, retornar guión
+    if (dateObj.displayDate.trim() === '') return '-';
+    
+    try {
+      // displayDate viene en formato MM/DD/YYYY (por ejemplo: "05/12/2025")
+      const [month, day, year] = dateObj.displayDate.split('/');
+      
+      // Crear fecha parseada
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      
+      // Formatear en español descriptivo: "12 de Mayo, 2025"
+      return date.toLocaleDateString('es-CL', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric'
+      });
+    } catch (error) {
+      // Si hay algún error en el parseo, retornar el displayDate original
+      return dateObj.displayDate;
+    }
   };
 
   // Obtener air-shipments usando el token con paginación
@@ -1195,12 +1229,20 @@ function AirShipmentsView() {
                         color: '#4b5563',
                         whiteSpace: 'nowrap'
                       }}>
-                        {shipment.departure 
-                          ? new Date(shipment.departure).toLocaleDateString('es-CL', { 
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric'
-                            })
+                        {shipment.departure && shipment.departure.displayDate && shipment.departure.displayDate.trim() !== ''
+                          ? (() => {
+                              try {
+                                const [month, day, year] = shipment.departure.displayDate.split('/');
+                                const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                return date.toLocaleDateString('es-CL', { 
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                });
+                              } catch {
+                                return shipment.departure.displayDate;
+                              }
+                            })()
                           : '-'
                         }
                       </td>
