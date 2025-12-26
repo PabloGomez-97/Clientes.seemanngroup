@@ -29,6 +29,18 @@ interface AirShipment {
 // Componente para el Timeline Visual
 function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
   const getTimelineSteps = () => {
+    // Verificar si ha llegado (arrival completado)
+    const hasArrived = (() => {
+      if (!shipment.arrival || !shipment.arrival.displayDate) return false;
+      try {
+        const [month, day, year] = shipment.arrival.displayDate.split('/');
+        const arrivalDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        return arrivalDate <= new Date();
+      } catch {
+        return false;
+      }
+    })();
+
     const steps = [
       {
         label: 'En Tránsito',
@@ -39,28 +51,13 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
       {
         label: 'Llegada',
         date: shipment.arrival,
-        completed: (() => {
-          if (!shipment.arrival || !shipment.arrival.displayDate) return false;
-          try {
-            const [month, day, year] = shipment.arrival.displayDate.split('/');
-            const arrivalDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-            return arrivalDate <= new Date();
-          } catch {
-            return false;
-          }
-        })(),
+        completed: hasArrived,
         icon: '📦'
       },
       {
-        label: 'Aduana',
-        date: shipment.importSection?.importDate || shipment.importSection?.amsDate,
-        completed: shipment.customsReleased || !!shipment.importSection?.entry,
-        icon: '🛃'
-      },
-      {
         label: 'Entregado',
-        date: shipment.proofOfDelivery?.podDelivery,
-        completed: !!shipment.proofOfDelivery?.podDelivery,
+        date: hasArrived ? shipment.arrival : shipment.proofOfDelivery?.podDelivery,
+        completed: hasArrived || !!shipment.proofOfDelivery?.podDelivery,
         icon: '✅'
       }
     ];
@@ -77,14 +74,14 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
           Estado del Envío
         </h6>
         <span style={{ 
-          backgroundColor: completedSteps === 4 ? '#10b981' : '#3b82f6',
+          backgroundColor: completedSteps === 3 ? '#10b981' : '#3b82f6',
           color: 'white',
           padding: '4px 12px',
           borderRadius: '12px',
           fontSize: '0.75rem',
           fontWeight: '600'
         }}>
-          {completedSteps === 4 ? 'Entregado' : ''}
+          {completedSteps === 3 ? 'Entregado' : ''}
         </span>
       </div>
       
@@ -105,7 +102,7 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
           position: 'absolute',
           top: '20px',
           left: '5%',
-          width: `${((completedSteps - 1) / 3) * 90}%`,
+          width: `${((completedSteps - 1) / 2) * 90}%`,
           height: '2px',
           backgroundColor: '#3b82f6',
           zIndex: 0,
@@ -1448,31 +1445,6 @@ function AirShipmentsView() {
                     </div>
                   </div>
                   <CommoditiesSection commodities={selectedShipment.commodities} />
-                </CollapsibleSection>
-              )}
-
-              {/* Importación y Aduanas */}
-              {selectedShipment.importSection && (
-                <CollapsibleSection title="Importación y Aduanas" defaultOpen={false} icon="🛃">
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                    <InfoField label="Número de Entry" value={selectedShipment.importSection.entry} />
-                    <InfoField label="Fecha de Importación" value={selectedShipment.importSection.importDate ? formatDate(selectedShipment.importSection.importDate) : null} />
-                    <InfoField label="Número IT" value={selectedShipment.importSection.itNumber} />
-                    <InfoField label="Fecha IT" value={selectedShipment.importSection.itDate ? formatDate(selectedShipment.importSection.itDate) : null} />
-                    <InfoField label="Puerto IT" value={selectedShipment.importSection.itPort} />
-                    <InfoField label="Número AMS" value={selectedShipment.importSection.amsNumber} />
-                    <InfoField label="Fecha AMS" value={selectedShipment.importSection.amsDate ? formatDate(selectedShipment.importSection.amsDate) : null} />
-                    <InfoField label="Número GO" value={selectedShipment.importSection.goNumber} />
-                    <InfoField label="Fecha GO" value={selectedShipment.importSection.goDate ? formatDate(selectedShipment.importSection.goDate) : null} />
-                    <InfoField label="Broker" value={selectedShipment.importSection.broker?.name} />
-                    <InfoField label="Ubicación" value={selectedShipment.importSection.location} fullWidth />
-                    <InfoField label="Comentarios Ubicación" value={selectedShipment.importSection.locationComments} fullWidth />
-                    <InfoField label="Comentarios AMS" value={selectedShipment.importSection.amsComments} fullWidth />
-                    <InfoField label="Liberado por Aduana" value={selectedShipment.customsReleased} />
-                    <InfoField label="Flete Liberado" value={selectedShipment.freightReleased} />
-                    <InfoField label="Liberado Por" value={selectedShipment.freightReleasedBy} />
-                    <InfoField label="Fecha Liberación Flete" value={selectedShipment.freightReleasedDate ? formatDate(selectedShipment.freightReleasedDate) : null} />
-                  </div>
                 </CollapsibleSection>
               )}
 
