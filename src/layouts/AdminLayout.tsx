@@ -13,6 +13,8 @@ function AdminLayout() {
 
   useEffect(() => {
     const fetchLinbisToken = async () => {
+      const startTime = Date.now();
+      
       try {
         const response = await fetch('/api/linbis-token');
         if (!response.ok) {
@@ -25,7 +27,13 @@ function AdminLayout() {
         console.error('Error obteniendo token de Linbis:', err);
         setError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {
-        setLoading(false);
+        // Asegurar que el loading se muestre por al menos 2 segundos
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, 2000 - elapsedTime);
+        
+        setTimeout(() => {
+          setLoading(false);
+        }, remainingTime);
       }
     };
 
@@ -46,63 +54,30 @@ function AdminLayout() {
       <div 
         className="d-flex flex-column align-items-center justify-content-center vh-100 position-relative overflow-hidden"
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          backgroundImage: 'url(/logoejecutivos.jpeg)',
+          backgroundSize: 'contain',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: '#1a365d'
         }}
       >
-        {/* Animated background circles */}
+        {/* Overlay oscuro para mejor contraste */}
         <div 
-          className="position-absolute rounded-circle"
+          className="position-absolute w-100 h-100"
           style={{
-            width: '300px',
-            height: '300px',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-            top: '10%',
-            left: '20%',
-            animation: 'float 6s ease-in-out infinite'
-          }}
-        ></div>
-        <div 
-          className="position-absolute rounded-circle"
-          style={{
-            width: '200px',
-            height: '200px',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
-            bottom: '15%',
-            right: '25%',
-            animation: 'float 8s ease-in-out infinite 1s'
+            background: 'rgba(0, 0, 0, 0.4)',
+            zIndex: 0
           }}
         ></div>
 
-        {/* Loading card */}
+        {/* Contenido centrado */}
         <div 
-          className="bg-white rounded-4 shadow-lg p-5 text-center position-relative"
-          style={{
-            minWidth: '320px',
-            maxWidth: '400px',
-            backdropFilter: 'blur(20px)',
-            background: 'rgba(255, 255, 255, 0.95)',
-            border: '1px solid rgba(255, 255, 255, 0.3)'
-          }}
+          className="text-center position-relative"
+          style={{ zIndex: 1 }}
         >
-          {/* Animated logo */}
-          <div 
-            className="rounded-4 d-flex align-items-center justify-content-center mx-auto mb-4 shadow"
-            style={{
-              width: '80px',
-              height: '80px',
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              animation: 'float 3s ease-in-out infinite'
-            }}
-          >
-            <svg width="40" height="40" fill="white" viewBox="0 0 16 16">
-              <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-              <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
-            </svg>
-          </div>
-
           {/* Spinner */}
           <div 
-            className="spinner-border text-primary mx-auto mb-4"
+            className="spinner-border text-light mx-auto mb-4"
             role="status"
             style={{ width: '60px', height: '60px' }}
           >
@@ -110,10 +85,10 @@ function AdminLayout() {
           </div>
 
           {/* Text */}
-          <h4 className="text-dark fw-bold mb-2" style={{ fontSize: '1.3rem', letterSpacing: '0.5px' }}>
+          <h4 className="text-white fw-bold mb-2" style={{ fontSize: '1.5rem', letterSpacing: '0.5px', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
             Iniciando Dashboard
           </h4>
-          <p className="text-secondary mb-0" style={{ fontSize: '0.95rem', fontWeight: '500' }}>
+          <p className="text-white mb-0" style={{ fontSize: '1rem', fontWeight: '500', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
             Conectando con Seemann Group...
           </p>
 
@@ -124,10 +99,11 @@ function AdminLayout() {
                 key={i}
                 className="rounded-circle"
                 style={{
-                  width: '8px',
-                  height: '8px',
-                  background: '#6366f1',
-                  animation: `pulse 1.5s ease-in-out ${i * 0.2}s infinite`
+                  width: '10px',
+                  height: '10px',
+                  background: 'white',
+                  animation: `pulse 1.5s ease-in-out ${i * 0.2}s infinite`,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
                 }}
               ></div>
             ))}
@@ -135,12 +111,8 @@ function AdminLayout() {
         </div>
 
         <style>{`
-          @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-          }
           @keyframes pulse {
-            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            0%, 100% { opacity: 0.4; transform: scale(0.8); }
             50% { opacity: 1; transform: scale(1.2); }
           }
         `}</style>

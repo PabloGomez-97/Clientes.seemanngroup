@@ -14,6 +14,8 @@ function UserLayout() {
   // Obtener token de Linbis automáticamente al cargar
   useEffect(() => {
     const fetchLinbisToken = async () => {
+      const startTime = Date.now();
+      
       try {
         const response = await fetch('/api/linbis-token');
         if (!response.ok) {
@@ -26,7 +28,13 @@ function UserLayout() {
         console.error('Error obteniendo token de Linbis:', err);
         setError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {
-        setLoading(false);
+        // Asegurar que el loading se muestre por al menos 3 segundos
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, 3000 - elapsedTime);
+        
+        setTimeout(() => {
+          setLoading(false);
+        }, remainingTime);
       }
     };
 
@@ -45,45 +53,69 @@ function UserLayout() {
   // Mostrar loading mientras obtiene el token
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        gap: '20px',
-        backgroundColor: '#f8f9fa'
-      }}>
-        <div style={{
-          width: '50px',
-          height: '50px',
-          border: '3px solid #e5e7eb',
-          borderTop: '3px solid #2563eb',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{
-            color: '#1f2937',
-            fontSize: '1rem',
-            margin: 0,
-            marginBottom: '4px',
-            fontWeight: '500'
-          }}>
-            Iniciando sistema...
+      <div 
+        className="d-flex flex-column align-items-center justify-content-center vh-100 position-relative overflow-hidden"
+        style={{
+          backgroundImage: 'url(/logoseemann.jpg)',
+          backgroundSize: 'contain',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          backgroundColor: '#1a365d'
+        }}
+      >
+        {/* Overlay oscuro para mejor contraste */}
+        <div 
+          className="position-absolute w-100 h-100"
+          style={{
+            background: 'rgba(0, 0, 0, 0.4)',
+            zIndex: 0
+          }}
+        ></div>
+
+        {/* Contenido centrado */}
+        <div 
+          className="text-center position-relative"
+          style={{ zIndex: 1 }}
+        >
+          {/* Spinner */}
+          <div 
+            className="spinner-border text-light mx-auto mb-4"
+            role="status"
+            style={{ width: '60px', height: '60px' }}
+          >
+            <span className="visually-hidden">Cargando...</span>
+          </div>
+
+          {/* Text */}
+          <h4 className="text-white fw-bold mb-2" style={{ fontSize: '1.5rem', letterSpacing: '0.5px', textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+            Iniciando Sistema
+          </h4>
+          <p className="text-white mb-0" style={{ fontSize: '1rem', fontWeight: '500', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
+            Conectando con Seemann Group...
           </p>
-          <p style={{
-            color: '#6b7280',
-            fontSize: '0.875rem',
-            margin: 0
-          }}>
-            Conectando con Seemann Group
-          </p>
+
+          {/* Progress dots */}
+          <div className="d-flex gap-2 justify-content-center mt-4">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="rounded-circle"
+                style={{
+                  width: '10px',
+                  height: '10px',
+                  background: 'white',
+                  animation: `pulse 1.5s ease-in-out ${i * 0.2}s infinite`,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                }}
+              ></div>
+            ))}
+          </div>
         </div>
+
         <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+          @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
           }
         `}</style>
       </div>
