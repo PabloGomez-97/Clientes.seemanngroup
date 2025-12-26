@@ -1,4 +1,5 @@
-// src/components/layout/Sidebar-admin.tsx
+// src/components/layout/Sidebar-admin.tsx - ShipsGo Style (Dark Theme)
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
@@ -6,137 +7,194 @@ interface SidebarAdminProps {
   isOpen: boolean;
 }
 
+interface SubMenuItem {
+  path: string;
+  name: string;
+  restrictedTo?: string | string[];
+}
+
+interface MenuItem {
+  path?: string;
+  name: string;
+  icon: string;
+  restrictedTo?: string | string[];
+  badge?: {
+    text: string;
+    type: 'new' | 'beta' | 'admin' | 'super';
+  };
+  subItems?: SubMenuItem[];
+}
+
+interface MenuSection {
+  title: string;
+  items: MenuItem[];
+}
+
 function SidebarAdmin({ isOpen }: SidebarAdminProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const username = user?.nombreuser || 'Administrador';
 
   const getUserImage = (nombre?: string) => {
     if (!nombre) return null;
-
     const partes = nombre.trim().split(' ');
     if (partes.length < 2) return null;
-
-    const iniciales =
-      partes[0][0].toLowerCase() + partes[1][0].toLowerCase();
-
+    const iniciales = partes[0][0].toLowerCase() + partes[1][0].toLowerCase();
     return `/ejecutivos/${iniciales}.png`;
   };
 
   const userImage = getUserImage(user?.nombreuser);
 
-
-  const allMenuItems = [
+  const menuSections: MenuSection[] = [
     {
-      path: '/admin/cotizador-administrador',
-      name: 'Cotizador',
-      icon: (
-        <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-          <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
-        </svg>
-      )
+      title: 'Main',
+      items: [
+        {
+          path: '/admin/cotizador-administrador',
+          name: 'Cotizador',
+          icon: 'fa fa-calculator'
+        },
+        {
+          path: '/admin/tusclientes',
+          name: 'Tus Clientes',
+          icon: 'fa fa-users'
+        },
+        {
+          path: '/admin/users',
+          name: 'Gestión de Usuarios',
+          icon: 'fa fa-user-shield',
+          restrictedTo: 'superadmin@sphereglobal.io',
+          badge: { text: 'ADMIN', type: 'admin' }
+        },
+        {
+          path: '/admin/ejecutivos',
+          name: 'Gestión de Ejecutivos',
+          icon: 'fa fa-user-tie',
+          restrictedTo: 'superadmin@sphereglobal.io',
+          badge: { text: 'ADMIN', type: 'admin' }
+        },
+        {
+          path: '/admin/dashboard',
+          name: 'Registro de Cambios',
+          icon: 'fa fa-history'
+        }
+      ]
     },
     {
-      path: '/admin/tusclientes',
-      name: 'Tus Clientes',
-      icon: (
-        <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
-        </svg>
-      )
-    },
-    {
-      path: '/admin/users',
-      name: 'Gestión de Usuarios',
-      icon: (
-        <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8Zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022ZM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816ZM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z"/>
-        </svg>
-      ),
-      restrictedTo: 'superadmin@sphereglobal.io'
-    },
-    {
-      path: '/admin/ejecutivos',
-      name: 'Gestión de Ejecutivos',
-      icon: (
-        <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
-        </svg>
-      ),
-      restrictedTo: 'superadmin@sphereglobal.io'
-    },
-    {
-      path: '/admin/reporteria',
-      name: 'Reportería',
-      icon: (
-        <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M4 11H2v3h2v-3zm5-4H7v7h2V7zm5-5v12h-2V2h2zm-2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1h-2zM6 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm-5 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3z"/>
-        </svg>
-      )
-    },
-    {
-      path: '/admin/reportexecutive',
-      name: 'Reportes Ejecutivos',
-      icon: (
-        <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0zM9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1zM4.5 9a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1h-7zM4 10.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm.5 2.5a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1h-4z"/>
-        </svg>
-      ),
-      restrictedTo: 'naguilera@seemanngroup.com'
-    },
-    {
-      path: '/admin/dashboard',
-      name: 'Registro de Cambios',
-      icon: (
-        <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l1.313 7h8.17l1.313-7H3.102zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
-        </svg>
-      )
+      title: 'Reports',
+      items: [
+        {
+          path: '/admin/reporteria',
+          name: 'Reportería',
+          icon: 'fa fa-chart-bar'
+        },
+        {
+          path: '/admin/reportexecutive',
+          name: 'Reportes Ejecutivos',
+          icon: 'fa fa-file-contract',
+          restrictedTo: ['naguilera@seemanngroup.com', 'ifmaldonado@seemanngroup.com', "superadmin@sphereglobal.io"],
+          badge: { text: 'EXEC', type: 'super' }
+        }
+      ]
     }
   ];
 
-  const menuItems = allMenuItems.filter(item => {
-    if (item.restrictedTo) {
-      return user?.email === item.restrictedTo;
-    }
-    return true;
-  });
+  // Filter menu items based on user permissions
+  const filteredSections = menuSections.map(section => ({
+    ...section,
+    items: section.items.filter(item => {
+      if (item.restrictedTo) {
+        // Handle both single email and array of emails
+        if (Array.isArray(item.restrictedTo)) {
+          return item.restrictedTo.includes(user?.email || '');
+        }
+        return user?.email === item.restrictedTo;
+      }
+      return true;
+    })
+  })).filter(section => section.items.length > 0);
 
   if (!isOpen) return null;
 
   const isActive = (path: string) => location.pathname === path;
 
-  const SIDEBAR_WIDTH = 280;
+  const toggleMenu = (menuName: string) => {
+    setExpandedMenus(prev =>
+      prev.includes(menuName)
+        ? prev.filter(m => m !== menuName)
+        : [...prev, menuName]
+    );
+  };
+
+  const getBadgeStyles = (type: 'new' | 'beta' | 'admin' | 'super') => {
+    const styles = {
+      new: {
+        background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+        color: '#dc2626',
+        border: '1px solid #fca5a5',
+        boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
+      },
+      beta: {
+        background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+        color: '#dc2626',
+        border: '1px solid #fca5a5',
+        boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
+      },
+      admin: {
+        background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+        color: '#1e40af',
+        border: '1px solid #93c5fd',
+        boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)'
+      },
+      super: {
+        background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+        color: '#92400e',
+        border: '1px solid #fcd34d',
+        boxShadow: '0 2px 4px rgba(245, 158, 11, 0.2)'
+      }
+    };
+    return styles[type];
+  };
 
   return (
     <div
-      className="bg-dark text-white d-flex flex-column shadow-lg"
       style={{
-        width: `${SIDEBAR_WIDTH}px`,
-        minWidth: `${SIDEBAR_WIDTH}px`,
-        flex: `0 0 ${SIDEBAR_WIDTH}px`,
-        flexShrink: 0,
+        width: '260px',
+        minWidth: '260px',
         height: '100vh',
         background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-        position: 'relative'
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'sticky',
+        top: 0,
+        left: 0,
+        borderRight: '1px solid rgba(255, 255, 255, 0.06)',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        boxShadow: '2px 0 12px rgba(0, 0, 0, 0.3)'
       }}
+      className="sidebar-scroll"
     >
-      {/* Header con logo de la empresa */}
-      <div 
-        className="text-center p-4 m-3 rounded-4 shadow-lg d-flex align-items-center justify-content-center"
+      {/* Header con Logo */}
+      <div
         style={{
-          background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+          padding: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)',
           minHeight: '120px'
         }}
       >
-        <img 
-          src="/logocompleto.png" 
-          alt="Seemann Group Logo" 
-          className="img-fluid"
-          style={{ 
+        <img
+          src="/logocompleto.png"
+          alt="Seemann Group"
+          style={{
             maxWidth: '100%',
             maxHeight: '80px',
             width: 'auto',
@@ -147,80 +205,225 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
         />
       </div>
 
-      {/* Divider decorativo */}
-      <hr className="mx-4 my-2 opacity-25" style={{ borderColor: '#6366f1' }} />
+      {/* Navigation Menu */}
+      <div style={{ flex: 1, padding: '20px 0' }}>
+        {filteredSections.map((section, sectionIdx) => (
+          <div key={sectionIdx} style={{ marginBottom: '10px' }}>
+            {/* Section Title */}
+            <div
+              style={{
+                padding: '10px 24px 8px 24px',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                letterSpacing: '0.8px',
+                marginTop: sectionIdx > 0 ? '16px' : '0',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+              }}
+            >
+              {section.title}
+            </div>
 
-      {/* Navegación */}
-      <nav className="flex-fill px-2" style={{ overflowY: 'auto', overflowX: 'hidden' }}>
-        <ul className="nav flex-column gap-1">
-          {menuItems.map((item) => (
-            <li key={item.path} className="nav-item">
-              <button
-                className={`nav-link text-white w-100 text-start d-flex align-items-center rounded-3 border-0 ${
-                  isActive(item.path) ? 'shadow-sm' : ''
-                }`}
-                onClick={() => navigate(item.path)}
-                style={{
-                  background: isActive(item.path) 
-                    ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' 
-                    : 'transparent',
-                  padding: '12px 16px',
-                  transition: 'all 0.3s ease',
-                  fontWeight: isActive(item.path) ? '600' : '500',
-                  fontSize: '0.95rem'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive(item.path)) {
-                    e.currentTarget.style.background = 'rgba(99, 102, 241, 0.15)';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive(item.path)) {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }
-                }}
-              >
-                <span 
-                  className="me-3 d-flex align-items-center justify-content-center rounded-2"
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    background: isActive(item.path) 
-                      ? 'rgba(255, 255, 255, 0.2)' 
-                      : 'rgba(99, 102, 241, 0.1)',
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  {item.icon}
-                </span>
-                <span className="flex-grow-1 text-truncate">
-                  {item.name}
-                </span>
-                {isActive(item.path) && (
-                  <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" className="ms-2">
-                    <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                  </svg>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
+            {/* Menu Items */}
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {section.items.map((item, itemIdx) => {
+                const hasSubItems = item.subItems && item.subItems.length > 0;
+                const isExpanded = expandedMenus.includes(item.name);
+                const isItemActive = item.path ? isActive(item.path) : false;
+                const isHovered = hoveredItem === `${section.title}-${item.name}`;
 
-      {/* Divider decorativo */}
-      <hr className="mx-4 my-2 opacity-25" style={{ borderColor: '#6366f1' }} />
+                return (
+                  <li key={itemIdx}>
+                    {/* Main Menu Item */}
+                    <div
+                      onClick={() => {
+                        if (hasSubItems) {
+                          toggleMenu(item.name);
+                        } else if (item.path) {
+                          navigate(item.path);
+                        }
+                      }}
+                      onMouseEnter={() => setHoveredItem(`${section.title}-${item.name}`)}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      style={{
+                        padding: '13px 24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        background: isItemActive
+                          ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%)'
+                          : isHovered
+                          ? 'rgba(255, 255, 255, 0.05)'
+                          : 'transparent',
+                        borderLeft: isItemActive ? '3px solid #6366f1' : '3px solid transparent',
+                        color: isItemActive ? '#c7d2fe' : '#94a3b8',
+                        fontSize: '14px',
+                        fontWeight: isItemActive ? '600' : '500',
+                        position: 'relative',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        marginBottom: '2px'
+                      }}
+                    >
+                      {/* Icon */}
+                      <div
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: isItemActive ? '#a5b4fc' : '#64748b',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <i
+                          className={item.icon}
+                          style={{
+                            fontSize: '17px'
+                          }}
+                        />
+                      </div>
+
+                      {/* Name */}
+                      <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.4' }}>
+                        {item.name}
+                      </span>
+
+                      {/* Badge (if exists) */}
+                      {item.badge && (
+                        <span
+                          style={{
+                            ...getBadgeStyles(item.badge.type),
+                            padding: '3px 7px',
+                            borderRadius: '5px',
+                            fontSize: '9px',
+                            fontWeight: '700',
+                            letterSpacing: '0.4px',
+                            marginLeft: 'auto'
+                          }}
+                        >
+                          {item.badge.text}
+                        </span>
+                      )}
+
+                      {/* Arrow for submenus */}
+                      {hasSubItems && (
+                        <i
+                          className="fa fa-chevron-right"
+                          style={{
+                            fontSize: '10px',
+                            transition: 'transform 0.2s ease',
+                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                            color: '#64748b',
+                            marginLeft: item.badge ? '8px' : '0'
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    {/* Submenu Items */}
+                    {hasSubItems && (
+                      <div
+                        style={{
+                          maxHeight: isExpanded ? '500px' : '0',
+                          overflow: 'hidden',
+                          transition: 'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          background: 'rgba(0, 0, 0, 0.2)'
+                        }}
+                      >
+                        <ul style={{ listStyle: 'none', padding: '4px 0', margin: 0 }}>
+                          {item.subItems!.map((subItem, subIdx) => {
+                            const isSubActive = isActive(subItem.path);
+                            const isSubHovered = hoveredItem === `sub-${subItem.path}`;
+
+                            return (
+                              <li
+                                key={subIdx}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(subItem.path);
+                                }}
+                                onMouseEnter={() => setHoveredItem(`sub-${subItem.path}`)}
+                                onMouseLeave={() => setHoveredItem(null)}
+                                style={{
+                                  padding: '11px 24px 11px 54px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  background: isSubActive
+                                    ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)'
+                                    : isSubHovered
+                                    ? 'rgba(255, 255, 255, 0.03)'
+                                    : 'transparent',
+                                  borderLeft: isSubActive
+                                    ? '3px solid #6366f1'
+                                    : '3px solid transparent',
+                                  color: isSubActive ? '#a5b4fc' : '#94a3b8',
+                                  fontSize: '13.5px',
+                                  fontWeight: isSubActive ? '600' : '500',
+                                  position: 'relative',
+                                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                  marginBottom: '1px'
+                                }}
+                              >
+                                {/* Bullet point for submenu */}
+                                <span
+                                  style={{
+                                    position: 'absolute',
+                                    left: '40px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    width: '5px',
+                                    height: '5px',
+                                    borderRadius: '50%',
+                                    background: isSubActive ? '#6366f1' : '#475569',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                />
+                                {subItem.name}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
 
       {/* Footer con usuario */}
-      <div className="p-3 m-3 rounded-3" style={{ background: 'rgba(99, 102, 241, 0.1)' }}>
-        <div className="d-flex align-items-center mb-3">
+      <div
+        style={{
+          padding: '16px 24px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          background: 'rgba(99, 102, 241, 0.08)'
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '12px'
+          }}
+        >
           <div
-            className="rounded-3 me-3 shadow-sm overflow-hidden"
             style={{
               width: '44px',
               height: '44px',
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
             }}
           >
             {userImage ? (
@@ -237,44 +440,104 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
                 }}
               />
             ) : (
-              <div className="d-flex align-items-center justify-content-center h-100">
-                <svg width="20" height="20" fill="white" viewBox="0 0 16 16">
-                  <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
-                  <path
-                    fillRule="evenodd"
-                    d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z"
-                  />
-                </svg>
-              </div>
+              <i
+                className="fa fa-user"
+                style={{
+                  fontSize: '20px',
+                  color: 'white'
+                }}
+              />
             )}
           </div>
 
-          <div className="flex-grow-1" style={{ minWidth: 0 }}>
-            <div className="text-white fw-semibold text-truncate small">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: '13px',
+                fontWeight: '700',
+                color: '#e2e8f0',
+                marginBottom: '3px',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
               {username}
             </div>
-            <div className="d-flex align-items-center gap-1 mt-1">
-              <span 
-                className="rounded-circle d-inline-block"
+            <div
+              style={{
+                fontSize: '11px',
+                color: '#94a3b8',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+              }}
+            >
+              <div
                 style={{
                   width: '6px',
                   height: '6px',
+                  borderRadius: '50%',
                   background: '#10b981',
-                  boxShadow: '0 0 8px #10b981'
+                  boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)',
+                  animation: 'pulse 2s ease-in-out infinite'
                 }}
-              ></span>
-              <small className="text-white-50" style={{ fontSize: '0.75rem' }}>
-                En línea
-              </small>
+              />
+              En línea
             </div>
           </div>
         </div>
-        <div className="text-center pt-3 border-top border-secondary border-opacity-25">
-          <small className="text-white-50" style={{ fontSize: '0.7rem' }}>
-            Seemann Group © {new Date().getFullYear()}
-          </small>
+
+        <div
+          style={{
+            padding: '10px 12px',
+            borderRadius: '8px',
+            background: 'rgba(0, 0, 0, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            fontSize: '10px',
+            color: '#64748b',
+            textAlign: 'center',
+            fontWeight: '500',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          }}
+        >
+          © {new Date().getFullYear()} Seemann Group
         </div>
       </div>
+
+      <style>{`
+        .sidebar-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        
+        .sidebar-scroll::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
+        }
+        
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.15);
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.1);
+          }
+        }
+
+        @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+      `}</style>
     </div>
   );
 }
