@@ -267,21 +267,6 @@ function NavbarAdmin({ accessToken, onLogout, toggleSidebar }: NavbarAdminProps)
                   Configuración
                 </button>
               </li>
-
-              {/* Token Info */}
-              <li className="px-3 py-2">
-                <div 
-                  className="rounded-3 p-3"
-                  style={{ background: 'rgba(99, 102, 241, 0.15)' }}
-                >
-                  <div className="text-white-50 mb-1" style={{ fontSize: '0.75rem' }}>
-                    Token de Acceso
-                  </div>
-                  <div className="text-white text-truncate" style={{ fontSize: '0.8rem', fontFamily: 'monospace' }}>
-                    {tokenPreview}
-                  </div>
-                </div>
-              </li>
               
               {/* Logout */}
               <li className="p-2 border-top border-secondary border-opacity-25">

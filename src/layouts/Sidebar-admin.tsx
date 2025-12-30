@@ -97,7 +97,7 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           name: 'Reportes Ejecutivos',
           icon: 'fa fa-file-contract',
           restrictedTo: ['naguilera@seemanngroup.com', 'ifmaldonado@seemanngroup.com', "superadmin@sphereglobal.io"],
-          badge: { text: 'EXEC', type: 'super' }
+          badge: { text: 'NEW', type: 'super' }
         }
       ]
     }
