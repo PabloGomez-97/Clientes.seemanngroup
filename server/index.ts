@@ -780,7 +780,7 @@ app.get('/api/shipsgo/shipments', async (req, res) => {
       });
     }
 
-    const data = await response.json();
+    const data = await response.json() as { shipments?: Array<any> };
     console.log(`[shipsgo] Successfully fetched ${data.shipments?.length || 0} shipments`);
     
     return res.json(data);

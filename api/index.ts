@@ -790,7 +790,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        const data = await response.json();
+        const data = await response.json() as { shipments?: Array<any> };
         console.log(`[shipsgo] Successfully fetched ${data.shipments?.length || 0} shipments`);
         
         return res.json(data);
