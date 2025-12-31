@@ -78,8 +78,8 @@ interface ShipsGoResponse {
 
 // ✅ Detectar automáticamente el ambiente (desarrollo o producción)
 const API_BASE_URL = import.meta.env.MODE === 'development' 
-  ? 'http://localhost:4000'  // Desarrollo local
-  : 'https://tu-proyecto.vercel.app';  // 🔴 REEMPLAZA CON TU URL DE VERCEL
+     ? 'http://localhost:4000'
+     : 'https://portalclientes.seemanngroup.com';
 
 function ShipsGoTracking() {
   const { user } = useAuth();
