@@ -40,6 +40,7 @@ import Financiera from './components/Sidebar/ReporteriaFinanciera';
 import Settings from './components/settings/Settings';
 import ReporteriaOperacional from './components/Sidebar/ReporteriaOperacional';
 import Changelog from './components/Sidebar/Changelog';
+import ShipsGoTracking from './components/Sidebar/Shipsgotracking';
 
 // OFF
 import Operacionales from './components/Sidebar/RO2';
@@ -113,6 +114,7 @@ function App() {
         <Route path="QuoteLCL" element={<QuoteLCL />} />
         <Route path="QuoteFCL" element={<QuoteFCL />} />
         <Route path="air-shipments" element={<AirShipmentsView />} />
+        <Route path="trackings" element={<ShipsGoTracking />} />
         <Route path="ocean-shipments" element={<OceanShipmentsView />} />
         <Route path="operacionales" element={<Operacionales />} />
         <Route path="envios" element={<Envios />} />

@@ -1,4 +1,4 @@
-// api/index.ts - Serverless function para Vercel
+// api/index.ts - Serverless function para Vercel, ESTO ES SOLO PARA PRODUCCIÓN
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
@@ -753,6 +753,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       } catch (error) {
         console.error('[init-linbis-token] Error:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+
+    // ============================================================
+    // RUTAS DE SHIPSGO
+    // ============================================================
+
+    // GET /api/shipsgo/shipments - Obtener todos los shipments de ShipsGo
+    if (path === '/api/shipsgo/shipments' && method === 'GET') {
+      console.log('🚢 [shipsgo] Fetching shipments...');
+      try {
+        const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+        const SHIPSGO_API_URL = 'https://api.shipsgo.com/v2/air/shipments';
+
+        if (!SHIPSGO_API_TOKEN) {
+          return res.status(500).json({ 
+            error: 'Missing ShipsGo API token. Set SHIPSGO_API_TOKEN in environment variables' 
+          });
+        }
+
+        // Hacer petición a ShipsGo API
+        const response = await fetch(`${SHIPSGO_API_URL}?order_by=&skip=0&take=100`, {
+          method: 'GET',
+          headers: {
+            'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN
+          }
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[shipsgo] API Error:', errorText);
+          return res.status(response.status).json({ 
+            error: 'Failed to fetch shipments from ShipsGo' 
+          });
+        }
+
+        const data = await response.json();
+        console.log(`[shipsgo] Successfully fetched ${data.shipments?.length || 0} shipments`);
+        
+        return res.json(data);
+
+      } catch (error) {
+        console.error('[shipsgo] Error:', error);
         return res.status(500).json({ error: 'Internal server error' });
       }
     }

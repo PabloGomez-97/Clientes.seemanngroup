@@ -59,6 +59,11 @@ function Sidebar({ isOpen }: SidebarProps) {
           path: '/ocean-shipments',
           name: 'Ocean Shipments',
           icon: 'fa fa-ship'
+        },
+        {
+          path: '/trackings',
+          name: 'Rastreo de Envíos',
+          icon: 'fa fa-ship'
         }
       ]
     },

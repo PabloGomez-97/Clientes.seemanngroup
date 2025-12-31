@@ -1,4 +1,4 @@
-// server/index.ts
+// server/index.ts ESTO ES SOLO PARA DESARROLLO LOCAL
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -743,6 +743,50 @@ app.post('/api/admin/init-linbis-token', (req, res) => {
     });
   } catch (error) {
     console.error('[init-linbis-token] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/** =========================
+ *  ShipsGo API
+ *  ========================= */
+
+// GET /api/shipsgo/shipments - Obtener todos los shipments de ShipsGo (SIN autenticación)
+app.get('/api/shipsgo/shipments', async (req, res) => {
+  console.log('🚢 [shipsgo] Fetching shipments...');
+  try {
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    const SHIPSGO_API_URL = 'https://api.shipsgo.com/v2/air/shipments';
+
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ 
+        error: 'Missing ShipsGo API token. Set SHIPSGO_API_TOKEN in .env' 
+      });
+    }
+
+    // Hacer petición a ShipsGo API
+    const response = await fetch(`${SHIPSGO_API_URL}?order_by=&skip=0&take=100`, {
+      method: 'GET',
+      headers: {
+        'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[shipsgo] API Error:', errorText);
+      return res.status(response.status).json({ 
+        error: 'Failed to fetch shipments from ShipsGo' 
+      });
+    }
+
+    const data = await response.json();
+    console.log(`[shipsgo] Successfully fetched ${data.shipments?.length || 0} shipments`);
+    
+    return res.json(data);
+
+  } catch (error) {
+    console.error('[shipsgo] Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
