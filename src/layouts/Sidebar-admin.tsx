@@ -64,6 +64,11 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           icon: 'fa fa-users'
         },
         {
+          path: '/admin/trackeos',
+          name: 'Trackeos de Clientes',
+          icon: 'fa fa-users'
+        },
+        {
           path: '/admin/users',
           name: 'Gestión de Usuarios',
           icon: 'fa fa-user-shield',
