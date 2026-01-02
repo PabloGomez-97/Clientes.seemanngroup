@@ -1,8 +1,7 @@
-// @ts-nocheck
 import React, { useState } from 'react';
-import CotizadorAereo from './QuoteAIR-ejecutivo';
-import CotizadorFCL from './QuoteFCL-ejecutivo';
-import CotizadorLCL from './QuoteLCL-ejecutivo';
+import CotizadorAereo from './QuoteAIR-ejecutivo.tsx';
+import CotizadorFCL from './QuoteFCL-ejecutivo.tsx';
+import CotizadorLCL from './QuoteLCL-ejecutivo.tsx';
 //
 
 type TipoCotizacion = 'AEREO' | 'FCL' | 'LCL' | null;
