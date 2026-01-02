@@ -17,7 +17,7 @@ import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLa
 import ReporteriaPersonalizado from './components/administrador/Deprecated-Admin/ReporteriaPersonalizado';
 import EjecutivosManagement from './components/administrador/Administracion-Cuentas/ejecutivos-management';
 import ReportExecutive from "./components/administrador/Facturaciones-Ejecutivos/Reporteriaexecutivo"
-import Cotizadoradministrador from './components/administrador/Cotizador-admin';
+import Cotizadoradministrador from './components/administrador/Cotizador-Ejecutivos/Cotizador-admin';
 import Clientesejecutivos from './components/administrador/Administracion-Cuentas/clientes-ejecutivos';
 import ShipsGoTrackingAdmin from './components/administrador/Shipsgo/gettrackingshipsgo-admin';
 import Invoicesxejecutivo from './components/administrador/Facturaciones-Ejecutivos/Facturaciones';
