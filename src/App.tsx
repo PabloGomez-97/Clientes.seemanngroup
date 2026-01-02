@@ -14,7 +14,6 @@ import DashboardAdmin from './components/administrador/dashboard-admin';
 import UsersManagement from './components/administrador/Administracion-Cuentas/users-management';
 import SettingsAdmin from './components/administrador/Administracion-Cuentas/clientes-ejecutivos';
 import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLayout';
-import ReporteriaPersonalizado from './components/administrador/Deprecated-Admin/ReporteriaPersonalizado';
 import EjecutivosManagement from './components/administrador/Administracion-Cuentas/ejecutivos-management';
 import ReportExecutive from "./components/administrador/Facturaciones-Ejecutivos/Reporteriaexecutivo"
 import Cotizadoradministrador from './components/administrador/Cotizador-Ejecutivos/Cotizador-admin';
