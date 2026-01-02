@@ -80,7 +80,6 @@ function App() {
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardAdmin />} />
         <Route path="users" element={<UsersManagement />} />
-        <Route path="reportespersonalizado" element={<ReporteriaPersonalizado />} />
         <Route path="ejecutivos" element={<EjecutivosManagement />} />
         <Route path="reportexecutive" element={<ReportExecutive />} />
         <Route path="reportoperational" element={<Invoicesxejecutivo />} />
