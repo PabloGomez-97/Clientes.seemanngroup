@@ -443,13 +443,6 @@ function ShipsGoTrackingAdmin() {
                     </p>
                   )}
 
-                  {/* Creator Info */}
-                  <div className="mb-3">
-                    <small className="text-muted">
-                      <strong>Creado por:</strong> {shipment.creator.name}
-                    </small>
-                  </div>
-
                   {/* Ver Detalles Button */}
                   <button
                     className="btn btn-sm btn-outline-primary w-100"
@@ -643,14 +636,6 @@ function ShipsGoTrackingAdmin() {
                     </div>
                   </div>
                 )}
-
-                {/* Creator */}
-                <div className="mb-3">
-                  <strong>Creado por:</strong>
-                  <p className="mb-0 ms-3">
-                    {selectedShipment.creator.name} ({selectedShipment.creator.email})
-                  </p>
-                </div>
 
                 {/* Dates */}
                 <div className="mb-3">

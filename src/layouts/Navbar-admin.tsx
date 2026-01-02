@@ -32,7 +32,6 @@ function NavbarAdmin({ accessToken, onLogout, toggleSidebar }: NavbarAdminProps)
 
   const username = user?.nombreuser || 'Administrador';
   const userEmail = user?.email || 'admin@sphereglobal.io';
-  const tokenPreview = accessToken ? `${accessToken.substring(0, 15)}...` : 'No definido';
 
   return (
     <nav 

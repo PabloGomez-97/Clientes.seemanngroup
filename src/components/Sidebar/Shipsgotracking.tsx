@@ -463,7 +463,7 @@ function ShipsGoTracking() {
               <div className="modal-body">
                 {/* Reference */}
                 <div className="mb-3">
-                  <strong>Referencia:</strong>{' '}
+                  <strong>Referencia (Cliente):</strong>{' '}
                   {selectedShipment.reference || <span className="text-muted">N/A</span>}
                 </div>
 
@@ -609,14 +609,6 @@ function ShipsGoTracking() {
                     </div>
                   </div>
                 )}
-
-                {/* Creator */}
-                <div className="mb-3">
-                  <strong>Creado por:</strong>
-                  <p className="mb-0 ms-3">
-                    {selectedShipment.creator.name} ({selectedShipment.creator.email})
-                  </p>
-                </div>
 
                 {/* Dates */}
                 <div className="mb-3">

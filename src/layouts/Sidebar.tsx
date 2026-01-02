@@ -36,51 +36,62 @@ function Sidebar({ isOpen }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const menuSections: MenuSection[] = [
-    {
-      title: 'Main',
-      items: [
-        {
-          path: '/newquotes',
-          name: 'Cotizador',
-          icon: 'fa fa-calculator',
-          badge: { text: 'NEW', type: 'new' }
-        },
-        {
-          path: '/quotes',
-          name: 'Cotizaciones',
-          icon: 'fa fa-folder-open'
-        },
-        {
-          path: '/air-shipments',
-          name: 'Air Shipments',
-          icon: 'fa fa-plane'
-        },
-        {
-          path: '/ocean-shipments',
-          name: 'Ocean Shipments',
-          icon: 'fa fa-ship'
-        },
-        {
-          path: '/trackings',
-          name: 'Rastreo de Envíos',
-          icon: 'fa fa-ship'
-        }
-      ]
-    },
-    {
-      title: 'Reports',
-      items: [
-        {
-          name: 'Reportería',
-          icon: 'fa fa-chart-bar',
-          subItems: [
-            { path: '/financiera', name: 'Reportería Financiera' },
-            { path: '/operacional', name: 'Reportería Operacional' }
-          ]
-        }
-      ]
-    }
-  ];
+  {
+    title: 'Cotizador',
+    items: [
+      {
+        path: '/newquotes',
+        name: 'Cotizador',
+        icon: 'fa fa-calculator',
+        badge: { text: 'NEW', type: 'new' }
+      }
+    ]
+  },
+  {
+    title: 'Cotizaciones & Operaciones',
+    items: [
+      {
+        path: '/quotes',
+        name: 'Cotizaciones',
+        icon: 'fa fa-folder-open'
+      },
+      {
+        path: '/air-shipments',
+        name: 'Operaciones Aéreas',
+        icon: 'fa fa-plane'
+      },
+      {
+        path: '/ocean-shipments',
+        name: 'Operaciones Marítimas',
+        icon: 'fa fa-ship'
+      }
+    ]
+  },
+  {
+    title: 'Rastreo de Operaciones',
+    items: [
+      {
+        path: '/trackings',
+        name: 'Rastreo',
+        icon: 'fa fa-route'
+      }
+    ]
+  },
+  {
+    title: 'Reportes',
+    items: [
+      {
+        name: 'Reportería',
+        icon: 'fa fa-chart-bar',
+        subItems: [
+          { path: '/financiera', name: 'Financiera' },
+          { path: '/operacional', name: 'Operacional' }
+        ]
+      }
+    ]
+  }
+];
+
 
   if (!isOpen) return null;
 

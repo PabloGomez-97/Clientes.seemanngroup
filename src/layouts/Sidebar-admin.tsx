@@ -66,7 +66,7 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
         {
           path: '/admin/trackeos',
           name: 'Trackeos de Clientes',
-          icon: 'fa fa-users'
+          icon: 'fa fa-route'
         },
         {
           path: '/admin/users',
@@ -81,11 +81,6 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           icon: 'fa fa-user-tie',
           restrictedTo: 'superadmin@sphereglobal.io',
           badge: { text: 'ADMIN', type: 'admin' }
-        },
-        {
-          path: '/admin/dashboard',
-          name: 'Registro de Cambios',
-          icon: 'fa fa-history'
         }
       ]
     },
@@ -103,6 +98,23 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           icon: 'fa fa-file-contract',
           restrictedTo: ['naguilera@seemanngroup.com', 'ifmaldonado@seemanngroup.com', "superadmin@sphereglobal.io"],
           badge: { text: 'NEW', type: 'super' }
+        },
+        {
+          path: '/admin/reportoperational',
+          name: 'Reportes Ejecutivos Operacional',
+          icon: 'fa fa-file-contract',
+          restrictedTo: ['naguilera@seemanngroup.com', 'ifmaldonado@seemanngroup.com', "superadmin@sphereglobal.io"],
+          badge: { text: 'Old', type: 'beta' }
+        }
+      ]
+    },
+    {
+      title: 'Changelogs & Settings',
+      items: [
+        {
+          path: '/admin/dashboard',
+          name: 'Registro de Cambios',
+          icon: 'fa fa-history'
         }
       ]
     }

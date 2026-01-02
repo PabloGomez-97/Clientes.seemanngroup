@@ -20,6 +20,7 @@ import ReportExecutive from "./components/administrador/natalia/Reporteriaexecut
 import Cotizadoradministrador from './components/administrador/Cotizador-admin';
 import Clientesejecutivos from './components/administrador/clientes-ejecutivos';
 import ShipsGoTrackingAdmin from './components/administrador/gettrackingshipsgo-admin';
+import SettingsAdmins from './components/administrador/reporteriaopexec';
 
 // Reportería Pages
 import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';
@@ -83,6 +84,7 @@ function App() {
         <Route path="reportespersonalizado" element={<ReporteriaPersonalizado />} />
         <Route path="ejecutivos" element={<EjecutivosManagement />} />
         <Route path="reportexecutive" element={<ReportExecutive />} />
+        <Route path="reportoperational" element={<SettingsAdmins />} />
         <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
         
         {/* Rutas de Reportería con subrutas */}
