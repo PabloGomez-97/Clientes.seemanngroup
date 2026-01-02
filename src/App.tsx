@@ -16,7 +16,7 @@ import SettingsAdmin from './components/administrador/Administracion-Cuentas/cli
 import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLayout';
 import EjecutivosManagement from './components/administrador/Administracion-Cuentas/ejecutivos-management';
 import ReportExecutive from "./components/administrador/Facturaciones-Ejecutivos/Reporteriaexecutivo"
-import Cotizadoradministrador from './components/administrador/Cotizador-Ejecutivos/Cotizador-administrador';
+import Cotizadoradministrador from './components/administrador/Cotizador-administrador';
 import Clientesejecutivos from './components/administrador/Administracion-Cuentas/clientes-ejecutivos';
 import ShipsGoTrackingAdmin from './components/administrador/Shipsgo/gettrackingshipsgo-admin';
 import Invoicesxejecutivo from './components/administrador/Facturaciones-Ejecutivos/Facturaciones';
