@@ -1,7 +1,7 @@
 // src/components/administrador/users-management.tsx
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../../auth/AuthContext';
 
 interface Ejecutivo {
   id: string;

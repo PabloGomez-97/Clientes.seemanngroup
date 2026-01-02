@@ -1,8 +1,8 @@
 // src/components/administrador/natalia/InvoicesXEjecutivo.tsx
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthContext';
-import { Container, Row, Col, Card, Modal, Table } from 'react-bootstrap';
+import { useAuth } from '../../../auth/AuthContext';
+import { Modal, Table } from 'react-bootstrap';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -16,7 +16,7 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { Bar, Line, Doughnut } from 'react-chartjs-2';
+import { Bar, Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
@@ -725,28 +725,31 @@ function InvoicesXEjecutivo() {
             <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
               📈 Facturación Mensual
             </h5>
-            <Bar 
-              data={monthlyChartData}
-              options={{
-                responsive: true,
-                plugins: {
-                  legend: { display: false },
-                  tooltip: {
-                    callbacks: {
-                      label: (context) => formatCurrency(context.parsed.y)
+            <div style={{ height: '280px', maxHeight: '35vh' }}>
+              <Bar 
+                data={monthlyChartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => formatCurrency(Number(context.parsed.y))
+                      }
+                    }
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      ticks: {
+                        callback: (value) => formatCurrency(Number(value))
+                      }
                     }
                   }
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    ticks: {
-                      callback: (value) => formatCurrency(Number(value))
-                    }
-                  }
-                }
-              }}
-            />
+                }}
+              />
+            </div>
           </div>
         </div>
         <div className="col-md-4">
@@ -760,17 +763,25 @@ function InvoicesXEjecutivo() {
             <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
               📊 Status de Facturas
             </h5>
-            <Doughnut 
-              data={statusChartData}
-              options={{
-                responsive: true,
-                plugins: {
-                  legend: {
-                    position: 'bottom'
+            <div style={{
+              height: '220px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <Doughnut
+                data={statusChartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'bottom'
+                    }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -816,17 +827,19 @@ function InvoicesXEjecutivo() {
           <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
             📊 Comparación por Ejecutivo
           </h5>
+          <div style={{ height: '280px', maxHeight: '35vh' }}>
           <Bar 
             data={compareChartData}
             options={{
               responsive: true,
+              maintainAspectRatio: false,
               plugins: {
                 legend: {
                   position: 'top'
                 },
                 tooltip: {
                   callbacks: {
-                    label: (context) => `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`
+                    label: (context) => `${context.dataset.label}: ${formatCurrency(Number(context.parsed.y))}`
                   }
                 }
               },
@@ -840,41 +853,35 @@ function InvoicesXEjecutivo() {
               }
             }}
           />
+          </div>
         </div>
       </div>
     );
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '40px 20px'
-    }}>
-      <Container>
+    <div className="container-fluid">
         {/* Header */}
-        <div style={{
-          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: '16px',
-          padding: '32px',
-          marginBottom: '32px',
-          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
-          backdropFilter: 'blur(10px)'
-        }}>
-          <h1 style={{
-            fontSize: '32px',
+        <div className="row mb-4">
+        <div className="col">
+          <h2 style={{
+            fontSize: '28px',
             fontWeight: '700',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            marginBottom: '8px'
+            color: '#1f2937',
+            marginBottom: '8px',
+            letterSpacing: '-0.5px'
           }}>
-            💰 Reportería de Facturas por Ejecutivo
-          </h1>
-          <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
-            Análisis detallado de facturación y desempeño comercial
+            Reportería de Facturación por Ejecutivo
+          </h2>
+          <p style={{
+            fontSize: '15px',
+            color: '#6b7280',
+            margin: 0
+          }}>
+            Bienvenida {user?.nombreuser}
           </p>
         </div>
+      </div>
 
         {/* Tabs */}
         <div style={{
@@ -904,7 +911,7 @@ function InvoicesXEjecutivo() {
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 backgroundColor: activeTab === tab.key ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
-                background: activeTab === tab.key ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+                background: activeTab === tab.key ? 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)' : 'transparent',
                 color: activeTab === tab.key ? 'white' : '#6b7280'
               }}
             >
@@ -997,7 +1004,7 @@ function InvoicesXEjecutivo() {
                       fontSize: '14px',
                       fontWeight: '600',
                       cursor: loading ? 'not-allowed' : 'pointer',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
                       color: 'white',
                       opacity: loading ? 0.6 : 1
                     }}
@@ -1135,7 +1142,7 @@ function InvoicesXEjecutivo() {
                           <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
                             Clientes Únicos
                           </p>
-                          <h3 style={{ fontSize: '28px', fontWeight: '700', color: '#8b5cf6', margin: '8px 0 0 0' }}>
+                          <h3 style={{ fontSize: '28px', fontWeight: '700', color: '#2563eb', margin: '8px 0 0 0' }}>
                             {stats.uniqueClients}
                           </h3>
                         </div>
@@ -1301,7 +1308,7 @@ function InvoicesXEjecutivo() {
                       fontSize: '14px',
                       fontWeight: '600',
                       cursor: loadingComparative ? 'not-allowed' : 'pointer',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
                       color: 'white',
                       opacity: loadingComparative ? 0.6 : 1
                     }}
@@ -1450,7 +1457,7 @@ function InvoicesXEjecutivo() {
                             <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
                               Promedio por Factura
                             </p>
-                            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#8b5cf6', margin: '8px 0 0 0' }}>
+                            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#2563eb', margin: '8px 0 0 0' }}>
                               {formatCurrency(globalStats.averagePerInvoice)}
                             </h3>
                           </div>
@@ -1560,7 +1567,7 @@ function InvoicesXEjecutivo() {
                             <td style={{ fontWeight: '600', color: '#ef4444' }}>
                               {formatCurrency(exec.stats.totalBalanceDue)}
                             </td>
-                            <td style={{ fontWeight: '600', color: '#8b5cf6' }}>
+                            <td style={{ fontWeight: '600', color: '#2563eb' }}>
                               {formatCurrency(exec.stats.totalAmountPaid)}
                             </td>
                             <td>{exec.stats.uniqueClients}</td>
@@ -1712,7 +1719,7 @@ function InvoicesXEjecutivo() {
                       fontSize: '14px',
                       fontWeight: '600',
                       cursor: loadingDouble ? 'not-allowed' : 'pointer',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
                       color: 'white',
                       opacity: loadingDouble ? 0.6 : 1
                     }}
@@ -1825,7 +1832,7 @@ function InvoicesXEjecutivo() {
                               <p style={{ fontSize: '11px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
                                 Clientes Únicos
                               </p>
-                              <p style={{ fontSize: '24px', fontWeight: '700', color: '#8b5cf6', margin: '4px 0 0 0' }}>
+                              <p style={{ fontSize: '24px', fontWeight: '700', color: '#2563eb', margin: '4px 0 0 0' }}>
                                 {exec.stats.uniqueClients}
                               </p>
                             </div>
@@ -1887,6 +1894,7 @@ function InvoicesXEjecutivo() {
                   <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
                     ⚖️ Comparación Visual
                   </h5>
+                  <div style={{ height: '280px', maxHeight: '35vh' }}>
                   <Bar 
                     data={{
                       labels: doubleData.map(d => d.nombre),
@@ -1909,13 +1917,14 @@ function InvoicesXEjecutivo() {
                     }}
                     options={{
                       responsive: true,
+                      maintainAspectRatio: false,
                       plugins: {
                         legend: {
                           position: 'top'
                         },
                         tooltip: {
                           callbacks: {
-                            label: (context) => `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`
+                            label: (context) => `${context.dataset.label}: ${formatCurrency(Number(context.parsed.y))}`
                           }
                         }
                       },
@@ -1929,6 +1938,7 @@ function InvoicesXEjecutivo() {
                       }
                     }}
                   />
+                  </div>
                 </div>
               </>
             )}
@@ -2021,7 +2031,6 @@ function InvoicesXEjecutivo() {
             )}
           </Modal.Body>
         </Modal>
-      </Container>
     </div>
   );
 }

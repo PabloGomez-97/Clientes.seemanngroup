@@ -94,14 +94,14 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
         },
         {
           path: '/admin/reportexecutive',
-          name: 'Reportes Ejecutivos',
+          name: 'Cotizaciones por Ejecutivo',
           icon: 'fa fa-file-contract',
           restrictedTo: ['naguilera@seemanngroup.com', 'ifmaldonado@seemanngroup.com', "superadmin@sphereglobal.io"],
           badge: { text: 'NEW', type: 'super' }
         },
         {
           path: '/admin/reportoperational',
-          name: 'Reportes Ejecutivos Operacional',
+          name: 'Facturaciones por Ejecutivo',
           icon: 'fa fa-file-contract',
           restrictedTo: ['naguilera@seemanngroup.com', 'ifmaldonado@seemanngroup.com', "superadmin@sphereglobal.io"],
           badge: { text: 'Old', type: 'beta' }

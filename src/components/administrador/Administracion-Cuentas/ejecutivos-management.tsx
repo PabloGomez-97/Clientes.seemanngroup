@@ -1,6 +1,6 @@
 // src/components/administrador/ejecutivos-management.tsx
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../../auth/AuthContext';
 
 interface Ejecutivo {
   id: string;

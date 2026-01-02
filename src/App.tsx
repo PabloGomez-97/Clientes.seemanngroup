@@ -11,16 +11,16 @@ import UserLayout from './layouts/UserLayout';
 
 // Admin Views
 import DashboardAdmin from './components/administrador/dashboard-admin';
-import UsersManagement from './components/administrador/users-management';
-import SettingsAdmin from './components/administrador/clientes-ejecutivos';
+import UsersManagement from './components/administrador/Administracion-Cuentas/users-management';
+import SettingsAdmin from './components/administrador/Administracion-Cuentas/clientes-ejecutivos';
 import ReporteriaLayout from './components/administrador/reporteria/ReporteriaLayout';
-import ReporteriaPersonalizado from './components/administrador/deprecated-admin/ReporteriaPersonalizado';
-import EjecutivosManagement from './components/administrador/ejecutivos-management';
-import ReportExecutive from "./components/administrador/natalia/Reporteriaexecutivo"
-import Cotizadoradministrador from './components/administrador/Cotizador-admin';
-import Clientesejecutivos from './components/administrador/clientes-ejecutivos';
-import ShipsGoTrackingAdmin from './components/administrador/gettrackingshipsgo-admin';
-import SettingsAdmins from './components/administrador/reporteriaaereaxejecutivo';
+import ReporteriaPersonalizado from './components/administrador/Deprecated-Admin/ReporteriaPersonalizado';
+import EjecutivosManagement from './components/administrador/Administracion-Cuentas/ejecutivos-management';
+import ReportExecutive from "./components/administrador/Facturaciones-Ejecutivos/Reporteriaexecutivo"
+import Cotizadoradministrador from './components/administrador/Cotizador-Ejecutivos/Cotizador-admin';
+import Clientesejecutivos from './components/administrador/Administracion-Cuentas/clientes-ejecutivos';
+import ShipsGoTrackingAdmin from './components/administrador/Shipsgo/gettrackingshipsgo-admin';
+import Invoicesxejecutivo from './components/administrador/Facturaciones-Ejecutivos/Facturaciones';
 
 // Reportería Pages
 import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';
@@ -84,7 +84,7 @@ function App() {
         <Route path="reportespersonalizado" element={<ReporteriaPersonalizado />} />
         <Route path="ejecutivos" element={<EjecutivosManagement />} />
         <Route path="reportexecutive" element={<ReportExecutive />} />
-        <Route path="reportoperational" element={<SettingsAdmins />} />
+        <Route path="reportoperational" element={<Invoicesxejecutivo />} />
         <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
         
         {/* Rutas de Reportería con subrutas */}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import CotizadorAereo from './cotizador-ejecutivos/QuoteAIR-ejecutivo';
-import CotizadorFCL from './cotizador-ejecutivos/QuoteFCL-ejecutivo';
-import CotizadorLCL from './cotizador-ejecutivos/QuoteLCL-ejecutivo';
+import CotizadorAereo from './QuoteAIR-ejecutivo';
+import CotizadorFCL from './QuoteFCL-ejecutivo';
+import CotizadorLCL from './QuoteLCL-ejecutivo';
 
 type TipoCotizacion = 'AEREO' | 'FCL' | 'LCL' | null;
 

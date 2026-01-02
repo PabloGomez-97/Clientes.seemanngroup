@@ -1,6 +1,6 @@
 // src/components/shipsgo/ShipsGoTrackingAdmin.tsx
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../../auth/AuthContext';
 
 // Tipos de ShipsGo
 interface Location {

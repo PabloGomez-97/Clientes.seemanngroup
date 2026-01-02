@@ -1,6 +1,6 @@
 // src/components/administrador/clientes-ejecutivos.tsx
 import { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../../auth/AuthContext';
 
 type Cliente = {
   id: string;
