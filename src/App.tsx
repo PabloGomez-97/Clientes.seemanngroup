@@ -20,7 +20,7 @@ import ReportExecutive from "./components/administrador/natalia/Reporteriaexecut
 import Cotizadoradministrador from './components/administrador/Cotizador-admin';
 import Clientesejecutivos from './components/administrador/clientes-ejecutivos';
 import ShipsGoTrackingAdmin from './components/administrador/gettrackingshipsgo-admin';
-import SettingsAdmins from './components/administrador/reporteriaopexec';
+import SettingsAdmins from './components/administrador/reporteriaaereaxejecutivo';
 
 // Reportería Pages
 import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';

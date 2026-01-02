@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import { Container, Row, Col, Card, Modal, Table } from 'react-bootstrap';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -42,35 +43,49 @@ type Ejecutivo = {
   telefono: string;
 };
 
-// Interface para AirShipment (del API)
-interface AirShipment {
+// Interface para Shipment (del API /shipments/all)
+interface Shipment {
   id: number;
   number: string;
-  operationFlow: string;
-  shipmentType: string;
+  masterNumber: string;
+  accountingStatus: string;
+  wayBillMasterNumber: string;
+  customerReference: string | null;
+  waybillNumber: string;
+  bookingNumber: string;
+  currentFlow: string | null;
   departure: string;
   arrival: string;
-  from: string;
-  to: string;
-  carrier: string;
-  waybillNumber: string;
-  consignee: string;
+  placeOfDelivery: string | null;
+  finalDestination: string | null;
+  placeOfDelivery_Date: string;
+  finalDestination_Date: string;
+  customer: string | null;
+  salesRep: string | null;
   shipper: string;
-  salesRep: string;
-  totalCharge_IncomeDisplayValue: string;
-  totalCharge_IncomeValue: number;
-  totalCharge_ExpenseDisplayValue: string;
-  totalCharge_ExpenseValue: number;
-  totalCharge_ProfitDisplayValue: string;
-  totalCharge_ProfitValue: number;
-  cargoDescription: string;
-  cargoStatus: string;
-  createdOn: string;
+  consignee: string;
+  division: string | null;
   totalCargo_Pieces: number;
   totalCargo_WeightValue: number;
-  totalCargo_VolumeValue: number;
-  customer: string | null;
+  totalCargo_VolumeWeightValue: number;
+  containerNumber: string | null;
+  totalCharge_IncomeValue: number;
+  totalCharge_ExpenseValue: number;
+  totalCharge_ProfitValue: number;
+  createdBy: string;
+  createdOn: string;
+  updatedBy: string;
+  updateOn: string;
+  origin: string;
+  destination: string;
+  moduleType: string;
+  serviceType: string | null;
+  modeOfTransportation: string;
+  lastEvent: string | null;
+  view: string;
+  ownerId: string | null;
 }
+
 
 // Interface para trabajar internamente (similar a Quote)
 interface ShipmentData {
@@ -141,6 +156,9 @@ function ReporteriaAirShipments() {
   const [sortField, setSortField] = useState<SortField>('totalProfit');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
+  const [showOperacionesModal, setShowOperacionesModal] = useState(false);
+  const [operacionesDetalle, setOperacionesDetalle] = useState([]);
+
   // Estados para Análisis Doble
   const [ejecutivo1, setEjecutivo1] = useState<string>('');
   const [ejecutivo2, setEjecutivo2] = useState<string>('');
@@ -177,39 +195,48 @@ function ReporteriaAirShipments() {
     });
   }, []);
 
-  // Función para convertir fecha DD/MM/YYYY a Date object
+  // Función para convertir fecha MM/DD/YYYY (del API) a Date object
   const parseDate = (dateStr: string): Date | null => {
     if (!dateStr) return null;
     const parts = dateStr.split('/');
     if (parts.length !== 3) return null;
-    // DD/MM/YYYY -> new Date(YYYY, MM-1, DD)
-    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    // MM/DD/YYYY -> new Date(YYYY, MM-1, DD)
+    return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
   };
 
-  // Función para convertir AirShipment a ShipmentData
-  const mapAirShipmentToData = (airShipment: AirShipment): ShipmentData => {
+  // Función para convertir fecha del input (YYYY-MM-DD) a Date object
+  const parseInputDate = (dateStr: string): Date | null => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return null;
+    // YYYY-MM-DD -> new Date(YYYY, MM-1, DD)
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  };
+
+  // Función para convertir Shipment a ShipmentData
+  const mapShipmentToData = (shipment: Shipment): ShipmentData => {
     return {
-      number: airShipment.number,
-      customer: airShipment.customer || undefined,
-      salesRep: airShipment.salesRep || '', // Manejar null como string vacío
-      shipper: airShipment.shipper || '',
-      consignee: airShipment.consignee || '',
-      modeOfTransportation: '40 - Air', // Todos son aéreos
-      status: airShipment.cargoStatus || '',
-      date: airShipment.createdOn || '',
-      origin: airShipment.from?.trim() || '',
-      destination: airShipment.to?.trim() || '',
-      totalIncome: airShipment.totalCharge_IncomeValue || 0,
-      totalExpense: airShipment.totalCharge_ExpenseValue || 0,
-      profit: airShipment.totalCharge_ProfitValue || 0
+      number: shipment.masterNumber || shipment.number, // Usar masterNumber, si no existe usar number
+      customer: shipment.customer || undefined,
+      salesRep: shipment.salesRep || '', // Manejar null como string vacío
+      shipper: shipment.shipper || '',
+      consignee: shipment.consignee || '',
+      modeOfTransportation: shipment.modeOfTransportation || '',
+      status: shipment.accountingStatus || '',
+      date: shipment.updateOn || '',
+      origin: shipment.origin?.trim() || '',
+      destination: shipment.destination?.trim() || '',
+      totalIncome: shipment.totalCharge_IncomeValue || 0,
+      totalExpense: shipment.totalCharge_ExpenseValue || 0,
+      profit: shipment.totalCharge_ProfitValue || 0
     };
   };
 
   // Función para calcular estadísticas de un array de shipments
   const calculateStats = (shipmentsArray: ShipmentData[]): AirShipmentStats => {
     const totalShipments = shipmentsArray.length;
-    const completedShipments = shipmentsArray.filter(s => s.status === 'PreLoaded').length;
-    const airShipments = totalShipments; // Todos son aéreos
+    const completedShipments = 0; // Ya no usamos el status para determinar completados
+    const airShipments = totalShipments; // Mantener por compatibilidad
     const totalIncome = shipmentsArray.reduce((sum, s) => sum + (s.totalIncome || 0), 0);
     const totalExpense = shipmentsArray.reduce((sum, s) => sum + (s.totalExpense || 0), 0);
     const totalProfit = shipmentsArray.reduce((sum, s) => sum + (s.profit || 0), 0);
@@ -285,7 +312,7 @@ function ReporteriaAirShipments() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('https://api.linbis.com/air-shipments/all', {
+      const response = await fetch('https://api.linbis.com/shipments/all?Page=1&ItemsPerPage=100&SortBy=newest', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -295,16 +322,21 @@ function ReporteriaAirShipments() {
       });
 
       if (!response.ok) {
-        throw new Error(`Error al obtener air-shipments: ${response.statusText}`);
+        throw new Error(`Error al obtener shipments: ${response.statusText}`);
       }
 
-      const data: AirShipment[] = await response.json();
+      const data: Shipment[] = await response.json();
 
       // Convertir a ShipmentData
-      const mappedData = data.map(mapAirShipmentToData);
+      const mappedData = data.map(mapShipmentToData);
+
+      // Eliminar duplicados basándose en el number
+      const uniqueData = Array.from(
+        new Map(mappedData.map(item => [item.number, item])).values()
+      );
 
       // Filtrar por ejecutivo (con validación de null)
-      let filteredShipments = mappedData.filter(s => 
+      let filteredShipments = uniqueData.filter(s => 
         s.salesRep && s.salesRep.toLowerCase() === selectedEjecutivo.toLowerCase()
       );
 
@@ -314,8 +346,8 @@ function ReporteriaAirShipments() {
           const shipmentDate = parseDate(shipment.date);
           if (!shipmentDate) return false;
 
-          const start = startDate ? parseDate(startDate.split('-').reverse().join('/')) : null;
-          const end = endDate ? parseDate(endDate.split('-').reverse().join('/')) : null;
+          const start = startDate ? parseInputDate(startDate) : null;
+          const end = endDate ? parseInputDate(endDate) : null;
 
           if (start && end) {
             return shipmentDate >= start && shipmentDate <= end;
@@ -364,7 +396,7 @@ function ReporteriaAirShipments() {
       setLoadingComparative(true);
       setErrorComparative(null);
 
-      const response = await fetch('https://api.linbis.com/air-shipments/all', {
+      const response = await fetch('https://api.linbis.com/shipments/all?Page=1&ItemsPerPage=100&SortBy=newest', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -374,23 +406,28 @@ function ReporteriaAirShipments() {
       });
 
       if (!response.ok) {
-        throw new Error(`Error al obtener air-shipments: ${response.statusText}`);
+        throw new Error(`Error al obtener shipments: ${response.statusText}`);
       }
 
-      const data: AirShipment[] = await response.json();
+      const data: Shipment[] = await response.json();
 
       // Convertir a ShipmentData
-      const mappedData = data.map(mapAirShipmentToData);
+      const mappedData = data.map(mapShipmentToData);
+
+      // Eliminar duplicados basándose en el number
+      const uniqueData = Array.from(
+        new Map(mappedData.map(item => [item.number, item])).values()
+      );
 
       // Filtrar por rango de fechas
-      let filteredShipments = mappedData;
+      let filteredShipments = uniqueData;
       if (compStartDate || compEndDate) {
-        filteredShipments = mappedData.filter(shipment => {
+        filteredShipments = uniqueData.filter(shipment => {
           const shipmentDate = parseDate(shipment.date);
           if (!shipmentDate) return false;
 
-          const start = compStartDate ? parseDate(compStartDate.split('-').reverse().join('/')) : null;
-          const end = compEndDate ? parseDate(compEndDate.split('-').reverse().join('/')) : null;
+          const start = compStartDate ? parseInputDate(compStartDate) : null;
+          const end = compEndDate ? parseInputDate(compEndDate) : null;
 
           if (start && end) {
             return shipmentDate >= start && shipmentDate <= end;
@@ -471,7 +508,7 @@ function ReporteriaAirShipments() {
       setLoadingDouble(true);
       setErrorDouble(null);
 
-      const response = await fetch('https://api.linbis.com/air-shipments/all', {
+      const response = await fetch('https://api.linbis.com/shipments/all?Page=1&ItemsPerPage=100&SortBy=newest', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -481,16 +518,21 @@ function ReporteriaAirShipments() {
       });
 
       if (!response.ok) {
-        throw new Error(`Error al obtener air-shipments: ${response.statusText}`);
+        throw new Error(`Error al obtener shipments: ${response.statusText}`);
       }
 
-      const data: AirShipment[] = await response.json();
+      const data: Shipment[] = await response.json();
 
       // Convertir a ShipmentData
-      const mappedData = data.map(mapAirShipmentToData);
+      const mappedData = data.map(mapShipmentToData);
+
+      // Eliminar duplicados basándose en el number
+      const uniqueData = Array.from(
+        new Map(mappedData.map(item => [item.number, item])).values()
+      );
 
       // Filtrar por los dos ejecutivos (con validación de null)
-      let filteredShipments = mappedData.filter(s =>
+      let filteredShipments = uniqueData.filter(s =>
         s.salesRep && (
           s.salesRep.toLowerCase() === ejecutivo1.toLowerCase() ||
           s.salesRep.toLowerCase() === ejecutivo2.toLowerCase()
@@ -503,8 +545,8 @@ function ReporteriaAirShipments() {
           const shipmentDate = parseDate(shipment.date);
           if (!shipmentDate) return false;
 
-          const start = doubleStartDate ? parseDate(doubleStartDate.split('-').reverse().join('/')) : null;
-          const end = doubleEndDate ? parseDate(doubleEndDate.split('-').reverse().join('/')) : null;
+          const start = doubleStartDate ? parseInputDate(doubleStartDate) : null;
+          const end = doubleEndDate ? parseInputDate(doubleEndDate) : null;
 
           if (start && end) {
             return shipmentDate >= start && shipmentDate <= end;
@@ -1323,6 +1365,13 @@ function ReporteriaAirShipments() {
     );
   };
 
+  const handleOpenOperaciones = () => {
+    // Filtra las operaciones del ejecutivo seleccionado
+    const ops = shipments.filter(item => item.salesRep === selectedEjecutivo);
+    setOperacionesDetalle(ops as any);
+    setShowOperacionesModal(true);
+  };
+
   return (
     <div className="container-fluid p-4">
       {/* Header */}
@@ -1551,13 +1600,21 @@ function ReporteriaAirShipments() {
                             }}>
                               <span style={{ fontSize: '20px' }}>✈️</span>
                             </div>
-                            <div>
-                              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                                Total Operaciones
-                              </p>
-                              <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', margin: 0 }}>
-                                {stats.totalShipments}
-                              </h3>
+                            <div 
+                                onClick={handleOpenOperaciones}
+                                style={{ 
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                                    Total Operaciones
+                                </p>
+                                <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', margin: 0 }}>
+                                    {stats.totalShipments}
+                                </h3>
                             </div>
                           </div>
                           <div style={{ fontSize: '12px', color: '#6b7280' }}>
@@ -2061,6 +2118,46 @@ function ReporteriaAirShipments() {
           {/* Si necesitas el tab doble completo, avísame */}
         </>
       )}
+      <Modal 
+        show={showOperacionesModal} 
+        onHide={() => setShowOperacionesModal(false)}
+        size="xl"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Detalle de Operaciones</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {operacionesDetalle.length === 0 ? (
+            <p className="text-center">No hay operaciones para mostrar</p>
+          ) : (
+            <Table striped bordered hover>
+              <thead>
+                <tr>
+                  <th>Número</th>
+                  <th>Remitente</th>
+                  <th>Consignatario</th>
+                  <th>Estado</th>
+                  <th>Income</th>
+                </tr>
+              </thead>
+              <tbody>
+                {operacionesDetalle.map((op: ShipmentData, idx: number) => (
+                  <tr key={idx}>
+                    <td>{op.number}</td>
+                    <td>{op.shipper}</td>
+                    <td>{op.consignee}</td>
+                    <td>{op.status}</td>
+                    <td style={{ fontWeight: '600', color: '#10b981' }}>
+                      {formatCurrency(op.totalIncome)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
   );
 }
