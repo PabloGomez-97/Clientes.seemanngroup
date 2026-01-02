@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useAuth } from "../../../auth/AuthContext";
+import { useAuth } from "../../auth/AuthContext";
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
-import { packageTypeOptions } from '../../quotes/PackageTypes/PiecestypesLCL';
-import { Modal, Button } from 'react-bootstrap';
 
 interface OutletContext {
   accessToken: string;
@@ -12,25 +10,27 @@ interface OutletContext {
 }
 
 // ============================================================================
-// TIPOS E INTERFACES PARA RUTAS LCL
+// TIPOS E INTERFACES PARA RUTAS FCL
 // ============================================================================
 
-interface RutaLCL {
+interface RutaFCL {
   id: string;
   pol: string;
   polNormalized: string;
   pod: string;
   podNormalized: string;
-  servicio: string | null;
-  ofWM: number;
-  ofWMString: string;
-  currency: 'USD' | 'EUR';
-  frecuencia: string | null;
-  agente: string | null;
-  ttAprox: string | null;
-  operador: string;
-  operadorNormalized: string;
+  gp20: string;
+  hq40: string;
+  nor40: string | null;
+  carrier: string;
+  carrierNormalized: string;
+  tt: string | null;
+  remarks: string;
+  company: string;
+  companyNormalized: string;
   row_number: number;
+  priceForComparison: number;
+  currency: Currency;
 }
 
 interface SelectOption {
@@ -38,28 +38,49 @@ interface SelectOption {
   label: string;
 }
 
-type Currency = 'USD' | 'EUR';
-type Operador = string;
-// ✅ NUEVO: Interface para clientes asignados
-interface ClienteAsignado {
-  id: string;
-  email: string;
-  username: string;
-  nombreuser: string;
-  createdAt: string;
+type Currency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'CHF' | 'CLP' | 'SEK';
+
+type ContainerType = '20GP' | '40HQ' | '40NOR';
+
+interface ContainerSelection {
+  type: ContainerType;
+  packageTypeId: number;
+  price: number;
+  priceString: string;
 }
 
+// ============================================================================
+// MAPEO DE CONTENEDORES
+// ============================================================================
+
+const CONTAINER_MAPPING = {
+  '20GP': { id: 40, name: '20 FT. STANDARD CONTAINER' },
+  '40HQ': { id: 27, name: '40 FT. HIGH CUBE' },
+  '40NOR': { id: 25, name: '40 FT. REFRIGERATED (ALUMINIUM)' }
+};
 
 // ============================================================================
-// FUNCIONES HELPER PARA RUTAS LCL
+// FUNCIONES HELPER PARA RUTAS FCL
 // ============================================================================
 
-const extractPrice = (priceValue: any): number => {
-  if (!priceValue) return 0;
-  if (typeof priceValue === 'number') return priceValue;
-  const match = priceValue.toString().match(/[\d,]+\.?\d*/);
+const extractPrice = (priceStr: string | null): number => {
+  if (!priceStr) return 0;
+  const match = priceStr.toString().match(/[\d,]+\.?\d*/);
   if (!match) return 0;
   return parseFloat(match[0].replace(/,/g, ''));
+};
+
+const extractCurrency = (priceStr: string | null): Currency => {
+  if (!priceStr) return 'USD';
+  const str = priceStr.toString().toUpperCase();
+  
+  if (str.includes('EUR')) return 'EUR';
+  if (str.includes('GBP')) return 'GBP';
+  if (str.includes('CAD')) return 'CAD';
+  if (str.includes('CHF')) return 'CHF';
+  if (str.includes('CLP')) return 'CLP';
+  if (str.includes('SEK')) return 'SEK';
+  return 'USD';
 };
 
 const normalize = (str: string | null): string => {
@@ -76,68 +97,8 @@ const capitalize = (str: string): string => {
     .join(' ');
 };
 
-// ============================================================================
-// NORMALIZACIÓN ESPECIAL PARA PODs - MAPEO DE VARIANTES
-// ============================================================================
-
-/**
- * Normaliza los nombres de PODs agrupando variantes del mismo puerto
- * bajo un nombre canónico único
- */
-const normalizePOD = (pod: string): string => {
-  if (!pod) return '';
-  
-  const podLower = pod.toLowerCase().trim();
-  
-  // Definir mapeo de variantes a nombres canónicos
-  const podMapping: { [key: string]: string } = {
-    // Grupo: San Antonio - Valparaíso
-    'san antonio - valparaiso': 'san antonio - valparaiso',
-    'san antonio / valparaiso': 'san antonio - valparaiso',
-    'vap / sai': 'san antonio - valparaiso',
-    'sai / vap': 'san antonio - valparaiso',
-    'valparaiso - san antonio': 'san antonio - valparaiso',
-    'valparaiso / san antonio': 'san antonio - valparaiso',
-    
-    // Puertos individuales (mantener por si acaso)
-    'valparaiso': 'valparaiso',
-    'san antonio': 'san antonio',
-    'iquique': 'iquique',
-    'iquique via san antonio': 'iquique via san antonio',
-    'santos': 'santos',
-    'callao': 'callao',
-    'tbc': 'tbc',
-  };
-  
-  // Buscar coincidencia en el mapeo
-  if (podMapping[podLower]) {
-    return podMapping[podLower];
-  }
-  
-  // Si no hay coincidencia específica, devolver normalizado estándar
-  return podLower;
-};
-
-/**
- * Obtiene el nombre de display preferido para un POD normalizado
- */
-const getPODDisplayName = (podNormalized: string): string => {
-  const displayNames: { [key: string]: string } = {
-    'san antonio - valparaiso': 'SAN ANTONIO - VALPARAISO',
-    'valparaiso': 'VALPARAISO',
-    'san antonio': 'SAN ANTONIO',
-    'iquique': 'IQUIQUE',
-    'iquique via san antonio': 'IQUIQUE VIA SAN ANTONIO',
-    'santos': 'SANTOS',
-    'callao': 'CALLAO',
-    'tbc': 'TBC',
-  };
-  
-  return displayNames[podNormalized] || capitalize(podNormalized);
-};
-
-const parseLCL = (data: any[]): RutaLCL[] => {
-  const rutas: RutaLCL[] = [];
+const parseFCL = (data: any[]): RutaFCL[] => {
+  const rutas: RutaFCL[] = [];
   let idCounter = 1;
 
   for (let i = 2; i < data.length; i++) {
@@ -145,34 +106,37 @@ const parseLCL = (data: any[]): RutaLCL[] => {
     if (!row) continue;
 
     const pol = row[1];
-    const servicio = row[2];
-    const pod = row[3];
-    const ofWM = row[4];
-    const currency = row[5];
-    const frecuencia = row[6];
-    const agente = row[7];
-    const ttAprox = row[8];
-    const operador = row[9];
+    const pod = row[2];
+    const gp20 = row[3];
+    const hq40 = row[4];
+    const nor40 = row[5];
+    const carrier = row[6];
+    const tt = row[7];
+    const remarks = row[8];
+    const company = row[10];
 
-    if (pol && pod && typeof pol === 'string' && typeof pod === 'string' && ofWM && operador) {
-      const ofWMNumber = extractPrice(ofWM);
-      
+    if (pol && pod && typeof pol === 'string' && typeof pod === 'string') {
+      const currency = extractCurrency(hq40);
+      const price = extractPrice(hq40);
+
       rutas.push({
-        id: `LCL-${idCounter++}`,
+        id: `FCL-${idCounter++}`,
         pol: pol.trim(),
         polNormalized: normalize(pol),
         pod: pod.trim(),
-        podNormalized: normalizePOD(pod),
-        servicio: servicio ? servicio.toString().trim() : null,
-        ofWM: ofWMNumber,
-        ofWMString: ofWM.toString().trim(),
-        currency: currency && currency.toString().toUpperCase() === 'EUR' ? 'EUR' : 'USD',
-        frecuencia: frecuencia ? frecuencia.toString().trim() : null,
-        agente: agente ? agente.toString().trim() : null,
-        ttAprox: ttAprox ? ttAprox.toString().trim() : null,
-        operador: operador.toString().trim(),
-        operadorNormalized: normalize(operador),
-        row_number: i + 1
+        podNormalized: normalize(pod),
+        gp20: gp20 ? gp20.toString().trim() : 'N/A',
+        hq40: hq40 ? hq40.toString().trim() : 'N/A',
+        nor40: nor40 ? nor40.toString().trim() : null,
+        carrier: carrier ? carrier.toString().trim() : 'N/A',
+        carrierNormalized: normalize(carrier),
+        tt: tt ? tt.toString().trim() : null,
+        remarks: remarks ? remarks.toString().trim() : '',
+        company: company ? company.toString().trim() : '',
+        companyNormalized: normalize(company),
+        row_number: i + 1,
+        priceForComparison: price,
+        currency: currency
       });
     }
   }
@@ -184,7 +148,16 @@ const parseLCL = (data: any[]): RutaLCL[] => {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
-function QuoteLCL() {
+// ✅ NUEVO: Interface para clientes asignados
+interface ClienteAsignado {
+  id: string;
+  email: string;
+  username: string;
+  nombreuser: string;
+  createdAt: string;
+}
+
+function QuoteFCL() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
@@ -200,25 +173,23 @@ function QuoteLCL() {
   const [error, setError] = useState<string | null>(null);
 
   // ============================================================================
-  // ESTADOS PARA RUTAS LCL
+  // ESTADOS PARA RUTAS FCL
   // ============================================================================
   
-  const [rutas, setRutas] = useState<RutaLCL[]>([]);
+  const [rutas, setRutas] = useState<RutaFCL[]>([]);
   const [loadingRutas, setLoadingRutas] = useState(true);
   const [errorRutas, setErrorRutas] = useState<string | null>(null);
   
   const [polSeleccionado, setPolSeleccionado] = useState<SelectOption | null>(null);
   const [podSeleccionado, setPodSeleccionado] = useState<SelectOption | null>(null);
-  const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaLCL | null>(null);
+  const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaFCL | null>(null);
+  const [containerSeleccionado, setContainerSeleccionado] = useState<ContainerSelection | null>(null);
   
   const [opcionesPOL, setOpcionesPOL] = useState<SelectOption[]>([]);
   const [opcionesPOD, setOpcionesPOD] = useState<SelectOption[]>([]);
   
-  const [operadoresActivos, setOperadoresActivos] = useState<Set<Operador>>(new Set());
-  const [operadoresDisponibles, setOperadoresDisponibles] = useState<Operador[]>([]);
-  
-  // Estado para modal de precio 0
-  const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
+  const [carriersActivos, setCarriersActivos] = useState<Set<string>>(new Set());
+  const [carriersDisponibles, setCarriersDisponibles] = useState<string[]>([]);
 
   // ✅ NUEVO: Cargar clientes asignados al ejecutivo
   useEffect(() => {
@@ -248,34 +219,21 @@ function QuoteLCL() {
   }, [user, getMisClientes]);
 
   // ============================================================================
-  // ESTADOS PARA COMMODITY
-  // ============================================================================
-  
-  const [pieces, setPieces] = useState(1);
-  const [description, setDescription] = useState("Cargamento Marítimo LCL");
-  const [selectedPackageType, setSelectedPackageType] = useState(97);
-  
-  const [length, setLength] = useState(100); // cm
-  const [width, setWidth] = useState(80); // cm
-  const [height, setHeight] = useState(60); // cm
-  const [weight, setWeight] = useState(500); // kg
-
-  // ============================================================================
-  // CARGA DE DATOS LCL.XLSX
+  // CARGA DE DATOS FCL.XLSX
   // ============================================================================
 
   useEffect(() => {
     const cargarRutas = async () => {
       try {
         setLoadingRutas(true);
-        const response = await fetch('/assets/LCL.xlsx');
+        const response = await fetch('/assets/FCL.xlsx');
         const arrayBuffer = await response.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
-        const rutasParsed = parseLCL(data);
+        const rutasParsed = parseFCL(data);
         setRutas(rutasParsed);
 
         // Extraer POLs únicos
@@ -293,21 +251,21 @@ function QuoteLCL() {
           .sort((a, b) => a.label.localeCompare(b.label));
         setOpcionesPOL(polsUnicos);
 
-        // Extraer operadores únicos
-        const operadoresUnicos = Array.from(
+        // Extraer carriers únicos
+        const carriersUnicos = Array.from(
           new Set(
             rutasParsed
-              .map(r => r.operador)
-              .filter(o => o)
+              .map(r => r.carrier)
+              .filter(c => c && c !== 'N/A')
           )
         ).sort() as string[];
-        setOperadoresDisponibles(operadoresUnicos);
-        setOperadoresActivos(new Set(operadoresUnicos));
+        setCarriersDisponibles(carriersUnicos);
+        setCarriersActivos(new Set(carriersUnicos));
 
         setLoadingRutas(false);
       } catch (err) {
-        console.error('Error al cargar LCL.xlsx:', err);
-        setErrorRutas('No se pudo cargar el archivo LCL.xlsx');
+        console.error('Error al cargar FCL.xlsx:', err);
+        setErrorRutas('No se pudo cargar el archivo FCL.xlsx');
         setLoadingRutas(false);
       }
     };
@@ -321,52 +279,28 @@ function QuoteLCL() {
 
   useEffect(() => {
     if (polSeleccionado) {
-      // Filtrar rutas por POL seleccionado
-      const rutasParaPOL = rutas.filter(r => r.polNormalized === polSeleccionado.value);
+      const podsParaPOL = rutas
+        .filter(r => r.polNormalized === polSeleccionado.value)
+        .map(r => r.pod);
       
-      // Agrupar por podNormalized y obtener el nombre de display preferido
-      const podMap = new Map<string, string>();
-      
-      rutasParaPOL.forEach(r => {
-        if (!podMap.has(r.podNormalized)) {
-          // Usar el nombre de display preferido basado en la normalización
-          podMap.set(r.podNormalized, getPODDisplayName(r.podNormalized));
-        }
-      });
-      
-      // Crear opciones únicas ordenadas alfabéticamente
-      const podsUnicos = Array.from(podMap.entries())
-        .map(([normalized, displayName]) => ({
-          value: normalized,
-          label: displayName
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
+      const podsUnicos = Array.from(new Set(podsParaPOL))
+        .sort()
+        .map(pod => ({
+          value: normalize(pod),
+          label: capitalize(pod)
+        }));
       
       setOpcionesPOD(podsUnicos);
       setPodSeleccionado(null);
       setRutaSeleccionada(null);
+      setContainerSeleccionado(null);
     } else {
       setOpcionesPOD([]);
       setPodSeleccionado(null);
       setRutaSeleccionada(null);
+      setContainerSeleccionado(null);
     }
   }, [polSeleccionado, rutas]);
-  
-  // ============================================================================
-  // CÁLCULOS
-  // ============================================================================
-
-  const calculateVolume = () => {
-    return (length * width * height) / 1000000; // m³
-  };
-
-  const volume = calculateVolume();
-  const totalVolume = volume * pieces;
-  const totalWeight = weight * pieces;
-  const totalWeightTons = totalWeight / 1000; // Convertir kg a toneladas
-  
-  // W/M Chargeable: Mayor entre peso (en toneladas) y volumen (en m³)
-  const chargeableVolume = Math.max(totalWeightTons, totalVolume);
 
   // ============================================================================
   // FILTRAR RUTAS
@@ -377,37 +311,59 @@ function QuoteLCL() {
     
     const matchPOL = ruta.polNormalized === polSeleccionado.value;
     const matchPOD = ruta.podNormalized === podSeleccionado.value;
-    const matchOperador = operadoresActivos.has(ruta.operador);
+    const matchCarrier = !ruta.carrier || ruta.carrier === 'N/A' || carriersActivos.has(ruta.carrier);
     
-    return matchPOL && matchPOD && matchOperador;
-  }).sort((a, b) => a.ofWM - b.ofWM);
+    return matchPOL && matchPOD && matchCarrier;
+  }).sort((a, b) => a.priceForComparison - b.priceForComparison);
 
   // ============================================================================
-  // CALCULAR TARIFA OCEAN FREIGHT
+  // FUNCIÓN PARA SELECCIONAR CONTENEDOR
   // ============================================================================
 
-  const calcularOceanFreight = () => {
-    if (!rutaSeleccionada) return null;
+  const handleSeleccionarContainer = (ruta: RutaFCL, containerType: ContainerType) => {
+    let price = 0;
+    let priceString = '';
 
-    const expense = rutaSeleccionada.ofWM * chargeableVolume;
-    const income = expense * 1.15;
+    switch (containerType) {
+      case '20GP':
+        price = extractPrice(ruta.gp20);
+        priceString = ruta.gp20;
+        break;
+      case '40HQ':
+        price = extractPrice(ruta.hq40);
+        priceString = ruta.hq40;
+        break;
+      case '40NOR':
+        if (ruta.nor40) {
+          price = extractPrice(ruta.nor40);
+          priceString = ruta.nor40;
+        } else {
+          setError('Este contenedor no está disponible para esta ruta');
+          return;
+        }
+        break;
+    }
 
-    return {
-      expense,
-      income,
-      currency: rutaSeleccionada.currency
+    const containerSelection: ContainerSelection = {
+      type: containerType,
+      packageTypeId: CONTAINER_MAPPING[containerType].id,
+      price,
+      priceString
     };
-  };
 
-  const tarifaOceanFreight = calcularOceanFreight();
+    setRutaSeleccionada(ruta);
+    setContainerSeleccionado(containerSelection);
+    setError(null);
+    setResponse(null);
+  };
 
   // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
 
   const testAPI = async () => {
-    if (!rutaSeleccionada) {
-      setError('Debes seleccionar una ruta antes de generar la cotización');
+    if (!rutaSeleccionada || !containerSeleccionado) {
+      setError('Debes seleccionar una ruta y un contenedor antes de generar la cotización');
       return;
     }
 
@@ -442,12 +398,11 @@ function QuoteLCL() {
   };
 
   const getTestPayload = () => {
-    if (!rutaSeleccionada || !tarifaOceanFreight) {
+    if (!rutaSeleccionada || !containerSeleccionado) {
       return null;
     }
 
     const charges = [];
-    const divisa = rutaSeleccionada.currency;
 
     // Cobro de BL
     charges.push({
@@ -460,22 +415,21 @@ function QuoteLCL() {
         unit: "BL",
         rate: 60,
         amount: 60,
-        showamount: 60,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
           name: clienteSeleccionado?.username || user?.username
         },
         currency: {
-          abbr: divisa
+          abbr: rutaSeleccionada.currency
         },
-        reference: "LCL-BL-REF",
+        reference: "TEST-REF-FCL",
         showOnDocument: true,
         notes: "BL charge created via API"
       },
       expense: {
         currency: {
-          abbr: divisa
+          abbr: rutaSeleccionada.currency
         }
       }
     });
@@ -491,22 +445,21 @@ function QuoteLCL() {
         unit: "HL",
         rate: 45,
         amount: 45,
-        showamount: 45,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
           name: clienteSeleccionado?.username || user?.username
         },
         currency: {
-          abbr: divisa
+          abbr: rutaSeleccionada.currency
         },
-        reference: "LCL-HANDLING-REF",
+        reference: "TEST-REF-HANDLING-FCL",
         showOnDocument: true,
         notes: "Handling charge created via API"
       },
       expense: {
         currency: {
-          abbr: divisa
+          abbr: rutaSeleccionada.currency
         }
       }
     });
@@ -522,67 +475,67 @@ function QuoteLCL() {
         unit: "EXW CHARGES",
         rate: 100,
         amount: 100,
-        showamount: 100,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
           name: clienteSeleccionado?.username || user?.username
         },
         currency: {
-          abbr: divisa
+          abbr: rutaSeleccionada.currency
         },
-        reference: "LCL-EXW-REF",
+        reference: "TEST-REF-EXW-FCL",
         showOnDocument: true,
         notes: "EXW charge created via API"
       },
       expense: {
         currency: {
-          abbr: divisa
+          abbr: rutaSeleccionada.currency
         }
       }
     });
 
     // Cobro de OCEAN FREIGHT
+    const oceanFreightRate = containerSeleccionado.price;
+    const oceanFreightRateIncome = oceanFreightRate * 1.15;
+
     charges.push({
       service: {
         id: 106,
         code: "OF"
       },
       income: {
-        quantity: chargeableVolume,
-        unit: "OCEAN FREIGHT",
-        rate: rutaSeleccionada.ofWM * 1.15,
-        amount: tarifaOceanFreight.income,
-        showamount: tarifaOceanFreight.income,
+        quantity: 1,
+        unit: "CONTAINER",
+        rate: oceanFreightRateIncome,
+        amount: oceanFreightRateIncome,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
           name: clienteSeleccionado?.username || user?.username
         },
         currency: {
-          abbr: divisa
+          abbr: rutaSeleccionada.currency
         },
-        reference: "LCL-OCEANFREIGHT-REF",
+        reference: "TEST-REF-OCEANFREIGHT",
         showOnDocument: true,
-        notes: `OCEAN FREIGHT charge - ${rutaSeleccionada.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)} + 15%`
+        notes: `OCEAN FREIGHT charge - Container: ${containerSeleccionado.type} - Tarifa: ${containerSeleccionado.priceString} + 15%`
       },
       expense: {
-        quantity: chargeableVolume,
-        unit: "OCEAN FREIGHT",
-        rate: rutaSeleccionada.ofWM,
-        amount: tarifaOceanFreight.expense,
-        showamount: tarifaOceanFreight.expense,
+        quantity: 1,
+        unit: "CONTAINER",
+        rate: oceanFreightRate,
+        amount: oceanFreightRate,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
           name: clienteSeleccionado?.username || user?.username
         },
         currency: {
-          abbr: divisa
+          abbr: rutaSeleccionada.currency
         },
-        reference: "LCL-OCEANFREIGHT-REF",
+        reference: "TEST-REF-OCEANFREIGHT",
         showOnDocument: true,
-        notes: `OCEAN FREIGHT expense - ${rutaSeleccionada.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)}`
+        notes: `OCEAN FREIGHT expense - Container: ${containerSeleccionado.type} - Tarifa: ${containerSeleccionado.priceString}`
       }
     });
 
@@ -590,7 +543,10 @@ function QuoteLCL() {
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
-      customerReference: "Portal Created [LCL]",
+      project: {
+        name: "OCEAN"
+      },
+      customerReference: "Portal Created [FCL]",
       contact: {
         name: clienteSeleccionado?.username || user?.username
       },
@@ -601,7 +557,7 @@ function QuoteLCL() {
         name: rutaSeleccionada.pod
       },
       modeOfTransportation: {
-        id: 1
+        id: 2
       },
       rateCategoryId: 2,
       portOfReceipt: {
@@ -614,39 +570,23 @@ function QuoteLCL() {
         name: clienteSeleccionado?.username || user?.username
       },
       issuingCompany: {
-        name: rutaSeleccionada?.operador || "Por Confirmar"
+        name: rutaSeleccionada?.carrier || ""
       },
       serviceType: {
-        name: "LCL"
-      },
-      PaymentTerms: {
-        name: "Prepaid"
+        name: "FCL"
       },
       salesRep: {
         name: ejecutivo?.nombre || "Ignacio Maldonado"
       },
+      PaymentTerms: {
+        name: "Prepaid"
+      },
       commodities: [
         {
-          commodityType: "Standard",
+          commodityType: "Container",
           packageType: {
-            id: selectedPackageType
-          },
-          pieces: pieces,
-          description: description,
-          weightPerUnitValue: weight,
-          weightPerUnitUOM: "kg",
-          totalWeightValue: totalWeight,
-          totalWeightUOM: "kg",
-          lengthValue: length,
-          lengthUOM: "cm",
-          widthValue: width,
-          widthUOM: "cm",
-          heightValue: height,
-          heightUOM: "cm",
-          volumeValue: volume,
-          volumeUOM: "m3",
-          totalVolumeValue: totalVolume,
-          totalVolumeUOM: "m3"
+            id: containerSeleccionado.packageTypeId
+          }
         }
       ],
       charges
@@ -749,18 +689,18 @@ function QuoteLCL() {
 
       <div className="row mb-4">
         <div className="col">
-          <h2 className="mb-1">📦 Cotizador LCL</h2>
-          <p className="text-muted mb-0">Genera cotizaciones para envíos Less than Container Load</p>
+          <h2 className="mb-1">🚢 Cotizador FCL</h2>
+          <p className="text-muted mb-0">Genera cotizaciones para envíos Full Container Load</p>
         </div>
       </div>
 
       {/* ============================================================================ */}
-      {/* SECCIÓN 1: SELECCIÓN DE RUTA */}
+      {/* SECCIÓN 1: SELECCIÓN DE RUTA Y CONTENEDOR */}
       {/* ============================================================================ */}
 
       <div className="card shadow-sm mb-4">
         <div className="card-body">
-          <h5 className="card-title mb-4">📍 Paso 1: Selecciona Ruta</h5>
+          <h5 className="card-title mb-4">📍 Paso 1: Selecciona Ruta y Contenedor</h5>
 
           {loadingRutas ? (
             <div className="text-center py-5">
@@ -815,31 +755,31 @@ function QuoteLCL() {
                 </div>
               </div>
 
-              {/* Filtro de Operadores */}
+              {/* Filtro de Carriers */}
               {polSeleccionado && podSeleccionado && (
                 <div className="border-top pt-3 mb-4">
-                  <label className="form-label fw-semibold mb-2">Operadores</label>
+                  <label className="form-label fw-semibold mb-2">Carriers</label>
                   <div className="d-flex flex-wrap gap-2">
-                    {operadoresDisponibles.map(operador => (
+                    {carriersDisponibles.map(carrier => (
                       <button
-                        key={operador}
+                        key={carrier}
                         type="button"
                         className={`btn btn-sm ${
-                          operadoresActivos.has(operador)
+                          carriersActivos.has(carrier)
                             ? 'btn-primary'
                             : 'btn-outline-secondary'
                         }`}
                         onClick={() => {
-                          const newSet = new Set(operadoresActivos);
-                          if (newSet.has(operador)) {
-                            newSet.delete(operador);
+                          const newSet = new Set(carriersActivos);
+                          if (newSet.has(carrier)) {
+                            newSet.delete(carrier);
                           } else {
-                            newSet.add(operador);
+                            newSet.add(carrier);
                           }
-                          setOperadoresActivos(newSet);
+                          setCarriersActivos(newSet);
                         }}
                       >
-                        {operador}
+                        {carrier}
                       </button>
                     ))}
                   </div>
@@ -852,7 +792,7 @@ function QuoteLCL() {
                   {/* Header mejorado */}
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <h6 className="mb-0 d-flex align-items-center gap-2">
-                      <i className="bi bi-boxes"></i>
+                      <i className="bi bi-ship"></i>
                       Rutas Disponibles 
                       <span className="badge bg-light text-dark border">{rutasFiltradas.length}</span>
                     </h6>
@@ -883,35 +823,12 @@ function QuoteLCL() {
                           <div 
                             className={`card h-100 position-relative ${
                               rutaSeleccionada?.id === ruta.id 
-                                ? 'border-success border-2 shadow-lg' 
+                                ? 'border-primary border-2 shadow-lg' 
                                 : 'border-0 shadow-sm'
                             }`}
                             style={{ 
-                              cursor: 'pointer',
                               transition: 'all 0.3s ease',
                               transform: rutaSeleccionada?.id === ruta.id ? 'translateY(-4px)' : 'none'
-                            }}
-                            onClick={() => {
-                              // Verificar si la tarifa OF W/M es 0
-                              if (ruta.ofWM === 0) {
-                                setShowPriceZeroModal(true);
-                                return;
-                              }
-                              setRutaSeleccionada(ruta);
-                              setError(null);
-                              setResponse(null);
-                            }}
-                            onMouseEnter={(e) => {
-                              if (rutaSeleccionada?.id !== ruta.id) {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.classList.add('shadow');
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (rutaSeleccionada?.id !== ruta.id) {
-                                e.currentTarget.style.transform = 'none';
-                                e.currentTarget.classList.remove('shadow');
-                              }
                             }}
                           >
                             {/* Badge de "Mejor Opción" */}
@@ -930,10 +847,10 @@ function QuoteLCL() {
                             )}
 
                             <div className="card-body">
-                              {/* Header del operador con logo */}
+                              {/* Header del carrier con logo */}
                               <div className="d-flex justify-content-between align-items-start mb-3">
                                 <div className="d-flex align-items-center gap-2">
-                                  {/* Logo del operador */}
+                                  {/* Logo del carrier */}
                                   <div 
                                     className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
                                     style={{ 
@@ -944,8 +861,8 @@ function QuoteLCL() {
                                     }}
                                   >
                                     <img 
-                                      src={`/logoscarrierlcl/${ruta.operador.toLowerCase().replace(/\s+/g, '_')}.png`}
-                                      alt={ruta.operador}
+                                      src={`/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`}
+                                      alt={ruta.carrier}
                                       style={{ 
                                         maxWidth: '150%', 
                                         maxHeight: '150%',
@@ -956,7 +873,7 @@ function QuoteLCL() {
                                         target.style.display = 'none';
                                         const parent = target.parentElement;
                                         if (parent) {
-                                          parent.innerHTML = '<i class="bi bi-boxes text-primary fs-4"></i>';
+                                          parent.innerHTML = '<i class="bi bi-box-seam text-primary fs-4"></i>';
                                         }
                                       }}
                                     />
@@ -964,7 +881,7 @@ function QuoteLCL() {
                                   
                                   <div>
                                     <span className="badge bg-primary bg-opacity-10 text-primary border border-primary">
-                                      {ruta.operador}
+                                      {ruta.carrier}
                                     </span>
                                   </div>
                                 </div>
@@ -976,83 +893,113 @@ function QuoteLCL() {
                                 )}
                               </div>
 
-                              {/* Precio destacado */}
-                              <div className="mb-3 p-3 bg-light rounded">
-                                <small className="text-muted text-uppercase d-block mb-1" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>
-                                  Tarifa OF W/M
-                                </small>
-                                <div className="d-flex align-items-baseline gap-1">
-                                  <h4 className="mb-0 text-success fw-bold">
-                                    {ruta.currency} {(ruta.ofWM * 1.15).toFixed(2)}
-                                  </h4>
-                                  <small className="text-muted">/W/M</small>
+                              {/* Transit Time y Company */}
+                              {ruta.tt && (
+                                <div className="mb-3">
+                                  <div className="d-flex align-items-center gap-2 p-2 bg-light rounded">
+                                    <i className="bi bi-clock text-primary"></i>
+                                    <div className="flex-grow-1">
+                                      <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
+                                        Tiempo de tránsito
+                                      </small>
+                                      <small className="fw-semibold">{ruta.tt}</small>
+                                    </div>
+                                  </div>
                                 </div>
+                              )}
+
+                              {ruta.company && (
+                                <p className="small text-muted mb-3">
+                                  <i className="bi bi-building"></i> {ruta.company}
+                                </p>
+                              )}
+
+                              {/* Botones de Contenedores */}
+                              <div className="d-flex flex-column gap-2">
+                                {/* 20GP */}
+                                {ruta.gp20 && ruta.gp20 !== 'N/A' && ruta.gp20 !== '-' && (
+                                  <button
+                                    type="button"
+                                    className={`btn ${
+                                      rutaSeleccionada?.id === ruta.id && containerSeleccionado?.type === '20GP'
+                                        ? 'btn-success'
+                                        : 'btn-outline-primary'
+                                    }`}
+                                    onClick={() => handleSeleccionarContainer(ruta, '20GP')}
+                                    style={{ transition: 'all 0.2s' }}
+                                  >
+                                    <div className="d-flex justify-content-between align-items-center">
+                                      <span className="fw-bold">
+                                        <i className="bi bi-box"></i> 20GP
+                                      </span>
+                                      <span className="badge bg-light text-dark">
+                                        {ruta.currency} {(extractPrice(ruta.gp20) * 1.15).toFixed(0)}
+                                      </span>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {/* 40HQ */}
+                                {ruta.hq40 && ruta.hq40 !== 'N/A' && ruta.hq40 !== '-' && (
+                                  <button
+                                    type="button"
+                                    className={`btn ${
+                                      rutaSeleccionada?.id === ruta.id && containerSeleccionado?.type === '40HQ'
+                                        ? 'btn-success'
+                                        : 'btn-outline-primary'
+                                    }`}
+                                    onClick={() => handleSeleccionarContainer(ruta, '40HQ')}
+                                    style={{ transition: 'all 0.2s' }}
+                                  >
+                                    <div className="d-flex justify-content-between align-items-center">
+                                      <span className="fw-bold">
+                                        <i className="bi bi-box"></i> 40HQ
+                                      </span>
+                                      <span className="badge bg-light text-dark">
+                                        {ruta.currency} {(extractPrice(ruta.hq40) * 1.15).toFixed(0)}
+                                      </span>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {/* 40NOR */}
+                                {ruta.nor40 && ruta.nor40 !== 'N/A' && ruta.nor40 !== '-' && (
+                                  <button
+                                    type="button"
+                                    className={`btn ${
+                                      rutaSeleccionada?.id === ruta.id && containerSeleccionado?.type === '40NOR'
+                                        ? 'btn-success'
+                                        : 'btn-outline-primary'
+                                    }`}
+                                    onClick={() => handleSeleccionarContainer(ruta, '40NOR')}
+                                    style={{ transition: 'all 0.2s' }}
+                                  >
+                                    <div className="d-flex justify-content-between align-items-center">
+                                      <span className="fw-bold">
+                                        <i className="bi bi-box"></i> 40NOR
+                                      </span>
+                                      <span className="badge bg-light text-dark">
+                                        {ruta.currency} {(extractPrice(ruta.nor40) * 1.15).toFixed(0)}
+                                      </span>
+                                    </div>
+                                  </button>
+                                )}
                               </div>
 
-                              {/* Detalles en grid */}
-                              <div className="row g-2">
-                                {ruta.servicio && (
-                                  <div className="col-12">
-                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                      <i className="bi bi-truck text-primary"></i>
-                                      <div className="flex-grow-1">
-                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
-                                          Servicio
-                                        </small>
-                                        <small className="fw-semibold">{ruta.servicio}</small>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {ruta.ttAprox && (
-                                  <div className="col-12">
-                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                      <i className="bi bi-clock text-primary"></i>
-                                      <div className="flex-grow-1">
-                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
-                                          Transit Time
-                                        </small>
-                                        <small className="fw-semibold">{ruta.ttAprox}</small>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {ruta.frecuencia && (
-                                  <div className="col-12">
-                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                      <i className="bi bi-calendar-check text-primary"></i>
-                                      <div className="flex-grow-1">
-                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
-                                          Frecuencia
-                                        </small>
-                                        <small className="fw-semibold">{ruta.frecuencia}</small>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {ruta.agente && (
-                                  <div className="col-12">
-                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                      <i className="bi bi-building text-primary"></i>
-                                      <div className="flex-grow-1">
-                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
-                                          Agente
-                                        </small>
-                                        <small className="fw-semibold">{ruta.agente}</small>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+                              {/* Mensaje si no hay contenedores disponibles */}
+                              {!ruta.gp20 && !ruta.hq40 && !ruta.nor40 && (
+                                <div className="alert alert-warning mb-0 mt-2">
+                                  <small>
+                                    <i className="bi bi-exclamation-triangle"></i> No hay contenedores disponibles para esta ruta
+                                  </small>
+                                </div>
+                              )}
 
                               {/* Call to action sutil */}
                               {rutaSeleccionada?.id !== ruta.id && (
                                 <div className="mt-3 text-center">
                                   <small className="text-muted">
-                                    <i className="bi bi-hand-index"></i> Click para seleccionar
+                                    <i className="bi bi-hand-index"></i> Selecciona un contenedor
                                   </small>
                                 </div>
                               )}
@@ -1067,31 +1014,54 @@ function QuoteLCL() {
                   {rutasFiltradas.length > 0 && (
                     <div className="alert alert-light border-0 mt-3">
                       <small className="text-muted">
-                        <i className="bi bi-info-circle"></i> Las tarifas son referenciales y pueden variar según volumen y servicios adicionales
+                        <i className="bi bi-info-circle"></i> Las tarifas son referenciales y pueden variar según condiciones comerciales
                       </small>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Información de ruta seleccionada */}
-              {rutaSeleccionada && (
+              {/* Información de selección */}
+              {rutaSeleccionada && containerSeleccionado && (
                 <div className="alert alert-success mt-4 mb-0">
-                  <h6 className="alert-heading">✓ Ruta Seleccionada</h6>
+                  <h6 className="alert-heading">✓ Selección Confirmada</h6>
                   <p className="mb-2">
                     <strong>Ruta:</strong> {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
                   </p>
                   <p className="mb-2">
-                    <strong>Operador:</strong> {rutaSeleccionada.operador}
+                    <strong>Carrier:</strong> {rutaSeleccionada.carrier}
                   </p>
-                  {rutaSeleccionada.servicio && (
-                    <p className="mb-2">
-                      <strong>Servicio:</strong> {rutaSeleccionada.servicio}
-                    </p>
-                  )}
+                  <p className="mb-2">
+                    <strong>Contenedor:</strong> {containerSeleccionado.type} ({CONTAINER_MAPPING[containerSeleccionado.type].name})
+                  </p>
                   <p className="mb-0">
-                    <strong>Tarifa:</strong> {rutaSeleccionada.currency} {rutaSeleccionada.ofWM}/W/M
+                    <strong>Tarifa:</strong> {containerSeleccionado.priceString}
                   </p>
+                  
+                  <div className="mt-3 pt-3 border-top">
+                    <h6 className="mb-2">💰 Cargos a Generar</h6>
+                    <div className="row g-2 small">
+                      <div className="col-md-6">
+                        <strong>BL:</strong> {rutaSeleccionada.currency} 60.00
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Handling:</strong> {rutaSeleccionada.currency} 45.00
+                      </div>
+                      <div className="col-md-6">
+                        <strong>EXW Charges:</strong> {rutaSeleccionada.currency} 100.00
+                      </div>
+                      <div className="col-md-6">
+                        <strong>Ocean Freight (Expense):</strong> {rutaSeleccionada.currency} {containerSeleccionado.price.toFixed(2)}
+                      </div>
+                      <div className="col-md-12">
+                        <strong className="text-success">Ocean Freight (Income):</strong>{' '}
+                        <span className="text-success fw-bold">
+                          {rutaSeleccionada.currency} {(containerSeleccionado.price * 1.15).toFixed(2)}
+                        </span>
+                        {' '}(+15%)
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </>
@@ -1100,166 +1070,18 @@ function QuoteLCL() {
       </div>
 
       {/* ============================================================================ */}
-      {/* SECCIÓN 2: DATOS DEL COMMODITY */}
+      {/* SECCIÓN 2: GENERAR COTIZACIÓN */}
       {/* ============================================================================ */}
 
-      {rutaSeleccionada && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body">
-            <h5 className="card-title mb-4">📦 Paso 2: Datos del Commodity</h5>
-
-            {/* Formulario */}
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label">Tipo de Paquete</label>
-                <select
-                  className="form-select"
-                  value={selectedPackageType}
-                  onChange={(e) => setSelectedPackageType(Number(e.target.value))}
-                >
-                  {packageTypeOptions.map(opt => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-md-6">
-                <label className="form-label">Número de Piezas</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={pieces}
-                  onChange={(e) => setPieces(Number(e.target.value))}
-                  min="1"
-                  step="1"
-                />
-              </div>
-
-              <div className="col-12">
-                <label className="form-label">Descripción</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Descripción de la carga"
-                />
-              </div>
-
-              <div className="col-md-3">
-                <label className="form-label">Largo (cm)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={length}
-                  onChange={(e) => setLength(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="col-md-3">
-                <label className="form-label">Ancho (cm)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={width}
-                  onChange={(e) => setWidth(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="col-md-3">
-                <label className="form-label">Alto (cm)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={height}
-                  onChange={(e) => setHeight(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="col-md-3">
-                <label className="form-label">Peso por pieza (kg)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={weight}
-                  onChange={(e) => setWeight(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-            </div>
-
-            {/* Cálculos */}
-            <div className="mt-4 p-3 border rounded" style={{ backgroundColor: '#e7f5ff' }}>
-              <h6 className="mb-3">🧮 Cálculos W/M</h6>
-              <div className="row g-2" style={{ fontSize: '0.9rem' }}>
-                <div className="col-md-4">
-                  <strong>Volumen por pieza:</strong> {volume.toFixed(4)} m³
-                </div>
-                <div className="col-md-4">
-                  <strong>Volumen total:</strong> {totalVolume.toFixed(4)} m³
-                </div>
-                <div className="col-md-4">
-                  <strong>Peso total:</strong> {totalWeight.toFixed(2)} kg ({totalWeightTons.toFixed(3)} ton)
-                </div>
-                <div className="col-12 mt-3 pt-3 border-top">
-                  <strong className="text-primary">W/M Chargeable:</strong>{' '}
-                  <span className="text-primary fw-bold fs-5">{chargeableVolume.toFixed(3)}</span>
-                  {' '}({chargeableVolume === totalWeightTons ? 'PESO' : 'VOLUMEN'})
-                </div>
-                
-                {tarifaOceanFreight && (
-                  <>
-                    <div className="col-12 mt-3 pt-3 border-top">
-                      <h6 className="mb-2">💰 Tarifa OCEAN FREIGHT</h6>
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Tarifa base:</strong> {rutaSeleccionada.currency} {rutaSeleccionada.ofWM}/W/M
-                    </div>
-                    <div className="col-md-6">
-                      <strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(3)}
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Expense:</strong>{' '}
-                      <span className="text-info">
-                        {rutaSeleccionada.currency} {tarifaOceanFreight.expense.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="col-md-6">
-                      <strong className="text-success">Income (+15%):</strong>{' '}
-                      <span className="text-success fw-bold">
-                        {rutaSeleccionada.currency} {tarifaOceanFreight.income.toFixed(2)}
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================================ */}
-      {/* PASO 3: GENERAR COTIZACIÓN */}
-      {/* ============================================================================ */}
-
-      {rutaSeleccionada && tarifaOceanFreight && (
+      {rutaSeleccionada && containerSeleccionado && (
         <>
           <div className="card shadow-sm mb-4">
             <div className="card-body">
-              <h5 className="card-title mb-4">🚀 Paso 3: Generar Cotización</h5>
+              <h5 className="card-title mb-4">🚀 Paso 2: Generar Cotización</h5>
 
               <button
                 onClick={testAPI}
-                disabled={loading || !accessToken}
+                disabled={loading || !accessToken || !rutaSeleccionada || !containerSeleccionado}
                 className="btn btn-lg btn-success w-100"
               >
                 {loading ? (
@@ -1268,7 +1090,7 @@ function QuoteLCL() {
                     Generando...
                   </>
                 ) : (
-                  <>✨ Generar Cotización LCL</>
+                  <>✨ Generar Cotización FCL</>
                 )}
               </button>
 
@@ -1300,7 +1122,7 @@ function QuoteLCL() {
       )}
 
       {/* ============================================================================ */}
-      {/* SECCIÓN 4: RESULTADOS */}
+      {/* SECCIÓN 3: RESULTADOS */}
       {/* ============================================================================ */}
 
       {/* Error */}
@@ -1340,34 +1162,13 @@ function QuoteLCL() {
               {JSON.stringify(response, null, 2)}
             </pre>
             <div className="alert alert-success mt-3 mb-0">
-              🎉 <strong>¡Perfecto!</strong> Cotización LCL creada exitosamente.
+              🎉 <strong>¡Perfecto!</strong> Cotización FCL creada exitosamente.
             </div>
           </div>
         </div>
       )}
-
-      {/* Modal para rutas con tarifa OF W/M en 0 */}
-      <Modal show={showPriceZeroModal} onHide={() => setShowPriceZeroModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>📋 Cotización Personalizada Requerida</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p className="mb-2">
-            <strong>Esta ruta requiere análisis caso a caso.</strong>
-          </p>
-          <p className="mb-0">
-            Por favor, contacta a tu ejecutivo comercial para obtener una cotización personalizada 
-            que se ajuste a las características específicas de tu envío.
-          </p>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowPriceZeroModal(false)}>
-            Entendido
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </div>
   );
 }
 
-export default QuoteLCL;
+export default QuoteFCL;

@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useAuth } from "../../../auth/AuthContext";
-import { packageTypeOptions } from '../../quotes/PackageTypes/PiecestypesAIR';
+import { useAuth } from "../../auth/AuthContext";
+import { packageTypeOptions } from '../quotes/PackageTypes/PiecestypesAIR';
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
 import { Modal, Button } from 'react-bootstrap';
