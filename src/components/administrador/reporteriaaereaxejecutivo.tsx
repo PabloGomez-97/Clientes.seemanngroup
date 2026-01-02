@@ -1,4 +1,4 @@
-// src/components/administrador/natalia/ReporteriaAirShipments.tsx
+// src/components/administrador/natalia/InvoicesXEjecutivo.tsx
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
@@ -43,91 +43,103 @@ type Ejecutivo = {
   telefono: string;
 };
 
-// Interface para Shipment (del API /shipments/all)
-interface Shipment {
+// Interface para Invoice del API
+interface Invoice {
   id: number;
   number: string;
-  masterNumber: string;
-  accountingStatus: string;
-  wayBillMasterNumber: string;
-  customerReference: string | null;
-  waybillNumber: string;
-  bookingNumber: string;
-  currentFlow: string | null;
-  departure: string;
-  arrival: string;
-  placeOfDelivery: string | null;
-  finalDestination: string | null;
-  placeOfDelivery_Date: string;
-  finalDestination_Date: string;
-  customer: string | null;
+  type: string;
+  divisionId: number | null;
+  divisionName: string | null;
+  billToId: number;
+  billToName: string;
+  operationFlow: string;
+  billToAddress: string;
+  paymentTermsId: number;
+  paymentTerms: string;
+  dueDays: number;
+  date: string;
+  dueDate: string;
+  status: string;
+  notes: string | null;
+  statementMemo: string;
+  currencyId: number;
+  currency: string;
+  currencyCode: string;
+  baseCurrencyId: number;
+  baseCurrency: string;
+  amount: number;
+  taxAmount: number;
+  totalAmount: number;
+  homeCurrencyId: number;
+  homeCurrency: string;
+  homeCurrencyCode: string;
+  homeAmount: number;
+  homeTaxAmount: number;
+  homeTotalAmount: number;
+  balanceDue: number;
+  baseAmount: number;
+  charges: Charge[];
+  totalCargoValue: number;
+  amountPaid: number;
+  paymentDate: string | null;
   salesRep: string | null;
-  shipper: string;
-  consignee: string;
-  division: string | null;
-  totalCargo_Pieces: number;
-  totalCargo_WeightValue: number;
-  totalCargo_VolumeWeightValue: number;
-  containerNumber: string | null;
-  totalCharge_IncomeValue: number;
-  totalCharge_ExpenseValue: number;
-  totalCharge_ProfitValue: number;
-  createdBy: string;
-  createdOn: string;
-  updatedBy: string;
-  updateOn: string;
-  origin: string;
-  destination: string;
+  moduleNumber: string;
   moduleType: string;
-  serviceType: string | null;
-  modeOfTransportation: string;
-  lastEvent: string | null;
   view: string;
-  ownerId: string | null;
+  viewModule: string;
 }
 
+interface Charge {
+  description: string;
+  rosterLineNumber: number;
+  notes: string | null;
+  quantity: number;
+  unit: string;
+  rate: number;
+  amount: number;
+  exchangeRate: number;
+}
 
-// Interface para trabajar internamente (similar a Quote)
-interface ShipmentData {
-  number: string;
-  customer?: string;
+// Interface para trabajar internamente
+interface InvoiceData {
+  moduleNumber: string;
+  invoiceNumber: string;
+  billToName: string;
   salesRep: string;
-  shipper: string;
-  consignee: string;
-  modeOfTransportation: string;
+  type: string;
   status: string;
   date: string;
-  origin: string;
-  destination: string;
-  totalIncome: number;
-  totalExpense: number;
-  profit: number;
+  dueDate: string;
+  amount: number;
+  totalAmount: number;
+  homeTotalAmount: number;
+  balanceDue: number;
+  amountPaid: number;
+  paymentDate: string | null;
 }
 
-interface AirShipmentStats {
-  totalShipments: number;
-  completedShipments: number;
-  pendingShipments: number;
-  airShipments: number;
-  totalIncome: number;
-  totalExpense: number;
-  totalProfit: number;
-  profitMargin: number;
-  averagePerShipment: number;
-  completionRate: number;
-  uniqueConsignees: number;
+interface InvoiceStats {
+  totalInvoices: number;
+  invoicedCount: number;
+  postedCount: number;
+  totalAmount: number;
+  totalHomeTotalAmount: number;
+  totalBalanceDue: number;
+  totalAmountPaid: number;
+  averagePerInvoice: number;
+  uniqueClients: number;
 }
 
 interface ExecutiveComparison {
   nombre: string;
-  stats: AirShipmentStats;
+  stats: InvoiceStats;
 }
 
 type TabType = 'individual' | 'comparativa' | 'doble';
-type SortField = 'nombre' | 'totalShipments' | 'completedShipments' | 'completionRate' | 'airShipments' | 'totalIncome' | 'totalExpense' | 'totalProfit' | 'profitMargin' | 'averagePerShipment' | 'uniqueConsignees';
+type SortField = 'nombre' | 'totalInvoices' | 'invoicedCount' | 'postedCount' | 'totalAmount' | 'totalHomeTotalAmount' | 'totalBalanceDue' | 'totalAmountPaid' | 'averagePerInvoice' | 'uniqueClients';
 type SortDirection = 'asc' | 'desc';
 
-function ReporteriaAirShipments() {
+function InvoicesXEjecutivo() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user, getEjecutivos } = useAuth();
   
@@ -140,7 +152,7 @@ function ReporteriaAirShipments() {
   const [selectedEjecutivo, setSelectedEjecutivo] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [shipments, setShipments] = useState<ShipmentData[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -149,15 +161,15 @@ function ReporteriaAirShipments() {
   const [compStartDate, setCompStartDate] = useState<string>('');
   const [compEndDate, setCompEndDate] = useState<string>('');
   const [comparativeData, setComparativeData] = useState<ExecutiveComparison[]>([]);
-  const [allComparativeShipments, setAllComparativeShipments] = useState<ShipmentData[]>([]);
+  const [allComparativeInvoices, setAllComparativeInvoices] = useState<InvoiceData[]>([]);
   const [loadingComparative, setLoadingComparative] = useState(false);
   const [errorComparative, setErrorComparative] = useState<string | null>(null);
   const [hasSearchedComparative, setHasSearchedComparative] = useState(false);
-  const [sortField, setSortField] = useState<SortField>('totalProfit');
+  const [sortField, setSortField] = useState<SortField>('totalHomeTotalAmount');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
-  const [showOperacionesModal, setShowOperacionesModal] = useState(false);
-  const [operacionesDetalle, setOperacionesDetalle] = useState([]);
+  const [showInvoicesModal, setShowInvoicesModal] = useState(false);
+  const [invoicesDetalle, setInvoicesDetalle] = useState<InvoiceData[]>([]);
 
   // Estados para Análisis Doble
   const [ejecutivo1, setEjecutivo1] = useState<string>('');
@@ -165,7 +177,7 @@ function ReporteriaAirShipments() {
   const [doubleStartDate, setDoubleStartDate] = useState<string>('');
   const [doubleEndDate, setDoubleEndDate] = useState<string>('');
   const [doubleData, setDoubleData] = useState<ExecutiveComparison[]>([]);
-  const [allDoubleShipments, setAllDoubleShipments] = useState<ShipmentData[]>([]);
+  const [allDoubleInvoices, setAllDoubleInvoices] = useState<InvoiceData[]>([]);
   const [loadingDouble, setLoadingDouble] = useState(false);
   const [errorDouble, setErrorDouble] = useState<string | null>(null);
   const [hasSearchedDouble, setHasSearchedDouble] = useState(false);
@@ -213,88 +225,89 @@ function ReporteriaAirShipments() {
     return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
   };
 
-  // Función para convertir Shipment a ShipmentData
-  const mapShipmentToData = (shipment: Shipment): ShipmentData => {
+  // Función para convertir Invoice a InvoiceData
+  const mapInvoiceToData = (invoice: Invoice): InvoiceData => {
     return {
-      number: shipment.masterNumber || shipment.number, // Usar masterNumber, si no existe usar number
-      customer: shipment.customer || undefined,
-      salesRep: shipment.salesRep || '', // Manejar null como string vacío
-      shipper: shipment.shipper || '',
-      consignee: shipment.consignee || '',
-      modeOfTransportation: shipment.modeOfTransportation || '',
-      status: shipment.accountingStatus || '',
-      date: shipment.updateOn || '',
-      origin: shipment.origin?.trim() || '',
-      destination: shipment.destination?.trim() || '',
-      totalIncome: shipment.totalCharge_IncomeValue || 0,
-      totalExpense: shipment.totalCharge_ExpenseValue || 0,
-      profit: shipment.totalCharge_ProfitValue || 0
+      moduleNumber: invoice.statementMemo || invoice.moduleNumber,
+      invoiceNumber: invoice.number,
+      billToName: invoice.billToName || '',
+      salesRep: invoice.salesRep || '',
+      type: invoice.type || '',
+      status: invoice.status || '',
+      date: invoice.date || '',
+      dueDate: invoice.dueDate || '',
+      amount: invoice.amount || 0,
+      totalAmount: invoice.totalAmount || 0,
+      homeTotalAmount: invoice.homeTotalAmount || 0,
+      balanceDue: invoice.balanceDue || 0,
+      amountPaid: invoice.amountPaid || 0,
+      paymentDate: invoice.paymentDate
     };
   };
 
-  // Función para calcular estadísticas de un array de shipments
-  const calculateStats = (shipmentsArray: ShipmentData[]): AirShipmentStats => {
-    const totalShipments = shipmentsArray.length;
-    const completedShipments = 0; // Ya no usamos el status para determinar completados
-    const airShipments = totalShipments; // Mantener por compatibilidad
-    const totalIncome = shipmentsArray.reduce((sum, s) => sum + (s.totalIncome || 0), 0);
-    const totalExpense = shipmentsArray.reduce((sum, s) => sum + (s.totalExpense || 0), 0);
-    const totalProfit = shipmentsArray.reduce((sum, s) => sum + (s.profit || 0), 0);
+  // Función para calcular estadísticas de un array de invoices
+  const calculateStats = (invoicesArray: InvoiceData[]): InvoiceStats => {
+    const totalInvoices = invoicesArray.length;
+    const invoicedCount = invoicesArray.filter(i => i.status === 'Invoiced').length;
+    const postedCount = invoicesArray.filter(i => i.status === 'Posted').length;
+    const totalAmount = invoicesArray.reduce((sum, i) => sum + (i.amount || 0), 0);
+    const totalHomeTotalAmount = invoicesArray.reduce((sum, i) => sum + (i.homeTotalAmount || 0), 0);
+    const totalBalanceDue = invoicesArray.reduce((sum, i) => sum + (i.balanceDue || 0), 0);
+    const totalAmountPaid = invoicesArray.reduce((sum, i) => sum + (i.amountPaid || 0), 0);
     
-    // Calcular consignees únicos
-    const uniqueConsigneesSet = new Set(
-      shipmentsArray
-        .map(s => s.consignee?.trim())
+    // Calcular clientes únicos
+    const uniqueClientsSet = new Set(
+      invoicesArray
+        .map(i => i.billToName?.trim())
         .filter(c => c && c.length > 0)
     );
-    const uniqueConsignees = uniqueConsigneesSet.size;
+    const uniqueClients = uniqueClientsSet.size;
 
     return {
-      totalShipments,
-      completedShipments,
-      pendingShipments: totalShipments - completedShipments,
-      airShipments,
-      totalIncome,
-      totalExpense,
-      totalProfit,
-      profitMargin: totalIncome > 0 ? (totalProfit / totalIncome) * 100 : 0,
-      averagePerShipment: totalShipments > 0 ? totalIncome / totalShipments : 0,
-      completionRate: totalShipments > 0 ? (completedShipments / totalShipments) * 100 : 0,
-      uniqueConsignees
+      totalInvoices,
+      invoicedCount,
+      postedCount,
+      totalAmount,
+      totalHomeTotalAmount,
+      totalBalanceDue,
+      totalAmountPaid,
+      averagePerInvoice: totalInvoices > 0 ? totalHomeTotalAmount / totalInvoices : 0,
+      uniqueClients
     };
   };
 
-  // Función para agrupar shipments por mes
-  const groupByMonth = (shipmentsArray: ShipmentData[]) => {
-    const monthMap: { [key: string]: ShipmentData[] } = {};
+  // Función para agrupar invoices por mes
+  const groupByMonth = (invoicesArray: InvoiceData[]) => {
+    const monthMap: { [key: string]: InvoiceData[] } = {};
     
-    shipmentsArray.forEach(shipment => {
-      if (!shipment.date) return;
+    invoicesArray.forEach(invoice => {
+      if (!invoice.date) return;
       
-      const parts = shipment.date.split('/');
+      const parts = invoice.date.split('/');
       if (parts.length !== 3) return;
       
-      const month = parseInt(parts[1]);
+      const month = parseInt(parts[0]);
       const year = parseInt(parts[2]);
       const key = `${year}-${month.toString().padStart(2, '0')}`;
       
       if (!monthMap[key]) {
         monthMap[key] = [];
       }
-      monthMap[key].push(shipment);
+      
+      monthMap[key].push(invoice);
     });
-
+    
     return monthMap;
   };
 
   // Fetch para análisis individual
-  const fetchShipments = async () => {
+  const fetchIndividualData = async () => {
     if (!selectedEjecutivo) {
       setError('Debes seleccionar un ejecutivo');
       return;
     }
 
-    const cacheKey = `airShipmentsExecutive_${selectedEjecutivo}_${startDate}_${endDate}`;
+    const cacheKey = `invoicesExecutive_${selectedEjecutivo}_${startDate}_${endDate}`;
     const cached = localStorage.getItem(cacheKey);
     const timestamp = localStorage.getItem(`${cacheKey}_timestamp`);
     const now = Date.now();
@@ -302,7 +315,7 @@ function ReporteriaAirShipments() {
 
     if (cached && timestamp && (now - parseInt(timestamp)) < fiveMinutes) {
       const parsedData = JSON.parse(cached);
-      setShipments(parsedData);
+      setInvoices(parsedData);
       setHasSearched(true);
       setError(null);
       return;
@@ -312,7 +325,7 @@ function ReporteriaAirShipments() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('https://api.linbis.com/shipments/all?Page=1&ItemsPerPage=100&SortBy=newest', {
+      const response = await fetch('https://api.linbis.com/invoices/all', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -322,54 +335,57 @@ function ReporteriaAirShipments() {
       });
 
       if (!response.ok) {
-        throw new Error(`Error al obtener shipments: ${response.statusText}`);
+        throw new Error(`Error al obtener invoices: ${response.statusText}`);
       }
 
-      const data: Shipment[] = await response.json();
+      const data: Invoice[] = await response.json();
 
-      // Convertir a ShipmentData
-      const mappedData = data.map(mapShipmentToData);
+      // Convertir a InvoiceData
+      const mappedData = data.map(mapInvoiceToData);
 
-      // Eliminar duplicados basándose en el number
+      // Eliminar duplicados basándose en el moduleNumber
       const uniqueData = Array.from(
-        new Map(mappedData.map(item => [item.number, item])).values()
+        new Map(mappedData.map(item => [item.moduleNumber, item])).values()
       );
 
+      // Filtrar facturas donde moduleNumber NO comience con SOG
+      const filteredData = uniqueData.filter(item => !item.moduleNumber.startsWith('SOG'));
+
       // Filtrar por ejecutivo (con validación de null)
-      let filteredShipments = uniqueData.filter(s => 
-        s.salesRep && s.salesRep.toLowerCase() === selectedEjecutivo.toLowerCase()
+      let filteredInvoices = filteredData.filter(i => 
+        i.salesRep && i.salesRep.toLowerCase() === selectedEjecutivo.toLowerCase()
       );
 
       // Filtrar por rango de fechas si están definidas
       if (startDate || endDate) {
-        filteredShipments = filteredShipments.filter(shipment => {
-          const shipmentDate = parseDate(shipment.date);
-          if (!shipmentDate) return false;
+        filteredInvoices = filteredInvoices.filter(invoice => {
+          const invoiceDate = parseDate(invoice.date);
+          if (!invoiceDate) return false;
 
           const start = startDate ? parseInputDate(startDate) : null;
           const end = endDate ? parseInputDate(endDate) : null;
 
           if (start && end) {
-            return shipmentDate >= start && shipmentDate <= end;
+            return invoiceDate >= start && invoiceDate <= end;
           } else if (start) {
-            return shipmentDate >= start;
+            return invoiceDate >= start;
           } else if (end) {
-            return shipmentDate <= end;
+            return invoiceDate <= end;
           }
           return true;
         });
       }
 
-      setShipments(filteredShipments);
+      setInvoices(filteredInvoices);
       setHasSearched(true);
 
       // Guardar en caché
-      localStorage.setItem(cacheKey, JSON.stringify(filteredShipments));
+      localStorage.setItem(cacheKey, JSON.stringify(filteredInvoices));
       localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
-      console.error('Error fetching air-shipments:', err);
+      console.error('Error fetching invoices:', err);
     } finally {
       setLoading(false);
     }
@@ -377,7 +393,7 @@ function ReporteriaAirShipments() {
 
   // Fetch para análisis comparativa
   const fetchComparativeData = async () => {
-    const cacheKey = `airShipmentsComparative_${compStartDate}_${compEndDate}`;
+    const cacheKey = `invoicesComparative_${compStartDate}_${compEndDate}`;
     const cached = localStorage.getItem(cacheKey);
     const timestamp = localStorage.getItem(`${cacheKey}_timestamp`);
     const now = Date.now();
@@ -386,7 +402,7 @@ function ReporteriaAirShipments() {
     if (cached && timestamp && (now - parseInt(timestamp)) < fiveMinutes) {
       const parsedData = JSON.parse(cached);
       setComparativeData(parsedData.comparativeData);
-      setAllComparativeShipments(parsedData.allShipments);
+      setAllComparativeInvoices(parsedData.allInvoices);
       setHasSearchedComparative(true);
       setErrorComparative(null);
       return;
@@ -396,7 +412,7 @@ function ReporteriaAirShipments() {
       setLoadingComparative(true);
       setErrorComparative(null);
 
-      const response = await fetch('https://api.linbis.com/shipments/all?Page=1&ItemsPerPage=100&SortBy=newest', {
+      const response = await fetch('https://api.linbis.com/invoices/all', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -406,50 +422,53 @@ function ReporteriaAirShipments() {
       });
 
       if (!response.ok) {
-        throw new Error(`Error al obtener shipments: ${response.statusText}`);
+        throw new Error(`Error al obtener invoices: ${response.statusText}`);
       }
 
-      const data: Shipment[] = await response.json();
+      const data: Invoice[] = await response.json();
 
-      // Convertir a ShipmentData
-      const mappedData = data.map(mapShipmentToData);
+      // Convertir a InvoiceData
+      const mappedData = data.map(mapInvoiceToData);
 
-      // Eliminar duplicados basándose en el number
+      // Eliminar duplicados basándose en el moduleNumber
       const uniqueData = Array.from(
-        new Map(mappedData.map(item => [item.number, item])).values()
+        new Map(mappedData.map(item => [item.moduleNumber, item])).values()
       );
 
+      // Filtrar facturas donde moduleNumber NO comience con SOG
+      const filteredData = uniqueData.filter(item => !item.moduleNumber.startsWith('SOG'));
+      
       // Filtrar por rango de fechas
-      let filteredShipments = uniqueData;
+      let filteredInvoices = filteredData;
       if (compStartDate || compEndDate) {
-        filteredShipments = uniqueData.filter(shipment => {
-          const shipmentDate = parseDate(shipment.date);
-          if (!shipmentDate) return false;
+        filteredInvoices = filteredData.filter(invoice => {
+          const invoiceDate = parseDate(invoice.date);
+          if (!invoiceDate) return false;
 
           const start = compStartDate ? parseInputDate(compStartDate) : null;
           const end = compEndDate ? parseInputDate(compEndDate) : null;
 
           if (start && end) {
-            return shipmentDate >= start && shipmentDate <= end;
+            return invoiceDate >= start && invoiceDate <= end;
           } else if (start) {
-            return shipmentDate >= start;
+            return invoiceDate >= start;
           } else if (end) {
-            return shipmentDate <= end;
+            return invoiceDate <= end;
           }
           return true;
         });
       }
 
       // Agrupar por ejecutivo (filtrar salesRep nulos primero)
-      const groupedByExecutive: { [key: string]: ShipmentData[] } = {};
-      filteredShipments.forEach(shipment => {
-        const exec = shipment.salesRep;
-        if (!exec || exec.trim().length === 0) return; // Saltar si salesRep es null o vacío
+      const groupedByExecutive: { [key: string]: InvoiceData[] } = {};
+      filteredInvoices.forEach(invoice => {
+        const exec = invoice.salesRep;
+        if (!exec || exec.trim().length === 0) return;
         
         if (!groupedByExecutive[exec]) {
           groupedByExecutive[exec] = [];
         }
-        groupedByExecutive[exec].push(shipment);
+        groupedByExecutive[exec].push(invoice);
       });
 
       // Calcular stats para cada ejecutivo
@@ -459,19 +478,19 @@ function ReporteriaAirShipments() {
       }));
 
       setComparativeData(comparativeResults);
-      setAllComparativeShipments(filteredShipments);
+      setAllComparativeInvoices(filteredInvoices);
       setHasSearchedComparative(true);
 
       // Guardar en caché
       localStorage.setItem(cacheKey, JSON.stringify({
         comparativeData: comparativeResults,
-        allShipments: filteredShipments
+        allInvoices: filteredInvoices
       }));
       localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
 
     } catch (err) {
       setErrorComparative(err instanceof Error ? err.message : 'Error desconocido');
-      console.error('Error fetching comparative air-shipments:', err);
+      console.error('Error fetching comparative invoices:', err);
     } finally {
       setLoadingComparative(false);
     }
@@ -489,7 +508,7 @@ function ReporteriaAirShipments() {
       return;
     }
 
-    const cacheKey = `airShipmentsDouble_${ejecutivo1}_${ejecutivo2}_${doubleStartDate}_${doubleEndDate}`;
+    const cacheKey = `invoicesDouble_${ejecutivo1}_${ejecutivo2}_${doubleStartDate}_${doubleEndDate}`;
     const cached = localStorage.getItem(cacheKey);
     const timestamp = localStorage.getItem(`${cacheKey}_timestamp`);
     const now = Date.now();
@@ -498,7 +517,7 @@ function ReporteriaAirShipments() {
     if (cached && timestamp && (now - parseInt(timestamp)) < fiveMinutes) {
       const parsedData = JSON.parse(cached);
       setDoubleData(parsedData.doubleData);
-      setAllDoubleShipments(parsedData.allShipments);
+      setAllDoubleInvoices(parsedData.allInvoices);
       setHasSearchedDouble(true);
       setErrorDouble(null);
       return;
@@ -508,7 +527,7 @@ function ReporteriaAirShipments() {
       setLoadingDouble(true);
       setErrorDouble(null);
 
-      const response = await fetch('https://api.linbis.com/shipments/all?Page=1&ItemsPerPage=100&SortBy=newest', {
+      const response = await fetch('https://api.linbis.com/invoices/all', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -518,112 +537,79 @@ function ReporteriaAirShipments() {
       });
 
       if (!response.ok) {
-        throw new Error(`Error al obtener shipments: ${response.statusText}`);
+        throw new Error(`Error al obtener invoices: ${response.statusText}`);
       }
 
-      const data: Shipment[] = await response.json();
+      const data: Invoice[] = await response.json();
 
-      // Convertir a ShipmentData
-      const mappedData = data.map(mapShipmentToData);
+      // Convertir a InvoiceData
+      const mappedData = data.map(mapInvoiceToData);
 
-      // Eliminar duplicados basándose en el number
+      // Eliminar duplicados basándose en el moduleNumber
       const uniqueData = Array.from(
-        new Map(mappedData.map(item => [item.number, item])).values()
+        new Map(mappedData.map(item => [item.moduleNumber, item])).values()
       );
 
+      // Filtrar facturas donde moduleNumber NO comience con SOG
+      const filteredData = uniqueData.filter(item => !item.moduleNumber.startsWith('SOG'));
+
       // Filtrar por los dos ejecutivos (con validación de null)
-      let filteredShipments = uniqueData.filter(s =>
-        s.salesRep && (
-          s.salesRep.toLowerCase() === ejecutivo1.toLowerCase() ||
-          s.salesRep.toLowerCase() === ejecutivo2.toLowerCase()
+      let filteredInvoices = filteredData.filter(i =>
+        i.salesRep && (
+          i.salesRep.toLowerCase() === ejecutivo1.toLowerCase() ||
+          i.salesRep.toLowerCase() === ejecutivo2.toLowerCase()
         )
       );
 
       // Filtrar por rango de fechas
       if (doubleStartDate || doubleEndDate) {
-        filteredShipments = filteredShipments.filter(shipment => {
-          const shipmentDate = parseDate(shipment.date);
-          if (!shipmentDate) return false;
+        filteredInvoices = filteredInvoices.filter(invoice => {
+          const invoiceDate = parseDate(invoice.date);
+          if (!invoiceDate) return false;
 
           const start = doubleStartDate ? parseInputDate(doubleStartDate) : null;
           const end = doubleEndDate ? parseInputDate(doubleEndDate) : null;
 
           if (start && end) {
-            return shipmentDate >= start && shipmentDate <= end;
+            return invoiceDate >= start && invoiceDate <= end;
           } else if (start) {
-            return shipmentDate >= start;
+            return invoiceDate >= start;
           } else if (end) {
-            return shipmentDate <= end;
+            return invoiceDate <= end;
           }
           return true;
         });
       }
 
       // Agrupar por ejecutivo (con validación de null)
-      const exec1Shipments = filteredShipments.filter(s => s.salesRep && s.salesRep.toLowerCase() === ejecutivo1.toLowerCase());
-      const exec2Shipments = filteredShipments.filter(s => s.salesRep && s.salesRep.toLowerCase() === ejecutivo2.toLowerCase());
+      const exec1Invoices = filteredInvoices.filter(i => i.salesRep && i.salesRep.toLowerCase() === ejecutivo1.toLowerCase());
+      const exec2Invoices = filteredInvoices.filter(i => i.salesRep && i.salesRep.toLowerCase() === ejecutivo2.toLowerCase());
 
       const doubleResults: ExecutiveComparison[] = [
-        { nombre: ejecutivo1, stats: calculateStats(exec1Shipments) },
-        { nombre: ejecutivo2, stats: calculateStats(exec2Shipments) }
+        { nombre: ejecutivo1, stats: calculateStats(exec1Invoices) },
+        { nombre: ejecutivo2, stats: calculateStats(exec2Invoices) }
       ];
 
       setDoubleData(doubleResults);
-      setAllDoubleShipments(filteredShipments);
+      setAllDoubleInvoices(filteredInvoices);
       setHasSearchedDouble(true);
 
       // Guardar en caché
       localStorage.setItem(cacheKey, JSON.stringify({
         doubleData: doubleResults,
-        allShipments: filteredShipments
+        allInvoices: filteredInvoices
       }));
       localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
 
     } catch (err) {
       setErrorDouble(err instanceof Error ? err.message : 'Error desconocido');
-      console.error('Error fetching double air-shipments:', err);
+      console.error('Error fetching double invoices:', err);
     } finally {
       setLoadingDouble(false);
     }
   };
 
-  // Handlers para cambio de tab
-  const handleTabChange = (tab: TabType) => {
-    setActiveTab(tab);
-  };
-
-  // Función para ordenar datos comparativos
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
-  };
-
-  const getSortedData = () => {
-    return [...comparativeData].sort((a, b) => {
-      let aVal: number | string;
-      let bVal: number | string;
-
-      if (sortField === 'nombre') {
-        aVal = a.nombre;
-        bVal = b.nombre;
-      } else {
-        aVal = a.stats[sortField as keyof AirShipmentStats] as number;
-        bVal = b.stats[sortField as keyof AirShipmentStats] as number;
-      }
-
-      if (sortDirection === 'asc') {
-        return aVal > bVal ? 1 : -1;
-      } else {
-        return aVal < bVal ? 1 : -1;
-      }
-    });
-  };
-
-  // Funciones auxiliares para análisis
+  // Función para formatear moneda
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('es-CL', {
       style: 'currency',
@@ -633,1375 +619,463 @@ function ReporteriaAirShipments() {
     }).format(value);
   };
 
-  const getTopConsignees = (shipmentsArray: ShipmentData[], limit: number = 10) => {
-    const consigneeMap: { [key: string]: { count: number; income: number } } = {};
-
-    shipmentsArray.forEach(shipment => {
-      const consignee = shipment.consignee?.trim();
-      if (consignee && consignee.length > 0) {
-        if (!consigneeMap[consignee]) {
-          consigneeMap[consignee] = { count: 0, income: 0 };
-        }
-        consigneeMap[consignee].count++;
-        consigneeMap[consignee].income += shipment.totalIncome || 0;
-      }
-    });
-
-    return Object.entries(consigneeMap)
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.income - a.income)
-      .slice(0, limit);
+  // Función para manejar ordenamiento
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
   };
 
-  const getTopRoutes = (shipmentsArray: ShipmentData[], limit: number = 10) => {
-    const routeMap: { [key: string]: { count: number; income: number } } = {};
+  // Función para obtener datos ordenados
+  const getSortedData = (data: ExecutiveComparison[]) => {
+    return [...data].sort((a, b) => {
+      let aValue: number | string;
+      let bValue: number | string;
 
-    shipmentsArray.forEach(shipment => {
-      const route = `${shipment.origin} → ${shipment.destination}`;
-      if (!routeMap[route]) {
-        routeMap[route] = { count: 0, income: 0 };
+      if (sortField === 'nombre') {
+        aValue = a.nombre;
+        bValue = b.nombre;
+      } else {
+        aValue = a.stats[sortField];
+        bValue = b.stats[sortField];
       }
-      routeMap[route].count++;
-      routeMap[route].income += shipment.totalIncome || 0;
-    });
 
-    return Object.entries(routeMap)
-      .map(([route, data]) => ({ route, ...data }))
-      .sort((a, b) => b.income - a.income)
-      .slice(0, limit);
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return sortDirection === 'asc' 
+        ? (aValue as number) - (bValue as number)
+        : (bValue as number) - (aValue as number);
+    });
   };
 
-  // Render de gráficos para análisis individual
+  // Función para renderizar indicador de ordenamiento
+  const renderSortIndicator = (field: SortField) => {
+    if (sortField !== field) return null;
+    return sortDirection === 'asc' ? ' ▲' : ' ▼';
+  };
+
+  // Función para mostrar modal de detalle
+  const handleShowInvoicesDetail = (invoicesList: InvoiceData[]) => {
+    setInvoicesDetalle(invoicesList);
+    setShowInvoicesModal(true);
+  };
+
+  // Renderizar gráficos individuales
   const renderIndividualCharts = () => {
-    if (!shipments || shipments.length === 0) return null;
+    if (invoices.length === 0) return null;
 
-    const monthlyData = groupByMonth(shipments);
+    const stats = calculateStats(invoices);
+    const monthlyData = groupByMonth(invoices);
     const sortedMonths = Object.keys(monthlyData).sort();
 
-    const monthLabels = sortedMonths.map(key => {
-      const [year, month] = key.split('-');
-      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      return `${monthNames[parseInt(month) - 1]} ${year}`;
-    });
+    // Datos para gráfico de barras mensual
+    const monthlyChartData = {
+      labels: sortedMonths.map(m => {
+        const [year, month] = m.split('-');
+        return `${month}/${year}`;
+      }),
+      datasets: [
+        {
+          label: 'Total Facturado (CLP)',
+          data: sortedMonths.map(m => {
+            const monthInvoices = monthlyData[m];
+            return monthInvoices.reduce((sum, i) => sum + i.homeTotalAmount, 0);
+          }),
+          backgroundColor: 'rgba(59, 130, 246, 0.8)',
+          borderColor: 'rgb(59, 130, 246)',
+          borderWidth: 1
+        }
+      ]
+    };
 
-    const monthlyIncome = sortedMonths.map(key => {
-      return monthlyData[key].reduce((sum, s) => sum + (s.totalIncome || 0), 0);
-    });
-
-    const monthlyExpense = sortedMonths.map(key => {
-      return monthlyData[key].reduce((sum, s) => sum + (s.totalExpense || 0), 0);
-    });
-
-    const monthlyProfit = sortedMonths.map(key => {
-      return monthlyData[key].reduce((sum, s) => sum + (s.profit || 0), 0);
-    });
-
-    const monthlyShipments = sortedMonths.map(key => monthlyData[key].length);
-
-    const totalShipments = shipments.length;
-    const completedShipments = shipments.filter(s => s.status === 'PreLoaded').length;
-    const pendingShipments = totalShipments - completedShipments;
+    // Datos para gráfico de status
+    const statusChartData = {
+      labels: ['Invoiced', 'Posted'],
+      datasets: [{
+        data: [stats.invoicedCount, stats.postedCount],
+        backgroundColor: [
+          'rgba(251, 191, 36, 0.8)',
+          'rgba(34, 197, 94, 0.8)'
+        ],
+        borderColor: [
+          'rgb(251, 191, 36)',
+          'rgb(34, 197, 94)'
+        ],
+        borderWidth: 1
+      }]
+    };
 
     return (
       <div className="row g-4 mb-4">
-        {/* Gráfico de Income/Expense/Profit por mes */}
         <div className="col-md-8">
           <div style={{
             backgroundColor: 'white',
-            borderRadius: '8px',
+            borderRadius: '12px',
             border: '1px solid #e5e7eb',
             padding: '24px',
             boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
           }}>
-            <h5 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              💰 Evolución Financiera Mensual
+            <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
+              📈 Facturación Mensual
             </h5>
-            <div style={{ height: '300px' }}>
-              <Bar
-                data={{
-                  labels: monthLabels,
-                  datasets: [
-                    {
-                      label: 'Income',
-                      data: monthlyIncome,
-                      backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                      borderColor: 'rgb(16, 185, 129)',
-                      borderWidth: 2
-                    },
-                    {
-                      label: 'Expense',
-                      data: monthlyExpense,
-                      backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                      borderColor: 'rgb(239, 68, 68)',
-                      borderWidth: 2
-                    },
-                    {
-                      label: 'Profit',
-                      data: monthlyProfit,
-                      backgroundColor: 'rgba(139, 92, 246, 0.8)',
-                      borderColor: 'rgb(139, 92, 246)',
-                      borderWidth: 2
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top' as const,
-                      labels: {
-                        font: { size: 12, weight: '600' as const },
-                        padding: 15,
-                        usePointStyle: true
-                      }
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => {
-                          return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-                        }
-                      }
-                    }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: {
-                        callback: (value) => formatCurrency(value as number)
-                      }
+            <Bar 
+              data={monthlyChartData}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      label: (context) => formatCurrency(context.parsed.y)
                     }
                   }
-                }}
-              />
-            </div>
+                },
+                scales: {
+                  y: {
+                    beginAtZero: true,
+                    ticks: {
+                      callback: (value) => formatCurrency(Number(value))
+                    }
+                  }
+                }
+              }}
+            />
           </div>
         </div>
-
-        {/* Gráfico de Status */}
         <div className="col-md-4">
           <div style={{
             backgroundColor: 'white',
-            borderRadius: '8px',
+            borderRadius: '12px',
             border: '1px solid #e5e7eb',
             padding: '24px',
             boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
           }}>
-            <h5 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              📊 Estado de Operaciones
+            <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
+              📊 Status de Facturas
             </h5>
-            <div style={{ height: '300px' }}>
-              <Doughnut
-                data={{
-                  labels: ['Completadas', 'Pendientes'],
-                  datasets: [
-                    {
-                      data: [completedShipments, pendingShipments],
-                      backgroundColor: [
-                        'rgba(16, 185, 129, 0.8)',
-                        'rgba(251, 191, 36, 0.8)'
-                      ],
-                      borderColor: [
-                        'rgb(16, 185, 129)',
-                        'rgb(251, 191, 36)'
-                      ],
-                      borderWidth: 2
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom' as const,
-                      labels: {
-                        font: { size: 12, weight: '600' as const },
-                        padding: 15,
-                        usePointStyle: true
-                      }
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => {
-                          const total = completedShipments + pendingShipments;
-                          const percentage = ((context.parsed / total) * 100).toFixed(1);
-                          return `${context.label}: ${context.parsed} (${percentage}%)`;
-                        }
-                      }
-                    }
+            <Doughnut 
+              data={statusChartData}
+              options={{
+                responsive: true,
+                plugins: {
+                  legend: {
+                    position: 'bottom'
                   }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Gráfico de Operaciones por mes */}
-        <div className="col-md-12">
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            padding: '24px',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-          }}>
-            <h5 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              ✈️ Volumen de Operaciones Mensuales
-            </h5>
-            <div style={{ height: '250px' }}>
-              <Line
-                data={{
-                  labels: monthLabels,
-                  datasets: [
-                    {
-                      label: 'Operaciones',
-                      data: monthlyShipments,
-                      borderColor: 'rgb(59, 130, 246)',
-                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                      borderWidth: 3,
-                      fill: true,
-                      tension: 0.4,
-                      pointRadius: 5,
-                      pointHoverRadius: 7
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top' as const,
-                      labels: {
-                        font: { size: 12, weight: '600' as const },
-                        padding: 15,
-                        usePointStyle: true
-                      }
-                    }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: {
-                        stepSize: 1
-                      }
-                    }
-                  }
-                }}
-              />
-            </div>
+                }
+              }}
+            />
           </div>
         </div>
       </div>
     );
   };
 
-  // Render de gráficos para análisis comparativa
+  // Renderizar gráficos comparativos
   const renderComparativeCharts = () => {
-    if (!comparativeData || comparativeData.length === 0) return null;
+    if (comparativeData.length === 0) return null;
 
-    const sortedData = [...comparativeData].sort((a, b) => b.stats.totalProfit - a.stats.totalProfit);
-    const top10 = sortedData.slice(0, 10);
+    const sortedData = getSortedData(comparativeData);
+
+    // Gráfico de barras comparativo
+    const compareChartData = {
+      labels: sortedData.map(d => d.nombre),
+      datasets: [
+        {
+          label: 'Total Facturado (CLP)',
+          data: sortedData.map(d => d.stats.totalHomeTotalAmount),
+          backgroundColor: 'rgba(59, 130, 246, 0.8)',
+          borderColor: 'rgb(59, 130, 246)',
+          borderWidth: 1
+        },
+        {
+          label: 'Saldo Pendiente (CLP)',
+          data: sortedData.map(d => d.stats.totalBalanceDue),
+          backgroundColor: 'rgba(239, 68, 68, 0.8)',
+          borderColor: 'rgb(239, 68, 68)',
+          borderWidth: 1
+        }
+      ]
+    };
 
     return (
-      <div className="row g-4 mb-4">
-        {/* Gráfico comparativo de Profit */}
-        <div className="col-md-6">
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            padding: '24px',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-          }}>
-            <h5 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              💎 Top 10 Ejecutivos por Profit
-            </h5>
-            <div style={{ height: '400px' }}>
-              <Bar
-                data={{
-                  labels: top10.map(e => e.nombre),
-                  datasets: [
-                    {
-                      label: 'Profit Total',
-                      data: top10.map(e => e.stats.totalProfit),
-                      backgroundColor: 'rgba(139, 92, 246, 0.8)',
-                      borderColor: 'rgb(139, 92, 246)',
-                      borderWidth: 2
-                    }
-                  ]
-                }}
-                options={{
-                  indexAxis: 'y' as const,
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => formatCurrency(context.parsed.x)
-                      }
-                    }
-                  },
-                  scales: {
-                    x: {
-                      beginAtZero: true,
-                      ticks: {
-                        callback: (value) => formatCurrency(value as number)
-                      }
-                    }
+      <div className="mb-4">
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          border: '1px solid #e5e7eb',
+          padding: '24px',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+        }}>
+          <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
+            📊 Comparación por Ejecutivo
+          </h5>
+          <Bar 
+            data={compareChartData}
+            options={{
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: 'top'
+                },
+                tooltip: {
+                  callbacks: {
+                    label: (context) => `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`
                   }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Gráfico comparativo de Operaciones */}
-        <div className="col-md-6">
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            padding: '24px',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-          }}>
-            <h5 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              ✈️ Top 10 Ejecutivos por Volumen
-            </h5>
-            <div style={{ height: '400px' }}>
-              <Bar
-                data={{
-                  labels: top10.map(e => e.nombre),
-                  datasets: [
-                    {
-                      label: 'Total Operaciones',
-                      data: top10.map(e => e.stats.totalShipments),
-                      backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                      borderColor: 'rgb(59, 130, 246)',
-                      borderWidth: 2
-                    }
-                  ]
-                }}
-                options={{
-                  indexAxis: 'y' as const,
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false }
-                  },
-                  scales: {
-                    x: {
-                      beginAtZero: true,
-                      ticks: {
-                        stepSize: 1
-                      }
-                    }
+                }
+              },
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  ticks: {
+                    callback: (value) => formatCurrency(Number(value))
                   }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Gráfico de Income vs Expense */}
-        <div className="col-md-12">
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            padding: '24px',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-          }}>
-            <h5 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              💰 Income vs Expense por Ejecutivo (Top 10)
-            </h5>
-            <div style={{ height: '350px' }}>
-              <Bar
-                data={{
-                  labels: top10.map(e => e.nombre),
-                  datasets: [
-                    {
-                      label: 'Income',
-                      data: top10.map(e => e.stats.totalIncome),
-                      backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                      borderColor: 'rgb(16, 185, 129)',
-                      borderWidth: 2
-                    },
-                    {
-                      label: 'Expense',
-                      data: top10.map(e => e.stats.totalExpense),
-                      backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                      borderColor: 'rgb(239, 68, 68)',
-                      borderWidth: 2
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top' as const,
-                      labels: {
-                        font: { size: 12, weight: '600' as const },
-                        padding: 15,
-                        usePointStyle: true
-                      }
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => {
-                          return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-                        }
-                      }
-                    }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: {
-                        callback: (value) => formatCurrency(value as number)
-                      }
-                    }
-                  }
-                }}
-              />
-            </div>
-          </div>
+                }
+              }
+            }}
+          />
         </div>
       </div>
     );
-  };
-
-  // Render de gráficos para análisis doble
-  const renderDoubleCharts = () => {
-    if (!doubleData || doubleData.length !== 2) return null;
-
-    const exec1 = doubleData[0];
-    const exec2 = doubleData[1];
-
-    return (
-      <div className="row g-4 mb-4">
-        {/* Comparación de Métricas Principales */}
-        <div className="col-md-6">
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            padding: '24px',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-          }}>
-            <h5 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              📊 Comparación de Métricas Clave
-            </h5>
-            <div style={{ height: '300px' }}>
-              <Bar
-                data={{
-                  labels: ['Operaciones', 'Completadas', 'Clientes'],
-                  datasets: [
-                    {
-                      label: exec1.nombre,
-                      data: [
-                        exec1.stats.totalShipments,
-                        exec1.stats.completedShipments,
-                        exec1.stats.uniqueConsignees
-                      ],
-                      backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                      borderColor: 'rgb(59, 130, 246)',
-                      borderWidth: 2
-                    },
-                    {
-                      label: exec2.nombre,
-                      data: [
-                        exec2.stats.totalShipments,
-                        exec2.stats.completedShipments,
-                        exec2.stats.uniqueConsignees
-                      ],
-                      backgroundColor: 'rgba(139, 92, 246, 0.8)',
-                      borderColor: 'rgb(139, 92, 246)',
-                      borderWidth: 2
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top' as const,
-                      labels: {
-                        font: { size: 12, weight: '600' as const },
-                        padding: 15,
-                        usePointStyle: true
-                      }
-                    }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true
-                    }
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Comparación Financiera */}
-        <div className="col-md-6">
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            padding: '24px',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-          }}>
-            <h5 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              💰 Comparación Financiera
-            </h5>
-            <div style={{ height: '300px' }}>
-              <Bar
-                data={{
-                  labels: ['Income', 'Expense', 'Profit'],
-                  datasets: [
-                    {
-                      label: exec1.nombre,
-                      data: [
-                        exec1.stats.totalIncome,
-                        exec1.stats.totalExpense,
-                        exec1.stats.totalProfit
-                      ],
-                      backgroundColor: 'rgba(16, 185, 129, 0.8)',
-                      borderColor: 'rgb(16, 185, 129)',
-                      borderWidth: 2
-                    },
-                    {
-                      label: exec2.nombre,
-                      data: [
-                        exec2.stats.totalIncome,
-                        exec2.stats.totalExpense,
-                        exec2.stats.totalProfit
-                      ],
-                      backgroundColor: 'rgba(251, 191, 36, 0.8)',
-                      borderColor: 'rgb(251, 191, 36)',
-                      borderWidth: 2
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top' as const,
-                      labels: {
-                        font: { size: 12, weight: '600' as const },
-                        padding: 15,
-                        usePointStyle: true
-                      }
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => {
-                          return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
-                        }
-                      }
-                    }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: {
-                        callback: (value) => formatCurrency(value as number)
-                      }
-                    }
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Comparación de Tasas */}
-        <div className="col-md-12">
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb',
-            padding: '24px',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-          }}>
-            <h5 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              📈 Tasas de Rendimiento y Eficiencia
-            </h5>
-            <div style={{ height: '300px' }}>
-              <Bar
-                data={{
-                  labels: ['Tasa Completado (%)', 'Margen Profit (%)', 'Promedio por Op'],
-                  datasets: [
-                    {
-                      label: exec1.nombre,
-                      data: [
-                        exec1.stats.completionRate,
-                        exec1.stats.profitMargin,
-                        exec1.stats.averagePerShipment / 100000
-                      ],
-                      backgroundColor: 'rgba(236, 72, 153, 0.8)',
-                      borderColor: 'rgb(236, 72, 153)',
-                      borderWidth: 2
-                    },
-                    {
-                      label: exec2.nombre,
-                      data: [
-                        exec2.stats.completionRate,
-                        exec2.stats.profitMargin,
-                        exec2.stats.averagePerShipment / 100000
-                      ],
-                      backgroundColor: 'rgba(14, 165, 233, 0.8)',
-                      borderColor: 'rgb(14, 165, 233)',
-                      borderWidth: 2
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top' as const,
-                      labels: {
-                        font: { size: 12, weight: '600' as const },
-                        padding: 15,
-                        usePointStyle: true
-                      }
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: (context) => {
-                          if (context.dataIndex === 2) {
-                            return `${context.dataset.label}: ${formatCurrency(context.parsed.y * 100000)}`;
-                          }
-                          return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}%`;
-                        }
-                      }
-                    }
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true
-                    }
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const handleOpenOperaciones = () => {
-    // Filtra las operaciones del ejecutivo seleccionado
-    const ops = shipments.filter(item => item.salesRep === selectedEjecutivo);
-    setOperacionesDetalle(ops as any);
-    setShowOperacionesModal(true);
   };
 
   return (
-    <div className="container-fluid p-4">
-      {/* Header */}
-      <div className="mb-4">
-        <h2 className="mb-1" style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937' }}>
-          ✈️ Reportería de Operaciones Aéreas
-        </h2>
-        <p className="text-muted mb-0" style={{ fontSize: '14px' }}>
-          Análisis de desempeño de ejecutivos en operaciones aéreas
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <ul className="nav nav-tabs mb-4" style={{ borderBottom: '2px solid #e5e7eb' }}>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === 'individual' ? 'active' : ''}`}
-            onClick={() => handleTabChange('individual')}
-            style={{
-              border: 'none',
-              borderBottom: activeTab === 'individual' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'individual' ? '#3b82f6' : '#6b7280',
-              fontWeight: activeTab === 'individual' ? '600' : '400',
-              padding: '12px 24px',
-              backgroundColor: 'transparent'
-            }}
-          >
-            📊 Análisis Individual
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === 'comparativa' ? 'active' : ''}`}
-            onClick={() => handleTabChange('comparativa')}
-            style={{
-              border: 'none',
-              borderBottom: activeTab === 'comparativa' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'comparativa' ? '#3b82f6' : '#6b7280',
-              fontWeight: activeTab === 'comparativa' ? '600' : '400',
-              padding: '12px 24px',
-              backgroundColor: 'transparent'
-            }}
-          >
-            📈 Análisis Comparativa
-          </button>
-        </li>
-        <li className="nav-item">
-          <button
-            className={`nav-link ${activeTab === 'doble' ? 'active' : ''}`}
-            onClick={() => handleTabChange('doble')}
-            style={{
-              border: 'none',
-              borderBottom: activeTab === 'doble' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'doble' ? '#3b82f6' : '#6b7280',
-              fontWeight: activeTab === 'doble' ? '600' : '400',
-              padding: '12px 24px',
-              backgroundColor: 'transparent'
-            }}
-          >
-            🔄 Comparación Doble
-          </button>
-        </li>
-      </ul>
-
-      {/* Contenido según tab activo */}
-      {activeTab === 'individual' && (
-        <>
-          {/* Filtros para Individual */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            padding: '24px',
-            marginBottom: '24px',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '40px 20px'
+    }}>
+      <Container>
+        {/* Header */}
+        <div style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '16px',
+          padding: '32px',
+          marginBottom: '32px',
+          boxShadow: '0 10px 40px rgba(0, 0, 0, 0.1)',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <h1 style={{
+            fontSize: '32px',
+            fontWeight: '700',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            marginBottom: '8px'
           }}>
-            <h5 style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px'
-            }}>
-              🔍 Filtros de Búsqueda
-            </h5>
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label" style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  Ejecutivo
-                </label>
-                <select
-                  className="form-select"
-                  value={selectedEjecutivo}
-                  onChange={(e) => setSelectedEjecutivo(e.target.value)}
-                  disabled={loadingEjecutivos}
-                  style={{ fontSize: '14px' }}
-                >
-                  <option value="">Seleccionar ejecutivo...</option>
-                  {ejecutivos.map(exec => (
-                    <option key={exec.id} value={exec.nombre}>
-                      {exec.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="col-md-3">
-                <label className="form-label" style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  Fecha Inicio (opcional)
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  style={{ fontSize: '14px' }}
-                />
-              </div>
-              <div className="col-md-3">
-                <label className="form-label" style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  Fecha Fin (opcional)
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  style={{ fontSize: '14px' }}
-                />
-              </div>
-              <div className="col-md-2 d-flex align-items-end">
-                <button
-                  className="btn btn-primary w-100"
-                  onClick={fetchShipments}
-                  disabled={loading || !selectedEjecutivo}
-                  style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    padding: '10px',
-                    backgroundColor: '#3b82f6',
-                    border: 'none'
-                  }}
-                >
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" />
-                      Buscando...
-                    </>
-                  ) : (
-                    'Buscar'
-                  )}
-                </button>
-              </div>
-            </div>
-            {error && (
-              <div className="alert alert-danger mt-3 mb-0" style={{ fontSize: '14px' }}>
-                {error}
-              </div>
-            )}
-          </div>
+            💰 Reportería de Facturas por Ejecutivo
+          </h1>
+          <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
+            Análisis detallado de facturación y desempeño comercial
+          </p>
+        </div>
 
-          {/* Resultados Individual */}
-          {loading && (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }} />
-              <p className="mt-3 text-muted">Cargando operaciones aéreas...</p>
-            </div>
-          )}
+        {/* Tabs */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '8px',
+          marginBottom: '24px',
+          display: 'flex',
+          gap: '8px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          {[
+            { key: 'individual' as TabType, label: '👤 Análisis Individual', icon: '📊' },
+            { key: 'comparativa' as TabType, label: '📊 Análisis Comparativa', icon: '📈' },
+            { key: 'doble' as TabType, label: '⚖️ Análisis Doble', icon: '🔄' }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                flex: 1,
+                padding: '12px 24px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                backgroundColor: activeTab === tab.key ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+                background: activeTab === tab.key ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+                color: activeTab === tab.key ? 'white' : '#6b7280'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          {!loading && hasSearched && shipments.length === 0 && (
+        {/* Tab Individual */}
+        {activeTab === 'individual' && (
+          <>
+            {/* Filtros */}
             <div style={{
               backgroundColor: 'white',
               borderRadius: '12px',
               border: '1px solid #e5e7eb',
-              padding: '60px 20px',
-              textAlign: 'center'
+              padding: '24px',
+              marginBottom: '24px',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
             }}>
-              <div style={{
-                width: '64px',
-                height: '64px',
-                backgroundColor: '#fef3c7',
-                borderRadius: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 24px'
-              }}>
-                <svg width="32" height="32" fill="#f59e0b" viewBox="0 0 16 16">
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
-                </svg>
-              </div>
-              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                No se encontraron operaciones
+              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
+                🔍 Filtros de Búsqueda
               </h4>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                Intenta ajustar los filtros de búsqueda
-              </p>
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    Ejecutivo
+                  </label>
+                  <select
+                    className="form-select"
+                    value={selectedEjecutivo}
+                    onChange={(e) => setSelectedEjecutivo(e.target.value)}
+                    disabled={loadingEjecutivos}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      padding: '10px 12px'
+                    }}
+                  >
+                    <option value="">Selecciona un ejecutivo...</option>
+                    {ejecutivos.map(ej => (
+                      <option key={ej.id} value={ej.nombre}>{ej.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-3">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    Fecha Inicio
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      padding: '10px 12px'
+                    }}
+                  />
+                </div>
+                <div className="col-md-3">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    Fecha Fin
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      padding: '10px 12px'
+                    }}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: 'transparent', marginBottom: '8px' }}>
+                    .
+                  </label>
+                  <button
+                    onClick={fetchIndividualData}
+                    disabled={loading}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      opacity: loading ? 0.6 : 1
+                    }}
+                  >
+                    {loading ? 'Buscando...' : '🔍 Buscar'}
+                  </button>
+                </div>
+              </div>
+              {error && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  color: '#991b1b',
+                  fontSize: '14px'
+                }}>
+                  ⚠️ {error}
+                </div>
+              )}
             </div>
-          )}
 
-          {!loading && hasSearched && shipments.length > 0 && (
-            <>
-              {/* KPIs Cards */}
-              <div className="row g-4 mb-4">
+            {/* Resultados */}
+            {loading && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Cargando...</span>
+                </div>
+                <p className="mt-3 text-muted">Cargando datos...</p>
+              </div>
+            )}
+
+            {!loading && hasSearched && invoices.length === 0 && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px'
+                }}>
+                  <svg width="32" height="32" fill="#f59e0b" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                  No se encontraron facturas
+                </h4>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                  Intenta ajustar los filtros de búsqueda
+                </p>
+              </div>
+            )}
+
+            {!loading && hasSearched && invoices.length > 0 && (
+              <>
+                {/* KPIs */}
                 {(() => {
-                  const stats = calculateStats(shipments);
+                  const stats = calculateStats(invoices);
                   return (
-                    <>
-                      <div className="col-md-3">
-                        <div style={{
-                          backgroundColor: 'white',
-                          borderRadius: '12px',
-                          border: '1px solid #e5e7eb',
-                          padding: '20px',
-                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                            <div style={{
-                              width: '40px',
-                              height: '40px',
-                              backgroundColor: '#dbeafe',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginRight: '12px'
-                            }}>
-                              <span style={{ fontSize: '20px' }}>✈️</span>
-                            </div>
-                            <div 
-                                onClick={handleOpenOperaciones}
-                                style={{ 
-                                    cursor: 'pointer',
-                                    transition: 'transform 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                                >
-                                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                                    Total Operaciones
-                                </p>
-                                <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', margin: 0 }}>
-                                    {stats.totalShipments}
-                                </h3>
-                            </div>
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            Completadas: <span style={{ fontWeight: '600', color: '#10b981' }}>{stats.completedShipments}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="col-md-3">
-                        <div style={{
-                          backgroundColor: 'white',
-                          borderRadius: '12px',
-                          border: '1px solid #e5e7eb',
-                          padding: '20px',
-                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                            <div style={{
-                              width: '40px',
-                              height: '40px',
-                              backgroundColor: '#d1fae5',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginRight: '12px'
-                            }}>
-                              <span style={{ fontSize: '20px' }}>💰</span>
-                            </div>
-                            <div>
-                              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                                Income Total
-                              </p>
-                              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#10b981', margin: 0 }}>
-                                {formatCurrency(stats.totalIncome)}
-                              </h3>
-                            </div>
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            Promedio: <span style={{ fontWeight: '600' }}>{formatCurrency(stats.averagePerShipment)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="col-md-3">
-                        <div style={{
-                          backgroundColor: 'white',
-                          borderRadius: '12px',
-                          border: '1px solid #e5e7eb',
-                          padding: '20px',
-                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                            <div style={{
-                              width: '40px',
-                              height: '40px',
-                              backgroundColor: '#ede9fe',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginRight: '12px'
-                            }}>
-                              <span style={{ fontSize: '20px' }}>📈</span>
-                            </div>
-                            <div>
-                              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                                Profit Total
-                              </p>
-                              <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#8b5cf6', margin: 0 }}>
-                                {formatCurrency(stats.totalProfit)}
-                              </h3>
-                            </div>
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            Margen: <span style={{ fontWeight: '600' }}>{stats.profitMargin.toFixed(1)}%</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="col-md-3">
-                        <div style={{
-                          backgroundColor: 'white',
-                          borderRadius: '12px',
-                          border: '1px solid #e5e7eb',
-                          padding: '20px',
-                          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
-                            <div style={{
-                              width: '40px',
-                              height: '40px',
-                              backgroundColor: '#fef3c7',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginRight: '12px'
-                            }}>
-                              <span style={{ fontSize: '20px' }}>👥</span>
-                            </div>
-                            <div>
-                              <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                                Clientes Únicos
-                              </p>
-                              <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#f59e0b', margin: 0 }}>
-                                {stats.uniqueConsignees}
-                              </h3>
-                            </div>
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                            Tasa completado: <span style={{ fontWeight: '600' }}>{stats.completionRate.toFixed(1)}%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* Gráficos individuales */}
-              {renderIndividualCharts()}
-
-              {/* Top 10 Clientes y Rutas */}
-              <div className="row g-4 mt-4">
-                <div className="col-md-6">
-                  <div style={{
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    padding: '24px',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                  }}>
-                    <h5 style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#1f2937',
-                      marginBottom: '20px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      👥 Top 10 Clientes
-                    </h5>
-                    <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
-                      <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
-                        <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
-                          <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Cliente</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Ops</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getTopConsignees(shipments, 10).map((consignee, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
-                              <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
-                                {consignee.name.length > 30 ? consignee.name.substring(0, 30) + '...' : consignee.name}
-                              </td>
-                              <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{consignee.count}</td>
-                              <td style={{ padding: '10px 8px', color: '#10b981', fontWeight: '600', textAlign: 'right' }}>
-                                {formatCurrency(consignee.income)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-6">
-                  <div style={{
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    padding: '24px',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                  }}>
-                    <h5 style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#1f2937',
-                      marginBottom: '20px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      🌍 Top 10 Rutas
-                    </h5>
-                    <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
-                      <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
-                        <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
-                          <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Ruta</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Ops</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getTopRoutes(shipments, 10).map((route, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
-                              <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
-                                {route.route}
-                              </td>
-                              <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{route.count}</td>
-                              <td style={{ padding: '10px 8px', color: '#3b82f6', fontWeight: '600', textAlign: 'right' }}>
-                                {formatCurrency(route.income)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Mensaje inicial Individual */}
-          {!hasSearched && !loading && (
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              padding: '60px 20px',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                width: '64px',
-                height: '64px',
-                backgroundColor: '#eff6ff',
-                borderRadius: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 24px'
-              }}>
-                <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
-                  <path d="M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5z"/>
-                </svg>
-              </div>
-              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                Selecciona un ejecutivo para comenzar
-              </h4>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                Usa los filtros para analizar el desempeño de un ejecutivo específico
-              </p>
-            </div>
-          )}
-        </>
-      )}
-
-      {activeTab === 'comparativa' && (
-        <>
-          {/* Filtros para Comparativa */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            padding: '24px',
-            marginBottom: '24px',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-          }}>
-            <h5 style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px'
-            }}>
-              🔍 Filtros de Búsqueda
-            </h5>
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label" style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  Fecha Inicio (opcional)
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={compStartDate}
-                  onChange={(e) => setCompStartDate(e.target.value)}
-                  style={{ fontSize: '14px' }}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label" style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  Fecha Fin (opcional)
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={compEndDate}
-                  onChange={(e) => setCompEndDate(e.target.value)}
-                  style={{ fontSize: '14px' }}
-                />
-              </div>
-              <div className="col-md-4 d-flex align-items-end">
-                <button
-                  className="btn btn-primary w-100"
-                  onClick={fetchComparativeData}
-                  disabled={loadingComparative}
-                  style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    padding: '10px',
-                    backgroundColor: '#3b82f6',
-                    border: 'none'
-                  }}
-                >
-                  {loadingComparative ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" />
-                      Buscando...
-                    </>
-                  ) : (
-                    'Buscar Todos'
-                  )}
-                </button>
-              </div>
-            </div>
-            {errorComparative && (
-              <div className="alert alert-danger mt-3 mb-0" style={{ fontSize: '14px' }}>
-                {errorComparative}
-              </div>
-            )}
-          </div>
-
-          {/* Resultados Comparativa */}
-          {loadingComparative && (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }} />
-              <p className="mt-3 text-muted">Cargando datos comparativos...</p>
-            </div>
-          )}
-
-          {!loadingComparative && hasSearchedComparative && comparativeData.length === 0 && (
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              padding: '60px 20px',
-              textAlign: 'center'
-            }}>
-              <div style={{
-                width: '64px',
-                height: '64px',
-                backgroundColor: '#fef3c7',
-                borderRadius: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 24px'
-              }}>
-                <svg width="32" height="32" fill="#f59e0b" viewBox="0 0 16 16">
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
-                </svg>
-              </div>
-              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                No se encontraron datos
-              </h4>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                Intenta ajustar los filtros de búsqueda
-              </p>
-            </div>
-          )}
-
-          {!loadingComparative && hasSearchedComparative && comparativeData.length > 0 && (
-            <>
-              {/* Resumen General */}
-              {(() => {
-                const globalStats = calculateStats(allComparativeShipments);
-                return (
-                  <div className="mb-4">
-                    <h4 style={{
-                      fontSize: '18px',
-                      fontWeight: '700',
-                      color: '#1f2937',
-                      marginBottom: '16px'
-                    }}>
-                      📊 Resumen General
-                    </h4>
-                    <div className="row g-4">
+                    <div className="row g-4 mb-4">
                       <div className="col-md-3">
                         <div style={{
                           backgroundColor: 'white',
@@ -2011,10 +1085,10 @@ function ReporteriaAirShipments() {
                           boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                         }}>
                           <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                            Total Operaciones
+                            Total Facturas
                           </p>
                           <h3 style={{ fontSize: '28px', fontWeight: '700', color: '#1f2937', margin: '8px 0 0 0' }}>
-                            {globalStats.totalShipments}
+                            {stats.totalInvoices}
                           </h3>
                         </div>
                       </div>
@@ -2027,10 +1101,10 @@ function ReporteriaAirShipments() {
                           boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                         }}>
                           <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                            Income Total
+                            Total Facturado (CLP)
                           </p>
                           <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#10b981', margin: '8px 0 0 0' }}>
-                            {formatCurrency(globalStats.totalIncome)}
+                            {formatCurrency(stats.totalHomeTotalAmount)}
                           </h3>
                         </div>
                       </div>
@@ -2043,10 +1117,10 @@ function ReporteriaAirShipments() {
                           boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                         }}>
                           <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                            Profit Total
+                            Saldo Pendiente (CLP)
                           </p>
-                          <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#8b5cf6', margin: '8px 0 0 0' }}>
-                            {formatCurrency(globalStats.totalProfit)}
+                          <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#ef4444', margin: '8px 0 0 0' }}>
+                            {formatCurrency(stats.totalBalanceDue)}
                           </h3>
                         </div>
                       </div>
@@ -2059,107 +1133,897 @@ function ReporteriaAirShipments() {
                           boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                         }}>
                           <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                            Margen Promedio
+                            Clientes Únicos
                           </p>
-                          <h3 style={{ fontSize: '28px', fontWeight: '700', color: '#f59e0b', margin: '8px 0 0 0' }}>
-                            {globalStats.profitMargin.toFixed(1)}%
+                          <h3 style={{ fontSize: '28px', fontWeight: '700', color: '#8b5cf6', margin: '8px 0 0 0' }}>
+                            {stats.uniqueClients}
                           </h3>
                         </div>
                       </div>
                     </div>
+                  );
+                })()}
+
+                {/* Gráficos */}
+                {renderIndividualCharts()}
+
+                {/* Tabla de facturas */}
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb',
+                  padding: '24px',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                }}>
+                  <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
+                    📋 Detalle de Facturas ({invoices.length})
+                  </h5>
+                  <div style={{ overflowX: 'auto' }}>
+                    <Table striped bordered hover>
+                      <thead>
+                        <tr>
+                          <th>N° Factura</th>
+                          <th>N° Operación</th>
+                          <th>Cliente</th>
+                          <th>Fecha</th>
+                          <th>Status</th>
+                          <th>Total (CLP)</th>
+                          <th>Saldo Pendiente</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoices.map((invoice, idx) => (
+                          <tr key={idx}>
+                            <td>{invoice.invoiceNumber}</td>
+                            <td>{invoice.moduleNumber}</td>
+                            <td>{invoice.billToName}</td>
+                            <td>{invoice.date}</td>
+                            <td>
+                              <span style={{
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                backgroundColor: invoice.status === 'Posted' ? '#d1fae5' : '#fef3c7',
+                                color: invoice.status === 'Posted' ? '#065f46' : '#92400e'
+                              }}>
+                                {invoice.status}
+                              </span>
+                            </td>
+                            <td style={{ fontWeight: '600', color: '#10b981' }}>
+                              {formatCurrency(invoice.homeTotalAmount)}
+                            </td>
+                            <td style={{ fontWeight: '600', color: '#ef4444' }}>
+                              {formatCurrency(invoice.balanceDue)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
                   </div>
-                );
-              })()}
+                </div>
+              </>
+            )}
 
-              {/* Gráficos Comparativos */}
-              {renderComparativeCharts()}
+            {!hasSearched && !loading && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  backgroundColor: '#eff6ff',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px'
+                }}>
+                  <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                  Selecciona un ejecutivo y busca
+                </h4>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                  Los resultados aparecerán aquí
+                </p>
+              </div>
+            )}
+          </>
+        )}
 
-              {/* Tabla Comparativa - continuará en la siguiente respuesta... */}
-            </>
-          )}
-
-          {/* Mensaje inicial Comparativa */}
-          {!hasSearchedComparative && !loadingComparative && (
+        {/* Tab Comparativa */}
+        {activeTab === 'comparativa' && (
+          <>
+            {/* Filtros Comparativa */}
             <div style={{
               backgroundColor: 'white',
               borderRadius: '12px',
               border: '1px solid #e5e7eb',
-              padding: '60px 20px',
-              textAlign: 'center'
+              padding: '24px',
+              marginBottom: '24px',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
             }}>
-              <div style={{
-                width: '64px',
-                height: '64px',
-                backgroundColor: '#eff6ff',
-                borderRadius: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 24px'
-              }}>
-                <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
-                  <path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3zm5-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2z"/>
-                </svg>
-              </div>
-              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                Compara el desempeño de todos los ejecutivos
+              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
+                🔍 Filtros de Búsqueda Comparativa
               </h4>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                Haz clic en "Buscar Todos" para ver el análisis comparativo
-              </p>
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    Fecha Inicio
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={compStartDate}
+                    onChange={(e) => setCompStartDate(e.target.value)}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      padding: '10px 12px'
+                    }}
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    Fecha Fin
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={compEndDate}
+                    onChange={(e) => setCompEndDate(e.target.value)}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      padding: '10px 12px'
+                    }}
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: 'transparent', marginBottom: '8px' }}>
+                    .
+                  </label>
+                  <button
+                    onClick={fetchComparativeData}
+                    disabled={loadingComparative}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: loadingComparative ? 'not-allowed' : 'pointer',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      opacity: loadingComparative ? 0.6 : 1
+                    }}
+                  >
+                    {loadingComparative ? 'Buscando...' : '🔍 Buscar Todos'}
+                  </button>
+                </div>
+              </div>
+              {errorComparative && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  color: '#991b1b',
+                  fontSize: '14px'
+                }}>
+                  ⚠️ {errorComparative}
+                </div>
+              )}
             </div>
-          )}
-        </>
-      )}
 
-      {activeTab === 'doble' && (
-        <>
-          {/* Contenido del tab doble - el archivo es muy largo, lo dejaré truncado aquí */}
-          {/* Si necesitas el tab doble completo, avísame */}
-        </>
-      )}
-      <Modal 
-        show={showOperacionesModal} 
-        onHide={() => setShowOperacionesModal(false)}
-        size="xl"
-        centered
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Detalle de Operaciones</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {operacionesDetalle.length === 0 ? (
-            <p className="text-center">No hay operaciones para mostrar</p>
-          ) : (
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>Número</th>
-                  <th>Remitente</th>
-                  <th>Consignatario</th>
-                  <th>Estado</th>
-                  <th>Income</th>
-                </tr>
-              </thead>
-              <tbody>
-                {operacionesDetalle.map((op: ShipmentData, idx: number) => (
-                  <tr key={idx}>
-                    <td>{op.number}</td>
-                    <td>{op.shipper}</td>
-                    <td>{op.consignee}</td>
-                    <td>{op.status}</td>
-                    <td style={{ fontWeight: '600', color: '#10b981' }}>
-                      {formatCurrency(op.totalIncome)}
-                    </td>
+            {/* Loading Comparativa */}
+            {loadingComparative && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Cargando...</span>
+                </div>
+                <p className="mt-3 text-muted">Cargando datos comparativos...</p>
+              </div>
+            )}
+
+            {/* No data Comparativa */}
+            {!loadingComparative && hasSearchedComparative && comparativeData.length === 0 && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px'
+                }}>
+                  <svg width="32" height="32" fill="#f59e0b" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                  No se encontraron datos
+                </h4>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                  Intenta ajustar los filtros de búsqueda
+                </p>
+              </div>
+            )}
+
+            {/* Results Comparativa */}
+            {!loadingComparative && hasSearchedComparative && comparativeData.length > 0 && (
+              <>
+                {/* Resumen Global */}
+                {(() => {
+                  const globalStats = calculateStats(allComparativeInvoices);
+                  return (
+                    <div className="mb-4">
+                      <h4 style={{
+                        fontSize: '18px',
+                        fontWeight: '700',
+                        color: '#1f2937',
+                        marginBottom: '16px'
+                      }}>
+                        📊 Resumen General
+                      </h4>
+                      <div className="row g-4">
+                        <div className="col-md-3">
+                          <div style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            border: '1px solid #e5e7eb',
+                            padding: '20px',
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                          }}>
+                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                              Total Facturas
+                            </p>
+                            <h3 style={{ fontSize: '28px', fontWeight: '700', color: '#1f2937', margin: '8px 0 0 0' }}>
+                              {globalStats.totalInvoices}
+                            </h3>
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            border: '1px solid #e5e7eb',
+                            padding: '20px',
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                          }}>
+                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                              Total Facturado (CLP)
+                            </p>
+                            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#10b981', margin: '8px 0 0 0' }}>
+                              {formatCurrency(globalStats.totalHomeTotalAmount)}
+                            </h3>
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            border: '1px solid #e5e7eb',
+                            padding: '20px',
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                          }}>
+                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                              Saldo Pendiente (CLP)
+                            </p>
+                            <h3 style={{ fontSize: '24px', fontWeight: '700', color: '#ef4444', margin: '8px 0 0 0' }}>
+                              {formatCurrency(globalStats.totalBalanceDue)}
+                            </h3>
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div style={{
+                            backgroundColor: 'white',
+                            borderRadius: '12px',
+                            border: '1px solid #e5e7eb',
+                            padding: '20px',
+                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                          }}>
+                            <p style={{ fontSize: '12px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                              Promedio por Factura
+                            </p>
+                            <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#8b5cf6', margin: '8px 0 0 0' }}>
+                              {formatCurrency(globalStats.averagePerInvoice)}
+                            </h3>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Gráficos Comparativos */}
+                {renderComparativeCharts()}
+
+                {/* Tabla Comparativa */}
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb',
+                  padding: '24px',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                }}>
+                  <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
+                    📊 Comparación Detallada por Ejecutivo
+                  </h5>
+                  <div style={{ overflowX: 'auto' }}>
+                    <Table striped bordered hover>
+                      <thead>
+                        <tr>
+                          <th 
+                            onClick={() => handleSort('nombre')}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Ejecutivo {renderSortIndicator('nombre')}
+                          </th>
+                          <th 
+                            onClick={() => handleSort('totalInvoices')}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Total Facturas {renderSortIndicator('totalInvoices')}
+                          </th>
+                          <th 
+                            onClick={() => handleSort('invoicedCount')}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Invoiced {renderSortIndicator('invoicedCount')}
+                          </th>
+                          <th 
+                            onClick={() => handleSort('postedCount')}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Posted {renderSortIndicator('postedCount')}
+                          </th>
+                          <th 
+                            onClick={() => handleSort('totalHomeTotalAmount')}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Total Facturado (CLP) {renderSortIndicator('totalHomeTotalAmount')}
+                          </th>
+                          <th 
+                            onClick={() => handleSort('totalBalanceDue')}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Saldo Pendiente (CLP) {renderSortIndicator('totalBalanceDue')}
+                          </th>
+                          <th 
+                            onClick={() => handleSort('totalAmountPaid')}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Total Pagado (CLP) {renderSortIndicator('totalAmountPaid')}
+                          </th>
+                          <th 
+                            onClick={() => handleSort('uniqueClients')}
+                            style={{ cursor: 'pointer', userSelect: 'none' }}
+                          >
+                            Clientes Únicos {renderSortIndicator('uniqueClients')}
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getSortedData(comparativeData).map((exec, idx) => (
+                          <tr key={idx}>
+                            <td style={{ fontWeight: '600' }}>{exec.nombre}</td>
+                            <td>
+                              <button
+                                onClick={() => {
+                                  const execInvoices = allComparativeInvoices.filter(
+                                    i => i.salesRep && i.salesRep.toLowerCase() === exec.nombre.toLowerCase()
+                                  );
+                                  handleShowInvoicesDetail(execInvoices);
+                                }}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#2563eb',
+                                  cursor: 'pointer',
+                                  textDecoration: 'underline',
+                                  padding: 0
+                                }}
+                              >
+                                {exec.stats.totalInvoices}
+                              </button>
+                            </td>
+                            <td>{exec.stats.invoicedCount}</td>
+                            <td>{exec.stats.postedCount}</td>
+                            <td style={{ fontWeight: '600', color: '#10b981' }}>
+                              {formatCurrency(exec.stats.totalHomeTotalAmount)}
+                            </td>
+                            <td style={{ fontWeight: '600', color: '#ef4444' }}>
+                              {formatCurrency(exec.stats.totalBalanceDue)}
+                            </td>
+                            <td style={{ fontWeight: '600', color: '#8b5cf6' }}>
+                              {formatCurrency(exec.stats.totalAmountPaid)}
+                            </td>
+                            <td>{exec.stats.uniqueClients}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Initial message Comparativa */}
+            {!hasSearchedComparative && !loadingComparative && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  backgroundColor: '#eff6ff',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px'
+                }}>
+                  <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
+                    <path d="M1 11a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1v-3zm5-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5-5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2z"/>
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                  Compara el desempeño de todos los ejecutivos
+                </h4>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                  Haz clic en "Buscar Todos" para ver el análisis comparativo
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Tab Doble */}
+        {activeTab === 'doble' && (
+          <>
+            {/* Filtros Doble */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              border: '1px solid #e5e7eb',
+              padding: '24px',
+              marginBottom: '24px',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+            }}>
+              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
+                🔍 Filtros de Comparación Doble
+              </h4>
+              <div className="row g-3">
+                <div className="col-md-3">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    Ejecutivo 1
+                  </label>
+                  <select
+                    className="form-select"
+                    value={ejecutivo1}
+                    onChange={(e) => setEjecutivo1(e.target.value)}
+                    disabled={loadingEjecutivos}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      padding: '10px 12px'
+                    }}
+                  >
+                    <option value="">Selecciona...</option>
+                    {ejecutivos.map(ej => (
+                      <option key={ej.id} value={ej.nombre}>{ej.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-3">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    Ejecutivo 2
+                  </label>
+                  <select
+                    className="form-select"
+                    value={ejecutivo2}
+                    onChange={(e) => setEjecutivo2(e.target.value)}
+                    disabled={loadingEjecutivos}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      padding: '10px 12px'
+                    }}
+                  >
+                    <option value="">Selecciona...</option>
+                    {ejecutivos.map(ej => (
+                      <option key={ej.id} value={ej.nombre}>{ej.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-2">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    Fecha Inicio
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={doubleStartDate}
+                    onChange={(e) => setDoubleStartDate(e.target.value)}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      padding: '10px 12px'
+                    }}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                    Fecha Fin
+                  </label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={doubleEndDate}
+                    onChange={(e) => setDoubleEndDate(e.target.value)}
+                    style={{
+                      borderRadius: '8px',
+                      border: '1px solid #d1d5db',
+                      padding: '10px 12px'
+                    }}
+                  />
+                </div>
+                <div className="col-md-2">
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: 'transparent', marginBottom: '8px' }}>
+                    .
+                  </label>
+                  <button
+                    onClick={fetchDoubleData}
+                    disabled={loadingDouble}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: loadingDouble ? 'not-allowed' : 'pointer',
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      opacity: loadingDouble ? 0.6 : 1
+                    }}
+                  >
+                    {loadingDouble ? 'Buscando...' : '🔍 Comparar'}
+                  </button>
+                </div>
+              </div>
+              {errorDouble && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px 16px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  color: '#991b1b',
+                  fontSize: '14px'
+                }}>
+                  ⚠️ {errorDouble}
+                </div>
+              )}
+            </div>
+
+            {/* Loading Doble */}
+            {loadingDouble && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Cargando...</span>
+                </div>
+                <p className="mt-3 text-muted">Comparando ejecutivos...</p>
+              </div>
+            )}
+
+            {/* No data Doble */}
+            {!loadingDouble && hasSearchedDouble && doubleData.length === 0 && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px'
+                }}>
+                  <svg width="32" height="32" fill="#f59e0b" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                  No se encontraron datos
+                </h4>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                  Intenta ajustar los filtros de búsqueda
+                </p>
+              </div>
+            )}
+
+            {/* Results Doble */}
+            {!loadingDouble && hasSearchedDouble && doubleData.length > 0 && (
+              <>
+                {/* Comparación lado a lado */}
+                <div className="row g-4 mb-4">
+                  {doubleData.map((exec, idx) => (
+                    <div key={idx} className="col-md-6">
+                      <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        border: '1px solid #e5e7eb',
+                        padding: '24px',
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                      }}>
+                        <h4 style={{
+                          fontSize: '20px',
+                          fontWeight: '700',
+                          color: '#1f2937',
+                          marginBottom: '20px',
+                          borderBottom: '2px solid #e5e7eb',
+                          paddingBottom: '12px'
+                        }}>
+                          {exec.nombre}
+                        </h4>
+                        <div className="row g-3">
+                          <div className="col-6">
+                            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                              <p style={{ fontSize: '11px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                                Total Facturas
+                              </p>
+                              <p style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', margin: '4px 0 0 0' }}>
+                                {exec.stats.totalInvoices}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="col-6">
+                            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                              <p style={{ fontSize: '11px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                                Clientes Únicos
+                              </p>
+                              <p style={{ fontSize: '24px', fontWeight: '700', color: '#8b5cf6', margin: '4px 0 0 0' }}>
+                                {exec.stats.uniqueClients}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="col-12">
+                            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                              <p style={{ fontSize: '11px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                                Total Facturado (CLP)
+                              </p>
+                              <p style={{ fontSize: '20px', fontWeight: '700', color: '#10b981', margin: '4px 0 0 0' }}>
+                                {formatCurrency(exec.stats.totalHomeTotalAmount)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="col-12">
+                            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                              <p style={{ fontSize: '11px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                                Saldo Pendiente (CLP)
+                              </p>
+                              <p style={{ fontSize: '20px', fontWeight: '700', color: '#ef4444', margin: '4px 0 0 0' }}>
+                                {formatCurrency(exec.stats.totalBalanceDue)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="col-6">
+                            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                              <p style={{ fontSize: '11px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                                Invoiced
+                              </p>
+                              <p style={{ fontSize: '20px', fontWeight: '700', color: '#f59e0b', margin: '4px 0 0 0' }}>
+                                {exec.stats.invoicedCount}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="col-6">
+                            <div style={{ padding: '12px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
+                              <p style={{ fontSize: '11px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
+                                Posted
+                              </p>
+                              <p style={{ fontSize: '20px', fontWeight: '700', color: '#22c55e', margin: '4px 0 0 0' }}>
+                                {exec.stats.postedCount}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Gráfico de comparación */}
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb',
+                  padding: '24px',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                }}>
+                  <h5 style={{ fontSize: '16px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
+                    ⚖️ Comparación Visual
+                  </h5>
+                  <Bar 
+                    data={{
+                      labels: doubleData.map(d => d.nombre),
+                      datasets: [
+                        {
+                          label: 'Total Facturado (CLP)',
+                          data: doubleData.map(d => d.stats.totalHomeTotalAmount),
+                          backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                          borderColor: 'rgb(59, 130, 246)',
+                          borderWidth: 1
+                        },
+                        {
+                          label: 'Saldo Pendiente (CLP)',
+                          data: doubleData.map(d => d.stats.totalBalanceDue),
+                          backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                          borderColor: 'rgb(239, 68, 68)',
+                          borderWidth: 1
+                        }
+                      ]
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: 'top'
+                        },
+                        tooltip: {
+                          callbacks: {
+                            label: (context) => `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`
+                          }
+                        }
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          ticks: {
+                            callback: (value) => formatCurrency(Number(value))
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Initial message Doble */}
+            {!hasSearchedDouble && !loadingDouble && (
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #e5e7eb',
+                padding: '60px 20px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '64px',
+                  height: '64px',
+                  backgroundColor: '#eff6ff',
+                  borderRadius: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 24px'
+                }}>
+                  <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
+                    <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                  </svg>
+                </div>
+                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+                  Compara dos ejecutivos directamente
+                </h4>
+                <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                  Selecciona dos ejecutivos y haz clic en "Comparar"
+                </p>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Modal de detalle */}
+        <Modal 
+          show={showInvoicesModal} 
+          onHide={() => setShowInvoicesModal(false)}
+          size="xl"
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>Detalle de Facturas</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {invoicesDetalle.length === 0 ? (
+              <p className="text-center">No hay facturas para mostrar</p>
+            ) : (
+              <Table striped bordered hover>
+                <thead>
+                  <tr>
+                    <th>N° Factura</th>
+                    <th>N° Operación</th>
+                    <th>Cliente</th>
+                    <th>Fecha</th>
+                    <th>Status</th>
+                    <th>Total (CLP)</th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Modal.Body>
-      </Modal>
+                </thead>
+                <tbody>
+                  {invoicesDetalle.map((invoice, idx) => (
+                    <tr key={idx}>
+                      <td>{invoice.invoiceNumber}</td>
+                      <td>{invoice.moduleNumber}</td>
+                      <td>{invoice.billToName}</td>
+                      <td>{invoice.date}</td>
+                      <td>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          backgroundColor: invoice.status === 'Posted' ? '#d1fae5' : '#fef3c7',
+                          color: invoice.status === 'Posted' ? '#065f46' : '#92400e'
+                        }}>
+                          {invoice.status}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: '600', color: '#10b981' }}>
+                        {formatCurrency(invoice.homeTotalAmount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
+          </Modal.Body>
+        </Modal>
+      </Container>
     </div>
   );
 }
 
-export default ReporteriaAirShipments;
+export default InvoicesXEjecutivo;
