@@ -232,7 +232,7 @@ interface ClienteAsignado {
   createdAt: string;
 }
 
-function QuoteAPITester() {
+function QuoteAIR() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
@@ -1946,4 +1946,4 @@ function QuoteAPITester() {
   );
 }
 
-export default QuoteAPITester;
+export default QuoteAIR;
