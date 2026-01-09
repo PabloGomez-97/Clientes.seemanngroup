@@ -245,30 +245,6 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
           }}>
             ☁️
           </div>
-          
-          {/* Nube 2 */}
-          <div style={{
-            position: 'absolute',
-            top: '20px',
-            fontSize: '1.5rem',
-            filter: 'blur(0.3px)',
-            animation: 'cloudDrift2 60s linear infinite',
-            animationDelay: '10s'
-          }}>
-            ☁️
-          </div>
-          
-          {/* Nube 3 */}
-          <div style={{
-            position: 'absolute',
-            top: '10px',
-            fontSize: '1.8rem',
-            filter: 'blur(0.4px)',
-            animation: 'cloudDrift 50s linear infinite',
-            animationDelay: '25s'
-          }}>
-            ☁️
-          </div>
         </div>
 
         {/* Pájaros volando en formación V */}
@@ -385,13 +361,13 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
           position: 'absolute',
           top: '20px',
           left: '5%',
+          right: `${95 - (animatedProgress * 0.9)}%`,
           height: '3px',
-          width: `${animatedProgress * 0.9}%`,
           background: 'linear-gradient(to right, #3b82f6, #60a5fa, #3b82f6)',
           borderRadius: '2px',
           zIndex: 2,
           boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
-          transition: 'width 0.3s ease'
+          transition: 'right 0.3s ease'
         }} />
 
         {/* Avión con animación de vuelo suave */}
