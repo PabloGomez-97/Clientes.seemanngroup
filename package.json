@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
+    "@sparticuz/chromium": "^143.0.4",
     "@tanstack/react-table": "^8.20.5",
     "@vercel/kv": "^3.0.0",
     "axios": "^1.13.2",
@@ -32,6 +33,7 @@
     "mongoose": "^8.19.1",
     "openai": "^6.7.0",
     "papaparse": "^5.5.3",
+    "puppeteer-core": "^24.34.0",
     "react": "^19.1.1",
     "react-bootstrap": "^2.10.10",
     "react-chartjs-2": "^5.3.1",
