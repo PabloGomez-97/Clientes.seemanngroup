@@ -7,20 +7,33 @@ export const config = {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
+  const isVercelCron = (req.headers['user-agent'] || '').toString().startsWith('vercel-cron/');
+
+  // Aceptar GET (Vercel Cron) y POST (manual/Postman)
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   console.log('\n[CRON] 🔄 Iniciando renovación automática de token Linbis...');
 
   try {
-    // Verificar autorización
-    const authHeader = req.headers.authorization;
-    const cronSecret = process.env.CRON_SECRET;
+    // Auth:
+    // - POST: exige Bearer CRON_SECRET
+    // - GET: solo si viene desde Vercel Cron
+    if (req.method === 'POST') {
+      const authHeader = req.headers.authorization;
+      const cronSecret = process.env.CRON_SECRET;
 
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-      console.error('[CRON] ❌ Intento no autorizado');
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
+      if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+        console.error('[CRON] ❌ Intento no autorizado (POST)');
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
+    } else {
+      // GET
+      if (!isVercelCron) {
+        console.error('[CRON] ❌ Intento no autorizado (GET no-cron)');
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
     }
 
     const email = process.env.LINBIS_EMAIL;
