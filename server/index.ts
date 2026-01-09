@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import 'dotenv/config';
 import chatHandler from '../api/chat.ts'; 
+import LinbisAuthService from './services/linbisAuthService.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -728,21 +729,29 @@ app.post('/api/admin/init-linbis-token', (req, res) => {
     const { refresh_token } = req.body;
 
     if (!refresh_token) {
+      console.error('[init-linbis-token] ❌ refresh_token no proporcionado');
       return res.status(400).json({ error: 'refresh_token is required' });
     }
+
+    // Log para debugging
+    console.log('[init-linbis-token] 💾 Actualizando refresh token en caché...');
+    console.log('[init-linbis-token] 📊 Longitud del token:', refresh_token.length);
+    console.log('[init-linbis-token] 🔑 Primeros 50 caracteres:', refresh_token.substring(0, 50) + '...');
 
     linbisTokenCache.refresh_token = refresh_token;
     linbisTokenCache.access_token = undefined;
     linbisTokenCache.access_token_expiry = undefined;
 
-    console.log('[init-linbis-token] Refresh token initialized successfully');
+    console.log('[init-linbis-token] ✅ Refresh token initialized successfully');
 
     return res.json({ 
       success: true, 
-      message: 'Refresh token initialized successfully' 
+      message: 'Refresh token initialized successfully',
+      token_length: refresh_token.length,
+      updated_at: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[init-linbis-token] Error:', error);
+    console.error('[init-linbis-token] ❌ Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -788,6 +797,106 @@ app.get('/api/shipsgo/shipments', async (req, res) => {
   } catch (error) {
     console.error('[shipsgo] Error:', error);
     return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * 🧪 TEST: Endpoint para probar autenticación automática de Linbis
+ */
+app.post('/api/test/linbis-auth', async (req, res) => {
+  console.log('\n[TEST] 🧪 Iniciando prueba de autenticación Linbis...');
+
+  try {
+    const email = process.env.LINBIS_EMAIL;
+    const password = process.env.LINBIS_PASSWORD;
+    const clientId = process.env.LINBIS_CLIENT_ID;
+
+    if (!email || !password || !clientId) {
+      console.error('[TEST] ❌ Configuración incompleta');
+      return res.status(500).json({
+        success: false,
+        error: 'Configuración incompleta',
+        missing: {
+          email: !email,
+          password: !password,
+          clientId: !clientId,
+        },
+      });
+    }
+
+    console.log('[TEST] ✓ Credenciales encontradas');
+    console.log('[TEST] 📧 Email:', email);
+    console.log('[TEST] 🆔 Client ID:', clientId);
+
+    // Paso 1: Obtener el nuevo refresh_token
+    console.log('[TEST] 🔐 Obteniendo nuevo refresh_token...');
+    const tokens = await LinbisAuthService.getNewRefreshToken({
+      email,
+      password,
+      clientId,
+    });
+
+    console.log('[TEST] ✅ Tokens obtenidos exitosamente');
+    console.log('[TEST] 🔄 Refresh Token obtenido (primeros 50 chars):', tokens.refresh_token.substring(0, 50) + '...');
+
+    // Paso 2: Enviar el refresh_token al endpoint local de init
+    console.log('[TEST] 📤 Enviando refresh_token a /api/admin/init-linbis-token...');
+    
+    const initResponse = await fetch('http://localhost:4000/api/admin/init-linbis-token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        refresh_token: tokens.refresh_token
+      })
+    });
+
+    const initResult = await initResponse.json();
+
+    if (!initResponse.ok) {
+      console.error('[TEST] ❌ Error al guardar en MongoDB:', initResult);
+      return res.status(500).json({
+        success: false,
+        error: 'Error al guardar el token en MongoDB',
+        details: initResult,
+        tokens: {
+          refresh_token_full: tokens.refresh_token,
+          note: 'El token se obtuvo pero no se pudo guardar'
+        }
+      });
+    }
+
+    console.log('[TEST] ✅ Token guardado en MongoDB exitosamente');
+    console.log('[TEST] 📊 Respuesta de init:', initResult);
+
+    // Retornar resultado exitoso
+    return res.json({
+      success: true,
+      message: '✅ Autenticación exitosa y token guardado en MongoDB',
+      tokens: {
+        access_token_preview: `${tokens.access_token.substring(0, 30)}...`,
+        refresh_token_preview: `${tokens.refresh_token.substring(0, 30)}...`,
+        refresh_token_full: tokens.refresh_token,
+        expires_in: tokens.expires_in,
+        token_type: tokens.token_type,
+      },
+      database: {
+        status: initResult.message,
+        response: initResult
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+  } catch (error: any) {
+    console.error('[TEST] ❌ Error en autenticación:', error.message);
+    console.error('[TEST] Stack:', error.stack);
+
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'Error desconocido',
+      stack: error.stack,
+    });
   }
 });
 
