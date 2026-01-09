@@ -1125,208 +1125,204 @@ function QuoteAPITester() {
                       </div>
                     </div>
                   ) : (
-                    <div className="row g-3">
-                      {rutasFiltradas.map((ruta, index) => (
-                        <div key={ruta.id} className="col-md-6 col-lg-4">
-                          <div 
-                            className={`card h-100 position-relative ${
-                              rutaSeleccionada?.id === ruta.id 
-                                ? 'border-primary border-2 shadow-lg' 
-                                : 'border-0 shadow-sm'
-                            }`}
-                            style={{ 
-                              cursor: 'pointer', 
-                              transition: 'all 0.3s ease',
-                              transform: rutaSeleccionada?.id === ruta.id ? 'translateY(-4px)' : 'none'
-                            }}
-                            onClick={() => {
-                              // Verificar si la ruta tiene precio 0
-                              if (ruta.priceForComparison === 0) {
-                                setShowPriceZeroModal(true);
-                                return;
-                              }
-                              setRutaSeleccionada(ruta);
-                            }}
-                            onMouseEnter={(e) => {
-                              if (rutaSeleccionada?.id !== ruta.id) {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.classList.add('shadow');
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (rutaSeleccionada?.id !== ruta.id) {
-                                e.currentTarget.style.transform = 'none';
-                                e.currentTarget.classList.remove('shadow');
-                              }
-                            }}
-                          >
-                            {/* Badge de "Mejor Opción" para la ruta más barata (excluyendo precio 0) */}
-                            {index === bestPriceRouteIndex && (
-                              <div 
-                                className="position-absolute top-0 end-0 badge bg-warning text-dark"
+                    <div className="table-responsive">
+                      <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.875rem' }}>
+                        <thead className="table-light">
+                          <tr>
+                            <th style={{ width: '5%' }}></th>
+                            <th style={{ width: '20%' }}>Carrier</th>
+                            <th className="text-center" style={{ width: '12%' }}>0-45kg</th>
+                            <th className="text-center" style={{ width: '12%' }}>45-100kg</th>
+                            <th className="text-center" style={{ width: '12%' }}>100-300kg</th>
+                            <th className="text-center" style={{ width: '12%' }}>300-500kg</th>
+                            <th className="text-center" style={{ width: '12%' }}>500-1000kg</th>
+                            <th className="text-center" style={{ width: '15%' }}>Salidas</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rutasFiltradas.map((ruta, index) => {
+                            const precioKg45 = extractPrice(ruta.kg45);
+                            const precioKg100 = extractPrice(ruta.kg100);
+                            const precioKg300 = extractPrice(ruta.kg300);
+                            const precioKg500 = extractPrice(ruta.kg500);
+                            const precioKg1000 = extractPrice(ruta.kg1000);
+
+                            return (
+                              <tr 
+                                key={ruta.id}
+                                onClick={() => {
+                                  if (ruta.priceForComparison === 0) {
+                                    setShowPriceZeroModal(true);
+                                    return;
+                                  }
+                                  setRutaSeleccionada(ruta);
+                                }}
+                                className={rutaSeleccionada?.id === ruta.id ? 'table-success' : ''}
                                 style={{ 
-                                  borderTopRightRadius: '0.375rem',
-                                  borderBottomLeftRadius: '0.375rem',
-                                  fontSize: '0.7rem'
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease'
                                 }}
                               >
-                                <i className="bi bi-star-fill"></i> Mejor Opción
-                              </div>
-                            )}
-
-                            {/* Badge de "Menor tiempo" para la ruta más rápida */}
-                            {index === fastestRouteIndex && index !== 0 && (
-                              <div 
-                                className="position-absolute badge bg-success text-white"
-                                style={{ 
-                                  top: '0',
-                                  right: '0',
-                                  borderTopRightRadius: '0.375rem',
-                                  borderBottomLeftRadius: '0.375rem',
-                                  fontSize: '0.7rem'
-                                }}
-                              >
-                                <i className="bi bi-lightning-fill"></i> Menor tiempo
-                              </div>
-                            )}
-
-                            {/* Si la ruta es tanto la mejor opción como la más rápida */}
-                            {index === 0 && index === fastestRouteIndex && (
-                              <div 
-                                className="position-absolute badge bg-success text-white"
-                                style={{ 
-                                  top: '2rem',
-                                  right: '0',
-                                  borderTopRightRadius: '0.375rem',
-                                  borderBottomLeftRadius: '0.375rem',
-                                  fontSize: '0.7rem'
-                                }}
-                              >
-                                <i className="bi bi-lightning-fill"></i> Menor tiempo
-                              </div>
-                            )}
-
-                            <div className="card-body">
-                              {/* Header del carrier con logo */}
-                              <div className="d-flex justify-content-between align-items-start mb-3">
-                                <div className="d-flex align-items-center gap-2">
-                                  {/* Logo del carrier */}
-                                  {ruta.carrier && ruta.carrier !== 'Por Confirmar' ? (
-                                    <div 
-                                      className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
-                                      style={{ 
-                                        width: '50px', 
-                                        height: '50px',
-                                        overflow: 'hidden'
-                                      }}
-                                    >
-                                      <img 
-                                        src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
-                                        alt={ruta.carrier}
-                                        style={{ 
-                                          maxWidth: '150%', 
-                                          maxHeight: '150%',
-                                          objectFit: 'contain'
-                                        }}
-                                        onError={(e) => {
-                                          // Fallback si la imagen no carga
-                                          e.currentTarget.style.display = 'none';
-                                          e.currentTarget.parentElement.innerHTML = `
-                                            <i class="bi bi-box-seam text-primary fs-4"></i>
-                                          `;
-                                        }}
-                                      />
-                                    </div>
+                                {/* Indicador de selección y badges */}
+                                <td className="text-center">
+                                  {rutaSeleccionada?.id === ruta.id ? (
+                                    <i className="bi bi-check-circle-fill text-success fs-5"></i>
                                   ) : (
-                                    <div 
-                                      className="rounded-circle bg-primary bg-opacity-10 p-2 d-flex align-items-center justify-content-center"
-                                      style={{ width: '50px', height: '50px' }}
-                                    >
-                                      <i className="bi bi-box-seam text-primary fs-5"></i>
-                                    </div>
+                                    <div style={{ width: '20px', height: '20px' }}></div>
                                   )}
                                   
-                                  <div>
-                                    <span className="badge bg-primary bg-opacity-10 text-primary border border-primary">
+                                  {/* Badges verticales */}
+                                  <div className="d-flex flex-column gap-1 mt-2">
+                                    {index === bestPriceRouteIndex && (
+                                      <span 
+                                        className="badge bg-warning text-dark" 
+                                        style={{ fontSize: '0.6rem', padding: '0.15rem 0.3rem' }}
+                                        title="Mejor precio"
+                                      >
+                                        <i className="bi bi-star-fill"></i>
+                                      </span>
+                                    )}
+                                    {index === fastestRouteIndex && (
+                                      <span 
+                                        className="badge bg-success" 
+                                        style={{ fontSize: '0.6rem', padding: '0.15rem 0.3rem' }}
+                                        title="Menor tiempo"
+                                      >
+                                        <i className="bi bi-lightning-fill"></i>
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Carrier con logo */}
+                                <td>
+                                  <div className="d-flex align-items-center gap-2">
+                                    {ruta.carrier && ruta.carrier !== 'Por Confirmar' ? (
+                                      <div 
+                                        className="rounded bg-white border d-flex align-items-center justify-content-center flex-shrink-0"
+                                        style={{ 
+                                          width: '35px', 
+                                          height: '35px',
+                                          overflow: 'hidden',
+                                          padding: '4px'
+                                        }}
+                                      >
+                                        <img 
+                                          src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
+                                          alt={ruta.carrier}
+                                          style={{ 
+                                            maxWidth: '100%', 
+                                            maxHeight: '100%',
+                                            objectFit: 'contain'
+                                          }}
+                                          onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.parentElement.innerHTML = `
+                                              <i class="bi bi-box-seam text-muted"></i>
+                                            `;
+                                          }}
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div 
+                                        className="rounded bg-light d-flex align-items-center justify-content-center flex-shrink-0"
+                                        style={{ width: '35px', height: '35px' }}
+                                      >
+                                        <i className="bi bi-box-seam text-muted"></i>
+                                      </div>
+                                    )}
+                                    <span className="fw-semibold text-truncate" style={{ fontSize: '0.8rem' }}>
                                       {ruta.carrier || 'Por Confirmar'}
                                     </span>
                                   </div>
-                                </div>
-                                
-                                {rutaSeleccionada?.id === ruta.id && (
-                                  <div className="position-relative">
-                                    <span className="badge bg-success">
-                                      <i className="bi bi-check-circle-fill"></i> Seleccionada
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
+                                </td>
 
-                              {/* Precio destacado */}
-                              <div className="mb-3 p-3 bg-light rounded">
-                                <small className="text-muted text-uppercase d-block mb-1" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>
-                                  Precio desde
-                                </small>
-                                <div className="d-flex align-items-baseline gap-1">
-                                  <h4 className="mb-0 text-primary fw-bold">
-                                    {ruta.currency} {(ruta.priceForComparison * 1.15).toFixed(2)}
-                                  </h4>
-                                  <small className="text-muted">/kg</small>
-                                </div>
-                              </div>
-
-                              {/* Detalles en grid */}
-                              <div className="row g-2">
-                                {ruta.transitTime && (
-                                  <div className="col-12">
-                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                      <i className="bi bi-clock text-primary"></i>
-                                      <div className="flex-grow-1">
-                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
-                                          Tiempo de tránsito
-                                        </small>
-                                        <small className="fw-semibold">{ruta.transitTime}</small>
+                                {/* Precios por rango (CON 15% incluido) */}
+                                <td className="text-center">
+                                  {precioKg45 > 0 ? (
+                                    <div>
+                                      <div className="fw-semibold text-success">
+                                        {ruta.currency} {(precioKg45 * 1.15).toFixed(2)}
                                       </div>
+                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
                                     </div>
-                                  </div>
-                                )}
+                                  ) : (
+                                    <span className="text-muted">—</span>
+                                  )}
+                                </td>
 
-                                {ruta.frequency && (
-                                  <div className="col-12">
-                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                      <i className="bi bi-calendar-check text-primary"></i>
-                                      <div className="flex-grow-1">
-                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
-                                          Frecuencia
-                                        </small>
-                                        <small className="fw-semibold">{ruta.frequency}</small>
+                                <td className="text-center">
+                                  {precioKg100 > 0 ? (
+                                    <div>
+                                      <div className="fw-semibold text-success">
+                                        {ruta.currency} {(precioKg100 * 1.15).toFixed(2)}
                                       </div>
+                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
                                     </div>
+                                  ) : (
+                                    <span className="text-muted">—</span>
+                                  )}
+                                </td>
+
+                                <td className="text-center">
+                                  {precioKg300 > 0 ? (
+                                    <div>
+                                      <div className="fw-semibold text-success">
+                                        {ruta.currency} {(precioKg300 * 1.15).toFixed(2)}
+                                      </div>
+                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted">—</span>
+                                  )}
+                                </td>
+
+                                <td className="text-center">
+                                  {precioKg500 > 0 ? (
+                                    <div>
+                                      <div className="fw-semibold text-success">
+                                        {ruta.currency} {(precioKg500 * 1.15).toFixed(2)}
+                                      </div>
+                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted">—</span>
+                                  )}
+                                </td>
+
+                                <td className="text-center">
+                                  {precioKg1000 > 0 ? (
+                                    <div>
+                                      <div className="fw-semibold text-success">
+                                        {ruta.currency} {(precioKg1000 * 1.15).toFixed(2)}
+                                      </div>
+                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted">—</span>
+                                  )}
+                                </td>
+
+                                {/* Detalles adicionales */}
+                                <td className="text-center">
+                                  <div style={{ fontSize: '0.75rem' }}>
+                                    {ruta.transitTime && (
+                                      <div className="text-muted mb-1">
+                                        <i className="bi bi-clock"></i> {ruta.transitTime}
+                                      </div>
+                                    )}
+                                    {ruta.frequency && (
+                                      <div className="text-muted">
+                                        <i className="bi bi-calendar-check"></i> {ruta.frequency}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-
-                              {/* Call to action sutil */}
-                              {rutaSeleccionada?.id !== ruta.id && (
-                                <div className="mt-3 text-center">
-                                  <small className="text-muted">
-                                    <i className="bi bi-hand-index"></i> Click para seleccionar
-                                  </small>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Footer informativo si hay rutas */}
-                  {rutasFiltradas.length > 0 && (
-                    <div className="alert alert-light border-0 mt-3">
-                      <small className="text-muted">
-                        <i className="bi bi-info-circle"></i> Los precios son referenciales y pueden variar según dimensiones y servicios adicionales
-                      </small>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
@@ -1370,27 +1366,27 @@ function QuoteAPITester() {
                     <div className="d-flex flex-wrap gap-1 mt-1">
                       {rutaSeleccionada.kg45 && (
                         <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          45kg: {rutaSeleccionada.kg45}
+                          45kg: {rutaSeleccionada.currency} {(extractPrice(rutaSeleccionada.kg45) * 1.15).toFixed(2)}
                         </span>
                       )}
                       {rutaSeleccionada.kg100 && (
                         <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          100kg: {rutaSeleccionada.kg100}
+                          100kg: {rutaSeleccionada.currency} {(extractPrice(rutaSeleccionada.kg100) * 1.15).toFixed(2)}
                         </span>
                       )}
                       {rutaSeleccionada.kg300 && (
                         <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          300kg: {rutaSeleccionada.kg300}
+                          300kg: {rutaSeleccionada.currency} {(extractPrice(rutaSeleccionada.kg300) * 1.15).toFixed(2)}
                         </span>
                       )}
                       {rutaSeleccionada.kg500 && (
                         <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          500kg: {rutaSeleccionada.kg500}
+                          500kg: {rutaSeleccionada.currency} {(extractPrice(rutaSeleccionada.kg500) * 1.15).toFixed(2)}
                         </span>
                       )}
                       {rutaSeleccionada.kg1000 && (
                         <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          1000kg: {rutaSeleccionada.kg1000}
+                          1000kg: {rutaSeleccionada.currency} {(extractPrice(rutaSeleccionada.kg1000) * 1.15).toFixed(2)}
                         </span>
                       )}
                     </div>

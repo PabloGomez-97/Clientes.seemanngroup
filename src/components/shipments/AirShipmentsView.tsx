@@ -125,6 +125,13 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
     return () => cancelAnimationFrame(rafId);
   }, [progress]);
 
+  const progressClamped = Math.max(0, Math.min(100, animatedProgress));
+  const trackStart = 5;          // %
+  const trackSpan = 90;          // del 5% al 95% (90% de recorrido)
+  const x = trackStart + (progressClamped / 100) * trackSpan; // posición del avión
+  const w = (progressClamped / 100) * trackSpan;              // ancho de la línea
+
+
   return (
     <div style={{ 
       padding: '20px', 
@@ -360,21 +367,21 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
         <div style={{
           position: 'absolute',
           top: '20px',
-          left: '5%',
-          right: `${95 - (animatedProgress * 0.9)}%`,
+          left: `${trackStart}%`,
+          width: `${w}%`,
           height: '3px',
           background: 'linear-gradient(to right, #3b82f6, #60a5fa, #3b82f6)',
           borderRadius: '2px',
           zIndex: 2,
           boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
-          transition: 'right 0.3s ease'
+          // IMPORTANTE: quita el transition, porque ya animas con RAF
         }} />
 
         {/* Avión con animación de vuelo suave */}
         <div style={{
           position: 'absolute',
           top: '4px',
-          left: `calc(5% + ${animatedProgress * 0.9}%)`,
+          left: `${x}%`,
           transform: 'translateX(-50%) rotate(45deg)',
           fontSize: '1.6rem',
           zIndex: 3,
@@ -389,7 +396,7 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
         <div style={{
           position: 'absolute',
           top: '21px',
-          left: `calc(5% + ${Math.max(0, animatedProgress * 0.9 - 5)}%)`,
+          left: `${trackStart + Math.max(0, w - 5)}%`,
           width: '5%',
           height: '1px',
           background: 'linear-gradient(to right, transparent, rgba(147, 197, 253, 0.4), transparent)',
@@ -1727,18 +1734,6 @@ function AirShipmentsView() {
                     </div>
                   </div>
                   <CommoditiesSection commodities={selectedShipment.commodities} />
-                </CollapsibleSection>
-              )}
-
-              {/* Entrega */}
-              {selectedShipment.proofOfDelivery && (
-                <CollapsibleSection title="Prueba de Entrega" defaultOpen={false} icon="✅">
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                    <InfoField label="Fecha de Entrega" value={selectedShipment.proofOfDelivery.podDelivery ? formatDate(selectedShipment.proofOfDelivery.podDelivery) : null} />
-                    <InfoField label="Recibido Por" value={selectedShipment.proofOfDelivery.podReceivedBy} />
-                    <InfoField label="Notas" value={selectedShipment.proofOfDelivery.podNotes} fullWidth />
-                    <InfoField label="Notas Internas" value={selectedShipment.proofOfDelivery.podInternalNotes} fullWidth />
-                  </div>
                 </CollapsibleSection>
               )}
 
