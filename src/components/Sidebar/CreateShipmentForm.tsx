@@ -183,9 +183,9 @@ function CreateShipmentForm() {
       <div className="shipment-form-container">
         <div className="shipment-card">
           <div className="shipment-card-body">
-            <h4 className="header-title">Single Air Shipment</h4>
+            <h4 className="header-title">Track New Shipment</h4>
             <p className="sub-header">
-              You can create a new air shipment tracking by providing the AWB (Air Waybill) number.
+              Puede crear un nuevo seguimiento de envío aéreo proporcionando el número AWB (guía aérea).
             </p>
 
                           {/* Advertencia AWB */}
