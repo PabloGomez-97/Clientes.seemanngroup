@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import './AirShipmentsView.css'; // 👈 Importar el CSS
 
 interface OutletContext {
   accessToken: string;
@@ -53,100 +54,421 @@ function ShipmentTimeline({ shipment }: { shipment: AirShipment }) {
         date: shipment.arrival,
         completed: hasArrived,
         icon: '📦'
-      },
-      {
-        label: 'Entregado',
-        date: hasArrived ? shipment.arrival : shipment.proofOfDelivery?.podDelivery,
-        completed: hasArrived || !!shipment.proofOfDelivery?.podDelivery,
-        icon: '✅'
       }
     ];
     return steps;
   };
 
+  const getProgressPercentage = () => {
+    if (!shipment.departure || !shipment.arrival) return 0;
+
+    try {
+      const parseDisplayDate = (obj: any) => {
+        const s = obj?.displayDate?.trim();
+        if (!s) return null;
+
+        const [m, d, y] = s.split('/');
+        if (!m || !d || !y) return null;
+
+        const date = new Date(Number(y), Number(m) - 1, Number(d));
+        const time = date.getTime();
+        return Number.isFinite(time) ? time : null;
+      };
+
+      const departureTime = parseDisplayDate(shipment.departure);
+      const arrivalTime = parseDisplayDate(shipment.arrival);
+
+      if (!departureTime || !arrivalTime) return 0;
+
+      const now = Date.now();
+      if (now <= departureTime) return 0;
+      if (now >= arrivalTime) return 100;
+
+      return ((now - departureTime) / (arrivalTime - departureTime)) * 100;
+    } catch {
+      return 0;
+    }
+  };
+
   const steps = getTimelineSteps();
+  const progress = getProgressPercentage();
+  const [animatedProgress, setAnimatedProgress] = useState(0);
+
   const completedSteps = steps.filter(s => s.completed).length;
 
+  useEffect(() => {
+    let rafId: number;
+    const durationMs = 6000;
+    const start = performance.now();
+
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+    let fromValue = 0;
+
+    setAnimatedProgress(prev => {
+      fromValue = prev;
+      return prev;
+    });
+
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / durationMs);
+      const eased = easeOutCubic(t);
+
+      const next = fromValue + (progress - fromValue) * eased;
+      setAnimatedProgress(next);
+
+      if (t < 1) rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [progress]);
+
   return (
-    <div style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px', marginBottom: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h6 style={{ margin: 0, color: '#1f2937', fontSize: '0.9rem', fontWeight: '600' }}>
+    <div style={{ 
+      padding: '20px', 
+      background: 'linear-gradient(to bottom, #e0f2fe 0%, #f0f9ff 50%, #fef3c7 100%)',
+      borderRadius: '8px', 
+      marginBottom: '20px',
+      position: 'relative',
+      overflow: 'hidden',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
+    }}>
+      
+      {/* Sol decorativo con rayos */}
+      <div style={{
+        position: 'absolute',
+        top: '15px',
+        right: '30px',
+        width: '50px',
+        height: '50px',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, #fbbf24 0%, #f59e0b 100%)',
+        boxShadow: '0 0 30px rgba(251, 191, 36, 0.4)',
+        zIndex: 0
+      }}>
+        {/* Rayos del sol */}
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          width: '80px',
+          height: '80px',
+          transform: 'translate(-50%, -50%)',
+          animation: 'sunRays 20s linear infinite'
+        }}>
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: '2px',
+                height: '20px',
+                backgroundColor: '#fbbf24',
+                transform: `translate(-50%, -50%) rotate(${i * 45}deg) translateY(-30px)`,
+                opacity: 0.4
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Estrellas pequeñas (aparecen sutilmente) */}
+      {[...Array(6)].map((_, i) => (
+        <div
+          key={`star-${i}`}
+          style={{
+            position: 'absolute',
+            top: `${10 + i * 15}%`,
+            left: `${15 + i * 12}%`,
+            fontSize: '0.6rem',
+            opacity: 0.3,
+            animation: `twinkle ${2 + i * 0.5}s ease-in-out infinite`,
+            animationDelay: `${i * 0.3}s`,
+            color: '#fbbf24',
+            zIndex: 0
+          }}
+        >
+          ✦
+        </div>
+      ))}
+
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '16px',
+        position: 'relative',
+        zIndex: 2
+      }}>
+        <h6 style={{ 
+          margin: 0, 
+          color: '#0f172a', 
+          fontSize: '0.95rem', 
+          fontWeight: '700',
+          textShadow: '0 1px 2px rgba(255, 255, 255, 0.8)'
+        }}>
           Estado del Envío
         </h6>
-        <span style={{ 
-          backgroundColor: completedSteps === 3 ? '#10b981' : '#3b82f6',
-          color: 'white',
-          padding: '4px 12px',
-          borderRadius: '12px',
-          fontSize: '0.75rem',
-          fontWeight: '600'
-        }}>
-          {completedSteps === 3 ? 'Entregado' : ''}
-        </span>
       </div>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative' }}>
-        {/* Línea de fondo */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        position: 'relative', 
+        paddingLeft: '1%', 
+        paddingRight: '6%', 
+        minHeight: '110px' 
+      }}>
+
+        {/* Nubes grandes flotantes - múltiples capas */}
+        <div style={{
+          position: 'absolute',
+          top: '5px',
+          left: '0',
+          right: '0',
+          height: '50px',
+          overflow: 'hidden',
+          zIndex: 0,
+          pointerEvents: 'none'
+        }}>
+          {/* Nube 1 */}
+          <div style={{
+            position: 'absolute',
+            top: '5px',
+            fontSize: '2rem',
+            filter: 'blur(0.5px)',
+            animation: 'cloudDrift 45s linear infinite'
+          }}>
+            ☁️
+          </div>
+          
+          {/* Nube 2 */}
+          <div style={{
+            position: 'absolute',
+            top: '20px',
+            fontSize: '1.5rem',
+            filter: 'blur(0.3px)',
+            animation: 'cloudDrift2 60s linear infinite',
+            animationDelay: '10s'
+          }}>
+            ☁️
+          </div>
+          
+          {/* Nube 3 */}
+          <div style={{
+            position: 'absolute',
+            top: '10px',
+            fontSize: '1.8rem',
+            filter: 'blur(0.4px)',
+            animation: 'cloudDrift 50s linear infinite',
+            animationDelay: '25s'
+          }}>
+            ☁️
+          </div>
+        </div>
+
+        {/* Pájaros volando en formación V */}
+        <div style={{
+          position: 'absolute',
+          top: '15px',
+          left: '20%',
+          zIndex: 1,
+          pointerEvents: 'none'
+        }}>
+          <div style={{
+            position: 'relative',
+            animation: 'birdsFloat 25s ease-in-out infinite'
+          }}>
+            <span style={{ 
+              position: 'absolute', 
+              fontSize: '0.7rem', 
+              color: '#475569',
+              transform: 'translate(0px, 0px)'
+            }}>Ʌ</span>
+            <span style={{ 
+              position: 'absolute', 
+              fontSize: '0.65rem', 
+              color: '#64748b',
+              transform: 'translate(-10px, 8px)'
+            }}>Ʌ</span>
+            <span style={{ 
+              position: 'absolute', 
+              fontSize: '0.6rem', 
+              color: '#64748b',
+              transform: 'translate(10px, 8px)'
+            }}>Ʌ</span>
+            <span style={{ 
+              position: 'absolute', 
+              fontSize: '0.55rem', 
+              color: '#94a3b8',
+              transform: 'translate(-18px, 16px)'
+            }}>Ʌ</span>
+            <span style={{ 
+              position: 'absolute', 
+              fontSize: '0.55rem', 
+              color: '#94a3b8',
+              transform: 'translate(18px, 16px)'
+            }}>Ʌ</span>
+          </div>
+        </div>
+
+        {/* Montañas estilizadas con capas de profundidad */}
+        <div style={{
+          position: 'absolute',
+          bottom: '0',
+          left: '0',
+          right: '0',
+          height: '70px',
+          display: 'flex',
+          alignItems: 'flex-end',
+          justifyContent: 'space-around',
+          paddingLeft: '3%',
+          paddingRight: '3%',
+          zIndex: 0,
+          pointerEvents: 'none'
+        }}>
+          {/* Capa de montañas lejanas (más claras) */}
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={`mountain-far-${i}`}
+              style={{
+                width: '0',
+                height: '0',
+                borderLeft: `${35 + i * 8}px solid transparent`,
+                borderRight: `${35 + i * 8}px solid transparent`,
+                borderBottom: `${30 + i * 10}px solid #cbd5e1`,
+                animation: 'mountainShimmer 8s ease-in-out infinite',
+                animationDelay: `${i * 0.5}s`,
+                opacity: 0.4
+              }}
+            />
+          ))}
+          
+          {/* Capa de montañas cercanas (más oscuras) */}
+          {[...Array(3)].map((_, i) => (
+            <div
+              key={`mountain-near-${i}`}
+              style={{
+                width: '0',
+                height: '0',
+                borderLeft: `${40 + i * 10}px solid transparent`,
+                borderRight: `${40 + i * 10}px solid transparent`,
+                borderBottom: `${40 + i * 12}px solid #94a3b8`,
+                animation: 'mountainShimmer 6s ease-in-out infinite',
+                animationDelay: `${i * 0.8}s`,
+                opacity: 0.25,
+                marginLeft: `${i * 60}px`
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Línea de fondo más sutil */}
         <div style={{
           position: 'absolute',
           top: '20px',
           left: '5%',
           right: '5%',
-          height: '2px',
-          backgroundColor: '#e5e7eb',
-          zIndex: 0
+          height: '3px',
+          background: 'linear-gradient(to right, #e0e7ff, #dbeafe, #e0e7ff)',
+          borderRadius: '2px',
+          zIndex: 1,
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
         }} />
-        
-        {/* Línea de progreso */}
+
+        {/* Línea de progreso con gradiente animado */}
         <div style={{
           position: 'absolute',
           top: '20px',
           left: '5%',
-          width: `${((completedSteps - 1) / 2) * 90}%`,
-          height: '2px',
-          backgroundColor: '#3b82f6',
-          zIndex: 0,
+          height: '3px',
+          width: `${animatedProgress * 0.9}%`,
+          background: 'linear-gradient(to right, #3b82f6, #60a5fa, #3b82f6)',
+          borderRadius: '2px',
+          zIndex: 2,
+          boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)',
           transition: 'width 0.3s ease'
         }} />
 
+        {/* Avión con animación de vuelo suave */}
+        <div style={{
+          position: 'absolute',
+          top: '4px',
+          left: `calc(5% + ${animatedProgress * 0.9}%)`,
+          transform: 'translateX(-50%) rotate(45deg)',
+          fontSize: '1.6rem',
+          zIndex: 3,
+          pointerEvents: 'none',
+          animation: 'planeBounce 2s ease-in-out infinite',
+          filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))'
+        }}>
+          ✈️
+        </div>
+
+        {/* Estela del avión */}
+        <div style={{
+          position: 'absolute',
+          top: '21px',
+          left: `calc(5% + ${Math.max(0, animatedProgress * 0.9 - 5)}%)`,
+          width: '5%',
+          height: '1px',
+          background: 'linear-gradient(to right, transparent, rgba(147, 197, 253, 0.4), transparent)',
+          zIndex: 1,
+          pointerEvents: 'none',
+          opacity: animatedProgress > 5 ? 1 : 0
+        }} />
+
+        {/* Steps del timeline */}
         {steps.map((step, index) => (
           <div key={index} style={{ 
-            flex: 1, 
+            flex: "0 0 auto", 
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center',
             position: 'relative',
-            zIndex: 1
+            zIndex: 2
           }}>
             <div style={{
-              width: '40px',
-              height: '40px',
+              width: '44px',
+              height: '44px',
               borderRadius: '50%',
-              backgroundColor: step.completed ? '#3b82f6' : '#e5e7eb',
+              background: step.completed 
+                ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' 
+                : 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1.2rem',
-              marginBottom: '8px',
-              transition: 'all 0.3s ease',
-              boxShadow: step.completed ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none'
+              fontSize: '1.3rem',
+              marginBottom: '10px',
+              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+              boxShadow: step.completed 
+                ? '0 4px 12px rgba(59, 130, 246, 0.35), 0 0 0 3px rgba(59, 130, 246, 0.1)' 
+                : '0 2px 6px rgba(0, 0, 0, 0.08)',
+              border: step.completed ? 'none' : '2px solid white'
             }}>
               {step.icon}
             </div>
             <div style={{ 
               fontSize: '0.75rem', 
-              fontWeight: '600',
-              color: step.completed ? '#1f2937' : '#9ca3af',
+              fontWeight: '700',
+              color: step.completed ? '#0f172a' : '#94a3b8',
               textAlign: 'center',
-              marginBottom: '4px'
+              marginBottom: '4px',
+              textShadow: step.completed ? '0 1px 2px rgba(255, 255, 255, 0.8)' : 'none',
+              letterSpacing: '0.01em'
             }}>
               {step.label}
             </div>
             {step.date && step.date.displayDate && step.date.displayDate.trim() !== '' && (
               <div style={{ 
                 fontSize: '0.7rem', 
-                color: '#6b7280',
-                textAlign: 'center'
+                color: step.completed ? '#475569' : '#94a3b8',
+                textAlign: 'center',
+                fontWeight: '500'
               }}>
                 {(() => {
                   try {
@@ -237,7 +559,7 @@ function InfoField({ label, value, fullWidth = false }: { label: string; value: 
   if (typeof value === 'boolean') {
     displayValue = value ? 'Sí' : 'No';
   } else if (typeof value === 'object') {
-    return null; // No mostramos objetos complejos como campos simples
+    return null;
   } else {
     displayValue = String(value);
   }
@@ -433,27 +755,20 @@ function AirShipmentsView() {
 
   // Función auxiliar para formatear fechas
   const formatDate = (dateObj: any) => {
-    // Si es null, undefined o no tiene displayDate, retornar guión
     if (!dateObj || !dateObj.displayDate) return '-';
     
-    // Si displayDate está vacío, retornar guión
     if (dateObj.displayDate.trim() === '') return '-';
     
     try {
-      // displayDate viene en formato MM/DD/YYYY (por ejemplo: "05/12/2025")
       const [month, day, year] = dateObj.displayDate.split('/');
-      
-      // Crear fecha parseada
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
       
-      // Formatear en español descriptivo: "12 de Mayo, 2025"
       return date.toLocaleDateString('es-CL', { 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric'
       });
     } catch (error) {
-      // Si hay algún error en el parseo, retornar el displayDate original
       return dateObj.displayDate;
     }
   };
@@ -470,7 +785,6 @@ function AirShipmentsView() {
       return;
     }
     
-    // Si es la primera página, mostrar loading completo
     if (page === 1) {
       setLoading(true);
     } else {
@@ -480,7 +794,6 @@ function AirShipmentsView() {
     setError(null);
     
     try {
-      // Construir URL con query parameters
       const queryParams = new URLSearchParams({
         ConsigneeName: user.username,
         Page: page.toString(),
@@ -507,18 +820,15 @@ function AirShipmentsView() {
       const data = await response.json();
       const shipmentsArray: AirShipment[] = Array.isArray(data) ? data : [];
       
-      // Ordenar los shipments por departure.date (más nueva primero)
       const sortedShipments = shipmentsArray.sort((a, b) => {
         const dateA = a.departure?.date ? new Date(a.departure.date) : new Date(0);
         const dateB = b.departure?.date ? new Date(b.departure.date) : new Date(0);
-        return dateB.getTime() - dateA.getTime(); // Descendente (más nueva primero)
+        return dateB.getTime() - dateA.getTime();
       });
       
-      // Si recibimos menos de 50 shipments, no hay más páginas
       setHasMoreShipments(shipmentsArray.length === 50);
       
       if (append && page > 1) {
-        // Agregar los nuevos shipments a los existentes y re-ordenar todo
         const combined = [...shipments, ...sortedShipments];
         const resorted = combined.sort((a, b) => {
           const dateA = a.departure?.date ? new Date(a.departure.date) : new Date(0);
@@ -528,18 +838,15 @@ function AirShipmentsView() {
         setShipments(resorted);
         setDisplayedShipments(resorted);
         
-        // Guardar en caché con el username del usuario
         const cacheKey = `airShipmentsCache_${user.username}`;
         localStorage.setItem(cacheKey, JSON.stringify(resorted));
         localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       } else {
-        // Primera carga: reemplazar todo
         setShipments(sortedShipments);
         setDisplayedShipments(sortedShipments);
         setShowingAll(false);
         
-        // Guardar en caché con el username del usuario
         const cacheKey = `airShipmentsCache_${user.username}`;
         localStorage.setItem(cacheKey, JSON.stringify(sortedShipments));
         localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
@@ -557,7 +864,6 @@ function AirShipmentsView() {
     }
   };
 
-  // Función para cargar más shipments (paginación)
   const loadMoreShipments = () => {
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
@@ -575,30 +881,26 @@ function AirShipmentsView() {
       return;
     }
     
-    // Intentar cargar desde caché primero
     const cacheKey = `airShipmentsCache_${user.username}`;
     const cachedShipments = localStorage.getItem(cacheKey);
     const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
     const cachedPage = localStorage.getItem(`${cacheKey}_page`);
     
     if (cachedShipments && cacheTimestamp) {
-      const oneHour = 60 * 60 * 1000; // 1 hora en milisegundos
+      const oneHour = 60 * 60 * 1000;
       const now = new Date().getTime();
       const cacheAge = now - parseInt(cacheTimestamp);
       
       if (cacheAge < oneHour) {
-        // El caché es válido (menos de 1 hora)
         const parsed = JSON.parse(cachedShipments);
         setShipments(parsed);
         setDisplayedShipments(parsed);
         setShowingAll(false);
         
-        // Restaurar la página actual
         if (cachedPage) {
           setCurrentPage(parseInt(cachedPage));
         }
         
-        // Verificar si hay más shipments disponibles
         const lastPageSize = parsed.length % 50;
         setHasMoreShipments(lastPageSize === 0 && parsed.length >= 50);
         
@@ -607,7 +909,6 @@ function AirShipmentsView() {
         console.log(`📦 ${parsed.length} air-shipments en caché`);
         return;
       } else {
-        // El caché expiró, limpiarlo
         console.log('🗑️ Caché expirado, limpiando...');
         localStorage.removeItem(cacheKey);
         localStorage.removeItem(`${cacheKey}_timestamp`);
@@ -615,7 +916,6 @@ function AirShipmentsView() {
       }
     }
     
-    // No hay caché válido, cargar desde la API
     setCurrentPage(1);
     fetchAirShipments(1, false);
   }, [accessToken, user?.username]);
@@ -696,17 +996,14 @@ function AirShipmentsView() {
     setShowingAll(false);
   };
 
-  // Función para refrescar datos (limpiar caché y recargar)
   const refreshShipments = () => {
     if (!user?.username) return;
     
-    // Limpiar caché del usuario actual
     const cacheKey = `airShipmentsCache_${user.username}`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);
     localStorage.removeItem(`${cacheKey}_page`);
     
-    // Recargar desde la API
     setCurrentPage(1);
     setShipments([]);
     setDisplayedShipments([]);
@@ -805,7 +1102,6 @@ function AirShipmentsView() {
           🔍 Buscar
         </button>
 
-        {/* Botón Cargar Más - muestra si hay más shipments disponibles */}
         {hasMoreShipments && !loadingMore && (
           <button 
             onClick={loadMoreShipments}
@@ -827,7 +1123,6 @@ function AirShipmentsView() {
           </button>
         )}
 
-        {/* Indicador de carga al cargar más */}
         {loadingMore && (
           <div style={{
             padding: '10px 20px',
@@ -1116,7 +1411,7 @@ function AirShipmentsView() {
                   </th>
                   <th style={{ 
                     padding: '16px 20px',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     fontWeight: '600',
                     color: '#374151',
                     fontSize: '0.75rem',
@@ -1128,7 +1423,7 @@ function AirShipmentsView() {
                   </th>
                   <th style={{ 
                     padding: '16px 20px',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     fontWeight: '600',
                     color: '#374151',
                     fontSize: '0.75rem',
@@ -1136,7 +1431,7 @@ function AirShipmentsView() {
                     letterSpacing: '0.5px',
                     minWidth: '150px'
                   }}>
-                    Carrier
+                    Fecha Llegada
                   </th>
                   <th style={{ 
                     padding: '16px 20px',
@@ -1148,13 +1443,12 @@ function AirShipmentsView() {
                     letterSpacing: '0.5px',
                     whiteSpace: 'nowrap'
                   }}>
-                    Estado
+                    Carrier
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {displayedShipments.map((shipment, index) => {
-                  // Calcular estado del envío
                   const isDelivered = !!shipment.proofOfDelivery?.podDelivery;
                   const isInCustoms = shipment.customsReleased || !!shipment.importSection?.entry;
                   const hasArrived = shipment.arrival && new Date(shipment.arrival) <= new Date();
@@ -1223,6 +1517,7 @@ function AirShipmentsView() {
                       </td>
                       <td style={{ 
                         padding: '16px 20px',
+                        textAlign: 'center',
                         color: '#4b5563',
                         whiteSpace: 'nowrap'
                       }}>
@@ -1245,26 +1540,37 @@ function AirShipmentsView() {
                       </td>
                       <td style={{ 
                         padding: '16px 20px',
-                        color: '#4b5563'
+                        textAlign: 'center',
+                        color: '#4b5563',
+                        whiteSpace: 'nowrap'
                       }}>
-                        {shipment.carrier?.name || '-'}
+                        {shipment.arrival && shipment.arrival.displayDate && shipment.arrival.displayDate.trim() !== ''
+                          ? (() => {
+                              try {
+                                const [month, day, year] = shipment.arrival.displayDate.split('/');
+                                const date = new Date(
+                                  parseInt(year),
+                                  parseInt(month) - 1,
+                                  parseInt(day)
+                                );
+                                return date.toLocaleDateString('es-CL', {
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                });
+                              } catch {
+                                return shipment.arrival.displayDate;
+                              }
+                            })()
+                          : '-'
+                        }
                       </td>
                       <td style={{ 
                         padding: '16px 20px',
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        color: '#4b5563'
                       }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 12px',
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: statusColor,
-                          backgroundColor: statusBg,
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {statusLabel}
-                        </span>
+                        {shipment.carrier?.name || '-'}
                       </td>
                     </tr>
                   );

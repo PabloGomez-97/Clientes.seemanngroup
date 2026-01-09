@@ -1,0 +1,51 @@
+/* AirShipmentsView.css */
+@keyframes birdsFloat {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(15px, -8px) rotate(-5deg); }
+  50% { transform: translate(30px, -3px) rotate(3deg); }
+  75% { transform: translate(45px, -10px) rotate(-3deg); }
+}
+
+@keyframes cloudDrift {
+  0% { transform: translateX(-100px); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateX(calc(100vw + 100px)); opacity: 0; }
+}
+
+@keyframes cloudDrift2 {
+  0% { transform: translateX(-150px); opacity: 0; }
+  10% { opacity: 0.4; }
+  90% { opacity: 0.4; }
+  100% { transform: translateX(calc(100vw + 150px)); opacity: 0; }
+}
+
+@keyframes planeBounce {
+  0%, 100% { transform: translateX(-50%) rotate(45deg) translateY(0px); }
+  50% { transform: translateX(-50%) rotate(45deg) translateY(-3px); }
+}
+
+@keyframes mountainShimmer {
+  0%, 100% { opacity: 0.08; }
+  50% { opacity: 0.15; }
+}
+
+@keyframes sunRays {
+  0%, 100% { opacity: 0.15; transform: rotate(0deg); }
+  50% { opacity: 0.25; transform: rotate(180deg); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
