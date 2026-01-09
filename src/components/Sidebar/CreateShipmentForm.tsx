@@ -1,5 +1,5 @@
 // src/components/shipsgo/CreateShipmentForm.tsx
-import { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
