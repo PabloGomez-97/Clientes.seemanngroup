@@ -4,18 +4,12 @@
   "outputDirectory": "dist",
   "functions": {
     "api/**/*.ts": {
-      "memory": 3008,
-      "maxDuration": 300
+      "memory": 1024,
+      "maxDuration": 30
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron/renew-linbis-token",
-      "schedule": "0 */23 * * *"
-    }
-  ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/api/:path*", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
