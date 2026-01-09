@@ -1,53 +1,48 @@
 // src/components/shipsgo/CreateShipmentForm.tsx
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import './CreateShipmentForm.css';
+import * as bootstrap from 'bootstrap';
 
-// ✅ Detectar automáticamente el ambiente (desarrollo o producción)
 const API_BASE_URL = import.meta.env.MODE === 'development' 
   ? 'http://localhost:4000'
   : 'https://portalclientes.seemanngroup.com';
 
-interface CreateShipmentResponse {
-  success: boolean;
-  message: string;
-  shipment: {
-    id: number;
-    reference: string;
-    awb_number: string;
-  };
-}
-
 function CreateShipmentForm() {
-  const { user, token } = useAuth(); // ✅ CORREGIDO: Usar token del AuthContext
+  const { user, token } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggerList.forEach((tooltipTriggerEl) => {
+      new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  }, []);
   
-  // Estados del formulario
   const [awbNumber, setAwbNumber] = useState('');
-  const [followers, setFollowers] = useState<string[]>(['']);
-  const [tags, setTags] = useState<string[]>(['']);
+  const [followers, setFollowers] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [newFollower, setNewFollower] = useState('');
+  const [newTag, setNewTag] = useState('');
   
-  // Estados de UI
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdShipment, setCreatedShipment] = useState<any>(null);
 
-  // Validación de AWB en tiempo real
+  // Validación de AWB
   const validateAwb = (value: string): { valid: boolean; message: string } => {
-    // Remover espacios y guiones
     const clean = value.replace(/[\s-]/g, '');
     
     if (clean.length === 0) {
       return { valid: false, message: '' };
     }
     
-    // Solo números
     if (!/^\d+$/.test(clean)) {
       return { valid: false, message: 'El AWB solo puede contener números' };
     }
     
-    // Exactamente 11 dígitos
     if (clean.length !== 11) {
       return { 
         valid: false, 
@@ -55,7 +50,7 @@ function CreateShipmentForm() {
       };
     }
     
-    return { valid: true, message: '✓ Formato válido' };
+    return { valid: true, message: 'Formato válido' };
   };
 
   const awbValidation = validateAwb(awbNumber);
@@ -66,69 +61,65 @@ function CreateShipmentForm() {
     return emailRegex.test(email);
   };
 
-  // Agregar follower
+  // Agregar follower a la lista
   const addFollower = () => {
-    if (followers.length < 10) {
-      setFollowers([...followers, '']);
+    const email = newFollower.trim();
+    if (email && isValidEmail(email) && !followers.includes(email) && followers.length < 10) {
+      setFollowers([...followers, email]);
+      setNewFollower('');
     }
   };
 
   // Remover follower
-  const removeFollower = (index: number) => {
-    setFollowers(followers.filter((_, i) => i !== index));
-  };
-
-  // Actualizar follower
-  const updateFollower = (index: number, value: string) => {
-    const newFollowers = [...followers];
-    newFollowers[index] = value;
-    setFollowers(newFollowers);
+  const removeFollower = (email: string) => {
+    setFollowers(followers.filter(f => f !== email));
   };
 
   // Agregar tag
   const addTag = () => {
-    if (tags.length < 10) {
-      setTags([...tags, '']);
+    const tagValue = newTag.trim();
+    if (tagValue && !tags.includes(tagValue) && tags.length < 10) {
+      setTags([...tags, tagValue]);
+      setNewTag('');
     }
   };
 
   // Remover tag
-  const removeTag = (index: number) => {
-    setTags(tags.filter((_, i) => i !== index));
+  const removeTag = (tag: string) => {
+    setTags(tags.filter(t => t !== tag));
   };
 
-  // Actualizar tag
-  const updateTag = (index: number, value: string) => {
-    const newTags = [...tags];
-    newTags[index] = value;
-    setTags(newTags);
+  // Manejar Enter en inputs
+  const handleFollowerKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addFollower();
+    }
   };
 
-  // Validar formulario completo
+  const handleTagKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addTag();
+    }
+  };
+
+  // Validar formulario
   const validateForm = (): { valid: boolean; errors: string[] } => {
     const errors: string[] = [];
 
-    // Validar AWB
     if (!awbValidation.valid) {
       errors.push('El AWB debe tener exactamente 11 dígitos numéricos');
-    }
-
-    // Validar followers (solo los que tienen contenido)
-    const filledFollowers = followers.filter(f => f.trim() !== '');
-    const invalidEmails = filledFollowers.filter(f => !isValidEmail(f));
-    if (invalidEmails.length > 0) {
-      errors.push(`Hay ${invalidEmails.length} email(s) con formato inválido`);
     }
 
     return { valid: errors.length === 0, errors };
   };
 
-  // Manejar envío del formulario
+  // Enviar formulario
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validar formulario
     const validation = validateForm();
     if (!validation.valid) {
       setError(validation.errors.join('. '));
@@ -138,21 +129,17 @@ function CreateShipmentForm() {
     setLoading(true);
 
     try {
-      // Preparar datos
       const cleanAwb = awbNumber.replace(/[\s-]/g, '');
-      const filledFollowers = followers.filter(f => f.trim() !== '');
-      const filledTags = tags.filter(t => t.trim() !== '');
 
       const shipmentData = {
-        reference: user?.username, // Automático
+        reference: user?.username,
         awb_number: cleanAwb,
-        followers: filledFollowers,
-        tags: filledTags
+        followers: followers,
+        tags: tags
       };
 
       console.log('📤 Enviando:', shipmentData);
 
-      // ✅ CORREGIDO: Usar token del AuthContext directamente
       const response = await fetch(`${API_BASE_URL}/api/shipsgo/shipments`, {
         method: 'POST',
         headers: {
@@ -165,9 +152,8 @@ function CreateShipmentForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Manejar errores específicos
         if (response.status === 409) {
-          setError('Ya existe un trackeo con este AWB para tu cuenta. Por favor verifica el número ingresado.');
+          setError('Ya existe un trackeo con este AWB en tu cuenta. Por favor verifica el número ingresado.');
         } else if (response.status === 402) {
           setError('No hay créditos disponibles. Por favor contacta a tu ejecutivo de cuenta para renovar tu plan.');
         } else {
@@ -176,7 +162,6 @@ function CreateShipmentForm() {
         return;
       }
 
-      // Éxito
       console.log('✅ Shipment creado:', data.shipment);
       setCreatedShipment(data.shipment);
       setShowSuccessModal(true);
@@ -189,262 +174,334 @@ function CreateShipmentForm() {
     }
   };
 
-  // Ir a rastreos
   const goToTracking = () => {
-    navigate('/shipsgo'); // Ajustar según tu ruta
+    navigate('/shipsgo');
   };
 
   return (
-    <div className="container-fluid py-4">
-      {/* Header */}
-      <div className="row mb-4">
-        <div className="col">
-          <h2 className="mb-2">Crear Nuevo Trackeo Aéreo</h2>
-          <p className="text-muted">
-            Ingresa los datos de tu envío para comenzar a rastrearlo en tiempo real
-          </p>
-        </div>
-      </div>
+    <div className="shipment-form-wrapper">
+      <div className="shipment-form-container">
+        <div className="shipment-card">
+          <div className="shipment-card-body">
+            <h4 className="header-title">Single Air Shipment</h4>
+            <p className="sub-header">
+              You can create a new air shipment tracking by providing the AWB (Air Waybill) number.
+            </p>
 
-      {/* Formulario */}
-      <div className="row justify-content-center">
-        <div className="col-lg-8">
-          <div className="card shadow-sm">
-            <div className="card-body p-4">
-              <form onSubmit={handleSubmit}>
-                
-                {/* Referencia (readonly) */}
-                <div className="mb-4">
-                  <label className="form-label fw-bold">
-                    Referencia
-                    <span className="text-muted ms-2">(Asignada automáticamente)</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg bg-light"
-                    value={user?.username || ''}
-                    disabled
-                    readOnly
-                  />
-                  <small className="text-muted">
-                    Esta referencia te permitirá identificar tus envíos
-                  </small>
-                </div>
+                          {/* Advertencia AWB */}
+              <div className="alert alert-warning d-flex align-items-start mb-4" role="alert">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  fill="currentColor"
+                  className="me-3 mt-1 flex-shrink-0"
+                  viewBox="0 0 16 16"
+                >
+                  <path d="M8.982 1.566a1.13 1.13 0 0 0-1.964 0L.165 13.233c-.457.778.091 1.767.982 1.767h13.706c.89 0 1.438-.99.982-1.767L8.982 1.566z"/>
+                  <path d="M8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                </svg>
 
-                {/* AWB Number */}
-                <div className="mb-4">
-                  <label className="form-label fw-bold">
-                    AWB Number <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className={`form-control form-control-lg ${
-                      awbNumber && (awbValidation.valid ? 'is-valid' : 'is-invalid')
-                    }`}
-                    placeholder="33388888888 o 333-88888888"
-                    value={awbNumber}
-                    onChange={(e) => setAwbNumber(e.target.value)}
-                    maxLength={12}
-                    required
-                  />
-                  {awbNumber && (
-                    <div className={awbValidation.valid ? 'valid-feedback' : 'invalid-feedback'}>
-                      {awbValidation.message}
-                    </div>
-                  )}
-                  <small className="text-muted">
-                    Número de guía aérea de 11 dígitos proporcionado por la aerolínea
-                  </small>
-                </div>
+                <div style={{ textAlign: 'justify' }}>
+                  <h6 className="fw-bold mb-1">Importante antes de continuar</h6>
+                  <p className="mb-1">
+                    Asegúrese de ingresar <strong>exactamente el AWB entregado por su aerolínea</strong>.
+                    Un número incorrecto puede generar un trackeo fallido y consumir créditos de su cuenta innecesariamente.
+                  </p>
+                  <p className="mb-0">
+                    ¿No conoce su AWB? Puede revisarlo en la sección{' '}
+                    <strong>Operaciones Aéreas</strong>, donde encontrará sus AWB disponibles en color azul.
+                  </p>
 
-                {/* Followers (Emails) */}
-                <div className="mb-4">
-                  <label className="form-label fw-bold">
-                    Emails para Notificaciones
-                    <span className="text-muted ms-2">(Opcional)</span>
-                  </label>
-                  <small className="text-muted d-block mb-2">
-                    Agrega hasta 10 emails que recibirán actualizaciones del envío
-                  </small>
-                  
-                  {followers.map((follower, index) => (
-                    <div key={index} className="input-group mb-2">
-                      <input
-                        type="email"
-                        className={`form-control ${
-                          follower && !isValidEmail(follower) ? 'is-invalid' : ''
-                        }`}
-                        placeholder="ejemplo@email.com"
-                        value={follower}
-                        onChange={(e) => updateFollower(index, e.target.value)}
-                      />
-                      {followers.length > 1 && (
-                        <button
-                          type="button"
-                          className="btn btn-outline-danger"
-                          onClick={() => removeFollower(index)}
-                        >
-                          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {followers.length < 10 && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={addFollower}
-                    >
-                      <svg width="16" height="16" fill="currentColor" className="me-1" viewBox="0 0 16 16">
-                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-                      </svg>
-                      Agregar Email
-                    </button>
-                  )}
-                </div>
-
-                {/* Tags */}
-                <div className="mb-4">
-                  <label className="form-label fw-bold">
-                    Etiquetas (Tags)
-                    <span className="text-muted ms-2">(Opcional)</span>
-                  </label>
-                  <small className="text-muted d-block mb-2">
-                    Agrega hasta 10 etiquetas para clasificar tu envío
-                  </small>
-                  
-                  {tags.map((tag, index) => (
-                    <div key={index} className="input-group mb-2">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Ej: IMPORT, URGENTE, FRÁGIL"
-                        value={tag}
-                        onChange={(e) => updateTag(index, e.target.value)}
-                        maxLength={50}
-                      />
-                      {tags.length > 1 && (
-                        <button
-                          type="button"
-                          className="btn btn-outline-danger"
-                          onClick={() => removeTag(index)}
-                        >
-                          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {tags.length < 10 && (
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={addTag}
-                    >
-                      <svg width="16" height="16" fill="currentColor" className="me-1" viewBox="0 0 16 16">
-                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-                      </svg>
-                      Agregar Etiqueta
-                    </button>
-                  )}
-                </div>
-
-                {/* Error Message */}
-                {error && (
-                  <div className="alert alert-danger" role="alert">
-                    <strong>Error:</strong> {error}
-                  </div>
-                )}
-
-                {/* Botones */}
-                <div className="d-flex gap-2 mt-4">
+                  {/* Ayudame a colocar este div en el centro por favor*/}
+                  <div className="csf-callout-cta mt-3 d-flex justify-content-center">
                   <button
                     type="button"
-                    className="btn btn-outline-secondary btn-lg flex-fill"
-                    onClick={() => navigate(-1)}
-                    disabled={loading}
+                    className="btn btn-sm btn-outline-primary csf-btn-soft"
+                    onClick={() => navigate('/air-shipments')}
                   >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary btn-lg flex-fill"
-                    disabled={loading || !awbValidation.valid}
-                  >
-                    {loading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Creando...
-                      </>
-                    ) : (
-                      <>
-                        <svg width="20" height="20" fill="currentColor" className="me-2" viewBox="0 0 16 16">
-                          <path d="M15.854 5.146a.5.5 0 0 1 0 .708l-8 8a.5.5 0 0 1-.708 0l-4-4a.5.5 0 1 1 .708-.708L7.5 12.793l7.646-7.647a.5.5 0 0 1 .708 0z"/>
-                        </svg>
-                        Crear Trackeo
-                      </>
-                    )}
+                    Ver AWB
+                    <svg width="16" height="16" className="ms-2" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                      <path fillRule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
+                    </svg>
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
+                </div>
+              </div>
 
-          {/* Info Card */}
-          <div className="card bg-light border-0 mt-3">
-            <div className="card-body">
-              <h6 className="fw-bold mb-2">
-                <svg width="16" height="16" fill="currentColor" className="me-2" viewBox="0 0 16 16">
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                  <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-                </svg>
-                Información Importante
-              </h6>
-              <ul className="mb-0 small text-muted">
-                <li>El trackeo comenzará automáticamente una vez creado</li>
-                <li>Recibirás notificaciones por email sobre el estado de tu envío</li>
-                <li>Puedes ver el progreso en tiempo real desde la sección "Rastreos"</li>
-              </ul>
-            </div>
+            <form onSubmit={handleSubmit} autoComplete="off">
+              
+              {/* Reference Number */}
+              <div className="form-group">
+                <i className=""></i>
+                <label htmlFor="input-reference-number">
+                  Nombre del Cliente
+                </label>
+                <input
+                  type="text"
+                  id="input-reference-number"
+                  className="form-control"
+                  value={user?.username || ''}
+                  disabled
+                  readOnly
+                  style={{ backgroundColor: '#e9ecef' }}
+                />
+              </div>
+
+              {/* AWB Number */}
+              <div className="form-group">
+                <label htmlFor="input-awb-number">
+                  AWB Number <span className="text-danger">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="input-awb-number"
+                  className={`form-control ${
+                    awbNumber && (awbValidation.valid ? 'is-valid' : 'is-invalid')
+                  }`}
+                  placeholder="Enter 11-digit AWB number"
+                  value={awbNumber}
+                  onChange={(e) => setAwbNumber(e.target.value)}
+                  maxLength={12}
+                  required
+                />
+                {awbNumber && !awbValidation.valid && (
+                  <div className="invalid-feedback">{awbValidation.message}</div>
+                )}
+                {awbNumber && awbValidation.valid && (
+                  <div className="valid-feedback">{awbValidation.message}</div>
+                )}
+                <small className="text-muted d-block mt-1">
+                  Número de guía aérea de 11 dígitos proporcionado por la aerolínea
+                </small>
+              </div>
+
+              {/* Shipment's Tags */}
+              <div className="form-group mb-1">
+                <label htmlFor="input-tag" className="d-flex align-items-center gap-2">
+                  <span>Shipment's Tags</span>
+
+                  <i
+                    className="fa fa-info-circle text-muted"
+                    role="button"
+                    tabIndex={0}
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="top"
+                    title="Puedes agrupar tus envíos usando etiquetas. Máximo 10 etiquetas, 64 caracteres cada una."
+                    aria-label="Información sobre Shipment's Tags"
+                  />
+                </label>
+                <div className="input-group">
+                  <input
+                    type="text"
+                    id="input-tag"
+                    className="form-control"
+                    placeholder="Enter a tag and press Enter"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={handleTagKeyPress}
+                    maxLength={64}
+                  />
+                  <div className="input-group-append">
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary"
+                      onClick={addTag}
+                      disabled={!newTag.trim() || tags.length >= 10}
+                    >
+                      <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                      </svg>
+                      Add
+                    </button>
+                  </div>
+                </div>
+                <small className="text-muted d-block mt-1">
+                  Puedes agrupar tus envíos con etiquetas. Cada etiqueta debe tener un máximo de 64 caracteres. ({tags.length}/10)
+                </small>
+              </div>
+
+              {/* Tags List */}
+              {tags.length > 0 && (
+                <div className="form-group mb-3">
+                  <ul className="list-group">
+                    {tags.map((tag, index) => (
+                      <li key={index} className="list-group-item">
+                        <span>{tag}</span>
+                        <button
+                          type="button"
+                          className="btn-remove-item"
+                          onClick={() => removeTag(tag)}
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                        >
+                          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
+                          </svg>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Shipment's Followers */}
+              <div className="form-group mb-1 mt-2">
+                <i className=""></i>
+                <label htmlFor="input-follower" className="d-flex align-items-center gap-2 mb-1">
+                  <span>Shipment's Followers</span>
+
+                  <i
+                    className="fa fa-info-circle text-muted"
+                    role="button"
+                    tabIndex={0}
+                    data-bs-toggle="tooltip"
+                    data-bs-placement="top"
+                    title="Agregue emails para recibir notificaciones del envío. Puede incluir hasta 10 destinatarios."
+                    aria-label="Información sobre Shipment's Followers"
+                  />
+                </label>
+                <div className="input-group">
+                  <input
+                    type="email"
+                    id="input-follower"
+                    className="form-control"
+                    placeholder="Enter email and press Enter"
+                    value={newFollower}
+                    onChange={(e) => setNewFollower(e.target.value)}
+                    onKeyPress={handleFollowerKeyPress}
+                  />
+                  <div className="input-group-append">
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary"
+                      onClick={addFollower}
+                      disabled={!newFollower.trim() || !isValidEmail(newFollower) || followers.length >= 10}
+                    >
+                      <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                      </svg>
+                      Add
+                    </button>
+                  </div>
+                </div>
+                <small className="text-muted d-block mt-1">
+                  Puedes agregar direcciones de correo electrónico donde deseas recibir notificaciones sobre el envío ({followers.length}/10)
+                </small>
+              </div>
+
+              {/* Followers List */}
+              {followers.length > 0 && (
+                <div className="form-group mb-3">
+                  <ul className="list-group">
+                    {followers.map((email, index) => (
+                      <li key={index} className="list-group-item">
+                        <span>{email}</span>
+                        <button
+                          type="button"
+                          className="btn-remove-item"
+                          onClick={() => removeFollower(email)}
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                        >
+                          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
+                          </svg>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Error Alert */}
+              {error && (
+                <div className="alert alert-danger">
+                  <strong>Error:</strong> {error}
+                </div>
+              )}
+
+              {/* Submit Buttons */}
+              <div className="button-group text-right">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => navigate(-1)}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loading || !awbValidation.valid}
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm mr-2"></span>
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <svg width="16" height="16" fill="currentColor" className="mr-2" viewBox="0 0 16 16" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                      </svg>
+                      Create
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
 
-      {/* Modal de Éxito */}
+      {/* Success Modal */}
       {showSuccessModal && (
-        <div 
-          className="modal fade show d-block" 
-          tabIndex={-1} 
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-        >
-          <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-overlay">
+          <div className="modal-dialog">
             <div className="modal-content">
-              <div className="modal-body text-center py-5">
-                <div className="mb-4">
-                  <svg width="80" height="80" fill="currentColor" className="text-success" viewBox="0 0 16 16">
-                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+              <div className="modal-header">
+                <h5 className="modal-title">Shipment Created Successfully</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowSuccessModal(false)}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="modal-body">
+                <div className="success-icon">
+                  <svg fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="mb-3">¡Trackeo Creado Exitosamente!</h3>
-                <p className="text-muted mb-2">
-                  Tu envío <strong>{createdShipment?.awb_number}</strong> está siendo rastreado
+                <p>Your air shipment has been created and tracking has started.</p>
+                <div className="success-awb">
+                  AWB: {createdShipment?.awb_number}
+                </div>
+                <p className="text-muted">
+                  You can now monitor your shipment in real-time from the tracking section.
                 </p>
-                <p className="text-muted mb-4">
-                  Puedes revisar el estado de tu cargamento en la sección de Rastreos
-                </p>
+              </div>
+              <div className="modal-footer">
                 <button
-                  className="btn btn-primary btn-lg"
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowSuccessModal(false)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
                   onClick={goToTracking}
                 >
-                  <svg width="20" height="20" fill="currentColor" className="me-2" viewBox="0 0 16 16">
+                  <svg width="16" height="16" fill="currentColor" className="mr-2" viewBox="0 0 16 16" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
                     <path fillRule="evenodd" d="M1 8a.5.5 0 0 1 .5-.5h11.793l-3.147-3.146a.5.5 0 0 1 .708-.708l4 4a.5.5 0 0 1 0 .708l-4 4a.5.5 0 0 1-.708-.708L13.293 8.5H1.5A.5.5 0 0 1 1 8z"/>
                   </svg>
-                  Ir a Rastreos
+                  View Tracking
                 </button>
               </div>
             </div>

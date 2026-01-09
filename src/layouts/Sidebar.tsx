@@ -71,13 +71,13 @@ function Sidebar({ isOpen }: SidebarProps) {
     title: 'Rastreo de Operaciones',
     items: [
       {
-        path: '/trackings',
-        name: 'Rastreo',
+        path: '/new-tracking',
+        name: 'Track New Shipment',
         icon: 'fa fa-route'
       },
       {
-        path: '/new-tracking',
-        name: 'Nuevo Rastreo',
+        path: '/trackings',
+        name: 'Mis Envíos',
         icon: 'fa fa-route'
       }
     ]
