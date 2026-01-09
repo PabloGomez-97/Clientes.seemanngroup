@@ -42,6 +42,7 @@ import Settings from './components/settings/Settings';
 import ReporteriaOperacional from './components/Sidebar/ReporteriaOperacional';
 import Changelog from './components/Sidebar/Changelog';
 import ShipsGoTracking from './components/Sidebar/Shipsgotracking';
+import CreateShipmentForm from './components/Sidebar/CreateShipmentForm';
 
 // OFF
 import Operacionales from './components/Sidebar/RO2';
@@ -125,6 +126,7 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="changelog" element={<Changelog />} />
         <Route path="operacional" element={<ReporteriaOperacional />} />
+        <Route path="new-tracking" element={<CreateShipmentForm />} />
       </Route>
 
       {/* Ruta por defecto */}

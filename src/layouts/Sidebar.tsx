@@ -74,6 +74,11 @@ function Sidebar({ isOpen }: SidebarProps) {
         path: '/trackings',
         name: 'Rastreo',
         icon: 'fa fa-route'
+      },
+      {
+        path: '/new-tracking',
+        name: 'Nuevo Rastreo',
+        icon: 'fa fa-route'
       }
     ]
   },

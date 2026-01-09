@@ -791,6 +791,143 @@ app.get('/api/shipsgo/shipments', async (req, res) => {
   }
 });
 
+// POST /api/shipsgo/shipments - Crear un nuevo shipment
+app.post('/api/shipsgo/shipments', auth, async (req, res) => {
+  console.log('🚢 [shipsgo] Creating new shipment...');
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    const SHIPSGO_API_URL = 'https://api.shipsgo.com/v2/air/shipments';
+
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ 
+        error: 'Missing ShipsGo API token. Set SHIPSGO_API_TOKEN in environment variables' 
+      });
+    }
+
+    // Obtener datos del body
+    const { reference, awb_number, followers, tags } = req.body || {};
+
+    // Validaciones básicas
+    if (!reference || !awb_number) {
+      return res.status(400).json({ 
+        error: 'reference y awb_number son campos requeridos' 
+      });
+    }
+
+    // ✅ SEGURIDAD: Validar que la referencia coincida con el username del usuario
+    if (reference !== currentUser.username) {
+      console.error(`[shipsgo] Security violation: User ${currentUser.username} tried to create shipment with reference ${reference}`);
+      return res.status(403).json({ 
+        error: 'No puedes crear trackeos para otros usuarios' 
+      });
+    }
+
+    // Validar formato de AWB (11 dígitos, con o sin guion)
+    const awbClean = awb_number.replace(/-/g, '');
+    if (!/^\d{11}$/.test(awbClean)) {
+      return res.status(400).json({ 
+        error: 'El AWB debe contener exactamente 11 dígitos' 
+      });
+    }
+
+    // Formatear AWB con guion (XXX-XXXXXXXX)
+    const awbFormatted = `${awbClean.slice(0, 3)}-${awbClean.slice(3)}`;
+
+    // Validar followers (opcional, pero si existe debe ser array)
+    if (followers && !Array.isArray(followers)) {
+      return res.status(400).json({ 
+        error: 'followers debe ser un array de emails' 
+      });
+    }
+
+    // Validar máximo 10 followers
+    if (followers && followers.length > 10) {
+      return res.status(400).json({ 
+        error: 'Máximo 10 emails permitidos en followers' 
+      });
+    }
+
+    // Validar tags (opcional, pero si existe debe ser array)
+    if (tags && !Array.isArray(tags)) {
+      return res.status(400).json({ 
+        error: 'tags debe ser un array' 
+      });
+    }
+
+    // Validar máximo 10 tags
+    if (tags && tags.length > 10) {
+      return res.status(400).json({ 
+        error: 'Máximo 10 tags permitidos' 
+      });
+    }
+
+    // Preparar body para ShipsGo
+    const shipmentData = {
+      reference,
+      awb_number: awbFormatted,
+      followers: followers || [],
+      tags: tags || []
+    };
+
+    console.log('[shipsgo] Creating shipment:', shipmentData);
+
+    // Hacer petición a ShipsGo API
+    const response = await fetch(SHIPSGO_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN
+      },
+      body: JSON.stringify(shipmentData)
+    });
+
+    const data = await response.json();
+
+    // Manejar respuestas específicas de ShipsGo
+    if (response.status === 409) {
+      // Shipment ya existe
+      console.log('[shipsgo] Shipment already exists:', data);
+      return res.status(409).json({ 
+        error: 'Ya existe un trackeo con este AWB para tu cuenta',
+        code: 'ALREADY_EXISTS',
+        existingShipment: data.shipment || null
+      });
+    }
+
+    if (response.status === 402) {
+      // Sin créditos
+      console.error('[shipsgo] Insufficient credits');
+      return res.status(402).json({ 
+        error: 'No hay créditos disponibles. Por favor contacta a tu ejecutivo de cuenta.',
+        code: 'INSUFFICIENT_CREDITS'
+      });
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[shipsgo] API Error:', response.status, errorText);
+      return res.status(response.status).json({ 
+        error: 'Error al crear el shipment en ShipsGo',
+        details: errorText
+      });
+    }
+
+    console.log(`[shipsgo] Shipment created successfully:`, data.shipment);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Trackeo creado exitosamente',
+      shipment: data.shipment
+    });
+
+  } catch (error: any) {
+    console.error('[shipsgo] Error:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 /** =========================
  *  Start
  *  ========================= */
