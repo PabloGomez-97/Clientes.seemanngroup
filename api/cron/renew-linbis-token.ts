@@ -1,0 +1,82 @@
+// api/cron/renew-linbis-token.ts
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import LinbisAuthService from '../services/linbisAuthService.js';
+
+export const config = {
+  maxDuration: 300,
+};
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  console.log('\n[CRON] 🔄 Iniciando renovación automática de token Linbis...');
+
+  try {
+    // Verificar autorización
+    const authHeader = req.headers.authorization;
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      console.error('[CRON] ❌ Intento no autorizado');
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const email = process.env.LINBIS_EMAIL;
+    const password = process.env.LINBIS_PASSWORD;
+    const clientId = process.env.LINBIS_CLIENT_ID;
+
+    if (!email || !password || !clientId) {
+      console.error('[CRON] ❌ Configuración incompleta');
+      return res.status(500).json({ success: false, error: 'Configuración incompleta' });
+    }
+
+    console.log('[CRON] ✓ Credenciales verificadas');
+
+    // Obtener nuevo token
+    const tokens = await LinbisAuthService.getNewRefreshToken({
+      email,
+      password,
+      clientId,
+    });
+
+    console.log('[CRON] ✅ Token obtenido');
+    console.log('[CRON] 🔄 Guardando en base de datos...');
+
+    // Enviar a init-linbis-token
+    const initResponse = await fetch('https://clientes-seemanngroup.vercel.app/api/admin/init-linbis-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: tokens.refresh_token })
+    });
+
+    const initResult = await initResponse.json() as {
+      success: boolean;
+      message: string;
+    };
+
+    if (!initResponse.ok) {
+      console.error('[CRON] ❌ Error guardando token:', initResult);
+      throw new Error(`Error guardando token: ${JSON.stringify(initResult)}`);
+    }
+
+    console.log('[CRON] ✅ Token guardado exitosamente');
+
+    return res.json({
+      success: true,
+      message: 'Token renovado exitosamente',
+      timestamp: new Date().toISOString(),
+      expires_in: tokens.expires_in,
+      next_renewal: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
+    });
+
+  } catch (error: any) {
+    console.error('[CRON] ❌ Error:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+}
