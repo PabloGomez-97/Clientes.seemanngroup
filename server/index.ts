@@ -883,7 +883,7 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
       body: JSON.stringify(shipmentData)
     });
 
-    const data = await response.json();
+    const data = await response.json() as { shipment?: any };
 
     // Manejar respuestas específicas de ShipsGo
     if (response.status === 409) {
