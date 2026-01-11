@@ -1015,27 +1015,29 @@ function AirShipmentsView() {
 
   return (
     <>
-      {/* Header */}
+    {/* Header */}
       <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '24px 20px',
+        backgroundColor: '#ffffff',
+        padding: '20px 0',
         marginBottom: '24px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+        borderBottom: '1px solid #e5e7eb',
+        fontFamily: 'Poppins, sans-serif'
       }}>
         <h4 style={{ 
-          color: 'white', 
+          color: '#111827',
           margin: 0,
-          fontSize: '1.5rem',
-          fontWeight: '700',
-          marginBottom: '8px'
+          fontSize: '1.25rem',
+          fontWeight: '500',
+          letterSpacing: '-0.01em'
         }}>
           Mis Air Shipments
         </h4>
         <p style={{ 
-          color: 'rgba(255, 255, 255, 0.9)', 
-          margin: 0,
-          fontSize: '0.9rem'
+          color: '#6b7280',
+          marginTop: '6px',
+          marginBottom: 0,
+          fontSize: '0.9rem',
+          fontWeight: '400'
         }}>
           Consulta y gestiona tus envíos aéreos
         </p>
@@ -1043,46 +1045,28 @@ function AirShipmentsView() {
 
       {/* Botones de acción */}
       <div style={{ 
-        display: 'flex', 
-        gap: '12px', 
+        display: 'flex',
+        justifyContent: 'flex-end',
+        gap: '12px',
         marginBottom: '20px',
-        flexWrap: 'wrap'
+        flexWrap: 'wrap',
+        fontFamily: 'Poppins, sans-serif'
       }}>
-        <button 
-          onClick={refreshShipments}
-          disabled={loading}
-          style={{
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '10px 20px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            opacity: loading ? 0.6 : 1,
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
-          }}
-        >
-          {loading ? 'Cargando...' : '🔄 Actualizar'}
-        </button>
-
         <button 
           onClick={openSearchModal}
           style={{
-            backgroundColor: 'white',
-            color: '#3b82f6',
-            border: '2px solid #3b82f6',
-            borderRadius: '8px',
-            padding: '10px 20px',
+            backgroundColor: 'transparent',
+            color: '#111827',
+            border: '1px solid #d1d5db',
+            borderRadius: '6px',
+            padding: '8px 14px',
             cursor: 'pointer',
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            transition: 'all 0.2s'
+            fontSize: '0.85rem',
+            fontWeight: '500',
+            transition: 'background-color 0.2s ease, border-color 0.2s ease'
           }}
         >
-          🔍 Buscar
+          Buscar
         </button>
 
         {hasMoreShipments && !loadingMore && (
@@ -1090,30 +1074,30 @@ function AirShipmentsView() {
             onClick={loadMoreShipments}
             disabled={loadingMore}
             style={{
-              backgroundColor: 'white',
-              color: '#10b981',
-              border: '2px solid #10b981',
-              borderRadius: '8px',
-              padding: '10px 20px',
+              backgroundColor: '#ffffff',
+              color: '#111827',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              padding: '8px 14px',
               cursor: loadingMore ? 'not-allowed' : 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: '600',
-              transition: 'all 0.2s',
-              opacity: loadingMore ? 0.6 : 1
+              fontSize: '0.85rem',
+              fontWeight: '500',
+              opacity: loadingMore ? 0.6 : 1,
+              transition: 'background-color 0.2s ease, border-color 0.2s ease'
             }}
           >
-            📦 Cargar Más Envíos
+            Cargar más
           </button>
         )}
 
         {loadingMore && (
           <div style={{
-            padding: '10px 20px',
+            padding: '8px 14px',
             color: '#6b7280',
-            fontSize: '0.9rem',
-            fontWeight: '600'
+            fontSize: '0.85rem',
+            fontWeight: '400'
           }}>
-            ⏳ Cargando más envíos...
+            Cargando…
           </div>
         )}
 
@@ -1121,21 +1105,22 @@ function AirShipmentsView() {
           <button 
             onClick={clearSearch}
             style={{
-              backgroundColor: 'white',
+              backgroundColor: 'transparent',
               color: '#6b7280',
-              border: '2px solid #6b7280',
-              borderRadius: '8px',
-              padding: '10px 20px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              padding: '8px 14px',
               cursor: 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: '600',
-              transition: 'all 0.2s'
+              fontSize: '0.85rem',
+              fontWeight: '400',
+              transition: 'color 0.2s ease, border-color 0.2s ease'
             }}
           >
-            ✖ Limpiar Filtros
+            Limpiar filtros
           </button>
         )}
       </div>
+
 
       {/* Modal de Búsqueda */}
       {showSearchModal && (
