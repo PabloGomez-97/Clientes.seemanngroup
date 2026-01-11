@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import './ShipsGoTracking.css';
+import './Shipsgotracking.css';
 
 // Tipos de ShipsGo
 interface Location {
