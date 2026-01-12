@@ -240,6 +240,9 @@ function QuoteAPITester() {
   const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
   const [pieces, setPieces] = useState(1);
   const [description, setDescription] = useState("Cargamento Aéreo");
+  const [incoterm, setIncoterm] = useState<'EXW' | 'FCA' | ''>('');
+  const [pickupFromAddress, setPickupFromAddress] = useState('');
+  const [deliveryToAddress, setDeliveryToAddress] = useState('');
   const [length, setLength] = useState(100);
   const [width, setWidth] = useState(80);
   const [height, setHeight] = useState(60);
@@ -514,36 +517,38 @@ function QuoteAPITester() {
         }
       });
 
-      // Cobro de EXW
-      charges.push({
-        service: {
-          id: 271,
-          code: "EC"
-        },
-        income: {
-          quantity: 1,
-          unit: "EXW CHARGES",
-          rate: calculateEXWRate(totalWeight, totalVolumeWeight),
-          amount: calculateEXWRate(totalWeight, totalVolumeWeight),
-          showamount: calculateEXWRate(totalWeight, totalVolumeWeight),
-          payment: "Prepaid",
-          billApplyTo: "Other",
-          billTo: {
-            name: user?.username
+      // Cobro de EXW (solo si incoterm es EXW)
+      if (incoterm === 'EXW') {
+        charges.push({
+          service: {
+            id: 271,
+            code: "EC"
           },
-          currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+          income: {
+            quantity: 1,
+            unit: "EXW CHARGES",
+            rate: calculateEXWRate(totalWeight, totalVolumeWeight),
+            amount: calculateEXWRate(totalWeight, totalVolumeWeight),
+            showamount: calculateEXWRate(totalWeight, totalVolumeWeight),
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: user?.username
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any
+            },
+            reference: "TEST-REF-EXW",
+            showOnDocument: true,
+            notes: "EXW charge created via API"
           },
-          reference: "TEST-REF-EXW",
-          showOnDocument: true,
-          notes: "EXW charge created via API"
-        },
-        expense: {
-          currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any
+            }
           }
-        }
-      });
+        });
+      }
 
       // Cobro de AWB
       charges.push({
@@ -638,6 +643,14 @@ function QuoteAPITester() {
           id: 8
         },
         rateCategoryId: 2,
+        incoterm: {
+          code: incoterm,
+          name: incoterm
+        },
+        ...(incoterm === 'EXW' && {
+          pickupFromAddress: pickupFromAddress,
+          deliveryToAddress: deliveryToAddress
+        }),
         portOfReceipt: {
           name: rutaSeleccionada.origin
         },
@@ -722,36 +735,38 @@ function QuoteAPITester() {
         }
       });
 
-      // Cobro de EXW - Usar peso real y volumen sin conversións
-      charges.push({
-        service: {
-          id: 271,
-          code: "EC"
-        },
-        income: {
-          quantity: 1,
-          unit: "EXW CHARGES",
-          rate: calculateEXWRate(manualWeight, manualVolume),
-          amount: calculateEXWRate(manualWeight, manualVolume),
-          showamount: calculateEXWRate(manualWeight, manualVolume),
-          payment: "Prepaid",
-          billApplyTo: "Other",
-          billTo: {
-            name: user?.username
+      // Cobro de EXW - Usar peso real y volumen sin conversións (solo si incoterm es EXW)
+      if (incoterm === 'EXW') {
+        charges.push({
+          service: {
+            id: 271,
+            code: "EC"
           },
-          currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+          income: {
+            quantity: 1,
+            unit: "EXW CHARGES",
+            rate: calculateEXWRate(manualWeight, manualVolume),
+            amount: calculateEXWRate(manualWeight, manualVolume),
+            showamount: calculateEXWRate(manualWeight, manualVolume),
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: user?.username
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any
+            },
+            reference: "TEST-REF-EXW-OVERALL",
+            showOnDocument: true,
+            notes: "EXW charge created via API (Overall mode)"
           },
-          reference: "TEST-REF-EXW-OVERALL",
-          showOnDocument: true,
-          notes: "EXW charge created via API (Overall mode)"
-        },
-        expense: {
-          currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any
+            }
           }
-        }
-      });
+        });
+      }
 
       // Cobro de AWB - Usar peso real y volumen sin conversión
       charges.push({
@@ -846,6 +861,14 @@ function QuoteAPITester() {
           id: 1
         },
         rateCategoryId: 2,
+        incoterm: {
+          code: incoterm,
+          name: incoterm
+        },
+        ...(incoterm === 'EXW' && {
+          pickupFromAddress: pickupFromAddress,
+          deliveryToAddress: deliveryToAddress
+        }),
         portOfReceipt: {
           name: rutaSeleccionada.origin
         },
@@ -1452,7 +1475,7 @@ function QuoteAPITester() {
                 />
               </div>
 
-              <div className="col-12">
+              <div className="col-6">
                 <label className="form-label">Descripción</label>
                 <input
                   type="text"
@@ -1461,6 +1484,46 @@ function QuoteAPITester() {
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
+
+              <div className="col-6">
+                <label className="form-label">Incoterm</label>
+                <select
+                  className="form-select"
+                  value={incoterm}
+                  onChange={(e) => setIncoterm(e.target.value as 'EXW' | 'FCA' | '')}
+                >
+                  <option value="">Seleccione un Incoterm</option>
+                  <option value="EXW">Ex Works [EXW]</option>
+                  <option value="FCA">FCA</option>
+                </select>
+              </div>
+
+               {/* Campos condicionales solo para EXW */}
+              {incoterm === 'EXW' && (
+                <>
+                  <div className="col-md-6">
+                    <label className="form-label">Pickup From Address</label>
+                    <textarea
+                      className="form-control"
+                      value={pickupFromAddress}
+                      onChange={(e) => setPickupFromAddress(e.target.value)}
+                      placeholder="Ingrese dirección de recogida"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label">Delivery To Address</label>
+                    <textarea
+                      className="form-control"
+                      value={deliveryToAddress}
+                      onChange={(e) => setDeliveryToAddress(e.target.value)}
+                      placeholder="Ingrese dirección de entrega"
+                      rows={3}
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Modo Normal */}
               {!overallDimsAndWeight && (
