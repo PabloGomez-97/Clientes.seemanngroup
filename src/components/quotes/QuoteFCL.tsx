@@ -3,6 +3,9 @@ import { useOutletContext } from 'react-router-dom';
 import { useAuth } from "../../auth/AuthContext";
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
+import { PDFTemplateFCL } from './Pdftemplate/Pdftemplatefcl';
+import { generatePDF, formatDateForFilename } from './Pdftemplate/Pdfutils';
+import ReactDOM from 'react-dom/client';
 
 interface OutletContext {
   accessToken: string;
@@ -373,10 +376,122 @@ function QuoteFCL() {
 
       const data = await res.json();
       setResponse(data);
+      
+      // Generar PDF después de cotización exitosa
+      await generateQuotePDF();
     } catch (err: any) {
       setError(err.message || 'Error desconocido');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateQuotePDF = async () => {
+    try {
+      if (!rutaSeleccionada || !containerSeleccionado) return;
+
+      // Obtener el nombre completo del contenedor
+      const containerName = CONTAINER_MAPPING[containerSeleccionado.type].name;
+
+      // Preparar los charges para el PDF
+      const pdfCharges: { code: string; description: string; quantity: number; unit: string; rate: number; amount: number; }[] = [];
+
+      // BL
+      pdfCharges.push({
+        code: 'B',
+        description: 'BL',
+        quantity: 1,
+        unit: 'Each',
+        rate: 60,
+        amount: 60
+      });
+
+      // Handling
+      pdfCharges.push({
+        code: 'H',
+        description: 'HANDLING',
+        quantity: 1,
+        unit: 'Each',
+        rate: 45,
+        amount: 45
+      });
+
+      // EXW (solo si incoterm es EXW)
+      if (incoterm === 'EXW') {
+        const exwRate = calculateEXWRate(containerSeleccionado.type, cantidadContenedores);
+        const ratePerContainer = exwRate / cantidadContenedores;
+        pdfCharges.push({
+          code: 'EC',
+          description: 'EXW CHARGES',
+          quantity: cantidadContenedores,
+          unit: 'Container',
+          rate: ratePerContainer,
+          amount: exwRate
+        });
+      }
+
+      // Ocean Freight
+      const oceanFreightRate = containerSeleccionado.price;
+      const oceanFreightIncome = oceanFreightRate * 1.15;
+      pdfCharges.push({
+        code: 'OF',
+        description: 'OCEAN FREIGHT',
+        quantity: cantidadContenedores,
+        unit: 'Container',
+        rate: oceanFreightIncome / cantidadContenedores,
+        amount: oceanFreightIncome * cantidadContenedores
+      });
+
+      // Calcular total
+      const totalCharges = pdfCharges.reduce((sum, charge) => sum + charge.amount, 0);
+
+      // Crear un contenedor temporal para renderizar el PDF
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      // Renderizar el template del PDF
+      const root = ReactDOM.createRoot(tempDiv);
+      
+      await new Promise<void>((resolve) => {
+        root.render(
+          <PDFTemplateFCL
+            customerName={user?.username || 'Customer'}
+            pol={rutaSeleccionada.pol}
+            pod={rutaSeleccionada.pod}
+            effectiveDate={new Date().toLocaleDateString()}
+            expirationDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+            incoterm={incoterm}
+            pickupFromAddress={incoterm === 'EXW' ? pickupFromAddress : undefined}
+            deliveryToAddress={incoterm === 'EXW' ? deliveryToAddress : undefined}
+            salesRep={ejecutivo?.nombre || 'Ignacio Maldonado'}
+            containerType={containerName}
+            containerQuantity={cantidadContenedores}
+            description={'Cargamento Marítimo FCL'}
+            charges={pdfCharges}
+            totalCharges={totalCharges}
+            currency={rutaSeleccionada.currency}
+          />
+        );
+        
+        // Esperar a que el DOM se actualice
+        setTimeout(resolve, 500);
+      });
+
+      // Generar el PDF
+      const pdfElement = tempDiv.querySelector('#pdf-content') as HTMLElement;
+      if (pdfElement) {
+        const filename = `Cotizacion_${user?.username || 'Cliente'}_${formatDateForFilename(new Date())}.pdf`;
+        await generatePDF({ filename, element: pdfElement });
+      }
+
+      // Limpiar
+      root.unmount();
+      document.body.removeChild(tempDiv);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // No mostramos error al usuario, el PDF es opcional
     }
   };
 
