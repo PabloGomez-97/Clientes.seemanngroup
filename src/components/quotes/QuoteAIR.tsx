@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from "../../auth/AuthContext";
@@ -6,6 +5,9 @@ import { packageTypeOptions } from './PackageTypes/PiecestypesAIR';
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
 import { Modal, Button } from 'react-bootstrap';
+import { PDFTemplateAIR } from './Pdftemplate/Pdftemplateair';
+import { generatePDF, formatDateForFilename } from './Pdftemplate/Pdfutils';
+import ReactDOM from 'react-dom/client';
 
 interface OutletContext {
   accessToken: string;
@@ -446,6 +448,16 @@ function QuoteAPITester() {
       return;
     }
 
+    if (!incoterm) {
+      setError('Debes seleccionar un Incoterm antes de generar la cotización');
+      return;
+    }
+
+    if (incoterm === 'EXW' && (!pickupFromAddress || !deliveryToAddress)) {
+      setError('Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResponse(null);
@@ -469,10 +481,131 @@ function QuoteAPITester() {
 
       const data = await res.json();
       setResponse(data);
+      
+      // Generar PDF después de cotización exitosa
+      await generateQuotePDF();
     } catch (err: any) {
       setError(err.message || 'Error desconocido');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateQuotePDF = async () => {
+    try {
+      if (!rutaSeleccionada || !tarifaAirFreight) return;
+
+      // Obtener el nombre del packageType
+      const packageType = packageTypeOptions.find(opt => opt.id === selectedPackageType);
+      const packageTypeName = packageType ? packageType.name : 'CARGA GENERAL';
+
+      // Preparar los charges para el PDF
+      const pdfCharges = [];
+
+      // Handling
+      pdfCharges.push({
+        code: 'H',
+        description: 'HANDLING',
+        quantity: 1,
+        unit: 'Each',
+        rate: 45,
+        amount: 45
+      });
+
+      // EXW (solo si incoterm es EXW)
+      if (incoterm === 'EXW') {
+        const chargeableWeight = overallDimsAndWeight ? manualWeight : totalVolumeWeight;
+        const exwRate = calculateEXWRate(totalWeight, chargeableWeight);
+        pdfCharges.push({
+          code: 'EC',
+          description: 'EXW CHARGES',
+          quantity: 1,
+          unit: 'Shipment',
+          rate: exwRate,
+          amount: exwRate
+        });
+      }
+
+      // AWB (Air Waybill)
+      pdfCharges.push({
+        code: 'AWB',
+        description: 'AWB',
+        quantity: 1,
+        unit: 'Each',
+        rate: 30,
+        amount: 30
+      });
+
+      // Air Freight
+      const chargeableWeight = overallDimsAndWeight ? manualWeight : totalVolumeWeight;
+      pdfCharges.push({
+        code: 'AF',
+        description: 'AIR FREIGHT',
+        quantity: chargeableWeight,
+        unit: 'kg',
+        rate: tarifaAirFreight.precioConMarkup,
+        amount: tarifaAirFreight.precioConMarkup * chargeableWeight
+      });
+
+      // Calcular total
+      const totalCharges = pdfCharges.reduce((sum, charge) => sum + charge.amount, 0);
+
+      // Crear un contenedor temporal para renderizar el PDF
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      // Renderizar el template del PDF
+      const root = ReactDOM.createRoot(tempDiv);
+      
+      await new Promise<void>((resolve) => {
+        root.render(
+          <PDFTemplateAIR
+            customerName={user?.username || 'Customer'}
+            origin={rutaSeleccionada.origin}
+            destination={rutaSeleccionada.destination}
+            effectiveDate={new Date().toLocaleDateString()}
+            expirationDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+            incoterm={incoterm}
+            pickupFromAddress={incoterm === 'EXW' ? pickupFromAddress : undefined}
+            deliveryToAddress={incoterm === 'EXW' ? deliveryToAddress : undefined}
+            salesRep={ejecutivo?.nombre || 'Ignacio Maldonado'}
+            pieces={pieces}
+            packageTypeName={packageTypeName}
+            length={overallDimsAndWeight ? 0 : length}
+            width={overallDimsAndWeight ? 0 : width}
+            height={overallDimsAndWeight ? 0 : height}
+            description={description}
+            totalWeight={overallDimsAndWeight ? manualWeight : totalWeight}
+            totalVolume={overallDimsAndWeight ? manualVolume : totalVolume}
+            chargeableWeight={chargeableWeight}
+            weightUnit="kg"
+            volumeUnit="m³"
+            charges={pdfCharges}
+            totalCharges={totalCharges}
+            currency={rutaSeleccionada.currency}
+            overallMode={overallDimsAndWeight}
+          />
+        );
+        
+        // Esperar a que el DOM se actualice
+        setTimeout(resolve, 500);
+      });
+
+      // Generar el PDF
+      const pdfElement = tempDiv.querySelector('#pdf-content') as HTMLElement;
+      if (pdfElement) {
+        const filename = `Cotizacion_${user?.username || 'Cliente'}_${formatDateForFilename(new Date())}.pdf`;
+        await generatePDF({ filename, element: pdfElement });
+      }
+
+      // Limpiar
+      root.unmount();
+      document.body.removeChild(tempDiv);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // No mostramos error al usuario, el PDF es opcional
     }
   };
 
