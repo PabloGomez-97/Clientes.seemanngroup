@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from "../../auth/AuthContext";
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
 import { packageTypeOptions } from './PackageTypes/PiecestypesLCL';
 import { Modal, Button } from 'react-bootstrap';
+import { PDFTemplateLCL } from './Pdftemplate/Pdftemplatelcl';
+import { generatePDF, formatDateForFilename } from './Pdftemplate/Pdfutils';
+import ReactDOM from 'react-dom/client';
 
 interface OutletContext {
   accessToken: string;
@@ -330,6 +333,7 @@ function QuoteLCL() {
   
   // W/M Chargeable: Mayor entre peso (en toneladas) y volumen (en m³)
   const chargeableVolume = Math.max(totalWeightTons, totalVolume);
+  const totalVolumeWeight = chargeableVolume;
 
   // ============================================================================
   // FILTRAR RUTAS
@@ -415,10 +419,133 @@ function QuoteLCL() {
 
       const data = await res.json();
       setResponse(data);
+      
+      // Generar PDF después de cotización exitosa
+      await generateQuotePDF();
     } catch (err: any) {
       setError(err.message || 'Error desconocido');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateQuotePDF = async () => {
+    try {
+      if (!rutaSeleccionada) {
+        console.error('No ruta seleccionada para generar PDF');
+        return;
+      }
+
+      // Obtener el nombre del packageType
+      const packageType = packageTypeOptions.find(opt => opt.id === selectedPackageType);
+      const packageTypeName = packageType ? `${packageType.code} - ${packageType.name}` : 'Standard';
+
+      // Preparar los charges para el PDF
+      const pdfCharges: { code: string; description: string; quantity: number; unit: string; rate: number; amount: number; }[] = [];
+
+      // BL
+      pdfCharges.push({
+        code: 'B',
+        description: 'BL',
+        quantity: 1,
+        unit: 'Each',
+        rate: 60,
+        amount: 60
+      });
+
+      // Handling
+      pdfCharges.push({
+        code: 'H',
+        description: 'HANDLING',
+        quantity: 1,
+        unit: 'Each',
+        rate: 45,
+        amount: 45
+      });
+
+      // EXW (solo si incoterm es EXW)
+      if (incoterm === 'EXW') {
+        const exwRate = calculateEXWRate(pieces);
+        pdfCharges.push({
+          code: 'EC',
+          description: 'EXW CHARGES',
+          quantity: pieces,
+          unit: 'Piece',
+          rate: 170,
+          amount: exwRate
+        });
+      }
+
+      // Ocean Freight
+      if (tarifaOceanFreight) {
+        pdfCharges.push({
+          code: 'OF',
+          description: 'OCEAN FREIGHT',
+          quantity: chargeableVolume,
+          unit: 'W/M',
+          rate: rutaSeleccionada.ofWM * 1.15,
+          amount: tarifaOceanFreight.income
+        });
+      }
+
+      // Calcular total
+      const totalCharges = pdfCharges.reduce((sum, charge) => sum + charge.amount, 0);
+
+      // Crear un contenedor temporal para renderizar el PDF
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      // Renderizar el template del PDF
+      const root = ReactDOM.createRoot(tempDiv);
+      
+      await new Promise<void>((resolve) => {
+        root.render(
+          <PDFTemplateLCL
+            customerName={user?.username || 'Customer'}
+            pol={rutaSeleccionada.pol}
+            pod={rutaSeleccionada.pod}
+            effectiveDate={new Date().toLocaleDateString()}
+            expirationDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+            incoterm={incoterm}
+            pickupFromAddress={incoterm === 'EXW' ? pickupFromAddress : undefined}
+            deliveryToAddress={incoterm === 'EXW' ? deliveryToAddress : undefined}
+            salesRep={ejecutivo?.nombre || 'Ignacio Maldonado'}
+            pieces={pieces}
+            packageTypeName={packageTypeName}
+            length={length}
+            width={width}
+            height={height}
+            description={description}
+            totalWeight={totalWeight}
+            totalVolume={totalVolume}
+            totalVolumeWeight={totalVolumeWeight}
+            weightUnit="kg"
+            volumeUnit="m³"
+            charges={pdfCharges}
+            totalCharges={totalCharges}
+            currency={rutaSeleccionada.currency}
+          />
+        );
+        
+        // Esperar a que el DOM se actualice
+        setTimeout(resolve, 500);
+      });
+
+      // Generar el PDF
+      const pdfElement = tempDiv.querySelector('#pdf-content') as HTMLElement;
+      if (pdfElement) {
+        const filename = `Cotizacion_${user?.username || 'Cliente'}_${formatDateForFilename(new Date())}.pdf`;
+        await generatePDF({ filename, element: pdfElement });
+      }
+
+      // Limpiar
+      root.unmount();
+      document.body.removeChild(tempDiv);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // No mostramos error al usuario, el PDF es opcional
     }
   };
 
@@ -535,7 +662,7 @@ function QuoteLCL() {
       income: {
         quantity: chargeableVolume,
         unit: "OCEAN FREIGHT",
-        rate: rutaSeleccionada.ofWM * 1.15,
+        rate: (rutaSeleccionada?.ofWM ?? 0) * 1.15,
         amount: tarifaOceanFreight.income,
         showamount: tarifaOceanFreight.income,
         payment: "Prepaid",
@@ -548,12 +675,12 @@ function QuoteLCL() {
         },
         reference: "LCL-OCEANFREIGHT-REF",
         showOnDocument: true,
-        notes: `OCEAN FREIGHT charge - ${rutaSeleccionada.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)} + 15%`
+        notes: `OCEAN FREIGHT charge - ${rutaSeleccionada?.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada?.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)} + 15%`
       },
       expense: {
         quantity: chargeableVolume,
         unit: "OCEAN FREIGHT",
-        rate: rutaSeleccionada.ofWM,
+        rate: rutaSeleccionada?.ofWM ?? 0,
         amount: tarifaOceanFreight.expense,
         showamount: tarifaOceanFreight.expense,
         payment: "Prepaid",
@@ -566,7 +693,7 @@ function QuoteLCL() {
         },
         reference: "LCL-OCEANFREIGHT-REF",
         showOnDocument: true,
-        notes: `OCEAN FREIGHT expense - ${rutaSeleccionada.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)}`
+        notes: `OCEAN FREIGHT expense - ${rutaSeleccionada?.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada?.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)}`
       }
     });
 
@@ -993,6 +1120,9 @@ function QuoteLCL() {
                       <strong>Servicio:</strong> {rutaSeleccionada.servicio}
                     </p>
                   )}
+                  <p className="mb-0">
+                    <strong>Tarifa:</strong> {rutaSeleccionada.currency} {rutaSeleccionada.ofWM}/W/M
+                  </p>
                 </div>
               )}
             </>
@@ -1172,7 +1302,13 @@ function QuoteLCL() {
                       <strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(3)}
                     </div>
                     <div className="col-md-6">
-                      <strong className="text-success">Income:</strong>{' '}
+                      <strong>Expense:</strong>{' '}
+                      <span className="text-info">
+                        {rutaSeleccionada.currency} {tarifaOceanFreight.expense.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="col-md-6">
+                      <strong className="text-success">Income (+15%):</strong>{' '}
                       <span className="text-success fw-bold">
                         {rutaSeleccionada.currency} {tarifaOceanFreight.income.toFixed(2)}
                       </span>
