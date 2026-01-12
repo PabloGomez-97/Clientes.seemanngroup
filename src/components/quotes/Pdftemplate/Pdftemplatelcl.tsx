@@ -33,6 +33,11 @@ interface PDFTemplateProps {
   currency: string;
 }
 
+const formatNumber = (num: number): string => {
+  if (num % 1 === 0) return num.toString();
+  return num.toFixed(num < 10 ? 4 : 2);
+};
+
 export const PDFTemplateLCL: React.FC<PDFTemplateProps> = ({
   customerName,
   pol,
@@ -58,188 +63,333 @@ export const PDFTemplateLCL: React.FC<PDFTemplateProps> = ({
   totalCharges,
   currency
 }) => {
+  // ===== Minimal / Traditional theme tokens =====
+  const COLORS = {
+    text: '#111111',
+    subtext: '#666666',
+    line: '#E5E5E5',
+    soft: '#F7F7F7'
+  };
+
+  const pageStyle: React.CSSProperties = {
+    width: '210mm',
+    minHeight: '297mm',
+    padding: '15mm',
+    backgroundColor: 'white',
+    fontFamily: 'Inter, Helvetica, Arial, sans-serif',
+    fontSize: '10pt',
+    color: COLORS.text,
+    position: 'relative'
+  };
+
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '18px',
+    paddingBottom: '12px',
+    borderBottom: `1px solid ${COLORS.line}`
+  };
+
+  const sectionTitleStyle: React.CSSProperties = {
+    fontWeight: 600,
+    fontSize: '9.5pt',
+    letterSpacing: '0.6px',
+    textTransform: 'uppercase' as const,
+    paddingBottom: '6px',
+    marginBottom: '10px',
+    borderBottom: `1px solid ${COLORS.line}`,
+    color: COLORS.text
+  };
+
+  const sectionStyle: React.CSSProperties = {
+    marginBottom: '16px'
+  };
+
+  const cardStyle: React.CSSProperties = {
+    border: `1px solid ${COLORS.line}`,
+    borderRadius: '2px',
+    padding: '12px'
+  };
+
+  const gridLabelStyle: React.CSSProperties = {
+    fontWeight: 600,
+    color: COLORS.text
+  };
+
+  const subtleText: React.CSSProperties = {
+    color: COLORS.subtext
+  };
+
+  const tableStyle: React.CSSProperties = {
+    width: '100%',
+    borderCollapse: 'collapse' as const,
+    fontSize: '9pt',
+    border: `1px solid ${COLORS.line}`
+  };
+
+  const thStyle: React.CSSProperties = {
+    padding: '9px 8px',
+    textAlign: 'left',
+    backgroundColor: COLORS.soft,
+    color: COLORS.text,
+    fontWeight: 600,
+    borderBottom: `1px solid ${COLORS.line}`
+  };
+
+  const tdStyle: React.CSSProperties = {
+    padding: '9px 8px',
+    borderBottom: `1px solid ${COLORS.line}`,
+    verticalAlign: 'top'
+  };
+
+  const right: React.CSSProperties = { textAlign: 'right' };
+  const center: React.CSSProperties = { textAlign: 'center' };
+
+  const twoCol: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '14px'
+  };
+
+  const metaBar: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '16px',
+    padding: '10px 0',
+    borderBottom: `1px solid ${COLORS.line}`
+  };
+
   return (
-    <div id="pdf-content" style={{
-      width: '210mm',
-      minHeight: '297mm',
-      padding: '15mm',
-      backgroundColor: 'white',
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '10pt',
-      color: '#000'
-    }}>
+    <div id="pdf-content" style={pageStyle}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', borderBottom: '3px solid #2c5aa0', paddingBottom: '10px' }}>
-        <div>
-          <h1 style={{ margin: 0, color: '#2c5aa0', fontSize: '32pt', fontWeight: 'bold' }}>QUOTE</h1>
+      <div style={headerStyle}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <img
+            src="/logo.png"
+            alt="Seemann Group"
+            style={{ width: '72px', height: '72px', objectFit: 'contain' }}
+          />
+          <div style={{ fontSize: '9pt', lineHeight: 1.5 }}>
+            <div style={{ fontWeight: 600, fontSize: '11pt', marginBottom: '4px' }}>
+              Seemann y Compañia Limitada
+            </div>
+            <div style={subtleText}>Av. Libertad 1405, Oficina 1203</div>
+            <div style={subtleText}>Viña del Mar, Valparaiso 2520000</div>
+            <div style={subtleText}>CHILE</div>
+            <div style={{ marginTop: '6px', ...subtleText }}>
+              Phone: +56226048385 • RUT 76.583.910-6
+            </div>
+            <div style={subtleText}>contacto@seemanngroup.com</div>
+            <div style={subtleText}>seemanngroup.com</div>
+          </div>
         </div>
-        <div style={{ textAlign: 'right', fontSize: '9pt' }}>
-          <img src="/logo.png" alt="Seemann Group" style={{ maxWidth: '150px', marginBottom: '10px' }} />
-          <div><strong>Seemann y Compañia Limitada</strong></div>
-          <div>Av. Libertad 1405, Oficina 1203</div>
-          <div>Viña del Mar, Valparaiso 2520000</div>
-          <div>CHILE</div>
-          <div>Phone: +56226048385 // RUT 76.583.910-6</div>
-          <div>contacto@seemanngroup.com</div>
-          <div>https://seemanngroup.com</div>
+
+        <div style={{ textAlign: 'right' }}>
+          <div
+            style={{
+              margin: 0,
+              fontSize: '26pt',
+              fontWeight: 600,
+              letterSpacing: '1px',
+              lineHeight: 1
+            }}
+          >
+            QUOTE
+          </div>
         </div>
       </div>
 
-      {/* Quote Number and Date */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-        <div style={{ fontSize: '14pt', fontWeight: 'bold', color: '#2c5aa0' }}>QUO000001</div>
-        <div style={{ fontSize: '9pt' }}>
-          <div><strong>Printed On:</strong> {new Date().toLocaleDateString()}</div>
-          <div><strong>Printed By:</strong> {customerName}</div>
+      {/* Quote meta */}
+      <div style={metaBar}>
+        <div style={{ fontSize: '12pt', fontWeight: 600 }}>QUOTE</div>
+        <div style={{ fontSize: '9pt', textAlign: 'right', color: COLORS.subtext }}>
+          <div>
+            <span style={gridLabelStyle}>Printed On:</span> {new Date().toLocaleDateString()}
+          </div>
+          <div>
+            <span style={gridLabelStyle}>Printed By:</span> {customerName}
+          </div>
         </div>
       </div>
 
-      {/* Customer and Additional Information */}
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-        {/* Customer */}
-        <div style={{ flex: 1, border: '1px solid #ccc', padding: '10px' }}>
-          <div style={{ backgroundColor: '#2c5aa0', color: 'white', padding: '5px', fontWeight: 'bold', marginBottom: '10px' }}>
-            CUSTOMER
-          </div>
-          <div><strong>{customerName}</strong></div>
+      {/* Customer + Additional info */}
+      <div style={{ ...twoCol, ...sectionStyle }}>
+        <div style={cardStyle}>
+          <div style={sectionTitleStyle}>Customer</div>
+          <div style={{ fontWeight: 600, fontSize: '11pt' }}>{customerName}</div>
         </div>
 
-        {/* Additional Information */}
-        <div style={{ flex: 1, border: '1px solid #ccc', padding: '10px' }}>
-          <div style={{ backgroundColor: '#2c5aa0', color: 'white', padding: '5px', fontWeight: 'bold', marginBottom: '10px' }}>
-            ADDITIONAL INFORMATION
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', fontSize: '9pt' }}>
-            <div><strong>EFFECTIVE DATE:</strong></div>
+        <div style={cardStyle}>
+          <div style={sectionTitleStyle}>Additional Information</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px 12px', fontSize: '9pt' }}>
+            <div style={gridLabelStyle}>Effective Date:</div>
             <div>{effectiveDate}</div>
-            <div><strong>EXPIRATION DATE:</strong></div>
+
+            <div style={gridLabelStyle}>Expiration Date:</div>
             <div>{expirationDate}</div>
-            <div><strong>ORIGIN:</strong></div>
+
+            <div style={gridLabelStyle}>Origin:</div>
             <div>{pol}</div>
-            <div><strong>DEST:</strong></div>
+
+            <div style={gridLabelStyle}>Dest:</div>
             <div>{pod}</div>
-            <div><strong>INCOTERMS:</strong></div>
-            <div>{incoterm}</div>
+
+            <div style={gridLabelStyle}>Incoterms:</div>
+            <div style={{ fontWeight: 600 }}>{incoterm}</div>
+
             {incoterm === 'EXW' && pickupFromAddress && (
               <>
-                <div><strong>PICKUP FROM:</strong></div>
-                <div style={{ fontSize: '8pt' }}>{pickupFromAddress}</div>
+                <div style={gridLabelStyle}>Pickup From:</div>
+                <div style={{ fontSize: '8.5pt', color: COLORS.subtext }}>{pickupFromAddress}</div>
               </>
             )}
+
             {incoterm === 'EXW' && deliveryToAddress && (
               <>
-                <div><strong>DELIVERY TO:</strong></div>
-                <div style={{ fontSize: '8pt' }}>{deliveryToAddress}</div>
+                <div style={gridLabelStyle}>Delivery To:</div>
+                <div style={{ fontSize: '8.5pt', color: COLORS.subtext }}>{deliveryToAddress}</div>
               </>
             )}
-            <div><strong>TRANSIT DAYS:</strong></div>
+
+            <div style={gridLabelStyle}>Transit Days:</div>
             <div>5</div>
-            <div><strong>SALES REP:</strong></div>
+
+            <div style={gridLabelStyle}>Sales Rep:</div>
             <div>{salesRep}</div>
           </div>
         </div>
       </div>
 
-      {/* Shipper and Consignee */}
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-        <div style={{ flex: 1, border: '1px solid #ccc', padding: '10px' }}>
-          <div style={{ backgroundColor: '#2c5aa0', color: 'white', padding: '5px', fontWeight: 'bold', marginBottom: '10px' }}>
-            SHIPPER
-          </div>
-          <div style={{ minHeight: '60px' }}></div>
+      {/* Shipper + Consignee */}
+      <div style={{ ...twoCol, ...sectionStyle }}>
+        <div style={cardStyle}>
+          <div style={sectionTitleStyle}>Shipper</div>
+          <div style={{ minHeight: '52px', color: COLORS.subtext }}>&nbsp;</div>
         </div>
 
-        <div style={{ flex: 1, border: '1px solid #ccc', padding: '10px' }}>
-          <div style={{ backgroundColor: '#2c5aa0', color: 'white', padding: '5px', fontWeight: 'bold', marginBottom: '10px' }}>
-            CONSIGNEE
-          </div>
-          <div><strong>{customerName}</strong></div>
+        <div style={cardStyle}>
+          <div style={sectionTitleStyle}>Consignee</div>
+          <div style={{ fontWeight: 600, fontSize: '11pt' }}>{customerName}</div>
         </div>
       </div>
 
-      {/* Commodities Table */}
-      <div style={{ marginBottom: '20px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
+      {/* Commodities table */}
+        <div
+        style={{
+            ...sectionStyle,
+            pageBreakBefore: 'always',
+            breakBefore: 'page',
+            marginTop: '20mm'
+        }}
+        >
+        <div style={sectionTitleStyle}>Commodities</div>
+        <table style={tableStyle}>
           <thead>
-            <tr style={{ backgroundColor: '#2c5aa0', color: 'white' }}>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'left' }}>PIECES</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'left' }}>PACKAGE</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'left' }}>DIMENSIONS</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'left' }}>DESCRIPTION</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>WEIGHT</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>VOLUME</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>VOL WEIGHT</th>
+            <tr>
+              <th style={{ ...thStyle, ...center }}>Pieces</th>
+              <th style={thStyle}>Package</th>
+              <th style={thStyle}>Dimensions</th>
+              <th style={thStyle}>Description</th>
+              <th style={{ ...thStyle, ...right }}>Weight</th>
+              <th style={{ ...thStyle, ...right }}>Volume</th>
+              <th style={{ ...thStyle, ...right }}>Vol Weight</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'center' }}>{pieces}</td>
-              <td style={{ border: '1px solid #ccc', padding: '5px' }}>{packageTypeName}</td>
-              <td style={{ border: '1px solid #ccc', padding: '5px' }}>{length} × {width} × {height} cm</td>
-              <td style={{ border: '1px solid #ccc', padding: '5px' }}>{description}</td>
-              <td style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>{totalWeight.toFixed(3)} {weightUnit}</td>
-              <td style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>{totalVolume.toFixed(4)} {volumeUnit}</td>
-              <td style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>{totalVolumeWeight.toFixed(3)} {weightUnit}</td>
+              <td style={{ ...tdStyle, ...center, fontWeight: 600 }}>{pieces}</td>
+              <td style={tdStyle}>{packageTypeName}</td>
+              <td style={tdStyle}>
+                {formatNumber(length)} × {formatNumber(width)} × {formatNumber(height)} cm
+              </td>
+              <td style={tdStyle}>{description}</td>
+              <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
+                {formatNumber(totalWeight)} {weightUnit}
+              </td>
+              <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
+                {formatNumber(totalVolume)} {volumeUnit}
+              </td>
+              <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
+                {formatNumber(totalVolumeWeight)} {weightUnit}
+              </td>
             </tr>
           </tbody>
         </table>
-      </div>
 
-      {/* Totals */}
-      <div style={{ marginBottom: '20px', backgroundColor: '#f0f0f0', padding: '10px', fontSize: '9pt' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-          <div><strong>PIECES:</strong> {pieces}</div>
-          <div><strong>WEIGHT:</strong> {totalWeight.toFixed(3)} {weightUnit}</div>
-          <div><strong>VOLUME:</strong> {totalVolume.toFixed(4)} {volumeUnit}</div>
+        {/* Totals summary (minimal) */}
+        <div
+          style={{
+            marginTop: '10px',
+            paddingTop: '10px',
+            borderTop: `1px solid ${COLORS.line}`,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '12px',
+            fontSize: '9.5pt'
+          }}
+        >
+          <div>
+            <span style={gridLabelStyle}>Pieces:</span> {pieces}
+          </div>
+          <div>
+            <span style={gridLabelStyle}>Weight:</span> {formatNumber(totalWeight)} {weightUnit}
+          </div>
+          <div>
+            <span style={gridLabelStyle}>Volume:</span> {formatNumber(totalVolume)} {volumeUnit}
+          </div>
         </div>
       </div>
 
-      {/* Charges Table */}
-      <div style={{ marginBottom: '20px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt' }}>
+      {/* Charges table */}
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Charges</div>
+        <table style={tableStyle}>
           <thead>
-            <tr style={{ backgroundColor: '#2c5aa0', color: 'white' }}>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'left' }}>CODE</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'left' }}>DESCRIPTION</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>QTY</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'center' }}>UNIT</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>RATE</th>
-              <th style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>AMOUNT</th>
+            <tr>
+              <th style={thStyle}>Code</th>
+              <th style={thStyle}>Description</th>
+              <th style={{ ...thStyle, ...right }}>Qty</th>
+              <th style={{ ...thStyle, ...center }}>Unit</th>
+              <th style={{ ...thStyle, ...right }}>Rate</th>
+              <th style={{ ...thStyle, ...right }}>Amount</th>
             </tr>
           </thead>
           <tbody>
             {charges.map((charge, index) => (
               <tr key={index}>
-                <td style={{ border: '1px solid #ccc', padding: '5px' }}>{charge.code}</td>
-                <td style={{ border: '1px solid #ccc', padding: '5px' }}>{charge.description}</td>
-                <td style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>{charge.quantity.toFixed(3)}</td>
-                <td style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'center' }}>{charge.unit}</td>
-                <td style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>{charge.rate.toFixed(3)}</td>
-                <td style={{ border: '1px solid #ccc', padding: '5px', textAlign: 'right' }}>{charge.amount.toFixed(2)}</td>
+                <td style={{ ...tdStyle, fontWeight: 600 }}>{charge.code}</td>
+                <td style={tdStyle}>{charge.description}</td>
+                <td style={{ ...tdStyle, ...right }}>{formatNumber(charge.quantity)}</td>
+                <td style={{ ...tdStyle, ...center }}>{charge.unit}</td>
+                <td style={{ ...tdStyle, ...right }}>{formatNumber(charge.rate)}</td>
+                <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>{formatNumber(charge.amount)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
 
-      {/* Total Charges */}
-      <div style={{ textAlign: 'right', marginBottom: '20px', fontSize: '12pt' }}>
-        <div style={{ backgroundColor: '#2c5aa0', color: 'white', padding: '10px', display: 'inline-block', minWidth: '250px' }}>
-          <strong>TOTAL CHARGES ({currency}): {totalCharges.toFixed(2)}</strong>
+        {/* Total charges (invoice-style) */}
+        <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px solid ${COLORS.text}` }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ fontSize: '13pt', fontWeight: 600 }}>
+              TOTAL CHARGES ({currency}): {formatNumber(totalCharges)}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Comments */}
-      <div style={{ marginBottom: '15px' }}>
-        <div style={{ backgroundColor: '#2c5aa0', color: 'white', padding: '5px', fontWeight: 'bold', marginBottom: '5px' }}>
-          COMMENTS
-        </div>
-        <div style={{ border: '1px solid #ccc', padding: '10px', fontSize: '9pt' }}>
-          <div><strong>Charges Applied:</strong></div>
-          <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Comments</div>
+        <div style={{ ...cardStyle, borderRadius: '2px' }}>
+          <div style={{ fontWeight: 600, marginBottom: '8px' }}>Charges Applied:</div>
+          <ul style={{ margin: 0, paddingLeft: '18px', lineHeight: 1.7, color: COLORS.subtext }}>
             {charges.map((charge, index) => (
               <li key={index}>
-                {charge.description}: {charge.quantity.toFixed(3)} × {currency} {charge.rate.toFixed(2)} = {currency} {charge.amount.toFixed(2)}
+                {charge.description}: {formatNumber(charge.quantity)} × {currency} {formatNumber(charge.rate)} ={' '}
+                {currency} {formatNumber(charge.amount)}
               </li>
             ))}
           </ul>
@@ -247,17 +397,44 @@ export const PDFTemplateLCL: React.FC<PDFTemplateProps> = ({
       </div>
 
       {/* Terms */}
-      <div style={{ marginBottom: '15px' }}>
-        <div style={{ backgroundColor: '#2c5aa0', color: 'white', padding: '5px', fontWeight: 'bold', marginBottom: '5px' }}>
-          TERMS
-        </div>
-        <div style={{ border: '1px solid #ccc', padding: '10px', fontSize: '8pt', lineHeight: '1.4' }}>
-          Insure your cargo (FULL COVERAGE-ALL RISK) – Please ask our prices. Seemann y Compañia Limitada shall NOT be liable for any damages, delays or monetary loss of any type if you decided to not hire insurance. Equipment and space are subject to availability at the time of the booking. Reposition costs may apply. Rates do not include any additional services, unless specified in quote, and/or additional fees at either port of load or port of discharge, including but not limited to: inspections fees required by government agencies, X-ray, fumigation certificates, customs clearing charges, insurance, local taxes, terminal charges or other regulatory requirements by local agencies. Local port/crane charges etc. at both load and discharge ports are for the account of customer even if not specified in quote. Any/all Receiving/Wharfage/Terminal charges including but not limited to. Storage charges/washing charges will be for the account of customer and will be based upon the governing tariff of the relevant port(s) in effect at the time of shipment. All hazardous shipments are subject to approval. Ocean freight is subject to GRI & carrier's locals at destination. Tariff rates offered are subject to change without notice. Seemann y Compañia Limitada shall NOT be liable for any damages, delays or monetary loss of any type caused by: Acts of God or other Force Majeure Events; ie: weather delays, storms, floods, war, fires. LTL/FTL prices are valid for 7 days unless agreed in written.
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Terms</div>
+        <div
+          style={{
+            ...cardStyle,
+            fontSize: '8.5pt',
+            lineHeight: 1.6,
+            color: COLORS.subtext
+          }}
+        >
+          Insure your cargo (FULL COVERAGE-ALL RISK) – Please ask our prices. Seemann y Compañia Limitada shall NOT be
+          liable for any damages, delays or monetary loss of any type if you decided to not hire insurance. Equipment and
+          space are subject to availability at the time of the booking. Reposition costs may apply. Rates do not include
+          any additional services, unless specified in quote, and/or additional fees at either port of load or port of
+          discharge, including but not limited to: inspections fees required by government agencies, X-ray, fumigation
+          certificates, customs clearing charges, insurance, local taxes, terminal charges or other regulatory
+          requirements by local agencies. Local port/crane charges etc. at both load and discharge ports are for the
+          account of customer even if not specified in quote. Any/all Receiving/Wharfage/Terminal charges including but
+          not limited to. Storage charges/washing charges will be for the account of customer and will be based upon the
+          governing tariff of the relevant port(s) in effect at the time of shipment. All hazardous shipments are subject
+          to approval. Ocean freight is subject to GRI & carrier's locals at destination. Tariff rates offered are
+          subject to change without notice. Seemann y Compañia Limitada shall NOT be liable for any damages, delays or
+          monetary loss of any type caused by: Acts of God or other Force Majeure Events; ie: weather delays, storms,
+          floods, war, fires. LTL/FTL prices are valid for 7 days unless agreed in written.
         </div>
       </div>
 
       {/* Footer */}
-      <div style={{ borderTop: '1px solid #ccc', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', fontSize: '8pt', color: '#666' }}>
+      <div
+        style={{
+          borderTop: `1px solid ${COLORS.line}`,
+          paddingTop: '10px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '8pt',
+          color: COLORS.subtext
+        }}
+      >
         <div>Logistics Cloud Applications | www.linbis.com</div>
         <div>QuotationGeneralWithoutTax</div>
         <div>Page 1 of 1</div>

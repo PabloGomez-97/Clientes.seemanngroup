@@ -1120,9 +1120,6 @@ function QuoteLCL() {
                       <strong>Servicio:</strong> {rutaSeleccionada.servicio}
                     </p>
                   )}
-                  <p className="mb-0">
-                    <strong>Tarifa:</strong> {rutaSeleccionada.currency} {rutaSeleccionada.ofWM}/W/M
-                  </p>
                 </div>
               )}
             </>
@@ -1302,13 +1299,7 @@ function QuoteLCL() {
                       <strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(3)}
                     </div>
                     <div className="col-md-6">
-                      <strong>Expense:</strong>{' '}
-                      <span className="text-info">
-                        {rutaSeleccionada.currency} {tarifaOceanFreight.expense.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="col-md-6">
-                      <strong className="text-success">Income (+15%):</strong>{' '}
+                      <strong className="text-success">Income:</strong>{' '}
                       <span className="text-success fw-bold">
                         {rutaSeleccionada.currency} {tarifaOceanFreight.income.toFixed(2)}
                       </span>
