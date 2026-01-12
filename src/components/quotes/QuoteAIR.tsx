@@ -1816,22 +1816,22 @@ function QuoteAPITester() {
               <div className="row g-3">
                 {!overallDimsAndWeight ? (
                   <>
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <strong>Volumen por pieza:</strong> {volume.toFixed(4)} m³
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <strong>Peso volumétrico por pieza:</strong> {volumeWeight.toFixed(2)} kg
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <strong>Volumen total:</strong> {totalVolume.toFixed(4)} m³
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <strong>Peso total:</strong> {totalWeight.toFixed(2)} kg
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <strong>Peso volumétrico total:</strong> {totalVolumeWeight.toFixed(2)} kg
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-md-4">
                       <strong className="text-primary">Peso Chargeable:</strong>{' '}
                       <span className="text-primary fw-bold">{pesoChargeable.toFixed(2)} kg</span>
                     </div>
@@ -1857,30 +1857,44 @@ function QuoteAPITester() {
                 )}
               </div>
 
-              {/* Tarifa AIR FREIGHT calculada */}
+              {/* Versión compacta */}
               {tarifaAirFreight && (
                 <div className="mt-3 pt-3 border-top">
-                  <h6 className="mb-2 text-success">✈️ Tarifa AIR FREIGHT</h6>
-                  <div className="row g-2">
-                    <div className="col-md-6">
-                      <strong>Rango aplicable:</strong> {tarifaAirFreight.rango}
+                  <h6 className="mb-2 text-success">✈️ Breakdown de Costos</h6>
+                  
+                  <div className="bg-light rounded p-3">
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Handling:</span>
+                      <strong>{rutaSeleccionada.currency} 45.00</strong>
                     </div>
-                    <div className="col-md-6">
-                      <strong>Tarifa base:</strong>{' '}
-                      <span className="text-success">
-                        {tarifaAirFreight.moneda} {tarifaAirFreight.precio.toFixed(2)}/kg
-                      </span>
+                    
+                    {incoterm === 'EXW' && (
+                      <div className="d-flex justify-content-between mb-2">
+                        <span>EXW Charges:</span>
+                        <strong>{rutaSeleccionada.currency} {calculateEXWRate(totalWeight, pesoChargeable).toFixed(2)}</strong>
+                      </div>
+                    )}
+                    
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>AWB:</span>
+                      <strong>{rutaSeleccionada.currency} 30.00</strong>
                     </div>
-                    <div className="col-md-6">
-                      <strong>Expense (tarifa × peso):</strong>{' '}
-                      <span className="text-info">
-                        {rutaSeleccionada.currency} {(tarifaAirFreight.precio * pesoChargeable).toFixed(2)}
-                      </span>
+                    
+                    <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                      <span>Air Freight ({pesoChargeable.toFixed(2)} kg × {tarifaAirFreight.precioConMarkup.toFixed(2)}):</span>
+                      <strong>{rutaSeleccionada.currency} {(tarifaAirFreight.precioConMarkup * pesoChargeable).toFixed(2)}</strong>
                     </div>
-                    <div className="col-md-6">
-                      <strong>Income (tarifa + 15% × peso):</strong>{' '}
-                      <span className="text-success fw-bold">
-                        {rutaSeleccionada.currency} {(tarifaAirFreight.precioConMarkup * pesoChargeable).toFixed(2)}
+                    
+                    <div className="d-flex justify-content-between">
+                      <span className="fs-5 fw-bold">TOTAL:</span>
+                      <span className="fs-5 fw-bold text-success">
+                        {rutaSeleccionada.currency}{' '}
+                        {(
+                          45 + 
+                          (incoterm === 'EXW' ? calculateEXWRate(totalWeight, pesoChargeable) : 0) + 
+                          30 + 
+                          (tarifaAirFreight.precioConMarkup * pesoChargeable)
+                        ).toFixed(2)}
                       </span>
                     </div>
                   </div>
