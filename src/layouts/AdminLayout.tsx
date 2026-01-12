@@ -188,10 +188,10 @@ function AdminLayout() {
   }
 
   return (
-    <div className="d-flex vh-100 overflow-hidden">
+    <div className="d-flex vh-100">
       <SidebarAdmin isOpen={sidebarOpen} />
 
-      <div className="flex-fill d-flex flex-column overflow-hidden">
+      <div className="flex-fill d-flex flex-column">
         <NavbarAdmin 
           accessToken={accessToken}
           onLogout={handleLogout}
