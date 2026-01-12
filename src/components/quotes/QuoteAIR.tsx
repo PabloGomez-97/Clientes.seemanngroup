@@ -41,7 +41,7 @@ interface RutaAerea {
   
   row_number: number;
   priceForComparison: number;
-  currency: 'USD' | 'EUR' | 'GBP';
+  currency: Currency;
 }
 
 interface SelectOption {
@@ -500,7 +500,14 @@ function QuoteAPITester() {
       const packageTypeName = packageType ? packageType.name : 'CARGA GENERAL';
 
       // Preparar los charges para el PDF
-      const pdfCharges = [];
+      const pdfCharges: Array<{
+        code: string;
+        description: string;
+        quantity: number;
+        unit: string;
+        rate: number;
+        amount: number;
+      }> = [];
 
       // Handling
       pdfCharges.push({
@@ -1373,9 +1380,11 @@ function QuoteAPITester() {
                                           }}
                                           onError={(e) => {
                                             e.currentTarget.style.display = 'none';
-                                            e.currentTarget.parentElement.innerHTML = `
+                                            if (e.currentTarget.parentElement) {
+                                              e.currentTarget.parentElement.innerHTML = `
                                               <i class="bi bi-box-seam text-muted"></i>
                                             `;
+                                            }
                                           }}
                                         />
                                       </div>
@@ -1591,7 +1600,7 @@ function QuoteAPITester() {
                 >
                   {packageTypeOptions.map(opt => (
                     <option key={opt.id} value={opt.id}>
-                      {opt.code} - {opt.name}
+                      {opt.name}
                     </option>
                   ))}
                 </select>
