@@ -170,6 +170,12 @@ function QuoteFCL() {
   const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaFCL | null>(null);
   const [containerSeleccionado, setContainerSeleccionado] = useState<ContainerSelection | null>(null);
   
+  // Estados para cantidad, incoterm y direcciones
+  const [cantidadContenedores, setCantidadContenedores] = useState(1);
+  const [incoterm, setIncoterm] = useState<'EXW' | 'FOB' | ''>('');
+  const [pickupFromAddress, setPickupFromAddress] = useState('');
+  const [deliveryToAddress, setDeliveryToAddress] = useState('');
+  
   const [opcionesPOL, setOpcionesPOL] = useState<SelectOption[]>([]);
   const [opcionesPOD, setOpcionesPOD] = useState<SelectOption[]>([]);
   
@@ -316,12 +322,31 @@ function QuoteFCL() {
   };
 
   // ============================================================================
+  // FUNCIÓN PARA CALCULAR EXW SEGÚN TIPO DE CONTENEDOR
+  // ============================================================================
+
+  const calculateEXWRate = (containerType: ContainerType, cantidad: number): number => {
+    const ratePerContainer = containerType === '20GP' ? 900 : 1090; // 40HQ y 40NOR cobran 1090
+    return ratePerContainer * cantidad;
+  };
+
+  // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
 
   const testAPI = async () => {
     if (!rutaSeleccionada || !containerSeleccionado) {
       setError('Debes seleccionar una ruta y un contenedor antes de generar la cotización');
+      return;
+    }
+
+    if (!incoterm) {
+      setError('Debes seleccionar un Incoterm antes de generar la cotización');
+      return;
+    }
+
+    if (incoterm === 'EXW' && (!pickupFromAddress || !deliveryToAddress)) {
+      setError('Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW');
       return;
     }
 
@@ -422,35 +447,38 @@ function QuoteFCL() {
       }
     });
 
-    // Cobro de EXW
-    charges.push({
-      service: {
-        id: 271,
-        code: "EC"
-      },
-      income: {
-        quantity: 1,
-        unit: "EXW CHARGES",
-        rate: 100,
-        amount: 100,
-        payment: "Prepaid",
-        billApplyTo: "Other",
-        billTo: {
-          name: user?.username
+    // Cobro de EXW (solo si incoterm es EXW)
+    if (incoterm === 'EXW') {
+      const exwRate = calculateEXWRate(containerSeleccionado.type, cantidadContenedores);
+      charges.push({
+        service: {
+          id: 271,
+          code: "EC"
         },
-        currency: {
-          abbr: rutaSeleccionada.currency
+        income: {
+          quantity: cantidadContenedores,
+          unit: "EXW CHARGES",
+          rate: exwRate / cantidadContenedores,
+          amount: exwRate,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: user?.username
+          },
+          currency: {
+            abbr: rutaSeleccionada.currency
+          },
+          reference: "TEST-REF-EXW-FCL",
+          showOnDocument: true,
+          notes: `EXW charge - ${cantidadContenedores} x ${containerSeleccionado.type} container(s)`
         },
-        reference: "TEST-REF-EXW-FCL",
-        showOnDocument: true,
-        notes: "EXW charge created via API"
-      },
-      expense: {
-        currency: {
-          abbr: rutaSeleccionada.currency
+        expense: {
+          currency: {
+            abbr: rutaSeleccionada.currency
+          }
         }
-      }
-    });
+      });
+    }
 
     // Cobro de OCEAN FREIGHT
     const oceanFreightRate = containerSeleccionado.price;
@@ -518,6 +546,14 @@ function QuoteFCL() {
         id: 2
       },
       rateCategoryId: 2,
+      incoterm: {
+        code: incoterm,
+        name: incoterm
+      },
+      ...(incoterm === 'EXW' && {
+        pickupFromAddress: pickupFromAddress,
+        deliveryToAddress: deliveryToAddress
+      }),
       portOfReceipt: {
         name: rutaSeleccionada.pol
       },
@@ -539,14 +575,12 @@ function QuoteFCL() {
       PaymentTerms: {
         name: "Prepaid"
       },
-      commodities: [
-        {
-          commodityType: "Container",
-          packageType: {
-            id: containerSeleccionado.packageTypeId
-          }
+      commodities: Array.from({ length: cantidadContenedores }, () => ({
+        commodityType: "Container",
+        packageType: {
+          id: containerSeleccionado.packageTypeId
         }
-      ],
+      })),
       charges
     };
   };
@@ -893,46 +927,114 @@ function QuoteFCL() {
 
               {/* Información de selección */}
               {rutaSeleccionada && containerSeleccionado && (
-                <div className="alert alert-success mt-4 mb-0">
-                  <h6 className="alert-heading">✓ Selección Confirmada</h6>
-                  <p className="mb-2">
-                    <strong>Ruta:</strong> {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
-                  </p>
-                  <p className="mb-2">
-                    <strong>Carrier:</strong> {rutaSeleccionada.carrier}
-                  </p>
-                  <p className="mb-2">
-                    <strong>Contenedor:</strong> {containerSeleccionado.type} ({CONTAINER_MAPPING[containerSeleccionado.type].name})
-                  </p>
-                  <p className="mb-0">
-                    <strong>Tarifa:</strong> {containerSeleccionado.priceString}
-                  </p>
-                  
-                  <div className="mt-3 pt-3 border-top">
-                    <h6 className="mb-2">💰 Cargos a Generar</h6>
-                    <div className="row g-2 small">
-                      <div className="col-md-6">
-                        <strong>BL:</strong> {rutaSeleccionada.currency} 60.00
+                <>
+                  <div className="alert alert-success mt-4 mb-0">
+                    <h6 className="alert-heading">✓ Selección Confirmada</h6>
+                    <p className="mb-2">
+                      <strong>Ruta:</strong> {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
+                    </p>
+                    <p className="mb-2">
+                      <strong>Carrier:</strong> {rutaSeleccionada.carrier}
+                    </p>
+                    <p className="mb-0">
+                      <strong>Contenedor:</strong> {containerSeleccionado.type} ({CONTAINER_MAPPING[containerSeleccionado.type].name})
+                    </p>
+                  </div>
+
+                  {/* Nuevos campos: Cantidad, Incoterm y Direcciones */}
+                  <div className="card shadow-sm mt-4">
+                    <div className="card-body">
+                      <h5 className="card-title mb-4">📋 Detalles de la Cotización</h5>
+                      
+                      <div className="row g-3">
+                        {/* Cantidad de Contenedores */}
+                        <div className="col-md-6">
+                          <label className="form-label">Cantidad de Contenedores</label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={cantidadContenedores}
+                            onChange={(e) => setCantidadContenedores(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                            min="1"
+                            step="1"
+                          />
+                          <small className="text-muted">Ingrese la cantidad de contenedores que desea cotizar</small>
+                        </div>
+
+                        {/* Incoterm */}
+                        <div className="col-md-6">
+                          <label className="form-label">Incoterm <span className="text-danger">*</span></label>
+                          <select
+                            className="form-select"
+                            value={incoterm}
+                            onChange={(e) => setIncoterm(e.target.value as 'EXW' | 'FOB' | '')}
+                          >
+                            <option value="">Seleccione un Incoterm</option>
+                            <option value="EXW">Ex Works [EXW]</option>
+                            <option value="FOB">Free On Board [FOB]</option>
+                          </select>
+                          <small className="text-muted">Seleccione los términos de entrega</small>
+                        </div>
+
+                        {/* Campos condicionales solo para EXW */}
+                        {incoterm === 'EXW' && (
+                          <>
+                            <div className="col-md-6">
+                              <label className="form-label">Pickup From Address <span className="text-danger">*</span></label>
+                              <textarea
+                                className="form-control"
+                                value={pickupFromAddress}
+                                onChange={(e) => setPickupFromAddress(e.target.value)}
+                                placeholder="Ingrese dirección de recogida"
+                                rows={3}
+                              />
+                            </div>
+
+                            <div className="col-md-6">
+                              <label className="form-label">Delivery To Address <span className="text-danger">*</span></label>
+                              <textarea
+                                className="form-control"
+                                value={deliveryToAddress}
+                                onChange={(e) => setDeliveryToAddress(e.target.value)}
+                                placeholder="Ingrese dirección de entrega"
+                                rows={3}
+                              />
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <div className="col-md-6">
-                        <strong>Handling:</strong> {rutaSeleccionada.currency} 45.00
-                      </div>
-                      <div className="col-md-6">
-                        <strong>EXW Charges:</strong> {rutaSeleccionada.currency} 100.00
-                      </div>
-                      <div className="col-md-6">
-                        <strong>Ocean Freight (Expense):</strong> {rutaSeleccionada.currency} {containerSeleccionado.price.toFixed(2)}
-                      </div>
-                      <div className="col-md-12">
-                        <strong className="text-success">Ocean Freight (Income):</strong>{' '}
-                        <span className="text-success fw-bold">
-                          {rutaSeleccionada.currency} {(containerSeleccionado.price * 1.15).toFixed(2)}
-                        </span>
-                        {' '}(+15%)
-                      </div>
+
+                      {/* Resumen de cargos */}
+                      {incoterm && (
+                        <div className="mt-4 pt-3 border-top">
+                          <h6 className="mb-3">💰 Resumen de Cargos</h6>
+                          <div className="row g-2 small">
+                            <div className="col-md-6">
+                              <strong>BL:</strong> {rutaSeleccionada.currency} 60.00
+                            </div>
+                            <div className="col-md-6">
+                              <strong>Handling:</strong> {rutaSeleccionada.currency} 45.00
+                            </div>
+                            {incoterm === 'EXW' && (
+                              <div className="col-md-12">
+                                <strong>EXW Charges:</strong>{' '}
+                                <span className="text-info">
+                                  {cantidadContenedores} contenedor(es) × {rutaSeleccionada.currency} {containerSeleccionado.type === '20GP' ? '900' : '1,090'} = {rutaSeleccionada.currency} {calculateEXWRate(containerSeleccionado.type, cantidadContenedores).toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                            <div className="col-md-12">
+                              <strong className="text-success">Ocean Freight:</strong>{' '}
+                              <span className="text-success fw-bold">
+                                {rutaSeleccionada.currency} {(containerSeleccionado.price * 1.15).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                </>
               )}
             </>
           )}
@@ -951,7 +1053,7 @@ function QuoteFCL() {
 
               <button
                 onClick={testAPI}
-                disabled={loading || !accessToken || !rutaSeleccionada || !containerSeleccionado}
+                disabled={loading || !accessToken || !rutaSeleccionada || !containerSeleccionado || !incoterm || (incoterm === 'EXW' && (!pickupFromAddress || !deliveryToAddress))}
                 className="btn btn-lg btn-success w-100"
               >
                 {loading ? (
@@ -967,6 +1069,18 @@ function QuoteFCL() {
               {!accessToken && (
                 <div className="alert alert-danger mt-3 mb-0">
                   ⚠️ No hay token de acceso. Asegúrate de estar autenticado.
+                </div>
+              )}
+
+              {!incoterm && rutaSeleccionada && containerSeleccionado && (
+                <div className="alert alert-info mt-3 mb-0">
+                  ℹ️ Debes seleccionar un Incoterm antes de generar la cotización
+                </div>
+              )}
+
+              {incoterm === 'EXW' && (!pickupFromAddress || !deliveryToAddress) && (
+                <div className="alert alert-warning mt-3 mb-0">
+                  ⚠️ Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW
                 </div>
               )}
             </div>

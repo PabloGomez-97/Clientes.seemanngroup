@@ -213,6 +213,11 @@ function QuoteLCL() {
   const [description, setDescription] = useState("Cargamento Marítimo LCL");
   const [selectedPackageType, setSelectedPackageType] = useState(97);
   
+  // Estados para incoterm y direcciones
+  const [incoterm, setIncoterm] = useState<'EXW' | 'FOB' | ''>('');
+  const [pickupFromAddress, setPickupFromAddress] = useState('');
+  const [deliveryToAddress, setDeliveryToAddress] = useState('');
+  
   const [length, setLength] = useState(100); // cm
   const [width, setWidth] = useState(80); // cm
   const [height, setHeight] = useState(60); // cm
@@ -360,12 +365,30 @@ function QuoteLCL() {
   const tarifaOceanFreight = calcularOceanFreight();
 
   // ============================================================================
+  // FUNCIÓN PARA CALCULAR EXW SEGÚN NÚMERO DE PIEZAS
+  // ============================================================================
+
+  const calculateEXWRate = (pieces: number): number => {
+    return 170 * pieces;
+  };
+
+  // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
 
   const testAPI = async () => {
     if (!rutaSeleccionada) {
       setError('Debes seleccionar una ruta antes de generar la cotización');
+      return;
+    }
+
+    if (!incoterm) {
+      setError('Debes seleccionar un Incoterm antes de generar la cotización');
+      return;
+    }
+
+    if (incoterm === 'EXW' && (!pickupFromAddress || !deliveryToAddress)) {
+      setError('Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW');
       return;
     }
 
@@ -469,36 +492,39 @@ function QuoteLCL() {
       }
     });
 
-    // Cobro de EXW
-    charges.push({
-      service: {
-        id: 271,
-        code: "EC"
-      },
-      income: {
-        quantity: 1,
-        unit: "EXW CHARGES",
-        rate: 100,
-        amount: 100,
-        showamount: 100,
-        payment: "Prepaid",
-        billApplyTo: "Other",
-        billTo: {
-          name: user?.username
+    // Cobro de EXW (solo si incoterm es EXW)
+    if (incoterm === 'EXW') {
+      const exwRate = calculateEXWRate(pieces);
+      charges.push({
+        service: {
+          id: 271,
+          code: "EC"
         },
-        currency: {
-          abbr: divisa
+        income: {
+          quantity: pieces,
+          unit: "EXW CHARGES",
+          rate: 170,
+          amount: exwRate,
+          showamount: exwRate,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: user?.username
+          },
+          currency: {
+            abbr: divisa
+          },
+          reference: "LCL-EXW-REF",
+          showOnDocument: true,
+          notes: `EXW charge - ${pieces} piece(s) × 170`
         },
-        reference: "LCL-EXW-REF",
-        showOnDocument: true,
-        notes: "EXW charge created via API"
-      },
-      expense: {
-        currency: {
-          abbr: divisa
+        expense: {
+          currency: {
+            abbr: divisa
+          }
         }
-      }
-    });
+      });
+    }
 
     // Cobro de OCEAN FREIGHT
     charges.push({
@@ -562,6 +588,14 @@ function QuoteLCL() {
         id: 1
       },
       rateCategoryId: 2,
+      incoterm: {
+        code: incoterm,
+        name: incoterm
+      },
+      ...(incoterm === 'EXW' && {
+        pickupFromAddress: pickupFromAddress,
+        deliveryToAddress: deliveryToAddress
+      }),
       portOfReceipt: {
         name: rutaSeleccionada.pol
       },
@@ -959,9 +993,6 @@ function QuoteLCL() {
                       <strong>Servicio:</strong> {rutaSeleccionada.servicio}
                     </p>
                   )}
-                  <p className="mb-0">
-                    <strong>Tarifa:</strong> {rutaSeleccionada.currency} {rutaSeleccionada.ofWM}/W/M
-                  </p>
                 </div>
               )}
             </>
@@ -1001,13 +1032,16 @@ function QuoteLCL() {
                   type="number"
                   className="form-control"
                   value={pieces}
-                  onChange={(e) => setPieces(Number(e.target.value))}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 1;
+                    setPieces(Math.max(1, value));
+                  }}
                   min="1"
                   step="1"
                 />
               </div>
 
-              <div className="col-12">
+              <div className="col-6">
                 <label className="form-label">Descripción</label>
                 <input
                   type="text"
@@ -1017,6 +1051,46 @@ function QuoteLCL() {
                   placeholder="Descripción de la carga"
                 />
               </div>
+
+              <div className="col-6">
+                <label className="form-label">Incoterm <span className="text-danger">*</span></label>
+                <select
+                  className="form-select"
+                  value={incoterm}
+                  onChange={(e) => setIncoterm(e.target.value as 'EXW' | 'FOB' | '')}
+                >
+                  <option value="">Seleccione un Incoterm</option>
+                  <option value="EXW">Ex Works [EXW]</option>
+                  <option value="FOB">Free On Board [FOB]</option>
+                </select>
+              </div>
+
+              {/* Campos condicionales solo para EXW */}
+              {incoterm === 'EXW' && (
+                <>
+                  <div className="col-md-6">
+                    <label className="form-label">Pickup From Address <span className="text-danger">*</span></label>
+                    <textarea
+                      className="form-control"
+                      value={pickupFromAddress}
+                      onChange={(e) => setPickupFromAddress(e.target.value)}
+                      placeholder="Ingrese dirección de recogida"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label">Delivery To Address <span className="text-danger">*</span></label>
+                    <textarea
+                      className="form-control"
+                      value={deliveryToAddress}
+                      onChange={(e) => setDeliveryToAddress(e.target.value)}
+                      placeholder="Ingrese dirección de entrega"
+                      rows={3}
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="col-md-3">
                 <label className="form-label">Largo (cm)</label>
@@ -1098,15 +1172,24 @@ function QuoteLCL() {
                       <strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(3)}
                     </div>
                     <div className="col-md-6">
-                      <strong>Expense:</strong>{' '}
-                      <span className="text-info">
-                        {rutaSeleccionada.currency} {tarifaOceanFreight.expense.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="col-md-6">
-                      <strong className="text-success">Income (+15%):</strong>{' '}
+                      <strong className="text-success">Income:</strong>{' '}
                       <span className="text-success fw-bold">
                         {rutaSeleccionada.currency} {tarifaOceanFreight.income.toFixed(2)}
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                {/* Resumen de EXW si el incoterm está seleccionado */}
+                {incoterm === 'EXW' && (
+                  <>
+                    <div className="col-12 mt-3 pt-3 border-top">
+                      <h6 className="mb-2">📦 Cargo EXW</h6>
+                    </div>
+                    <div className="col-12">
+                      <strong>EXW Charges:</strong>{' '}
+                      <span className="text-info">
+                        {pieces} pieza(s) × {rutaSeleccionada.currency} 170 = {rutaSeleccionada.currency} {calculateEXWRate(pieces).toLocaleString()}
                       </span>
                     </div>
                   </>
@@ -1129,7 +1212,7 @@ function QuoteLCL() {
 
               <button
                 onClick={testAPI}
-                disabled={loading || !accessToken}
+                disabled={loading || !accessToken || !incoterm || (incoterm === 'EXW' && (!pickupFromAddress || !deliveryToAddress))}
                 className="btn btn-lg btn-success w-100"
               >
                 {loading ? (
@@ -1145,6 +1228,18 @@ function QuoteLCL() {
               {!accessToken && (
                 <div className="alert alert-danger mt-3 mb-0">
                   ⚠️ No hay token de acceso. Asegúrate de estar autenticado.
+                </div>
+              )}
+
+              {!incoterm && rutaSeleccionada && (
+                <div className="alert alert-info mt-3 mb-0">
+                  ℹ️ Debes seleccionar un Incoterm antes de generar la cotización
+                </div>
+              )}
+
+              {incoterm === 'EXW' && (!pickupFromAddress || !deliveryToAddress) && (
+                <div className="alert alert-warning mt-3 mb-0">
+                  ⚠️ Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW
                 </div>
               )}
             </div>
