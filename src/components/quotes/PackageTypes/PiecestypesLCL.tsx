@@ -1,4 +1,5 @@
 export interface PackageType {
+  code: any;
   id: number;
   name: string;
 }
