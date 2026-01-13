@@ -858,7 +858,7 @@ function QuoteAPITester() {
           name: rutaSeleccionada?.carrier || "Por Confirmar"
         },
         serviceType: {
-          name: "Overall Dims & Weight"
+          name: "Normal"
         },
         salesRep: {
           name: ejecutivo?.nombre || "Ignacio Maldonado"
@@ -1968,7 +1968,7 @@ function QuoteAPITester() {
                       <strong>{rutaSeleccionada.currency} 30.00</strong>
                     </div>
 
-                    <div className="d-flex justify-content-between mb-3">
+                    <div className="d-flex justify-content-between mb-2">
                       <span>Airport Transfer:</span>
                       <strong>{rutaSeleccionada.currency} {Math.max(pesoChargeable * 0.15, 50).toFixed(2)}</strong>
                     </div>

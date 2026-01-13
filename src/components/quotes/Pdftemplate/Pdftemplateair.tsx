@@ -465,7 +465,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
           color: COLORS.subtext
         }}
       >
-        <div>Logistics Cloud Applications | www.linbis.com</div>
+        <div>Seemann Cloud Applications | www.portalclientes.seemanngroup.com</div>
         <div>QuotationGeneralWithoutTax</div>
         <div>Page 1 of 1</div>
       </div>
