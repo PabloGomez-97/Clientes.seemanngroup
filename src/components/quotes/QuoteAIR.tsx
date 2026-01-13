@@ -430,7 +430,7 @@ function QuoteAPITester() {
     }
     
     const calculatedRate = chargeableWeight * ratePerKg;
-    return Math.max(calculatedRate, 150);
+    return Math.max(calculatedRate, 190);
   };
 
   const calculateAWBRate = (weightKg: number, volumeWeightKg: number) => {
