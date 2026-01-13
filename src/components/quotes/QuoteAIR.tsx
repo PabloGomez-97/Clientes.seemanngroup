@@ -1986,7 +1986,7 @@ function QuoteAPITester() {
                           45 + // Handling
                           (incoterm === 'EXW' ? calculateEXWRate(totalWeight, pesoChargeable) : 0) + // EXW
                           30 + // AWB
-                          (pesoChargeable * 0.15) + // Airport Transfer
+                          Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
                           (tarifaAirFreight.precioConMarkup * pesoChargeable) // Air Freight
                         ).toFixed(2)}
                       </span>
