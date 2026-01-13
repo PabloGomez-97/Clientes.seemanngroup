@@ -551,13 +551,15 @@ function QuoteAPITester() {
         ? Math.max(manualWeight, manualVolume * 167) 
         : Math.max(totalWeight, totalVolumeWeight);
 
+      const airportTransferAmount = Math.max(50, chargeableWeightForTransfer * 0.15);
+
       pdfCharges.push({
         code: 'A/T',
         description: 'AIRPORT TRANSFER',
         quantity: chargeableWeightForTransfer,
         unit: 'kg',
         rate: 0.15,
-        amount: chargeableWeightForTransfer * 0.15
+        amount: airportTransferAmount
       });
 
       // Air Freight - Usar el mismo cálculo que pesoChargeable
@@ -741,7 +743,8 @@ function QuoteAPITester() {
         }
       });
 
-      // Cobro de Airport Transfer
+      // Cobro de Airport Transfer (mínimo 50)
+      const airportTransferAmount = Math.max(pesoChargeable * 0.15, 50);
       charges.push({
         service: {
           id: 110936,
@@ -751,8 +754,8 @@ function QuoteAPITester() {
           quantity: pesoChargeable,
           unit: "kg",
           rate: 0.15,
-          amount: pesoChargeable * 0.15,
-          showamount: pesoChargeable * 0.15,
+          amount: airportTransferAmount,
+          showamount: airportTransferAmount,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -763,7 +766,7 @@ function QuoteAPITester() {
           },
           reference: "TEST-REF-AIRPORTTRANSFER",
           showOnDocument: true,
-          notes: "Airport Transfer charge - 0.15/kg"
+          notes: `Airport Transfer charge - 0.15/kg (minimum ${rutaSeleccionada.currency} 50)`
         },
         expense: {
           currency: {
@@ -990,19 +993,21 @@ function QuoteAPITester() {
         }
       });
       
-      // Cobro de Airport Transfer (modo overall)
+// Cobro de Airport Transfer (modo overall) - Mínimo 50
       const pesoChargeableOverall = Math.max(manualWeight, manualVolume * 167);
+      const airportTransferAmountOverall = Math.max(pesoChargeableOverall * 0.15, 50);
+      
       charges.push({
         service: {
-          id: 999, // Usa el ID que corresponda en tu sistema
-          code: "AT"
+          id: 110936,
+          code: "A/T"
         },
         income: {
           quantity: pesoChargeableOverall,
           unit: "kg",
           rate: 0.15,
-          amount: pesoChargeableOverall * 0.15,
-          showamount: pesoChargeableOverall * 0.15,
+          amount: airportTransferAmountOverall,
+          showamount: airportTransferAmountOverall,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -1013,7 +1018,7 @@ function QuoteAPITester() {
           },
           reference: "TEST-REF-AIRPORTTRANSFER-OVERALL",
           showOnDocument: true,
-          notes: "Airport Transfer charge - 0.15/kg (Overall mode)"
+          notes: "Airport Transfer charge - 0.15/kg (min 50, Overall mode)"
         },
         expense: {
           currency: {
@@ -1965,7 +1970,7 @@ function QuoteAPITester() {
 
                     <div className="d-flex justify-content-between mb-3">
                       <span>Airport Transfer:</span>
-                      <strong>{rutaSeleccionada.currency} {(pesoChargeable * 0.15).toFixed(2)}</strong>
+                      <strong>{rutaSeleccionada.currency} {Math.max(pesoChargeable * 0.15, 50).toFixed(2)}</strong>
                     </div>
                     
                     <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
