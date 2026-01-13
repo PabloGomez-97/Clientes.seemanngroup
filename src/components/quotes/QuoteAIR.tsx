@@ -546,6 +546,20 @@ function QuoteAPITester() {
         amount: 30
       });
 
+      // Airport Transfer - Obligatorio
+      const chargeableWeightForTransfer = overallDimsAndWeight 
+        ? Math.max(manualWeight, manualVolume * 167) 
+        : Math.max(totalWeight, totalVolumeWeight);
+
+      pdfCharges.push({
+        code: 'A/T',
+        description: 'AIRPORT TRANSFER',
+        quantity: chargeableWeightForTransfer,
+        unit: 'kg',
+        rate: 0.15,
+        amount: chargeableWeightForTransfer * 0.15
+      });
+
       // Air Freight - Usar el mismo cálculo que pesoChargeable
       const chargeableWeight = overallDimsAndWeight 
         ? Math.max(manualWeight, manualVolume * 167) 
@@ -719,6 +733,37 @@ function QuoteAPITester() {
           reference: "TEST-REF-AWB",
           showOnDocument: true,
           notes: "AWB charge created via API"
+        },
+        expense: {
+          currency: {
+            abbr: (rutaSeleccionada.currency || "USD") as any
+          }
+        }
+      });
+
+      // Cobro de Airport Transfer
+      charges.push({
+        service: {
+          id: 110936,
+          code: "A/T"
+        },
+        income: {
+          quantity: pesoChargeable,
+          unit: "kg",
+          rate: 0.15,
+          amount: pesoChargeable * 0.15,
+          showamount: pesoChargeable * 0.15,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: user?.username
+          },
+          currency: {
+            abbr: (rutaSeleccionada.currency || "USD") as any
+          },
+          reference: "TEST-REF-AIRPORTTRANSFER",
+          showOnDocument: true,
+          notes: "Airport Transfer charge - 0.15/kg"
         },
         expense: {
           currency: {
@@ -937,6 +982,38 @@ function QuoteAPITester() {
           reference: "TEST-REF-AWB-OVERALL",
           showOnDocument: true,
           notes: "AWB charge created via API (Overall mode)"
+        },
+        expense: {
+          currency: {
+            abbr: (rutaSeleccionada.currency || "USD") as any
+          }
+        }
+      });
+      
+      // Cobro de Airport Transfer (modo overall)
+      const pesoChargeableOverall = Math.max(manualWeight, manualVolume * 167);
+      charges.push({
+        service: {
+          id: 999, // Usa el ID que corresponda en tu sistema
+          code: "AT"
+        },
+        income: {
+          quantity: pesoChargeableOverall,
+          unit: "kg",
+          rate: 0.15,
+          amount: pesoChargeableOverall * 0.15,
+          showamount: pesoChargeableOverall * 0.15,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: user?.username
+          },
+          currency: {
+            abbr: (rutaSeleccionada.currency || "USD") as any
+          },
+          reference: "TEST-REF-AIRPORTTRANSFER-OVERALL",
+          showOnDocument: true,
+          notes: "Airport Transfer charge - 0.15/kg (Overall mode)"
         },
         expense: {
           currency: {
@@ -1885,9 +1962,14 @@ function QuoteAPITester() {
                       <span>AWB:</span>
                       <strong>{rutaSeleccionada.currency} 30.00</strong>
                     </div>
+
+                    <div className="d-flex justify-content-between mb-3">
+                      <span>Airport Transfer:</span>
+                      <strong>{rutaSeleccionada.currency} {(pesoChargeable * 0.15).toFixed(2)}</strong>
+                    </div>
                     
                     <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                      <span>Air Freight ({pesoChargeable.toFixed(2)} kg × {tarifaAirFreight.precioConMarkup.toFixed(2)}):</span>
+                      <span>Air Freight:</span>
                       <strong>{rutaSeleccionada.currency} {(tarifaAirFreight.precioConMarkup * pesoChargeable).toFixed(2)}</strong>
                     </div>
                     
@@ -1896,10 +1978,11 @@ function QuoteAPITester() {
                       <span className="fs-5 fw-bold text-success">
                         {rutaSeleccionada.currency}{' '}
                         {(
-                          45 + 
-                          (incoterm === 'EXW' ? calculateEXWRate(totalWeight, pesoChargeable) : 0) + 
-                          30 + 
-                          (tarifaAirFreight.precioConMarkup * pesoChargeable)
+                          45 + // Handling
+                          (incoterm === 'EXW' ? calculateEXWRate(totalWeight, pesoChargeable) : 0) + // EXW
+                          30 + // AWB
+                          (pesoChargeable * 0.15) + // Airport Transfer
+                          (tarifaAirFreight.precioConMarkup * pesoChargeable) // Air Freight
                         ).toFixed(2)}
                       </span>
                     </div>
@@ -1919,7 +2002,7 @@ function QuoteAPITester() {
                   Generando...
                 </>
               ) : (
-                <>✨ Generar Cotización</>
+                <>Generar Cotización</>
               )}
             </button>
 
@@ -1942,7 +2025,7 @@ function QuoteAPITester() {
       {/* SECCIÓN 3: PAYLOAD Y RESULTADOS */}
       {/* ============================================================================ */}
 
-      {/* Payload */}
+      {/* Payload
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
@@ -1959,13 +2042,13 @@ function QuoteAPITester() {
             </pre>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Error */}
       {error && (
         <div className="card shadow-sm mb-4 border-danger">
           <div className="card-body">
-            <h5 className="card-title text-danger">❌ Error en la llamada</h5>
+            <h5 className="card-title text-danger">❌ Hubo un error en la cotización</h5>
             <pre style={{
               backgroundColor: '#fff5f5',
               padding: '15px',
@@ -1985,8 +2068,8 @@ function QuoteAPITester() {
       {response && (
         <div className="card shadow-sm mb-4 border-success">
           <div className="card-body">
-            <h5 className="card-title text-success">✅ ¡Éxito! Respuesta de la API</h5>
-            <pre style={{
+            <h5 className="card-title text-success">✅ ¡Éxito!</h5>
+            {/* <pre style={{
               backgroundColor: '#f0fdf4',
               padding: '15px',
               borderRadius: '5px',
@@ -1996,7 +2079,7 @@ function QuoteAPITester() {
               color: '#15803d'
             }}>
               {JSON.stringify(response, null, 2)}
-            </pre>
+            </pre> */}
             <div className="alert alert-success mt-3 mb-0">
               🎉 <strong>¡Perfecto!</strong> Cotización creada exitosamente.
             </div>

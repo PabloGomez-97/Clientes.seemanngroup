@@ -1288,39 +1288,58 @@ function QuoteLCL() {
                 </div>
                 
                 {tarifaOceanFreight && (
-                  <>
-                    <div className="col-12 mt-3 pt-3 border-top">
-                      <h6 className="mb-2">💰 Tarifa OCEAN FREIGHT</h6>
+                <div className="col-12 mt-3 pt-3 border-top">
+                  <h6 className="mb-3">💰 Resumen de Cargos</h6>
+                  
+                  <div className="bg-light rounded p-3">
+                    {/* BL */}
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>BL:</span>
+                      <strong>{rutaSeleccionada.currency} 60.00</strong>
                     </div>
-                    <div className="col-md-6">
-                      <strong>Tarifa base:</strong> {rutaSeleccionada.currency} {(Number(rutaSeleccionada.ofWM) * 1.15).toFixed(2)} W/M
+                    
+                    {/* Handling */}
+                    <div className="d-flex justify-content-between mb-2">
+                      <span>Handling:</span>
+                      <strong>{rutaSeleccionada.currency} 45.00</strong>
                     </div>
-                    <div className="col-md-6">
-                      <strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(3)}
-                    </div>
-                    <div className="col-md-6">
-                      <strong className="text-success">Income:</strong>{' '}
-                      <span className="text-success fw-bold">
+                    
+                    {/* EXW - Solo si aplica */}
+                    {incoterm === 'EXW' && (
+                      <div className="d-flex justify-content-between mb-2">
+                        <span>EXW Charges ({pieces} piezas):</span>
+                        <strong>
+                          {rutaSeleccionada.currency} {calculateEXWRate(pieces).toLocaleString()}
+                        </strong>
+                      </div>
+                    )}
+                    
+                    {/* Ocean Freight */}
+                    <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                      <span>
+                        Ocean Freight ({chargeableVolume.toFixed(2)} m³):
+                      </span>
+                      <strong className="text-success">
                         {rutaSeleccionada.currency} {tarifaOceanFreight.income.toFixed(2)}
+                      </strong>
+                    </div>
+                    
+                    {/* Total */}
+                    <div className="d-flex justify-content-between">
+                      <span className="fs-5 fw-bold">TOTAL:</span>
+                      <span className="fs-5 fw-bold text-success">
+                        {rutaSeleccionada.currency}{' '}
+                        {(
+                          60 + // BL
+                          45 + // Handling
+                          (incoterm === 'EXW' ? calculateEXWRate(pieces) : 0) + // EXW
+                          tarifaOceanFreight.income // Ocean Freight
+                        ).toFixed(2)}
                       </span>
                     </div>
-                  </>
-                )}
-
-                {/* Resumen de EXW si el incoterm está seleccionado */}
-                {incoterm === 'EXW' && (
-                  <>
-                    <div className="col-12 mt-3 pt-3 border-top">
-                      <h6 className="mb-2">📦 Cargo EXW</h6>
-                    </div>
-                    <div className="col-12">
-                      <strong>EXW Charges:</strong>{' '}
-                      <span className="text-info">
-                        {pieces} pieza(s) × {rutaSeleccionada.currency} 170 = {rutaSeleccionada.currency} {calculateEXWRate(pieces).toLocaleString()}
-                      </span>
-                    </div>
-                  </>
-                )}
+                  </div>
+                </div>
+              )}
               </div>
             </div>
           </div>
