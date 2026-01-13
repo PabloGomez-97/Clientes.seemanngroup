@@ -1059,7 +1059,7 @@ function QuoteFCL() {
                   {/* Nuevos campos: Cantidad, Incoterm y Direcciones */}
                   <div className="card shadow-sm mt-4">
                     <div className="card-body">
-                      <h5 className="card-title mb-4">📋 Detalles de la Cotización</h5>
+                      <h5 className="card-title mb-4">Detalles de la Cotización</h5>
                       
                       <div className="row g-3">
                         {/* Cantidad de Contenedores */}
@@ -1192,7 +1192,7 @@ function QuoteFCL() {
         <>
           <div className="card shadow-sm mb-4">
             <div className="card-body">
-              <h5 className="card-title mb-4">🚀 Paso 2: Generar Cotización</h5>
+              <h5 className="card-title mb-4"> Paso 2: Generar Cotización</h5>
 
               <button
                 onClick={testAPI}
@@ -1205,7 +1205,7 @@ function QuoteFCL() {
                     Generando...
                   </>
                 ) : (
-                  <>✨ Generar Cotización FCL</>
+                  <> Generar Cotización FCL</>
                 )}
               </button>
 
@@ -1229,7 +1229,7 @@ function QuoteFCL() {
             </div>
           </div>
 
-          {/* Payload */}
+          {/* Payload
           <div className="card shadow-sm mb-4">
             <div className="card-body">
               <h5 className="card-title">📤 Payload que se enviará</h5>
@@ -1244,7 +1244,7 @@ function QuoteFCL() {
                 {JSON.stringify(getTestPayload(), null, 2)}
               </pre>
             </div>
-          </div>
+          </div> */}
         </>
       )}
 
@@ -1256,7 +1256,7 @@ function QuoteFCL() {
       {error && (
         <div className="card shadow-sm mb-4 border-danger">
           <div className="card-body">
-            <h5 className="card-title text-danger">❌ Error en la llamada</h5>
+            <h5 className="card-title text-danger">❌ Error en la Cotización</h5>
             <pre style={{
               backgroundColor: '#fff5f5',
               padding: '15px',
@@ -1276,7 +1276,7 @@ function QuoteFCL() {
       {response && (
         <div className="card shadow-sm mb-4 border-success">
           <div className="card-body">
-            <h5 className="card-title text-success">✅ ¡Éxito! Respuesta de la API</h5>
+            <h5 className="card-title text-success">✅ ¡Éxito!</h5>
             <pre style={{
               backgroundColor: '#f0fdf4',
               padding: '15px',
@@ -1286,7 +1286,7 @@ function QuoteFCL() {
               fontSize: '0.85rem',
               color: '#15803d'
             }}>
-              {JSON.stringify(response, null, 2)}
+              {/* {JSON.stringify(response, null, 2)} */}
             </pre>
             <div className="alert alert-success mt-3 mb-0">
               🎉 <strong>¡Perfecto!</strong> Cotización FCL creada exitosamente.

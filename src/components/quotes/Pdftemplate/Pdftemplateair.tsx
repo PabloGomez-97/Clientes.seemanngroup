@@ -385,6 +385,11 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
             </div>
           </div>
         </div>
+        <div style={{ marginTop: '8px', textAlign: 'right', fontSize: '8pt', color: COLORS.subtext }}>
+          <small>
+            * El cobro del Airport Transfer es {currency} 0.15/kg - Mínimo {currency} 50
+          </small>
+        </div>
       </div>
 
       {/* Comments */}

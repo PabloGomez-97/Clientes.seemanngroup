@@ -85,9 +85,9 @@ const capitalize = (str: string): string => {
   if (!str) return '';
   return str
     .toLowerCase()
-    .split(' ')
+    .split(/(\s|\(|\))/)  // Divide por espacios, paréntesis de apertura y cierre
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+    .join('');
 };
 
 const getLowestPrice = (ruta: RutaAerea): { price: number; currency: Currency } => {
