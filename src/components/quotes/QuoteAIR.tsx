@@ -521,7 +521,10 @@ function QuoteAPITester() {
 
       // EXW (solo si incoterm es EXW)
       if (incoterm === 'EXW') {
-        const chargeableWeight = overallDimsAndWeight ? manualWeight : totalVolumeWeight;
+        // Calcular peso chargeable correctamente
+        const chargeableWeight = overallDimsAndWeight 
+          ? Math.max(manualWeight, manualVolume * 167) 
+          : Math.max(totalWeight, totalVolumeWeight);
         const exwRate = calculateEXWRate(totalWeight, chargeableWeight);
         pdfCharges.push({
           code: 'EC',
@@ -543,8 +546,11 @@ function QuoteAPITester() {
         amount: 30
       });
 
-      // Air Freight
-      const chargeableWeight = overallDimsAndWeight ? manualWeight : totalVolumeWeight;
+      // Air Freight - Usar el mismo cálculo que pesoChargeable
+      const chargeableWeight = overallDimsAndWeight 
+        ? Math.max(manualWeight, manualVolume * 167) 
+        : Math.max(totalWeight, totalVolumeWeight);
+      
       pdfCharges.push({
         code: 'AF',
         description: 'AIR FREIGHT',
@@ -1294,11 +1300,11 @@ function QuoteAPITester() {
                           <tr>
                             <th style={{ width: '5%' }}></th>
                             <th style={{ width: '20%' }}>Carrier</th>
-                            <th className="text-center" style={{ width: '12%' }}>0-45kg</th>
-                            <th className="text-center" style={{ width: '12%' }}>45-100kg</th>
-                            <th className="text-center" style={{ width: '12%' }}>100-300kg</th>
-                            <th className="text-center" style={{ width: '12%' }}>300-500kg</th>
-                            <th className="text-center" style={{ width: '12%' }}>500-1000kg</th>
+                            <th className="text-center" style={{ width: '12%' }}>1-99kg</th>
+                            <th className="text-center" style={{ width: '12%' }}>100-299kg</th>
+                            <th className="text-center" style={{ width: '12%' }}>300-499kg</th>
+                            <th className="text-center" style={{ width: '12%' }}>500-999kg</th>
+                            <th className="text-center" style={{ width: '12%' }}>+1000kg</th>
                             <th className="text-center" style={{ width: '15%' }}>Salidas</th>
                           </tr>
                         </thead>
@@ -1812,7 +1818,7 @@ function QuoteAPITester() {
 
             {/* Cálculos Automáticos */}
             <div className="mt-4 p-3 border rounded bg-light">
-              <h6 className="mb-3">🧮 Cálculos {overallDimsAndWeight ? '(Modo Overall)' : '(Modo Normal)'}</h6>
+              <h6 className="mb-3">Cálculos {overallDimsAndWeight ? '(Modo Overall)' : '(Modo Normal)'}</h6>
               <div className="row g-3">
                 {!overallDimsAndWeight ? (
                   <>
@@ -1860,7 +1866,7 @@ function QuoteAPITester() {
               {/* Versión compacta */}
               {tarifaAirFreight && (
                 <div className="mt-3 pt-3 border-top">
-                  <h6 className="mb-2 text-success">✈️ Breakdown de Costos</h6>
+                  <h6 className="mb-2">Breakdown de Costos</h6>
                   
                   <div className="bg-light rounded p-3">
                     <div className="d-flex justify-content-between mb-2">

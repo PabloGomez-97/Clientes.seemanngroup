@@ -1119,29 +1119,57 @@ function QuoteFCL() {
                         )}
                       </div>
 
-                      {/* Resumen de cargos */}
+                      {/* Resumen de cargos - Versión compacta mejorada */}
                       {incoterm && (
                         <div className="mt-4 pt-3 border-top">
                           <h6 className="mb-3">💰 Resumen de Cargos</h6>
-                          <div className="row g-2 small">
-                            <div className="col-md-6">
-                              <strong>BL:</strong> {rutaSeleccionada.currency} 60.00
+                          
+                          <div className="bg-light rounded p-3">
+                            {/* BL */}
+                            <div className="d-flex justify-content-between mb-2">
+                              <span>BL:</span>
+                              <strong>{rutaSeleccionada.currency} 60.00</strong>
                             </div>
-                            <div className="col-md-6">
-                              <strong>Handling:</strong> {rutaSeleccionada.currency} 45.00
+                            
+                            {/* Handling */}
+                            <div className="d-flex justify-content-between mb-2">
+                              <span>Handling:</span>
+                              <strong>{rutaSeleccionada.currency} 45.00</strong>
                             </div>
+                            
+                            {/* EXW - Solo si aplica */}
                             {incoterm === 'EXW' && (
-                              <div className="col-md-12">
-                                <strong>EXW Charges:</strong>{' '}
-                                <span className="text-info">
-                                  {cantidadContenedores} contenedor(es) × {rutaSeleccionada.currency} {containerSeleccionado.type === '20GP' ? '900' : '1,090'} = {rutaSeleccionada.currency} {calculateEXWRate(containerSeleccionado.type, cantidadContenedores).toLocaleString()}
+                              <div className="d-flex justify-content-between mb-2">
+                                <span>
+                                  EXW Charges ({cantidadContenedores} × {containerSeleccionado.type}):
                                 </span>
+                                <strong>
+                                  {rutaSeleccionada.currency} {calculateEXWRate(containerSeleccionado.type, cantidadContenedores).toLocaleString()}
+                                </strong>
                               </div>
                             )}
-                            <div className="col-md-12">
-                              <strong className="text-success">Ocean Freight:</strong>{' '}
-                              <span className="text-success fw-bold">
-                                {rutaSeleccionada.currency} {(containerSeleccionado.price * 1.15).toFixed(2)}
+                            
+                            {/* Ocean Freight */}
+                            <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                              <span>
+                                Ocean Freight ({cantidadContenedores} × {containerSeleccionado.type}):
+                              </span>
+                              <strong className="text-success">
+                                {rutaSeleccionada.currency} {(containerSeleccionado.price * 1.15 * cantidadContenedores).toFixed(2)}
+                              </strong>
+                            </div>
+                            
+                            {/* Total */}
+                            <div className="d-flex justify-content-between">
+                              <span className="fs-5 fw-bold">TOTAL:</span>
+                              <span className="fs-5 fw-bold text-success">
+                                {rutaSeleccionada.currency}{' '}
+                                {(
+                                  60 + // BL
+                                  45 + // Handling
+                                  (incoterm === 'EXW' ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores) : 0) + // EXW
+                                  (containerSeleccionado.price * 1.15 * cantidadContenedores) // Ocean Freight
+                                ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           </div>

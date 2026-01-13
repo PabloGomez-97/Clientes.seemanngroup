@@ -1293,7 +1293,7 @@ function QuoteLCL() {
                       <h6 className="mb-2">💰 Tarifa OCEAN FREIGHT</h6>
                     </div>
                     <div className="col-md-6">
-                      <strong>Tarifa base:</strong> {rutaSeleccionada.currency} {rutaSeleccionada.ofWM}/W/M
+                      <strong>Tarifa base:</strong> {rutaSeleccionada.currency} {(Number(rutaSeleccionada.ofWM) * 1.15).toFixed(2)} W/M
                     </div>
                     <div className="col-md-6">
                       <strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(3)}
