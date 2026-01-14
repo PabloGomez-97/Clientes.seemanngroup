@@ -274,6 +274,9 @@ function QuoteAPITester() {
   
   // Estado para modal de precio 0
   const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
+  
+  // Estado para el seguro opcional
+  const [seguroActivo, setSeguroActivo] = useState(false);
 
   // ============================================================================
   // CARGA DE DATOS AEREO.XLSX
@@ -438,6 +441,20 @@ function QuoteAPITester() {
     return chargeableWeight * 0.15;
   };
 
+  // Función para calcular el seguro (TOTAL * 1.1 * 0.002)
+  const calculateSeguro = (): number => {
+    if (!seguroActivo || !tarifaAirFreight) return 0;
+    
+    const totalSinSeguro = 
+      45 + // Handling
+      (incoterm === 'EXW' ? calculateEXWRate(totalWeight, pesoChargeable) : 0) + // EXW
+      30 + // AWB
+      Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
+      (tarifaAirFreight.precioConMarkup * pesoChargeable); // Air Freight
+    
+    return totalSinSeguro * 1.1 * 0.002;
+  };
+
   // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
@@ -575,6 +592,19 @@ function QuoteAPITester() {
         rate: tarifaAirFreight.precioConMarkup,
         amount: tarifaAirFreight.precioConMarkup * chargeableWeight
       });
+
+      // Seguro (solo si está activo)
+      if (seguroActivo) {
+        const seguroAmount = calculateSeguro();
+        pdfCharges.push({
+          code: 'S',
+          description: 'SEGURO',
+          quantity: 1,
+          unit: 'Shipment',
+          rate: seguroAmount,
+          amount: seguroAmount
+        });
+      }
 
       // Calcular total
       const totalCharges = pdfCharges.reduce((sum, charge) => sum + charge.amount, 0);
@@ -818,6 +848,40 @@ function QuoteAPITester() {
           notes: `AIR FREIGHT expense - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg`
         }
       });
+
+      // Cobro de SEGURO (solo si está activo)
+      if (seguroActivo) {
+        const seguroAmount = calculateSeguro();
+        charges.push({
+          service: {
+            id: 111361,
+            code: "S"
+          },
+          income: {
+            quantity: 1,
+            unit: "SEGURO",
+            rate: seguroAmount,
+            amount: seguroAmount,
+            showamount: seguroAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: user?.username
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any
+            },
+            reference: "TEST-REF-SEGURO",
+            showOnDocument: true,
+            notes: "Seguro opcional - Protección adicional para la carga (0.22% del total)"
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any
+            }
+          }
+        });
+      }
 
       return {
         date: new Date().toISOString(),
@@ -1070,6 +1134,40 @@ function QuoteAPITester() {
           notes: `AIR FREIGHT expense (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === 'kg' ? 'peso' : 'volumen'}`
         }
       });
+
+      // Cobro de SEGURO (solo si está activo) - Overall mode
+      if (seguroActivo) {
+        const seguroAmount = calculateSeguro();
+        charges.push({
+          service: {
+            id: 111361,
+            code: "S"
+          },
+          income: {
+            quantity: 1,
+            unit: "SEGURO",
+            rate: seguroAmount,
+            amount: seguroAmount,
+            showamount: seguroAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: user?.username
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any
+            },
+            reference: "TEST-REF-SEGURO-OVERALL",
+            showOnDocument: true,
+            notes: "Seguro opcional - Protección adicional para la carga (0.22% del total) - Overall mode"
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any
+            }
+          }
+        });
+      }
 
       return {
         date: new Date().toISOString(),
@@ -1977,6 +2075,34 @@ function QuoteAPITester() {
                       <span>Air Freight:</span>
                       <strong>{rutaSeleccionada.currency} {(tarifaAirFreight.precioConMarkup * pesoChargeable).toFixed(2)}</strong>
                     </div>
+
+                    {/* Sección de Opcionales */}
+                    <div className="mb-3 pb-3 border-bottom">
+                      <h6 className="mb-3 text-muted">🔧 Opcionales</h6>
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="seguroCheckbox"
+                          checked={seguroActivo}
+                          onChange={(e) => setSeguroActivo(e.target.checked)}
+                        />
+                        <label className="form-check-label" htmlFor="seguroCheckbox">
+                          Agregar Seguro
+                        </label>
+                        <small className="text-muted d-block ms-4">
+                          Protección adicional para tu carga (0.22% del total)
+                        </small>
+                      </div>
+                    </div>
+
+                    {/* Mostrar el cargo del seguro si está activo */}
+                    {seguroActivo && calculateSeguro() > 0 && (
+                      <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                        <span>Seguro:</span>
+                        <strong className="text-info">{rutaSeleccionada.currency} {calculateSeguro().toFixed(2)}</strong>
+                      </div>
+                    )}
                     
                     <div className="d-flex justify-content-between">
                       <span className="fs-5 fw-bold">TOTAL:</span>
@@ -1987,7 +2113,8 @@ function QuoteAPITester() {
                           (incoterm === 'EXW' ? calculateEXWRate(totalWeight, pesoChargeable) : 0) + // EXW
                           30 + // AWB
                           Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-                          (tarifaAirFreight.precioConMarkup * pesoChargeable) // Air Freight
+                          (tarifaAirFreight.precioConMarkup * pesoChargeable) + // Air Freight
+                          (seguroActivo ? calculateSeguro() : 0) // Seguro (si está activo)
                         ).toFixed(2)}
                       </span>
                     </div>

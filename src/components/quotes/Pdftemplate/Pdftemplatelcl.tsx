@@ -275,6 +275,24 @@ export const PDFTemplateLCL: React.FC<PDFTemplateProps> = ({
         </div>
       </div>
 
+      {/* Tracking System Message */}
+          <div style={{ 
+            marginTop: '12px', 
+            padding: '10px', 
+            backgroundColor: '#F0F8FF', 
+            borderLeft: `3px solid #0066CC`,
+            borderRadius: '2px',
+            fontSize: '8.5pt',
+            lineHeight: 1.5
+          }}>
+            <div style={{ fontWeight: 600, color: '#0066CC', marginBottom: '4px' }}>
+              🔍 Sistema de Seguimiento en Línea
+            </div>
+            <div style={{ color: COLORS.text }}>
+              Al confirmar esta cotización con nosotros, tendrá acceso <strong>sin costo adicional</strong> a nuestro sistema de rastreo en tiempo real, donde podrá consultar la ubicación de su cargamento, tiempo estimado de llegada y el estado actualizado de su envío.
+            </div>
+          </div>
+
       {/* Commodities table */}
         <div
         style={{
