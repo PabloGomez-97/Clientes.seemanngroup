@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { DocumentosSection } from './Documents/Documentossection';
 
 interface OutletContext {
   accessToken: string;
