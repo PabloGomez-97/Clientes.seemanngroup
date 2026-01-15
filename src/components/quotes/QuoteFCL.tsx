@@ -668,25 +668,26 @@ function QuoteFCL() {
       const seguroAmount = calculateSeguro();
       charges.push({
         service: {
-          id: 169,
-          code: "INS"
+          id: 111361,
+          code: "S"
         },
         income: {
           quantity: 1,
-          unit: "Each",
+          unit: "SEGURO",
           rate: seguroAmount,
           amount: seguroAmount,
+          showamount: seguroAmount,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
             name: user?.username
           },
           currency: {
-            abbr: rutaSeleccionada.currency
+            abbr: (rutaSeleccionada.currency || "USD") as any
           },
-          reference: "TEST-REF-FCL",
+          reference: "SEGURO",
           showOnDocument: true,
-          notes: "Seguro charge created via API"
+          notes: "Seguro opcional - Protección adicional para la carga"
         },
         expense: {
           currency: {
