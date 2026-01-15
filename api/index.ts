@@ -140,7 +140,7 @@ const Documento = (mongoose.models.Documento ||
   mongoose.model<IDocumentoDoc>('Documento', DocumentoSchema)) as DocumentoModel;
 
 // ============================================================
-// CONSTANTES Y FUNCIONES AUXILIARES PARA DOCUMENTOS
+// CONSTANTES Y FUNCIONES AUXILIARES PARA DOCUMENTOSs
 // ============================================================
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
