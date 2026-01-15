@@ -702,7 +702,7 @@ function QuoteFCL() {
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
       project: {
-        name: "OCEAN"
+        name: "FCL"
       },
       customerReference: "Portal Created [FCL]",
       contact: {
@@ -1204,7 +1204,7 @@ function QuoteFCL() {
                                   Agregar Seguro
                                 </label>
                                 <small className="text-muted d-block ms-4">
-                                  Protección adicional para tu carga (0.22% del total)
+                                  Protección adicional para tu carga
                                 </small>
                               </div>
                             </div>
@@ -1288,6 +1288,7 @@ function QuoteFCL() {
             </div>
           </div>
 
+          {/* Payload de prueba
           <div className="card shadow-sm mb-4">
             <div className="card-body">
               <h5 className="card-title">📤 Payload que se enviará</h5>
@@ -1302,7 +1303,7 @@ function QuoteFCL() {
                 {JSON.stringify(getTestPayload(), null, 2)}
               </pre>
             </div>
-          </div>
+          </div>*/}
         </>
       )}
 
@@ -1334,8 +1335,8 @@ function QuoteFCL() {
       {response && (
         <div className="card shadow-sm mb-4 border-success">
           <div className="card-body">
-            <h5 className="card-title text-success">✅ ¡Éxito!</h5>
-            <pre style={{
+            <h5 className="card-title text-success">✅ Tu cotización se ha generado exitosamente</h5>
+            {/*<pre style={{
               backgroundColor: '#f0fdf4',
               padding: '15px',
               borderRadius: '5px',
@@ -1344,10 +1345,10 @@ function QuoteFCL() {
               fontSize: '0.85rem',
               color: '#15803d'
             }}>
-              {/* {JSON.stringify(response, null, 2)} */}
-            </pre>
+              {JSON.stringify(response, null, 2)}
+            </pre>*/}
             <div className="alert alert-success mt-3 mb-0">
-              🎉 <strong>¡Perfecto!</strong> Cotización FCL creada exitosamente.
+               En unos momentos se descargará automáticamente el PDF de la cotización.
             </div>
           </div>
         </div>

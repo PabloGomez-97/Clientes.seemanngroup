@@ -873,7 +873,7 @@ function QuoteAPITester() {
             },
             reference: "TEST-REF-SEGURO",
             showOnDocument: true,
-            notes: "Seguro opcional - Protección adicional para la carga (0.22% del total)"
+            notes: "Seguro opcional - Protección adicional para la carga"
           },
           expense: {
             currency: {
@@ -887,6 +887,9 @@ function QuoteAPITester() {
         date: new Date().toISOString(),
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
+        project: {
+        name: "AIR"
+      },
         customerReference: "Portal Created [AIR]",
         contact: {
           name: user?.username
@@ -1860,15 +1863,20 @@ function QuoteAPITester() {
                     <label className="form-label">Largo (cm)</label>
                     <input
                       type="number"
-                      className={`form-control ${dimensionError && dimensionError.includes('Largo') ? 'is-invalid' : ''}`}
+                      className={`form-control ${
+                        dimensionError && dimensionError.includes('Largo') ? 'is-invalid' : ''
+                      }`}
                       value={length}
                       onChange={(e) => {
                         const newLength = Number(e.target.value);
                         setLength(newLength);
+
                         if (newLength > 290) {
-                          setDimensionError('El largo no puede exceder 290 cm');
-                        } else if (width > 290 || height > 160) {
-                          // Mantener error si hay otros problemas
+                          setDimensionError('El Largo no puede exceder 290 cm');
+                        } else if (width > 290) {
+                          setDimensionError('El Ancho no puede exceder 290 cm');
+                        } else if (height > 160) {
+                          setDimensionError('El Alto no puede exceder 160 cm');
                         } else {
                           setDimensionError(null);
                         }
@@ -1876,7 +1884,7 @@ function QuoteAPITester() {
                       min="0"
                       step="0.01"
                     />
-                    {dimensionError && dimensionError.includes('largo') && (
+                    {dimensionError && dimensionError.includes('Largo') && (
                       <div className="invalid-feedback">{dimensionError}</div>
                     )}
                   </div>
@@ -1885,15 +1893,20 @@ function QuoteAPITester() {
                     <label className="form-label">Ancho (cm)</label>
                     <input
                       type="number"
-                      className={`form-control ${dimensionError && dimensionError.includes('Ancho') ? 'is-invalid' : ''}`}
+                      className={`form-control ${
+                        dimensionError && dimensionError.includes('Ancho') ? 'is-invalid' : ''
+                      }`}
                       value={width}
                       onChange={(e) => {
                         const newWidth = Number(e.target.value);
                         setWidth(newWidth);
+
                         if (newWidth > 290) {
-                          setDimensionError('El ancho no puede exceder 290 cm');
-                        } else if (length > 290 || height > 160) {
-                          // Mantener error si hay otros problemas
+                          setDimensionError('El Ancho no puede exceder 290 cm');
+                        } else if (length > 290) {
+                          setDimensionError('El Largo no puede exceder 290 cm');
+                        } else if (height > 160) {
+                          setDimensionError('El Alto no puede exceder 160 cm');
                         } else {
                           setDimensionError(null);
                         }
@@ -1901,7 +1914,7 @@ function QuoteAPITester() {
                       min="0"
                       step="0.01"
                     />
-                    {dimensionError && dimensionError.includes('ancho') && (
+                    {dimensionError && dimensionError.includes('Ancho') && (
                       <div className="invalid-feedback">{dimensionError}</div>
                     )}
                   </div>
@@ -1910,15 +1923,20 @@ function QuoteAPITester() {
                     <label className="form-label">Alto (cm)</label>
                     <input
                       type="number"
-                      className={`form-control ${dimensionError && dimensionError.includes('Alto') ? 'is-invalid' : ''}`}
+                      className={`form-control ${
+                        dimensionError && dimensionError.includes('Alto') ? 'is-invalid' : ''
+                      }`}
                       value={height}
                       onChange={(e) => {
                         const newHeight = Number(e.target.value);
                         setHeight(newHeight);
+
                         if (newHeight > 160) {
-                          setDimensionError('El alto no puede exceder 160 cm');
-                        } else if (length > 290 || width > 290) {
-                          // Mantener error si hay otros problemas
+                          setDimensionError('El Alto no puede exceder 160 cm');
+                        } else if (length > 290) {
+                          setDimensionError('El Largo no puede exceder 290 cm');
+                        } else if (width > 290) {
+                          setDimensionError('El Ancho no puede exceder 290 cm');
                         } else {
                           setDimensionError(null);
                         }
@@ -1926,11 +1944,11 @@ function QuoteAPITester() {
                       min="0"
                       step="0.01"
                     />
-                    {dimensionError && dimensionError.includes('alto') && (
+                    {dimensionError && dimensionError.includes('Alto') && (
                       <div className="invalid-feedback">{dimensionError}</div>
                     )}
                   </div>
-
+                  
                   <div className="col-md-3">
                     <label className="form-label">Peso por pieza (kg)</label>
                     <input
@@ -2091,7 +2109,7 @@ function QuoteAPITester() {
                           Agregar Seguro
                         </label>
                         <small className="text-muted d-block ms-4">
-                          Protección adicional para tu carga (0.22% del total)
+                          Protección adicional para tu carga
                         </small>
                       </div>
                     </div>
@@ -2200,8 +2218,8 @@ function QuoteAPITester() {
       {response && (
         <div className="card shadow-sm mb-4 border-success">
           <div className="card-body">
-            <h5 className="card-title text-success">✅ ¡Éxito!</h5>
-            {/* <pre style={{
+            <h5 className="card-title text-success">✅ Tu cotización se ha generado exitosamente</h5>
+            {/*<pre style={{
               backgroundColor: '#f0fdf4',
               padding: '15px',
               borderRadius: '5px',
@@ -2211,9 +2229,9 @@ function QuoteAPITester() {
               color: '#15803d'
             }}>
               {JSON.stringify(response, null, 2)}
-            </pre> */}
+            </pre>*/}
             <div className="alert alert-success mt-3 mb-0">
-              🎉 <strong>¡Perfecto!</strong> Cotización creada exitosamente.
+               En unos momentos se descargará automáticamente el PDF de la cotización.
             </div>
           </div>
         </div>

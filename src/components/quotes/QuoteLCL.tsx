@@ -226,6 +226,9 @@ function QuoteLCL() {
   const [height, setHeight] = useState(60); // cm
   const [weight, setWeight] = useState(500); // kg
 
+  // Estado para el seguro opcional
+  const [seguroActivo, setSeguroActivo] = useState(false);
+
   // ============================================================================
   // CARGA DE DATOS LCL.XLSX
   // ============================================================================
@@ -377,6 +380,22 @@ function QuoteLCL() {
   };
 
   // ============================================================================
+  // FUNCIÓN PARA CALCULAR EL SEGURO (TOTAL * 1.1 * 0.002) CON MÍNIMO DE 25
+  // ============================================================================
+
+  const calculateSeguro = (): number => {
+    if (!seguroActivo || !rutaSeleccionada || !tarifaOceanFreight) return 0;
+    
+    const totalSinSeguro = 
+      60 + // BL
+      45 + // Handling
+      (incoterm === 'EXW' ? calculateEXWRate(pieces) : 0) + // EXW
+      tarifaOceanFreight.income; // Ocean Freight
+    
+    return Math.max(totalSinSeguro * 1.1 * 0.002, 25);
+  };
+
+  // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
 
@@ -485,6 +504,19 @@ function QuoteLCL() {
           unit: 'W/M',
           rate: rutaSeleccionada.ofWM * 1.15,
           amount: tarifaOceanFreight.income
+        });
+      }
+
+      // Seguro (si está activo)
+      if (seguroActivo) {
+        const seguroAmount = calculateSeguro();
+        pdfCharges.push({
+          code: 'S',
+          description: 'SEGURO',
+          quantity: 1,
+          unit: 'Each',
+          rate: seguroAmount,
+          amount: seguroAmount
         });
       }
 
@@ -697,10 +729,47 @@ function QuoteLCL() {
       }
     });
 
+    // Cobro de Seguro (solo si está activo)
+    if (seguroActivo) {
+      const seguroAmount = calculateSeguro();
+      charges.push({
+        service: {
+          id: 111361,
+          code: "S"
+        },
+        income: {
+          quantity: 1,
+          unit: "SEGURO",
+          rate: seguroAmount,
+          amount: seguroAmount,
+          showamount: seguroAmount,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: user?.username
+          },
+          currency: {
+            abbr: divisa
+          },
+          reference: "LCL-SEGURO-REF",
+          showOnDocument: true,
+          notes: "Seguro charge created via API"
+        },
+        expense: {
+          currency: {
+            abbr: divisa
+          }
+        }
+      });
+    }
+
     return {
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 5,
+      project: {
+        name: "LCL"
+      },
       customerReference: "Portal Created [LCL]",
       contact: {
         name: user?.username
@@ -1323,6 +1392,34 @@ function QuoteLCL() {
                         {rutaSeleccionada.currency} {tarifaOceanFreight.income.toFixed(2)}
                       </strong>
                     </div>
+
+                    {/* Sección de Opcionales */}
+                    <div className="mb-3 pb-3 border-bottom">
+                      <h6 className="mb-3 text-muted">🔧 Opcionales</h6>
+                      <div className="form-check">
+                        <input
+                          className="form-check-input"
+                          type="checkbox"
+                          id="seguroCheckbox"
+                          checked={seguroActivo}
+                          onChange={(e) => setSeguroActivo(e.target.checked)}
+                        />
+                        <label className="form-check-label" htmlFor="seguroCheckbox">
+                          Agregar Seguro
+                        </label>
+                        <small className="text-muted d-block ms-4">
+                          Protección adicional para tu carga
+                        </small>
+                      </div>
+                    </div>
+
+                    {/* Mostrar el cargo del seguro si está activo */}
+                    {seguroActivo && calculateSeguro() > 0 && (
+                      <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                        <span>Seguro:</span>
+                        <strong className="text-info">{rutaSeleccionada.currency} {calculateSeguro().toFixed(2)}</strong>
+                      </div>
+                    )}
                     
                     {/* Total */}
                     <div className="d-flex justify-content-between">
@@ -1333,7 +1430,8 @@ function QuoteLCL() {
                           60 + // BL
                           45 + // Handling
                           (incoterm === 'EXW' ? calculateEXWRate(pieces) : 0) + // EXW
-                          tarifaOceanFreight.income // Ocean Freight
+                          tarifaOceanFreight.income + // Ocean Freight
+                          (seguroActivo ? calculateSeguro() : 0) // Seguro (si está activo)
                         ).toFixed(2)}
                       </span>
                     </div>
@@ -1391,7 +1489,7 @@ function QuoteLCL() {
             </div>
           </div>
 
-          {/* Payload */}
+          {/* Payload
           <div className="card shadow-sm mb-4">
             <div className="card-body">
               <h5 className="card-title">📤 Payload que se enviará</h5>
@@ -1406,7 +1504,7 @@ function QuoteLCL() {
                 {JSON.stringify(getTestPayload(), null, 2)}
               </pre>
             </div>
-          </div>
+          </div> */}
         </>
       )}
 
@@ -1438,8 +1536,8 @@ function QuoteLCL() {
       {response && (
         <div className="card shadow-sm mb-4 border-success">
           <div className="card-body">
-            <h5 className="card-title text-success">✅ ¡Éxito! Respuesta de la API</h5>
-            <pre style={{
+            <h5 className="card-title text-success">✅ Tu cotización se ha generado exitosamente</h5>
+            {/*<pre style={{
               backgroundColor: '#f0fdf4',
               padding: '15px',
               borderRadius: '5px',
@@ -1449,9 +1547,9 @@ function QuoteLCL() {
               color: '#15803d'
             }}>
               {JSON.stringify(response, null, 2)}
-            </pre>
+            </pre>*/}
             <div className="alert alert-success mt-3 mb-0">
-              🎉 <strong>¡Perfecto!</strong> Cotización LCL creada exitosamente.
+               En unos momentos se descargará automáticamente el PDF de la cotización.
             </div>
           </div>
         </div>
