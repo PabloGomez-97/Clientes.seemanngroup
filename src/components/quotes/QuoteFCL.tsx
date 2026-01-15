@@ -185,6 +185,9 @@ function QuoteFCL() {
   const [carriersActivos, setCarriersActivos] = useState<Set<string>>(new Set());
   const [carriersDisponibles, setCarriersDisponibles] = useState<string[]>([]);
 
+  // Estado para el seguro opcional
+  const [seguroActivo, setSeguroActivo] = useState(false);
+
   // ============================================================================
   // CARGA DE DATOS FCL.XLSX
   // ============================================================================
@@ -301,13 +304,9 @@ function QuoteFCL() {
         priceString = ruta.hq40;
         break;
       case '40NOR':
-        if (ruta.nor40) {
-          price = extractPrice(ruta.nor40);
-          priceString = ruta.nor40;
-        } else {
-          setError('Este contenedor no está disponible para esta ruta');
-          return;
-        }
+        if (!ruta.nor40) return;
+        price = extractPrice(ruta.nor40);
+        priceString = ruta.nor40;
         break;
     }
 
@@ -331,6 +330,22 @@ function QuoteFCL() {
   const calculateEXWRate = (containerType: ContainerType, cantidad: number): number => {
     const ratePerContainer = containerType === '20GP' ? 900 : 1090; // 40HQ y 40NOR cobran 1090
     return ratePerContainer * cantidad;
+  };
+
+  // ============================================================================
+  // FUNCIÓN PARA CALCULAR EL SEGURO (TOTAL * 1.1 * 0.002) CON MÍNIMO DE 25
+  // ============================================================================
+
+  const calculateSeguro = (): number => {
+    if (!seguroActivo || !rutaSeleccionada || !containerSeleccionado) return 0;
+    
+    const totalSinSeguro = 
+      60 + // BL
+      45 + // Handling
+      (incoterm === 'EXW' ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores) : 0) + // EXW
+      (containerSeleccionado.price * 1.15 * cantidadContenedores); // Ocean Freight
+    
+    return Math.max(totalSinSeguro * 1.1 * 0.002, 25);
   };
 
   // ============================================================================
@@ -442,6 +457,19 @@ function QuoteFCL() {
         amount: oceanFreightIncome * cantidadContenedores
       });
 
+      // Seguro (si está activo)
+      if (seguroActivo) {
+        const seguroAmount = calculateSeguro();
+        pdfCharges.push({
+          code: 'S',
+          description: 'SEGURO',
+          quantity: 1,
+          unit: 'Each',
+          rate: seguroAmount,
+          amount: seguroAmount
+        });
+      }
+
       // Calcular total
       const totalCharges = pdfCharges.reduce((sum, charge) => sum + charge.amount, 0);
 
@@ -551,7 +579,7 @@ function QuoteFCL() {
         currency: {
           abbr: rutaSeleccionada.currency
         },
-        reference: "TEST-REF-HANDLING-FCL",
+        reference: "TEST-REF-FCL",
         showOnDocument: true,
         notes: "Handling charge created via API"
       },
@@ -567,12 +595,12 @@ function QuoteFCL() {
       const exwRate = calculateEXWRate(containerSeleccionado.type, cantidadContenedores);
       charges.push({
         service: {
-          id: 271,
+          id: 121,
           code: "EC"
         },
         income: {
           quantity: cantidadContenedores,
-          unit: "EXW CHARGES",
+          unit: "Container",
           rate: exwRate / cantidadContenedores,
           amount: exwRate,
           payment: "Prepaid",
@@ -583,9 +611,9 @@ function QuoteFCL() {
           currency: {
             abbr: rutaSeleccionada.currency
           },
-          reference: "TEST-REF-EXW-FCL",
+          reference: "TEST-REF-FCL",
           showOnDocument: true,
-          notes: `EXW charge - ${cantidadContenedores} x ${containerSeleccionado.type} container(s)`
+          notes: "EXW charge created via API"
         },
         expense: {
           currency: {
@@ -595,20 +623,19 @@ function QuoteFCL() {
       });
     }
 
-    // Cobro de OCEAN FREIGHT
+    // Cobro de Ocean Freight
     const oceanFreightRate = containerSeleccionado.price;
-    const oceanFreightRateIncome = oceanFreightRate * 1.15;
-
+    const oceanFreightIncome = oceanFreightRate * 1.15;
     charges.push({
       service: {
-        id: 106,
+        id: 163,
         code: "OF"
       },
       income: {
-        quantity: 1,
-        unit: "CONTAINER",
-        rate: oceanFreightRateIncome,
-        amount: oceanFreightRateIncome,
+        quantity: cantidadContenedores,
+        unit: "Container",
+        rate: oceanFreightIncome / cantidadContenedores,
+        amount: oceanFreightIncome * cantidadContenedores,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -617,28 +644,57 @@ function QuoteFCL() {
         currency: {
           abbr: rutaSeleccionada.currency
         },
-        reference: "TEST-REF-OCEANFREIGHT",
+        reference: "TEST-REF-FCL",
         showOnDocument: true,
-        notes: `OCEAN FREIGHT charge - Container: ${containerSeleccionado.type} - Tarifa: ${containerSeleccionado.priceString} + 15%`
+        notes: "Ocean Freight charge created via API"
       },
       expense: {
-        quantity: 1,
-        unit: "CONTAINER",
+        quantity: cantidadContenedores,
+        unit: "Container",
         rate: oceanFreightRate,
-        amount: oceanFreightRate,
-        payment: "Prepaid",
+        amount: oceanFreightRate * cantidadContenedores,
+        payment: "Collect",
         billApplyTo: "Other",
-        billTo: {
-          name: user?.username
-        },
         currency: {
           abbr: rutaSeleccionada.currency
         },
-        reference: "TEST-REF-OCEANFREIGHT",
-        showOnDocument: true,
-        notes: `OCEAN FREIGHT expense - Container: ${containerSeleccionado.type} - Tarifa: ${containerSeleccionado.priceString}`
+        reference: "TEST-REF-FCL",
+        notes: "Ocean Freight expense"
       }
     });
+
+    // Cobro de Seguro (solo si está activo)
+    if (seguroActivo) {
+      const seguroAmount = calculateSeguro();
+      charges.push({
+        service: {
+          id: 169,
+          code: "INS"
+        },
+        income: {
+          quantity: 1,
+          unit: "Each",
+          rate: seguroAmount,
+          amount: seguroAmount,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: user?.username
+          },
+          currency: {
+            abbr: rutaSeleccionada.currency
+          },
+          reference: "TEST-REF-FCL",
+          showOnDocument: true,
+          notes: "Seguro charge created via API"
+        },
+        expense: {
+          currency: {
+            abbr: rutaSeleccionada.currency
+          }
+        }
+      });
+    }
 
     return {
       date: new Date().toISOString(),
@@ -1004,47 +1060,20 @@ function QuoteFCL() {
                                   </button>
                                 )}
                               </div>
-
-                              {/* Mensaje si no hay contenedores disponibles */}
-                              {!ruta.gp20 && !ruta.hq40 && !ruta.nor40 && (
-                                <div className="alert alert-warning mb-0 mt-2">
-                                  <small>
-                                    <i className="bi bi-exclamation-triangle"></i> No hay contenedores disponibles para esta ruta
-                                  </small>
-                                </div>
-                              )}
-
-                              {/* Call to action sutil */}
-                              {rutaSeleccionada?.id !== ruta.id && (
-                                <div className="mt-3 text-center">
-                                  <small className="text-muted">
-                                    <i className="bi bi-hand-index"></i> Selecciona un contenedor
-                                  </small>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
-
-                  {/* Footer informativo */}
-                  {rutasFiltradas.length > 0 && (
-                    <div className="alert alert-light border-0 mt-3">
-                      <small className="text-muted">
-                        <i className="bi bi-info-circle"></i> Las tarifas son referenciales y pueden variar según condiciones comerciales
-                      </small>
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* Información de selección */}
+              {/* Detalles de la ruta seleccionada */}
               {rutaSeleccionada && containerSeleccionado && (
                 <>
-                  <div className="alert alert-success mt-4 mb-0">
-                    <h6 className="alert-heading">✓ Selección Confirmada</h6>
+                  <div className="alert alert-info mt-4">
+                    <h6 className="alert-heading">📋 Resumen de Selección</h6>
                     <p className="mb-2">
                       <strong>Ruta:</strong> {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
                     </p>
@@ -1158,6 +1187,34 @@ function QuoteFCL() {
                                 {rutaSeleccionada.currency} {(containerSeleccionado.price * 1.15 * cantidadContenedores).toFixed(2)}
                               </strong>
                             </div>
+
+                            {/* Sección de Opcionales */}
+                            <div className="mb-3 pb-3 border-bottom">
+                              <h6 className="mb-3 text-muted">🔧 Opcionales</h6>
+                              <div className="form-check">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  id="seguroCheckbox"
+                                  checked={seguroActivo}
+                                  onChange={(e) => setSeguroActivo(e.target.checked)}
+                                />
+                                <label className="form-check-label" htmlFor="seguroCheckbox">
+                                  Agregar Seguro
+                                </label>
+                                <small className="text-muted d-block ms-4">
+                                  Protección adicional para tu carga (0.22% del total)
+                                </small>
+                              </div>
+                            </div>
+
+                            {/* Mostrar el cargo del seguro si está activo */}
+                            {seguroActivo && calculateSeguro() > 0 && (
+                              <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                                <span>Seguro:</span>
+                                <strong className="text-info">{rutaSeleccionada.currency} {calculateSeguro().toFixed(2)}</strong>
+                              </div>
+                            )}
                             
                             {/* Total */}
                             <div className="d-flex justify-content-between">
@@ -1168,7 +1225,8 @@ function QuoteFCL() {
                                   60 + // BL
                                   45 + // Handling
                                   (incoterm === 'EXW' ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores) : 0) + // EXW
-                                  (containerSeleccionado.price * 1.15 * cantidadContenedores) // Ocean Freight
+                                  (containerSeleccionado.price * 1.15 * cantidadContenedores) + // Ocean Freight
+                                  (seguroActivo ? calculateSeguro() : 0) // Seguro (si está activo)
                                 ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
@@ -1192,7 +1250,7 @@ function QuoteFCL() {
         <>
           <div className="card shadow-sm mb-4">
             <div className="card-body">
-              <h5 className="card-title mb-4"> Paso 2: Generar Cotización</h5>
+              <h5 className="card-title mb-4">📝 Paso 2: Generar Cotización</h5>
 
               <button
                 onClick={testAPI}
@@ -1205,7 +1263,7 @@ function QuoteFCL() {
                     Generando...
                   </>
                 ) : (
-                  <> Generar Cotización FCL</>
+                  <>🚀 Generar Cotización FCL</>
                 )}
               </button>
 
@@ -1229,7 +1287,6 @@ function QuoteFCL() {
             </div>
           </div>
 
-          {/* Payload
           <div className="card shadow-sm mb-4">
             <div className="card-body">
               <h5 className="card-title">📤 Payload que se enviará</h5>
@@ -1244,7 +1301,7 @@ function QuoteFCL() {
                 {JSON.stringify(getTestPayload(), null, 2)}
               </pre>
             </div>
-          </div> */}
+          </div>
         </>
       )}
 

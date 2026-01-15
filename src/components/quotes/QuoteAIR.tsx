@@ -452,7 +452,7 @@ function QuoteAPITester() {
       Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
       (tarifaAirFreight.precioConMarkup * pesoChargeable); // Air Freight
     
-    return totalSinSeguro * 1.1 * 0.002;
+    return Math.max(totalSinSeguro * 1.1 * 0.002, 25);
   };
 
   // ============================================================================
