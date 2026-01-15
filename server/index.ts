@@ -42,7 +42,8 @@ function verifyToken(token: string): AuthPayload {
  *  ========================= */
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 app.all('/api/chat', (req, res) => chatHandler(req as any, res as any));
 
@@ -105,6 +106,93 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
 );
 
 const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchema)) as UserModel;
+
+// ============================================================
+// MODELO DE DOCUMENTOS EN MONGODB
+// ============================================================
+
+interface IDocumento {
+  quoteId: string;
+  tipo: 'Certificado de Origen' | 'Póliza de seguro' | 'Guía de Despacho' | 'Declaración de Ingreso' | 'Packing List';
+  nombreArchivo: string;
+  tipoArchivo: string;
+  tamanoBytes: number;
+  contenidoBase64: string;
+  subidoPor: string;
+  usuarioId: string;
+}
+
+interface IDocumentoDoc extends IDocumento, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type DocumentoModel = mongoose.Model<IDocumentoDoc>;
+
+const DocumentoSchema = new mongoose.Schema<IDocumentoDoc>(
+  {
+    quoteId: { type: String, required: true, index: true },
+    tipo: { 
+      type: String, 
+      required: true,
+      enum: ['Certificado de Origen', 'Póliza de seguro', 'Guía de Despacho', 'Declaración de Ingreso', 'Packing List']
+    },
+    nombreArchivo: { type: String, required: true },
+    tipoArchivo: { type: String, required: true },
+    tamanoBytes: { type: Number, required: true },
+    contenidoBase64: { type: String, required: true },
+    subidoPor: { type: String, required: true },
+    usuarioId: { type: String, required: true, index: true }
+  },
+  { timestamps: true }
+);
+
+DocumentoSchema.index({ quoteId: 1, usuarioId: 1 });
+
+const Documento = (mongoose.models.Documento || 
+  mongoose.model<IDocumentoDoc>('Documento', DocumentoSchema)) as DocumentoModel;
+
+  // ============================================================
+// CONSTANTES PARA DOCUMENTOS
+// ============================================================
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+];
+
+// ============================================================
+// FUNCIONES AUXILIARES PARA DOCUMENTOS
+// ============================================================
+
+function validateBase64(base64String: string): boolean {
+  try {
+    if (!base64String.includes('base64,')) {
+      return false;
+    }
+    const base64Content = base64String.split('base64,')[1];
+    const decoded = Buffer.from(base64Content, 'base64').toString('base64');
+    return decoded === base64Content;
+  } catch {
+    return false;
+  }
+}
+
+function getBase64Size(base64String: string): number {
+  const base64Content = base64String.split('base64,')[1];
+  const padding = (base64Content.match(/=/g) || []).length;
+  return (base64Content.length * 3) / 4 - padding;
+}
+
+function getMimeTypeFromBase64(base64String: string): string | null {
+  const match = base64String.match(/data:([^;]+);base64,/);
+  return match ? match[1] : null;
+}
 
 // Conectar a MongoDB
 mongoose
@@ -927,6 +1015,228 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+
+// ============================================================
+// RUTAS DE DOCUMENTOS
+// ============================================================
+
+// POST /api/documentos/upload - Subir documento
+app.post('/api/documentos/upload', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    
+    if (!currentUser || !currentUser.sub || !currentUser.username) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { quoteId, tipo, nombreArchivo, contenidoBase64 } = req.body;
+
+    if (!quoteId || !tipo || !nombreArchivo || !contenidoBase64) {
+      return res.status(400).json({ 
+        error: 'Faltan campos requeridos: quoteId, tipo, nombreArchivo, contenidoBase64' 
+      });
+    }
+
+    const tiposPermitidos = ['Certificado de Origen', 'Póliza de seguro', 'Guía de Despacho', 'Declaración de Ingreso', 'Packing List'];
+    if (!tiposPermitidos.includes(tipo)) {
+      return res.status(400).json({ 
+        error: `Tipo de documento inválido. Debe ser uno de: ${tiposPermitidos.join(', ')}` 
+      });
+    }
+
+    if (!validateBase64(contenidoBase64)) {
+      return res.status(400).json({ 
+        error: 'El archivo debe estar en formato base64 válido' 
+      });
+    }
+
+    const mimeType = getMimeTypeFromBase64(contenidoBase64);
+    if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
+      return res.status(400).json({ 
+        error: 'Tipo de archivo no permitido. Solo PDF, Excel y Word' 
+      });
+    }
+
+    const fileSize = getBase64Size(contenidoBase64);
+    if (fileSize > MAX_FILE_SIZE) {
+      return res.status(400).json({ 
+        error: `El archivo excede el tamaño máximo de 5MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB` 
+      });
+    }
+
+    const nuevoDocumento = await Documento.create({
+      quoteId: String(quoteId),
+      tipo,
+      nombreArchivo: String(nombreArchivo),
+      tipoArchivo: mimeType,
+      tamanoBytes: fileSize,
+      contenidoBase64,
+      subidoPor: currentUser.sub,
+      usuarioId: currentUser.username
+    });
+
+    console.log(`[documentos] Documento subido: ${nuevoDocumento._id}`);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Documento subido exitosamente',
+      documento: {
+        id: nuevoDocumento._id,
+        quoteId: nuevoDocumento.quoteId,
+        tipo: nuevoDocumento.tipo,
+        nombreArchivo: nuevoDocumento.nombreArchivo,
+        tipoArchivo: nuevoDocumento.tipoArchivo,
+        tamanoMB: (nuevoDocumento.tamanoBytes / 1024 / 1024).toFixed(2),
+        fechaSubida: nuevoDocumento.createdAt
+      }
+    });
+
+  } catch (error: any) {
+    console.error('[documentos] Error al subir:', error);
+    return res.status(500).json({ 
+      error: 'Error interno al subir documento',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// GET /api/documentos/:quoteId - Obtener documentos de una cotización
+app.get('/api/documentos/:quoteId', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    
+    if (!currentUser || !currentUser.username) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { quoteId } = req.params;
+
+    if (!quoteId) {
+      return res.status(400).json({ error: 'quoteId es requerido' });
+    }
+
+    const documentos = await Documento.find({ 
+      quoteId: String(quoteId),
+      usuarioId: currentUser.username 
+    })
+    .select('-contenidoBase64')
+    .sort({ createdAt: -1 });
+
+    console.log(`[documentos] Encontrados ${documentos.length} documentos para quote ${quoteId}`);
+
+    return res.json({
+      success: true,
+      documentos: documentos.map(doc => ({
+        id: doc._id,
+        quoteId: doc.quoteId,
+        tipo: doc.tipo,
+        nombreArchivo: doc.nombreArchivo,
+        tipoArchivo: doc.tipoArchivo,
+        tamanoMB: (doc.tamanoBytes / 1024 / 1024).toFixed(2),
+        fechaSubida: doc.createdAt
+      }))
+    });
+
+  } catch (error: any) {
+    console.error('[documentos] Error al obtener:', error);
+    return res.status(500).json({ 
+      error: 'Error interno al obtener documentos'
+    });
+  }
+});
+
+// GET /api/documentos/download/:documentoId - Descargar documento
+app.get('/api/documentos/download/:documentoId', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    
+    if (!currentUser || !currentUser.username) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { documentoId } = req.params;
+
+    if (!documentoId) {
+      return res.status(400).json({ error: 'documentoId es requerido' });
+    }
+
+    const documento = await Documento.findById(documentoId);
+
+    if (!documento) {
+      return res.status(404).json({ error: 'Documento no encontrado' });
+    }
+
+    if (documento.usuarioId !== currentUser.username) {
+      return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
+    }
+
+    console.log(`[documentos] Descargando: ${documento._id}`);
+
+    return res.json({
+      success: true,
+      documento: {
+        id: documento._id,
+        quoteId: documento.quoteId,
+        tipo: documento.tipo,
+        nombreArchivo: documento.nombreArchivo,
+        tipoArchivo: documento.tipoArchivo,
+        tamanoMB: (documento.tamanoBytes / 1024 / 1024).toFixed(2),
+        contenidoBase64: documento.contenidoBase64,
+        fechaSubida: documento.createdAt
+      }
+    });
+
+  } catch (error: any) {
+    console.error('[documentos] Error al descargar:', error);
+    return res.status(500).json({ 
+      error: 'Error interno al descargar documento'
+    });
+  }
+});
+
+// DELETE /api/documentos/:documentoId - Eliminar documento
+app.delete('/api/documentos/:documentoId', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    
+    if (!currentUser || !currentUser.username) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { documentoId } = req.params;
+
+    if (!documentoId) {
+      return res.status(400).json({ error: 'documentoId es requerido' });
+    }
+
+    const documento = await Documento.findById(documentoId);
+
+    if (!documento) {
+      return res.status(404).json({ error: 'Documento no encontrado' });
+    }
+
+    if (documento.usuarioId !== currentUser.username) {
+      return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+    }
+
+    await Documento.findByIdAndDelete(documentoId);
+
+    console.log(`[documentos] Eliminado: ${documentoId}`);
+
+    return res.json({
+      success: true,
+      message: 'Documento eliminado exitosamente'
+    });
+
+  } catch (error: any) {
+    console.error('[documentos] Error al eliminar:', error);
+    return res.status(500).json({ 
+      error: 'Error interno al eliminar documento'
+    });
+  }
+});
+
+console.log('📄 Rutas de documentos configuradas');
 
 /** =========================
  *  Start

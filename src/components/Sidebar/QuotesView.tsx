@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
+import { DocumentosSection } from './Documents/Documentossection';
 
 interface OutletContext {
   accessToken: string;
@@ -1555,6 +1556,10 @@ function QuotesView() {
                     <InfoField label="Carga Peligrosa" value={selectedQuote.hazardous} />
                     <InfoField label="Estado de Carga" value={selectedQuote.cargoStatus} />
                   </div>
+                </CollapsibleSection>
+
+                <CollapsibleSection title="Documentos" defaultOpen={true} icon="📋">
+                  <DocumentosSection quoteId={String(selectedQuote.id || selectedQuote.number || '')} />
                 </CollapsibleSection>
 
                 {/* Resumen Financiero - SOLO INGRESO */}
