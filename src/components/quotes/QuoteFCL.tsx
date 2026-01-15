@@ -249,16 +249,25 @@ function QuoteFCL() {
 
   useEffect(() => {
     if (polSeleccionado) {
-      const podsParaPOL = rutas
-        .filter(r => r.polNormalized === polSeleccionado.value)
-        .map(r => r.pod);
+      // Filtrar rutas por POL y crear un Map con valores normalizados
+      const podMap = new Map<string, string>();
       
-      const podsUnicos = Array.from(new Set(podsParaPOL))
-        .sort()
-        .map(pod => ({
-          value: normalize(pod),
-          label: capitalize(pod)
-        }));
+      rutas
+        .filter(r => r.polNormalized === polSeleccionado.value)
+        .forEach(r => {
+          const normalized = normalize(r.pod);
+          if (!podMap.has(normalized)) {
+            podMap.set(normalized, r.pod);
+          }
+        });
+      
+      // Crear opciones únicas y ordenadas
+      const podsUnicos = Array.from(podMap.entries())
+        .map(([normalized, original]) => ({
+          value: normalized,
+          label: capitalize(original)
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
       
       setOpcionesPOD(podsUnicos);
       setPodSeleccionado(null);
