@@ -3,6 +3,8 @@ import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { DocumentosSection } from './Documents/DocumentosSection';
 import './Css/QuotesAccordion.css';
+import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer } from 'react-leaflet';
 
 interface OutletContext {
   accessToken: string;
@@ -64,6 +66,26 @@ function RouteDisplay({ quote }: { quote: Quote }) {
     });
   };
 
+    // Función para obtener la ruta de la bandera
+  const getFlagPath = (locationName: string | undefined) => {
+    if (!locationName) return null;
+    // Limpiar el nombre: reemplazar caracteres no válidos en nombres de archivo
+    const cleanName = locationName
+      .trim()
+      .replace(/\//g, '-')  // Reemplazar / por -
+      .replace(/\\/g, '-')  // Reemplazar \ por -
+      .replace(/:/g, '-')   // Reemplazar : por -
+      .replace(/\*/g, '')   // Eliminar *
+      .replace(/\?/g, '')   // Eliminar ?
+      .replace(/"/g, '')    // Eliminar "
+      .replace(/</g, '')    // Eliminar 
+      .replace(/>/g, '')    // Eliminar >
+      .replace(/\|/g, '-'); // Reemplazar | por -
+    
+    return `/paises/${cleanName}.png`;
+  };
+
+
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px', marginBottom: '20px' }}>
@@ -96,8 +118,27 @@ function RouteDisplay({ quote }: { quote: Quote }) {
           <div style={{ 
             fontSize: '1.1rem',
             fontWeight: '700',
-            color: '#1f2937'
+            color: '#1f2937',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
           }}>
+            {getFlagPath(quote.origin) && (
+              <img 
+                src={getFlagPath(quote.origin)!}
+                alt={quote.origin || ''}
+                style={{ 
+                  width: '24px', 
+                  height: '18px', 
+                  objectFit: 'cover',
+                  borderRadius: '3px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
             {quote.origin || 'N/A'}
           </div>
           {quote.deperture_Date && (
@@ -135,22 +176,44 @@ function RouteDisplay({ quote }: { quote: Quote }) {
         </div>
         
         <div style={{ flex: 1, textAlign: 'right' }}>
-          <div style={{ 
-            fontSize: '0.7rem',
-            fontWeight: '600',
-            color: '#6b7280',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            marginBottom: '4px'
-          }}>
-            Destino
-          </div>
-          <div style={{ 
-            fontSize: '1.1rem',
-            fontWeight: '700',
-            color: '#1f2937'
-          }}>
-            {quote.destination || 'N/A'}
+          <div style={{ flex: 1, textAlign: 'right' }}>
+            <div style={{ 
+              fontSize: '0.7rem',
+              fontWeight: '600',
+              color: '#6b7280',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              marginBottom: '4px'
+            }}>
+              Destino
+            </div>
+            <div style={{ 
+              fontSize: '1.1rem',
+              fontWeight: '700',
+              color: '#1f2937',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              justifyContent: 'flex-end'
+            }}>
+              {quote.destination || 'N/A'}
+              {getFlagPath(quote.destination) && (
+                <img 
+                  src={getFlagPath(quote.destination)!}
+                  alt={quote.destination || ''}
+                  style={{ 
+                    width: '24px', 
+                    height: '18px', 
+                    objectFit: 'cover',
+                    borderRadius: '3px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              )}
+            </div>
           </div>
           {quote.arrival_Date && (
             <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
@@ -323,6 +386,55 @@ function QuotesView() {
   const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+      // Función para obtener la ruta de la bandera
+  const getFlagPath = (locationName: string | undefined) => {
+    if (!locationName) return null;
+    // Limpiar el nombre: reemplazar caracteres no válidos en nombres de archivo
+    const cleanName = locationName
+      .trim()
+      .replace(/\//g, '-')  // Reemplazar / por -
+      .replace(/\\/g, '-')  // Reemplazar \ por -
+      .replace(/:/g, '-')   // Reemplazar : por -
+      .replace(/\*/g, '')   // Eliminar *
+      .replace(/\?/g, '')   // Eliminar ?
+      .replace(/"/g, '')    // Eliminar "
+      .replace(/</g, '')    // Eliminar 
+      .replace(/>/g, '')    // Eliminar >
+      .replace(/\|/g, '-'); // Reemplazar | por -
+    
+    return `/paises/${cleanName}.png`;
+  };
+
+  // Componente para mostrar ubicación con bandera
+  const LocationWithFlag = ({ location }: { location: string | undefined }) => {
+    if (!location) return <>-</>;
+    
+    const flagPath = getFlagPath(location);
+    
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {flagPath && (
+          <img 
+            src={flagPath}
+            alt={location}
+            style={{ 
+              width: '20px', 
+              height: '15px', 
+              objectFit: 'cover',
+              borderRadius: '2px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}
+            onError={(e) => {
+              // Si la imagen no carga, ocultar el elemento
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
+        <span style={{ fontWeight: '600' }}>{location}</span>
+      </div>
+    );
+  };
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -857,32 +969,26 @@ function QuotesView() {
 
    return (
       <>
-      {/* Header */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          padding: '20px 0',
+        {/* Interactive Map */}
+        <div style={{ 
           marginBottom: '32px',
-          borderBottom: '1px solid #e5e7eb',
-          fontFamily: 'Poppins, sans-serif'
+          height: '350px',  // 👈 MODIFICA ESTE VALOR para ajustar altura (300px-400px)
+          borderRadius: '12px',
+          overflow: 'hidden',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
         }}>
-          <h4 style={{ 
-            color: '#111827',
-            margin: 0,
-            fontSize: '1.25rem',
-            fontWeight: '500',
-            letterSpacing: '-0.01em'
-          }}>
-            Mis cotizaciones
-          </h4>
-          <p style={{ 
-            color: '#6b7280',
-            marginTop: '6px',
-            marginBottom: 0,
-            fontSize: '0.9rem',
-            fontWeight: '400'
-          }}>
-            Consulta y gestiona tus cotizaciones de envío
-          </p>
+          <MapContainer
+            center={[-33.4489, -70.6693]} // Coordenadas de Santiago, Chile
+            zoom={3}
+            style={{ height: '100%', width: '100%' }}
+            scrollWheelZoom={true}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+          </MapContainer>
         </div>
 
         {/* Botones de acción */}
@@ -1384,9 +1490,9 @@ function QuotesView() {
                             color: '#4b5563'
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontWeight: '600' }}>{quote.origin || '-'}</span>
+                              <LocationWithFlag location={quote.origin} />
                               <span style={{ color: '#3b82f6' }}>→</span>
-                              <span style={{ fontWeight: '600' }}>{quote.destination || '-'}</span>
+                              <LocationWithFlag location={quote.destination} />
                             </div>
                           </td>
                           <td style={{ 
