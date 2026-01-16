@@ -456,6 +456,8 @@ function QuotesView() {
   const [searchDestination, setSearchDestination] = useState('');
   const [showingAll, setShowingAll] = useState(false);
   const [showAllQuotes, setShowAllQuotes] = useState(false); // Estado para controlar si se muestran todas las cotizaciones
+  const [quickSearch, setQuickSearch] = useState('');
+
 
   // Tooltips estado
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
@@ -818,6 +820,39 @@ function QuotesView() {
     return destinations;
   }, [quotes]);
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const term = quickSearch.trim().toLowerCase();
+
+      if (!term) {
+        setDisplayedQuotes(quotes);
+        setShowingAll(false);
+        return;
+      }
+
+      const results = quotes.filter((q) => {
+        const number = (q.number || '').toString().toLowerCase();
+        const origin = (q.origin || '').toString().toLowerCase();
+        const destination = (q.destination || '').toString().toLowerCase();
+        const date = (q.date || '').toString().toLowerCase();
+
+        // Ajusta campos si quieres (customerReference, shipper, etc.)
+        return (
+          number.includes(term) ||
+          origin.includes(term) ||
+          destination.includes(term) ||
+          date.includes(term)
+        );
+      });
+
+      setDisplayedQuotes(results);
+      setShowingAll(true);
+    }, 250); // 250ms
+
+    return () => clearTimeout(t);
+  }, [quickSearch, quotes]);
+
+
   // Función para cargar más cotizaciones (paginación)
   const loadMoreQuotes = () => {
     const nextPage = currentPage + 1;
@@ -919,6 +954,7 @@ function QuotesView() {
   };
 
   const clearSearch = () => {
+    setQuickSearch('');
     setSearchNumber('');
     setSearchDate('');
     setSearchStartDate('');
@@ -1000,42 +1036,23 @@ function QuotesView() {
           flexWrap: 'wrap',
           fontFamily: 'Poppins, sans-serif'
         }}>
-          <button 
-            onClick={openSearchModal}
+          <input
+            value={quickSearch}
+            onChange={(e) => setQuickSearch(e.target.value)}
+            placeholder="Buscar (número, origen, destino...)"
             style={{
-              backgroundColor: 'transparent',
+              backgroundColor: 'white',
               color: '#111827',
               border: '1px solid #d1d5db',
               borderRadius: '6px',
               padding: '8px 14px',
-              cursor: 'pointer',
               fontSize: '0.85rem',
               fontWeight: '500',
-              transition: 'background-color 0.2s ease, border-color 0.2s ease'
+              outline: 'none',
+              minWidth: '300px'
             }}
-          >
-            Buscar
-          </button>
+          />
 
-          {/* Botón Ver más / Ver menos */}
-          {displayedQuotes.length > ITEMS_PER_PAGE && !showingAll && (
-            <button 
-              onClick={() => setShowAllQuotes(!showAllQuotes)}
-              style={{
-                backgroundColor: 'transparent',
-                color: '#3b82f6',
-                border: '1px solid #3b82f6',
-                borderRadius: '6px',
-                padding: '8px 14px',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: '500',
-                transition: 'background-color 0.2s ease, border-color 0.2s ease'
-              }}
-            >
-              {showAllQuotes ? `Ver menos (${ITEMS_PER_PAGE})` : `Ver más (${displayedQuotes.length})`}
-            </button>
-          )}
 
           {/* Botón Cargar Más */}
           {hasMoreQuotes && !loadingMore && (
@@ -1447,7 +1464,7 @@ function QuotesView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedQuotes.slice(0, showAllQuotes ? displayedQuotes.length : ITEMS_PER_PAGE).map((quote, index) => {
+                  {displayedQuotes.map((quote, index) => {
                     const quoteId = quote.id || quote.number || index;
                     const isOpen = openAccordions.includes(quoteId);
                     const activeTabIndex = activeTabs[quoteId] || 0;

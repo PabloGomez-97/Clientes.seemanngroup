@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import './AirShipmentsView.css'; // 👈 Importar el CSS
+import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer } from 'react-leaflet';
 
 interface OutletContext {
   accessToken: string;
@@ -1015,33 +1017,27 @@ function AirShipmentsView() {
 
   return (
     <>
-    {/* Header */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        padding: '20px 0',
-        marginBottom: '24px',
-        borderBottom: '1px solid #e5e7eb',
-        fontFamily: 'Poppins, sans-serif'
-      }}>
-        <h4 style={{ 
-          color: '#111827',
-          margin: 0,
-          fontSize: '1.25rem',
-          fontWeight: '500',
-          letterSpacing: '-0.01em'
-        }}>
-          Mis Air Shipments
-        </h4>
-        <p style={{ 
-          color: '#6b7280',
-          marginTop: '6px',
-          marginBottom: 0,
-          fontSize: '0.9rem',
-          fontWeight: '400'
-        }}>
-          Consulta y gestiona tus envíos aéreos
-        </p>
-      </div>
+    {/* Interactive Map */}
+            <div style={{ 
+              marginBottom: '32px',
+              height: '350px',  // 👈 MODIFICA ESTE VALOR para ajustar altura (300px-400px)
+              borderRadius: '12px',
+              overflow: 'hidden',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+            }}>
+              <MapContainer
+                center={[-33.4489, -70.6693]} // Coordenadas de Santiago, Chile
+                zoom={3}
+                style={{ height: '100%', width: '100%' }}
+                scrollWheelZoom={true}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+              </MapContainer>
+            </div>
 
       {/* Botones de acción */}
       <div style={{ 
