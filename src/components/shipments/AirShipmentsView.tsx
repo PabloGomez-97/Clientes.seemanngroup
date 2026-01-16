@@ -828,7 +828,7 @@ function AirShipmentsView() {
         setDisplayedShipments(filtered);
         
         const cacheKey = `airShipmentsCache_${user.username}`;
-        localStorage.setItem(cacheKey, JSON.stringify(resorted));
+        localStorage.setItem(cacheKey, JSON.stringify(filtered));
         localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       } else {
@@ -838,7 +838,7 @@ function AirShipmentsView() {
         setShowingAll(false);
         
         const cacheKey = `airShipmentsCache_${user.username}`;
-        localStorage.setItem(cacheKey, JSON.stringify(sortedShipments));
+        localStorage.setItem(cacheKey, JSON.stringify(filtered));
         localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       }
@@ -955,8 +955,12 @@ function AirShipmentsView() {
       
       if (cacheAge < oneHour) {
         const parsed = JSON.parse(cachedShipments);
-        setShipments(parsed);
-        setDisplayedShipments(parsed);
+        const filtered = parsed.filter((s: any) =>
+          !String(s.number ?? '').toUpperCase().startsWith('SOG')
+        );
+
+        setShipments(filtered);
+        setDisplayedShipments(filtered);
         setShowingAll(false);
         
         if (cachedPage) {
