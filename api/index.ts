@@ -100,7 +100,7 @@ const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchem
 
 interface IDocumento {
   quoteId: string;
-  tipo: 'Certificado de Origen' | 'Póliza de seguro' | 'Guía de Despacho' | 'Declaración de Ingreso' | 'Packing List';
+  tipo: 'Invoice' | 'Packing List';
   nombreArchivo: string;
   tipoArchivo: string;
   tamanoBytes: number;
@@ -122,7 +122,7 @@ const DocumentoSchema = new mongoose.Schema<IDocumentoDoc>(
     tipo: { 
       type: String, 
       required: true,
-      enum: ['Certificado de Origen', 'Póliza de seguro', 'Guía de Despacho', 'Declaración de Ingreso', 'Packing List']
+      enum: ['Invoice', 'Packing List']
     },
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
@@ -1050,7 +1050,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        const tiposPermitidos = ['Certificado de Origen', 'Póliza de seguro', 'Guía de Despacho', 'Declaración de Ingreso', 'Packing List'];
+        const tiposPermitidos = ['Invoice', 'Packing List'];
         if (!tiposPermitidos.includes(tipo)) {
           return res.status(400).json({ 
             error: `Tipo de documento inválido. Debe ser uno de: ${tiposPermitidos.join(', ')}` 

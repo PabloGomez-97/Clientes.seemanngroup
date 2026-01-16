@@ -7,10 +7,7 @@ import './DocumentosSection.css';
 // ============================================================
 
 type TipoDocumento = 
-  | 'Certificado de Origen' 
-  | 'Póliza de seguro' 
-  | 'Guía de Despacho' 
-  | 'Declaración de Ingreso' 
+  | 'Invoice' 
   | 'Packing List';
 
 interface Documento {
@@ -42,10 +39,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
   
   // Referencias para los inputs de archivo
   const fileInputRefs = {
-    'Certificado de Origen': useRef<HTMLInputElement>(null),
-    'Póliza de seguro': useRef<HTMLInputElement>(null),
-    'Guía de Despacho': useRef<HTMLInputElement>(null),
-    'Declaración de Ingreso': useRef<HTMLInputElement>(null),
+    'Invoice': useRef<HTMLInputElement>(null),
     'Packing List': useRef<HTMLInputElement>(null),
   };
 
@@ -285,10 +279,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
   // ============================================================
 
   const tiposDocumento: TipoDocumento[] = [
-    'Certificado de Origen',
-    'Póliza de seguro',
-    'Guía de Despacho',
-    'Declaración de Ingreso',
+    'Invoice',
     'Packing List'
   ];
 
