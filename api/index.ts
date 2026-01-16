@@ -95,6 +95,60 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
 const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchema)) as UserModel;
 
 // ============================================================
+// MODELO DE DOCUMENTOS (AIR SHIPMENTS)
+// ============================================================
+
+type TipoDocumentoAirShipment =
+  | 'Documento de transporte Internacional (AWB - Aereo y BL - Maritimo)'
+  | 'Facturas asociados al servicio';
+
+interface IAirShipmentDocumento {
+  shipmentId: string;
+  tipo: TipoDocumentoAirShipment;
+  nombreArchivo: string;
+  tipoArchivo: string;
+  tamanoBytes: number;
+  contenidoBase64: string;
+  subidoPor: string;   // email (currentUser.sub)
+  usuarioId: string;   // username (currentUser.username)
+}
+
+interface IAirShipmentDocumentoDoc extends IAirShipmentDocumento, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type AirShipmentDocumentoModel = mongoose.Model<IAirShipmentDocumentoDoc>;
+
+const AirShipmentDocumentoSchema = new mongoose.Schema<IAirShipmentDocumentoDoc>(
+  {
+    shipmentId: { type: String, required: true, index: true },
+    tipo: {
+      type: String,
+      required: true,
+      enum: [
+        'Documento de transporte Internacional (AWB - Aereo y BL - Maritimo)',
+        'Facturas asociados al servicio',
+      ],
+    },
+    nombreArchivo: { type: String, required: true },
+    tipoArchivo: { type: String, required: true },
+    tamanoBytes: { type: Number, required: true },
+    contenidoBase64: { type: String, required: true },
+    subidoPor: { type: String, required: true },
+    usuarioId: { type: String, required: true, index: true },
+  },
+  { timestamps: true }
+);
+
+AirShipmentDocumentoSchema.index({ shipmentId: 1, usuarioId: 1 });
+
+const AirShipmentDocumento =
+  (mongoose.models.AirShipmentDocumento ||
+    mongoose.model<IAirShipmentDocumentoDoc>('AirShipmentDocumento', AirShipmentDocumentoSchema)) as AirShipmentDocumentoModel;
+
+
+// ============================================================
 // MODELO DE DOCUMENTOS
 // ============================================================
 
@@ -1259,6 +1313,208 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
     }
+
+    // ============================================================
+    // RUTAS DE DOCUMENTOS (AIR SHIPMENTS)
+    // ============================================================
+
+    // POST /api/air-shipments/documentos/upload
+    if (path === '/api/air-shipments/documentos/upload' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+
+        if (!currentUser || !currentUser.sub || !currentUser.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const { shipmentId, tipo, nombreArchivo, contenidoBase64 } = req.body;
+
+        if (!shipmentId || !tipo || !nombreArchivo || !contenidoBase64) {
+          return res.status(400).json({
+            error: 'Faltan campos requeridos: shipmentId, tipo, nombreArchivo, contenidoBase64',
+          });
+        }
+
+        const tiposPermitidos = [
+          'Documento de transporte Internacional (AWB - Aereo y BL - Maritimo)',
+          'Facturas asociados al servicio',
+        ];
+
+        if (!tiposPermitidos.includes(tipo)) {
+          return res.status(400).json({
+            error: `Tipo de documento inválido. Debe ser uno de: ${tiposPermitidos.join(', ')}`,
+          });
+        }
+
+        if (!validateBase64(contenidoBase64)) {
+          return res.status(400).json({ error: 'El archivo debe estar en formato base64 válido' });
+        }
+
+        const mimeType = getMimeTypeFromBase64(contenidoBase64);
+        if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
+          return res.status(400).json({ error: 'Tipo de archivo no permitido. Solo PDF, Excel y Word' });
+        }
+
+        const fileSize = getBase64Size(contenidoBase64);
+        if (fileSize > MAX_FILE_SIZE) {
+          return res.status(400).json({
+            error: `El archivo excede el tamaño máximo de 5MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`,
+          });
+        }
+
+        const nuevoDocumento = await AirShipmentDocumento.create({
+          shipmentId: String(shipmentId),
+          tipo,
+          nombreArchivo: String(nombreArchivo),
+          tipoArchivo: mimeType,
+          tamanoBytes: fileSize,
+          contenidoBase64,
+          subidoPor: currentUser.sub,
+          usuarioId: currentUser.username,
+        });
+
+        return res.status(201).json({
+          success: true,
+          message: 'Documento subido exitosamente',
+          documento: {
+            id: nuevoDocumento._id,
+            shipmentId: nuevoDocumento.shipmentId,
+            tipo: nuevoDocumento.tipo,
+            nombreArchivo: nuevoDocumento.nombreArchivo,
+            tipoArchivo: nuevoDocumento.tipoArchivo,
+            tamanoMB: (nuevoDocumento.tamanoBytes / 1024 / 1024).toFixed(2),
+            fechaSubida: nuevoDocumento.createdAt,
+          },
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[air-shipments/documentos] Error al subir:', error);
+        return res.status(500).json({ error: 'Error interno al subir documento' });
+      }
+    }
+
+    // GET /api/air-shipments/documentos/:shipmentId
+    if (
+      path?.startsWith('/api/air-shipments/documentos/') &&
+      !path.includes('/download/') &&
+      method === 'GET'
+    ) {
+      try {
+        const currentUser = requireAuth(req);
+
+        if (!currentUser || !currentUser.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const shipmentId = path.split('/api/air-shipments/documentos/')[1];
+        if (!shipmentId) return res.status(400).json({ error: 'shipmentId es requerido' });
+
+        const documentos = await AirShipmentDocumento.find({
+          shipmentId: String(shipmentId),
+          usuarioId: currentUser.username,
+        })
+          .select('-contenidoBase64')
+          .sort({ createdAt: -1 });
+
+        return res.json({
+          success: true,
+          documentos: documentos.map((doc) => ({
+            id: doc._id,
+            shipmentId: doc.shipmentId,
+            tipo: doc.tipo,
+            nombreArchivo: doc.nombreArchivo,
+            tipoArchivo: doc.tipoArchivo,
+            tamanoMB: (doc.tamanoBytes / 1024 / 1024).toFixed(2),
+            fechaSubida: doc.createdAt,
+          })),
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[air-shipments/documentos] Error al obtener:', error);
+        return res.status(500).json({ error: 'Error interno al obtener documentos' });
+      }
+    }
+
+    // GET /api/air-shipments/documentos/download/:documentoId
+    if (path?.startsWith('/api/air-shipments/documentos/download/') && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+
+        if (!currentUser || !currentUser.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const documentoId = path.split('/api/air-shipments/documentos/download/')[1];
+        if (!documentoId) return res.status(400).json({ error: 'documentoId es requerido' });
+
+        const documento = await AirShipmentDocumento.findById(documentoId);
+        if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
+
+        if (documento.usuarioId !== currentUser.username) {
+          return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
+        }
+
+        return res.json({
+          success: true,
+          documento: {
+            id: documento._id,
+            shipmentId: documento.shipmentId,
+            tipo: documento.tipo,
+            nombreArchivo: documento.nombreArchivo,
+            tipoArchivo: documento.tipoArchivo,
+            tamanoMB: (documento.tamanoBytes / 1024 / 1024).toFixed(2),
+            contenidoBase64: documento.contenidoBase64,
+            fechaSubida: documento.createdAt,
+          },
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[air-shipments/documentos] Error al descargar:', error);
+        return res.status(500).json({ error: 'Error interno al descargar documento' });
+      }
+    }
+
+    // DELETE /api/air-shipments/documentos/:documentoId
+    if (
+      path?.startsWith('/api/air-shipments/documentos/') &&
+      !path.includes('/download/') &&
+      method === 'DELETE'
+    ) {
+      try {
+        const currentUser = requireAuth(req);
+
+        if (!currentUser || !currentUser.username) {
+          return res.status(401).json({ error: 'Usuario no autenticado' });
+        }
+
+        const documentoId = path.split('/api/air-shipments/documentos/')[1];
+        if (!documentoId) return res.status(400).json({ error: 'documentoId es requerido' });
+
+        const documento = await AirShipmentDocumento.findById(documentoId);
+        if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
+
+        if (documento.usuarioId !== currentUser.username) {
+          return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+        }
+
+        await AirShipmentDocumento.findByIdAndDelete(documentoId);
+
+        return res.json({ success: true, message: 'Documento eliminado exitosamente' });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[air-shipments/documentos] Error al eliminar:', error);
+        return res.status(500).json({ error: 'Error interno al eliminar documento' });
+      }
+    }
+
 
     // Ruta no encontrada
     return res.status(404).json({ error: 'Ruta no encontrada' });

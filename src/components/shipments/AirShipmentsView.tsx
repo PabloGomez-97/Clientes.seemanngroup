@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import './AirShipmentsView.css'; // 👈 Importar el CSS
+import { DocumentosSectionAir } from '../Sidebar/Documents/DocumentosSectionAir';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer } from 'react-leaflet';
 
@@ -822,16 +823,18 @@ function AirShipmentsView() {
           const dateB = b.departure?.date ? new Date(b.departure.date) : new Date(0);
           return dateB.getTime() - dateA.getTime();
         });
-        setShipments(resorted);
-        setDisplayedShipments(resorted);
+        const filtered = resorted.filter(s => !String(s.number ?? '').toUpperCase().startsWith('SOG'));
+        setShipments(filtered);
+        setDisplayedShipments(filtered);
         
         const cacheKey = `airShipmentsCache_${user.username}`;
         localStorage.setItem(cacheKey, JSON.stringify(resorted));
         localStorage.setItem(`${cacheKey}_timestamp`, new Date().getTime().toString());
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       } else {
-        setShipments(sortedShipments);
-        setDisplayedShipments(sortedShipments);
+        const filtered = sortedShipments.filter(s => !String(s.number ?? '').toUpperCase().startsWith('SOG'));
+        setShipments(filtered);
+        setDisplayedShipments(filtered);
         setShowingAll(false);
         
         const cacheKey = `airShipmentsCache_${user.username}`;
@@ -1634,6 +1637,15 @@ function AirShipmentsView() {
                                     Información General
                                   </button>
                                   <button
+                                    className={`tab-button ${activeTabIndex === 5 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(shipmentId, 5);
+                                    }}
+                                  >
+                                  Documentos
+                                  </button>
+                                  <button
                                     className={`tab-button ${activeTabIndex === 1 ? 'active' : ''}`}
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -1741,6 +1753,13 @@ function AirShipmentsView() {
                                       lineHeight: '1.6'
                                     }}>
                                       {shipment.notes}
+                                    </div>
+                                  )}
+
+                                  {/* Tab 5: Documentos */}
+                                  {activeTabIndex === 5 && (
+                                    <div style={{ padding: '12px' }}>
+                                      <DocumentosSectionAir shipmentId={shipmentId} />
                                     </div>
                                   )}
                                 </div>
