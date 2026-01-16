@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { DocumentosSection } from './Documents/DocumentosSection';
+import './Css/QuotesAccordion.css';
 
 interface OutletContext {
   accessToken: string;
@@ -67,7 +68,7 @@ function RouteDisplay({ quote }: { quote: Quote }) {
   return (
     <div style={{ padding: '20px', backgroundColor: '#f9fafb', borderRadius: '8px', marginBottom: '20px' }}>
       <h6 style={{ margin: 0, color: '#1f2937', fontSize: '0.9rem', fontWeight: '600', marginBottom: '16px' }}>
-        🚚 Ruta de Envío
+        Ruta de Envío
       </h6>
       
       {/* Origen → Destino Principal */}
@@ -101,7 +102,7 @@ function RouteDisplay({ quote }: { quote: Quote }) {
           </div>
           {quote.deperture_Date && (
             <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
-              📅 {formatDate(quote.deperture_Date)}
+              {formatDate(quote.deperture_Date)}
             </div>
           )}
         </div>
@@ -153,7 +154,7 @@ function RouteDisplay({ quote }: { quote: Quote }) {
           </div>
           {quote.arrival_Date && (
             <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
-              📅 {formatDate(quote.arrival_Date)}
+              {formatDate(quote.arrival_Date)}
             </div>
           )}
         </div>
@@ -331,6 +332,9 @@ function QuotesView() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+
+  const [openAccordions, setOpenAccordions] = useState<(string | number)[]>([]);
+  const [activeTabs, setActiveTabs] = useState<Record<string | number, number>>({});
   
   const [searchDate, setSearchDate] = useState('');
   const [searchStartDate, setSearchStartDate] = useState('');
@@ -349,6 +353,30 @@ function QuotesView() {
   const tooltipMessages = {
     numero: "Número único de identificación de la cotización",
     gasto: "Se excluyen impuestos asociados"
+  };
+
+  // Agregar estas funciones helper:
+  const toggleAccordion = (quoteId: string | number) => {
+    setOpenAccordions(prev => {
+      const isOpen = prev.includes(quoteId);
+      
+      if (isOpen) {
+        return prev.filter(id => id !== quoteId);
+      } else {
+        if (prev.length >= 3) {
+          return [...prev.slice(1), quoteId];
+        }
+        return [...prev, quoteId];
+      }
+    });
+    
+    if (!activeTabs[quoteId]) {
+      setActiveTabs(prev => ({ ...prev, [quoteId]: 0 }));
+    }
+  };
+
+  const setActiveTab = (quoteId: string | number, tabIndex: number) => {
+    setActiveTabs(prev => ({ ...prev, [quoteId]: tabIndex }));
   };
 
   // Componente de Tooltip mejorado con posicionamiento inteligente
@@ -857,107 +885,106 @@ function QuotesView() {
           </p>
         </div>
 
-{/* Botones de acción */}
-<div style={{ 
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: '12px',
-  marginBottom: '20px',
-  flexWrap: 'wrap',
-  fontFamily: 'Poppins, sans-serif'
-}}>
-  <button 
-    onClick={openSearchModal}
-    style={{
-      backgroundColor: 'transparent',
-      color: '#111827',
-      border: '1px solid #d1d5db',
-      borderRadius: '6px',
-      padding: '8px 14px',
-      cursor: 'pointer',
-      fontSize: '0.85rem',
-      fontWeight: '500',
-      transition: 'background-color 0.2s ease, border-color 0.2s ease'
-    }}
-  >
-    Buscar
-  </button>
+        {/* Botones de acción */}
+        <div style={{ 
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '12px',
+          marginBottom: '20px',
+          flexWrap: 'wrap',
+          fontFamily: 'Poppins, sans-serif'
+        }}>
+          <button 
+            onClick={openSearchModal}
+            style={{
+              backgroundColor: 'transparent',
+              color: '#111827',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              padding: '8px 14px',
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              fontWeight: '500',
+              transition: 'background-color 0.2s ease, border-color 0.2s ease'
+            }}
+          >
+            Buscar
+          </button>
 
-  {/* Botón Ver más / Ver menos */}
-  {displayedQuotes.length > ITEMS_PER_PAGE && !showingAll && (
-    <button 
-      onClick={() => setShowAllQuotes(!showAllQuotes)}
-      style={{
-        backgroundColor: 'transparent',
-        color: '#3b82f6',
-        border: '1px solid #3b82f6',
-        borderRadius: '6px',
-        padding: '8px 14px',
-        cursor: 'pointer',
-        fontSize: '0.85rem',
-        fontWeight: '500',
-        transition: 'background-color 0.2s ease, border-color 0.2s ease'
-      }}
-    >
-      {showAllQuotes ? `Ver menos (${ITEMS_PER_PAGE})` : `Ver más (${displayedQuotes.length})`}
-    </button>
-  )}
+          {/* Botón Ver más / Ver menos */}
+          {displayedQuotes.length > ITEMS_PER_PAGE && !showingAll && (
+            <button 
+              onClick={() => setShowAllQuotes(!showAllQuotes)}
+              style={{
+                backgroundColor: 'transparent',
+                color: '#3b82f6',
+                border: '1px solid #3b82f6',
+                borderRadius: '6px',
+                padding: '8px 14px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '500',
+                transition: 'background-color 0.2s ease, border-color 0.2s ease'
+              }}
+            >
+              {showAllQuotes ? `Ver menos (${ITEMS_PER_PAGE})` : `Ver más (${displayedQuotes.length})`}
+            </button>
+          )}
 
-  {/* Botón Cargar Más */}
-  {hasMoreQuotes && !loadingMore && (
-    <button 
-      onClick={loadMoreQuotes}
-      disabled={loadingMore}
-      style={{
-        backgroundColor: '#111827',
-        color: '#ffffff',
-        border: '1px solid #111827',
-        borderRadius: '6px',
-        padding: '8px 14px',
-        cursor: loadingMore ? 'not-allowed' : 'pointer',
-        fontSize: '0.85rem',
-        fontWeight: '500',
-        opacity: loadingMore ? 0.6 : 1,
-        transition: 'background-color 0.2s ease'
-      }}
-    >
-      Cargar más
-    </button>
-  )}
+          {/* Botón Cargar Más */}
+          {hasMoreQuotes && !loadingMore && (
+            <button 
+              onClick={loadMoreQuotes}
+              disabled={loadingMore}
+              style={{
+                backgroundColor: '#111827',
+                color: '#ffffff',
+                border: '1px solid #111827',
+                borderRadius: '6px',
+                padding: '8px 14px',
+                cursor: loadingMore ? 'not-allowed' : 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '500',
+                opacity: loadingMore ? 0.6 : 1,
+                transition: 'background-color 0.2s ease'
+              }}
+            >
+              Cargar más
+            </button>
+          )}
 
-  {/* Indicador de carga */}
-  {loadingMore && (
-    <div style={{
-      padding: '8px 14px',
-      color: '#6b7280',
-      fontSize: '0.85rem',
-      fontWeight: '400'
-    }}>
-      Cargando…
-    </div>
-  )}
+          {/* Indicador de carga */}
+          {loadingMore && (
+            <div style={{
+              padding: '8px 14px',
+              color: '#6b7280',
+              fontSize: '0.85rem',
+              fontWeight: '400'
+            }}>
+              Cargando…
+            </div>
+          )}
 
-  {/* Limpiar filtros */}
-  {showingAll && (
-    <button 
-      onClick={clearSearch}
-      style={{
-        backgroundColor: 'transparent',
-        color: '#6b7280',
-        border: '1px solid #d1d5db',
-        borderRadius: '6px',
-        padding: '8px 14px',
-        cursor: 'pointer',
-        fontSize: '0.85rem',
-        fontWeight: '400',
-        transition: 'color 0.2s ease, border-color 0.2s ease'
-      }}
-    >
-      Limpiar filtros
-    </button>
-  )}
-</div>
-
+          {/* Limpiar filtros */}
+          {showingAll && (
+            <button 
+              onClick={clearSearch}
+              style={{
+                backgroundColor: 'transparent',
+                color: '#6b7280',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                padding: '8px 14px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '400',
+                transition: 'color 0.2s ease, border-color 0.2s ease'
+              }}
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
 
         {/* Modal de Búsqueda */}
         {showSearchModal && (
@@ -1217,7 +1244,7 @@ function QuotesView() {
           </div>
         )}
 
-        {/* Tabla de Cotizaciones */}
+        {/* Tabla de Cotizaciones con Accordion */}
         {!loading && displayedQuotes.length > 0 && (
           <div style={{ 
             backgroundColor: 'white',
@@ -1315,89 +1342,233 @@ function QuotesView() {
                 </thead>
                 <tbody>
                   {displayedQuotes.slice(0, showAllQuotes ? displayedQuotes.length : ITEMS_PER_PAGE).map((quote, index) => {
+                    const quoteId = quote.id || quote.number || index;
+                    const isOpen = openAccordions.includes(quoteId);
+                    const activeTabIndex = activeTabs[quoteId] || 0;
+
                     return (
-                      <tr 
-                        key={quote.id}
-                        onClick={() => openModal(quote)}
-                        style={{
-                          borderBottom: index < Math.min(displayedQuotes.length, ITEMS_PER_PAGE) - 1 ? '1px solid #f3f4f6' : 'none',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.15s ease',
-                          backgroundColor: 'white'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'white';
-                        }}
-                      >
-                        <td style={{ 
-                          padding: '16px 20px',
-                          fontWeight: '600',
-                          color: '#1f2937',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {quote.number || 'N/A'}
-                        </td>
-                        <td style={{ 
-                          padding: '16px 20px',
-                          color: '#4b5563',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {quote.date 
-                            ? new Date(quote.date).toLocaleDateString('es-CL', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                              })
-                            : '-'
-                          }
-                        </td>
-                        <td style={{ 
-                          padding: '16px 20px',
-                          color: '#4b5563'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontWeight: '600' }}>{quote.origin || '-'}</span>
-                            <span style={{ color: '#3b82f6' }}>→</span>
-                            <span style={{ fontWeight: '600' }}>{quote.destination || '-'}</span>
-                          </div>
-                        </td>
-                        <td style={{ 
-                          padding: '16px 20px',
-                          textAlign: 'center',
-                          color: '#4b5563',
-                          fontWeight: '600'
-                        }}>
-                          {quote.totalCargo_Pieces || '-'}
-                        </td>
-                        <td style={{ 
-                          padding: '16px 20px',
-                          color: '#4b5563',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          <div style={{ fontSize: '0.85rem' }}>
-                            {quote.totalCargo_VolumeDisplayValue && (
-                              <div>📦 {quote.totalCargo_VolumeDisplayValue}</div>
-                            )}
-                            {quote.totalCargo_WeightDisplayValue && (
-                              <div>⚖️ {quote.totalCargo_WeightDisplayValue}</div>
-                            )}
-                            {!quote.totalCargo_VolumeDisplayValue && !quote.totalCargo_WeightDisplayValue && '-'}
-                          </div>
-                        </td>
-                        <td style={{ 
-                          padding: '16px 20px',
-                          textAlign: 'right',
-                          color: '#10b981',
-                          fontWeight: '700',
-                          fontSize: '0.95rem',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {formatCLP(quote.totalCharge_IncomeDisplayValue) || '-'}
-                        </td>
-                      </tr>
+                      <>
+                        {/* Fila de la tabla */}
+                        <tr 
+                          key={`row-${quoteId}`}
+                          onClick={() => toggleAccordion(quoteId)}
+                          className={`quotes-table-row ${isOpen ? 'expanded' : ''}`}
+                          style={{
+                            borderBottom: !isOpen && index < Math.min(displayedQuotes.length, ITEMS_PER_PAGE) - 1 ? '1px solid #f3f4f6' : 'none',
+                          }}
+                        >
+                          <td style={{ 
+                            padding: '16px 20px',
+                            fontWeight: '600',
+                            color: '#1f2937',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {quote.number || 'N/A'}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#4b5563',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {quote.date 
+                              ? new Date(quote.date).toLocaleDateString('es-CL', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric'
+                                })
+                              : '-'
+                            }
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#4b5563'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontWeight: '600' }}>{quote.origin || '-'}</span>
+                              <span style={{ color: '#3b82f6' }}>→</span>
+                              <span style={{ fontWeight: '600' }}>{quote.destination || '-'}</span>
+                            </div>
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'center',
+                            color: '#4b5563',
+                            fontWeight: '600'
+                          }}>
+                            {quote.totalCargo_Pieces || '-'}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#4b5563',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            <div style={{ fontSize: '0.85rem' }}>
+                              {quote.totalCargo_VolumeDisplayValue && (
+                                <div>📦 {quote.totalCargo_VolumeDisplayValue}</div>
+                              )}
+                              {quote.totalCargo_WeightDisplayValue && (
+                                <div>⚖️ {quote.totalCargo_WeightDisplayValue}</div>
+                              )}
+                              {!quote.totalCargo_VolumeDisplayValue && !quote.totalCargo_WeightDisplayValue && '-'}
+                            </div>
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'right',
+                            color: '#10b981',
+                            fontWeight: '700',
+                            fontSize: '0.95rem',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {formatCLP(quote.totalCharge_IncomeDisplayValue) || '-'}
+                          </td>
+                        </tr>
+
+                        {/* Contenido del Accordion */}
+                        {isOpen && (
+                          <tr key={`accordion-${quoteId}`}>
+                            <td colSpan={6} style={{ padding: 0}}>
+                              <div className="accordion-content">
+                                {/* RouteDisplay encima de los tabs */}
+                                <div className="accordion-route-section">
+                                  <RouteDisplay quote={quote} />
+                                </div>
+
+                                {/* Tabs horizontales */}
+                                <div className="tabs-container">
+                                  <button
+                                    className={`tab-button ${activeTabIndex === 0 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(quoteId, 0);
+                                    }}
+                                  >
+                                    Información General
+                                  </button>
+                                  <button
+                                    className={`tab-button ${activeTabIndex === 1 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(quoteId, 1);
+                                    }}
+                                  >
+                                    Información de Carga
+                                  </button>
+                                  <button
+                                    className={`tab-button ${activeTabIndex === 2 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(quoteId, 2);
+                                    }}
+                                  >
+                                    Documentación Operativa
+                                  </button>
+                                  <button
+                                    className={`tab-button ${activeTabIndex === 3 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(quoteId, 3);
+                                    }}
+                                  >
+                                    Resumen Financiero
+                                  </button>
+                                  {quote.notes && quote.notes !== 'N/A' && (
+                                    <button
+                                      className={`tab-button ${activeTabIndex === 4 ? 'active' : ''}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveTab(quoteId, 4);
+                                      }}
+                                    >
+                                      Notas
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Contenido de los tabs */}
+                                <div className="tab-content">
+                                  {/* Tab 0: Información General */}
+                                  {activeTabIndex === 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                      <InfoField label="Número de Cotización" value={quote.number} />
+                                      <InfoField label="Fecha de Emisión" value={quote.date ? formatDate(quote.date) : null} />
+                                      <InfoField label="Válida Hasta" value={quote.validUntil_Date ? formatDate(quote.validUntil_Date) : null} />
+                                      <InfoField label="Días de Tránsito" value={quote.transitDays} />
+                                      <InfoField label="Referencia Cliente" value={quote.customerReference} />
+                                      <InfoField label="Modo de Transporte" value={quote.modeOfTransportation} />
+                                      <InfoField label="Tipo de Pago" value={quote.paymentType} />
+                                      <InfoField label="Carrier/Broker" value={quote.carrierBroker} fullWidth />
+                                    </div>
+                                  )}
+
+                                  {/* Tab 1: Información de Carga */}
+                                  {activeTabIndex === 1 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                      <InfoField label="Total de Piezas" value={quote.totalCargo_Pieces} />
+                                      <InfoField label="Contenedores" value={quote.totalCargo_Container} />
+                                      <InfoField label="Peso Total" value={quote.totalCargo_WeightDisplayValue} />
+                                      <InfoField label="Volumen Total" value={quote.totalCargo_VolumeDisplayValue} />
+                                      <InfoField label="Peso Volumétrico" value={quote.totalCargo_VolumeWeightDisplayValue} />
+                                      <InfoField label="Carga Peligrosa" value={quote.hazardous} />
+                                      <InfoField label="Estado de Carga" value={quote.cargoStatus} />
+                                    </div>
+                                  )}
+
+                                  {/* Tab 2: Documentación Operativa */}
+                                  {activeTabIndex === 2 && (
+                                    <DocumentosSection quoteId={String(quote.id || quote.number || '')} />
+                                  )}
+
+                                  {/* Tab 3: Resumen Financiero */}
+                                  {activeTabIndex === 3 && (
+                                    <div style={{
+                                      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                      borderRadius: '8px',
+                                      padding: '20px',
+                                      border: '2px solid rgba(16, 185, 129, 0.2)',
+                                      textAlign: 'center'
+                                    }}>
+                                      <div style={{
+                                        fontSize: '0.85rem',
+                                        color: '#6b7280',
+                                        marginBottom: '8px',
+                                        fontWeight: '600',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                      }}>
+                                        Gasto Total (No incluye impuestos)
+                                      </div>
+                                      <div style={{
+                                        fontSize: '2rem',
+                                        fontWeight: '700',
+                                        color: '#10b981'
+                                      }}>
+                                        {formatCLP(quote.totalCharge_IncomeDisplayValue) || '$0 CLP'}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Tab 4: Notas */}
+                                  {activeTabIndex === 4 && quote.notes && quote.notes !== 'N/A' && (
+                                    <div style={{ 
+                                      padding: '12px',
+                                      backgroundColor: '#fffbeb',
+                                      borderRadius: '6px',
+                                      border: '1px solid #fde047',
+                                      color: '#713f12',
+                                      fontSize: '0.875rem',
+                                      whiteSpace: 'pre-wrap',
+                                      lineHeight: '1.6'
+                                    }}>
+                                      {quote.notes}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     );
                   })}
                 </tbody>
@@ -1479,7 +1650,7 @@ function QuotesView() {
             >
               {/* Header del Modal */}
               <div style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                backgroundColor: '#1F2937',
                 padding: '24px',
                 color: 'white'
               }}>
@@ -1495,7 +1666,7 @@ function QuotesView() {
                     </h5>
                     {selectedQuote.date && (
                       <div style={{ fontSize: '0.9rem', opacity: 0.9 }}>
-                        📅 {formatDate(selectedQuote.date)}
+                       {formatDate(selectedQuote.date)}
                       </div>
                     )}
                   </div>
@@ -1532,7 +1703,7 @@ function QuotesView() {
                 <RouteDisplay quote={selectedQuote} />
 
                 {/* Información General */}
-                <CollapsibleSection title="Información General" defaultOpen={true} icon="📋">
+                <CollapsibleSection title="Información General" defaultOpen={false} icon="">
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
                     <InfoField label="Número de Cotización" value={selectedQuote.number} />
                     <InfoField label="Fecha de Emisión" value={selectedQuote.date ? formatDate(selectedQuote.date) : null} />
@@ -1546,7 +1717,7 @@ function QuotesView() {
                 </CollapsibleSection>
 
                 {/* Información de Carga */}
-                <CollapsibleSection title="Información de Carga" defaultOpen={false} icon="📦">
+                <CollapsibleSection title="Información de Carga" defaultOpen={false} icon="">
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
                     <InfoField label="Total de Piezas" value={selectedQuote.totalCargo_Pieces} />
                     <InfoField label="Contenedores" value={selectedQuote.totalCargo_Container} />
@@ -1558,12 +1729,12 @@ function QuotesView() {
                   </div>
                 </CollapsibleSection>
 
-                <CollapsibleSection title="Documentos" defaultOpen={true} icon="📋">
+                <CollapsibleSection title="Documentación Operativa" defaultOpen={false} icon="">
                   <DocumentosSection quoteId={String(selectedQuote.id || selectedQuote.number || '')} />
                 </CollapsibleSection>
 
                 {/* Resumen Financiero - SOLO INGRESO */}
-                <CollapsibleSection title="Resumen Financiero" defaultOpen={false} icon="💰">
+                <CollapsibleSection title="Resumen Financiero" defaultOpen={false} icon="">
                   <div style={{
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     borderRadius: '8px',
@@ -1621,7 +1792,7 @@ function QuotesView() {
                 <button 
                   onClick={closeModal}
                   style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: '#1F2937',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',

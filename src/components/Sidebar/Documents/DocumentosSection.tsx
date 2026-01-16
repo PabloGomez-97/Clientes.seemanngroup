@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../auth/AuthContext';
 import './DocumentosSection.css';
 
@@ -24,7 +24,7 @@ interface Documento {
 }
 
 interface DocumentosSectionProps {
-  quoteId: string;
+  quoteId: string | number;
 }
 
 // ============================================================
@@ -38,8 +38,9 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [carpetasAbiertas, setCarpetasAbiertas] = useState<Set<TipoDocumento>>(new Set());
   
-  // Referencias para los inputs de archivo (uno por cada tipo)
+  // Referencias para los inputs de archivo
   const fileInputRefs = {
     'Certificado de Origen': useRef<HTMLInputElement>(null),
     'Póliza de seguro': useRef<HTMLInputElement>(null),
@@ -85,6 +86,22 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
   };
 
   // ============================================================
+  // TOGGLE CARPETA
+  // ============================================================
+
+  const toggleCarpeta = (tipo: TipoDocumento) => {
+    setCarpetasAbiertas(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(tipo)) {
+        newSet.delete(tipo);
+      } else {
+        newSet.add(tipo);
+      }
+      return newSet;
+    });
+  };
+
+  // ============================================================
   // SUBIR DOCUMENTO
   // ============================================================
 
@@ -97,7 +114,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       setError(`El archivo "${file.name}" excede el tamaño máximo de 5MB`);
-      event.target.value = ''; // Limpiar input
+      event.target.value = '';
       return;
     }
 
@@ -116,7 +133,6 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
       return;
     }
 
-    // Convertir a base64
     setUploading(true);
     setError(null);
     setSuccessMessage(null);
@@ -124,7 +140,6 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
     try {
       const base64 = await fileToBase64(file);
       
-      // Subir al backend
       const response = await fetch('/api/documentos/upload', {
         method: 'POST',
         headers: {
@@ -132,7 +147,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          quoteId,
+          quoteId: String(quoteId),
           tipo,
           nombreArchivo: file.name,
           contenidoBase64: base64
@@ -144,18 +159,13 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
         throw new Error(errorData.error || 'Error al subir documento');
       }
 
-      const data = await response.json();
-      
-      // Mostrar mensaje de éxito
       setSuccessMessage(`✅ "${file.name}" subido exitosamente`);
-      
-      // Recargar lista de documentos
       await loadDocumentos();
-      
-      // Limpiar input
       event.target.value = '';
       
-      // Limpiar mensaje después de 5 segundos
+      // Abrir la carpeta automáticamente
+      setCarpetasAbiertas(prev => new Set(prev).add(tipo));
+      
       setTimeout(() => setSuccessMessage(null), 5000);
 
     } catch (err: any) {
@@ -188,7 +198,6 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
 
       const data = await response.json();
       
-      // Descargar archivo desde base64
       const link = document.createElement('a');
       link.href = data.documento.contenidoBase64;
       link.download = nombreArchivo;
@@ -284,7 +293,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
   ];
 
   return (
-    <div className="documentos-section">
+    <div className="documentos-section-folder">
       {/* Mensajes */}
       {error && (
         <div className="alert alert-danger" role="alert">
@@ -317,90 +326,103 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
         </div>
       )}
 
-      {/* Lista de tipos de documentos */}
+      {/* Lista estilo explorador de archivos */}
       {!loading && (
-        <div className="documentos-grid">
+        <div className="folder-explorer">
           {tiposDocumento.map((tipo) => {
             const docsDelTipo = getDocumentosPorTipo(tipo);
+            const isOpen = carpetasAbiertas.has(tipo);
             
             return (
-              <div key={tipo} className="documento-card">
-                <div className="documento-header">
-                  <h6 className="documento-titulo">{tipo}</h6>
-                  <span className="badge bg-secondary">{docsDelTipo.length}</span>
+              <div key={tipo} className="folder-item">
+                {/* Header de la carpeta */}
+                <div 
+                  className="folder-header"
+                  onClick={() => toggleCarpeta(tipo)}
+                >
+                  <div className="folder-left">
+                    <span className="folder-icon">🗀</span>
+                    <span className="folder-name">{tipo}</span>
+                  </div>
+                  <div className="folder-right">
+                    <span className="folder-count">({docsDelTipo.length})</span>
+                    <span className={`folder-arrow ${isOpen ? 'open' : ''}`}>▶</span>
+                  </div>
                 </div>
 
-                {/* Botón de subir */}
-                <div className="upload-section">
-                  <input
-                    ref={fileInputRefs[tipo]}
-                    type="file"
-                    accept=".pdf,.xls,.xlsx,.doc,.docx"
-                    onChange={(e) => handleFileSelect(tipo, e)}
-                    style={{ display: 'none' }}
-                    disabled={uploading}
-                  />
-                  
-                  <button
-                    className="btn btn-sm btn-outline-primary w-100"
-                    onClick={() => fileInputRefs[tipo].current?.click()}
-                    disabled={uploading}
-                  >
-                    {uploading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" />
-                        Subiendo...
-                      </>
-                    ) : (
-                      <>
-                        📤 Subir archivo
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Lista de documentos subidos */}
-                {docsDelTipo.length > 0 && (
-                  <div className="documentos-lista">
-                    {docsDelTipo.map((doc) => (
-                      <div key={doc.id} className="documento-item">
-                        <div className="documento-info">
-                          <span className="documento-icono">
-                            {getIconoPorTipo(doc.tipoArchivo)}
-                          </span>
-                          <div className="documento-detalles">
-                            <div className="documento-nombre">{doc.nombreArchivo}</div>
-                            <div className="documento-meta">
-                              {doc.tamanoMB} MB • {formatFecha(doc.fechaSubida)}
+                {/* Contenido de la carpeta (colapsable) */}
+                {isOpen && (
+                  <div className="folder-content">
+                    {/* Lista de archivos */}
+                    {docsDelTipo.length > 0 ? (
+                      <div className="files-list">
+                        {docsDelTipo.map((doc) => (
+                          <div key={doc.id} className="file-item">
+                            <div className="file-info">
+                              <span className="file-icon">
+                                {getIconoPorTipo(doc.tipoArchivo)}
+                              </span>
+                              <div className="file-details">
+                                <div className="file-name">{doc.nombreArchivo}</div>
+                                <div className="file-meta">
+                                  {doc.tamanoMB} MB • {formatFecha(doc.fechaSubida)}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="file-actions">
+                              <button
+                                className="btn-file-action"
+                                onClick={() => handleDownload(doc.id, doc.nombreArchivo)}
+                                title="Descargar"
+                              >
+                                ⬇️
+                              </button>
+                              <button
+                                className="btn-file-action delete"
+                                onClick={() => handleDelete(doc.id, doc.nombreArchivo)}
+                                title="Eliminar"
+                              >
+                                🗑️
+                              </button>
                             </div>
                           </div>
-                        </div>
-                        
-                        <div className="documento-acciones">
-                          <button
-                            className="btn btn-sm btn-link text-primary p-0 me-2"
-                            onClick={() => handleDownload(doc.id, doc.nombreArchivo)}
-                            title="Descargar"
-                          >
-                            ⬇️
-                          </button>
-                          <button
-                            className="btn btn-sm btn-link text-danger p-0"
-                            onClick={() => handleDelete(doc.id, doc.nombreArchivo)}
-                            title="Eliminar"
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    ) : (
+                      <div className="empty-folder">
+                        <small className="text-muted">Sin documentos</small>
+                      </div>
+                    )}
 
-                {/* Mensaje cuando no hay documentos */}
-                {docsDelTipo.length === 0 && (
-                  <div className="sin-documentos">
-                    <small className="text-muted">Sin documentos</small>
+                    {/* Botón de subir archivo - MOVIDO AL FINAL */}
+                    <div className="upload-area">
+                      <input
+                        ref={fileInputRefs[tipo]}
+                        type="file"
+                        accept=".pdf,.xls,.xlsx,.doc,.docx"
+                        onChange={(e) => handleFileSelect(tipo, e)}
+                        style={{ display: 'none' }}
+                        disabled={uploading}
+                      />
+                      
+                      <button
+                        className="btn-upload-folder"
+                        onClick={() => fileInputRefs[tipo].current?.click()}
+                        disabled={uploading}
+                      >
+                        {uploading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" />
+                            Subiendo...
+                          </>
+                        ) : (
+                          <>
+                            📤 Subir archivo
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
