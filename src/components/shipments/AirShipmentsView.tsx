@@ -717,6 +717,8 @@ function AirShipmentsView() {
   const [displayedShipments, setDisplayedShipments] = useState<AirShipment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openAccordions, setOpenAccordions] = useState<(string | number)[]>([]);
+  const [activeTabs, setActiveTabs] = useState<Record<string | number, number>>({});
   
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -853,6 +855,78 @@ function AirShipmentsView() {
     const nextPage = currentPage + 1;
     setCurrentPage(nextPage);
     fetchAirShipments(nextPage, true);
+  };
+
+  // Función para obtener la ruta de la bandera
+  const getFlagPath = (locationName: string | undefined) => {
+    if (!locationName) return null;
+    // Limpiar el nombre: reemplazar caracteres no válidos en nombres de archivo
+    const cleanName = locationName
+      .trim()
+      .replace(/\//g, '-')  // Reemplazar / por -
+      .replace(/\\/g, '-')  // Reemplazar \ por -
+      .replace(/:/g, '-')   // Reemplazar : por -
+      .replace(/\*/g, '')   // Eliminar *
+      .replace(/\?/g, '')   // Eliminar ?
+      .replace(/"/g, '')    // Eliminar "
+      .replace(/</g, '')    // Eliminar <
+      .replace(/>/g, '')    // Eliminar >
+      .replace(/\|/g, '-'); // Reemplazar | por -
+    
+    return `/paises/${cleanName}.png`;
+  };
+
+  // Componente para mostrar ubicación con bandera
+  const LocationWithFlag = ({ location }: { location: string | undefined }) => {
+    if (!location) return <>-</>;
+    
+    const flagPath = getFlagPath(location);
+    
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {flagPath && (
+          <img 
+            src={flagPath}
+            alt={location}
+            style={{ 
+              width: '20px', 
+              height: '15px', 
+              objectFit: 'cover',
+              borderRadius: '2px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
+        <span style={{ fontWeight: '600' }}>{location}</span>
+      </div>
+    );
+  };
+
+  // Funciones para manejar accordion
+  const toggleAccordion = (shipmentId: string | number) => {
+    setOpenAccordions(prev => {
+      const isOpen = prev.includes(shipmentId);
+      
+      if (isOpen) {
+        return prev.filter(id => id !== shipmentId);
+      } else {
+        if (prev.length >= 3) {
+          return [...prev.slice(1), shipmentId];
+        }
+        return [...prev, shipmentId];
+      }
+    });
+    
+    if (!activeTabs[shipmentId]) {
+      setActiveTabs(prev => ({ ...prev, [shipmentId]: 0 }));
+    }
+  };
+
+  const setActiveTab = (shipmentId: string | number, tabIndex: number) => {
+    setActiveTabs(prev => ({ ...prev, [shipmentId]: tabIndex }));
   };
 
   useEffect(() => {
@@ -1316,286 +1390,424 @@ function AirShipmentsView() {
         </div>
       )}
 
-      {/* Tabla de Air-Shipments */}
-      {!loading && displayedShipments.length > 0 && (
-        <div style={{ 
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          {/* Tabla */}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ 
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '0.875rem'
-            }}>
-              <thead>
-                <tr style={{ 
-                  backgroundColor: '#f9fafb',
-                  borderBottom: '2px solid #e5e7eb'
-                }}>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'left',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Número
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'left',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Waybill
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'left',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    minWidth: '200px'
-                  }}>
-                    Consignatario
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Fecha Salida
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    minWidth: '150px'
-                  }}>
-                    Fecha Llegada
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Carrier
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedShipments.map((shipment, index) => {
-                  const isDelivered = !!shipment.proofOfDelivery?.podDelivery;
-                  const isInCustoms = shipment.customsReleased || !!shipment.importSection?.entry;
-                  const hasArrived = shipment.arrival && new Date(shipment.arrival) <= new Date();
-                  const inTransit = !!shipment.departure;
-                  
-                  let statusLabel = 'Pendiente';
-                  let statusColor = '#9ca3af';
-                  let statusBg = '#f3f4f6';
-                  
-                  if (isDelivered) {
-                    statusLabel = 'Entregado';
-                    statusColor = '#059669';
-                    statusBg = '#d1fae5';
-                  } else if (isInCustoms) {
-                    statusLabel = 'En Aduana';
-                    statusColor = '#d97706';
-                    statusBg = '#fef3c7';
-                  } else if (hasArrived) {
-                    statusLabel = 'Arribado';
-                    statusColor = '#2563eb';
-                    statusBg = '#dbeafe';
-                  } else if (inTransit) {
-                    statusLabel = 'En Tránsito';
-                    statusColor = '#7c3aed';
-                    statusBg = '#ede9fe';
-                  }
-
-                  return (
-                    <tr 
-                      key={shipment.id}
-                      onClick={() => openModal(shipment)}
-                      style={{
-                        borderBottom: index < displayedShipments.length - 1 ? '1px solid #f3f4f6' : 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.15s ease',
-                        backgroundColor: 'white'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'white';
-                      }}
-                    >
-                      <td style={{ 
-                        padding: '16px 20px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {shipment.number || 'N/A'}
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        color: '#3b82f6',
-                        fontWeight: '500',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {shipment.waybillNumber || '-'}
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        color: '#4b5563'
-                      }}>
-                        {shipment.consignee?.name || '-'}
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        textAlign: 'center',
-                        color: '#4b5563',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {shipment.departure && shipment.departure.displayDate && shipment.departure.displayDate.trim() !== ''
-                          ? (() => {
-                              try {
-                                const [month, day, year] = shipment.departure.displayDate.split('/');
-                                const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                                return date.toLocaleDateString('es-CL', { 
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric'
-                                });
-                              } catch {
-                                return shipment.departure.displayDate;
-                              }
-                            })()
-                          : '-'
-                        }
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        textAlign: 'center',
-                        color: '#4b5563',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {shipment.arrival && shipment.arrival.displayDate && shipment.arrival.displayDate.trim() !== ''
-                          ? (() => {
-                              try {
-                                const [month, day, year] = shipment.arrival.displayDate.split('/');
-                                const date = new Date(
-                                  parseInt(year),
-                                  parseInt(month) - 1,
-                                  parseInt(day)
-                                );
-                                return date.toLocaleDateString('es-CL', {
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric'
-                                });
-                              } catch {
-                                return shipment.arrival.displayDate;
-                              }
-                            })()
-                          : '-'
-                        }
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        textAlign: 'center',
-                        color: '#4b5563'
-                      }}>
-                        {shipment.carrier?.name || '-'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Footer de la tabla */}
-          <div style={{
-            padding: '16px 20px',
-            backgroundColor: '#f9fafb',
-            borderTop: '1px solid #e5e7eb',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
+ {/* Tabla de Air-Shipments con Accordion */}
+        {!loading && displayedShipments.length > 0 && (
+          <div style={{ 
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            overflow: 'visible',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            border: '1px solid #e5e7eb'
           }}>
-            <div style={{ 
-              fontSize: '0.875rem',
-              color: '#6b7280'
-            }}>
-              Mostrando <strong style={{ color: '#1f2937' }}>{displayedShipments.length}</strong> envíos
-              {!hasMoreShipments && <span> (todos cargados)</span>}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ 
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.875rem'
+              }}>
+                <thead>
+                  <tr style={{ 
+                    backgroundColor: '#f9fafb',
+                    borderBottom: '2px solid #e5e7eb'
+                  }}>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Número
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Waybill
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      minWidth: '200px'
+                    }}>
+                      Consignatario
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Fecha Salida
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      minWidth: '150px'
+                    }}>
+                      Fecha Llegada
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Carrier
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedShipments.map((shipment, index) => {
+                    const shipmentId = shipment.id || shipment.number || index;
+                    const isOpen = openAccordions.includes(shipmentId);
+                    const activeTabIndex = activeTabs[shipmentId] || 0;
+
+                    const isDelivered = !!shipment.proofOfDelivery?.podDelivery;
+                    const isInCustoms = shipment.customsReleased || !!shipment.importSection?.entry;
+                    const hasArrived = shipment.arrival && new Date(shipment.arrival) <= new Date();
+                    const inTransit = !!shipment.departure;
+                    
+                    let statusLabel = 'Pendiente';
+                    let statusColor = '#9ca3af';
+                    let statusBg = '#f3f4f6';
+                    
+                    if (isDelivered) {
+                      statusLabel = 'Entregado';
+                      statusColor = '#059669';
+                      statusBg = '#d1fae5';
+                    } else if (isInCustoms) {
+                      statusLabel = 'En Aduana';
+                      statusColor = '#d97706';
+                      statusBg = '#fef3c7';
+                    } else if (hasArrived) {
+                      statusLabel = 'Arribado';
+                      statusColor = '#2563eb';
+                      statusBg = '#dbeafe';
+                    } else if (inTransit) {
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      statusLabel = 'En Tránsito';
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      statusColor = '#7c3aed';
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      statusBg = '#ede9fe';
+                    }
+
+                    return (
+                      <>
+                        {/* Fila de la tabla */}
+                        <tr 
+                          key={`row-${shipmentId}`}
+                          onClick={() => toggleAccordion(shipmentId)}
+                          className={`shipments-table-row ${isOpen ? 'expanded' : ''}`}
+                          style={{
+                            borderBottom: !isOpen && index < displayedShipments.length - 1 ? '1px solid #f3f4f6' : 'none',
+                          }}
+                        >
+                          <td style={{ 
+                            padding: '16px 20px',
+                            fontWeight: '600',
+                            color: '#1f2937',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {shipment.number || 'N/A'}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#3b82f6',
+                            fontWeight: '500',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {shipment.waybillNumber || '-'}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#4b5563'
+                          }}>
+                            {shipment.consignee?.name || '-'}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'center',
+                            color: '#4b5563',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {shipment.departure && shipment.departure.displayDate && shipment.departure.displayDate.trim() !== ''
+                              ? (() => {
+                                  try {
+                                    const [month, day, year] = shipment.departure.displayDate.split('/');
+                                    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                    return date.toLocaleDateString('es-CL', { 
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric'
+                                    });
+                                  } catch {
+                                    return shipment.departure.displayDate;
+                                  }
+                                })()
+                              : '-'
+                            }
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'center',
+                            color: '#4b5563',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {shipment.arrival && shipment.arrival.displayDate && shipment.arrival.displayDate.trim() !== ''
+                              ? (() => {
+                                  try {
+                                    const [month, day, year] = shipment.arrival.displayDate.split('/');
+                                    const date = new Date(
+                                      parseInt(year),
+                                      parseInt(month) - 1,
+                                      parseInt(day)
+                                    );
+                                    return date.toLocaleDateString('es-CL', {
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric'
+                                    });
+                                  } catch {
+                                    return shipment.arrival.displayDate;
+                                  }
+                                })()
+                              : '-'
+                            }
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'center',
+                            color: '#4b5563'
+                          }}>
+                            {shipment.carrier?.name || '-'}
+                          </td>
+                        </tr>
+
+                        {/* Contenido del Accordion */}
+                        {isOpen && (
+                          <tr key={`accordion-${shipmentId}`}>
+                            <td colSpan={6} style={{ padding: 0, borderTop: '3px solid #1F2937' }}>
+                              <div className="accordion-content">
+                                {/* Timeline Visual encima de los tabs */}
+                                <div className="accordion-timeline-section">
+                                  <ShipmentTimeline shipment={shipment} />
+                                </div>
+
+                                {/* Tabs horizontales */}
+                                <div className="tabs-container">
+                                  <button
+                                    className={`tab-button ${activeTabIndex === 0 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(shipmentId, 0);
+                                    }}
+                                  >
+                                    Información General
+                                  </button>
+                                  <button
+                                    className={`tab-button ${activeTabIndex === 1 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(shipmentId, 1);
+                                    }}
+                                  >
+                                    Origen y Destino
+                                  </button>
+                                  {shipment.commodities && shipment.commodities.length > 0 && (
+                                    <button
+                                      className={`tab-button ${activeTabIndex === 2 ? 'active' : ''}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveTab(shipmentId, 2);
+                                      }}
+                                    >
+                                      Carga
+                                    </button>
+                                  )}
+                                  {shipment.subShipments && shipment.subShipments.length > 0 && (
+                                    <button
+                                      className={`tab-button ${activeTabIndex === 3 ? 'active' : ''}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveTab(shipmentId, 3);
+                                      }}
+                                    >
+                                      Sub-Envíos ({shipment.subShipments.length})
+                                    </button>
+                                  )}
+                                  {shipment.notes && (
+                                    <button
+                                      className={`tab-button ${activeTabIndex === 4 ? 'active' : ''}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveTab(shipmentId, 4);
+                                      }}
+                                    >
+                                      Notas
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Contenido de los tabs */}
+                                <div className="tab-content">
+                                  {/* Tab 0: Información General */}
+                                  {activeTabIndex === 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                      <InfoField label="Número de Envío" value={shipment.number} />
+                                      <InfoField label="Waybill" value={shipment.waybillNumber} />
+                                      <InfoField label="Referencia Cliente" value={shipment.customerReference} />
+                                      <InfoField label="Número de Booking" value={shipment.bookingNumber} />
+                                      <InfoField label="Carrier" value={shipment.carrier?.name} fullWidth />
+                                      <InfoField label="Vuelo" value={shipment.flight} />
+                                      <InfoField label="Aeropuerto Salida" value={shipment.airportOfDeparture} />
+                                      <InfoField label="Aeropuerto Llegada" value={shipment.airportOfArrival} />
+                                      <InfoField label="Fecha Salida" value={shipment.departure ? formatDate(shipment.departure) : null} />
+                                      <InfoField label="Fecha Llegada" value={shipment.arrival ? formatDate(shipment.arrival) : null} />
+                                    </div>
+                                  )}
+
+                                  {/* Tab 1: Origen y Destino */}
+                                  {activeTabIndex === 1 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                      <InfoField label="Remitente (Shipper)" value={shipment.shipper?.name} fullWidth />
+                                      <InfoField label="Dirección Remitente" value={shipment.shipperAddress} fullWidth />
+                                      <InfoField label="Consignatario" value={shipment.consignee?.name} fullWidth />
+                                      <InfoField label="Dirección Consignatario" value={shipment.consigneeAddress} fullWidth />
+                                      <InfoField label="Notify Party" value={shipment.notifyParty?.name || shipment.notifyPartyAddress} fullWidth />
+                                      <InfoField label="Agente Forwarding" value={shipment.forwardingAgent?.name} />
+                                      <InfoField label="Agente Destino" value={shipment.destinationAgent?.name} />
+                                    </div>
+                                  )}
+
+                                  {/* Tab 2: Carga y Commodities */}
+                                  {activeTabIndex === 2 && shipment.commodities && shipment.commodities.length > 0 && (
+                                    <div>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                                        <InfoField label="Descripción de Carga" value={shipment.cargoDescription} fullWidth />
+                                        <InfoField label="Marcas de Carga" value={shipment.cargoMarks} fullWidth />
+                                        <InfoField label="Piezas Manifestadas" value={shipment.manifestedPieces} />
+                                        <InfoField label="Peso Manifestado" value={shipment.manifestedWeight ? `${shipment.manifestedWeight} kg` : null} />
+                                        <InfoField label="Pallets" value={shipment.pallets || shipment.manifestedPallets} />
+                                        <InfoField label="Carga Peligrosa" value={shipment.hazardous} />
+                                      </div>
+                                      <CommoditiesSection commodities={shipment.commodities} />
+                                    </div>
+                                  )}
+
+                                  {/* Tab 3: Sub-Shipments */}
+                                  {activeTabIndex === 3 && shipment.subShipments && shipment.subShipments.length > 0 && (
+                                    <SubShipmentsList subShipments={shipment.subShipments} />
+                                  )}
+
+                                  {/* Tab 4: Notas */}
+                                  {activeTabIndex === 4 && shipment.notes && (
+                                    <div style={{ 
+                                      padding: '12px',
+                                      backgroundColor: '#fffbeb',
+                                      borderRadius: '6px',
+                                      border: '1px solid #fde047',
+                                      color: '#713f12',
+                                      fontSize: '0.875rem',
+                                      whiteSpace: 'pre-wrap',
+                                      lineHeight: '1.6'
+                                    }}>
+                                      {shipment.notes}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            {hasMoreShipments && !loadingMore && (
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  loadMoreShipments();
-                }}
-                style={{
-                  backgroundColor: 'white',
-                  color: '#3b82f6',
-                  border: '1px solid #3b82f6',
-                  borderRadius: '6px',
-                  padding: '6px 16px',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  fontWeight: '600',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
-                  e.currentTarget.style.color = 'white';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.color = '#3b82f6';
-                }}
-              >
-                Cargar más
-              </button>
-            )}
-            {loadingMore && (
-              <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                Cargando...
+
+            {/* Footer de la tabla */}
+            <div style={{
+              padding: '16px 20px',
+              backgroundColor: '#f9fafb',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ 
+                fontSize: '0.875rem',
+                color: '#6b7280'
+              }}>
+                Mostrando <strong style={{ color: '#1f2937' }}>{displayedShipments.length}</strong> envíos
+                {!hasMoreShipments && <span> (todos cargados)</span>}
               </div>
-            )}
+              {hasMoreShipments && !loadingMore && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    loadMoreShipments();
+                  }}
+                  style={{
+                    backgroundColor: 'white',
+                    color: '#3b82f6',
+                    border: '1px solid #3b82f6',
+                    borderRadius: '6px',
+                    padding: '6px 16px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#3b82f6';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.color = '#3b82f6';
+                  }}
+                >
+                  Cargar más
+                </button>
+              )}
+              {loadingMore && (
+                <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                  Cargando...
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Modal de Detalles MEJORADO */}
       {showModal && selectedShipment && (
