@@ -333,6 +333,7 @@ function QuoteAPITester() {
   
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
+   const [valorMercaderia, setValorMercaderia] = useState<string>('');
 
   // ============================================================================
   // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
@@ -564,6 +565,12 @@ function QuoteAPITester() {
   // Función para calcular el seguro (TOTAL * 1.1 * 0.002)
   const calculateSeguro = (): number => {
     if (!seguroActivo || !tarifaAirFreight) return 0;
+
+    // Convertir valorMercaderia a número (reemplazar coma por punto)
+    const valorCarga = parseFloat(valorMercaderia.replace(',', '.')) || 0;
+    
+    // Si no hay valor de mercadería ingresado, retornar 0
+    if (valorCarga === 0) return 0;
     
     const totalSinSeguro = 
       45 + // Handling
@@ -572,7 +579,7 @@ function QuoteAPITester() {
       Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
       (tarifaAirFreight.precioConMarkup * pesoChargeable); // Air Freight
     
-    return Math.max(totalSinSeguro * 1.1 * 0.002, 25);
+    return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
   };
 
   // ============================================================================
@@ -2267,6 +2274,34 @@ function QuoteAPITester() {
                           Protección adicional para tu carga
                         </small>
                       </div>
+
+                      {/* Input para Valor de Mercadería - Solo visible si seguro está activo */}
+                       {seguroActivo && (
+                         <div className="mt-3 ms-4">
+                           <label htmlFor="valorMercaderia" className="form-label small">
+                               Valor de la Mercadería ({rutaSeleccionada.currency}) <span className="text-danger">*</span>
+                                 </label>
+                                 <input
+                                   type="text"
+                                   className="form-control"
+                                   id="valorMercaderia"
+                                   placeholder="Ej: 10000 o 10000,50"
+                                   value={valorMercaderia}
+                                   onChange={(e) => {
+                                     // Permitir solo números, punto y coma
+                                     const value = e.target.value;
+                                     if (value === '' || /^[\d,\.]+$/.test(value)) {
+                                       setValorMercaderia(value);
+                                     }
+                                   }}
+                                 />
+                                 <small className="text-muted">
+                                   Ingresa el valor total de tu carga
+                                 </small>
+                               </div>
+                             )}
+
+
                     </div>
 
                     {/* Mostrar el cargo del seguro si está activo */}
@@ -2276,6 +2311,13 @@ function QuoteAPITester() {
                         <strong className="text-info">{rutaSeleccionada.currency} {calculateSeguro().toFixed(2)}</strong>
                       </div>
                     )}
+
+                    {/* Mensaje de advertencia si el seguro está activo pero no hay valor de mercadería */}
+                            {seguroActivo && !valorMercaderia && (
+                              <div className="alert alert-warning py-2 mb-3" role="alert">
+                                <small>⚠️ Debes ingresar el valor de la mercadería para calcular el seguro</small>
+                              </div>
+                            )}
                     
                     <div className="d-flex justify-content-between">
                       <span className="fs-5 fw-bold">TOTAL:</span>
@@ -2330,7 +2372,7 @@ function QuoteAPITester() {
       {/* SECCIÓN 3: PAYLOAD Y RESULTADOS */}
       {/* ============================================================================ */}
 
-      {/* Payload */}
+      {/* Payload
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
@@ -2347,7 +2389,7 @@ function QuoteAPITester() {
             </pre>
           </div>
         </div>
-      )}
+      )}*/}
 
       {/* Error */}
       {error && (
