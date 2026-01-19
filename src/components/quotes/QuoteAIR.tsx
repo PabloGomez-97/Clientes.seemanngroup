@@ -66,17 +66,19 @@ const extractPrice = (priceStr: string | null): number => {
   return isNaN(price) ? 0 : price;
 };
 
-const extractCurrency = (priceStr: string | null): Currency => {
-  if (!priceStr) return 'USD';
-  const str = priceStr.toString().toUpperCase();
+const parseCurrency = (currencyStr: string | null): Currency => {
+  if (!currencyStr) return 'USD';
+  const str = currencyStr.toString().trim().toUpperCase();
   
-  if (str.includes('EUR')) return 'EUR';
-  if (str.includes('GBP')) return 'GBP';
-  if (str.includes('CAD')) return 'CAD';
-  if (str.includes('CHF')) return 'CHF';
-  if (str.includes('CLP')) return 'CLP';
-  if (str.includes('SEK')) return 'SEK';
-  return 'USD';
+  if (str === 'EUR') return 'EUR';
+  if (str === 'GBP') return 'GBP';
+  if (str === 'CAD') return 'CAD';
+  if (str === 'CHF') return 'CHF';
+  if (str === 'CLP') return 'CLP';
+  if (str === 'SEK') return 'SEK';
+  if (str === 'USD') return 'USD';
+  
+  return 'USD'; // Default fallback
 };
 
 const normalize = (str: string | null): string => {
@@ -139,7 +141,7 @@ const capitalize = (str: string): string => {
     .join('');
 };
 
-const getLowestPrice = (ruta: RutaAerea): { price: number; currency: Currency } => {
+const getLowestPrice = (ruta: RutaAerea, currency: Currency): { price: number; currency: Currency } => {
   const tarifas = [
     ruta.kg45,
     ruta.kg100,
@@ -152,12 +154,12 @@ const getLowestPrice = (ruta: RutaAerea): { price: number; currency: Currency } 
     if (tarifa) {
       return {
         price: extractPrice(tarifa),
-        currency: extractCurrency(tarifa)
+        currency: currency
       };
     }
   }
   
-  return { price: 0, currency: 'USD' };
+  return { price: 0, currency: currency };
 };
 
 const parseAEREO = (data: any[]): RutaAerea[] => {
@@ -181,15 +183,19 @@ const parseAEREO = (data: any[]): RutaAerea[] => {
     const routing = row[11];
     const remark1 = row[12];
     const remark2 = row[13];
+    const currency = row[14]; // 🆕 Nueva columna de moneda
 
     if (origin && destination && typeof origin === 'string' && typeof destination === 'string') {
+      // Parsear la moneda desde la columna [14]
+      const parsedCurrency = parseCurrency(currency);
+      
       const lowestPrice = getLowestPrice({
         kg45: kg45 ? kg45.toString().trim() : null,
         kg100: kg100 ? kg100.toString().trim() : null,
         kg300: kg300 ? kg300.toString().trim() : null,
         kg500: kg500 ? kg500.toString().trim() : null,
         kg1000: kg1000 ? kg1000.toString().trim() : null,
-      } as RutaAerea);
+      } as RutaAerea, parsedCurrency);
 
       rutas.push({
         id: `AEREO-${idCounter++}`,
@@ -211,7 +217,7 @@ const parseAEREO = (data: any[]): RutaAerea[] => {
         remark2: remark2 ? remark2.toString().trim() : null,
         row_number: i + 1,
         priceForComparison: lowestPrice.price,
-        currency: lowestPrice.currency
+        currency: parsedCurrency // 🆕 Usar la moneda parseada desde columna [14]
       });
     }
   }
@@ -259,7 +265,7 @@ const seleccionarTarifaPorPeso = (ruta: RutaAerea, pesoChargeable: number): Tari
   }
 
   const precio = extractPrice(rangoSeleccionado.tarifa);
-  const moneda = extractCurrency(rangoSeleccionado.tarifa);
+  const moneda = ruta.currency; // 🆕 Usar la moneda de la ruta (columna [14])
   const precioConMarkup = precio * 1.15; // 15% adicional para income
 
   return {
@@ -2324,7 +2330,7 @@ function QuoteAPITester() {
       {/* SECCIÓN 3: PAYLOAD Y RESULTADOS */}
       {/* ============================================================================ */}
 
-      {/* Payload  */}
+      {/* Payload */}
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
