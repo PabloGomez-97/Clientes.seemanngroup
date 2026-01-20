@@ -7,6 +7,9 @@ import { PDFTemplateFCL } from './Pdftemplate/Pdftemplatefcl';
 import { generatePDF, formatDateForFilename } from './Pdftemplate/Pdfutils';
 import ReactDOM from 'react-dom/client';
 
+// URL del Google Sheet publicado como CSV
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSk5sOHfl5pAPT8nU_zM7bMkOtR6wqMHbIlzsltXa-wFWEJCtwzllB-y50lM95dIg/pub?output=csv';
+
 interface OutletContext {
   accessToken: string;
   onLogout: () => void;
@@ -68,27 +71,76 @@ const CONTAINER_MAPPING = {
 
 const extractPrice = (priceStr: string | null): number => {
   if (!priceStr) return 0;
-  const match = priceStr.toString().match(/[\d,]+\.?\d*/);
-  if (!match) return 0;
-  return parseFloat(match[0].replace(/,/g, ''));
+  const cleaned = priceStr.toString().replace(/[^\d,\.]/g, '');
+  const normalized = cleaned.replace(',', '.');
+  const price = parseFloat(normalized);
+  return isNaN(price) ? 0 : price;
 };
 
-const extractCurrency = (priceStr: string | null): Currency => {
-  if (!priceStr) return 'USD';
-  const str = priceStr.toString().toUpperCase();
+const parseCurrency = (currencyStr: string | null): Currency => {
+  if (!currencyStr) return 'USD';
+  const str = currencyStr.toString().trim().toUpperCase();
   
-  if (str.includes('EUR')) return 'EUR';
-  if (str.includes('GBP')) return 'GBP';
-  if (str.includes('CAD')) return 'CAD';
-  if (str.includes('CHF')) return 'CHF';
-  if (str.includes('CLP')) return 'CLP';
-  if (str.includes('SEK')) return 'SEK';
-  return 'USD';
+  if (str === 'EUR') return 'EUR';
+  if (str === 'GBP') return 'GBP';
+  if (str === 'CAD') return 'CAD';
+  if (str === 'CHF') return 'CHF';
+  if (str === 'CLP') return 'CLP';
+  if (str === 'SEK') return 'SEK';
+  if (str === 'USD') return 'USD';
+  
+  return 'USD'; // Default fallback
 };
 
 const normalize = (str: string | null): string => {
   if (!str) return '';
   return str.toString().toLowerCase().trim();
+};
+
+// ============================================================================
+// FUNCIÓN PARA PARSEAR CSV CORRECTAMENTE
+// ============================================================================
+
+const parseCSV = (csvText: string): any[] => {
+  const lines = csvText.split('\n');
+  const result: any[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const row: any[] = [];
+    let currentField = '';
+    let insideQuotes = false;
+    
+    for (let j = 0; j < line.length; j++) {
+      const char = line[j];
+      const nextChar = line[j + 1];
+      
+      if (char === '"') {
+        if (insideQuotes && nextChar === '"') {
+          // Escaped quote
+          currentField += '"';
+          j++; // Skip next quote
+        } else {
+          // Toggle quote state
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === ',' && !insideQuotes) {
+        // End of field
+        row.push(currentField.trim());
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+    
+    // Add last field
+    row.push(currentField.trim());
+    result.push(row);
+  }
+  
+  return result;
 };
 
 const capitalize = (str: string): string => {
@@ -117,9 +169,11 @@ const parseFCL = (data: any[]): RutaFCL[] => {
     const tt = row[7];
     const remarks = row[8];
     const company = row[10];
+    const currency = row[11]; // 🆕 Nueva columna de moneda
 
     if (pol && pod && typeof pol === 'string' && typeof pod === 'string') {
-      const currency = extractCurrency(hq40);
+      // Parsear la moneda desde la columna [11]
+      const parsedCurrency = parseCurrency(currency);
       const price = extractPrice(hq40);
 
       rutas.push({
@@ -139,7 +193,7 @@ const parseFCL = (data: any[]): RutaFCL[] => {
         companyNormalized: normalize(company),
         row_number: i + 1,
         priceForComparison: price,
-        currency: currency
+        currency: parsedCurrency // 🆕 Usar la moneda parseada desde columna [11]
       });
     }
   }
@@ -167,6 +221,7 @@ function QuoteFCL() {
   const [rutas, setRutas] = useState<RutaFCL[]>([]);
   const [loadingRutas, setLoadingRutas] = useState(true);
   const [errorRutas, setErrorRutas] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   
   const [polSeleccionado, setPolSeleccionado] = useState<SelectOption | null>(null);
   const [podSeleccionado, setPodSeleccionado] = useState<SelectOption | null>(null);
@@ -190,19 +245,26 @@ function QuoteFCL() {
   const [valorMercaderia, setValorMercaderia] = useState<string>('');
 
   // ============================================================================
-  // CARGA DE DATOS FCL.XLSX
+  // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
   // ============================================================================
 
   useEffect(() => {
     const cargarRutas = async () => {
       try {
         setLoadingRutas(true);
-        const response = await fetch('/assets/FCL.xlsx');
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        setErrorRutas(null);
+        
+        // Fetch del CSV desde Google Sheets
+        const response = await fetch(GOOGLE_SHEET_CSV_URL);
+        
+        if (!response.ok) {
+          throw new Error(`Error al cargar datos: ${response.status} ${response.statusText}`);
+        }
+        
+        const csvText = await response.text();
+        
+        // Parsear CSV a array de arrays
+        const data = parseCSV(csvText);
         
         const rutasParsed = parseFCL(data);
         setRutas(rutasParsed);
@@ -234,15 +296,78 @@ function QuoteFCL() {
         setCarriersActivos(new Set(carriersUnicos));
 
         setLoadingRutas(false);
+        setLastUpdate(new Date());
+        console.log('✅ Tarifas FCL cargadas exitosamente desde Google Sheets:', rutasParsed.length, 'rutas');
       } catch (err) {
-        console.error('Error al cargar FCL.xlsx:', err);
-        setErrorRutas('No se pudo cargar el archivo FCL.xlsx');
+        console.error('❌ Error al cargar datos FCL desde Google Sheets:', err);
+        setErrorRutas(
+          'No se pudieron cargar las tarifas desde Google Sheets. ' +
+          'Por favor, verifica tu conexión a internet o contacta al administrador.'
+        );
         setLoadingRutas(false);
       }
     };
 
     cargarRutas();
   }, []);
+
+  // ============================================================================
+  // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
+  // ============================================================================
+  
+  const refrescarTarifas = async () => {
+    try {
+      setLoadingRutas(true);
+      setErrorRutas(null);
+      
+      // Fetch del CSV desde Google Sheets con timestamp para evitar caché
+      const timestamp = new Date().getTime();
+      const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&timestamp=${timestamp}`);
+      
+      if (!response.ok) {
+        throw new Error(`Error al cargar datos: ${response.status} ${response.statusText}`);
+      }
+      
+      const csvText = await response.text();
+      const data = parseCSV(csvText);
+      const rutasParsed = parseFCL(data);
+      setRutas(rutasParsed);
+
+      // Extraer POLs únicos
+      const polMap = new Map<string, string>();
+      rutasParsed.forEach(r => {
+        if (!polMap.has(r.polNormalized)) {
+          polMap.set(r.polNormalized, r.pol);
+        }
+      });
+      const polsUnicos = Array.from(polMap.entries())
+        .map(([normalized, original]) => ({
+          value: normalized,
+          label: capitalize(original)
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      setOpcionesPOL(polsUnicos);
+
+      // Extraer carriers únicos
+      const carriersUnicos = Array.from(
+        new Set(
+          rutasParsed
+            .map(r => r.carrier)
+            .filter(c => c && c !== 'N/A')
+        )
+      ).sort() as string[];
+      setCarriersDisponibles(carriersUnicos);
+      setCarriersActivos(new Set(carriersUnicos));
+
+      setLoadingRutas(false);
+      setLastUpdate(new Date());
+      console.log('✅ Tarifas FCL actualizadas exitosamente:', rutasParsed.length, 'rutas');
+    } catch (err) {
+      console.error('❌ Error al actualizar tarifas FCL:', err);
+      setErrorRutas('No se pudieron actualizar las tarifas. Por favor, intenta nuevamente.');
+      setLoadingRutas(false);
+    }
+  };
 
   // ============================================================================
   // ACTUALIZAR PODs CUANDO CAMBIA POL
@@ -792,7 +917,42 @@ function QuoteFCL() {
 
       <div className="card shadow-sm mb-4">
         <div className="card-body">
-          <h5 className="card-title mb-4">📍 Paso 1: Selecciona Ruta y Contenedor</h5>
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <h5 className="card-title mb-0">📍 Paso 1: Selecciona Ruta y Contenedor</h5>
+            <button
+              onClick={refrescarTarifas}
+              disabled={loadingRutas}
+              className="btn btn-sm btn-outline-primary"
+              title="Actualizar tarifas desde Google Sheets"
+            >
+              {loadingRutas ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Actualizando...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-arrow-clockwise me-1"></i>
+                  Actualizar Tarifas
+                </>
+              )}
+            </button>
+          </div>
+
+          {lastUpdate && !loadingRutas && !errorRutas && (
+            <div className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center justify-content-between" style={{ fontSize: '0.85rem' }}>
+              <span className="text-muted">
+                <i className="bi bi-clock-history me-1"></i>
+                Última actualización: {lastUpdate.toLocaleTimeString('es-CL', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </span>
+              <span className="badge bg-success">
+                {rutas.length} rutas disponibles
+              </span>
+            </div>
+          )}
 
           {loadingRutas ? (
             <div className="text-center py-5">
@@ -846,37 +1006,6 @@ function QuoteFCL() {
                   />
                 </div>
               </div>
-
-              {/* Filtro de Carriers */}
-              {polSeleccionado && podSeleccionado && (
-                <div className="border-top pt-3 mb-4">
-                  <label className="form-label fw-semibold mb-2">Carriers</label>
-                  <div className="d-flex flex-wrap gap-2">
-                    {carriersDisponibles.map(carrier => (
-                      <button
-                        key={carrier}
-                        type="button"
-                        className={`btn btn-sm ${
-                          carriersActivos.has(carrier)
-                            ? 'btn-primary'
-                            : 'btn-outline-secondary'
-                        }`}
-                        onClick={() => {
-                          const newSet = new Set(carriersActivos);
-                          if (newSet.has(carrier)) {
-                            newSet.delete(carrier);
-                          } else {
-                            newSet.add(carrier);
-                          }
-                          setCarriersActivos(newSet);
-                        }}
-                      >
-                        {carrier}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Rutas Disponibles */}
               {polSeleccionado && podSeleccionado && (

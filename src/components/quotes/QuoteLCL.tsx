@@ -9,6 +9,9 @@ import { PDFTemplateLCL } from './Pdftemplate/Pdftemplatelcl';
 import { generatePDF, formatDateForFilename } from './Pdftemplate/Pdfutils';
 import ReactDOM from 'react-dom/client';
 
+// URL del Google Sheet publicado como CSV
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT5T29WmDAI_z4RxlPtY3GoB3pm7NyBBiWZGc06cYRR1hg5fdFx7VEr3-i2geKxgw/pub?output=csv';
+
 interface OutletContext {
   accessToken: string;
   onLogout: () => void;
@@ -68,6 +71,52 @@ const capitalize = (str: string): string => {
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+};
+
+// ============================================================================
+// FUNCIÓN PARA PARSEAR CSV CORRECTAMENTE
+// ============================================================================
+
+const parseCSV = (csvText: string): any[] => {
+  const lines = csvText.split('\n');
+  const result: any[] = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const row: any[] = [];
+    let currentField = '';
+    let insideQuotes = false;
+    
+    for (let j = 0; j < line.length; j++) {
+      const char = line[j];
+      const nextChar = line[j + 1];
+      
+      if (char === '"') {
+        if (insideQuotes && nextChar === '"') {
+          // Escaped quote
+          currentField += '"';
+          j++; // Skip next quote
+        } else {
+          // Toggle quote state
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === ',' && !insideQuotes) {
+        // End of field
+        row.push(currentField.trim());
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+    
+    // Add last field
+    row.push(currentField.trim());
+    result.push(row);
+  }
+  
+  return result;
 };
 
 // ============================================================================
@@ -194,6 +243,7 @@ function QuoteLCL() {
   const [rutas, setRutas] = useState<RutaLCL[]>([]);
   const [loadingRutas, setLoadingRutas] = useState(true);
   const [errorRutas, setErrorRutas] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   
   const [polSeleccionado, setPolSeleccionado] = useState<SelectOption | null>(null);
   const [podSeleccionado, setPodSeleccionado] = useState<SelectOption | null>(null);
@@ -231,19 +281,26 @@ function QuoteLCL() {
   const [valorMercaderia, setValorMercaderia] = useState<string>('');
 
   // ============================================================================
-  // CARGA DE DATOS LCL.XLSX
+  // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
   // ============================================================================
 
   useEffect(() => {
     const cargarRutas = async () => {
       try {
         setLoadingRutas(true);
-        const response = await fetch('/assets/LCL.xlsx');
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        setErrorRutas(null);
+        
+        // Fetch del CSV desde Google Sheets
+        const response = await fetch(GOOGLE_SHEET_CSV_URL);
+        
+        if (!response.ok) {
+          throw new Error(`Error al cargar datos: ${response.status} ${response.statusText}`);
+        }
+        
+        const csvText = await response.text();
+        
+        // Parsear CSV a array de arrays
+        const data = parseCSV(csvText);
         
         const rutasParsed = parseLCL(data);
         setRutas(rutasParsed);
@@ -275,15 +332,78 @@ function QuoteLCL() {
         setOperadoresActivos(new Set(operadoresUnicos));
 
         setLoadingRutas(false);
+        setLastUpdate(new Date());
+        console.log('✅ Tarifas LCL cargadas exitosamente desde Google Sheets:', rutasParsed.length, 'rutas');
       } catch (err) {
-        console.error('Error al cargar LCL.xlsx:', err);
-        setErrorRutas('No se pudo cargar el archivo LCL.xlsx');
+        console.error('❌ Error al cargar datos LCL desde Google Sheets:', err);
+        setErrorRutas(
+          'No se pudieron cargar las tarifas desde Google Sheets. ' +
+          'Por favor, verifica tu conexión a internet o contacta al administrador.'
+        );
         setLoadingRutas(false);
       }
     };
 
     cargarRutas();
   }, []);
+
+  // ============================================================================
+  // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
+  // ============================================================================
+  
+  const refrescarTarifas = async () => {
+    try {
+      setLoadingRutas(true);
+      setErrorRutas(null);
+      
+      // Fetch del CSV desde Google Sheets con timestamp para evitar caché
+      const timestamp = new Date().getTime();
+      const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&timestamp=${timestamp}`);
+      
+      if (!response.ok) {
+        throw new Error(`Error al cargar datos: ${response.status} ${response.statusText}`);
+      }
+      
+      const csvText = await response.text();
+      const data = parseCSV(csvText);
+      const rutasParsed = parseLCL(data);
+      setRutas(rutasParsed);
+
+      // Extraer POLs únicos
+      const polMap = new Map<string, string>();
+      rutasParsed.forEach(r => {
+        if (!polMap.has(r.polNormalized)) {
+          polMap.set(r.polNormalized, r.pol);
+        }
+      });
+      const polsUnicos = Array.from(polMap.entries())
+        .map(([normalized, original]) => ({
+          value: normalized,
+          label: capitalize(original)
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      setOpcionesPOL(polsUnicos);
+
+      // Extraer operadores únicos
+      const operadoresUnicos = Array.from(
+        new Set(
+          rutasParsed
+            .map(r => r.operador)
+            .filter(o => o)
+        )
+      ).sort() as string[];
+      setOperadoresDisponibles(operadoresUnicos);
+      setOperadoresActivos(new Set(operadoresUnicos));
+
+      setLoadingRutas(false);
+      setLastUpdate(new Date());
+      console.log('✅ Tarifas LCL actualizadas exitosamente:', rutasParsed.length, 'rutas');
+    } catch (err) {
+      console.error('❌ Error al actualizar tarifas LCL:', err);
+      setErrorRutas('No se pudieron actualizar las tarifas. Por favor, intenta nuevamente.');
+      setLoadingRutas(false);
+    }
+  };
 
   // ============================================================================
   // ACTUALIZAR PODs CUANDO CAMBIA POL
@@ -867,7 +987,42 @@ function QuoteLCL() {
 
       <div className="card shadow-sm mb-4">
         <div className="card-body">
-          <h5 className="card-title mb-4">📍 Paso 1: Selecciona Ruta</h5>
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <h5 className="card-title mb-0">📍 Paso 1: Selecciona Ruta</h5>
+            <button
+              onClick={refrescarTarifas}
+              disabled={loadingRutas}
+              className="btn btn-sm btn-outline-primary"
+              title="Actualizar tarifas desde Google Sheets"
+            >
+              {loadingRutas ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Actualizando...
+                </>
+              ) : (
+                <>
+                  <i className="bi bi-arrow-clockwise me-1"></i>
+                  Actualizar Tarifas
+                </>
+              )}
+            </button>
+          </div>
+
+          {lastUpdate && !loadingRutas && !errorRutas && (
+            <div className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center justify-content-between" style={{ fontSize: '0.85rem' }}>
+              <span className="text-muted">
+                <i className="bi bi-clock-history me-1"></i>
+                Última actualización: {lastUpdate.toLocaleTimeString('es-CL', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </span>
+              <span className="badge bg-success">
+                {rutas.length} rutas disponibles
+              </span>
+            </div>
+          )}
 
           {loadingRutas ? (
             <div className="text-center py-5">
