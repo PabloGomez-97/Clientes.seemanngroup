@@ -1292,7 +1292,7 @@ function QuoteAPITester() {
       {/* SECCIÓN 1: SELECCIÓN DE RUTA - CON ACORDEÓN */}
       {/* ============================================================================ */}
 
-      <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '12px' }}>
+        <div className="card shadow-sm mb-4">
         {/* Header clickeable */}
         <div 
           className="card-header bg-white border-0 p-4"
