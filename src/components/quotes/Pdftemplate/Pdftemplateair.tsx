@@ -1,5 +1,16 @@
 import React from 'react';
 
+interface PieceData {
+  id: string;
+  length: number;
+  width: number;
+  height: number;
+  description?: string;
+  weight: number;
+  volume: number;
+  volumeWeight: number;
+}
+
 interface PDFTemplateAIRProps {
   customerName: string;
   origin: string;
@@ -32,6 +43,7 @@ interface PDFTemplateAIRProps {
   totalCharges: number;
   currency: string;
   overallMode: boolean;
+  piecesData?: PieceData[];
 }
 
 const formatNumber = (num: number): string => {
@@ -63,7 +75,8 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   charges,
   totalCharges,
   currency,
-  overallMode
+  overallMode,
+  piecesData
 }) => {
   // ===== Minimal / Traditional theme tokens =====
   const COLORS = {
@@ -318,25 +331,47 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style={{ ...tdStyle, ...center, fontWeight: 600 }}>{pieces}</td>
-              <td style={tdStyle}>{packageTypeName}</td>
-              {!overallMode && (
-                <td style={tdStyle}>
-                  {formatNumber(length)} × {formatNumber(width)} × {formatNumber(height)} cm
+            {overallMode ? (
+              <tr>
+                <td style={{ ...tdStyle, ...center, fontWeight: 600 }}>{pieces}</td>
+                <td style={tdStyle}>{packageTypeName}</td>
+                {!overallMode && (
+                  <td style={tdStyle}>
+                    {formatNumber(length)} × {formatNumber(width)} × {formatNumber(height)} cm
+                  </td>
+                )}
+                <td style={tdStyle}>{description}</td>
+                <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
+                  {formatNumber(totalWeight)} {weightUnit}
                 </td>
-              )}
-              <td style={tdStyle}>{description}</td>
-              <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
-                {formatNumber(totalWeight)} {weightUnit}
-              </td>
-              <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
-                {formatNumber(totalVolume)} {volumeUnit}
-              </td>
-              <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
-                {formatNumber(chargeableWeight)} {weightUnit}
-              </td>
-            </tr>
+                <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
+                  {formatNumber(totalVolume)} {volumeUnit}
+                </td>
+                <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
+                  {formatNumber(chargeableWeight)} {weightUnit}
+                </td>
+              </tr>
+            ) : (
+              piecesData && piecesData.length > 0 && piecesData.map((piece, idx) => (
+                <tr key={piece.id}>
+                  <td style={{ ...tdStyle, ...center, fontWeight: 600 }}>1</td>
+                  <td style={tdStyle}>{packageTypeName}</td>
+                  <td style={tdStyle}>
+                    {formatNumber(piece.length)} × {formatNumber(piece.width)} × {formatNumber(piece.height)} cm
+                  </td>
+                  <td style={tdStyle}>{piece.description || description}</td>
+                  <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
+                    {formatNumber(piece.weight)} {weightUnit}
+                  </td>
+                  <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
+                    {formatNumber(piece.volume)} {volumeUnit}
+                  </td>
+                  <td style={{ ...tdStyle, ...right, fontWeight: 600 }}>
+                    {formatNumber(piece.volumeWeight)} {weightUnit}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
 

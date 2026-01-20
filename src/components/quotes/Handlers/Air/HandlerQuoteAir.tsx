@@ -212,6 +212,22 @@ export interface TarifaSeleccionada {
   precioConMarkup: number;
 }
 
+export interface PieceData {
+  id: string;
+  packageType: string;
+  description: string;
+  length: number;
+  width: number;
+  height: number;
+  weight: number;
+  // Calculados
+  volume: number;
+  totalVolume: number;
+  volumeWeight: number;
+  totalVolumeWeight: number;
+  totalWeight: number;
+}
+
 // FUNCIÓN PARA SELECCIONAR TARIFA SEGÚN PESO CHARGEABLE
 export const seleccionarTarifaPorPeso = (ruta: RutaAerea, pesoChargeable: number): TarifaSeleccionada | null => {
   // Definir los rangos en orden ascendente
