@@ -1105,7 +1105,9 @@ function AirShipmentsView() {
               borderRadius: '12px',
               overflow: 'hidden',
               border: '1px solid #e5e7eb',
-              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+              zIndex: 1,
+              position: 'relative'
             }}>
               <MapContainer
                 center={[-33.4489, -70.6693]} // Coordenadas de Santiago, Chile

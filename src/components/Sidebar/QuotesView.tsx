@@ -696,9 +696,9 @@ function QuotesView() {
       
       // Ordenar las cotizaciones por fecha (más nueva primero)
       const sortedQuotes = quotesArray.sort((a, b) => {
-        const dateA = new Date(a.date || 0);
-        const dateB = new Date(b.date || 0);
-        return dateB.getTime() - dateA.getTime(); // Descendente (más nueva primero)
+        const numberA = parseInt(a.number?.replace(/\D/g, '') || '0', 10);
+        const numberB = parseInt(b.number?.replace(/\D/g, '') || '0', 10);
+        return numberB - numberA; // Descendente (mayor al menor)
       });
       
       // Si recibimos menos de 50 cotizaciones, no hay más páginas
@@ -708,9 +708,9 @@ function QuotesView() {
         // Agregar las nuevas cotizaciones a las existentes y re-ordenar todo
         const combined = [...quotes, ...sortedQuotes];
         const resorted = combined.sort((a, b) => {
-          const dateA = new Date(a.date || 0);
-          const dateB = new Date(b.date || 0);
-          return dateB.getTime() - dateA.getTime();
+          const numberA = parseInt(a.number?.replace(/\D/g, '') || '0', 10);
+          const numberB = parseInt(b.number?.replace(/\D/g, '') || '0', 10);
+          return numberB - numberA; // Descendente (mayor al menor)
         });
         setQuotes(resorted);
         setDisplayedQuotes(resorted);
@@ -1012,7 +1012,9 @@ function QuotesView() {
           borderRadius: '12px',
           overflow: 'hidden',
           border: '1px solid #e5e7eb',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          zIndex: 1,
+          position: 'relative'
         }}>
           <MapContainer
             center={[-33.4489, -70.6693]} // Coordenadas de Santiago, Chile
@@ -1044,14 +1046,28 @@ function QuotesView() {
               backgroundColor: 'white',
               color: '#111827',
               border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              padding: '8px 14px',
-              fontSize: '0.85rem',
-              fontWeight: '500',
+              borderRadius: '0.375rem',
+              padding: '0.625rem 1.25rem',
+              fontSize: '0.800rem',
+              fontWeight: '400',
               outline: 'none',
-              minWidth: '300px'
+              minWidth: '300px',
+              height: '38px',
+              display: 'flex',
+              alignItems: 'center'
             }}
           />
+
+            {/* Botón Actualizar */}
+          <div className="refresh-button-container">
+          <button 
+            onClick={refreshQuotes}
+            className="btn-refresh"
+            title="Actualizar lista de cotizaciones"
+          >
+            🔄 Actualizar
+          </button>
+        </div>
 
 
           {/* Botón Cargar Más */}
@@ -1426,6 +1442,18 @@ function QuotesView() {
                     </th>
                     <th style={{ 
                       padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Transporte
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
                       textAlign: 'center',
                       fontWeight: '600',
                       color: '#374151',
@@ -1514,6 +1542,13 @@ function QuotesView() {
                           </td>
                           <td style={{ 
                             padding: '16px 20px',
+                            color: '#4b5563',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {quote.modeOfTransportation || '-'}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
                             textAlign: 'center',
                             color: '#4b5563',
                             fontWeight: '600'
@@ -1550,7 +1585,7 @@ function QuotesView() {
                         {/* Contenido del Accordion */}
                         {isOpen && (
                           <tr key={`accordion-${quoteId}`}>
-                            <td colSpan={6} style={{ padding: 0}}>
+                            <td colSpan={7} style={{ padding: 0}}>
                               <div className="accordion-content">
                                 {/* RouteDisplay encima de los tabs */}
                                 <div className="accordion-route-section">
