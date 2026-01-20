@@ -287,11 +287,6 @@ function QuoteAPITester() {
     return Math.max(calculatedRate, 190);
   };
 
-  const calculateAWBRate = (weightKg: number, volumeWeightKg: number) => {
-    const chargeableWeight = Math.max(weightKg, volumeWeightKg);
-    return chargeableWeight * 0.15;
-  };
-
   // Función para calcular el seguro (TOTAL * 1.1 * 0.002)
   const calculateSeguro = (): number => {
     if (!seguroActivo || !tarifaAirFreight) return 0;
