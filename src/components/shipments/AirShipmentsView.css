@@ -153,3 +153,46 @@
   background-color: #f9fafb;
   min-height: 200px;
 }
+
+/* Botón Actualizar */
+.refresh-button-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.800rem;
+  font-weight: 400;
+  color: white;
+  background: linear-gradient(135deg, #348cd4 0%, #2c7ab8 100%);
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(52, 140, 212, 0.25);
+}
+
+.btn-refresh:hover {
+  background: linear-gradient(135deg, #2c7ab8 0%, #245d8f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(52, 140, 212, 0.35);
+}
+
+.btn-refresh:active {
+  transform: translateY(0);
+}
+
+.btn-refresh svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
+}
+
+.btn-refresh:hover svg {
+  transform: rotate(90deg);
+}

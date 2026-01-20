@@ -210,7 +210,7 @@ function CreateShipmentForm() {
                   </p>
                   <p className="mb-0">
                     ¿No conoce su AWB? Puede revisarlo en la sección{' '}
-                    <strong>Operaciones Aéreas</strong>, donde encontrará sus AWB disponibles en color azul.
+                    <strong>Operaciones Aéreas</strong>, donde encontrará sus AWB disponibles en NÚMEROS.
                   </p>
 
                   {/* Ayudame a colocar este div en el centro por favor*/}

@@ -1060,37 +1060,14 @@ function QuotesView() {
 
             {/* Botón Actualizar */}
           <div className="refresh-button-container">
-          <button 
-            onClick={refreshQuotes}
-            className="btn-refresh"
-            title="Actualizar lista de cotizaciones"
-          >
-            🔄 Actualizar
-          </button>
-        </div>
-
-
-          {/* Botón Cargar Más */}
-          {hasMoreQuotes && !loadingMore && (
             <button 
-              onClick={loadMoreQuotes}
-              disabled={loadingMore}
-              style={{
-                backgroundColor: '#111827',
-                color: '#ffffff',
-                border: '1px solid #111827',
-                borderRadius: '6px',
-                padding: '8px 14px',
-                cursor: loadingMore ? 'not-allowed' : 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: '500',
-                opacity: loadingMore ? 0.6 : 1,
-                transition: 'background-color 0.2s ease'
-              }}
+              onClick={refreshQuotes}
+              className="btn-refresh"
+              title="Actualizar lista de cotizaciones"
             >
-              Cargar más
+              🔄 Actualizar
             </button>
-          )}
+          </div>
 
           {/* Indicador de carga */}
           {loadingMore && (
