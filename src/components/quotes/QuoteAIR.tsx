@@ -2097,7 +2097,7 @@ function QuoteAPITester() {
       {/* SECCIÓN 3: PAYLOAD Y RESULTADOS */}
       {/* ============================================================================ */}
 
-      {/* Payload*/}
+      {/* Payload
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
@@ -2114,7 +2114,7 @@ function QuoteAPITester() {
             </pre>
           </div>
         </div>
-      )}
+      )}*/}
 
       {/* Error */}
       {error && (
