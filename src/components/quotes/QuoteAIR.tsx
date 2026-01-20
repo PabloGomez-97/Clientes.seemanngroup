@@ -1610,13 +1610,13 @@ function QuoteAPITester() {
       </div>
 
       {/* ============================================================================ */}
-      {/* SECCIÓN 2: DATOS DEL COMMODITY */}
+      {/* SECCIÓN 2: DATOS DEL CARGAMENTO */}
       {/* ============================================================================ */}
 
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
-            <h5 className="card-title mb-4">Paso 2: Datos del Commodity</h5>
+            <h5 className="card-title mb-4">Paso 2: Datos del cargamento</h5>
 
             {/* Switch Overall */}
             <div className="form-check form-switch mb-4">
@@ -1754,6 +1754,18 @@ function QuoteAPITester() {
                 </>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================================ */}
+      {/* SECCIÓN 3: REVISIÓN DE PIEZAS Y COSTOS */}
+      {/* ============================================================================ */}
+
+      {rutaSeleccionada && (
+        <div className="card shadow-sm mb-4">
+          <div className="card-body">
+            <h5 className="card-title mb-4">📋 Paso 3: Revisión de Piezas y Costos</h5>
 
             {/* Cálculos Automáticos */}
             <div className="mt-4 p-3 border rounded bg-light">
@@ -1991,7 +2003,7 @@ function QuoteAPITester() {
       )}
 
       {/* ============================================================================ */}
-      {/* SECCIÓN 3: PAYLOAD Y RESULTADOS */}
+      {/* SECCIÓN 4: PAYLOAD Y RESULTADOS */}
       {/* ============================================================================ */}
 
       {/* Payload
