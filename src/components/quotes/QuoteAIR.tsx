@@ -53,7 +53,10 @@ function QuoteAPITester() {
   ]);
   const [openAccordions, setOpenAccordions] = useState<string[]>(['1']);
   const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
+  const [openSection, setOpenSection] = useState<number>(1);
 
+
+  
   // ============================================================================
   // ESTADOS PARA RUTAS AÉREAS
   // ============================================================================
@@ -138,9 +141,21 @@ function QuoteAPITester() {
         setLoadingRutas(false);
       }
     };
-
     cargarRutas();
   }, []);
+
+  // Auto-abrir sección 2 cuando se seleccione una ruta
+  useEffect(() => {
+    if (rutaSeleccionada && openSection === 1) {
+      setOpenSection(2);
+    }
+  }, [rutaSeleccionada]);
+
+  // Función para manejar el toggle de secciones
+  const handleSectionToggle = (section: number) => {
+    setOpenSection(openSection === section ? 0 : section);
+  };
+
 
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
@@ -1274,13 +1289,59 @@ function QuoteAPITester() {
       </div>
 
       {/* ============================================================================ */}
-      {/* SECCIÓN 1: SELECCIÓN DE RUTA */}
+      {/* SECCIÓN 1: SELECCIÓN DE RUTA - CON ACORDEÓN */}
       {/* ============================================================================ */}
 
-      <div className="card shadow-sm mb-4">
-        <div className="card-body">
+      <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '12px' }}>
+        {/* Header clickeable */}
+        <div 
+          className="card-header bg-white border-0 p-4"
+          style={{ 
+            cursor: 'pointer',
+            borderRadius: openSection === 1 ? '12px 12px 0 0' : '12px',
+            transition: 'all 0.3s ease'
+          }}
+          onClick={() => handleSectionToggle(1)}
+        >
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center">
+              <div 
+                className="rounded-circle me-3 d-flex align-items-center justify-content-center"
+                style={{ 
+                  width: '40px', 
+                  height: '40px', 
+                  backgroundColor: rutaSeleccionada ? '#d4edda' : '#185abc',
+                  color: rutaSeleccionada ? '#155724' : 'white',
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {rutaSeleccionada ? '✓' : '1'}
+              </div>
+              <div>
+                <h5 className="mb-0" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1a1a1a' }}>
+                Selecciona Ruta
+                </h5>
+                {rutaSeleccionada && (
+                  <small className="text-muted d-block mt-1" style={{ fontSize: '0.85rem' }}>
+                    {rutaSeleccionada.origin} → {rutaSeleccionada.destination}
+                  </small>
+                )}
+              </div>
+            </div>
+            <i 
+              className={`bi bi-chevron-${openSection === 1 ? 'up' : 'down'}`}
+              style={{ fontSize: '1.2rem', color: '#6c757d', transition: 'transform 0.3s ease' }}
+            ></i>
+          </div>
+        </div>
+
+        {/* Contenido colapsable */}
+        {openSection === 1 && (
+          <div className="card-body p-4">
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h5 className="card-title mb-0">📍 Paso 1: Selecciona Ruta</h5>
+            <h5 className="card-title mb-0">Paso 1: Selecciona Ruta</h5>
             <button
               onClick={refrescarTarifas}
               disabled={loadingRutas}
@@ -1607,6 +1668,7 @@ function QuoteAPITester() {
             </>
           )}
         </div>
+        )}
       </div>
 
       {/* ============================================================================ */}
