@@ -1615,96 +1615,204 @@ function QuoteAPITester() {
 
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
-          <div className="card-body">
-            <h5 className="card-title mb-4">Paso 2: Datos del cargamento</h5>
+          <div className="card-body p-4">
+            {/* Header de la sección */}
+            <div className="mb-4 pb-3 border-bottom">
+              <h5 className="card-title mb-1" style={{ 
+                fontSize: '1.25rem', 
+                fontWeight: 600,
+                color: '#1a1a1a'
+              }}>
+                Paso 2: Datos del cargamento
+              </h5>
+              <p className="text-muted mb-0" style={{ fontSize: '0.9rem' }}>
+                Configure los detalles de su envío
+              </p>
+            </div>
 
-            {/* Switch Overall */}
-            <div className="form-check form-switch mb-4">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="overallSwitch"
-                checked={overallDimsAndWeight}
-                onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
-              />
-              <label className="form-check-label" htmlFor="overallSwitch">
-                <strong>Overall Dims and Weight</strong>
-                <small className="d-block text-muted">
-                  Activa esta opción si deseas ingresar el peso y volumen total manualmente
-                </small>
-              </label>
+            {/* Switch Overall - Diseño mejorado */}
+            <div 
+              className="p-3 mb-4" 
+              style={{ 
+                backgroundColor: '#f8f9fa',
+                borderRadius: '8px',
+                border: '1px solid #e9ecef'
+              }}
+            >
+              <div className="form-check form-switch">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id="overallSwitch"
+                  checked={overallDimsAndWeight}
+                  onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
+                  style={{ 
+                    cursor: 'pointer',
+                    width: '3rem',
+                    height: '1.5rem'
+                  }}
+                />
+                <label 
+                  className="form-check-label" 
+                  htmlFor="overallSwitch"
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="d-flex align-items-center">
+                    <i className="bi bi-calculator me-2" style={{ color: '#185abc' }}></i>
+                    <div>
+                      <strong style={{ color: '#1a1a1a' }}>Overall Dims and Weight</strong>
+                      <small className="d-block text-muted mt-1" style={{ fontSize: '0.85rem' }}>
+                        Ingrese el peso y volumen total manualmente en lugar de por piezas
+                      </small>
+                    </div>
+                  </div>
+                </label>
+              </div>
             </div>
 
             {/* Formulario */}
             <div className="row g-3">
-
+              {/* Incoterm - Rediseñado */}
               <div className="col-12 mb-3">
-                <label className="form-label fw-semibold" style={{ fontSize: '1.05rem', color: '#222' }}>
-                  <i className="bi bi-flag me-2" style={{ color: '#222' }}></i>
+                <label 
+                  className="form-label mb-2" 
+                  style={{ 
+                    fontSize: '0.95rem', 
+                    fontWeight: 500,
+                    color: '#1a1a1a'
+                  }}
+                >
+                  <i className="bi bi-flag me-2" style={{ color: '#185abc' }}></i>
                   Incoterm
+                  <span className="badge bg-light text-dark ms-2" style={{ fontSize: '0.7rem', fontWeight: 400 }}>
+                    Obligatorio
+                  </span>
                 </label>
                 <select
                   className="form-select"
                   value={incoterm}
                   onChange={(e) => setIncoterm(e.target.value as 'EXW' | 'FCA' | '')}
-                  style={{ maxWidth: 350, background: '#fff', color: '#222', borderColor: '#bbb' }}
+                  style={{ 
+                    maxWidth: 400,
+                    borderRadius: '8px',
+                    border: '1px solid #ced4da',
+                    padding: '0.625rem 0.75rem',
+                    fontSize: '0.95rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#185abc'}
+                  onBlur={(e) => e.target.style.borderColor = '#ced4da'}
                 >
                   <option value="">Seleccione un Incoterm</option>
                   <option value="EXW">Ex Works [EXW]</option>
-                  <option value="FCA">FCA</option>
+                  <option value="FCA">Free Carrier [FCA]</option>
                 </select>
               </div>
 
-               {/* Campos condicionales solo para EXW */}
+              {/* Campos condicionales solo para EXW */}
               {incoterm === 'EXW' && (
-                <>
-                  <div className="col-md-6">
-                    <label className="form-label">Pickup From Address</label>
-                    <textarea
-                      className="form-control"
-                      value={pickupFromAddress}
-                      onChange={(e) => setPickupFromAddress(e.target.value)}
-                      placeholder="Ingrese dirección de recogida"
-                      rows={3}
-                    />
-                  </div>
+                <div className="col-12">
+                  <div 
+                    className="p-3 mb-3" 
+                    style={{ 
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '8px',
+                      borderLeft: '3px solid #185abc'
+                    }}
+                  >
+                    <p className="mb-3" style={{ fontSize: '0.9rem', color: '#495057' }}>
+                      <i className="bi bi-info-circle me-2"></i>
+                      Complete las direcciones de recogida y entrega
+                    </p>
+                    
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label" style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                          <i className="bi bi-box-arrow-up-right me-2" style={{ color: '#6c757d' }}></i>
+                          Pickup From Address
+                        </label>
+                        <textarea
+                          className="form-control"
+                          value={pickupFromAddress}
+                          onChange={(e) => setPickupFromAddress(e.target.value)}
+                          placeholder="Ingrese dirección de recogida"
+                          rows={3}
+                          style={{ 
+                            borderRadius: '8px',
+                            fontSize: '0.9rem',
+                            transition: 'all 0.2s ease'
+                          }}
+                        />
+                      </div>
 
-                  <div className="col-md-6">
-                    <label className="form-label">Delivery To Address</label>
-                    <textarea
-                      className="form-control"
-                      value={deliveryToAddress}
-                      onChange={(e) => setDeliveryToAddress(e.target.value)}
-                      placeholder="Ingrese dirección de entrega"
-                      rows={3}
-                    />
+                      <div className="col-md-6">
+                        <label className="form-label" style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                          <i className="bi bi-box-arrow-in-down me-2" style={{ color: '#6c757d' }}></i>
+                          Delivery To Address
+                        </label>
+                        <textarea
+                          className="form-control"
+                          value={deliveryToAddress}
+                          onChange={(e) => setDeliveryToAddress(e.target.value)}
+                          placeholder="Ingrese dirección de entrega"
+                          rows={3}
+                          style={{ 
+                            borderRadius: '8px',
+                            fontSize: '0.9rem',
+                            transition: 'all 0.2s ease'
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </>
+                </div>
               )}
+
               {/* Sección de Piezas - Solo en modo normal */}
               {!overallDimsAndWeight && (
                 <div className="col-12">
-                  <h5 className="mb-3">Detalles de las Piezas</h5>
+                  <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <h6 className="mb-0" style={{ fontSize: '1.05rem', fontWeight: 500, color: '#1a1a1a' }}>
+                      <i className="bi bi-boxes me-2" style={{ color: '#185abc' }}></i>
+                      Detalles de las Piezas
+                    </h6>
+                    <span className="badge bg-light text-dark" style={{ fontSize: '0.8rem' }}>
+                      {piecesData.length} {piecesData.length === 1 ? 'pieza' : 'piezas'}
+                    </span>
+                  </div>
                   
-                  {piecesData.map((piece, index) => (
-                    <PieceAccordion
-                      key={piece.id}
-                      piece={piece}
-                      index={index}
-                      isOpen={openAccordions.includes(piece.id)}
-                      onToggle={() => handleToggleAccordion(piece.id)}
-                      onRemove={() => handleRemovePiece(piece.id)}
-                      onUpdate={(field, value) => handleUpdatePiece(piece.id, field, value)}
-                      packageTypes={packageTypeOptions.map(opt => ({ id: String(opt.id), name: opt.name }))}
-                      canRemove={piecesData.length > 1}
-                    />
-                  ))}
+                  <div className="mb-3">
+                    {piecesData.map((piece, index) => (
+                      <PieceAccordion
+                        key={piece.id}
+                        piece={piece}
+                        index={index}
+                        isOpen={openAccordions.includes(piece.id)}
+                        onToggle={() => handleToggleAccordion(piece.id)}
+                        onRemove={() => handleRemovePiece(piece.id)}
+                        onUpdate={(field, value) => handleUpdatePiece(piece.id, field, value)}
+                        packageTypes={packageTypeOptions.map(opt => ({ id: String(opt.id), name: opt.name }))}
+                        canRemove={piecesData.length > 1}
+                      />
+                    ))}
+                  </div>
                   
-                  <div className="d-flex justify-content-end mt-3">
+                  <div className="d-flex justify-content-end">
                     <button
                       type="button"
-                      className="btn btn-primary"
-                      style={{ backgroundColor: '#185abc', borderColor: '#185abc' }} // Azul más oscuro
+                      className="btn"
+                      style={{ 
+                        backgroundColor: '#185abc',
+                        borderColor: '#185abc',
+                        color: 'white',
+                        borderRadius: '8px',
+                        padding: '0.5rem 1.25rem',
+                        fontSize: '0.9rem',
+                        fontWeight: 500,
+                        transition: 'all 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#144a9e'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#185abc'}
                       onClick={handleAddPiece}
                     >
                       <i className="bi bi-plus-circle me-2"></i>
@@ -1716,42 +1824,71 @@ function QuoteAPITester() {
 
               {/* Modo Overall */}
               {overallDimsAndWeight && (
-                <>
-                  <div className="col-md-6">
-                    <label className="form-label">Peso Total (kg)</label>
-                    <input
-                      type="number"
-                      className={`form-control ${weightError ? 'is-invalid' : ''}`}
-                      value={manualWeight}
-                      onChange={(e) => {
-                        const newManualWeight = Number(e.target.value);
-                        setManualWeight(newManualWeight);
-                        if (newManualWeight > 2000) {
-                          setWeightError('El peso total no puede exceder 2000 kg');
-                        } else {
-                          setWeightError(null);
-                        }
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    <small className="text-muted">Este es el peso total de todas las piezas</small>
-                    {weightError && <div className="invalid-feedback">{weightError}</div>}
-                  </div>
+                <div className="col-12">
+                  <div 
+                    className="p-3" 
+                    style={{ 
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '8px',
+                      borderLeft: '3px solid #185abc'
+                    }}
+                  >
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label" style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                          <i className="bi bi-box-seam me-2" style={{ color: '#6c757d' }}></i>
+                          Peso Total (kg)
+                        </label>
+                        <input
+                          type="number"
+                          className={`form-control ${weightError ? 'is-invalid' : ''}`}
+                          value={manualWeight}
+                          onChange={(e) => {
+                            const newManualWeight = Number(e.target.value);
+                            setManualWeight(newManualWeight);
+                            if (newManualWeight > 2000) {
+                              setWeightError('El peso total no puede exceder 2000 kg');
+                            } else {
+                              setWeightError(null);
+                            }
+                          }}
+                          min="0"
+                          step="0.01"
+                          style={{ 
+                            borderRadius: '8px',
+                            fontSize: '0.95rem'
+                          }}
+                        />
+                        <small className="text-muted d-block mt-1" style={{ fontSize: '0.8rem' }}>
+                          Peso total de todas las piezas
+                        </small>
+                        {weightError && <div className="invalid-feedback">{weightError}</div>}
+                      </div>
 
-                  <div className="col-md-6">
-                    <label className="form-label">Volumen Total (m³)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={manualVolume}
-                      onChange={(e) => setManualVolume(Number(e.target.value))}
-                      min="0"
-                      step="0.0001"
-                    />
-                    <small className="text-muted">Este es el volumen total de todas las piezas</small>
+                      <div className="col-md-6">
+                        <label className="form-label" style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                          <i className="bi bi-rulers me-2" style={{ color: '#6c757d' }}></i>
+                          Volumen Total (m³)
+                        </label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={manualVolume}
+                          onChange={(e) => setManualVolume(Number(e.target.value))}
+                          min="0"
+                          step="0.0001"
+                          style={{ 
+                            borderRadius: '8px',
+                            fontSize: '0.95rem'
+                          }}
+                        />
+                        <small className="text-muted d-block mt-1" style={{ fontSize: '0.8rem' }}>
+                          Volumen total de todas las piezas
+                        </small>
+                      </div>
+                    </div>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
