@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { DocumentosSection } from './Documents/DocumentosSection';
@@ -1482,7 +1482,7 @@ function QuotesView() {
                     const activeTabIndex = activeTabs[quoteId] || 0;
 
                     return (
-                      <>
+                      <React.Fragment key={`quote-${quoteId}`}>
                         {/* Fila de la tabla */}
                         <tr 
                           key={`row-${quoteId}`}
@@ -1713,7 +1713,7 @@ function QuotesView() {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
