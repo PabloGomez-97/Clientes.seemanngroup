@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { type OceanShipment, type OutletContext, type Quote, OceanShipmentTimeline, OceanRouteDisplay, CollapsibleSection, InfoField, QuoteModal } from '../shipments/Handlers/Handleroceanshipments';
+import { MapContainer, TileLayer } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import "./OceanShipmentsView.css"
 
 function OceanShipmentsView() {
   const { accessToken, onLogout } = useOutletContext<OutletContext>();
@@ -31,6 +34,82 @@ function OceanShipmentsView() {
   const [searchNumber, setSearchNumber] = useState('');
   
   const [showingAll, setShowingAll] = useState(false);
+
+  // Estados para accordion y tabs
+  const [openAccordions, setOpenAccordions] = useState<(string | number)[]>([]);
+  const [activeTabs, setActiveTabs] = useState<Record<string | number, number>>({});
+
+  // Función para obtener la ruta de la bandera
+  const getFlagPath = (locationName: string | undefined) => {
+    if (!locationName) return null;
+    // Limpiar el nombre: reemplazar caracteres no válidos en nombres de archivo
+    const cleanName = locationName
+      .trim()
+      .replace(/\//g, '-')  // Reemplazar / por -
+      .replace(/\\/g, '-')  // Reemplazar \ por -
+      .replace(/:/g, '-')   // Reemplazar : por -
+      .replace(/\*/g, '')   // Eliminar *
+      .replace(/\?/g, '')   // Eliminar ?
+      .replace(/"/g, '')    // Eliminar "
+      .replace(/</g, '')    // Eliminar <
+      .replace(/>/g, '')    // Eliminar >
+      .replace(/\|/g, '-'); // Reemplazar | por -
+    
+    return `/paises/${cleanName}.png`;
+  };
+
+  // Componente para mostrar ubicación con bandera
+  const LocationWithFlag = ({ location }: { location: string | undefined }) => {
+    if (!location) return <>-</>;
+    
+    const flagPath = getFlagPath(location);
+    
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {flagPath && (
+          <img 
+            src={flagPath}
+            alt={location}
+            style={{ 
+              width: '20px', 
+              height: '15px', 
+              objectFit: 'cover',
+              borderRadius: '2px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+            }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        )}
+        <span style={{ fontWeight: '600' }}>{location}</span>
+      </div>
+    );
+  };
+
+  // Funciones para manejar accordion
+  const toggleAccordion = (shipmentId: string | number) => {
+    setOpenAccordions(prev => {
+      const isOpen = prev.includes(shipmentId);
+      
+      if (isOpen) {
+        return prev.filter(id => id !== shipmentId);
+      } else {
+        if (prev.length >= 3) {
+          return [...prev.slice(1), shipmentId];
+        }
+        return [...prev, shipmentId];
+      }
+    });
+    
+    if (!activeTabs[shipmentId]) {
+      setActiveTabs(prev => ({ ...prev, [shipmentId]: 0 }));
+    }
+  };
+
+  const setActiveTab = (shipmentId: string | number, tabIndex: number) => {
+    setActiveTabs(prev => ({ ...prev, [shipmentId]: tabIndex }));
+  };
 
 
     // Tooltips estado
@@ -309,6 +388,17 @@ function OceanShipmentsView() {
     fetchOceanShipments();
   }, [accessToken]);
 
+  const refreshShipments = () => {
+    localStorage.removeItem('oceanShipmentsCache');
+    localStorage.removeItem('oceanShipmentsCacheTimestamp');
+    
+    setOceanShipments([]);
+    setDisplayedOceanShipments([]);
+    fetchOceanShipments();
+    
+    console.log('🔄 Datos refrescados desde la API');
+  };
+
   const handleSearchByNumber = () => {
     if (!searchNumber.trim()) {
       setDisplayedOceanShipments(oceanShipments.slice(0, 20));
@@ -415,32 +505,28 @@ function OceanShipmentsView() {
 
   return (
     <>
-      {/* Header */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        padding: '20px 0',
-        marginBottom: '24px',
-        borderBottom: '1px solid #e5e7eb',
-        fontFamily: 'Poppins, sans-serif'
+      {/* Interactive Map */}
+      <div style={{ 
+        marginBottom: '32px',
+        height: '350px',  // 👈 MODIFICA ESTE VALOR para ajustar altura (300px-400px)
+        borderRadius: '12px',
+        overflow: 'hidden',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        zIndex: 1,
+        position: 'relative'
       }}>
-        <h4 style={{ 
-          color: '#111827',
-          margin: 0,
-          fontSize: '1.25rem',
-          fontWeight: '500',
-          letterSpacing: '-0.01em'
-        }}>
-          Mis Ocean Shipments
-        </h4>
-        <p style={{ 
-          color: '#6b7280',
-          marginTop: '6px',
-          marginBottom: 0,
-          fontSize: '0.9rem',
-          fontWeight: '400'
-        }}>
-          Consulta y gestiona tus envíos marítimos
-        </p>
+        <MapContainer
+          center={[-33.4489, -70.6693]} // Coordenadas de Santiago, Chile
+          zoom={3}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+        </MapContainer>
       </div>
 
       {/* Botones de acción */}
@@ -467,6 +553,15 @@ function OceanShipmentsView() {
           }}
         >
           Buscar
+        </button>
+
+        {/* Botón Actualizar */}
+        <button 
+          onClick={refreshShipments}
+          className="btn-refresh"
+          title="Actualizar lista de envíos"
+        >
+          🔄 Actualizar
         </button>
 
         {!showingAll && oceanShipments.length > 20 && (
@@ -706,494 +801,445 @@ function OceanShipmentsView() {
         </div>
       )}
 
-      {/* Tabla de Ocean Shipments */}
-      {!loading && displayedOceanShipments.length > 0 && (
-        <div style={{ 
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ 
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontSize: '0.875rem'
-            }}>
-              <thead>
-                <tr style={{ 
-                  backgroundColor: '#f9fafb',
-                  borderBottom: '2px solid #e5e7eb'
-                }}>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'left',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Número
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'left',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    minWidth: '250px'
-                  }}>
-                    Ruta
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'left',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Fecha Salida
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'left',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Embarcación
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Tipo
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'center',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Piezas
-                  </th>
-                  <th style={{ 
-                    padding: '16px 20px',
-                    textAlign: 'right',
-                    fontWeight: '600',
-                    color: '#374151',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    Gasto Parcial
-                    <TooltipIcon id="numero" message={tooltipMessages.gasto} />
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedOceanShipments.map((shipment, index) => {
-                  return (
-                    <tr 
-                      key={shipment.id}
-                      onClick={() => openModal(shipment)}
-                      style={{
-                        borderBottom: index < displayedOceanShipments.length - 1 ? '1px solid #f3f4f6' : 'none',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.15s ease',
-                        backgroundColor: 'white'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'white';
-                      }}
-                    >
-                      <td style={{ 
-                        padding: '16px 20px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        <div>{shipment.number || 'N/A'}</div>
-                        {shipment.quoteNumber && (
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              fetchQuoteByNumber(shipment.quoteNumber!);
-                            }}
-                            style={{
-                              display: 'inline-block',
-                              marginTop: '4px',
-                              fontSize: '0.7rem',
-                              padding: '2px 8px',
-                              backgroundColor: '#d1fae5',
-                              color: '#065f46',
-                              borderRadius: '12px',
-                              cursor: 'pointer',
-                              fontWeight: '600'
-                            }}
-                          >
-                            📋 {shipment.quoteNumber}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        color: '#4b5563'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontWeight: '600' }}>{shipment.portOfLoading || '-'}</span>
-                          <span style={{ color: '#0ea5e9' }}>→</span>
-                          <span style={{ fontWeight: '600' }}>{shipment.portOfUnloading || '-'}</span>
-                        </div>
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        color: '#4b5563',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {shipment.departure 
-                          ? new Date(shipment.departure).toLocaleDateString('es-CL', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric'
-                            })
-                          : '-'
-                        }
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        color: '#4b5563'
-                      }}>
-                        {shipment.vessel || '-'}
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        textAlign: 'center'
-                      }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '4px 10px',
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: shipment.typeOfMove === 'FCL' ? '#7c3aed' : '#059669',
-                          backgroundColor: shipment.typeOfMove === 'FCL' ? '#f3e8ff' : '#d1fae5'
-                        }}>
-                          {shipment.typeOfMove || '-'}
-                        </span>
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        textAlign: 'center',
-                        color: '#4b5563',
-                        fontWeight: '600'
-                      }}>
-                        {shipment.totalCargo_Pieces || '-'}
-                      </td>
-                      <td style={{ 
-                        padding: '16px 20px',
-                        textAlign: 'right',
-                        color: '#10b981',
-                        fontWeight: '700',
-                        fontSize: '0.95rem',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {formatCLP(shipment.totalCharge_IncomeDisplayValue) || '-'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Footer de la tabla */}
-          <div style={{
-            padding: '16px 20px',
-            backgroundColor: '#f9fafb',
-            borderTop: '1px solid #e5e7eb',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
+      {/* Tabla de Ocean Shipments con Accordion */}
+        {!loading && displayedOceanShipments.length > 0 && (
+          <div style={{ 
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            overflow: 'visible',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            border: '1px solid #e5e7eb'
           }}>
-            <div style={{ 
-              fontSize: '0.875rem',
-              color: '#6b7280'
-            }}>
-              Mostrando <strong style={{ color: '#1f2937' }}>{displayedOceanShipments.length}</strong> de{' '}
-              <strong style={{ color: '#1f2937' }}>{oceanShipments.length}</strong> envíos
-            </div>
-            {!showingAll && oceanShipments.length > displayedOceanShipments.length && (
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  showAllOceanShipments();
-                }}
-                style={{
-                  backgroundColor: 'white',
-                  color: '#0ea5e9',
-                  border: '1px solid #0ea5e9',
-                  borderRadius: '6px',
-                  padding: '6px 16px',
-                  cursor: 'pointer',
-                  fontSize: '0.85rem',
-                  fontWeight: '600',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#0ea5e9';
-                  e.currentTarget.style.color = 'white';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'white';
-                  e.currentTarget.style.color = '#0ea5e9';
-                }}
-              >
-                Ver todos
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Detalles del Ocean Shipment */}
-      {showModal && selectedOceanShipment && (
-        <div 
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 9999, overflowY: 'auto' }}
-          onClick={closeModal}
-        >
-          <div 
-            className="bg-white rounded"
-            style={{ 
-              maxWidth: '900px', 
-              width: '100%', 
-              maxHeight: '90vh',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-              display: 'flex',
-              flexDirection: 'column'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header del Modal */}
-            <div style={{
-              background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-              padding: '24px',
-              color: 'white'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '8px'
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ 
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontSize: '0.875rem'
               }}>
-                <div>
-                  <h5 style={{ margin: 0, fontSize: '1.3rem', fontWeight: '700', marginBottom: '4px' }}>
-                    Ocean Shipment #{selectedOceanShipment.number || selectedOceanShipment.id || 'N/A'}
-                  </h5>
-                  {selectedOceanShipment.quoteNumber && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        fetchQuoteByNumber(selectedOceanShipment.quoteNumber!);
-                      }}
-                      disabled={loadingQuote}
-                      style={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        color: 'white',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        borderRadius: '6px',
-                        padding: '4px 12px',
-                        fontSize: '0.85rem',
-                        fontWeight: '600',
-                        cursor: loadingQuote ? 'not-allowed' : 'pointer',
-                        marginTop: '8px'
-                      }}
-                    >
-                      {loadingQuote ? 'Cargando...' : `📋 Ver Cotización ${selectedOceanShipment.quoteNumber}`}
-                    </button>
-                  )}
-                </div>
-                <button 
-                  onClick={closeModal}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    border: 'none',
-                    borderRadius: '6px',
-                    width: '32px',
-                    height: '32px',
-                    fontSize: '1.5rem',
-                    cursor: 'pointer',
-                    color: 'white',
-                    lineHeight: 1,
-                    padding: 0
-                  }}
-                >
-                  ×
-                </button>
-              </div>
+                <thead>
+                  <tr style={{ 
+                    backgroundColor: '#f9fafb',
+                    borderBottom: '2px solid #e5e7eb'
+                  }}>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Número
+                      <TooltipIcon id="numero" message={tooltipMessages.numero} />
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      minWidth: '200px'
+                    }}>
+                      Ruta
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Fecha Salida
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'left',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Vessel
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Tipo
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'center',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Piezas
+                    </th>
+                    <th style={{ 
+                      padding: '16px 20px',
+                      textAlign: 'right',
+                      fontWeight: '600',
+                      color: '#374151',
+                      fontSize: '0.75rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Gasto Parcial
+                      <TooltipIcon id="numero" message={tooltipMessages.gasto} />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedOceanShipments.map((shipment, index) => {
+                    const shipmentId = shipment.id || shipment.number || index;
+                    const isOpen = openAccordions.includes(shipmentId);
+                    const activeTabIndex = activeTabs[shipmentId] || 0;
+
+                    return (
+                      <>
+                        {/* Fila de la tabla */}
+                        <tr 
+                          key={`row-${shipmentId}`}
+                          onClick={() => toggleAccordion(shipmentId)}
+                          className={`ocean-shipments-table-row ${isOpen ? 'expanded' : ''}`}
+                          style={{
+                            borderBottom: !isOpen && index < displayedOceanShipments.length - 1 ? '1px solid #f3f4f6' : 'none',
+                          }}
+                        >
+                          <td style={{ 
+                            padding: '16px 20px',
+                            fontWeight: '600',
+                            color: '#1f2937',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            <div>{shipment.number || 'N/A'}</div>
+                            {shipment.quoteNumber && (
+                              <div 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  fetchQuoteByNumber(shipment.quoteNumber!);
+                                }}
+                                style={{
+                                  display: 'inline-block',
+                                  marginTop: '4px',
+                                  fontSize: '0.7rem',
+                                  padding: '2px 8px',
+                                  backgroundColor: '#d1fae5',
+                                  color: '#065f46',
+                                  borderRadius: '12px',
+                                  cursor: 'pointer',
+                                  fontWeight: '600'
+                                }}
+                              >
+                                📋 {shipment.quoteNumber}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#4b5563'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <LocationWithFlag location={shipment.portOfLoading} />
+                              <span style={{ color: '#0ea5e9' }}>→</span>
+                              <LocationWithFlag location={shipment.portOfUnloading} />
+                            </div>
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#4b5563',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {shipment.departure 
+                              ? new Date(shipment.departure).toLocaleDateString('es-CL', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric'
+                                })
+                              : '-'
+                            }
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            color: '#4b5563'
+                          }}>
+                            {shipment.vessel || '-'}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'center'
+                          }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: '600',
+                              color: shipment.typeOfMove === 'FCL' ? '#7c3aed' : '#059669',
+                              backgroundColor: shipment.typeOfMove === 'FCL' ? '#f3e8ff' : '#d1fae5'
+                            }}>
+                              {shipment.typeOfMove || '-'}
+                            </span>
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'center',
+                            color: '#4b5563',
+                            fontWeight: '600'
+                          }}>
+                            {shipment.totalCargo_Pieces || '-'}
+                          </td>
+                          <td style={{ 
+                            padding: '16px 20px',
+                            textAlign: 'right',
+                            color: '#10b981',
+                            fontWeight: '700',
+                            fontSize: '0.95rem',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {formatCLP(shipment.totalCharge_IncomeDisplayValue) || '-'}
+                          </td>
+                        </tr>
+
+                        {/* Contenido del Accordion */}
+                        {isOpen && (
+                          <tr key={`accordion-${shipmentId}`}>
+                            <td colSpan={7} style={{ padding: 0, borderTop: '3px solid #0ea5e9' }}>
+                              <div className="accordion-content">
+                                {/* Timeline Visual encima de los tabs */}
+                                <div className="accordion-timeline-section">
+                                  <OceanShipmentTimeline shipment={shipment} />
+                                </div>
+
+                                {/* Ruta de Envío */}
+                                <div className="accordion-route-section">
+                                  <OceanRouteDisplay shipment={shipment} />
+                                </div>
+
+                                {/* Tabs horizontales */}
+                                <div className="tabs-container">
+                                  <button
+                                    className={`tab-button ${activeTabIndex === 0 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(shipmentId, 0);
+                                    }}
+                                  >
+                                    Información General
+                                  </button>
+                                  <button
+                                    className={`tab-button ${activeTabIndex === 1 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(shipmentId, 1);
+                                    }}
+                                  >
+                                    Información de Carga
+                                  </button>
+                                  <button
+                                    className={`tab-button ${activeTabIndex === 2 ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveTab(shipmentId, 2);
+                                    }}
+                                  >
+                                    Resumen Financiero
+                                  </button>
+                                  {(shipment.entryNumber || shipment.itNumber || shipment.amsNumber || shipment.broker) && (
+                                    <button
+                                      className={`tab-button ${activeTabIndex === 3 ? 'active' : ''}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveTab(shipmentId, 3);
+                                      }}
+                                    >
+                                      Importación y Aduana
+                                    </button>
+                                  )}
+                                  {shipment.notes && shipment.notes !== 'N/A' && (
+                                    <button
+                                      className={`tab-button ${activeTabIndex === 4 ? 'active' : ''}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveTab(shipmentId, 4);
+                                      }}
+                                    >
+                                      Notas
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Contenido de los tabs */}
+                                <div className="tab-content">
+                                  {/* Tab 0: Información General */}
+                                  {activeTabIndex === 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                      <InfoField label="Número de Envío" value={shipment.number} />
+                                      <InfoField label="Tipo de Operación" value={shipment.operationFlow} />
+                                      <InfoField label="Tipo de Envío" value={shipment.shipmentType} />
+                                      <InfoField label="Tipo de Movimiento" value={shipment.typeOfMove} />
+                                      <InfoField label="Booking Number" value={shipment.bookingNumber} />
+                                      <InfoField label="BL Number" value={shipment.waybillNumber} />
+                                      <InfoField label="Forwarded BL" value={shipment.fowaredBl} />
+                                      <InfoField label="Número de Contenedor" value={shipment.containerNumber} />
+                                      <InfoField label="Referencia Cliente" value={shipment.customerReference} />
+                                      <InfoField label="Representante Ventas" value={shipment.salesRep} />
+                                      <InfoField label="Fecha de Creación" value={shipment.createdOn ? formatDate(shipment.createdOn) : null} />
+                                      <InfoField label="Fecha Salida" value={shipment.departure ? formatDate(shipment.departure) : null} />
+                                      <InfoField label="Fecha Llegada" value={shipment.arrival ? formatDate(shipment.arrival) : null} />
+                                    </div>
+                                  )}
+
+                                  {/* Tab 1: Información de Carga */}
+                                  {activeTabIndex === 1 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                      <InfoField label="Total de Piezas" value={shipment.totalCargo_Pieces} />
+                                      <InfoField label="Peso Total" value={shipment.totalCargo_WeightDisplayValue} />
+                                      <InfoField label="Volumen Total" value={shipment.totalCargo_VolumeDisplayValue} />
+                                      <InfoField label="Descripción de Carga" value={shipment.cargoDescription} fullWidth />
+                                      <InfoField label="Marcas de Carga" value={shipment.cargoMarks} fullWidth />
+                                      <InfoField label="Estado de Carga" value={shipment.cargoStatus} />
+                                      <InfoField label="Carga Peligrosa" value={shipment.hazardous ? 'Sí' : 'No'} />
+                                      <InfoField label="Containerizado" value={shipment.containerized ? 'Sí' : 'No'} />
+                                    </div>
+                                  )}
+
+                                  {/* Tab 2: Resumen Financiero */}
+                                  {activeTabIndex === 2 && (
+                                    <div style={{
+                                      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                      borderRadius: '8px',
+                                      padding: '20px',
+                                      border: '2px solid rgba(16, 185, 129, 0.2)',
+                                      textAlign: 'center'
+                                    }}>
+                                      <div style={{
+                                        fontSize: '0.85rem',
+                                        color: '#6b7280',
+                                        marginBottom: '8px',
+                                        fontWeight: '600',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                      }}>
+                                        Total Gasto (No incluye impuestos)
+                                      </div>
+                                      <div style={{
+                                        fontSize: '2rem',
+                                        fontWeight: '700',
+                                        color: '#10b981'
+                                      }}>
+                                        {formatCLP(shipment.totalCharge_IncomeDisplayValue) || '$0 CLP'}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Tab 3: Información de Importación/Aduana */}
+                                  {activeTabIndex === 3 && (shipment.entryNumber || shipment.itNumber || shipment.amsNumber || shipment.broker) && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                      <InfoField label="Entry Number" value={shipment.entryNumber} />
+                                      <InfoField label="IT Number" value={shipment.itNumber} />
+                                      <InfoField label="AMS Number" value={shipment.amsNumber} />
+                                      <InfoField label="Broker" value={shipment.broker} />
+                                      <InfoField label="Liberado por Aduana" value={shipment.customsReleased ? 'Sí' : 'No'} />
+                                      <InfoField label="Flete Liberado" value={shipment.freightReleased ? 'Sí' : 'No'} />
+                                    </div>
+                                  )}
+
+                                  {/* Tab 4: Notas */}
+                                  {activeTabIndex === 4 && shipment.notes && shipment.notes !== 'N/A' && (
+                                    <div style={{ 
+                                      padding: '12px',
+                                      backgroundColor: '#fffbeb',
+                                      borderRadius: '6px',
+                                      border: '1px solid #fde047',
+                                      color: '#713f12',
+                                      fontSize: '0.875rem',
+                                      whiteSpace: 'pre-wrap',
+                                      lineHeight: '1.6'
+                                    }}>
+                                      {shipment.notes}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
-            {/* Contenido del Modal con Scroll */}
-            <div style={{ 
-              padding: '24px', 
-              overflowY: 'auto', 
-              flex: 1
-            }}>
-              {/* Timeline Visual */}
-              <OceanShipmentTimeline shipment={selectedOceanShipment} />
-
-              {/* Ruta de Envío - VISIBLE SIEMPRE */}
-              <OceanRouteDisplay shipment={selectedOceanShipment} />
-
-              {/* Información General */}
-              <CollapsibleSection title="Información General" defaultOpen={true} icon="📋">
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                  <InfoField label="Número de Envío" value={selectedOceanShipment.number} />
-                  <InfoField label="Tipo de Operación" value={selectedOceanShipment.operationFlow} />
-                  <InfoField label="Tipo de Envío" value={selectedOceanShipment.shipmentType} />
-                  <InfoField label="Tipo de Movimiento" value={selectedOceanShipment.typeOfMove} />
-                  <InfoField label="Booking Number" value={selectedOceanShipment.bookingNumber} />
-                  <InfoField label="BL Number" value={selectedOceanShipment.waybillNumber} />
-                  <InfoField label="Forwarded BL" value={selectedOceanShipment.fowaredBl} />
-                  <InfoField label="Número de Contenedor" value={selectedOceanShipment.containerNumber} />
-                  <InfoField label="Referencia Cliente" value={selectedOceanShipment.customerReference} />
-                  <InfoField label="Representante Ventas" value={selectedOceanShipment.salesRep} />
-                  <InfoField label="Fecha de Creación" value={selectedOceanShipment.createdOn ? formatDate(selectedOceanShipment.createdOn) : null} />
-                  <InfoField label="Fecha Salida" value={selectedOceanShipment.departure ? formatDate(selectedOceanShipment.departure) : null} />
-                  <InfoField label="Fecha Llegada" value={selectedOceanShipment.arrival ? formatDate(selectedOceanShipment.arrival) : null} />
-                </div>
-              </CollapsibleSection>
-
-              {/* Información de Carga */}
-              <CollapsibleSection title="Información de Carga" defaultOpen={false} icon="📦">
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                  <InfoField label="Total de Piezas" value={selectedOceanShipment.totalCargo_Pieces} />
-                  <InfoField label="Peso Total" value={selectedOceanShipment.totalCargo_WeightDisplayValue} />
-                  <InfoField label="Volumen Total" value={selectedOceanShipment.totalCargo_VolumeDisplayValue} />
-                  <InfoField label="Descripción de Carga" value={selectedOceanShipment.cargoDescription} fullWidth />
-                  <InfoField label="Marcas de Carga" value={selectedOceanShipment.cargoMarks} fullWidth />
-                  <InfoField label="Estado de Carga" value={selectedOceanShipment.cargoStatus} />
-                  <InfoField label="Carga Peligrosa" value={selectedOceanShipment.hazardous ? 'Sí' : 'No'} />
-                  <InfoField label="Containerizado" value={selectedOceanShipment.containerized ? 'Sí' : 'No'} />
-                </div>
-              </CollapsibleSection>
-
-              {/* Resumen Financiero - SOLO INGRESO */}
-              <CollapsibleSection title="Resumen Financiero" defaultOpen={false} icon="💰">
-                <div style={{
-                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                  borderRadius: '8px',
-                  padding: '20px',
-                  border: '2px solid rgba(16, 185, 129, 0.2)',
-                  textAlign: 'center'
-                }}>
-                  <div style={{
-                    fontSize: '0.85rem',
-                    color: '#6b7280',
-                    marginBottom: '8px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    Total Gasto (No incluye impuestos)
-                  </div>
-                  <div style={{
-                    fontSize: '2rem',
-                    fontWeight: '700',
-                    color: '#10b981'
-                  }}>
-                    {formatCLP(selectedOceanShipment.totalCharge_IncomeDisplayValue) || '$0 CLP'}
-                  </div>
-                </div>
-              </CollapsibleSection>
-
-              {/* Información de Importación/Aduana */}
-              {(selectedOceanShipment.entryNumber || selectedOceanShipment.itNumber || selectedOceanShipment.amsNumber || selectedOceanShipment.broker) && (
-                <CollapsibleSection title="Información de Importación y Aduana" defaultOpen={false} icon="🛃">
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                    <InfoField label="Entry Number" value={selectedOceanShipment.entryNumber} />
-                    <InfoField label="IT Number" value={selectedOceanShipment.itNumber} />
-                    <InfoField label="AMS Number" value={selectedOceanShipment.amsNumber} />
-                    <InfoField label="Broker" value={selectedOceanShipment.broker} />
-                    <InfoField label="Liberado por Aduana" value={selectedOceanShipment.customsReleased ? 'Sí' : 'No'} />
-                    <InfoField label="Flete Liberado" value={selectedOceanShipment.freightReleased ? 'Sí' : 'No'} />
-                  </div>
-                </CollapsibleSection>
-              )}
-
-              {/* Notas */}
-              {selectedOceanShipment.notes && selectedOceanShipment.notes !== 'N/A' && (
-                <CollapsibleSection title="Notas" defaultOpen={false} icon="📝">
-                  <div style={{ 
-                    padding: '12px',
-                    backgroundColor: '#fffbeb',
-                    borderRadius: '6px',
-                    border: '1px solid #fde047',
-                    color: '#713f12',
-                    fontSize: '0.875rem',
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: '1.6'
-                  }}>
-                    {selectedOceanShipment.notes}
-                  </div>
-                </CollapsibleSection>
-              )}
-            </div>
-
-            {/* Footer del Modal */}
-            <div style={{ 
-              padding: '16px 24px',
+            {/* Footer de la tabla */}
+            <div style={{
+              padding: '16px 20px',
+              backgroundColor: '#f9fafb',
               borderTop: '1px solid #e5e7eb',
               display: 'flex',
-              justifyContent: 'flex-end',
-              backgroundColor: '#f9fafb'
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}>
-              <button 
-                onClick={closeModal}
-                style={{
-                  background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '10px 24px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: '600',
-                  boxShadow: '0 2px 4px rgba(14, 165, 233, 0.3)'
-                }}
-              >
-                Cerrar
-              </button>
+              <div style={{ 
+                fontSize: '0.875rem',
+                color: '#6b7280'
+              }}>
+                Mostrando <strong style={{ color: '#1f2937' }}>{displayedOceanShipments.length}</strong> de{' '}
+                <strong style={{ color: '#1f2937' }}>{oceanShipments.length}</strong> envíos
+              </div>
+              {!showingAll && oceanShipments.length > displayedOceanShipments.length && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showAllOceanShipments();
+                  }}
+                  style={{
+                    backgroundColor: 'white',
+                    color: '#0ea5e9',
+                    border: '1px solid #0ea5e9',
+                    borderRadius: '6px',
+                    padding: '6px 16px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    fontWeight: '600',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#0ea5e9';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.color = '#0ea5e9';
+                  }}
+                >
+                  Ver todos
+                </button>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Modal de Cotización */}
       {showQuoteModal && (
