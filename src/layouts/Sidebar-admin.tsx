@@ -69,6 +69,11 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           icon: 'fa fa-route'
         },
         {
+          path: '/admin/pricing',
+          name: 'Pricing',
+          icon: 'fa fa-dollar-sign'
+        },
+        {
           path: '/admin/users',
           name: 'Gestión de Usuarios',
           icon: 'fa fa-user-shield',

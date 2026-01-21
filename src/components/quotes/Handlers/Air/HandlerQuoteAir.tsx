@@ -1,5 +1,5 @@
 
-export const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9rphV1Co7RPXjuevZDfQOkx1Yg43teyqZJI05JpQASV26UonU3EvGsa1oSvtqBw/pub?output=csv';
+export const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBXW_l3kB2V0A9D732Le0AjyGnXDjgV8nasTz1Z3gWUbCklXKICxTE4kEMjYMoaTG4v78XB2aVrHe/pub?output=csv';
 
 // TIPOS E INTERFACES
 export interface RutaAerea {

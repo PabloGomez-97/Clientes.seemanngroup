@@ -1515,6 +1515,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+        // ============================================================
+    // RUTAS DE GOOGLE SHEETS
+    // ============================================================
+
+    // POST /api/google-sheets/append - Enviar datos a Google Sheets
+    if (path === '/api/google-sheets/append' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+
+        const { values } = req.body as any;
+
+        if (!values || !Array.isArray(values)) {
+          return res.status(400).json({ error: 'Invalid values array' });
+        }
+
+        // Validar que no esté vacío
+        if (values.length === 0) {
+          return res.status(400).json({ error: 'Values array cannot be empty' });
+        }
+
+        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFjonok0fAbPswH-t1UEu5JupdzCdpS5gZZwiShQ8xb5twLGZelnN96cYLTsaR9S6U/exec';
+
+        // Desde servidor a servidor NO hay restricciones CORS
+        const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ values })
+        });
+
+        if (!response.ok) {
+          console.error('[google-sheets] Response status:', response.status);
+          return res.status(response.status).json({ 
+            error: 'Failed to append to Google Sheets' 
+          });
+        }
+
+        const data = await response.json();
+        console.log('[google-sheets] Data appended successfully');
+
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Data appended successfully',
+          data 
+        });
+
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[google-sheets] Error appending to Google Sheets:', error);
+        return res.status(500).json({ 
+          error: 'Internal server error',
+          details: error.message 
+        });
+      }
+    }
+
 
     // Ruta no encontrada
     return res.status(404).json({ error: 'Ruta no encontrada' });
