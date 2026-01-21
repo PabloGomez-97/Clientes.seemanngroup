@@ -1535,7 +1535,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'Values array cannot be empty' });
         }
 
-        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyFjonok0fAbPswH-t1UEu5JupdzCdpS5gZZwiShQ8xb5twLGZelnN96cYLTsaR9S6U/exec';
+        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyYYU3sdPvU5svUgCWMovXMu4AeDpqvcpqTTjpiZoYTGQQbWsfDqSnt-SgKV2sEHXMz/exec';
 
         // Desde servidor a servidor NO hay restricciones CORS
         const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
