@@ -1,58 +1,53 @@
-// src/components/administrador/Pricing.tsx
+// src/components/administrador/PricingFCL.tsx
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../../auth/AuthContext';
 import { Accordion, Button, Form, Spinner, Alert, OverlayTrigger, Tooltip } from 'react-bootstrap';
-import { AirportAutocomplete } from './Utils/Airportautocomplete';
 
 interface OutletContext {
   accessToken: string;
   onLogout: () => void;
 }
 
-interface RouteForm {
+interface RouteFormFCL {
   id: string;
-  origin: string;
-  destination: string;
-  kg45: string;
-  kg100: string;
-  kg300: string;
-  kg500: string;
-  kg1000: string;
+  pol: string;
+  pod: string;
+  gp20: string;
+  hq40: string;
+  nor40: string;
   carrier: string;
-  frequency: string;
-  transitTime: string;
-  routing: string;
-  remark1: string;
-  remark2: string;
+  freeTime: string;
+  remarks: string;
+  tt: string;
+  company: string;
   currency: string;
+  client: string;
 }
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyYYU3sdPvU5svUgCWMovXMu4AeDpqvcpqTTjpiZoYTGQQbWsfDqSnt-SgKV2sEHXMz/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwItrwoAoOvwFGL5kvn-dqyV54UjUP7_Dby-iC5EDAQLKRyEo5KVMCs-U2VQGCuJ3yS/exec';
 
 const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'CAD', 'CHF', 'CLP', 'SEK'];
 
-function Pricing() {
+function PricingFCL() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
 
-  const [forms, setForms] = useState<RouteForm[]>([
+  const [forms, setForms] = useState<RouteFormFCL[]>([
     {
       id: '1',
-      origin: '',
-      destination: '',
-      kg45: '',
-      kg100: '',
-      kg300: '',
-      kg500: '',
-      kg1000: '',
+      pol: '',
+      pod: '',
+      gp20: '',
+      hq40: '',
+      nor40: '',
       carrier: '',
-      frequency: '',
-      transitTime: '',
-      routing: '',
-      remark1: '',
-      remark2: '',
-      currency: 'USD'
+      freeTime: '',
+      remarks: '',
+      tt: '',
+      company: '',
+      currency: 'USD',
+      client: ''
     }
   ]);
 
@@ -76,22 +71,20 @@ function Pricing() {
   const [cellValue, setCellValue] = useState<string>('');
 
   const addNewForm = () => {
-    const newForm: RouteForm = {
+    const newForm: RouteFormFCL = {
       id: Date.now().toString(),
-      origin: '',
-      destination: '',
-      kg45: '',
-      kg100: '',
-      kg300: '',
-      kg500: '',
-      kg1000: '',
+      pol: '',
+      pod: '',
+      gp20: '',
+      hq40: '',
+      nor40: '',
       carrier: '',
-      frequency: '',
-      transitTime: '',
-      routing: '',
-      remark1: '',
-      remark2: '',
-      currency: 'USD'
+      freeTime: '',
+      remarks: '',
+      tt: '',
+      company: '',
+      currency: 'USD',
+      client: ''
     };
     setForms([...forms, newForm]);
     setActiveKey(forms.length.toString());
@@ -105,28 +98,10 @@ function Pricing() {
     setForms(forms.filter(f => f.id !== id));
   };
 
-  const updateForm = (id: string, field: keyof RouteForm, value: string) => {
+  const updateForm = (id: string, field: keyof RouteFormFCL, value: string) => {
     setForms(forms.map(f => 
       f.id === id ? { ...f, [field]: value } : f
     ));
-  };
-
-  const validateForm = (form: RouteForm): string | null => {
-    if (!form.origin.trim()) return 'El campo "Origen" es obligatorio';
-    if (!form.destination.trim()) return 'El campo "Destino" es obligatorio';
-    if (!form.kg45.trim()) return 'El campo "Tarifa 45kg" es obligatorio';
-    if (!form.kg100.trim()) return 'El campo "Tarifa 100kg" es obligatorio';
-    if (!form.kg300.trim()) return 'El campo "Tarifa 300kg" es obligatorio';
-    if (!form.kg500.trim()) return 'El campo "Tarifa 500kg" es obligatorio';
-    if (!form.kg1000.trim()) return 'El campo "Tarifa 1000kg" es obligatorio';
-    if (!form.carrier.trim()) return 'El campo "Carrier" es obligatorio';
-    if (!form.frequency.trim()) return 'El campo "Frecuencia" es obligatorio';
-    if (!form.transitTime.trim()) return 'El campo "Transit Time" es obligatorio';
-    if (!form.routing.trim()) return 'El campo "Routing" es obligatorio';
-    if (!form.remark1.trim()) return 'El campo "Remark 1" es obligatorio';
-    if (!form.remark2.trim()) return 'El campo "Remark 2" es obligatorio';
-    if (!form.currency.trim()) return 'El campo "Moneda" es obligatorio';
-    return null;
   };
 
   const handleSubmitAll = async () => {
@@ -135,17 +110,7 @@ function Pricing() {
       setError(null);
       setSuccess(null);
 
-      // Validar todos los formularios
-      for (let i = 0; i < forms.length; i++) {
-        const validationError = validateForm(forms[i]);
-        if (validationError) {
-          setError(`Formulario ${i + 1}: ${validationError}`);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Enviar todos los formularios usando un iframe oculto (evita CORS)
+      // Enviar todos los formularios usando iframe (evita CORS)
       for (const form of forms) {
         await sendFormViaIframe(form);
       }
@@ -165,20 +130,18 @@ function Pricing() {
       setTimeout(() => {
         setForms([{
           id: Date.now().toString(),
-          origin: '',
-          destination: '',
-          kg45: '',
-          kg100: '',
-          kg300: '',
-          kg500: '',
-          kg1000: '',
+          pol: '',
+          pod: '',
+          gp20: '',
+          hq40: '',
+          nor40: '',
           carrier: '',
-          frequency: '',
-          transitTime: '',
-          routing: '',
-          remark1: '',
-          remark2: '',
-          currency: 'USD'
+          freeTime: '',
+          remarks: '',
+          tt: '',
+          company: '',
+          currency: 'USD',
+          client: ''
         }]);
         setActiveKey('0');
         setSuccess(null);
@@ -193,47 +156,40 @@ function Pricing() {
   };
 
   // Función para enviar datos via iframe (evita CORS)
-  const sendFormViaIframe = (form: RouteForm): Promise<void> => {
+  const sendFormViaIframe = (form: RouteFormFCL): Promise<void> => {
     return new Promise((resolve) => {
-      // Crear un formulario HTML temporal
       const hiddenForm = document.createElement('form');
       hiddenForm.method = 'POST';
       hiddenForm.action = GOOGLE_APPS_SCRIPT_URL;
       hiddenForm.target = 'hidden-iframe-' + form.id;
       hiddenForm.style.display = 'none';
 
-      // Crear campos para cada valor
       const values = [
         '', // Columna 0 vacía
-        form.origin,
-        form.destination,
-        form.kg45,
-        form.kg100,
-        form.kg300,
-        form.kg500,
-        form.kg1000,
+        form.pol,
+        form.pod,
+        form.gp20,
+        form.hq40,
+        form.nor40,
         form.carrier,
-        form.frequency,
-        form.transitTime,
-        form.routing,
-        form.remark1,
-        form.remark2,
-        form.currency
+        form.freeTime,
+        form.remarks,
+        form.tt,
+        form.company,
+        form.currency,
+        form.client
       ];
 
-      // Crear input con JSON
       const input = document.createElement('input');
       input.type = 'hidden';
       input.name = 'data';
       input.value = JSON.stringify({ values });
       hiddenForm.appendChild(input);
 
-      // Crear iframe oculto
       const iframe = document.createElement('iframe');
       iframe.name = 'hidden-iframe-' + form.id;
       iframe.style.display = 'none';
       
-      // Resolver después de 1 segundo (tiempo suficiente para enviar)
       iframe.onload = () => {
         setTimeout(() => {
           document.body.removeChild(hiddenForm);
@@ -242,11 +198,8 @@ function Pricing() {
         }, 500);
       };
 
-      // Agregar al DOM
       document.body.appendChild(iframe);
       document.body.appendChild(hiddenForm);
-
-      // Enviar
       hiddenForm.submit();
     });
   };
@@ -259,7 +212,6 @@ function Pricing() {
       const data = await response.json();
       
       if (data.success && data.data) {
-        // Mantener orden original (más antiguas primero, nuevas al final)
         setExistingRoutes(data.data);
         setLastFetch(new Date());
       }
@@ -303,20 +255,18 @@ function Pricing() {
   const startEdit = (route: any, index: number) => {
     setEditingRow(index);
     setEditForm({
-      origin: route[1],
-      destination: route[2],
-      kg45: route[3],
-      kg100: route[4],
-      kg300: route[5],
-      kg500: route[6],
-      kg1000: route[7],
-      carrier: route[8],
-      frequency: route[9],
-      transitTime: route[10],
-      routing: route[11],
-      remark1: route[12],
-      remark2: route[13],
-      currency: route[14]
+      pol: route[1],
+      pod: route[2],
+      gp20: route[3],
+      hq40: route[4],
+      nor40: route[5],
+      carrier: route[6],
+      freeTime: route[7],
+      remarks: route[8],
+      tt: route[9],
+      company: route[10],
+      currency: route[11],
+      client: route[12]
     });
   };
 
@@ -327,20 +277,18 @@ function Pricing() {
       
       const values = [
         '',
-        editForm.origin,
-        editForm.destination,
-        editForm.kg45,
-        editForm.kg100,
-        editForm.kg300,
-        editForm.kg500,
-        editForm.kg1000,
+        editForm.pol,
+        editForm.pod,
+        editForm.gp20,
+        editForm.hq40,
+        editForm.nor40,
         editForm.carrier,
-        editForm.frequency,
-        editForm.transitTime,
-        editForm.routing,
-        editForm.remark1,
-        editForm.remark2,
-        editForm.currency
+        editForm.freeTime,
+        editForm.remarks,
+        editForm.tt,
+        editForm.company,
+        editForm.currency,
+        editForm.client
       ];
 
       const response = await fetch(
@@ -378,25 +326,20 @@ function Pricing() {
   // FUNCIONES PARA EDICIÓN DE CELDA INDIVIDUAL (DOBLE CLIC)
   // ============================================================================
 
-  // Iniciar edición de celda individual con doble clic
   const handleCellDoubleClick = (rowIndex: number, colIndex: number, currentValue: any) => {
-    // No permitir editar si ya hay una fila en modo edición completa
     if (editingRow !== null) return;
     
     setEditingCell({ row: rowIndex, col: colIndex });
     setCellValue(currentValue || '');
   };
 
-  // Guardar cambio de celda individual
   const saveCellEdit = async (rowIndex: number, colIndex: number) => {
     try {
       setLoadingRoutes(true);
       
-      // Obtener la fila completa actual
-      const actualRowIndex = rowIndex + 3; // +3 por las filas de headers
+      const actualRowIndex = rowIndex + 3; // +3 por las 2 filas de headers
       const currentRoute = existingRoutes[rowIndex];
       
-      // Crear copia de la fila y actualizar solo la celda modificada
       const updatedRow = [...currentRoute];
       updatedRow[colIndex] = cellValue;
       
@@ -425,13 +368,11 @@ function Pricing() {
     }
   };
 
-  // Cancelar edición de celda
   const cancelCellEdit = () => {
     setEditingCell(null);
     setCellValue('');
   };
 
-  // Manejar teclas en edición de celda (Enter = guardar, Escape = cancelar)
   const handleCellKeyDown = (e: React.KeyboardEvent, rowIndex: number, colIndex: number) => {
     if (e.key === 'Enter') {
       saveCellEdit(rowIndex, colIndex);
@@ -440,7 +381,7 @@ function Pricing() {
     }
   };
 
-  // Filtrado (sin ordenamiento)
+  // Filtrado
   const filteredRoutes = existingRoutes.filter(route => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
@@ -456,36 +397,7 @@ function Pricing() {
   const totalPages = Math.ceil(filteredRoutes.length / rowsPerPage);
 
   return (
-    <div className="container-fluid">
-      {/* Header con Logo */}
-      <div className="row mb-4 align-items-center">
-        <div className="col-auto">
-          <img 
-            src="/logocompleto.png" 
-            alt="Seemann Group Logo" 
-            style={{ height: '60px', objectFit: 'contain' }}
-          />
-        </div>
-        <div className="col">
-          <h2 style={{
-            fontSize: '28px',
-            fontWeight: '700',
-            color: '#1f2937',
-            marginBottom: '8px',
-            letterSpacing: '-0.5px'
-          }}>
-            Gestión de Tarifas Aéreas
-          </h2>
-          <p style={{
-            fontSize: '15px',
-            color: '#6b7280',
-            margin: 0
-          }}>
-            Agregar nuevas rutas al sistema de cotización - {user?.username}
-          </p>
-        </div>
-      </div>
-
+    <>
       {/* Mensajes de éxito/error */}
       {success && (
         <Alert variant="success" className="mb-4" dismissible onClose={() => setSuccess(null)}>
@@ -499,14 +411,8 @@ function Pricing() {
         </Alert>
       )}
 
-      {/* Card Principal */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e5e7eb',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        padding: '24px'
-      }}>
+      {/* Accordion de Formularios */}
+      <div className="pricing-forms-section">
         {/* Accordion de Formularios */}
         <Accordion activeKey={activeKey} onSelect={(key) => setActiveKey(key as string)}>
           {forms.map((form, index) => (
@@ -514,10 +420,10 @@ function Pricing() {
               <Accordion.Header>
                 <div className="d-flex justify-content-between align-items-center w-100 pe-3">
                   <span>
-                    <strong>Ruta #{index + 1}</strong>
-                    {form.origin && form.destination && (
+                    <strong>Ruta FCL #{index + 1}</strong>
+                    {form.pol && form.pod && (
                       <span className="ms-2 text-muted">
-                        ({form.origin} → {form.destination})
+                        ({form.pol} → {form.pod})
                       </span>
                     )}
                   </span>
@@ -540,135 +446,76 @@ function Pricing() {
                 <Form>
                   {/* Sección: Información Básica */}
                   <div className="mb-4">
-                    <h6 className="text-muted mb-3">Información Básica</h6>
+                    <h6 className="text-muted mb-3">Puertos</h6>
                     <div className="row g-3">
                       <div className="col-md-6">
-                        <div className="d-flex align-items-center gap-2 mb-2">
-                          <label className="form-label mb-0">Origen</label>
-                          <OverlayTrigger
-                            placement="right"
-                            overlay={
-                              <Tooltip id="tooltip-origen">
-                                Si conoces el code IATA, ingresalo, de manera contraria, escribe el origen de manera Ciudad (País)
-                              </Tooltip>
-                            }
-                          >
-                            <i className="bi bi-info-circle" style={{
-                              color: '#ff0000',
-                              fontSize: '18px',
-                              fontWeight: 'bold',
-                              cursor: 'pointer'
-                            }}></i>
-                          </OverlayTrigger>
-                        </div>
-                        <AirportAutocomplete
-                          label=""
-                          value={form.origin}
-                          onChange={(value) => updateForm(form.id, 'origin', value)}
-                          placeholder="Ej: MIA, SCL, LHR"
-                        />
+                        <Form.Group>
+                          <Form.Label>POL (Puerto de Origen)</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={form.pol}
+                            onChange={(e) => updateForm(form.id, 'pol', e.target.value)}
+                            placeholder="Ej: Valparaiso"
+                          />
+                        </Form.Group>
                       </div>
-
                       <div className="col-md-6">
-                        <div className="d-flex align-items-center gap-2 mb-2">
-                          <label className="form-label mb-0">Destino</label>
-                          <OverlayTrigger
-                            placement="right"
-                            overlay={
-                              <Tooltip id="tooltip-destino">
-                                Si conoces el code IATA, ingresalo, de manera contraria, escribe el destino de manera Ciudad (País)
-                              </Tooltip>
-                            }
-                          >
-                            <i className="bi bi-info-circle" style={{
-                              color: '#ff0000',
-                              fontSize: '18px',
-                              fontWeight: 'bold',
-                              cursor: 'pointer'
-                            }}></i>
-                          </OverlayTrigger>
-                        </div>
-                        <AirportAutocomplete
-                          label=""
-                          value={form.destination}
-                          onChange={(value) => updateForm(form.id, 'destination', value)}
-                          placeholder="Ej: MIA, SCL, LHR"
-                        />
+                        <Form.Group>
+                          <Form.Label>POD (Puerto de Destino)</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={form.pod}
+                            onChange={(e) => updateForm(form.id, 'pod', e.target.value)}
+                            placeholder="Ej: Hamburg"
+                          />
+                        </Form.Group>
                       </div>
                     </div>
                   </div>
 
-                  {/* Sección: Tarifas por Peso */}
+                  {/* Sección: Tarifas por Contenedor */}
                   <div className="mb-4">
-                    <h6 className="text-muted mb-3">Tarifas por Peso (solo números)</h6>
+                    <h6 className="text-muted mb-3">Tarifas por Contenedor</h6>
                     <div className="row g-3">
-                      <div className="col-md-2">
+                      <div className="col-md-3">
                         <Form.Group>
-                          <Form.Label>1-99kg</Form.Label>
+                          <Form.Label>20GP</Form.Label>
                           <Form.Control
                             type="number"
                             step="0.01"
-                            value={form.kg45}
-                            onChange={(e) => updateForm(form.id, 'kg45', e.target.value)}
-                            required
+                            value={form.gp20}
+                            onChange={(e) => updateForm(form.id, 'gp20', e.target.value)}
                           />
                         </Form.Group>
                       </div>
-                      <div className="col-md-2">
+                      <div className="col-md-3">
                         <Form.Group>
-                          <Form.Label>100-299kg</Form.Label>
+                          <Form.Label>40HQ</Form.Label>
                           <Form.Control
                             type="number"
                             step="0.01"
-                            value={form.kg100}
-                            onChange={(e) => updateForm(form.id, 'kg100', e.target.value)}
-                            required
+                            value={form.hq40}
+                            onChange={(e) => updateForm(form.id, 'hq40', e.target.value)}
                           />
                         </Form.Group>
                       </div>
-                      <div className="col-md-2">
+                      <div className="col-md-3">
                         <Form.Group>
-                          <Form.Label>300-499kg</Form.Label>
+                          <Form.Label>40NOR</Form.Label>
                           <Form.Control
                             type="number"
                             step="0.01"
-                            value={form.kg300}
-                            onChange={(e) => updateForm(form.id, 'kg300', e.target.value)}
-                            required
+                            value={form.nor40}
+                            onChange={(e) => updateForm(form.id, 'nor40', e.target.value)}
                           />
                         </Form.Group>
                       </div>
-                      <div className="col-md-2">
-                        <Form.Group>
-                          <Form.Label>500-999kg</Form.Label>
-                          <Form.Control
-                            type="number"
-                            step="0.01"
-                            value={form.kg500}
-                            onChange={(e) => updateForm(form.id, 'kg500', e.target.value)}
-                            required
-                          />
-                        </Form.Group>
-                      </div>
-                      <div className="col-md-2">
-                        <Form.Group>
-                          <Form.Label>+1000kg</Form.Label>
-                          <Form.Control
-                            type="number"
-                            step="0.01"
-                            value={form.kg1000}
-                            onChange={(e) => updateForm(form.id, 'kg1000', e.target.value)}
-                            required
-                          />
-                        </Form.Group>
-                      </div>
-                      <div className="col-md-2">
+                      <div className="col-md-3">
                         <Form.Group>
                           <Form.Label>Moneda</Form.Label>
                           <Form.Select
                             value={form.currency}
                             onChange={(e) => updateForm(form.id, 'currency', e.target.value)}
-                            required
                           >
                             {CURRENCY_OPTIONS.map(curr => (
                               <option key={curr} value={curr}>{curr}</option>
@@ -690,32 +537,29 @@ function Pricing() {
                             type="text"
                             value={form.carrier}
                             onChange={(e) => updateForm(form.id, 'carrier', e.target.value)}
-                            placeholder="Ej: Lufthansa"
-                            required
+                            placeholder="Ej: MSC, MAERSK"
                           />
                         </Form.Group>
                       </div>
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Frecuencia</Form.Label>
+                          <Form.Label>Free Time</Form.Label>
                           <Form.Control
                             type="text"
-                            value={form.frequency}
-                            onChange={(e) => updateForm(form.id, 'frequency', e.target.value)}
-                            placeholder="Ej: Daily, 3x/week"
-                            required
+                            value={form.freeTime}
+                            onChange={(e) => updateForm(form.id, 'freeTime', e.target.value)}
+                            placeholder="Ej: 7 días"
                           />
                         </Form.Group>
                       </div>
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Transit Time</Form.Label>
+                          <Form.Label>Transit Time (T.T)</Form.Label>
                           <Form.Control
                             type="text"
-                            value={form.transitTime}
-                            onChange={(e) => updateForm(form.id, 'transitTime', e.target.value)}
-                            placeholder="Ej: 2-3 días"
-                            required
+                            value={form.tt}
+                            onChange={(e) => updateForm(form.id, 'tt', e.target.value)}
+                            placeholder="Ej: 25-30 días"
                           />
                         </Form.Group>
                       </div>
@@ -728,37 +572,51 @@ function Pricing() {
                     <div className="row g-3">
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Routing</Form.Label>
+                          <Form.Label>Compañía Naviera</Form.Label>
                           <Form.Control
                             type="text"
-                            value={form.routing}
-                            onChange={(e) => updateForm(form.id, 'routing', e.target.value)}
-                            placeholder="Ej: Direct, Via MIA"
-                            required
+                            value={form.company}
+                            onChange={(e) => updateForm(form.id, 'company', e.target.value)}
+                            placeholder="Nombre de la compañía"
                           />
                         </Form.Group>
                       </div>
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Remark 1</Form.Label>
+                          <div className="d-flex align-items-center gap-2 mb-2">
+                            <label className="form-label mb-0">Cliente (Opcional)</label>
+                            <OverlayTrigger
+                              placement="right"
+                              overlay={
+                                <Tooltip id="tooltip-cliente">
+                                  Agregar nombre de la empresa que solamente verá esta ruta
+                                </Tooltip>
+                              }
+                            >
+                              <i className="bi bi-info-circle" style={{
+                                color: '#ff0000',
+                                fontSize: '18px',
+                                fontWeight: 'bold',
+                                cursor: 'pointer'
+                              }}></i>
+                            </OverlayTrigger>
+                          </div>
                           <Form.Control
                             type="text"
-                            value={form.remark1}
-                            onChange={(e) => updateForm(form.id, 'remark1', e.target.value)}
-                            placeholder="Observación 1"
-                            required
+                            value={form.client}
+                            onChange={(e) => updateForm(form.id, 'client', e.target.value)}
+                            placeholder="Nombre del cliente"
                           />
                         </Form.Group>
                       </div>
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Mínimo</Form.Label>
+                          <Form.Label>Remarks</Form.Label>
                           <Form.Control
                             type="text"
-                            value={form.remark2}
-                            onChange={(e) => updateForm(form.id, 'remark2', e.target.value)}
-                            placeholder="Mínimo de cargo"
-                            required
+                            value={form.remarks}
+                            onChange={(e) => updateForm(form.id, 'remarks', e.target.value)}
+                            placeholder="Observaciones"
                           />
                         </Form.Group>
                       </div>
@@ -805,7 +663,13 @@ function Pricing() {
         <div className="mt-4 pt-3 border-top">
           <small className="text-muted">
             <i className="bi bi-info-circle me-1"></i>
-            Todos los campos son obligatorios. Las rutas se agregarán directamente al Pricing.
+            Todos los campos son opcionales. Las rutas se agregarán directamente al Pricing.
+          </small>
+        </div>
+        <div className="mt-2">
+          <small className="text-muted">
+            <i className="bi bi-info-circle me-1"></i>
+            Los valores agregados aparecerán al final de la tabla de rutas existentes.
           </small>
         </div>
       </div>
@@ -814,19 +678,12 @@ function Pricing() {
       {/* SECCIÓN: TABLA DE RUTAS EXISTENTES */}
       {/* ============================================================================ */}
 
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e5e7eb',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        padding: '24px',
-        marginTop: '24px'
-      }}>
+      <div className="pricing-routes-section">
         {/* Header de la tabla */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h5 className="mb-1">
-            Rutas Aéreas Actuales 
+              Rutas FCL Actuales 
             </h5>
             <small className="text-muted">
               {lastFetch && `Última actualización: ${lastFetch.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`}
@@ -882,20 +739,18 @@ function Pricing() {
                 <thead className="table-light">
                   <tr>
                     <th style={{ width: '50px' }}>Acciones</th>
-                    <th>Origen</th>
-                    <th>Destino</th>
-                    <th>45kg</th>
-                    <th>100kg</th>
-                    <th>300kg</th>
-                    <th>500kg</th>
-                    <th>1000kg</th>
+                    <th>POL</th>
+                    <th>POD</th>
+                    <th>20GP</th>
+                    <th>40HQ</th>
+                    <th>40NOR</th>
                     <th>Carrier</th>
-                    <th>Frecuencia</th>
-                    <th>TT</th>
-                    <th>Routing</th>
-                    <th>Remark1</th>
-                    <th>Mínimo</th>
+                    <th>Free Time</th>
+                    <th>Remarks</th>
+                    <th>T.T</th>
+                    <th>Compañía</th>
                     <th>Currency</th>
+                    <th>Cliente</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -948,28 +803,26 @@ function Pricing() {
                         </td>
                         {isEditing ? (
                           <>
-                            <td><Form.Control size="sm" value={editForm.origin} onChange={(e) => setEditForm({...editForm, origin: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.destination} onChange={(e) => setEditForm({...editForm, destination: e.target.value})} /></td>
-                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.kg45} onChange={(e) => setEditForm({...editForm, kg45: e.target.value})} /></td>
-                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.kg100} onChange={(e) => setEditForm({...editForm, kg100: e.target.value})} /></td>
-                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.kg300} onChange={(e) => setEditForm({...editForm, kg300: e.target.value})} /></td>
-                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.kg500} onChange={(e) => setEditForm({...editForm, kg500: e.target.value})} /></td>
-                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.kg1000} onChange={(e) => setEditForm({...editForm, kg1000: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.pol} onChange={(e) => setEditForm({...editForm, pol: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.pod} onChange={(e) => setEditForm({...editForm, pod: e.target.value})} /></td>
+                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.gp20} onChange={(e) => setEditForm({...editForm, gp20: e.target.value})} /></td>
+                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.hq40} onChange={(e) => setEditForm({...editForm, hq40: e.target.value})} /></td>
+                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.nor40} onChange={(e) => setEditForm({...editForm, nor40: e.target.value})} /></td>
                             <td><Form.Control size="sm" value={editForm.carrier} onChange={(e) => setEditForm({...editForm, carrier: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.frequency} onChange={(e) => setEditForm({...editForm, frequency: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.transitTime} onChange={(e) => setEditForm({...editForm, transitTime: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.routing} onChange={(e) => setEditForm({...editForm, routing: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.remark1} onChange={(e) => setEditForm({...editForm, remark1: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.remark2} onChange={(e) => setEditForm({...editForm, remark2: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.freeTime} onChange={(e) => setEditForm({...editForm, freeTime: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.remarks} onChange={(e) => setEditForm({...editForm, remarks: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.tt} onChange={(e) => setEditForm({...editForm, tt: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.company} onChange={(e) => setEditForm({...editForm, company: e.target.value})} /></td>
                             <td>
                               <Form.Select size="sm" value={editForm.currency} onChange={(e) => setEditForm({...editForm, currency: e.target.value})}>
                                 {CURRENCY_OPTIONS.map(curr => <option key={curr} value={curr}>{curr}</option>)}
                               </Form.Select>
                             </td>
+                            <td><Form.Control size="sm" value={editForm.client} onChange={(e) => setEditForm({...editForm, client: e.target.value})} /></td>
                           </>
                         ) : (
                           <>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((colIndex) => {
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((colIndex) => {
                               const isEditingThisCell = editingCell?.row === actualIndex && editingCell?.col === colIndex;
                               
                               return (
@@ -985,8 +838,8 @@ function Pricing() {
                                   {isEditingThisCell ? (
                                     <Form.Control
                                       size="sm"
-                                      type={[3, 4, 5, 6, 7].includes(colIndex) ? 'number' : 'text'}
-                                      step={[3, 4, 5, 6, 7].includes(colIndex) ? '0.01' : undefined}
+                                      type={[3, 4, 5].includes(colIndex) ? 'number' : 'text'}
+                                      step={[3, 4, 5].includes(colIndex) ? '0.01' : undefined}
                                       value={cellValue}
                                       onChange={(e) => setCellValue(e.target.value)}
                                       onKeyDown={(e) => handleCellKeyDown(e, actualIndex, colIndex)}
@@ -1001,13 +854,13 @@ function Pricing() {
                               );
                             })}
                             <td>
-                              {editingCell?.row === actualIndex && editingCell?.col === 14 ? (
+                              {editingCell?.row === actualIndex && editingCell?.col === 11 ? (
                                 <Form.Select
                                   size="sm"
                                   value={cellValue}
                                   onChange={(e) => setCellValue(e.target.value)}
-                                  onKeyDown={(e) => handleCellKeyDown(e, actualIndex, 14)}
-                                  onBlur={() => saveCellEdit(actualIndex, 14)}
+                                  onKeyDown={(e) => handleCellKeyDown(e, actualIndex, 11)}
+                                  onBlur={() => saveCellEdit(actualIndex, 11)}
                                   autoFocus
                                 >
                                   {CURRENCY_OPTIONS.map(curr => (
@@ -1017,12 +870,31 @@ function Pricing() {
                               ) : (
                                 <span 
                                   className="badge bg-secondary" 
-                                  onDoubleClick={() => handleCellDoubleClick(actualIndex, 14, route[14])}
+                                  onDoubleClick={() => handleCellDoubleClick(actualIndex, 11, route[11])}
                                   style={{ cursor: 'pointer' }}
                                   title="Doble clic para editar"
                                 >
-                                  {route[14]}
+                                  {route[11]}
                                 </span>
+                              )}
+                            </td>
+                            <td 
+                              onDoubleClick={() => handleCellDoubleClick(actualIndex, 12, route[12])}
+                              style={{ cursor: 'pointer' }}
+                              title="Doble clic para editar"
+                            >
+                              {editingCell?.row === actualIndex && editingCell?.col === 12 ? (
+                                <Form.Control
+                                  size="sm"
+                                  value={cellValue}
+                                  onChange={(e) => setCellValue(e.target.value)}
+                                  onKeyDown={(e) => handleCellKeyDown(e, actualIndex, 12)}
+                                  onBlur={() => saveCellEdit(actualIndex, 12)}
+                                  autoFocus
+                                  style={{ minWidth: '80px' }}
+                                />
+                              ) : (
+                                <span>{route[12]}</span>
                               )}
                             </td>
                           </>
@@ -1066,8 +938,8 @@ function Pricing() {
           </>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
-export default Pricing;
+export default PricingFCL;

@@ -74,11 +74,6 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           icon: 'fa fa-dollar-sign'
         },
         {
-          path: '/admin/pricingFCL',
-          name: 'Pricing FCL',
-          icon: 'fa fa-dollar-sign'
-        },
-        {
           path: '/admin/users',
           name: 'Gestión de Usuarios',
           icon: 'fa fa-user-shield',

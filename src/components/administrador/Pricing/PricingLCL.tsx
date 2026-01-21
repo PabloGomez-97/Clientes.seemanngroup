@@ -1,7 +1,7 @@
-// src/components/administrador/PricingFCL.tsx
+// src/components/administrador/PricingLCL.tsx
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthContext';
+import { useAuth } from '../../../auth/AuthContext';
 import { Accordion, Button, Form, Spinner, Alert, OverlayTrigger, Tooltip } from 'react-bootstrap';
 
 interface OutletContext {
@@ -9,45 +9,41 @@ interface OutletContext {
   onLogout: () => void;
 }
 
-interface RouteFormFCL {
+interface RouteFormLCL {
   id: string;
   pol: string;
+  servicio: string;
   pod: string;
-  gp20: string;
-  hq40: string;
-  nor40: string;
-  carrier: string;
-  freeTime: string;
-  remarks: string;
-  tt: string;
-  company: string;
+  ofwm: string;
   currency: string;
-  client: string;
+  frecuencia: string;
+  agente: string;
+  tt: string;
+  operador: string;
+  cliente: string;
 }
 
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwItrwoAoOvwFGL5kvn-dqyV54UjUP7_Dby-iC5EDAQLKRyEo5KVMCs-U2VQGCuJ3yS/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby7iaJleKt2m5smmcySNuL9IEAEdUkL1ZGmjZeOxqZgo8hwHeUfIUnlRnSC5jqvScUQ/exec';
 
 const CURRENCY_OPTIONS = ['USD', 'EUR', 'GBP', 'CAD', 'CHF', 'CLP', 'SEK'];
 
-function PricingFCL() {
+function PricingLCL() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
 
-  const [forms, setForms] = useState<RouteFormFCL[]>([
+  const [forms, setForms] = useState<RouteFormLCL[]>([
     {
       id: '1',
       pol: '',
+      servicio: '',
       pod: '',
-      gp20: '',
-      hq40: '',
-      nor40: '',
-      carrier: '',
-      freeTime: '',
-      remarks: '',
-      tt: '',
-      company: '',
+      ofwm: '',
       currency: 'USD',
-      client: ''
+      frecuencia: '',
+      agente: '',
+      tt: '',
+      operador: '',
+      cliente: ''
     }
   ]);
 
@@ -71,20 +67,18 @@ function PricingFCL() {
   const [cellValue, setCellValue] = useState<string>('');
 
   const addNewForm = () => {
-    const newForm: RouteFormFCL = {
+    const newForm: RouteFormLCL = {
       id: Date.now().toString(),
       pol: '',
+      servicio: '',
       pod: '',
-      gp20: '',
-      hq40: '',
-      nor40: '',
-      carrier: '',
-      freeTime: '',
-      remarks: '',
-      tt: '',
-      company: '',
+      ofwm: '',
       currency: 'USD',
-      client: ''
+      frecuencia: '',
+      agente: '',
+      tt: '',
+      operador: '',
+      cliente: ''
     };
     setForms([...forms, newForm]);
     setActiveKey(forms.length.toString());
@@ -98,7 +92,7 @@ function PricingFCL() {
     setForms(forms.filter(f => f.id !== id));
   };
 
-  const updateForm = (id: string, field: keyof RouteFormFCL, value: string) => {
+  const updateForm = (id: string, field: keyof RouteFormLCL, value: string) => {
     setForms(forms.map(f => 
       f.id === id ? { ...f, [field]: value } : f
     ));
@@ -131,17 +125,15 @@ function PricingFCL() {
         setForms([{
           id: Date.now().toString(),
           pol: '',
+          servicio: '',
           pod: '',
-          gp20: '',
-          hq40: '',
-          nor40: '',
-          carrier: '',
-          freeTime: '',
-          remarks: '',
-          tt: '',
-          company: '',
+          ofwm: '',
           currency: 'USD',
-          client: ''
+          frecuencia: '',
+          agente: '',
+          tt: '',
+          operador: '',
+          cliente: ''
         }]);
         setActiveKey('0');
         setSuccess(null);
@@ -156,7 +148,7 @@ function PricingFCL() {
   };
 
   // Función para enviar datos via iframe (evita CORS)
-  const sendFormViaIframe = (form: RouteFormFCL): Promise<void> => {
+  const sendFormViaIframe = (form: RouteFormLCL): Promise<void> => {
     return new Promise((resolve) => {
       const hiddenForm = document.createElement('form');
       hiddenForm.method = 'POST';
@@ -167,17 +159,15 @@ function PricingFCL() {
       const values = [
         '', // Columna 0 vacía
         form.pol,
+        form.servicio,
         form.pod,
-        form.gp20,
-        form.hq40,
-        form.nor40,
-        form.carrier,
-        form.freeTime,
-        form.remarks,
-        form.tt,
-        form.company,
+        form.ofwm,
         form.currency,
-        form.client
+        form.frecuencia,
+        form.agente,
+        form.tt,
+        form.operador,
+        form.cliente
       ];
 
       const input = document.createElement('input');
@@ -256,17 +246,15 @@ function PricingFCL() {
     setEditingRow(index);
     setEditForm({
       pol: route[1],
-      pod: route[2],
-      gp20: route[3],
-      hq40: route[4],
-      nor40: route[5],
-      carrier: route[6],
-      freeTime: route[7],
-      remarks: route[8],
-      tt: route[9],
-      company: route[10],
-      currency: route[11],
-      client: route[12]
+      servicio: route[2],
+      pod: route[3],
+      ofwm: route[4],
+      currency: route[5],
+      frecuencia: route[6],
+      agente: route[7],
+      tt: route[8],
+      operador: route[9],
+      cliente: route[10]
     });
   };
 
@@ -278,17 +266,15 @@ function PricingFCL() {
       const values = [
         '',
         editForm.pol,
+        editForm.servicio,
         editForm.pod,
-        editForm.gp20,
-        editForm.hq40,
-        editForm.nor40,
-        editForm.carrier,
-        editForm.freeTime,
-        editForm.remarks,
-        editForm.tt,
-        editForm.company,
+        editForm.ofwm,
         editForm.currency,
-        editForm.client
+        editForm.frecuencia,
+        editForm.agente,
+        editForm.tt,
+        editForm.operador,
+        editForm.cliente
       ];
 
       const response = await fetch(
@@ -397,36 +383,7 @@ function PricingFCL() {
   const totalPages = Math.ceil(filteredRoutes.length / rowsPerPage);
 
   return (
-    <div className="container-fluid">
-      {/* Header con Logo */}
-      <div className="row mb-4 align-items-center">
-        <div className="col-auto">
-          <img 
-            src="/logocompleto.png" 
-            alt="Seemann Group Logo" 
-            style={{ height: '60px', objectFit: 'contain' }}
-          />
-        </div>
-        <div className="col">
-          <h2 style={{
-            fontSize: '28px',
-            fontWeight: '700',
-            color: '#1f2937',
-            marginBottom: '8px',
-            letterSpacing: '-0.5px'
-          }}>
-            Gestión de Tarifas FCL
-          </h2>
-          <p style={{
-            fontSize: '15px',
-            color: '#6b7280',
-            margin: 0
-          }}>
-            Agregar nuevas rutas FCL al sistema de cotización - {user?.username}
-          </p>
-        </div>
-      </div>
-
+    <>
       {/* Mensajes de éxito/error */}
       {success && (
         <Alert variant="success" className="mb-4" dismissible onClose={() => setSuccess(null)}>
@@ -440,14 +397,8 @@ function PricingFCL() {
         </Alert>
       )}
 
-      {/* Card Principal */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e5e7eb',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        padding: '24px'
-      }}>
+      {/* Accordion de Formularios */}
+      <div className="pricing-forms-section">
         {/* Accordion de Formularios */}
         <Accordion activeKey={activeKey} onSelect={(key) => setActiveKey(key as string)}>
           {forms.map((form, index) => (
@@ -455,7 +406,7 @@ function PricingFCL() {
               <Accordion.Header>
                 <div className="d-flex justify-content-between align-items-center w-100 pe-3">
                   <span>
-                    <strong>Ruta FCL #{index + 1}</strong>
+                    <strong>Ruta LCL #{index + 1}</strong>
                     {form.pol && form.pod && (
                       <span className="ms-2 text-muted">
                         ({form.pol} → {form.pod})
@@ -481,9 +432,9 @@ function PricingFCL() {
                 <Form>
                   {/* Sección: Información Básica */}
                   <div className="mb-4">
-                    <h6 className="text-muted mb-3">Puertos</h6>
+                    <h6 className="text-muted mb-3">Puertos y Servicio</h6>
                     <div className="row g-3">
-                      <div className="col-md-6">
+                      <div className="col-md-4">
                         <Form.Group>
                           <Form.Label>POL (Puerto de Origen)</Form.Label>
                           <Form.Control
@@ -494,58 +445,48 @@ function PricingFCL() {
                           />
                         </Form.Group>
                       </div>
-                      <div className="col-md-6">
+                      <div className="col-md-4">
+                        <Form.Group>
+                          <Form.Label>SERVICIO - VIA</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={form.servicio}
+                            onChange={(e) => updateForm(form.id, 'servicio', e.target.value)}
+                            placeholder="Ej: Directo, Via Buenaventura"
+                          />
+                        </Form.Group>
+                      </div>
+                      <div className="col-md-4">
                         <Form.Group>
                           <Form.Label>POD (Puerto de Destino)</Form.Label>
                           <Form.Control
                             type="text"
                             value={form.pod}
                             onChange={(e) => updateForm(form.id, 'pod', e.target.value)}
-                            placeholder="Ej: Hamburg"
+                            placeholder="Ej: Santos"
                           />
                         </Form.Group>
                       </div>
                     </div>
                   </div>
 
-                  {/* Sección: Tarifas por Contenedor */}
+                  {/* Sección: Tarifa */}
                   <div className="mb-4">
-                    <h6 className="text-muted mb-3">Tarifas por Contenedor</h6>
+                    <h6 className="text-muted mb-3">Tarifa</h6>
                     <div className="row g-3">
-                      <div className="col-md-3">
+                      <div className="col-md-6">
                         <Form.Group>
-                          <Form.Label>20GP</Form.Label>
+                          <Form.Label>OF W/M</Form.Label>
                           <Form.Control
                             type="number"
                             step="0.01"
-                            value={form.gp20}
-                            onChange={(e) => updateForm(form.id, 'gp20', e.target.value)}
+                            value={form.ofwm}
+                            onChange={(e) => updateForm(form.id, 'ofwm', e.target.value)}
+                            placeholder="45"
                           />
                         </Form.Group>
                       </div>
-                      <div className="col-md-3">
-                        <Form.Group>
-                          <Form.Label>40HQ</Form.Label>
-                          <Form.Control
-                            type="number"
-                            step="0.01"
-                            value={form.hq40}
-                            onChange={(e) => updateForm(form.id, 'hq40', e.target.value)}
-                          />
-                        </Form.Group>
-                      </div>
-                      <div className="col-md-3">
-                        <Form.Group>
-                          <Form.Label>40NOR</Form.Label>
-                          <Form.Control
-                            type="number"
-                            step="0.01"
-                            value={form.nor40}
-                            onChange={(e) => updateForm(form.id, 'nor40', e.target.value)}
-                          />
-                        </Form.Group>
-                      </div>
-                      <div className="col-md-3">
+                      <div className="col-md-6">
                         <Form.Group>
                           <Form.Label>Moneda</Form.Label>
                           <Form.Select
@@ -567,34 +508,34 @@ function PricingFCL() {
                     <div className="row g-3">
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Carrier</Form.Label>
+                          <Form.Label>Frecuencia</Form.Label>
                           <Form.Control
                             type="text"
-                            value={form.carrier}
-                            onChange={(e) => updateForm(form.id, 'carrier', e.target.value)}
-                            placeholder="Ej: MSC, MAERSK"
+                            value={form.frecuencia}
+                            onChange={(e) => updateForm(form.id, 'frecuencia', e.target.value)}
+                            placeholder="Ej: Semanal, Quincenal"
                           />
                         </Form.Group>
                       </div>
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Free Time</Form.Label>
-                          <Form.Control
-                            type="text"
-                            value={form.freeTime}
-                            onChange={(e) => updateForm(form.id, 'freeTime', e.target.value)}
-                            placeholder="Ej: 7 días"
-                          />
-                        </Form.Group>
-                      </div>
-                      <div className="col-md-4">
-                        <Form.Group>
-                          <Form.Label>Transit Time (T.T)</Form.Label>
+                          <Form.Label>Transit Time Aprox</Form.Label>
                           <Form.Control
                             type="text"
                             value={form.tt}
                             onChange={(e) => updateForm(form.id, 'tt', e.target.value)}
-                            placeholder="Ej: 25-30 días"
+                            placeholder="Ej: 30-35 días"
+                          />
+                        </Form.Group>
+                      </div>
+                      <div className="col-md-4">
+                        <Form.Group>
+                          <Form.Label>Agente</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={form.agente}
+                            onChange={(e) => updateForm(form.id, 'agente', e.target.value)}
+                            placeholder="Nombre del agente"
                           />
                         </Form.Group>
                       </div>
@@ -605,18 +546,18 @@ function PricingFCL() {
                   <div className="mb-3">
                     <h6 className="text-muted mb-3">Información Adicional</h6>
                     <div className="row g-3">
-                      <div className="col-md-4">
+                      <div className="col-md-6">
                         <Form.Group>
-                          <Form.Label>Compañía Naviera</Form.Label>
+                          <Form.Label>Operador</Form.Label>
                           <Form.Control
                             type="text"
-                            value={form.company}
-                            onChange={(e) => updateForm(form.id, 'company', e.target.value)}
-                            placeholder="Nombre de la compañía"
+                            value={form.operador}
+                            onChange={(e) => updateForm(form.id, 'operador', e.target.value)}
+                            placeholder="Nombre del operador"
                           />
                         </Form.Group>
                       </div>
-                      <div className="col-md-4">
+                      <div className="col-md-6">
                         <Form.Group>
                           <div className="d-flex align-items-center gap-2 mb-2">
                             <label className="form-label mb-0">Cliente (Opcional)</label>
@@ -638,20 +579,9 @@ function PricingFCL() {
                           </div>
                           <Form.Control
                             type="text"
-                            value={form.client}
-                            onChange={(e) => updateForm(form.id, 'client', e.target.value)}
+                            value={form.cliente}
+                            onChange={(e) => updateForm(form.id, 'cliente', e.target.value)}
                             placeholder="Nombre del cliente"
-                          />
-                        </Form.Group>
-                      </div>
-                      <div className="col-md-4">
-                        <Form.Group>
-                          <Form.Label>Remarks</Form.Label>
-                          <Form.Control
-                            type="text"
-                            value={form.remarks}
-                            onChange={(e) => updateForm(form.id, 'remarks', e.target.value)}
-                            placeholder="Observaciones"
                           />
                         </Form.Group>
                       </div>
@@ -701,25 +631,24 @@ function PricingFCL() {
             Todos los campos son opcionales. Las rutas se agregarán directamente al Pricing.
           </small>
         </div>
+        <div className="mt-2">
+          <small className="text-muted">
+            <i className="bi bi-info-circle me-1"></i>
+            Los valores agregados aparecerán al final de la tabla de rutas existentes.
+          </small>
+        </div>
       </div>
 
       {/* ============================================================================ */}
       {/* SECCIÓN: TABLA DE RUTAS EXISTENTES */}
       {/* ============================================================================ */}
 
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e5e7eb',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        padding: '24px',
-        marginTop: '24px'
-      }}>
+      <div className="pricing-routes-section">
         {/* Header de la tabla */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
             <h5 className="mb-1">
-              Rutas FCL Actuales 
+              Rutas LCL Actuales 
             </h5>
             <small className="text-muted">
               {lastFetch && `Última actualización: ${lastFetch.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`}
@@ -776,16 +705,14 @@ function PricingFCL() {
                   <tr>
                     <th style={{ width: '50px' }}>Acciones</th>
                     <th>POL</th>
+                    <th>SERVICIO - VIA</th>
                     <th>POD</th>
-                    <th>20GP</th>
-                    <th>40HQ</th>
-                    <th>40NOR</th>
-                    <th>Carrier</th>
-                    <th>Free Time</th>
-                    <th>Remarks</th>
-                    <th>T.T</th>
-                    <th>Compañía</th>
+                    <th>OF W/M</th>
                     <th>Currency</th>
+                    <th>Frecuencia</th>
+                    <th>Agente</th>
+                    <th>TT Aprox</th>
+                    <th>Operador</th>
                     <th>Cliente</th>
                   </tr>
                 </thead>
@@ -840,25 +767,23 @@ function PricingFCL() {
                         {isEditing ? (
                           <>
                             <td><Form.Control size="sm" value={editForm.pol} onChange={(e) => setEditForm({...editForm, pol: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.servicio} onChange={(e) => setEditForm({...editForm, servicio: e.target.value})} /></td>
                             <td><Form.Control size="sm" value={editForm.pod} onChange={(e) => setEditForm({...editForm, pod: e.target.value})} /></td>
-                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.gp20} onChange={(e) => setEditForm({...editForm, gp20: e.target.value})} /></td>
-                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.hq40} onChange={(e) => setEditForm({...editForm, hq40: e.target.value})} /></td>
-                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.nor40} onChange={(e) => setEditForm({...editForm, nor40: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.carrier} onChange={(e) => setEditForm({...editForm, carrier: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.freeTime} onChange={(e) => setEditForm({...editForm, freeTime: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.remarks} onChange={(e) => setEditForm({...editForm, remarks: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.tt} onChange={(e) => setEditForm({...editForm, tt: e.target.value})} /></td>
-                            <td><Form.Control size="sm" value={editForm.company} onChange={(e) => setEditForm({...editForm, company: e.target.value})} /></td>
+                            <td><Form.Control size="sm" type="number" step="0.01" value={editForm.ofwm} onChange={(e) => setEditForm({...editForm, ofwm: e.target.value})} /></td>
                             <td>
                               <Form.Select size="sm" value={editForm.currency} onChange={(e) => setEditForm({...editForm, currency: e.target.value})}>
                                 {CURRENCY_OPTIONS.map(curr => <option key={curr} value={curr}>{curr}</option>)}
                               </Form.Select>
                             </td>
-                            <td><Form.Control size="sm" value={editForm.client} onChange={(e) => setEditForm({...editForm, client: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.frecuencia} onChange={(e) => setEditForm({...editForm, frecuencia: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.agente} onChange={(e) => setEditForm({...editForm, agente: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.tt} onChange={(e) => setEditForm({...editForm, tt: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.operador} onChange={(e) => setEditForm({...editForm, operador: e.target.value})} /></td>
+                            <td><Form.Control size="sm" value={editForm.cliente} onChange={(e) => setEditForm({...editForm, cliente: e.target.value})} /></td>
                           </>
                         ) : (
                           <>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((colIndex) => {
+                            {[1, 2, 3, 4, 6, 7, 8, 9, 10].map((colIndex) => {
                               const isEditingThisCell = editingCell?.row === actualIndex && editingCell?.col === colIndex;
                               
                               return (
@@ -874,8 +799,8 @@ function PricingFCL() {
                                   {isEditingThisCell ? (
                                     <Form.Control
                                       size="sm"
-                                      type={[3, 4, 5].includes(colIndex) ? 'number' : 'text'}
-                                      step={[3, 4, 5].includes(colIndex) ? '0.01' : undefined}
+                                      type={colIndex === 4 ? 'number' : 'text'}
+                                      step={colIndex === 4 ? '0.01' : undefined}
                                       value={cellValue}
                                       onChange={(e) => setCellValue(e.target.value)}
                                       onKeyDown={(e) => handleCellKeyDown(e, actualIndex, colIndex)}
@@ -890,13 +815,13 @@ function PricingFCL() {
                               );
                             })}
                             <td>
-                              {editingCell?.row === actualIndex && editingCell?.col === 11 ? (
+                              {editingCell?.row === actualIndex && editingCell?.col === 5 ? (
                                 <Form.Select
                                   size="sm"
                                   value={cellValue}
                                   onChange={(e) => setCellValue(e.target.value)}
-                                  onKeyDown={(e) => handleCellKeyDown(e, actualIndex, 11)}
-                                  onBlur={() => saveCellEdit(actualIndex, 11)}
+                                  onKeyDown={(e) => handleCellKeyDown(e, actualIndex, 5)}
+                                  onBlur={() => saveCellEdit(actualIndex, 5)}
                                   autoFocus
                                 >
                                   {CURRENCY_OPTIONS.map(curr => (
@@ -906,31 +831,12 @@ function PricingFCL() {
                               ) : (
                                 <span 
                                   className="badge bg-secondary" 
-                                  onDoubleClick={() => handleCellDoubleClick(actualIndex, 11, route[11])}
+                                  onDoubleClick={() => handleCellDoubleClick(actualIndex, 5, route[5])}
                                   style={{ cursor: 'pointer' }}
                                   title="Doble clic para editar"
                                 >
-                                  {route[11]}
+                                  {route[5]}
                                 </span>
-                              )}
-                            </td>
-                            <td 
-                              onDoubleClick={() => handleCellDoubleClick(actualIndex, 12, route[12])}
-                              style={{ cursor: 'pointer' }}
-                              title="Doble clic para editar"
-                            >
-                              {editingCell?.row === actualIndex && editingCell?.col === 12 ? (
-                                <Form.Control
-                                  size="sm"
-                                  value={cellValue}
-                                  onChange={(e) => setCellValue(e.target.value)}
-                                  onKeyDown={(e) => handleCellKeyDown(e, actualIndex, 12)}
-                                  onBlur={() => saveCellEdit(actualIndex, 12)}
-                                  autoFocus
-                                  style={{ minWidth: '80px' }}
-                                />
-                              ) : (
-                                <span>{route[12]}</span>
                               )}
                             </td>
                           </>
@@ -974,8 +880,8 @@ function PricingFCL() {
           </>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
-export default PricingFCL;
+export default PricingLCL;
