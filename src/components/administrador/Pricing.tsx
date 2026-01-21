@@ -66,8 +66,6 @@ function Pricing() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(30);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [lastFetch, setLastFetch] = useState<Date | null>(null);
   const [editingRow, setEditingRow] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
@@ -150,7 +148,13 @@ function Pricing() {
       setSuccess(`✅ ${forms.length} ruta${forms.length > 1 ? 's' : ''} agregada${forms.length > 1 ? 's' : ''} exitosamente al Google Sheet`);
       
       // Refrescar la tabla de rutas
-      fetchRoutes();
+      await fetchRoutes();
+      
+      // Ir a la última página para ver las rutas recién agregadas
+      setTimeout(() => {
+        const newTotalPages = Math.ceil(existingRoutes.length / rowsPerPage);
+        setCurrentPage(newTotalPages);
+      }, 100);
       
       // Limpiar formularios después de 2 segundos
       setTimeout(() => {
@@ -250,6 +254,7 @@ function Pricing() {
       const data = await response.json();
       
       if (data.success && data.data) {
+        // Mantener orden original (más antiguas primero, nuevas al final)
         setExistingRoutes(data.data);
         setLastFetch(new Date());
       }
@@ -364,7 +369,7 @@ function Pricing() {
     setEditForm(null);
   };
 
-  // Filtrado y ordenamiento
+  // Filtrado (sin ordenamiento)
   const filteredRoutes = existingRoutes.filter(route => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
@@ -373,34 +378,11 @@ function Pricing() {
     );
   });
 
-  const sortedRoutes = [...filteredRoutes].sort((a, b) => {
-    if (!sortColumn) return 0;
-    
-    const colIndex = parseInt(sortColumn);
-    const aVal = a[colIndex] || '';
-    const bVal = b[colIndex] || '';
-    
-    if (sortDirection === 'asc') {
-      return aVal > bVal ? 1 : -1;
-    } else {
-      return aVal < bVal ? 1 : -1;
-    }
-  });
-
   // Paginación
   const indexOfLastRow = currentPage * rowsPerPage;
   const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-  const currentRows = sortedRoutes.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(sortedRoutes.length / rowsPerPage);
-
-  const handleSort = (columnIndex: number) => {
-    if (sortColumn === columnIndex.toString()) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(columnIndex.toString());
-      setSortDirection('asc');
-    }
-  };
+  const currentRows = filteredRoutes.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredRoutes.length / rowsPerPage);
 
   return (
     <div className="container-fluid">
@@ -487,7 +469,7 @@ function Pricing() {
                 <Form>
                   {/* Sección: Información Básica */}
                   <div className="mb-4">
-                    <h6 className="text-muted mb-3">📍 Información Básica</h6>
+                    <h6 className="text-muted mb-3">Información Básica</h6>
                     <div className="row g-3">
                       <div className="col-md-6">
                         <Form.Group>
@@ -518,7 +500,7 @@ function Pricing() {
 
                   {/* Sección: Tarifas por Peso */}
                   <div className="mb-4">
-                    <h6 className="text-muted mb-3">💰 Tarifas por Peso (solo números)</h6>
+                    <h6 className="text-muted mb-3">Tarifas por Peso (solo números)</h6>
                     <div className="row g-3">
                       <div className="col-md-2">
                         <Form.Group>
@@ -604,7 +586,7 @@ function Pricing() {
 
                   {/* Sección: Detalles del Servicio */}
                   <div className="mb-4">
-                    <h6 className="text-muted mb-3">✈️ Detalles del Servicio</h6>
+                    <h6 className="text-muted mb-3">Detalles del Servicio</h6>
                     <div className="row g-3">
                       <div className="col-md-4">
                         <Form.Group>
@@ -647,7 +629,7 @@ function Pricing() {
 
                   {/* Sección: Información Adicional */}
                   <div className="mb-3">
-                    <h6 className="text-muted mb-3">📝 Información Adicional</h6>
+                    <h6 className="text-muted mb-3">Información Adicional</h6>
                     <div className="row g-3">
                       <div className="col-md-4">
                         <Form.Group>
@@ -675,12 +657,12 @@ function Pricing() {
                       </div>
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Remark 2 *</Form.Label>
+                          <Form.Label>Mínimo *</Form.Label>
                           <Form.Control
                             type="text"
                             value={form.remark2}
                             onChange={(e) => updateForm(form.id, 'remark2', e.target.value)}
-                            placeholder="Observación 2"
+                            placeholder="Mínimo de cargo"
                             required
                           />
                         </Form.Group>
@@ -718,7 +700,7 @@ function Pricing() {
             ) : (
               <>
                 <i className="bi bi-cloud-upload me-2"></i>
-                Enviar {forms.length} Ruta{forms.length > 1 ? 's' : ''} a Google Sheets
+                Enviar {forms.length} Ruta{forms.length > 1 ? 's' : ''}
               </>
             )}
           </Button>
@@ -728,7 +710,7 @@ function Pricing() {
         <div className="mt-4 pt-3 border-top">
           <small className="text-muted">
             <i className="bi bi-info-circle me-1"></i>
-            Todos los campos marcados con * son obligatorios. Las rutas se agregarán directamente al Google Sheet configurado.
+            Todos los campos son obligatorios. Las rutas se agregarán directamente al Pricing.
           </small>
         </div>
       </div>
@@ -748,7 +730,9 @@ function Pricing() {
         {/* Header de la tabla */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h5 className="mb-1">📊 Rutas Aéreas Actuales</h5>
+            <h5 className="mb-1">
+            Rutas Aéreas Actuales 
+            </h5>
             <small className="text-muted">
               {lastFetch && `Última actualización: ${lastFetch.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`}
             </small>
@@ -803,48 +787,20 @@ function Pricing() {
                 <thead className="table-light">
                   <tr>
                     <th style={{ width: '50px' }}>Acciones</th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(1)}>
-                      Origen {sortColumn === '1' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(2)}>
-                      Destino {sortColumn === '2' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(3)}>
-                      45kg {sortColumn === '3' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(4)}>
-                      100kg {sortColumn === '4' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(5)}>
-                      300kg {sortColumn === '5' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(6)}>
-                      500kg {sortColumn === '6' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(7)}>
-                      1000kg {sortColumn === '7' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(8)}>
-                      Carrier {sortColumn === '8' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(9)}>
-                      Frecuencia {sortColumn === '9' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(10)}>
-                      TT {sortColumn === '10' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(11)}>
-                      Routing {sortColumn === '11' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(12)}>
-                      Remark1 {sortColumn === '12' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(13)}>
-                      Remark2 {sortColumn === '13' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ cursor: 'pointer' }} onClick={() => handleSort(14)}>
-                      Currency {sortColumn === '14' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
+                    <th>Origen</th>
+                    <th>Destino</th>
+                    <th>45kg</th>
+                    <th>100kg</th>
+                    <th>300kg</th>
+                    <th>500kg</th>
+                    <th>1000kg</th>
+                    <th>Carrier</th>
+                    <th>Frecuencia</th>
+                    <th>TT</th>
+                    <th>Routing</th>
+                    <th>Remark1</th>
+                    <th>Mínimo</th>
+                    <th>Currency</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -944,7 +900,7 @@ function Pricing() {
             {/* Paginación */}
             <div className="d-flex justify-content-between align-items-center mt-3">
               <small className="text-muted">
-                Mostrando {indexOfFirstRow + 1} - {Math.min(indexOfLastRow, sortedRoutes.length)} de {sortedRoutes.length} rutas
+                Mostrando {indexOfFirstRow + 1} - {Math.min(indexOfLastRow, filteredRoutes.length)} de {filteredRoutes.length} rutas
                 {searchTerm && ` (filtradas de ${existingRoutes.length} totales)`}
               </small>
               
