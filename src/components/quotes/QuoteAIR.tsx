@@ -25,6 +25,10 @@ function QuoteAPITester() {
   // Estados para validaciones
   const [weightError, setWeightError] = useState<string | null>(null);
   const [dimensionError, setDimensionError] = useState<string | null>(null);
+  const [oversizeError, setOversizeError] = useState<string | null>(null);
+  const [heightError, setHeightError] = useState<string | null>(null);
+  const [cargoFlightWarning, setCargoFlightWarning] = useState<string | null>(null);
+  const [lowHeightWarning, setLowHeightWarning] = useState<string | null>(null);
 
   // Estados para el commodity
   const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
@@ -302,6 +306,53 @@ function QuoteAPITester() {
   };
 
   // ============================================================================
+  // VALIDACIONES DE DIMENSIONES PARA TRANSPORTE AÉREO
+  // ============================================================================
+
+  useEffect(() => {
+    if (overallDimsAndWeight) {
+      // En modo overall, no hay dimensiones específicas, así que limpiamos errores
+      setOversizeError(null);
+      setHeightError(null);
+      setCargoFlightWarning(null);
+      setLowHeightWarning(null);
+      return;
+    }
+
+    let hasOversize = false;
+    let hasHeightError = false;
+    let hasCargoWarning = false;
+    let hasLowHeight = false;
+
+    piecesData.forEach(piece => {
+      // Validar largo o ancho > 300 cm (3m)
+      if (piece.length > 300 || piece.width > 300) {
+        hasOversize = true;
+      }
+
+      // Validar alto > 240 cm (2.4m)
+      if (piece.height > 240) {
+        hasHeightError = true;
+      }
+
+      // Validar alto > 160 cm (1.6m) para vuelos cargueros
+      if (piece.height > 160) {
+        hasCargoWarning = true;
+      }
+
+      // Validar alto < 160 cm para alerta de ejecutivo
+      if (piece.height > 0 && piece.height < 160) {
+        hasLowHeight = true;
+      }
+    });
+
+    setOversizeError(hasOversize ? 'El largo o ancho supera los 3.0 m (300 cm). Esta carga se considera oversize y debe cotizarse caso a caso.' : null);
+    setHeightError(hasHeightError ? 'El alto supera los 2.4 m (240 cm). Esta carga no puede ser manejada vía aérea.' : null);
+    setCargoFlightWarning(hasCargoWarning ? 'El alto supera los 1.6 m (160 cm). Esta carga requiere vuelos cargueros. Verifique con su ejecutivo si la tarifa seleccionada corresponde a vuelos cargueros.' : null);
+    setLowHeightWarning(hasLowHeight ? 'Para cargas con alto mayor a 160 cm, comuníquese con su ejecutivo para verificar la cotización en vuelo carguero.' : null);
+  }, [piecesData, overallDimsAndWeight]);
+
+  // ============================================================================
   // ACTUALIZAR DESTINATIONS CUANDO CAMBIA ORIGIN
   // ============================================================================
 
@@ -432,6 +483,22 @@ function QuoteAPITester() {
     if (!incoterm) {
       setError('Debes seleccionar un Incoterm antes de generar la cotización');
       return;
+    }
+
+    // Validar que todas las piezas tengan tipo de paquete seleccionado
+    if (!overallDimsAndWeight) {
+      // Modo por piezas: validar que cada pieza tenga packageType
+      const piezasSinTipo = piecesData.filter(piece => !piece.packageType);
+      if (piezasSinTipo.length > 0) {
+        setError('Debes seleccionar un Tipo de Paquete para todas las piezas antes de generar la cotización');
+        return;
+      }
+    } else {
+      // Modo overall: validar que se haya seleccionado un packageType
+      if (!selectedPackageType) {
+        setError('Debes seleccionar un Tipo de Paquete antes de generar la cotización');
+        return;
+      }
     }
 
     if (incoterm === 'EXW' && (!pickupFromAddress || !deliveryToAddress)) {
@@ -1884,6 +1951,65 @@ function QuoteAPITester() {
                 </div>
               )}
 
+              {/* Información sobre restricciones de dimensiones */}
+              {!overallDimsAndWeight && (
+                <div className="col-12">
+                  <div className="mt-2">
+                    <small className="text-muted">
+                      <i className="bi bi-info-circle me-1"></i>
+                      El largo o ancho no puede superar los 3.0 m (300 cm). La carga se considera oversize y debe cotizarse caso a caso con su ejecutivo
+                    </small>
+                  </div>
+                  <div className="mt-2">
+                    <small className="text-muted">
+                      <i className="bi bi-info-circle me-1"></i>
+                      El alto no puede superar los 2.4 m (240 cm). Cargas que excedan esta altura no son aptas para transporte aéreo
+                    </small>
+                  </div>
+                </div>
+              )}
+
+              {/* Alertas de restricciones de transporte aéreo */}
+              {!overallDimsAndWeight && (
+                <div className="col-8">
+                  {oversizeError && (
+                    <div className="alert alert-warning d-flex align-items-center mb-3" style={{ fontSize: '0.9rem' }}>
+                      <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                      <div>
+                        <strong>Carga Oversize:</strong> {oversizeError}
+                      </div>
+                    </div>
+                  )}
+
+                  {heightError && (
+                    <div className="alert alert-danger d-flex align-items-center mb-3" style={{ fontSize: '0.9rem' }}>
+                      <i className="bi bi-x-circle-fill me-2"></i>
+                      <div>
+                        <strong>No apto para transporte aéreo:</strong> {heightError}
+                      </div>
+                    </div>
+                  )}
+
+                  {cargoFlightWarning && (
+                    <div className="alert alert-info d-flex align-items-center mb-3" style={{ fontSize: '0.9rem' }}>
+                      <i className="bi bi-airplane-fill me-2"></i>
+                      <div>
+                        <strong>Vuelos cargueros requeridos:</strong> {cargoFlightWarning}
+                      </div>
+                    </div>
+                  )}
+
+                  {lowHeightWarning && (
+                    <div className="alert alert-info d-flex align-items-center mb-3" style={{ fontSize: '0.9rem' }}>
+                      <i className="bi bi-telephone-fill me-2"></i>
+                      <div>
+                        <strong>Verificación requerida:</strong> {lowHeightWarning}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Modo Overall */}
               {overallDimsAndWeight && (
                 <div className="col-12">
@@ -2173,7 +2299,7 @@ function QuoteAPITester() {
 
             <button
               onClick={testAPI}
-              disabled={loading || !accessToken || weightError !== null || dimensionError !== null || !rutaSeleccionada}
+              disabled={loading || !accessToken || weightError !== null || dimensionError !== null || oversizeError !== null || heightError !== null || !rutaSeleccionada}
               className="btn btn-lg btn-success w-100 mt-4"
             >
               {loading ? (

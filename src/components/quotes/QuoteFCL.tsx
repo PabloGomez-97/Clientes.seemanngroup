@@ -906,7 +906,7 @@ function QuoteFCL() {
     <div className="container-fluid py-4">
       <div className="row mb-4">
         <div className="col">
-          <h2 className="mb-1">🚢 Cotizador FCL</h2>
+          <h2 className="mb-1">Cotizador FCL</h2>
           <p className="text-muted mb-0">Genera cotizaciones para envíos Full Container Load</p>
         </div>
       </div>
@@ -918,7 +918,7 @@ function QuoteFCL() {
       <div className="card shadow-sm mb-4">
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h5 className="card-title mb-0">📍 Paso 1: Selecciona Ruta y Contenedor</h5>
+            <h5 className="card-title mb-0">Paso 1: Selecciona Ruta y Contenedor</h5>
             <button
               onClick={refrescarTarifas}
               disabled={loadingRutas}
@@ -1219,7 +1219,7 @@ function QuoteFCL() {
               {rutaSeleccionada && containerSeleccionado && (
                 <>
                   <div className="alert alert-info mt-4">
-                    <h6 className="alert-heading">📋 Resumen de Selección</h6>
+                    <h6 className="alert-heading">Resumen de Selección</h6>
                     <p className="mb-2">
                       <strong>Ruta:</strong> {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
                     </p>
@@ -1297,7 +1297,7 @@ function QuoteFCL() {
                       {/* Resumen de cargos - Versión compacta mejorada */}
                       {incoterm && (
                         <div className="mt-4 pt-3 border-top">
-                          <h6 className="mb-3">💰 Resumen de Cargos</h6>
+                          <h6 className="mb-3">Resumen de Cargos</h6>
                           
                           <div className="bg-light rounded p-3">
                             {/* BL */}
@@ -1429,7 +1429,7 @@ function QuoteFCL() {
         <>
           <div className="card shadow-sm mb-4">
             <div className="card-body">
-              <h5 className="card-title mb-4">📝 Paso 2: Generar Cotización</h5>
+              <h5 className="card-title mb-4">Paso 2: Generar Cotización</h5>
 
               <button
                 onClick={testAPI}

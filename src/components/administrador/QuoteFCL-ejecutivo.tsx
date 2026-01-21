@@ -689,7 +689,7 @@ function QuoteFCL() {
 
       <div className="row mb-4">
         <div className="col">
-          <h2 className="mb-1">🚢 Cotizador FCL</h2>
+          <h2 className="mb-1">Cotizador FCL</h2>
           <p className="text-muted mb-0">Genera cotizaciones para envíos Full Container Load</p>
         </div>
       </div>
