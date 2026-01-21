@@ -8,7 +8,7 @@ import { generatePDF, formatDateForFilename } from './Pdftemplate/Pdfutils';
 import ReactDOM from 'react-dom/client';
 
 // URL del Google Sheet publicado como CSV
-const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSk5sOHfl5pAPT8nU_zM7bMkOtR6wqMHbIlzsltXa-wFWEJCtwzllB-y50lM95dIg/pub?output=csv';
+const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSWzBbNU6lsWnVEhRgzTPNEjtq-eH59rGSQf3QS6UGiRHT98A-g3LumdtuFHKb5lcGmERT4nZjAbMhm/pub?output=csv';
 
 interface OutletContext {
   accessToken: string;

@@ -21,6 +21,7 @@ import Clientesejecutivos from './components/administrador/Administracion-Cuenta
 import ShipsGoTrackingAdmin from './components/administrador/Shipsgo/gettrackingshipsgo-admin';
 import Invoicesxejecutivo from './components/administrador/Facturaciones-Ejecutivos/Facturaciones';
 import Pricing from './components/administrador/Pricing';
+import PricingFCL from './components/administrador/PricingFCL';
 
 // Reportería Pages
 import ReporteriaDashboard from './components/administrador/reporteria/pages/ReporteriaDashboard';
@@ -87,6 +88,7 @@ function App() {
         <Route path="reportoperational" element={<Invoicesxejecutivo />} />
         <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
         <Route path="pricing" element={<Pricing />} />
+        <Route path="pricingFCL" element={<PricingFCL />} />
         
         {/* Rutas de Reportería con subrutas */}
         <Route path="reporteria" element={<ReporteriaLayout />}>
