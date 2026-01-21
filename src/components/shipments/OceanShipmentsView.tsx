@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { type OceanShipment, type OutletContext, type Quote, OceanShipmentTimeline, OceanRouteDisplay, CollapsibleSection, InfoField, QuoteModal } from '../shipments/Handlers/Handleroceanshipments';
+import { type OceanShipment, type OutletContext, type Quote, OceanShipmentTimeline, OceanRouteDisplay, InfoField, QuoteModal } from '../shipments/Handlers/Handleroceanshipments';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import "./OceanShipmentsView.css"
