@@ -783,7 +783,7 @@ function PricingLCL() {
                           </>
                         ) : (
                           <>
-                            {[1, 2, 3, 4, 6, 7, 8, 9, 10].map((colIndex) => {
+                            {[1, 2, 3, 4].map((colIndex) => {
                               const isEditingThisCell = editingCell?.row === actualIndex && editingCell?.col === colIndex;
                               
                               return (
@@ -839,6 +839,36 @@ function PricingLCL() {
                                 </span>
                               )}
                             </td>
+                            {[6, 7, 8, 9, 10].map((colIndex) => {
+                              const isEditingThisCell = editingCell?.row === actualIndex && editingCell?.col === colIndex;
+                              
+                              return (
+                                <td 
+                                  key={colIndex}
+                                  onDoubleClick={() => handleCellDoubleClick(actualIndex, colIndex, route[colIndex])}
+                                  style={{ 
+                                    cursor: 'pointer',
+                                    position: 'relative'
+                                  }}
+                                  title="Doble clic para editar"
+                                >
+                                  {isEditingThisCell ? (
+                                    <Form.Control
+                                      size="sm"
+                                      type="text"
+                                      value={cellValue}
+                                      onChange={(e) => setCellValue(e.target.value)}
+                                      onKeyDown={(e) => handleCellKeyDown(e, actualIndex, colIndex)}
+                                      onBlur={() => saveCellEdit(actualIndex, colIndex)}
+                                      autoFocus
+                                      style={{ minWidth: '80px' }}
+                                    />
+                                  ) : (
+                                    <span>{route[colIndex]}</span>
+                                  )}
+                                </td>
+                              );
+                            })}
                           </>
                         )}
                       </tr>

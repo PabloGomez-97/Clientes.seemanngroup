@@ -28,9 +28,9 @@ function UserLayout() {
         console.error('Error obteniendo token de Linbis:', err);
         setError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {
-        // Asegurar que el loading se muestre por al menos 3 segundos
+        // Asegurar que el loading se muestre por al menos 1 segundos
         const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 3000 - elapsedTime);
+        const remainingTime = Math.max(0, 500 - elapsedTime);
         
         setTimeout(() => {
           setLoading(false);
