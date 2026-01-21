@@ -22,13 +22,14 @@ interface Documento {
 
 interface DocumentosSectionProps {
   quoteId: string | number;
+  onCountChange?: (count: number) => void;
 }
 
 // ============================================================
 // COMPONENTE PRINCIPAL
 // ============================================================
 
-export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId }) => {
+export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, onCountChange }) => {
   const { token } = useAuth();
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +51,12 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId })
   useEffect(() => {
     loadDocumentos();
   }, [quoteId]);
+
+  useEffect(() => {
+    if (onCountChange) {
+      onCountChange(documentos.length);
+    }
+  }, [documentos.length, onCountChange]);
 
   const loadDocumentos = async () => {
     if (!token || !quoteId) return;

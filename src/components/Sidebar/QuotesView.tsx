@@ -431,7 +431,13 @@ function QuotesView() {
             }}
           />
         )}
-        <span style={{ fontWeight: '600' }}>{location}</span>
+        <span style={{ 
+          fontWeight: '600',
+          maxWidth: '120px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>{location}</span>
       </div>
     );
   };
@@ -447,6 +453,7 @@ function QuotesView() {
 
   const [openAccordions, setOpenAccordions] = useState<(string | number)[]>([]);
   const [activeTabs, setActiveTabs] = useState<Record<string | number, number>>({});
+  const [documentCounts, setDocumentCounts] = useState<Record<string | number, number>>({});
   
   const [searchDate, setSearchDate] = useState('');
   const [searchStartDate, setSearchStartDate] = useState('');
@@ -1596,7 +1603,7 @@ function QuotesView() {
                                       setActiveTab(quoteId, 2);
                                     }}
                                   >
-                                    Documentación Operativa
+                                    Documentación Operativa ({documentCounts[quoteId] || 0})
                                   </button>
                                   <button
                                     className={`tab-button ${activeTabIndex === 3 ? 'active' : ''}`}
@@ -1651,7 +1658,10 @@ function QuotesView() {
 
                                   {/* Tab 2: Documentación Operativa */}
                                   {activeTabIndex === 2 && (
-                                    <DocumentosSection quoteId={String(quote.id || quote.number || '')} />
+                                    <DocumentosSection 
+                                      quoteId={String(quote.id || quote.number || '')} 
+                                      onCountChange={(count) => setDocumentCounts(prev => ({ ...prev, [String(quote.id || quote.number || '')]: count }))}
+                                    />
                                   )}
 
                                   {/* Tab 3: Resumen Financiero */}
@@ -1865,7 +1875,10 @@ function QuotesView() {
                 </CollapsibleSection>
 
                 <CollapsibleSection title="Documentación Operativa" defaultOpen={false} icon="">
-                  <DocumentosSection quoteId={String(selectedQuote.id || selectedQuote.number || '')} />
+                  <DocumentosSection 
+                    quoteId={String(selectedQuote.id || selectedQuote.number || '')} 
+                    onCountChange={(count) => setDocumentCounts(prev => ({ ...prev, [String(selectedQuote.id || selectedQuote.number || '')]: count }))}
+                  />
                 </CollapsibleSection>
 
                 {/* Resumen Financiero - SOLO INGRESO */}
