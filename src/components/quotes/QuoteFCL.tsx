@@ -1540,7 +1540,13 @@ function QuoteFCL() {
                 {/* Resumen de cargos - Versión compacta mejorada */}
                 {incoterm && (
                   <div className="mt-4 pt-3 border-top">
-                    <h6 className="mb-3">Resumen de Cargos</h6>
+                    <h6 className="mb-3">
+                      <i
+                        className="bi bi-cash-coin me-2"
+                        style={{ color: "#0d6efd" }}
+                      ></i>
+                      Resumen de Cargos
+                    </h6>
 
                     <div className="bg-light rounded p-3">
                       {/* BL */}
@@ -1708,7 +1714,7 @@ function QuoteFCL() {
         <>
           <div className="card shadow-sm mb-4">
             <div className="card-body">
-              <h5 className="card-title mb-4">Paso 2: Generar Cotización</h5>
+              <h5 className="card-title mb-4">Generar Cotización</h5>
 
               <button
                 onClick={testAPI}
@@ -1733,7 +1739,7 @@ function QuoteFCL() {
                     Generando...
                   </>
                 ) : (
-                  <>🚀 Generar Cotización FCL</>
+                  <>Generar Cotización FCL</>
                 )}
               </button>
 

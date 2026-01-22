@@ -1851,7 +1851,22 @@ function QuoteLCL() {
               className="mt-4 p-3 border rounded"
               style={{ backgroundColor: "#f8f9fa" }}
             >
-              <h6 className="mb-3">Cálculos y resumen total</h6>
+              <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                <h6
+                  className="mb-0"
+                  style={{
+                    fontSize: "1.05rem",
+                    fontWeight: 500,
+                    color: "#1a1a1a",
+                  }}
+                >
+                  <i
+                    className="bi bi-box-seam me-2"
+                    style={{ color: "#0d6efd" }}
+                  ></i>
+                  Resumen del cargamento
+                </h6>
+              </div>
               <div className="row g-2" style={{ fontSize: "0.9rem" }}>
                 <div className="col-md-3">
                   <strong>Peso Total:</strong> {totalWeightKg.toFixed(2)} kg (
@@ -1867,17 +1882,16 @@ function QuoteLCL() {
                   <strong>Cobro por:</strong>{" "}
                   {totalWeightTons > totalVolume ? "Peso" : "Volumen"}
                 </div>
-                <div className="col-12 mt-3 pt-3 border-top">
-                  <strong className="text-primary">W/M Chargeable:</strong>{" "}
-                  <span className="text-primary fw-bold fs-5">
-                    {chargeableVolume.toFixed(3)}
-                  </span>{" "}
-                  ({chargeableVolume === totalWeightTons ? "PESO" : "VOLUMEN"})
-                </div>
 
                 {tarifaOceanFreight && (
                   <div className="col-12 mt-3 pt-3 border-top">
-                    <h6 className="mb-3">Resumen de Cargos</h6>
+                    <h6 className="mb-3">
+                      <i
+                        className="bi bi-cash-coin me-2"
+                        style={{ color: "#0d6efd" }}
+                      ></i>
+                      Resumen de Cargos
+                    </h6>
 
                     <div className="bg-light rounded p-3">
                       {/* BL */}
