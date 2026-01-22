@@ -8,7 +8,7 @@ import { Modal, Button } from 'react-bootstrap';
 import { PDFTemplateAIR } from './Pdftemplate/Pdftemplateair';
 import { generatePDF, formatDateForFilename } from './Pdftemplate/Pdfutils';
 import ReactDOM from 'react-dom/client';
-import {GOOGLE_SHEET_CSV_URL, type RutaAerea, type SelectOption, type OutletContext, type Currency, extractPrice, normalize, parseCSV, capitalize, parseAEREO, seleccionarTarifaPorPeso} from "./Handlers/Air/HandlerQuoteAir";
+import { GOOGLE_SHEET_CSV_URL, type RutaAerea, type SelectOption, type OutletContext, type Currency, extractPrice, normalize, parseCSV, capitalize, parseAEREO, seleccionarTarifaPorPeso } from "./Handlers/Air/HandlerQuoteAir";
 import { PieceAccordion } from './Handlers/Air/PieceAccordion';
 import type { PieceData } from './Handlers/Air/HandlerQuoteAir';
 
@@ -17,7 +17,7 @@ function QuoteAPITester() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
   const ejecutivo = user?.ejecutivo;
-  
+
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,33 +60,33 @@ function QuoteAPITester() {
   const [openSection, setOpenSection] = useState<number>(1);
 
 
-  
+
   // ============================================================================
   // ESTADOS PARA RUTAS AÉREAS
   // ============================================================================
-  
+
   const [rutas, setRutas] = useState<RutaAerea[]>([]);
   const [loadingRutas, setLoadingRutas] = useState(true);
   const [errorRutas, setErrorRutas] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  
+
   const [originSeleccionado, setOriginSeleccionado] = useState<SelectOption | null>(null);
   const [destinationSeleccionado, setDestinationSeleccionado] = useState<SelectOption | null>(null);
   const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaAerea | null>(null);
-  
+
   const [opcionesOrigin, setOpcionesOrigin] = useState<SelectOption[]>([]);
   const [opcionesDestination, setOpcionesDestination] = useState<SelectOption[]>([]);
-  
+
   const [carriersActivos, setCarriersActivos] = useState<Set<string>>(new Set());
   const [monedasActivas, setMonedasActivas] = useState<Set<Currency>>(new Set(['USD', 'EUR', 'GBP', 'CAD', 'CHF', 'CLP', 'SEK']));
   const [carriersDisponibles, setCarriersDisponibles] = useState<string[]>([]);
-  
+
   // Estado para modal de precio 0
   const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
-  
+
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
-   const [valorMercaderia, setValorMercaderia] = useState<string>('');
+  const [valorMercaderia, setValorMercaderia] = useState<string>('');
 
   // ============================================================================
   // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
@@ -97,19 +97,19 @@ function QuoteAPITester() {
       try {
         setLoadingRutas(true);
         setErrorRutas(null);
-        
+
         // Fetch del CSV desde Google Sheets
         const response = await fetch(GOOGLE_SHEET_CSV_URL);
-        
+
         if (!response.ok) {
           throw new Error(`Error al cargar datos: ${response.status} ${response.statusText}`);
         }
-        
+
         const csvText = await response.text();
-        
+
         // Parsear CSV a array de arrays (similar al formato de XLSX)
         const data = parseCSV(csvText);
-        
+
         const rutasParsed = parseAEREO(data);
         setRutas(rutasParsed);
 
@@ -164,20 +164,20 @@ function QuoteAPITester() {
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
   // ============================================================================
-  
+
   const refrescarTarifas = async () => {
     try {
       setLoadingRutas(true);
       setErrorRutas(null);
-      
+
       // Fetch del CSV desde Google Sheets con timestamp para evitar caché
       const timestamp = new Date().getTime();
       const response = await fetch(`${GOOGLE_SHEET_CSV_URL}&timestamp=${timestamp}`);
-      
+
       if (!response.ok) {
         throw new Error(`Error al cargar datos: ${response.status} ${response.statusText}`);
       }
-      
+
       const csvText = await response.text();
       const data = parseCSV(csvText);
       const rutasParsed = parseAEREO(data);
@@ -237,7 +237,7 @@ function QuoteAPITester() {
     };
 
     setPiecesData([...piecesData, newPiece]);
-    
+
     // Abrir la nueva pieza y cerrar otras si ya hay 2 abiertas
     setOpenAccordions(prev => {
       const newOpen = [...prev, newId];
@@ -248,7 +248,7 @@ function QuoteAPITester() {
   // Eliminar pieza
   const handleRemovePiece = (id: string) => {
     const filtered = piecesData.filter(p => p.id !== id);
-    
+
     // Renumerar las piezas
     const renumbered = filtered.map((piece, index) => ({
       ...piece,
@@ -256,9 +256,9 @@ function QuoteAPITester() {
     }));
 
     setPiecesData(renumbered);
-    
+
     // Actualizar accordions abiertos
-    setOpenAccordions(prev => 
+    setOpenAccordions(prev =>
       prev.filter(openId => openId !== id).map((openId, index) => {
         const oldIndex = parseInt(openId) - 1;
         const newIndex = renumbered.findIndex((_, i) => i === oldIndex);
@@ -271,7 +271,7 @@ function QuoteAPITester() {
   const handleToggleAccordion = (id: string) => {
     setOpenAccordions(prev => {
       const isOpen = prev.includes(id);
-      
+
       if (isOpen) {
         // Cerrar
         return prev.filter(openId => openId !== id);
@@ -297,7 +297,7 @@ function QuoteAPITester() {
     const totalRealWeight = piecesData.reduce((sum, piece) => sum + piece.weight, 0);
     const totalVolumetricWeight = piecesData.reduce((sum, piece) => sum + piece.volumeWeight, 0);
     const chargeableWeight = Math.max(totalRealWeight, totalVolumetricWeight);
-    
+
     return {
       totalRealWeight,
       totalVolumetricWeight,
@@ -361,14 +361,14 @@ function QuoteAPITester() {
       const destinationsParaOrigin = rutas
         .filter(r => r.originNormalized === originSeleccionado.value)
         .map(r => r.destination);
-      
+
       const destinationsUnicos = Array.from(new Set(destinationsParaOrigin))
         .sort()
         .map(dest => ({
           value: normalize(dest),
           label: capitalize(dest)
         }));
-      
+
       setOpcionesDestination(destinationsUnicos);
       setDestinationSeleccionado(null);
       setRutaSeleccionada(null);
@@ -385,13 +385,13 @@ function QuoteAPITester() {
 
   const rutasFiltradas = rutas.filter(ruta => {
     if (!originSeleccionado || !destinationSeleccionado) return false;
-    
+
     const matchOrigin = ruta.originNormalized === originSeleccionado.value;
     const matchDestination = ruta.destinationNormalized === destinationSeleccionado.value;
-    
+
     const matchCarrier = !ruta.carrier || carriersActivos.has(ruta.carrier);
     const matchMoneda = monedasActivas.has(ruta.currency);
-    
+
     return matchOrigin && matchDestination && matchCarrier && matchMoneda;
   }).sort((a, b) => a.priceForComparison - b.priceForComparison);
 
@@ -416,12 +416,12 @@ function QuoteAPITester() {
   const pesoVolumetricoOverall = overallDimsAndWeight ? manualVolume * 167 : 0;
 
   // Determinar si se cobra por peso o volumen en modo Overall
-  const chargeableUnit = overallDimsAndWeight 
+  const chargeableUnit = overallDimsAndWeight
     ? (manualWeight >= pesoVolumetricoOverall ? 'kg' : 'kg')
     : 'kg';
 
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
-  const tarifaAirFreight = rutaSeleccionada 
+  const tarifaAirFreight = rutaSeleccionada
     ? seleccionarTarifaPorPeso(rutaSeleccionada, pesoChargeable)
     : null;
 
@@ -431,9 +431,9 @@ function QuoteAPITester() {
 
   const calculateEXWRate = (weightKg: number, volumeWeightKg: number) => {
     const chargeableWeight = Math.max(weightKg, volumeWeightKg);
-    
+
     let ratePerKg = 0;
-    
+
     if (chargeableWeight >= 1000) {
       ratePerKg = 0.6;
     } else if (chargeableWeight >= 500) {
@@ -443,7 +443,7 @@ function QuoteAPITester() {
     } else {
       ratePerKg = 0.8;
     }
-    
+
     const calculatedRate = chargeableWeight * ratePerKg;
     return Math.max(calculatedRate, 190);
   };
@@ -454,19 +454,19 @@ function QuoteAPITester() {
 
     // Convertir valorMercaderia a número (reemplazar coma por punto)
     const valorCarga = parseFloat(valorMercaderia.replace(',', '.')) || 0;
-    
+
     // Si no hay valor de mercadería ingresado, retornar 0
     if (valorCarga === 0) return 0;
-    
+
     const { totalRealWeight } = calculateTotals();
-    
-    const totalSinSeguro = 
+
+    const totalSinSeguro =
       45 + // Handling
       (incoterm === 'EXW' ? calculateEXWRate(totalRealWeight, pesoChargeable) : 0) + // EXW
       30 + // AWB
       Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
       (tarifaAirFreight.precioConMarkup * pesoChargeable); // Air Freight
-    
+
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
   };
 
@@ -512,7 +512,7 @@ function QuoteAPITester() {
 
     try {
       const payload = getTestPayload();
-      
+
       const res = await fetch('https://api.linbis.com/Quotes/create', {
         method: 'POST',
         headers: {
@@ -529,7 +529,7 @@ function QuoteAPITester() {
 
       const data = await res.json();
       setResponse(data);
-      
+
       // Generar PDF después de cotización exitosa
       await generateQuotePDF();
     } catch (err: any) {
@@ -571,8 +571,8 @@ function QuoteAPITester() {
       if (incoterm === 'EXW') {
         const { totalRealWeight } = calculateTotals();
         // Calcular peso chargeable correctamente
-        const chargeableWeightCalc = overallDimsAndWeight 
-          ? Math.max(manualWeight, manualVolume * 167) 
+        const chargeableWeightCalc = overallDimsAndWeight
+          ? Math.max(manualWeight, manualVolume * 167)
           : Math.max(totalRealWeight, calculateTotals().totalVolumetricWeight);
         const exwRate = calculateEXWRate(totalRealWeight, chargeableWeightCalc);
         pdfCharges.push({
@@ -596,8 +596,8 @@ function QuoteAPITester() {
       });
 
       // Airport Transfer - Obligatorio
-      const chargeableWeightForTransfer = overallDimsAndWeight 
-        ? Math.max(manualWeight, manualVolume * 167) 
+      const chargeableWeightForTransfer = overallDimsAndWeight
+        ? Math.max(manualWeight, manualVolume * 167)
         : calculateTotals().chargeableWeight;
 
       const airportTransferAmount = Math.max(50, chargeableWeightForTransfer * 0.15);
@@ -612,10 +612,10 @@ function QuoteAPITester() {
       });
 
       // Air Freight - Usar el mismo cálculo que pesoChargeable
-      const chargeableWeight = overallDimsAndWeight 
-        ? Math.max(manualWeight, manualVolume * 167) 
+      const chargeableWeight = overallDimsAndWeight
+        ? Math.max(manualWeight, manualVolume * 167)
         : calculateTotals().chargeableWeight;
-      
+
       pdfCharges.push({
         code: 'AF',
         description: 'AIR FREIGHT',
@@ -649,44 +649,44 @@ function QuoteAPITester() {
 
       // Renderizar el template del PDF
       const root = ReactDOM.createRoot(tempDiv);
-      
+
       await new Promise<void>((resolve) => {
-      const { totalRealWeight, chargeableWeight } = calculateTotals();
-      const totalVolumePieces = piecesData.reduce((sum, piece) => sum + piece.totalVolume, 0);
-      
-      root.render(
-        <PDFTemplateAIR
-          customerName={user?.username || 'Customer'}
-          origin={rutaSeleccionada.origin}
-          destination={rutaSeleccionada.destination}
-          effectiveDate={new Date().toLocaleDateString()}
-          expirationDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-          incoterm={incoterm}
-          pickupFromAddress={incoterm === 'EXW' ? pickupFromAddress : undefined}
-          deliveryToAddress={incoterm === 'EXW' ? deliveryToAddress : undefined}
-          salesRep={ejecutivo?.nombre || 'Ignacio Maldonado'}
-          pieces={piecesData.length}
-          packageTypeName={packageTypeName}
-          length={overallDimsAndWeight ? 0 : piecesData[0]?.length || 0}
-          width={overallDimsAndWeight ? 0 : piecesData[0]?.width || 0}
-          height={overallDimsAndWeight ? 0 : piecesData[0]?.height || 0}
-          description={description}
-          totalWeight={overallDimsAndWeight ? manualWeight : totalRealWeight}
-          totalVolume={overallDimsAndWeight ? manualVolume : totalVolumePieces}
-          chargeableWeight={chargeableWeight}
-          weightUnit="kg"
-          volumeUnit="m³"
-          charges={pdfCharges}
-          totalCharges={totalCharges}
-          currency={rutaSeleccionada.currency}
-          overallMode={overallDimsAndWeight}
-          piecesData={overallDimsAndWeight ? [] : piecesData}
-        />
-      );
-      
-      // Esperar a que el DOM se actualice
-      setTimeout(resolve, 500);
-    });
+        const { totalRealWeight, chargeableWeight } = calculateTotals();
+        const totalVolumePieces = piecesData.reduce((sum, piece) => sum + piece.totalVolume, 0);
+
+        root.render(
+          <PDFTemplateAIR
+            customerName={user?.username || 'Customer'}
+            origin={rutaSeleccionada.origin}
+            destination={rutaSeleccionada.destination}
+            effectiveDate={new Date().toLocaleDateString()}
+            expirationDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+            incoterm={incoterm}
+            pickupFromAddress={incoterm === 'EXW' ? pickupFromAddress : undefined}
+            deliveryToAddress={incoterm === 'EXW' ? deliveryToAddress : undefined}
+            salesRep={ejecutivo?.nombre || 'Ignacio Maldonado'}
+            pieces={piecesData.length}
+            packageTypeName={packageTypeName}
+            length={overallDimsAndWeight ? 0 : piecesData[0]?.length || 0}
+            width={overallDimsAndWeight ? 0 : piecesData[0]?.width || 0}
+            height={overallDimsAndWeight ? 0 : piecesData[0]?.height || 0}
+            description={description}
+            totalWeight={overallDimsAndWeight ? manualWeight : totalRealWeight}
+            totalVolume={overallDimsAndWeight ? manualVolume : totalVolumePieces}
+            chargeableWeight={chargeableWeight}
+            weightUnit="kg"
+            volumeUnit="m³"
+            charges={pdfCharges}
+            totalCharges={totalCharges}
+            currency={rutaSeleccionada.currency}
+            overallMode={overallDimsAndWeight}
+            piecesData={overallDimsAndWeight ? [] : piecesData}
+          />
+        );
+
+        // Esperar a que el DOM se actualice
+        setTimeout(resolve, 500);
+      });
 
       // Generar el PDF
       const pdfElement = tempDiv.querySelector('#pdf-content') as HTMLElement;
@@ -925,8 +925,8 @@ function QuoteAPITester() {
         validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         transitDays: 5,
         project: {
-        name: "AIR"
-      },
+          name: "AIR"
+        },
         customerReference: "Portal Created [AIR]",
         contact: {
           name: user?.username
@@ -995,7 +995,7 @@ function QuoteAPITester() {
         })),
         charges
       };
-    } 
+    }
     // MODO OVERALL
     else {
       // En modo Overall: el chargeable es el mayor numéricamente entre peso y volumen
@@ -1094,11 +1094,11 @@ function QuoteAPITester() {
           }
         }
       });
-      
-// Cobro de Airport Transfer (modo overall) - Mínimo 50
+
+      // Cobro de Airport Transfer (modo overall) - Mínimo 50
       const pesoChargeableOverall = Math.max(manualWeight, manualVolume * 167);
       const airportTransferAmountOverall = Math.max(pesoChargeableOverall * 0.15, 50);
-      
+
       charges.push({
         service: {
           id: 110936,
@@ -1274,7 +1274,7 @@ function QuoteAPITester() {
   // Primero: Rutas SOLO filtradas por origen y destino (sin carriers ni monedas)
   const rutasPorOrigenDestino = useMemo(() => {
     if (!originSeleccionado || !destinationSeleccionado) return [];
-    
+
     return rutas.filter(ruta => {
       const matchOrigin = ruta.originNormalized === originSeleccionado.value;
       const matchDestination = ruta.destinationNormalized === destinationSeleccionado.value;
@@ -1359,11 +1359,11 @@ function QuoteAPITester() {
       {/* SECCIÓN 1: SELECCIÓN DE RUTA - CON ACORDEÓN */}
       {/* ============================================================================ */}
 
-        <div className="card shadow-sm mb-4">
+      <div className="card shadow-sm mb-4">
         {/* Header clickeable */}
-        <div 
+        <div
           className="card-header bg-white border-0 p-4"
-          style={{ 
+          style={{
             cursor: 'pointer',
             borderRadius: openSection === 1 ? '12px 12px 0 0' : '12px',
             transition: 'all 0.3s ease'
@@ -1372,11 +1372,11 @@ function QuoteAPITester() {
         >
           <div className="d-flex align-items-center justify-content-between">
             <div className="d-flex align-items-center">
-              <div 
+              <div
                 className="rounded-circle me-3 d-flex align-items-center justify-content-center"
-                style={{ 
-                  width: '40px', 
-                  height: '40px', 
+                style={{
+                  width: '40px',
+                  height: '40px',
                   backgroundColor: rutaSeleccionada ? '#d4edda' : '#185abc',
                   color: rutaSeleccionada ? '#155724' : 'white',
                   fontSize: '1.1rem',
@@ -1388,7 +1388,7 @@ function QuoteAPITester() {
               </div>
               <div>
                 <h5 className="mb-0" style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1a1a1a' }}>
-                Selecciona Ruta
+                  Selecciona Ruta
                 </h5>
                 {rutaSeleccionada && (
                   <small className="text-muted d-block mt-1" style={{ fontSize: '0.85rem' }}>
@@ -1397,7 +1397,7 @@ function QuoteAPITester() {
                 )}
               </div>
             </div>
-            <i 
+            <i
               className={`bi bi-chevron-${openSection === 1 ? 'up' : 'down'}`}
               style={{ fontSize: '1.2rem', color: '#6c757d', transition: 'transform 0.3s ease' }}
             ></i>
@@ -1407,334 +1407,334 @@ function QuoteAPITester() {
         {/* Contenido colapsable */}
         {openSection === 1 && (
           <div className="card-body p-4">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h5 className="card-title mb-0">Paso 1: Selecciona Ruta</h5>
-            <button
-              onClick={refrescarTarifas}
-              disabled={loadingRutas}
-              className="btn btn-sm btn-outline-primary"
-              title="Actualizar tarifas desde Google Sheets"
-            >
-              {loadingRutas ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                  Actualizando...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-arrow-clockwise me-1"></i>
-                  Actualizar Tarifas
-                </>
-              )}
-            </button>
-          </div>
-
-          {lastUpdate && !loadingRutas && !errorRutas && (
-            <div className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center justify-content-between" style={{ fontSize: '0.85rem' }}>
-              <span className="text-muted">
-                <i className="bi bi-clock-history me-1"></i>
-                Última actualización: {lastUpdate.toLocaleTimeString('es-CL', { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
-              </span>
-              <span className="badge bg-success">
-                {rutas.length} rutas disponibles
-              </span>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h5 className="card-title mb-0">Paso 1: Selecciona Ruta</h5>
+              <button
+                onClick={refrescarTarifas}
+                disabled={loadingRutas}
+                className="btn btn-sm btn-outline-primary"
+                title="Actualizar tarifas desde Google Sheets"
+              >
+                {loadingRutas ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    Actualizando...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-arrow-clockwise me-1"></i>
+                    Actualizar Tarifas
+                  </>
+                )}
+              </button>
             </div>
-          )}
 
-          {loadingRutas ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Cargando...</span>
+            {lastUpdate && !loadingRutas && !errorRutas && (
+              <div className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center justify-content-between" style={{ fontSize: '0.85rem' }}>
+                <span className="text-muted">
+                  <i className="bi bi-clock-history me-1"></i>
+                  Última actualización: {lastUpdate.toLocaleTimeString('es-CL', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+                <span className="badge bg-success">
+                  {rutas.length} rutas disponibles
+                </span>
               </div>
-              <p className="mt-3 text-muted">Cargando rutas disponibles...</p>
-            </div>
-          ) : errorRutas ? (
-            <div className="alert alert-danger">
-              ❌ {errorRutas}
-            </div>
-          ) : (
-            <>
-              {/* Selectores de Origen y Destino */}
-              <div className="row g-3 mb-4">
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Origen</label>
-                  <Select
-                    value={originSeleccionado}
-                    onChange={setOriginSeleccionado}
-                    options={opcionesOrigin}
-                    placeholder="Selecciona origen..."
-                    isClearable
-                    styles={{
-                      control: (base) => ({
-                        ...base,
-                        borderColor: '#dee2e6',
-                        '&:hover': { borderColor: '#0d6efd' }
-                      })
-                    }}
-                  />
-                </div>
+            )}
 
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Destino</label>
-                  <Select
-                    value={destinationSeleccionado}
-                    onChange={setDestinationSeleccionado}
-                    options={opcionesDestination}
-                    placeholder={originSeleccionado ? "Selecciona destino..." : "Primero selecciona origen"}
-                    isClearable
-                    isDisabled={!originSeleccionado}
-                    styles={{
-                      control: (base) => ({
-                        ...base,
-                        borderColor: '#dee2e6',
-                        '&:hover': { borderColor: '#0d6efd' }
-                      })
-                    }}
-                  />
+            {loadingRutas ? (
+              <div className="text-center py-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Cargando...</span>
                 </div>
+                <p className="mt-3 text-muted">Cargando rutas disponibles...</p>
               </div>
-
-              {/* Rutas Disponibles */}
-              {originSeleccionado && destinationSeleccionado && (
-                <div className="mt-4">
-                  {/* Header mejorado */}
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h6 className="mb-0 d-flex align-items-center gap-2">
-                      <i className="bi bi-airplane"></i>
-                      Rutas Disponibles 
-                      <span className="badge bg-light text-dark border">{rutasFiltradas.length}</span>
-                    </h6>
-                    
-                    {rutasFiltradas.length > 0 && (
-                      <small className="text-muted">
-                        Selecciona la mejor opción para tu envío
-                      </small>
-                    )}
+            ) : errorRutas ? (
+              <div className="alert alert-danger">
+                ❌ {errorRutas}
+              </div>
+            ) : (
+              <>
+                {/* Selectores de Origen y Destino */}
+                <div className="row g-3 mb-4">
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">Origen</label>
+                    <Select
+                      value={originSeleccionado}
+                      onChange={setOriginSeleccionado}
+                      options={opcionesOrigin}
+                      placeholder="Selecciona origen..."
+                      isClearable
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          borderColor: '#dee2e6',
+                          '&:hover': { borderColor: '#0d6efd' }
+                        })
+                      }}
+                    />
                   </div>
 
-                  {rutasFiltradas.length === 0 ? (
-                    <div className="alert alert-light border-0 shadow-sm">
-                      <div className="d-flex align-items-center gap-3">
-                        <i className="bi bi-search text-muted fs-3"></i>
-                        <div>
-                          <p className="mb-1 fw-semibold">No se encontraron rutas</p>
-                          <small className="text-muted">
-                            Intenta ajustar los filtros o seleccionar otras ubicaciones
-                          </small>
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">Destino</label>
+                    <Select
+                      value={destinationSeleccionado}
+                      onChange={setDestinationSeleccionado}
+                      options={opcionesDestination}
+                      placeholder={originSeleccionado ? "Selecciona destino..." : "Primero selecciona origen"}
+                      isClearable
+                      isDisabled={!originSeleccionado}
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          borderColor: '#dee2e6',
+                          '&:hover': { borderColor: '#0d6efd' }
+                        })
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Rutas Disponibles */}
+                {originSeleccionado && destinationSeleccionado && (
+                  <div className="mt-4">
+                    {/* Header mejorado */}
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h6 className="mb-0 d-flex align-items-center gap-2">
+                        <i className="bi bi-airplane"></i>
+                        Rutas Disponibles
+                        <span className="badge bg-light text-dark border">{rutasFiltradas.length}</span>
+                      </h6>
+
+                      {rutasFiltradas.length > 0 && (
+                        <small className="text-muted">
+                          Selecciona la mejor opción para tu envío
+                        </small>
+                      )}
+                    </div>
+
+                    {rutasFiltradas.length === 0 ? (
+                      <div className="alert alert-light border-0 shadow-sm">
+                        <div className="d-flex align-items-center gap-3">
+                          <i className="bi bi-search text-muted fs-3"></i>
+                          <div>
+                            <p className="mb-1 fw-semibold">No se encontraron rutas</p>
+                            <small className="text-muted">
+                              Intenta ajustar los filtros o seleccionar otras ubicaciones
+                            </small>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="table-responsive">
-                      <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.875rem' }}>
-                        <thead className="table-light">
-                          <tr>
-                            <th style={{ width: '5%' }}></th>
-                            <th style={{ width: '20%' }}>Carrier</th>
-                            <th className="text-center" style={{ width: '12%' }}>1-99kg</th>
-                            <th className="text-center" style={{ width: '12%' }}>100-299kg</th>
-                            <th className="text-center" style={{ width: '12%' }}>300-499kg</th>
-                            <th className="text-center" style={{ width: '12%' }}>500-999kg</th>
-                            <th className="text-center" style={{ width: '12%' }}>+1000kg</th>
-                            <th className="text-center" style={{ width: '15%' }}>Salidas</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rutasFiltradas.map((ruta, index) => {
-                            const precioKg45 = extractPrice(ruta.kg45);
-                            const precioKg100 = extractPrice(ruta.kg100);
-                            const precioKg300 = extractPrice(ruta.kg300);
-                            const precioKg500 = extractPrice(ruta.kg500);
-                            const precioKg1000 = extractPrice(ruta.kg1000);
+                    ) : (
+                      <div className="table-responsive">
+                        <table className="table table-hover align-middle mb-0" style={{ fontSize: '0.875rem' }}>
+                          <thead className="table-light">
+                            <tr>
+                              <th style={{ width: '5%' }}></th>
+                              <th style={{ width: '20%' }}>Carrier</th>
+                              <th className="text-center" style={{ width: '12%' }}>1-99kg</th>
+                              <th className="text-center" style={{ width: '12%' }}>100-299kg</th>
+                              <th className="text-center" style={{ width: '12%' }}>300-499kg</th>
+                              <th className="text-center" style={{ width: '12%' }}>500-999kg</th>
+                              <th className="text-center" style={{ width: '12%' }}>+1000kg</th>
+                              <th className="text-center" style={{ width: '15%' }}>Salidas</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rutasFiltradas.map((ruta, index) => {
+                              const precioKg45 = extractPrice(ruta.kg45);
+                              const precioKg100 = extractPrice(ruta.kg100);
+                              const precioKg300 = extractPrice(ruta.kg300);
+                              const precioKg500 = extractPrice(ruta.kg500);
+                              const precioKg1000 = extractPrice(ruta.kg1000);
 
-                            return (
-                              <tr 
-                                key={ruta.id}
-                                onClick={() => {
-                                  if (ruta.priceForComparison === 0) {
-                                    setShowPriceZeroModal(true);
-                                    return;
-                                  }
-                                  setRutaSeleccionada(ruta);
-                                }}
-                                className={rutaSeleccionada?.id === ruta.id ? 'table-success' : ''}
-                                style={{ 
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s ease'
-                                }}
-                              >
-                                {/* Indicador de selección y badges */}
-                                <td className="text-center">
-                                  {rutaSeleccionada?.id === ruta.id ? (
-                                    <i className="bi bi-check-circle-fill text-success fs-5"></i>
-                                  ) : (
-                                    <div style={{ width: '20px', height: '20px' }}></div>
-                                  )}
-                                  
-                                  {/* Badges verticales */}
-                                  <div className="d-flex flex-column gap-1 mt-2">
-                                    {index === bestPriceRouteIndex && (
-                                      <span 
-                                        className="badge bg-warning text-dark" 
-                                        style={{ fontSize: '0.6rem', padding: '0.15rem 0.3rem' }}
-                                        title="Mejor precio"
-                                      >
-                                        <i className="bi bi-star-fill"></i>
-                                      </span>
+                              return (
+                                <tr
+                                  key={ruta.id}
+                                  onClick={() => {
+                                    if (ruta.priceForComparison === 0) {
+                                      setShowPriceZeroModal(true);
+                                      return;
+                                    }
+                                    setRutaSeleccionada(ruta);
+                                  }}
+                                  className={rutaSeleccionada?.id === ruta.id ? 'table-success' : ''}
+                                  style={{
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                >
+                                  {/* Indicador de selección y badges */}
+                                  <td className="text-center">
+                                    {rutaSeleccionada?.id === ruta.id ? (
+                                      <i className="bi bi-check-circle-fill text-success fs-5"></i>
+                                    ) : (
+                                      <div style={{ width: '20px', height: '20px' }}></div>
                                     )}
-                                    {index === fastestRouteIndex && (
-                                      <span 
-                                        className="badge bg-success" 
-                                        style={{ fontSize: '0.6rem', padding: '0.15rem 0.3rem' }}
-                                        title="Menor tiempo"
-                                      >
-                                        <i className="bi bi-lightning-fill"></i>
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
 
-                                {/* Carrier con logo */}
-                                <td>
-                                  <div className="d-flex align-items-center gap-2">
-                                    {ruta.carrier && ruta.carrier !== 'Por Confirmar' ? (
-                                      <div 
-                                        className="rounded bg-white border d-flex align-items-center justify-content-center flex-shrink-0"
-                                        style={{ 
-                                          width: '35px', 
-                                          height: '35px',
-                                          overflow: 'hidden',
-                                          padding: '4px'
-                                        }}
-                                      >
-                                        <img 
-                                          src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
-                                          alt={ruta.carrier}
-                                          style={{ 
-                                            maxWidth: '100%', 
-                                            maxHeight: '100%',
-                                            objectFit: 'contain'
+                                    {/* Badges verticales */}
+                                    <div className="d-flex flex-column gap-1 mt-2">
+                                      {index === bestPriceRouteIndex && (
+                                        <span
+                                          className="badge bg-warning text-dark"
+                                          style={{ fontSize: '0.6rem', padding: '0.15rem 0.3rem' }}
+                                          title="Mejor precio"
+                                        >
+                                          <i className="bi bi-star-fill"></i>
+                                        </span>
+                                      )}
+                                      {index === fastestRouteIndex && (
+                                        <span
+                                          className="badge bg-success"
+                                          style={{ fontSize: '0.6rem', padding: '0.15rem 0.3rem' }}
+                                          title="Menor tiempo"
+                                        >
+                                          <i className="bi bi-lightning-fill"></i>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* Carrier con logo */}
+                                  <td>
+                                    <div className="d-flex align-items-center gap-2">
+                                      {ruta.carrier && ruta.carrier !== 'Por Confirmar' ? (
+                                        <div
+                                          className="rounded bg-white border d-flex align-items-center justify-content-center flex-shrink-0"
+                                          style={{
+                                            width: '35px',
+                                            height: '35px',
+                                            overflow: 'hidden',
+                                            padding: '4px'
                                           }}
-                                          onError={(e) => {
-                                            e.currentTarget.style.display = 'none';
-                                            if (e.currentTarget.parentElement) {
-                                              e.currentTarget.parentElement.innerHTML = `
+                                        >
+                                          <img
+                                            src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
+                                            alt={ruta.carrier}
+                                            style={{
+                                              maxWidth: '100%',
+                                              maxHeight: '100%',
+                                              objectFit: 'contain'
+                                            }}
+                                            onError={(e) => {
+                                              e.currentTarget.style.display = 'none';
+                                              if (e.currentTarget.parentElement) {
+                                                e.currentTarget.parentElement.innerHTML = `
                                               <i class="bi bi-box-seam text-muted"></i>
                                             `;
-                                            }
-                                          }}
-                                        />
+                                              }
+                                            }}
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div
+                                          className="rounded bg-light d-flex align-items-center justify-content-center flex-shrink-0"
+                                          style={{ width: '35px', height: '35px' }}
+                                        >
+                                          <i className="bi bi-box-seam text-muted"></i>
+                                        </div>
+                                      )}
+                                      <span className="fw-semibold text-truncate" style={{ fontSize: '0.8rem' }}>
+                                        {ruta.carrier || 'Por Confirmar'}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* Precios por rango (CON 15% incluido) */}
+                                  <td className="text-center">
+                                    {precioKg45 > 0 ? (
+                                      <div>
+                                        <div className="fw-semibold text-success">
+                                          {ruta.currency} {(precioKg45 * 1.15).toFixed(2)}
+                                        </div>
+                                        <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
                                       </div>
                                     ) : (
-                                      <div 
-                                        className="rounded bg-light d-flex align-items-center justify-content-center flex-shrink-0"
-                                        style={{ width: '35px', height: '35px' }}
-                                      >
-                                        <i className="bi bi-box-seam text-muted"></i>
-                                      </div>
+                                      <span className="text-muted">—</span>
                                     )}
-                                    <span className="fw-semibold text-truncate" style={{ fontSize: '0.8rem' }}>
-                                      {ruta.carrier || 'Por Confirmar'}
-                                    </span>
-                                  </div>
-                                </td>
+                                  </td>
 
-                                {/* Precios por rango (CON 15% incluido) */}
-                                <td className="text-center">
-                                  {precioKg45 > 0 ? (
-                                    <div>
-                                      <div className="fw-semibold text-success">
-                                        {ruta.currency} {(precioKg45 * 1.15).toFixed(2)}
+                                  <td className="text-center">
+                                    {precioKg100 > 0 ? (
+                                      <div>
+                                        <div className="fw-semibold text-success">
+                                          {ruta.currency} {(precioKg100 * 1.15).toFixed(2)}
+                                        </div>
+                                        <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
                                       </div>
-                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted">—</span>
-                                  )}
-                                </td>
-
-                                <td className="text-center">
-                                  {precioKg100 > 0 ? (
-                                    <div>
-                                      <div className="fw-semibold text-success">
-                                        {ruta.currency} {(precioKg100 * 1.15).toFixed(2)}
-                                      </div>
-                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted">—</span>
-                                  )}
-                                </td>
-
-                                <td className="text-center">
-                                  {precioKg300 > 0 ? (
-                                    <div>
-                                      <div className="fw-semibold text-success">
-                                        {ruta.currency} {(precioKg300 * 1.15).toFixed(2)}
-                                      </div>
-                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted">—</span>
-                                  )}
-                                </td>
-
-                                <td className="text-center">
-                                  {precioKg500 > 0 ? (
-                                    <div>
-                                      <div className="fw-semibold text-success">
-                                        {ruta.currency} {(precioKg500 * 1.15).toFixed(2)}
-                                      </div>
-                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted">—</span>
-                                  )}
-                                </td>
-
-                                <td className="text-center">
-                                  {precioKg1000 > 0 ? (
-                                    <div>
-                                      <div className="fw-semibold text-success">
-                                        {ruta.currency} {(precioKg1000 * 1.15).toFixed(2)}
-                                      </div>
-                                      <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted">—</span>
-                                  )}
-                                </td>
-
-                                {/* Detalles adicionales */}
-                                <td className="text-center">
-                                  <div style={{ fontSize: '0.75rem' }}>
-                                    {ruta.transitTime && (
-                                      <div className="text-muted mb-1">
-                                        <i className="bi bi-clock"></i> {ruta.transitTime}
-                                      </div>
+                                    ) : (
+                                      <span className="text-muted">—</span>
                                     )}
-                                    {ruta.frequency && (
-                                      <div className="text-muted">
-                                        <i className="bi bi-calendar-check"></i> {ruta.frequency}
+                                  </td>
+
+                                  <td className="text-center">
+                                    {precioKg300 > 0 ? (
+                                      <div>
+                                        <div className="fw-semibold text-success">
+                                          {ruta.currency} {(precioKg300 * 1.15).toFixed(2)}
+                                        </div>
+                                        <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
                                       </div>
+                                    ) : (
+                                      <span className="text-muted">—</span>
                                     )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                                  </td>
+
+                                  <td className="text-center">
+                                    {precioKg500 > 0 ? (
+                                      <div>
+                                        <div className="fw-semibold text-success">
+                                          {ruta.currency} {(precioKg500 * 1.15).toFixed(2)}
+                                        </div>
+                                        <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted">—</span>
+                                    )}
+                                  </td>
+
+                                  <td className="text-center">
+                                    {precioKg1000 > 0 ? (
+                                      <div>
+                                        <div className="fw-semibold text-success">
+                                          {ruta.currency} {(precioKg1000 * 1.15).toFixed(2)}
+                                        </div>
+                                        <small className="text-muted" style={{ fontSize: '0.7rem' }}>/kg</small>
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted">—</span>
+                                    )}
+                                  </td>
+
+                                  {/* Detalles adicionales */}
+                                  <td className="text-center">
+                                    <div style={{ fontSize: '0.75rem' }}>
+                                      {ruta.transitTime && (
+                                        <div className="text-muted mb-1">
+                                          <i className="bi bi-clock"></i> {ruta.transitTime}
+                                        </div>
+                                      )}
+                                      {ruta.frequency && (
+                                        <div className="text-muted">
+                                          <i className="bi bi-calendar-check"></i> {ruta.frequency}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -1747,8 +1747,8 @@ function QuoteAPITester() {
           <div className="card-body p-4">
             {/* Header de la sección */}
             <div className="mb-4 pb-3 border-bottom">
-              <h5 className="card-title mb-1" style={{ 
-                fontSize: '1.25rem', 
+              <h5 className="card-title mb-1" style={{
+                fontSize: '1.25rem',
                 fontWeight: 600,
                 color: '#1a1a1a'
               }}>
@@ -1760,9 +1760,9 @@ function QuoteAPITester() {
             </div>
 
             {/* Switch Overall - Diseño mejorado */}
-            <div 
-              className="p-3 mb-4" 
-              style={{ 
+            <div
+              className="p-3 mb-4"
+              style={{
                 backgroundColor: '#f8f9fa',
                 borderRadius: '8px',
                 border: '1px solid #e9ecef'
@@ -1775,14 +1775,14 @@ function QuoteAPITester() {
                   id="overallSwitch"
                   checked={overallDimsAndWeight}
                   onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
-                  style={{ 
+                  style={{
                     cursor: 'pointer',
                     width: '3rem',
                     height: '1.5rem'
                   }}
                 />
-                <label 
-                  className="form-check-label" 
+                <label
+                  className="form-check-label"
                   htmlFor="overallSwitch"
                   style={{ cursor: 'pointer' }}
                 >
@@ -1803,10 +1803,10 @@ function QuoteAPITester() {
             <div className="row g-3">
               {/* Incoterm - Rediseñado */}
               <div className="col-12 mb-3">
-                <label 
-                  className="form-label mb-2" 
-                  style={{ 
-                    fontSize: '0.95rem', 
+                <label
+                  className="form-label mb-2"
+                  style={{
+                    fontSize: '0.95rem',
                     fontWeight: 500,
                     color: '#1a1a1a'
                   }}
@@ -1821,7 +1821,7 @@ function QuoteAPITester() {
                   className="form-select"
                   value={incoterm}
                   onChange={(e) => setIncoterm(e.target.value as 'EXW' | 'FCA' | '')}
-                  style={{ 
+                  style={{
                     maxWidth: 400,
                     borderRadius: '8px',
                     border: '1px solid #ced4da',
@@ -1841,9 +1841,9 @@ function QuoteAPITester() {
               {/* Campos condicionales solo para EXW */}
               {incoterm === 'EXW' && (
                 <div className="col-12">
-                  <div 
-                    className="p-3 mb-3" 
-                    style={{ 
+                  <div
+                    className="p-3 mb-3"
+                    style={{
                       backgroundColor: '#f8f9fa',
                       borderRadius: '8px',
                       borderLeft: '3px solid #185abc'
@@ -1853,7 +1853,7 @@ function QuoteAPITester() {
                       <i className="bi bi-info-circle me-2"></i>
                       Complete las direcciones de recogida y entrega
                     </p>
-                    
+
                     <div className="row g-3">
                       <div className="col-md-6">
                         <label className="form-label" style={{ fontSize: '0.9rem', fontWeight: 500 }}>
@@ -1866,7 +1866,7 @@ function QuoteAPITester() {
                           onChange={(e) => setPickupFromAddress(e.target.value)}
                           placeholder="Ingrese dirección de recogida"
                           rows={3}
-                          style={{ 
+                          style={{
                             borderRadius: '8px',
                             fontSize: '0.9rem',
                             transition: 'all 0.2s ease'
@@ -1885,7 +1885,7 @@ function QuoteAPITester() {
                           onChange={(e) => setDeliveryToAddress(e.target.value)}
                           placeholder="Ingrese dirección de entrega"
                           rows={3}
-                          style={{ 
+                          style={{
                             borderRadius: '8px',
                             fontSize: '0.9rem',
                             transition: 'all 0.2s ease'
@@ -1909,7 +1909,7 @@ function QuoteAPITester() {
                       {piecesData.length} {piecesData.length === 1 ? 'pieza' : 'piezas'}
                     </span>
                   </div>
-                  
+
                   <div className="mb-3">
                     {piecesData.map((piece, index) => (
                       <PieceAccordion
@@ -1925,12 +1925,12 @@ function QuoteAPITester() {
                       />
                     ))}
                   </div>
-                  
+
                   <div className="d-flex justify-content-end">
                     <button
                       type="button"
                       className="btn"
-                      style={{ 
+                      style={{
                         backgroundColor: '#185abc',
                         borderColor: '#185abc',
                         color: 'white',
@@ -2013,9 +2013,9 @@ function QuoteAPITester() {
               {/* Modo Overall */}
               {overallDimsAndWeight && (
                 <div className="col-12">
-                  <div 
-                    className="p-3" 
-                    style={{ 
+                  <div
+                    className="p-3"
+                    style={{
                       backgroundColor: '#f8f9fa',
                       borderRadius: '8px',
                       borderLeft: '3px solid #185abc'
@@ -2042,7 +2042,7 @@ function QuoteAPITester() {
                           }}
                           min="0"
                           step="0.01"
-                          style={{ 
+                          style={{
                             borderRadius: '8px',
                             fontSize: '0.95rem'
                           }}
@@ -2065,7 +2065,7 @@ function QuoteAPITester() {
                           onChange={(e) => setManualVolume(Number(e.target.value))}
                           min="0"
                           step="0.0001"
-                          style={{ 
+                          style={{
                             borderRadius: '8px',
                             fontSize: '0.95rem'
                           }}
@@ -2147,13 +2147,13 @@ function QuoteAPITester() {
               {tarifaAirFreight && (
                 <div className="mt-3 pt-3 border-top">
                   <h6 className="mb-2">Breakdown de Costos</h6>
-                  
+
                   <div className="bg-light rounded p-3">
                     <div className="d-flex justify-content-between mb-2">
                       <span>Handling:</span>
                       <strong>{rutaSeleccionada.currency} 45.00</strong>
                     </div>
-                    
+
                     {incoterm === 'EXW' && (() => {
                       const { totalRealWeight: totalWeight } = calculateTotals();
                       return (
@@ -2163,7 +2163,7 @@ function QuoteAPITester() {
                         </div>
                       );
                     })()}
-                    
+
                     <div className="d-flex justify-content-between mb-2">
                       <span>AWB:</span>
                       <strong>{rutaSeleccionada.currency} 30.00</strong>
@@ -2173,7 +2173,7 @@ function QuoteAPITester() {
                       <span>Airport Transfer:</span>
                       <strong>{rutaSeleccionada.currency} {Math.max(pesoChargeable * 0.15, 50).toFixed(2)}</strong>
                     </div>
-                    
+
                     <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
                       <span>Air Freight:</span>
                       <strong>{rutaSeleccionada.currency} {(tarifaAirFreight.precioConMarkup * pesoChargeable).toFixed(2)}</strong>
@@ -2199,30 +2199,30 @@ function QuoteAPITester() {
                       </div>
 
                       {/* Input para Valor de Mercadería - Solo visible si seguro está activo */}
-                       {seguroActivo && (
-                         <div className="mt-3 ms-4">
-                           <label htmlFor="valorMercaderia" className="form-label small">
-                               Valor de la Mercadería ({rutaSeleccionada.currency}) <span className="text-danger">*</span>
-                                 </label>
-                                 <input
-                                   type="text"
-                                   className="form-control"
-                                   id="valorMercaderia"
-                                   placeholder="Ej: 10000 o 10000,50"
-                                   value={valorMercaderia}
-                                   onChange={(e) => {
-                                     // Permitir solo números, punto y coma
-                                     const value = e.target.value;
-                                     if (value === '' || /^[\d,\.]+$/.test(value)) {
-                                       setValorMercaderia(value);
-                                     }
-                                   }}
-                                 />
-                                 <small className="text-muted">
-                                   Ingresa el valor total de tu carga
-                                 </small>
-                               </div>
-                             )}
+                      {seguroActivo && (
+                        <div className="mt-3 ms-4">
+                          <label htmlFor="valorMercaderia" className="form-label small">
+                            Valor de la Mercadería ({rutaSeleccionada.currency}) <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="valorMercaderia"
+                            placeholder="Ej: 10000 o 10000,50"
+                            value={valorMercaderia}
+                            onChange={(e) => {
+                              // Permitir solo números, punto y coma
+                              const value = e.target.value;
+                              if (value === '' || /^[\d,\.]+$/.test(value)) {
+                                setValorMercaderia(value);
+                              }
+                            }}
+                          />
+                          <small className="text-muted">
+                            Ingresa el valor total de tu carga
+                          </small>
+                        </div>
+                      )}
 
 
                     </div>
@@ -2267,12 +2267,12 @@ function QuoteAPITester() {
                     )}
 
                     {/* Mensaje de advertencia si el seguro está activo pero no hay valor de mercadería */}
-                            {seguroActivo && !valorMercaderia && (
-                              <div className="alert alert-warning py-2 mb-3" role="alert">
-                                <small>⚠️ Debes ingresar el valor de la mercadería para calcular el seguro</small>
-                              </div>
-                            )}
-                    
+                    {seguroActivo && !valorMercaderia && (
+                      <div className="alert alert-warning py-2 mb-3" role="alert">
+                        <small>⚠️ Debes ingresar el valor de la mercadería para calcular el seguro</small>
+                      </div>
+                    )}
+
                     <div className="d-flex justify-content-between">
                       <span className="fs-5 fw-bold">TOTAL:</span>
                       <span className="fs-5 fw-bold text-success">
@@ -2387,7 +2387,7 @@ function QuoteAPITester() {
               {JSON.stringify(response, null, 2)}
             </pre>*/}
             <div className="alert alert-success mt-3 mb-0">
-               En unos momentos se descargará automáticamente el PDF de la cotización.
+              En unos momentos se descargará automáticamente el PDF de la cotización.
             </div>
           </div>
         </div>
@@ -2403,7 +2403,7 @@ function QuoteAPITester() {
             <strong>Esta ruta requiere análisis caso a caso.</strong>
           </p>
           <p className="mb-0">
-            Por favor, contacta a tu ejecutivo comercial para obtener una cotización personalizada 
+            Por favor, contacta a tu ejecutivo comercial para obtener una cotización personalizada
             que se ajuste a las características específicas de tu envío.
           </p>
         </Modal.Body>
