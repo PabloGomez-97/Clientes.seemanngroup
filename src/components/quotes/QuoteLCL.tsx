@@ -8,6 +8,8 @@ import { Modal, Button } from 'react-bootstrap';
 import { PDFTemplateLCL } from './Pdftemplate/Pdftemplatelcl';
 import { generatePDF, formatDateForFilename } from './Pdftemplate/Pdfutils';
 import ReactDOM from 'react-dom/client';
+import { PieceAccordionLCL } from './Handlers/LCL/PieceAccordionLCL.tsx';
+import type { PieceData } from './Handlers/LCL/HandlerQuoteLCL.tsx';
 
 // URL del Google Sheet publicado como CSV
 const GOOGLE_SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT5T29WmDAI_z4RxlPtY3GoB3pm7NyBBiWZGc06cYRR1hg5fdFx7VEr3-i2geKxgw/pub?output=csv';
@@ -261,20 +263,35 @@ function QuoteLCL() {
   // ============================================================================
   // ESTADOS PARA COMMODITY
   // ============================================================================
-  
-  const [pieces, setPieces] = useState(1);
+
   const [description, setDescription] = useState("Cargamento Marítimo LCL");
   const [selectedPackageType, setSelectedPackageType] = useState(97);
-  
+
   // Estados para incoterm y direcciones
   const [incoterm, setIncoterm] = useState<'EXW' | 'FOB' | ''>('');
   const [pickupFromAddress, setPickupFromAddress] = useState('');
   const [deliveryToAddress, setDeliveryToAddress] = useState('');
-  
-  const [length, setLength] = useState(100); // cm
-  const [width, setWidth] = useState(80); // cm
-  const [height, setHeight] = useState(60); // cm
-  const [weight, setWeight] = useState(500); // kg
+
+  // Estados para sistema de piezas
+  const [piecesData, setPiecesData] = useState<PieceData[]>([
+    {
+      id: '1',
+      packageType: '',
+      description: '',
+      length: 0,
+      width: 0,
+      height: 0,
+      weight: 0,
+      volume: 0,
+      totalVolume: 0,
+      weightTons: 0,
+      totalWeightTons: 0,
+      wmChargeable: 0
+    }
+  ]);
+  const [openAccordions, setOpenAccordions] = useState<string[]>(['1']);
+  const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
+  const [openSection, setOpenSection] = useState<number>(1); // Controla qué paso está abierto
 
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
@@ -406,6 +423,108 @@ function QuoteLCL() {
   };
 
   // ============================================================================
+  // FUNCIONES DE MANEJO DE PIEZAS
+  // ============================================================================
+
+  // Agregar nueva pieza
+  const handleAddPiece = () => {
+    if (piecesData.length >= 10) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+
+    const newId = (piecesData.length + 1).toString();
+    const newPiece: PieceData = {
+      id: newId,
+      packageType: '',
+      description: '',
+      length: 0,
+      width: 0,
+      height: 0,
+      weight: 0,
+      volume: 0,
+      totalVolume: 0,
+      weightTons: 0,
+      totalWeightTons: 0,
+      wmChargeable: 0
+    };
+
+    setPiecesData([...piecesData, newPiece]);
+
+    // Abrir la nueva pieza y cerrar otras si ya hay 2 abiertas
+    setOpenAccordions(prev => {
+      const newOpen = [...prev, newId];
+      return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+    });
+  };
+
+  // Eliminar pieza
+  const handleRemovePiece = (id: string) => {
+    const filtered = piecesData.filter(p => p.id !== id);
+
+    // Renumerar las piezas
+    const renumbered = filtered.map((piece, index) => ({
+      ...piece,
+      id: (index + 1).toString()
+    }));
+
+    setPiecesData(renumbered);
+
+    // Actualizar accordions abiertos
+    setOpenAccordions(prev =>
+      prev.filter(openId => openId !== id).map((openId) => {
+        const oldIndex = parseInt(openId) - 1;
+        const newIndex = renumbered.findIndex((_, i) => i === oldIndex);
+        return newIndex !== -1 ? (newIndex + 1).toString() : openId;
+      })
+    );
+  };
+
+  // Toggle accordion
+  const handleToggleAccordion = (id: string) => {
+    setOpenAccordions(prev => {
+      const isOpen = prev.includes(id);
+
+      if (isOpen) {
+        // Cerrar
+        return prev.filter(openId => openId !== id);
+      } else {
+        // Abrir (máximo 2)
+        const newOpen = [...prev, id];
+        return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+      }
+    });
+  };
+
+  // Actualizar campo de una pieza
+  const handleUpdatePiece = (id: string, field: keyof PieceData, value: any) => {
+    setPiecesData(prev =>
+      prev.map(piece =>
+        piece.id === id ? { ...piece, [field]: value } : piece
+      )
+    );
+  };
+
+  // Calcular totales de todas las piezas
+  const calculateTotals = () => {
+    const totalWeightKg = piecesData.reduce((sum, piece) => sum + piece.weight, 0);
+    const totalWeightTons = totalWeightKg / 1000; // Convertir kg a toneladas
+    const totalVolume = piecesData.reduce((sum, piece) => sum + piece.volume, 0);
+    const chargeableVolume = Math.max(totalWeightTons, totalVolume); // W/M Chargeable
+
+    return {
+      totalWeightKg,
+      totalWeightTons,
+      totalVolume,
+      chargeableVolume
+    };
+  };
+
+  const handleSectionToggle = (section: number) => {
+    setOpenSection(openSection === section ? 0 : section);
+  };
+
+  // ============================================================================
   // ACTUALIZAR PODs CUANDO CAMBIA POL
   // ============================================================================
 
@@ -441,22 +560,20 @@ function QuoteLCL() {
       setRutaSeleccionada(null);
     }
   }, [polSeleccionado, rutas]);
+
+  // Cerrar Paso 1 y abrir Paso 2 cuando se selecciona una ruta
+  useEffect(() => {
+    if (rutaSeleccionada) {
+      setOpenSection(2); // Abrir automáticamente el Paso 2
+    }
+  }, [rutaSeleccionada]);
   
   // ============================================================================
   // CÁLCULOS
   // ============================================================================
 
-  const calculateVolume = () => {
-    return (length * width * height) / 1000000; // m³
-  };
-
-  const volume = calculateVolume();
-  const totalVolume = volume * pieces;
-  const totalWeight = weight * pieces;
-  const totalWeightTons = totalWeight / 1000; // Convertir kg a toneladas
-  
-  // W/M Chargeable: Mayor entre peso (en toneladas) y volumen (en m³)
-  const chargeableVolume = Math.max(totalWeightTons, totalVolume);
+  // Calcular totales usando el nuevo sistema de piezas
+  const { totalWeightKg, totalWeightTons, totalVolume, chargeableVolume } = calculateTotals();
   const totalVolumeWeight = chargeableVolume;
 
   // ============================================================================
@@ -496,8 +613,8 @@ function QuoteLCL() {
   // FUNCIÓN PARA CALCULAR EXW SEGÚN NÚMERO DE PIEZAS
   // ============================================================================
 
-  const calculateEXWRate = (pieces: number): number => {
-    return 170 * pieces;
+  const calculateEXWRate = (): number => {
+    return 170 * piecesData.length;
   };
 
   // ============================================================================
@@ -516,7 +633,7 @@ function QuoteLCL() {
     const totalSinSeguro = 
       60 + // BL
       45 + // Handling
-      (incoterm === 'EXW' ? calculateEXWRate(pieces) : 0) + // EXW
+      (incoterm === 'EXW' ? calculateEXWRate() : 0) + // EXW
       tarifaOceanFreight.income; // Ocean Freight
     
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
@@ -539,6 +656,13 @@ function QuoteLCL() {
 
     if (incoterm === 'EXW' && (!pickupFromAddress || !deliveryToAddress)) {
       setError('Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW');
+      return;
+    }
+
+    // Validar que todas las piezas tengan tipo de paquete seleccionado
+    const piezasSinTipo = piecesData.filter(piece => !piece.packageType);
+    if (piezasSinTipo.length > 0) {
+      setError('Debes seleccionar un Tipo de Paquete para todas las piezas antes de generar la cotización');
       return;
     }
 
@@ -611,11 +735,11 @@ function QuoteLCL() {
 
       // EXW (solo si incoterm es EXW)
       if (incoterm === 'EXW') {
-        const exwRate = calculateEXWRate(pieces);
+        const exwRate = calculateEXWRate();
         pdfCharges.push({
           code: 'EC',
           description: 'EXW CHARGES',
-          quantity: pieces,
+          quantity: piecesData.length,
           unit: 'Piece',
           rate: 170,
           amount: exwRate
@@ -658,7 +782,7 @@ function QuoteLCL() {
 
       // Renderizar el template del PDF
       const root = ReactDOM.createRoot(tempDiv);
-      
+
       await new Promise<void>((resolve) => {
         root.render(
           <PDFTemplateLCL
@@ -671,13 +795,13 @@ function QuoteLCL() {
             pickupFromAddress={incoterm === 'EXW' ? pickupFromAddress : undefined}
             deliveryToAddress={incoterm === 'EXW' ? deliveryToAddress : undefined}
             salesRep={ejecutivo?.nombre || 'Ignacio Maldonado'}
-            pieces={pieces}
+            pieces={piecesData.length}
             packageTypeName={packageTypeName}
-            length={length}
-            width={width}
-            height={height}
+            length={piecesData[0]?.length || 0}
+            width={piecesData[0]?.width || 0}
+            height={piecesData[0]?.height || 0}
             description={description}
-            totalWeight={totalWeight}
+            totalWeight={totalWeightKg}
             totalVolume={totalVolume}
             totalVolumeWeight={totalVolumeWeight}
             weightUnit="kg"
@@ -687,7 +811,7 @@ function QuoteLCL() {
             currency={rutaSeleccionada.currency}
           />
         );
-        
+
         // Esperar a que el DOM se actualice
         setTimeout(resolve, 500);
       });
@@ -780,14 +904,14 @@ function QuoteLCL() {
 
     // Cobro de EXW (solo si incoterm es EXW)
     if (incoterm === 'EXW') {
-      const exwRate = calculateEXWRate(pieces);
+      const exwRate = calculateEXWRate();
       charges.push({
         service: {
           id: 271,
           code: "EC"
         },
         income: {
-          quantity: pieces,
+          quantity: piecesData.length,
           unit: "EXW CHARGES",
           rate: 170,
           amount: exwRate,
@@ -802,7 +926,7 @@ function QuoteLCL() {
           },
           reference: "LCL-EXW-REF",
           showOnDocument: true,
-          notes: `EXW charge - ${pieces} piece(s) × 170`
+          notes: `EXW charge - ${piecesData.length} piece(s) × 170`
         },
         expense: {
           currency: {
@@ -940,30 +1064,28 @@ function QuoteLCL() {
       salesRep: {
         name: ejecutivo?.nombre || "Ignacio Maldonado"
       },
-      commodities: [
-        {
-          commodityType: "Standard",
-          packageType: {
-            id: selectedPackageType
-          },
-          pieces: pieces,
-          description: description,
-          weightPerUnitValue: weight,
-          weightPerUnitUOM: "kg",
-          totalWeightValue: totalWeight,
-          totalWeightUOM: "kg",
-          lengthValue: length,
-          lengthUOM: "cm",
-          widthValue: width,
-          widthUOM: "cm",
-          heightValue: height,
-          heightUOM: "cm",
-          volumeValue: volume,
-          volumeUOM: "m3",
-          totalVolumeValue: totalVolume,
-          totalVolumeUOM: "m3"
-        }
-      ],
+      commodities: piecesData.map(piece => ({
+        commodityType: "Standard",
+        packageType: {
+          id: piece.packageType
+        },
+        pieces: 1, // Siempre 1 ahora
+        description: piece.description,
+        weightPerUnitValue: piece.weight,
+        weightPerUnitUOM: "kg",
+        totalWeightValue: piece.weight,
+        totalWeightUOM: "kg",
+        lengthValue: piece.length,
+        lengthUOM: "cm",
+        widthValue: piece.width,
+        widthUOM: "cm",
+        heightValue: piece.height,
+        heightUOM: "cm",
+        volumeValue: piece.volume,
+        volumeUOM: "m3",
+        totalVolumeValue: piece.volume,
+        totalVolumeUOM: "m3"
+      })),
       charges
     };
   };
@@ -976,7 +1098,7 @@ function QuoteLCL() {
     <div className="container-fluid py-4">
       <div className="row mb-4">
         <div className="col">
-          <h2 className="mb-1">📦 Cotizador LCL</h2>
+          <h2 className="mb-1">Cotizador LCL</h2>
           <p className="text-muted mb-0">Genera cotizaciones para envíos Less than Container Load</p>
         </div>
       </div>
@@ -986,11 +1108,32 @@ function QuoteLCL() {
       {/* ============================================================================ */}
 
       <div className="card shadow-sm mb-4">
-        <div className="card-body">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h5 className="card-title mb-0">📍 Paso 1: Selecciona Ruta</h5>
+      <div 
+        className="card-header d-flex justify-content-between align-items-center"
+        style={{ 
+          cursor: 'pointer',
+          backgroundColor: openSection === 1 ? '#f8f9fa' : 'white',
+          borderBottom: openSection === 1 ? '1px solid #dee2e6' : 'none'
+        }}
+        onClick={() => handleSectionToggle(1)}
+      >
+        <h5 className="mb-0">
+          <i className="bi bi-geo-alt me-2" style={{ color: '#0d6efd' }}></i>
+          Paso 1: Selecciona Ruta
+          {rutaSeleccionada && (
+            <span className="badge bg-success ms-3">
+              <i className="bi bi-check-circle-fill me-1"></i>
+              Completado
+            </span>
+          )}
+        </h5>
+        <div className="d-flex align-items-center gap-2">
+          {!rutaSeleccionada && (
             <button
-              onClick={refrescarTarifas}
+              onClick={(e) => {
+                e.stopPropagation();
+                refrescarTarifas();
+              }}
               disabled={loadingRutas}
               className="btn btn-sm btn-outline-primary"
               title="Actualizar tarifas desde Google Sheets"
@@ -1007,8 +1150,19 @@ function QuoteLCL() {
                 </>
               )}
             </button>
-          </div>
+          )}
+          <button
+            type="button"
+            className="btn btn-link text-decoration-none p-0"
+            style={{ fontSize: '1.5rem' }}
+          >
+            <i className={`bi bi-chevron-${openSection === 1 ? 'up' : 'down'}`}></i>
+          </button>
+        </div>
+      </div>
 
+      {openSection === 1 && (
+        <div className="card-body">
           {lastUpdate && !loadingRutas && !errorRutas && (
             <div className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center justify-content-between" style={{ fontSize: '0.85rem' }}>
               <span className="text-muted">
@@ -1335,27 +1489,29 @@ function QuoteLCL() {
                   )}
                 </div>
               )}
-
-              {/* Información de ruta seleccionada */}
-              {rutaSeleccionada && (
-                <div className="alert alert-success mt-4 mb-0">
-                  <h6 className="alert-heading">✓ Ruta Seleccionada</h6>
-                  <p className="mb-2">
-                    <strong>Ruta:</strong> {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
-                  </p>
-                  <p className="mb-2">
-                    <strong>Operador:</strong> {rutaSeleccionada.operador}
-                  </p>
-                  {rutaSeleccionada.servicio && (
-                    <p className="mb-2">
-                      <strong>Servicio:</strong> {rutaSeleccionada.servicio}
-                    </p>
-                  )}
-                </div>
-              )}
             </>
           )}
         </div>
+      )}
+
+      {/* Resumen colapsado cuando está cerrado */}
+      {openSection !== 1 && rutaSeleccionada && (
+        <div className="card-body py-2 bg-light">
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <small className="text-muted d-block">Ruta seleccionada:</small>
+              <strong>{rutaSeleccionada.pol} → {rutaSeleccionada.pod}</strong>
+              <span className="ms-3 text-muted">|</span>
+              <span className="ms-2 badge bg-primary">{rutaSeleccionada.operador}</span>
+            </div>
+            <div>
+              <span className="badge bg-success" style={{ fontSize: '0.9rem' }}>
+                {rutaSeleccionada.currency} {(rutaSeleccionada.ofWM * 1.15).toFixed(2)}/W/M
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
 
       {/* ============================================================================ */}
@@ -1365,53 +1521,87 @@ function QuoteLCL() {
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
-            <h5 className="card-title mb-4">📦 Paso 2: Datos del Commodity</h5>
+            <h5 className="card-title mb-4">Paso 2: Datos del Commodity</h5>
 
             {/* Formulario */}
             <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label">Tipo de Paquete</label>
-                <select
-                  className="form-select"
-                  value={selectedPackageType}
-                  onChange={(e) => setSelectedPackageType(Number(e.target.value))}
-                >
-                  {packageTypeOptions.map(opt => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.name}
-                    </option>
+              {/* Sección de Piezas */}
+              <div className="col-12">
+                <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                  <h6 className="mb-0" style={{ fontSize: '1.05rem', fontWeight: 500, color: '#1a1a1a' }}>
+                    <i className="bi bi-boxes me-2" style={{ color: '#0d6efd' }}></i>
+                    Detalles de las Piezas
+                  </h6>
+                  <span className="badge bg-light text-dark" style={{ fontSize: '0.8rem' }}>
+                    {piecesData.length} {piecesData.length === 1 ? 'pieza' : 'piezas'}
+                  </span>
+                </div>
+
+                <div className="mb-3">
+                  {piecesData.map((piece, index) => (
+                    <PieceAccordionLCL
+                      key={piece.id}
+                      piece={piece}
+                      index={index}
+                      isOpen={openAccordions.includes(piece.id)}
+                      onToggle={() => handleToggleAccordion(piece.id)}
+                      onRemove={() => handleRemovePiece(piece.id)}
+                      onUpdate={(field, value) => handleUpdatePiece(piece.id, field, value)}
+                      packageTypes={packageTypeOptions.map(opt => ({ id: String(opt.id), name: opt.name }))}
+                      canRemove={piecesData.length > 1}
+                    />
                   ))}
-                </select>
+                </div>
+
+                <div className="d-flex justify-content-end">
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      backgroundColor: '#0d6efd',
+                      borderColor: '#0d6efd',
+                      color: 'white',
+                      borderRadius: '8px',
+                      padding: '0.5rem 1.25rem',
+                      fontSize: '0.9rem',
+                      fontWeight: 500,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0b5ed7'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0d6efd'}
+                    onClick={handleAddPiece}
+                  >
+                    <i className="bi bi-plus-circle me-2"></i>
+                    Agregar Pieza Adicional
+                  </button>
+                </div>
               </div>
+
+              {/* Resumen de Totales - Solo cuando hay múltiples piezas */}
+              {piecesData.length > 1 && (
+                <div className="col-12">
+                  <div className="alert alert-secondary">
+                    <h6 className="mb-2">Resumen Total de Carga</h6>
+                    <div className="row">
+                      <div className="col-md-3">
+                        <small><strong>Peso Total:</strong> {totalWeightKg.toFixed(2)} kg</small>
+                      </div>
+                      <div className="col-md-3">
+                        <small><strong>Peso (Toneladas):</strong> {totalWeightTons.toFixed(4)} t</small>
+                      </div>
+                      <div className="col-md-3">
+                        <small><strong>Volumen Total:</strong> {totalVolume.toFixed(4)} m³</small>
+                      </div>
+                      <div className="col-md-3">
+                        <small><strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(4)}</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="col-md-6">
-                <label className="form-label">Número de Piezas</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={pieces}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value) || 1;
-                    setPieces(Math.max(1, value));
-                  }}
-                  min="1"
-                  step="1"
-                />
-              </div>
-
-              <div className="col-6">
-                <label className="form-label">Descripción</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Descripción de la carga"
-                />
-              </div>
-
-              <div className="col-6">
-                <label className="form-label">Incoterm <span className="text-danger">*</span></label>
+                <label className="form-label">Incoterm</label>
                 <select
                   className="form-select"
                   value={incoterm}
@@ -1419,7 +1609,7 @@ function QuoteLCL() {
                 >
                   <option value="">Seleccione un Incoterm</option>
                   <option value="EXW">Ex Works [EXW]</option>
-                  <option value="FOB">Free On Board [FOB]</option>
+                  <option value="FOB">FOB</option>
                 </select>
               </div>
 
@@ -1427,7 +1617,7 @@ function QuoteLCL() {
               {incoterm === 'EXW' && (
                 <>
                   <div className="col-md-6">
-                    <label className="form-label">Pickup From Address <span className="text-danger">*</span></label>
+                    <label className="form-label">Pickup From Address</label>
                     <textarea
                       className="form-control"
                       value={pickupFromAddress}
@@ -1438,7 +1628,7 @@ function QuoteLCL() {
                   </div>
 
                   <div className="col-md-6">
-                    <label className="form-label">Delivery To Address <span className="text-danger">*</span></label>
+                    <label className="form-label">Delivery To Address</label>
                     <textarea
                       className="form-control"
                       value={deliveryToAddress}
@@ -1449,68 +1639,23 @@ function QuoteLCL() {
                   </div>
                 </>
               )}
-
-              <div className="col-md-3">
-                <label className="form-label">Largo (cm)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={length}
-                  onChange={(e) => setLength(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="col-md-3">
-                <label className="form-label">Ancho (cm)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={width}
-                  onChange={(e) => setWidth(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="col-md-3">
-                <label className="form-label">Alto (cm)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={height}
-                  onChange={(e) => setHeight(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="col-md-3">
-                <label className="form-label">Peso por pieza (kg)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={weight}
-                  onChange={(e) => setWeight(Number(e.target.value))}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
             </div>
 
             {/* Cálculos */}
-            <div className="mt-4 p-3 border rounded" style={{ backgroundColor: '#e7f5ff' }}>
-              <h6 className="mb-3">🧮 Cálculos W/M</h6>
+            <div className="mt-4 p-3 border rounded" style={{ backgroundColor: '#f8f9fa' }}>
+              <h6 className="mb-3">Cálculos y resumen total</h6>
               <div className="row g-2" style={{ fontSize: '0.9rem' }}>
-                <div className="col-md-4">
-                  <strong>Volumen por pieza:</strong> {volume.toFixed(4)} m³
+                <div className="col-md-3">
+                  <strong>Peso Total:</strong> {totalWeightKg.toFixed(2)} kg ({totalWeightTons.toFixed(4)} t)
                 </div>
-                <div className="col-md-4">
-                  <strong>Volumen total:</strong> {totalVolume.toFixed(4)} m³
+                <div className="col-md-3">
+                  <strong>Volumen Total:</strong> {totalVolume.toFixed(4)} m³
                 </div>
-                <div className="col-md-4">
-                  <strong>Peso total:</strong> {totalWeight.toFixed(2)} kg ({totalWeightTons.toFixed(3)} ton)
+                <div className="col-md-3">
+                  <strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(4)}
+                </div>
+                <div className="col-md-3">
+                  <strong>Cobro por:</strong> {totalWeightTons > totalVolume ? 'Peso' : 'Volumen'}
                 </div>
                 <div className="col-12 mt-3 pt-3 border-top">
                   <strong className="text-primary">W/M Chargeable:</strong>{' '}
@@ -1520,7 +1665,7 @@ function QuoteLCL() {
                 
                 {tarifaOceanFreight && (
                 <div className="col-12 mt-3 pt-3 border-top">
-                  <h6 className="mb-3">💰 Resumen de Cargos</h6>
+                  <h6 className="mb-3">Resumen de Cargos</h6>
                   
                   <div className="bg-light rounded p-3">
                     {/* BL */}
@@ -1538,10 +1683,8 @@ function QuoteLCL() {
                     {/* EXW - Solo si aplica */}
                     {incoterm === 'EXW' && (
                       <div className="d-flex justify-content-between mb-2">
-                        <span>EXW Charges ({pieces} piezas):</span>
-                        <strong>
-                          {rutaSeleccionada.currency} {calculateEXWRate(pieces).toLocaleString()}
-                        </strong>
+                        <span>EXW Charges ({piecesData.length} piezas):</span>
+                        <strong>{rutaSeleccionada.currency} {calculateEXWRate().toFixed(2)}</strong>
                       </div>
                     )}
                     
@@ -1624,7 +1767,7 @@ function QuoteLCL() {
                         {(
                           60 + // BL
                           45 + // Handling
-                          (incoterm === 'EXW' ? calculateEXWRate(pieces) : 0) + // EXW
+                          (incoterm === 'EXW' ? calculateEXWRate() : 0) + // EXW
                           tarifaOceanFreight.income + // Ocean Freight
                           (seguroActivo ? calculateSeguro() : 0) // Seguro (si está activo)
                         ).toFixed(2)}
@@ -1647,7 +1790,7 @@ function QuoteLCL() {
         <>
           <div className="card shadow-sm mb-4">
             <div className="card-body">
-              <h5 className="card-title mb-4">🚀 Paso 3: Generar Cotización</h5>
+              <h5 className="card-title mb-4">Generar Cotización</h5>
 
               <button
                 onClick={testAPI}
@@ -1660,7 +1803,7 @@ function QuoteLCL() {
                     Generando...
                   </>
                 ) : (
-                  <>✨ Generar Cotización LCL</>
+                  <>Generar Cotización LCL</>
                 )}
               </button>
 
@@ -1766,6 +1909,22 @@ function QuoteLCL() {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="primary" onClick={() => setShowPriceZeroModal(false)}>
+            Entendido
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal de advertencia - Máximo 10 piezas */}
+      <Modal show={showMaxPiecesModal} onHide={() => setShowMaxPiecesModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Límite de Piezas Alcanzado</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>El sistema permite un máximo de 10 piezas por cotización.</p>
+          <p className="mb-0">Si necesita cotizar más de 10 piezas, por favor contacte a su ejecutivo para un análisis personalizado.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" onClick={() => setShowMaxPiecesModal(false)}>
             Entendido
           </Button>
         </Modal.Footer>
