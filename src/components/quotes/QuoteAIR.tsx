@@ -1350,7 +1350,7 @@ function QuoteAPITester() {
     <div className="container-fluid py-4">
       <div className="row mb-4">
         <div className="col">
-          <h2 className="mb-1">✈️ Cotizador Aéreo</h2>
+          <h2 className="mb-1">Cotizador Aéreo</h2>
           <p className="text-muted mb-0">Genera cotizaciones para envíos aéreos</p>
         </div>
       </div>
