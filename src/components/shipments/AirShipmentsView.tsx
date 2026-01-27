@@ -1164,9 +1164,22 @@ function AirShipmentsView() {
                   const isDelivered = !!shipment.proofOfDelivery?.podDelivery;
                   const isInCustoms =
                     shipment.customsReleased || !!shipment.importSection?.entry;
-                  const hasArrived =
-                    shipment.arrival &&
-                    new Date(shipment.arrival) <= new Date();
+                  const hasArrived = (() => {
+                    if (!shipment.arrival || !shipment.arrival.displayDate)
+                      return false;
+                    try {
+                      const [month, day, year] =
+                        shipment.arrival.displayDate.split("/");
+                      const arrivalDate = new Date(
+                        parseInt(year),
+                        parseInt(month) - 1,
+                        parseInt(day),
+                      );
+                      return arrivalDate <= new Date();
+                    } catch {
+                      return false;
+                    }
+                  })();
                   const inTransit = !!shipment.departure;
 
                   let statusLabel = "Pendiente";
@@ -1435,50 +1448,73 @@ function AirShipmentsView() {
                                       >
                                         ¿Quieres trackear tu envío?
                                       </div>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          openTrackModal(shipment);
-                                        }}
-                                        style={{
-                                          maxWidth: "5cm",
-                                          padding: "10px 12px",
-                                          background:
-                                            "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
-                                          border: "1px solid #cbd5e1",
-                                          borderRadius: "6px",
-                                          color: "#334155",
-                                          fontSize: "0.875rem",
-                                          fontWeight: "500",
-                                          cursor: "pointer",
-                                          transition: "all 0.2s ease",
-                                          boxShadow:
-                                            "0 1px 2px rgba(0, 0, 0, 0.05)",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                          gap: "6px",
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          e.currentTarget.style.background =
-                                            "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)";
-                                          e.currentTarget.style.boxShadow =
-                                            "0 2px 4px rgba(0, 0, 0, 0.1)";
-                                          e.currentTarget.style.transform =
-                                            "translateY(-1px)";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          e.currentTarget.style.background =
-                                            "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)";
-                                          e.currentTarget.style.boxShadow =
-                                            "0 1px 2px rgba(0, 0, 0, 0.05)";
-                                          e.currentTarget.style.transform =
-                                            "translateY(0)";
-                                        }}
-                                      >
-                                        <span>✈️</span>
-                                        Trackea tu envío
-                                      </button>
+                                      {hasArrived ? (
+                                        <div
+                                          style={{
+                                            maxWidth: "5cm",
+                                            padding: "10px 12px",
+                                            background:
+                                              "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+                                            border: "1px solid #fca5a5",
+                                            borderRadius: "6px",
+                                            color: "#dc2626",
+                                            fontSize: "0.875rem",
+                                            fontWeight: "500",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: "6px",
+                                          }}
+                                        >
+                                          <span>❌</span>
+                                          No disponible
+                                        </div>
+                                      ) : (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openTrackModal(shipment);
+                                          }}
+                                          style={{
+                                            maxWidth: "5cm",
+                                            padding: "10px 12px",
+                                            background:
+                                              "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+                                            border: "1px solid #cbd5e1",
+                                            borderRadius: "6px",
+                                            color: "#334155",
+                                            fontSize: "0.875rem",
+                                            fontWeight: "500",
+                                            cursor: "pointer",
+                                            transition: "all 0.2s ease",
+                                            boxShadow:
+                                              "0 1px 2px rgba(0, 0, 0, 0.05)",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: "6px",
+                                          }}
+                                          onMouseEnter={(e) => {
+                                            e.currentTarget.style.background =
+                                              "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)";
+                                            e.currentTarget.style.boxShadow =
+                                              "0 2px 4px rgba(0, 0, 0, 0.1)";
+                                            e.currentTarget.style.transform =
+                                              "translateY(-1px)";
+                                          }}
+                                          onMouseLeave={(e) => {
+                                            e.currentTarget.style.background =
+                                              "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)";
+                                            e.currentTarget.style.boxShadow =
+                                              "0 1px 2px rgba(0, 0, 0, 0.05)";
+                                            e.currentTarget.style.transform =
+                                              "translateY(0)";
+                                          }}
+                                        >
+                                          <span>✈️</span>
+                                          Trackea tu envío
+                                        </button>
+                                      )}
                                     </div>
                                     <InfoField
                                       label="Número de Booking"
