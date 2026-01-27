@@ -4,8 +4,6 @@ import { useAuth } from "../../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
 import "./AirShipmentsView.css"; // 👈 Importar el CSS
 import { DocumentosSectionAir } from "../Sidebar/Documents/DocumentosSectionAir";
-import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer } from "react-leaflet";
 import {
   type OutletContext,
   type AirShipment,
@@ -49,6 +47,9 @@ function AirShipmentsView() {
   const [trackEmail, setTrackEmail] = useState("");
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
+
+  // Embed query for ShipsGo map
+  const [embedQuery, setEmbedQuery] = useState<string | null>(null);
 
   // Búsqueda por fecha
   const [searchDate, setSearchDate] = useState("");
@@ -588,11 +589,13 @@ function AirShipmentsView() {
   const openModal = (shipment: AirShipment) => {
     setSelectedShipment(shipment);
     setShowModal(true);
+    setEmbedQuery(shipment.number || null);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setSelectedShipment(null);
+    setEmbedQuery(null);
   };
 
   const openSearchModal = () => {
@@ -688,7 +691,7 @@ function AirShipmentsView() {
       <div
         style={{
           marginBottom: "32px",
-          height: "350px", // 👈 MODIFICA ESTE VALOR para ajustar altura (300px-400px)
+          height: "650px",
           borderRadius: "12px",
           overflow: "hidden",
           border: "1px solid #e5e7eb",
@@ -697,17 +700,13 @@ function AirShipmentsView() {
           position: "relative",
         }}
       >
-        <MapContainer
-          center={[-33.4489, -70.6693]} // Coordenadas de Santiago, Chile
-          zoom={3}
-          style={{ height: "100%", width: "100%" }}
-          scrollWheelZoom={true}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-        </MapContainer>
+        <iframe
+          id="shipsgo-embed"
+          src={`https://embed.shipsgo.com/?token=${import.meta.env.VITE_SHIPSGO_EMBED_TOKEN}${embedQuery ? `&transport=air&query=${embedQuery}` : ""}`}
+          width="100%"
+          height="650"
+          frameBorder="0"
+        ></iframe>
       </div>
 
       {/* Botones de acción */}
@@ -1449,41 +1448,26 @@ function AirShipmentsView() {
                                         ¿Quieres trackear tu envío?
                                       </div>
                                       {hasArrived ? (
-                                        <>
-                                          <div
-                                            style={{
-                                              maxWidth: "5cm",
-                                              padding: "10px 12px",
-                                              background:
-                                                "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-                                              border: "1px solid #fca5a5",
-                                              borderRadius: "6px",
-                                              color: "#dc2626",
-                                              fontSize: "0.875rem",
-                                              fontWeight: "500",
-                                              display: "flex",
-                                              alignItems: "center",
-                                              justifyContent: "center",
-                                              gap: "6px",
-                                            }}
-                                          >
-                                            <span>❌</span>
-                                            No disponible
-                                          </div>
-                                          <p
-                                            style={{
-                                              fontSize: "0.75rem",
-                                              color: "#6b7280",
-                                              margin: "4px 0 0 0",
-                                              fontStyle: "italic",
-                                              maxWidth: "5cm",
-                                            }}
-                                          >
-                                            Tu carga debió llegar el{" "}
-                                            {shipment.arrival?.displayDate ||
-                                              "fecha no disponible"}
-                                          </p>
-                                        </>
+                                        <div
+                                          style={{
+                                            maxWidth: "5cm",
+                                            padding: "10px 12px",
+                                            background:
+                                              "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+                                            border: "1px solid #fca5a5",
+                                            borderRadius: "6px",
+                                            color: "#dc2626",
+                                            fontSize: "0.875rem",
+                                            fontWeight: "500",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            gap: "6px",
+                                          }}
+                                        >
+                                          <span>❌</span>
+                                          No disponible
+                                        </div>
                                       ) : (
                                         <button
                                           onClick={(e) => {
