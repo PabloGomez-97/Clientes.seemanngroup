@@ -1433,7 +1433,7 @@ function AirShipmentsView() {
                                           marginBottom: "4px",
                                         }}
                                       >
-                                        Acción
+                                        ¿Quieres trackear tu envío?
                                       </div>
                                       <button
                                         onClick={(e) => {
@@ -1441,27 +1441,42 @@ function AirShipmentsView() {
                                           openTrackModal(shipment);
                                         }}
                                         style={{
-                                          width: "100%",
-                                          padding: "8px 12px",
-                                          backgroundColor: "white",
-                                          border: "2px solid black",
-                                          borderRadius: "4px",
-                                          color: "#1f2937",
+                                          maxWidth: "5cm",
+                                          padding: "10px 12px",
+                                          background:
+                                            "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+                                          border: "1px solid #cbd5e1",
+                                          borderRadius: "6px",
+                                          color: "#334155",
                                           fontSize: "0.875rem",
                                           fontWeight: "500",
                                           cursor: "pointer",
-                                          transition:
-                                            "background-color 0.2s, color 0.2s",
+                                          transition: "all 0.2s ease",
+                                          boxShadow:
+                                            "0 1px 2px rgba(0, 0, 0, 0.05)",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          gap: "6px",
                                         }}
                                         onMouseEnter={(e) => {
-                                          e.currentTarget.style.backgroundColor =
-                                            "#f3f4f6";
+                                          e.currentTarget.style.background =
+                                            "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)";
+                                          e.currentTarget.style.boxShadow =
+                                            "0 2px 4px rgba(0, 0, 0, 0.1)";
+                                          e.currentTarget.style.transform =
+                                            "translateY(-1px)";
                                         }}
                                         onMouseLeave={(e) => {
-                                          e.currentTarget.style.backgroundColor =
-                                            "white";
+                                          e.currentTarget.style.background =
+                                            "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)";
+                                          e.currentTarget.style.boxShadow =
+                                            "0 1px 2px rgba(0, 0, 0, 0.05)";
+                                          e.currentTarget.style.transform =
+                                            "translateY(0)";
                                         }}
                                       >
+                                        <span>✈️</span>
                                         Trackea tu envío
                                       </button>
                                     </div>
