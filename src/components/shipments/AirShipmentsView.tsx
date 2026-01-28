@@ -710,7 +710,7 @@ function AirShipmentsView() {
       <div
         style={{
           marginBottom: "32px",
-          height: "650px",
+          height: "450px",
           borderRadius: "12px",
           overflow: "hidden",
           border: "1px solid #e5e7eb",
@@ -723,7 +723,7 @@ function AirShipmentsView() {
           id="shipsgo-embed"
           src={`https://embed.shipsgo.com/?token=${import.meta.env.VITE_SHIPSGO_EMBED_TOKEN}${embedQuery ? `&transport=air&query=${embedQuery}` : ""}`}
           width="100%"
-          height="650"
+          height="450"
           frameBorder="0"
         ></iframe>
       </div>
