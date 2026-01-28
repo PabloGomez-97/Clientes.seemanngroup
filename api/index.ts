@@ -1593,7 +1593,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const textContent = `
 Estimado ejecutivo,
 
-El cliente ${currentUser.nombreuser} ha generado una nueva operación con los siguientes detalles:
+El cliente ${currentUser.nombreuser} ha generado una nueva operación con los siguientes detalless:
 
 - Origen: ${origin || 'No especificado'}
 - Destino: ${destination || 'No especificado'}
