@@ -1574,6 +1574,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // POST /api/send-operation-email - Enviar notificación de nueva operación al ejecutivo
+    if (path === '/api/send-operation-email' && method === 'POST') {
+      try {
+        console.log('Endpoint /api/send-operation-email hit');
+        const currentUser = await User.findOne({ email: requireAuth(req).sub }).populate('ejecutivoId');
+        console.log('Current user:', currentUser?.email, 'Ejecutivo:', (currentUser?.ejecutivoId as any)?.email);
+        if (!currentUser || !currentUser.ejecutivoId) {
+          return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+        }
+
+        const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
+        const { origin, destination, description, chargeableWeight, total, date } = req.body;
+        console.log('Email data:', { origin, destination, description, chargeableWeight, total, date });
+
+        // Construir el mensaje en español
+        const subject = 'Nueva operación generada por cliente';
+        const textContent = `
+Estimado ejecutivo,
+
+El cliente ${currentUser.nombreuser} ha generado una nueva operación con los siguientes detalles:
+
+- Origen: ${origin || 'No especificado'}
+- Destino: ${destination || 'No especificado'}
+- Descripción de la carga: ${description || 'No especificada'}
+- Peso chargeable: ${chargeableWeight || 'No especificado'} kg
+- Total: ${total || 'No especificado'}
+- Fecha de generación: ${date || new Date().toLocaleString('es-ES')}
+
+Esta operación está pendiente de proceso.
+
+Atentamente,
+Sistema de Cotizaciones Sphere Global
+        `.trim();
+
+        // Enviar correo usando Brevo API
+        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': process.env.BREVO_API_KEY!,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sender: { name: 'Sphere Global', email: 'noreply@sphereglobal.io' },
+            to: [{ email: ejecutivoEmail }],
+            subject,
+            textContent
+          })
+        });
+
+        console.log('Brevo response status:', brevoResponse.status);
+        if (!brevoResponse.ok) {
+          const errorText = await brevoResponse.text();
+          console.error('Error enviando correo con Brevo:', errorText);
+          // No devolver error al cliente, solo loggear
+        }
+
+        return res.status(200).json({ success: true, message: 'Notificación enviada al ejecutivo' });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('Error en /api/send-operation-email:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+    }
+
 
     // Ruta no encontrada
     return res.status(404).json({ error: 'Ruta no encontrada' });

@@ -26,7 +26,7 @@ import type { PieceData } from "./Handlers/Air/HandlerQuoteAir";
 
 function QuoteAPITester() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const ejecutivo = user?.ejecutivo;
 
   const [loading, setLoading] = useState(false);
@@ -602,6 +602,43 @@ function QuoteAPITester() {
 
       const data = await res.json();
       setResponse(data);
+
+      // Enviar notificación por correo al ejecutivo
+      try {
+        console.log("Sending email notification with data:", {
+          origin: originSeleccionado?.label,
+          destination: destinationSeleccionado?.label,
+          description,
+          chargeableWeight: pesoChargeable,
+          total: tarifaAirFreight,
+          date: new Date().toLocaleString("es-ES"),
+        });
+        const emailRes = await fetch("/api/send-operation-email", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            origin: originSeleccionado?.label,
+            destination: destinationSeleccionado?.label,
+            description,
+            chargeableWeight: pesoChargeable,
+            total: tarifaAirFreight,
+            date: new Date().toLocaleString("es-ES"),
+          }),
+        });
+        console.log("Email response status:", emailRes.status);
+        if (!emailRes.ok) {
+          const errorText = await emailRes.text();
+          console.error("Error sending email:", errorText);
+        } else {
+          console.log("Email sent successfully");
+        }
+      } catch (emailErr) {
+        console.error("Error enviando notificación por correo:", emailErr);
+        // No mostrar error al usuario
+      }
 
       // Generar PDF después de cotización exitosa
       await generateQuotePDF();

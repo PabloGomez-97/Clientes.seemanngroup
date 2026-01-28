@@ -250,14 +250,21 @@ mongoose
  *  ========================= */
 const auth: express.RequestHandler = (req, res, next) => {
   const h = req.headers.authorization || '';
+  console.log('Auth header:', h ? 'Present' : 'Missing');
   const token = h.startsWith('Bearer ') ? h.slice(7) : null;
-  if (!token) return res.status(401).json({ error: 'No auth token' });
+  if (!token) {
+    console.log('No token provided');
+    return res.status(401).json({ error: 'No auth token' });
+  }
 
   try {
+    console.log('Token length:', token.length);
     const decoded = verifyToken(token);
+    console.log('Token decoded, user sub:', decoded.sub);
     (req as any).user = decoded;
     next();
-  } catch {
+  } catch (err) {
+    console.log('Token verification failed:', err.message);
     return res.status(401).json({ error: 'Invalid token' });
   }
 };
@@ -1480,6 +1487,69 @@ app.post('/api/google-sheets/append', auth, async (req, res) => {
       error: 'Internal server error',
       details: error.message 
     });
+  }
+});
+
+// POST /api/send-operation-email - Enviar notificación de nueva operación al ejecutivo
+app.post('/api/send-operation-email', auth, async (req, res) => {
+  try {
+    console.log('Endpoint /api/send-operation-email hit');
+    // Obtener el usuario actual con su ejecutivo poblado
+    const currentUser = await User.findOne({ email: (req as any).user.sub }).populate('ejecutivoId');
+    console.log('Current user:', currentUser?.email, 'Ejecutivo:', (currentUser?.ejecutivoId as any)?.email);
+    if (!currentUser || !currentUser.ejecutivoId) {
+      return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+    }
+
+    const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
+    const { origin, destination, description, chargeableWeight, total, date } = req.body;
+    console.log('Email data:', { origin, destination, description, chargeableWeight, total, date });
+
+    // Construir el mensaje en español
+    const subject = 'Nueva operación generada por cliente';
+    const textContent = `
+Estimado ejecutivo,
+
+El cliente ${currentUser.nombreuser} ha generado una nueva operación con los siguientes detalles:
+
+- Origen: ${origin || 'No especificado'}
+- Destino: ${destination || 'No especificado'}
+- Descripción de la carga: ${description || 'No especificada'}
+- Peso chargeable: ${chargeableWeight || 'No especificado'} kg
+- Total: ${total || 'No especificado'}
+- Fecha de generación: ${date || new Date().toLocaleString('es-ES')}
+
+Esta operación está pendiente de proceso.
+
+Atentamente,
+Sistema de Cotizaciones Sphere Global
+    `.trim();
+
+    // Enviar correo usando Brevo API
+    const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY!,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: 'Sphere Global', email: 'noreply@sphereglobal.io' },
+        to: [{ email: ejecutivoEmail }],
+        subject,
+        textContent
+      })
+    });
+
+    if (!brevoResponse.ok) {
+      const errorText = await brevoResponse.text();
+      console.error('Error enviando correo con Brevo:', errorText);
+      // No devolver error al cliente, solo loggear
+    }
+
+    res.json({ success: true, message: 'Notificación enviada al ejecutivo' });
+  } catch (err) {
+    console.error('Error en /api/send-operation-email:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
