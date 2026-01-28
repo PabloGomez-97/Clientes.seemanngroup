@@ -766,6 +766,11 @@ function QuoteLCL() {
         return;
       }
 
+      if (!tarifaOceanFreight) {
+        console.error("No tarifa ocean freight calculada");
+        return;
+      }
+
       // Calcular total para el email
       const totalAmount =
         60 + // BL
@@ -2064,7 +2069,7 @@ function QuoteLCL() {
                             60 + // BL
                             45 + // Handling
                             (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
-                            tarifaOceanFreight.income + // Ocean Freight
+                            tarifaOceanFreight!.income + // Ocean Freight
                             (seguroActivo ? calculateSeguro() : 0)
                           ) // Seguro (si está activo)
                             .toFixed(2)}
