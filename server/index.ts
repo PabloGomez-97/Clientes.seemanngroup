@@ -264,7 +264,7 @@ const auth: express.RequestHandler = (req, res, next) => {
     (req as any).user = decoded;
     next();
   } catch (err) {
-    console.log('Token verification failed:', err.message);
+    console.log('Token verification failed:', (err as Error).message);
     return res.status(401).json({ error: 'Invalid token' });
   }
 };
@@ -1533,7 +1533,7 @@ Sistema de Cotizaciones Sphere Global
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        sender: { name: 'Sphere Global', email: 'noreply@sphereglobal.io' },
+        sender: { name: 'Nueva Operación', email: 'noreply@sphereglobal.io' },
         to: [{ email: ejecutivoEmail }],
         subject,
         textContent

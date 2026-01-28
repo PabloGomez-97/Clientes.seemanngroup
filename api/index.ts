@@ -1616,7 +1616,7 @@ Sistema de Cotizaciones Sphere Global
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            sender: { name: 'Sphere Global', email: 'noreply@sphereglobal.io' },
+            sender: { name: 'Nueva Operación', email: 'noreply@sphereglobal.io' },
             to: [{ email: ejecutivoEmail }],
             subject,
             textContent
