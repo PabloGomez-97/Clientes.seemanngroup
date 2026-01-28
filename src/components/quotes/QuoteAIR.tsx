@@ -2712,32 +2712,64 @@ function QuoteAPITester() {
               )}
             </div>
 
-            <button
-              onClick={testAPI}
-              disabled={
-                loading ||
-                !accessToken ||
-                weightError !== null ||
-                dimensionError !== null ||
-                oversizeError !== null ||
-                heightError !== null ||
-                !rutaSeleccionada
-              }
-              className="btn btn-lg btn-success w-100 mt-4"
-            >
-              {loading ? (
-                <>
-                  <span
-                    className="spinner-border spinner-border-sm me-2"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                  Generando...
-                </>
-              ) : (
-                <>Generar Cotización</>
-              )}
-            </button>
+            <div className="row g-3">
+              <div className="col-md-6">
+                <button
+                  onClick={testAPI}
+                  disabled={
+                    loading ||
+                    !accessToken ||
+                    weightError !== null ||
+                    dimensionError !== null ||
+                    oversizeError !== null ||
+                    heightError !== null ||
+                    !rutaSeleccionada
+                  }
+                  className="btn btn-lg btn-success w-100 mt-4"
+                >
+                  {loading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Generando...
+                    </>
+                  ) : (
+                    <>Generar Cotización</>
+                  )}
+                </button>
+              </div>
+              <div className="col-md-6">
+                <button
+                  onClick={testAPI}
+                  disabled={
+                    loading ||
+                    !accessToken ||
+                    weightError !== null ||
+                    dimensionError !== null ||
+                    oversizeError !== null ||
+                    heightError !== null ||
+                    !rutaSeleccionada
+                  }
+                  className="btn btn-lg btn-danger w-100 mt-4"
+                >
+                  {loading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Generando...
+                    </>
+                  ) : (
+                    <>Generar Operación</>
+                  )}
+                </button>
+              </div>
+            </div>
 
             {(weightError || dimensionError) && (
               <div className="alert alert-warning mt-3 mb-0">
