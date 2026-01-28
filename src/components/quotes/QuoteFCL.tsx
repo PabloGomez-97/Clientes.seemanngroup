@@ -208,7 +208,7 @@ const parseFCL = (data: any[]): RutaFCL[] => {
 
 function QuoteFCL() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const ejecutivo = user?.ejecutivo;
 
   const [loading, setLoading] = useState(false);
@@ -256,6 +256,11 @@ function QuoteFCL() {
 
   // Estado para controlar el accordion del Paso 1
   const [openSection, setOpenSection] = useState<number>(1);
+
+  // Estado para el tipo de acción: cotización u operación
+  const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
+    "cotizacion",
+  );
 
   // ============================================================================
   // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
@@ -542,7 +547,9 @@ function QuoteFCL() {
   // FUNCIÓN DE TEST API
   // ============================================================================
 
-  const testAPI = async () => {
+  const testAPI = async (
+    tipoAccion: "cotizacion" | "operacion" = "cotizacion",
+  ) => {
     if (!rutaSeleccionada || !containerSeleccionado) {
       setError(
         "Debes seleccionar una ruta y un contenedor antes de generar la cotización",
@@ -598,6 +605,47 @@ function QuoteFCL() {
   const generateQuotePDF = async () => {
     try {
       if (!rutaSeleccionada || !containerSeleccionado) return;
+
+      // Calcular total para el email
+      const totalAmount =
+        60 + // BL
+        45 + // Handling
+        (incoterm === "EXW"
+          ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores)
+          : 0) + // EXW
+        containerSeleccionado.price * 1.15 * cantidadContenedores + // Ocean Freight
+        (seguroActivo ? calculateSeguro() : 0); // Seguro
+      const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
+
+      // Enviar notificación por email al ejecutivo
+      try {
+        const emailResponse = await fetch("/api/send-operation-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ejecutivoEmail: ejecutivo?.email,
+            ejecutivoNombre: ejecutivo?.nombre,
+            clienteNombre: user?.nombreuser,
+            tipoServicio: "Marítimo FCL",
+            origen: rutaSeleccionada.pol,
+            destino: rutaSeleccionada.pod,
+            carrier: rutaSeleccionada.carrier,
+            precio: containerSeleccionado.price * cantidadContenedores,
+            currency: rutaSeleccionada.currency,
+            total: total,
+            tipoAccion: tipoAccion,
+            quoteId: response?.quote?.id,
+          }),
+        });
+        if (!emailResponse.ok) {
+          console.error("Error sending email");
+        }
+      } catch (error) {
+        console.error("Error enviando notificación por correo:", error);
+      }
 
       // Obtener el nombre completo del contenedor
       const containerName = CONTAINER_MAPPING[containerSeleccionado.type].name;
@@ -1700,6 +1748,105 @@ function QuoteFCL() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Sección de botones con explicaciones llamativas */}
+            <div className="row g-3 mt-4">
+              {/* Tarjeta para Generar Cotización */}
+              <div className="col-md-6">
+                <div className="card border-success shadow-sm h-100">
+                  <div className="card-body text-center">
+                    <div className="mb-3">
+                      <i className="bi bi-file-earmark-pdf fs-1 text-success"></i>
+                    </div>
+                    <h6 className="card-title text-success fw-bold">
+                      Generar Cotización
+                    </h6>
+                    <p className="card-text small text-muted mb-3">
+                      Solo genera la cotización sin crear una operación en el
+                      sistema. Obtendrás un PDF para tu revisión. ¡Ideal para
+                      comparar opciones!
+                    </p>
+                    <button
+                      onClick={() => {
+                        setTipoAccion("cotizacion");
+                        testAPI("cotizacion");
+                      }}
+                      disabled={
+                        loading ||
+                        !accessToken ||
+                        !rutaSeleccionada ||
+                        !containerSeleccionado ||
+                        !incoterm ||
+                        (incoterm === "EXW" &&
+                          (!pickupFromAddress || !deliveryToAddress))
+                      }
+                      className="btn btn-success w-100"
+                    >
+                      {loading ? (
+                        <>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
+                          Generando...
+                        </>
+                      ) : (
+                        <>Generar Cotización</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tarjeta para Generar Operación */}
+              <div className="col-md-6">
+                <div className="card border-danger shadow-sm h-100">
+                  <div className="card-body text-center">
+                    <div className="mb-3">
+                      <i className="bi bi-gear fs-1 text-danger"></i>
+                    </div>
+                    <h6 className="card-title text-danger fw-bold">
+                      Generar Operación
+                    </h6>
+                    <p className="card-text small text-muted mb-3">
+                      <strong>¡Acción irreversible!</strong> Crea
+                      automáticamente una operación en el sistema y notifica a
+                      tu ejecutivo comercial. El proceso de envío comienza aquí.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setTipoAccion("operacion");
+                        testAPI("operacion");
+                      }}
+                      disabled={
+                        loading ||
+                        !accessToken ||
+                        !rutaSeleccionada ||
+                        !containerSeleccionado ||
+                        !incoterm ||
+                        (incoterm === "EXW" &&
+                          (!pickupFromAddress || !deliveryToAddress))
+                      }
+                      className="btn btn-danger w-100"
+                    >
+                      {loading ? (
+                        <>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
+                          Generando...
+                        </>
+                      ) : (
+                        <>Generar Operación</>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </>

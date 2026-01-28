@@ -1585,28 +1585,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
-        const { origin, destination, description, chargeableWeight, total, date, tipo } = req.body;
-        console.log('Email data:', { origin, destination, description, chargeableWeight, total, date, tipo });
+        const { 
+          tipoServicio = 'Aéreo', 
+          origen, 
+          destino, 
+          carrier, 
+          precio, 
+          currency, 
+          total, 
+          tipoAccion,
+          quoteId,
+          // Campos legacy para compatibilidad
+          origin, 
+          destination, 
+          description, 
+          chargeableWeight, 
+          date,
+          tipo 
+        } = req.body;
+        
+        console.log('Email data:', req.body);
 
         // Construir el mensaje en español
-        const tipoTexto = tipo === 'operacion' ? 'operación' : 'cotización';
-        const subject = `Nueva ${tipoTexto} generada por cliente`;
-        const textContent = `
+        const tipoTexto = (tipoAccion || tipo) === 'operacion' ? 'operación' : 'cotización';
+        const subject = `Nueva ${tipoTexto} ${tipoServicio} generada por cliente`;
+        
+        let textContent = '';
+        if (tipoServicio === 'Marítimo FCL') {
+          textContent = `
 Estimado ejecutivo,
 
-El cliente ${currentUser.username} ha generado una nueva ${tipoTexto} con Fecha de generación: ${date || new Date().toLocaleString('es-ES')} con los siguientes detalles:
+El cliente ${currentUser.username} ha generado una nueva ${tipoTexto} con los siguientes detalles:
 
-- Origen: ${origin || 'No especificado'}
-- Destino: ${destination || 'No especificado'}
-- Descripción de la carga: ${description || 'No especificada'}
-- Peso chargeable: ${chargeableWeight || 'No especificado'} kg
+- Tipo de Servicio: ${tipoServicio}
+- Origen (POL): ${origen || 'No especificado'}
+- Destino (POD): ${destino || 'No especificado'}
+- Carrier: ${carrier || 'No especificado'}
+- Precio: ${currency || 'USD'} ${precio || 'No especificado'}
 - Total: ${total || 'No especificado'}
+- Fecha de generación: ${new Date().toLocaleString('es-ES')}
 
-${tipo === 'operacion' ? 'Esta operación está pendiente de proceso.' : 'Esta cotización está lista para revisión.'}
+${tipoTexto === 'operación' ? 'Esta operación está pendiente de proceso.' : 'Esta cotización está lista para revisión.'}
 
 Atentamente,
 Sistema de Cotizaciones Seemann Group
-        `.trim();
+          `.trim();
+        } else {
+          // Aéreo (legacy)
+          textContent = `
+Estimado ejecutivo,
+
+El cliente ${currentUser.username} ha generado una nueva ${tipoTexto} con los siguientes detalles:
+
+- Tipo de Servicio: ${tipoServicio}
+- Origen: ${origen || origin || 'No especificado'}
+- Destino: ${destino || destination || 'No especificado'}
+- Descripción de la carga: ${description || 'No especificada'}
+- Peso chargeable: ${chargeableWeight || 'No especificado'} kg
+- Total: ${total || 'No especificado'}
+- Fecha de generación: ${date || new Date().toLocaleString('es-ES')}
+
+${tipoTexto === 'operación' ? 'Esta operación está pendiente de proceso.' : 'Esta cotización está lista para revisión.'}
+
+Atentamente,
+Sistema de Cotizaciones Seemann Group
+          `.trim();
+        }
 
         // Enviar correo usando Brevo API
         const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
