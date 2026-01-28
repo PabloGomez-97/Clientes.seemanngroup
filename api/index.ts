@@ -1585,15 +1585,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
-        const { origin, destination, description, chargeableWeight, total, date } = req.body;
-        console.log('Email data:', { origin, destination, description, chargeableWeight, total, date });
+        const { origin, destination, description, chargeableWeight, total, date, tipo } = req.body;
+        console.log('Email data:', { origin, destination, description, chargeableWeight, total, date, tipo });
 
         // Construir el mensaje en español
-        const subject = 'Nueva cotización/operación generada por cliente';
+        const tipoTexto = tipo === 'operacion' ? 'operación' : 'cotización';
+        const subject = `Nueva ${tipoTexto} generada por cliente`;
         const textContent = `
 Estimado ejecutivo,
 
-El cliente ${currentUser.username} ha generado una nueva cotización/operación con Fecha de generación: ${date || new Date().toLocaleString('es-ES')} con los siguientes detalles:
+El cliente ${currentUser.username} ha generado una nueva ${tipoTexto} con Fecha de generación: ${date || new Date().toLocaleString('es-ES')} con los siguientes detalles:
 
 - Origen: ${origin || 'No especificado'}
 - Destino: ${destination || 'No especificado'}
@@ -1601,7 +1602,7 @@ El cliente ${currentUser.username} ha generado una nueva cotización/operación 
 - Peso chargeable: ${chargeableWeight || 'No especificado'} kg
 - Total: ${total || 'No especificado'}
 
-Esta operación está pendiente de proceso.
+${tipo === 'operacion' ? 'Esta operación está pendiente de proceso.' : 'Esta cotización está lista para revisión.'}
 
 Atentamente,
 Sistema de Cotizaciones Seemann Group
@@ -1615,7 +1616,7 @@ Sistema de Cotizaciones Seemann Group
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            sender: { name: 'Nueva Operación', email: 'noreply@sphereglobal.io' },
+            sender: { name: `Nueva ${tipoTexto.charAt(0).toUpperCase() + tipoTexto.slice(1)}`, email: 'noreply@sphereglobal.io' },
             to: [{ email: ejecutivoEmail }],
             subject,
             textContent

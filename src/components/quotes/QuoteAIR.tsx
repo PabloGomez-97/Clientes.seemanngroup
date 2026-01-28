@@ -72,6 +72,11 @@ function QuoteAPITester() {
   const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
   const [openSection, setOpenSection] = useState<number>(1);
 
+  // Estado para el tipo de acción: cotización u operación
+  const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
+    "cotizacion",
+  );
+
   // ============================================================================
   // ESTADOS PARA RUTAS AÉREAS
   // ============================================================================
@@ -541,7 +546,9 @@ function QuoteAPITester() {
   // FUNCIÓN DE TEST API
   // ============================================================================
 
-  const testAPI = async () => {
+  const testAPI = async (
+    tipoAccion: "cotizacion" | "operacion" = "cotizacion",
+  ) => {
     if (!rutaSeleccionada) {
       setError("Debes seleccionar una ruta antes de generar la cotización");
       return;
@@ -640,6 +647,7 @@ function QuoteAPITester() {
             chargeableWeight: pesoChargeable,
             total,
             date: new Date().toLocaleString("es-ES"),
+            tipo: tipoAccion,
           }),
         });
         console.log("Email response status:", emailRes.status);
@@ -2781,7 +2789,7 @@ function QuoteAPITester() {
                       comparar opciones!
                     </p>
                     <button
-                      onClick={testAPI}
+                      onClick={() => testAPI("cotizacion")}
                       disabled={
                         loading ||
                         !accessToken ||
@@ -2826,7 +2834,7 @@ function QuoteAPITester() {
                       tu ejecutivo comercial. El proceso de envío comienza aquí.
                     </p>
                     <button
-                      onClick={testAPI}
+                      onClick={() => testAPI("operacion")}
                       disabled={
                         loading ||
                         !accessToken ||
