@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { useNavigate } from "react-router-dom";
 import "./AirShipmentsView.css"; // 👈 Importar el CSS
 import { DocumentosSectionAir } from "../Sidebar/Documents/DocumentosSectionAir";
+import "leaflet/dist/leaflet.css";
+import { MapContainer, TileLayer } from "react-leaflet";
 import {
   type OutletContext,
   type AirShipment,
@@ -16,8 +17,7 @@ import {
 
 function AirShipmentsView() {
   const { accessToken, onLogout } = useOutletContext<OutletContext>();
-  const { user, token } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [shipments, setShipments] = useState<AirShipment[]>([]);
   const [displayedShipments, setDisplayedShipments] = useState<AirShipment[]>(
     [],
@@ -40,16 +40,6 @@ function AirShipmentsView() {
   );
   const [showModal, setShowModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
-
-  // Modal para tracking
-  const [showTrackModal, setShowTrackModal] = useState(false);
-  const [trackShipment, setTrackShipment] = useState<AirShipment | null>(null);
-  const [trackEmail, setTrackEmail] = useState("");
-  const [trackLoading, setTrackLoading] = useState(false);
-  const [trackError, setTrackError] = useState<string | null>(null);
-
-  // Embed query for ShipsGo map
-  const [embedQuery, setEmbedQuery] = useState<string | null>(null);
 
   // Búsqueda por fecha
   const [searchDate, setSearchDate] = useState("");
@@ -608,13 +598,11 @@ function AirShipmentsView() {
   const openModal = (shipment: AirShipment) => {
     setSelectedShipment(shipment);
     setShowModal(true);
-    setEmbedQuery(shipment.number || null);
   };
 
   const closeModal = () => {
     setShowModal(false);
     setSelectedShipment(null);
-    setEmbedQuery(null);
   };
 
   const openSearchModal = () => {
@@ -625,92 +613,13 @@ function AirShipmentsView() {
     setShowSearchModal(false);
   };
 
-  // Funciones para el modal de tracking
-  const openTrackModal = (shipment: AirShipment) => {
-    setTrackShipment(shipment);
-    setTrackEmail("");
-    setTrackError(null);
-    setShowTrackModal(true);
-  };
-
-  const closeTrackModal = () => {
-    setShowTrackModal(false);
-    setTrackShipment(null);
-    setTrackEmail("");
-    setTrackError(null);
-  };
-
-  const handleTrackSubmit = async () => {
-    if (!trackShipment || !trackEmail.trim()) return;
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trackEmail.trim())) {
-      setTrackError("Por favor ingresa un correo electrónico válido.");
-      return;
-    }
-
-    setTrackLoading(true);
-    setTrackError(null);
-
-    try {
-      const cleanAwb =
-        trackShipment.number?.toString().replace(/[\s-]/g, "") || "";
-
-      const shipmentData = {
-        reference: user?.username,
-        awb_number: cleanAwb,
-        followers: [trackEmail.trim()],
-        tags: [],
-      };
-
-      const API_BASE_URL =
-        import.meta.env.MODE === "development"
-          ? "http://localhost:4000"
-          : "https://portalclientes.seemanngroup.com";
-
-      const response = await fetch(`${API_BASE_URL}/api/shipsgo/shipments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(shipmentData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 409) {
-          setTrackError("Ya existe un trackeo con este AWB en tu cuenta.");
-        } else if (response.status === 402) {
-          setTrackError(
-            "No hay créditos disponibles. Contacta a tu ejecutivo de cuenta.",
-          );
-        } else {
-          setTrackError(data.error || "Error al crear el trackeo.");
-        }
-        return;
-      }
-
-      // Éxito: cerrar modal y redirigir
-      closeTrackModal();
-      navigate("/trackings");
-    } catch (err) {
-      setTrackError(
-        "Error de conexión. Verifica tu internet e intenta nuevamente.",
-      );
-    } finally {
-      setTrackLoading(false);
-    }
-  };
-
   return (
     <>
       {/* Interactive Map */}
       <div
         style={{
           marginBottom: "32px",
-          height: "650px",
+          height: "350px", // 👈 MODIFICA ESTE VALOR para ajustar altura (300px-400px)
           borderRadius: "12px",
           overflow: "hidden",
           border: "1px solid #e5e7eb",
@@ -719,13 +628,17 @@ function AirShipmentsView() {
           position: "relative",
         }}
       >
-        <iframe
-          id="shipsgo-embed"
-          src={`https://embed.shipsgo.com/?token=${import.meta.env.VITE_SHIPSGO_EMBED_TOKEN}${embedQuery ? `&transport=air&query=${embedQuery}` : ""}`}
-          width="100%"
-          height="650"
-          frameBorder="0"
-        ></iframe>
+        <MapContainer
+          center={[-33.4489, -70.6693]} // Coordenadas de Santiago, Chile
+          zoom={3}
+          style={{ height: "100%", width: "100%" }}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+        </MapContainer>
       </div>
 
       {/* Botones de acción */}
@@ -1182,22 +1095,9 @@ function AirShipmentsView() {
                   const isDelivered = !!shipment.proofOfDelivery?.podDelivery;
                   const isInCustoms =
                     shipment.customsReleased || !!shipment.importSection?.entry;
-                  const hasArrived = (() => {
-                    if (!shipment.arrival || !shipment.arrival.displayDate)
-                      return false;
-                    try {
-                      const [month, day, year] =
-                        shipment.arrival.displayDate.split("/");
-                      const arrivalDate = new Date(
-                        parseInt(year),
-                        parseInt(month) - 1,
-                        parseInt(day),
-                      );
-                      return arrivalDate <= new Date();
-                    } catch {
-                      return false;
-                    }
-                  })();
+                  const hasArrived =
+                    shipment.arrival &&
+                    new Date(shipment.arrival) <= new Date();
                   const inTransit = !!shipment.departure;
 
                   let statusLabel = "Pendiente";
@@ -1446,94 +1346,6 @@ function AirShipmentsView() {
                                       label="Referencia Cliente"
                                       value={shipment.customerReference}
                                     />
-                                    {/* Botón Trackea tu envío */}
-                                    <div
-                                      style={{
-                                        marginBottom: "12px",
-                                        flex: "1 1 48%",
-                                        minWidth: "200px",
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          fontSize: "0.7rem",
-                                          fontWeight: "600",
-                                          color: "#6b7280",
-                                          textTransform: "uppercase",
-                                          letterSpacing: "0.5px",
-                                          marginBottom: "4px",
-                                        }}
-                                      >
-                                        ¿Quieres trackear tu envío?
-                                      </div>
-                                      {hasArrived ? (
-                                        <div
-                                          style={{
-                                            maxWidth: "5cm",
-                                            padding: "10px 12px",
-                                            background:
-                                              "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-                                            border: "1px solid #fca5a5",
-                                            borderRadius: "6px",
-                                            color: "#dc2626",
-                                            fontSize: "0.875rem",
-                                            fontWeight: "500",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: "6px",
-                                          }}
-                                        >
-                                          <span>❌</span>
-                                          No disponible
-                                        </div>
-                                      ) : (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openTrackModal(shipment);
-                                          }}
-                                          style={{
-                                            maxWidth: "5cm",
-                                            padding: "10px 12px",
-                                            background:
-                                              "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
-                                            border: "1px solid #cbd5e1",
-                                            borderRadius: "6px",
-                                            color: "#334155",
-                                            fontSize: "0.875rem",
-                                            fontWeight: "500",
-                                            cursor: "pointer",
-                                            transition: "all 0.2s ease",
-                                            boxShadow:
-                                              "0 1px 2px rgba(0, 0, 0, 0.05)",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: "6px",
-                                          }}
-                                          onMouseEnter={(e) => {
-                                            e.currentTarget.style.background =
-                                              "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)";
-                                            e.currentTarget.style.boxShadow =
-                                              "0 2px 4px rgba(0, 0, 0, 0.1)";
-                                            e.currentTarget.style.transform =
-                                              "translateY(-1px)";
-                                          }}
-                                          onMouseLeave={(e) => {
-                                            e.currentTarget.style.background =
-                                              "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)";
-                                            e.currentTarget.style.boxShadow =
-                                              "0 1px 2px rgba(0, 0, 0, 0.05)";
-                                            e.currentTarget.style.transform =
-                                              "translateY(0)";
-                                          }}
-                                        >
-                                          <span>✈️</span>
-                                          Trackea tu envío
-                                        </button>
-                                      )}
-                                    </div>
                                     <InfoField
                                       label="Número de Booking"
                                       value={shipment.bookingNumber}
@@ -2221,147 +2033,6 @@ function AirShipmentsView() {
               Cargar más páginas
             </button>
           )}
-        </div>
-      )}
-
-      {/* Modal para Trackea tu envío */}
-      {showTrackModal && trackShipment && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-          style={{
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            zIndex: 9999,
-            animation: "fadeIn 0.3s ease-in-out",
-          }}
-          onClick={closeTrackModal}
-        >
-          <div
-            className="bg-white rounded p-4"
-            style={{
-              maxWidth: "500px",
-              width: "90%",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h5 style={{ marginBottom: "20px", color: "#1f2937" }}>
-              Trackea tu envío
-            </h5>
-
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                AWB Number
-              </label>
-              <input
-                type="text"
-                value={trackShipment.number || ""}
-                disabled
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                  backgroundColor: "#f9fafb",
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Correo electrónico para seguimiento
-              </label>
-              <input
-                type="email"
-                value={trackEmail}
-                onChange={(e) => setTrackEmail(e.target.value)}
-                placeholder="Ingresa tu correo electrónico"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                }}
-              />
-              <small style={{ color: "#6b7280", fontSize: "0.8rem" }}>
-                Si deseas agregar más correos, dirígete a Mis Envíos.
-              </small>
-            </div>
-
-            {trackError && (
-              <div
-                style={{
-                  padding: "10px",
-                  backgroundColor: "#fee2e2",
-                  color: "#991b1b",
-                  borderRadius: "6px",
-                  marginBottom: "20px",
-                  fontSize: "0.9rem",
-                }}
-              >
-                {trackError}
-              </div>
-            )}
-
-            <div style={{ marginBottom: "20px", textAlign: "center" }}>
-              <p style={{ fontSize: "0.9rem", color: "#374151" }}>
-                ¿Deseas generar el nuevo rastreo de tu envío?
-              </p>
-            </div>
-
-            <div
-              style={{ display: "flex", gap: "10px", justifyContent: "center" }}
-            >
-              <button
-                onClick={closeTrackModal}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#f3f4f6",
-                  color: "#374151",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
-              >
-                No
-              </button>
-              <button
-                onClick={handleTrackSubmit}
-                disabled={trackLoading}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#3389cf",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: trackLoading ? "not-allowed" : "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
-              >
-                {trackLoading ? "Creando..." : "Sí"}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </>
