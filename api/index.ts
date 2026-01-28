@@ -1589,23 +1589,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.log('Email data:', { origin, destination, description, chargeableWeight, total, date });
 
         // Construir el mensaje en español
-        const subject = 'Nueva operación generada por cliente';
+        const subject = 'Nueva cotización/operación generada por cliente';
         const textContent = `
 Estimado ejecutivo,
 
-El cliente ${currentUser.nombreuser} ha generado una nueva operación con los siguientes detalles:
+El cliente ${currentUser.username} ha generado una nueva cotización/operación con Fecha de generación: ${date || new Date().toLocaleString('es-ES')} con los siguientes detalles:
 
 - Origen: ${origin || 'No especificado'}
 - Destino: ${destination || 'No especificado'}
 - Descripción de la carga: ${description || 'No especificada'}
 - Peso chargeable: ${chargeableWeight || 'No especificado'} kg
 - Total: ${total || 'No especificado'}
-- Fecha de generación: ${date || new Date().toLocaleString('es-ES')}
 
 Esta operación está pendiente de proceso.
 
 Atentamente,
-Sistema de Cotizaciones Sphere Global
+Sistema de Cotizaciones Seemann Group
         `.trim();
 
         // Enviar correo usando Brevo API

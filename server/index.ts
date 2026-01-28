@@ -1510,7 +1510,7 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
     const textContent = `
 Estimado ejecutivo,
 
-El cliente ${currentUser.nombreuser} ha generado una nueva operación con los siguientes detalles:
+El cliente ${currentUser.username} ha generado una nueva operación con los siguientes detalles:
 
 - Origen: ${origin || 'No especificado'}
 - Destino: ${destination || 'No especificado'}
@@ -1522,7 +1522,7 @@ El cliente ${currentUser.nombreuser} ha generado una nueva operación con los si
 Esta operación está pendiente de proceso.
 
 Atentamente,
-Sistema de Cotizaciones Sphere Global
+Sistema de Cotizaciones Seemann Group
     `.trim();
 
     // Enviar correo usando Brevo API

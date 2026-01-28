@@ -605,12 +605,24 @@ function QuoteAPITester() {
 
       // Enviar notificación por correo al ejecutivo
       try {
+        const { totalRealWeight } = calculateTotals();
+        const totalAmount =
+          45 + // Handling
+          (incoterm === "EXW"
+            ? calculateEXWRate(totalRealWeight, pesoChargeable)
+            : 0) + // EXW
+          30 + // AWB
+          Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
+          tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
+          (seguroActivo ? calculateSeguro() : 0); // Seguro
+        const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
+
         console.log("Sending email notification with data:", {
           origin: originSeleccionado?.label,
           destination: destinationSeleccionado?.label,
           description,
           chargeableWeight: pesoChargeable,
-          total: tarifaAirFreight,
+          total,
           date: new Date().toLocaleString("es-ES"),
         });
         const emailRes = await fetch("/api/send-operation-email", {
@@ -624,7 +636,7 @@ function QuoteAPITester() {
             destination: destinationSeleccionado?.label,
             description,
             chargeableWeight: pesoChargeable,
-            total: tarifaAirFreight,
+            total,
             date: new Date().toLocaleString("es-ES"),
           }),
         });
@@ -2749,62 +2761,96 @@ function QuoteAPITester() {
               )}
             </div>
 
-            <div className="row g-3">
+            {/* Sección de botones con explicaciones llamativas */}
+            <div className="row g-3 mt-4">
+              {/* Tarjeta para Generar Cotización */}
               <div className="col-md-6">
-                <button
-                  onClick={testAPI}
-                  disabled={
-                    loading ||
-                    !accessToken ||
-                    weightError !== null ||
-                    dimensionError !== null ||
-                    oversizeError !== null ||
-                    heightError !== null ||
-                    !rutaSeleccionada
-                  }
-                  className="btn btn-lg btn-success w-100 mt-4"
-                >
-                  {loading ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Generando...
-                    </>
-                  ) : (
-                    <>Generar Cotización</>
-                  )}
-                </button>
+                <div className="card border-success shadow-sm h-100">
+                  <div className="card-body text-center">
+                    <div className="mb-3">
+                      <i className="bi bi-file-earmark-pdf fs-1 text-success"></i>
+                    </div>
+                    <h6 className="card-title text-success fw-bold">
+                      Generar Cotización
+                    </h6>
+                    <p className="card-text small text-muted mb-3">
+                      Solo genera la cotización sin crear una operación en el
+                      sistema. Obtendrás un PDF para tu revisión. ¡Ideal para
+                      comparar opciones!
+                    </p>
+                    <button
+                      onClick={testAPI}
+                      disabled={
+                        loading ||
+                        !accessToken ||
+                        weightError !== null ||
+                        dimensionError !== null ||
+                        oversizeError !== null ||
+                        heightError !== null ||
+                        !rutaSeleccionada
+                      }
+                      className="btn btn-success w-100"
+                    >
+                      {loading ? (
+                        <>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
+                          Generando...
+                        </>
+                      ) : (
+                        <>Generar Cotización</>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
+
+              {/* Tarjeta para Generar Operación */}
               <div className="col-md-6">
-                <button
-                  onClick={testAPI}
-                  disabled={
-                    loading ||
-                    !accessToken ||
-                    weightError !== null ||
-                    dimensionError !== null ||
-                    oversizeError !== null ||
-                    heightError !== null ||
-                    !rutaSeleccionada
-                  }
-                  className="btn btn-lg btn-danger w-100 mt-4"
-                >
-                  {loading ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Generando...
-                    </>
-                  ) : (
-                    <>Generar Operación</>
-                  )}
-                </button>
+                <div className="card border-danger shadow-sm h-100">
+                  <div className="card-body text-center">
+                    <div className="mb-3">
+                      <i className="bi bi-gear fs-1 text-danger"></i>
+                    </div>
+                    <h6 className="card-title text-danger fw-bold">
+                      Generar Operación
+                    </h6>
+                    <p className="card-text small text-muted mb-3">
+                      <strong>¡Acción irreversible!</strong> Crea
+                      automáticamente una operación en el sistema y notifica a
+                      tu ejecutivo comercial. El proceso de envío comienza aquí.
+                    </p>
+                    <button
+                      onClick={testAPI}
+                      disabled={
+                        loading ||
+                        !accessToken ||
+                        weightError !== null ||
+                        dimensionError !== null ||
+                        oversizeError !== null ||
+                        heightError !== null ||
+                        !rutaSeleccionada
+                      }
+                      className="btn btn-danger w-100"
+                    >
+                      {loading ? (
+                        <>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
+                          Generando...
+                        </>
+                      ) : (
+                        <>Generar Operación</>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
