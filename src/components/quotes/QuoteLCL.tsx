@@ -242,7 +242,8 @@ const parseLCL = (data: any[]): RutaLCL[] => {
 
 function QuoteLCL() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user } = useAuth();
+  const token = accessToken;
+  const { user, token: jwtToken } = useAuth();
   const ejecutivo = user?.ejecutivo;
 
   const [loading, setLoading] = useState(false);
@@ -292,6 +293,11 @@ function QuoteLCL() {
   const [incoterm, setIncoterm] = useState<"EXW" | "FOB" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
   const [deliveryToAddress, setDeliveryToAddress] = useState("");
+
+  // Estado para tipo de acción (cotización u operación)
+  const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
+    "cotizacion",
+  );
 
   // Estados para sistema de piezas
   const [piecesData, setPiecesData] = useState<PieceData[]>([
@@ -689,7 +695,9 @@ function QuoteLCL() {
   // FUNCIÓN DE TEST API
   // ============================================================================
 
-  const testAPI = async () => {
+  const testAPI = async (
+    tipoAccion: "cotizacion" | "operacion" = "cotizacion",
+  ) => {
     if (!rutaSeleccionada) {
       setError("Debes seleccionar una ruta antes de generar la cotización");
       return;
@@ -741,7 +749,7 @@ function QuoteLCL() {
       setResponse(data);
 
       // Generar PDF después de cotización exitosa
-      await generateQuotePDF();
+      await generateQuotePDF(tipoAccion);
     } catch (err: any) {
       setError(err.message || "Error desconocido");
     } finally {
@@ -749,11 +757,52 @@ function QuoteLCL() {
     }
   };
 
-  const generateQuotePDF = async () => {
+  const generateQuotePDF = async (
+    tipoAccionParam: "cotizacion" | "operacion",
+  ) => {
     try {
       if (!rutaSeleccionada) {
         console.error("No ruta seleccionada para generar PDF");
         return;
+      }
+
+      // Calcular total para el email
+      const totalAmount =
+        60 + // BL
+        45 + // Handling
+        (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
+        tarifaOceanFreight.income + // Ocean Freight
+        (seguroActivo ? calculateSeguro() : 0); // Seguro
+      const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
+
+      // Enviar notificación por email al ejecutivo
+      try {
+        const emailResponse = await fetch("/api/send-operation-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwtToken}`,
+          },
+          body: JSON.stringify({
+            ejecutivoEmail: ejecutivo?.email,
+            ejecutivoNombre: ejecutivo?.nombre,
+            clienteNombre: user?.nombreuser,
+            tipoServicio: "Marítimo LCL",
+            origen: rutaSeleccionada.pol,
+            destino: rutaSeleccionada.pod,
+            carrier: rutaSeleccionada.operador,
+            precio: tarifaOceanFreight.income,
+            currency: rutaSeleccionada.currency,
+            total: total,
+            tipoAccion: tipoAccionParam,
+            quoteId: response?.quote?.id,
+          }),
+        });
+        if (!emailResponse.ok) {
+          console.error("Error sending email");
+        }
+      } catch (error) {
+        console.error("Error enviando notificación por correo:", error);
       }
 
       // Obtener el nombre del packageType
@@ -2036,57 +2085,118 @@ function QuoteLCL() {
 
       {rutaSeleccionada && tarifaOceanFreight && (
         <>
-          <div className="card shadow-sm mb-4">
-            <div className="card-body">
-              <h5 className="card-title mb-4">Generar Cotización</h5>
-
-              <button
-                onClick={testAPI}
-                disabled={
-                  loading ||
-                  !accessToken ||
-                  !incoterm ||
-                  (incoterm === "EXW" &&
-                    (!pickupFromAddress || !deliveryToAddress))
-                }
-                className="btn btn-lg btn-success w-100"
-              >
-                {loading ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-2"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    Generando...
-                  </>
-                ) : (
-                  <>Generar Cotización LCL</>
-                )}
-              </button>
-
-              {!accessToken && (
-                <div className="alert alert-danger mt-3 mb-0">
-                  ⚠️ No hay token de acceso. Asegúrate de estar autenticado.
-                </div>
-              )}
-
-              {!incoterm && rutaSeleccionada && (
-                <div className="alert alert-info mt-3 mb-0">
-                  ℹ️ Debes seleccionar un Incoterm antes de generar la
-                  cotización
-                </div>
-              )}
-
-              {incoterm === "EXW" &&
-                (!pickupFromAddress || !deliveryToAddress) && (
-                  <div className="alert alert-warning mt-3 mb-0">
-                    ⚠️ Debes completar las direcciones de Pickup y Delivery para
-                    el Incoterm EXW
+          <div className="row g-3 mt-4">
+            {/* Tarjeta para Generar Cotización */}
+            <div className="col-md-6">
+              <div className="card border-success shadow-sm h-100">
+                <div className="card-body text-center">
+                  <div className="mb-3">
+                    <i className="bi bi-file-earmark-pdf fs-1 text-success"></i>
                   </div>
-                )}
+                  <h6 className="card-title text-success fw-bold">
+                    Generar Cotización
+                  </h6>
+                  <p className="card-text small text-muted mb-3">
+                    Solo genera la cotización sin crear una operación en el
+                    sistema. Obtendrás un PDF para tu revisión. ¡Ideal para
+                    comparar opciones!
+                  </p>
+                  <button
+                    onClick={() => {
+                      setTipoAccion("cotizacion");
+                      testAPI("cotizacion");
+                    }}
+                    disabled={
+                      loading ||
+                      !accessToken ||
+                      !incoterm ||
+                      (incoterm === "EXW" &&
+                        (!pickupFromAddress || !deliveryToAddress))
+                    }
+                    className="btn btn-lg btn-success w-100"
+                  >
+                    {loading ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        Generando...
+                      </>
+                    ) : (
+                      <>Generar Cotización</>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Tarjeta para Generar Operación */}
+            <div className="col-md-6">
+              <div className="card border-danger shadow-sm h-100">
+                <div className="card-body text-center">
+                  <div className="mb-3">
+                    <i className="bi bi-gear fs-1 text-danger"></i>
+                  </div>
+                  <h6 className="card-title text-danger fw-bold">
+                    Generar Operación
+                  </h6>
+                  <p className="card-text small text-muted mb-3">
+                    <strong>¡Acción irreversible!</strong> Crea automáticamente
+                    una operación en el sistema y notifica a tu ejecutivo
+                    comercial. El proceso de envío comienza aquí.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setTipoAccion("operacion");
+                      testAPI("operacion");
+                    }}
+                    disabled={
+                      loading ||
+                      !accessToken ||
+                      !incoterm ||
+                      (incoterm === "EXW" &&
+                        (!pickupFromAddress || !deliveryToAddress))
+                    }
+                    className="btn btn-lg btn-danger w-100"
+                  >
+                    {loading ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        Generando...
+                      </>
+                    ) : (
+                      <>Generar Operación</>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
+
+          {!accessToken && (
+            <div className="alert alert-danger mt-3 mb-0">
+              ⚠️ No hay token de acceso. Asegúrate de estar autenticado.
+            </div>
+          )}
+
+          {!incoterm && rutaSeleccionada && (
+            <div className="alert alert-info mt-3 mb-0">
+              ℹ️ Debes seleccionar un Incoterm antes de generar la cotización
+            </div>
+          )}
+
+          {incoterm === "EXW" && (!pickupFromAddress || !deliveryToAddress) && (
+            <div className="alert alert-warning mt-3 mb-0">
+              ⚠️ Debes completar las direcciones de Pickup y Delivery para el
+              Incoterm EXW
+            </div>
+          )}
 
           {/* Payload
           <div className="card shadow-sm mb-4">

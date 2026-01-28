@@ -1546,6 +1546,25 @@ ${tipoAccion === 'operacion' ? 'Esta operación está pendiente de proceso.' : '
 Atentamente,
 Sistema de Cotizaciones Seemann Group
       `.trim();
+    } else if (tipoServicio === 'Marítimo LCL') {
+      textContent = `
+Estimado ejecutivo,
+
+El cliente ${currentUser.username} ha generado una nueva ${tipoTexto} con los siguientes detalles:
+
+- Tipo de Servicio: ${tipoServicio}
+- Origen (POL): ${origen || 'No especificado'}
+- Destino (POD): ${destino || 'No especificado'}
+- Carrier: ${carrier || 'No especificado'}
+- Precio: ${currency || 'USD'} ${precio || 'No especificado'}
+- Total: ${total || 'No especificado'}
+- Fecha de generación: ${new Date().toLocaleString('es-ES')}
+
+${tipoAccion === 'operacion' ? 'Esta operación está pendiente de proceso.' : 'Esta cotización está lista para revisión.'}
+
+Atentamente,
+Sistema de Cotizaciones Seemann Group
+      `.trim();
     } else {
       // Aéreo (legacy)
       textContent = `
