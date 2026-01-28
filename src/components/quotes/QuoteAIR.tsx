@@ -610,60 +610,8 @@ function QuoteAPITester() {
       const data = await res.json();
       setResponse(data);
 
-      // Enviar notificación por correo al ejecutivo
-      try {
-        const { totalRealWeight } = calculateTotals();
-        const totalAmount =
-          45 + // Handling
-          (incoterm === "EXW"
-            ? calculateEXWRate(totalRealWeight, pesoChargeable)
-            : 0) + // EXW
-          30 + // AWB
-          Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-          (tarifaAirFreight
-            ? tarifaAirFreight.precioConMarkup * pesoChargeable
-            : 0) + // Air Freight
-          (seguroActivo ? calculateSeguro() : 0); // Seguro
-        const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
-
-        console.log("Sending email notification with data:", {
-          origin: originSeleccionado?.label,
-          destination: destinationSeleccionado?.label,
-          description,
-          chargeableWeight: pesoChargeable,
-          total,
-          date: new Date().toLocaleString("es-ES"),
-        });
-        const emailRes = await fetch("/api/send-operation-email", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            origin: originSeleccionado?.label,
-            destination: destinationSeleccionado?.label,
-            description,
-            chargeableWeight: pesoChargeable,
-            total,
-            date: new Date().toLocaleString("es-ES"),
-            tipo: tipoAccion,
-          }),
-        });
-        console.log("Email response status:", emailRes.status);
-        if (!emailRes.ok) {
-          const errorText = await emailRes.text();
-          console.error("Error sending email:", errorText);
-        } else {
-          console.log("Email sent successfully");
-        }
-      } catch (emailErr) {
-        console.error("Error enviando notificación por correo:", emailErr);
-        // No mostrar error al usuario
-      }
-
       // Generar PDF después de cotización exitosa
-      await generateQuotePDF();
+      await generateQuotePDF(tipoAccion);
     } catch (err: any) {
       setError(err.message || "Error desconocido");
     } finally {
@@ -671,7 +619,9 @@ function QuoteAPITester() {
     }
   };
 
-  const generateQuotePDF = async () => {
+  const generateQuotePDF = async (
+    tipoAccionParam: "cotizacion" | "operacion",
+  ) => {
     try {
       if (!rutaSeleccionada || !tarifaAirFreight) return;
 
@@ -849,6 +799,37 @@ function QuoteAPITester() {
       // Limpiar
       root.unmount();
       document.body.removeChild(tempDiv);
+
+      // Enviar notificación por email al ejecutivo
+      try {
+        const total = rutaSeleccionada.currency + " " + totalCharges.toFixed(2);
+        const emailRes = await fetch("/api/send-operation-email", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ejecutivoEmail: ejecutivo?.email,
+            ejecutivoNombre: ejecutivo?.nombre,
+            clienteNombre: user?.nombreuser,
+            tipoServicio: "Aéreo",
+            origen: rutaSeleccionada.origin,
+            destino: rutaSeleccionada.destination,
+            carrier: rutaSeleccionada.carrier,
+            precio: tarifaAirFreight.precioConMarkup * chargeableWeight,
+            currency: rutaSeleccionada.currency,
+            total: total,
+            tipoAccion: tipoAccionParam,
+            quoteId: response?.quote?.id,
+          }),
+        });
+        if (!emailRes.ok) {
+          console.error("Error sending email");
+        }
+      } catch (emailErr) {
+        console.error("Error enviando notificación por correo:", emailErr);
+      }
     } catch (error) {
       console.error("Error generating PDF:", error);
       // No mostramos error al usuario, el PDF es opcional
@@ -2789,7 +2770,10 @@ function QuoteAPITester() {
                       comparar opciones!
                     </p>
                     <button
-                      onClick={() => testAPI("cotizacion")}
+                      onClick={() => {
+                        setTipoAccion("cotizacion");
+                        testAPI("cotizacion");
+                      }}
                       disabled={
                         loading ||
                         !accessToken ||
@@ -2834,7 +2818,10 @@ function QuoteAPITester() {
                       tu ejecutivo comercial. El proceso de envío comienza aquí.
                     </p>
                     <button
-                      onClick={() => testAPI("operacion")}
+                      onClick={() => {
+                        setTipoAccion("operacion");
+                        testAPI("operacion");
+                      }}
                       disabled={
                         loading ||
                         !accessToken ||
