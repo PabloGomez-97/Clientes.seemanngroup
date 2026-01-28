@@ -613,7 +613,9 @@ function QuoteAPITester() {
             : 0) + // EXW
           30 + // AWB
           Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-          tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
+          (tarifaAirFreight
+            ? tarifaAirFreight.precioConMarkup * pesoChargeable
+            : 0) + // Air Freight
           (seguroActivo ? calculateSeguro() : 0); // Seguro
         const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
 
