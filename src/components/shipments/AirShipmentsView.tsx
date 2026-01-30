@@ -281,8 +281,7 @@ function AirShipmentsView() {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      const responseData = await response.json();
-      const shipmentsArray: AirShipment[] = responseData.data || [];
+      const shipmentsArray: AirShipment[] = await response.json();
 
       // Aplanar la lista incluyendo subShipments para evitar duplicados
       const allShipments: AirShipment[] = [];
