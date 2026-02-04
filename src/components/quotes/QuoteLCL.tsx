@@ -95,6 +95,7 @@ function QuoteLCL() {
       width: 0,
       height: 0,
       weight: 0,
+      isNotApilable: false,
       volume: 0,
       totalVolume: 0,
       weightTons: 0,
@@ -263,6 +264,7 @@ function QuoteLCL() {
       width: 0,
       height: 0,
       weight: 0,
+      isNotApilable: false,
       volume: 0,
       totalVolume: 0,
       weightTons: 0,
@@ -412,6 +414,9 @@ function QuoteLCL() {
     calculateTotals();
   const totalVolumeWeight = chargeableVolume;
 
+  // Verificar si hay alguna pieza no apilable
+  const hasNotApilable = piecesData.some((piece) => piece.isNotApilable);
+
   // ============================================================================
   // FILTRAR RUTAS
   // ============================================================================
@@ -558,12 +563,15 @@ function QuoteLCL() {
       }
 
       // Calcular total para el email
-      const totalAmount =
+      const subtotalAmount =
         60 + // BL
         45 + // Handling
         (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
         tarifaOceanFreight.income + // Ocean Freight
         (seguroActivo ? calculateSeguro() : 0); // Seguro
+      const totalAmount = hasNotApilable
+        ? subtotalAmount * 1.8
+        : subtotalAmount;
       const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
 
       // Enviar notificación por email al ejecutivo
@@ -669,6 +677,25 @@ function QuoteLCL() {
           unit: "Each",
           rate: seguroAmount,
           amount: seguroAmount,
+        });
+      }
+
+      // No Apilable (si hay alguna pieza no apilable)
+      if (hasNotApilable) {
+        const subtotal =
+          60 + // BL
+          45 + // Handling
+          (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
+          tarifaOceanFreight.income + // Ocean Freight
+          (seguroActivo ? calculateSeguro() : 0); // Seguro
+        const adicionalAmount = subtotal * 0.8;
+        pdfCharges.push({
+          code: "NA",
+          description: "NO APILABLE",
+          quantity: 1,
+          unit: "Each",
+          rate: adicionalAmount,
+          amount: adicionalAmount,
         });
       }
 
@@ -915,6 +942,46 @@ function QuoteLCL() {
           reference: "LCL-SEGURO-REF",
           showOnDocument: true,
           notes: "Seguro charge created via API",
+        },
+        expense: {
+          currency: {
+            abbr: divisa,
+          },
+        },
+      });
+    }
+
+    // Cobro adicional por No Apilable (solo si hay alguna pieza no apilable)
+    if (hasNotApilable) {
+      const subtotal =
+        60 + // BL
+        45 + // Handling
+        (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
+        tarifaOceanFreight.income + // Ocean Freight
+        (seguroActivo ? calculateSeguro() : 0); // Seguro
+      const adicionalAmount = subtotal * 0.8;
+      charges.push({
+        service: {
+          id: 115954,
+          code: "NA",
+        },
+        income: {
+          quantity: 1,
+          unit: "NO APILABLE",
+          rate: adicionalAmount,
+          amount: adicionalAmount,
+          showamount: adicionalAmount,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: user?.username,
+          },
+          currency: {
+            abbr: divisa,
+          },
+          reference: "LCL-NOAPILABLE-REF",
+          showOnDocument: true,
+          notes: "No Apilable charge created via API - 80% adicional",
         },
         expense: {
           currency: {
@@ -1623,41 +1690,6 @@ function QuoteLCL() {
                 </div>
               </div>
 
-              {/* Resumen de Totales - Solo cuando hay múltiples piezas */}
-              {piecesData.length > 1 && (
-                <div className="col-12">
-                  <div className="alert alert-secondary">
-                    <h6 className="mb-2">Resumen Total de Carga</h6>
-                    <div className="row">
-                      <div className="col-md-3">
-                        <small>
-                          <strong>Peso Total:</strong>{" "}
-                          {totalWeightKg.toFixed(2)} kg
-                        </small>
-                      </div>
-                      <div className="col-md-3">
-                        <small>
-                          <strong>Peso (Toneladas):</strong>{" "}
-                          {totalWeightTons.toFixed(4)} t
-                        </small>
-                      </div>
-                      <div className="col-md-3">
-                        <small>
-                          <strong>Volumen Total:</strong>{" "}
-                          {totalVolume.toFixed(4)} m³
-                        </small>
-                      </div>
-                      <div className="col-md-3">
-                        <small>
-                          <strong>W/M Chargeable:</strong>{" "}
-                          {chargeableVolume.toFixed(4)}
-                        </small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Campos condicionales solo para EXW */}
               {incoterm === "EXW" && (
                 <>
@@ -1833,6 +1865,25 @@ function QuoteLCL() {
                         </div>
                       )}
 
+                      {/* Mostrar el cargo adicional por No Apilable */}
+                      {hasNotApilable && (
+                        <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                          <span>No Apilable (80% adicional):</span>
+                          <strong className="text-warning">
+                            {rutaSeleccionada.currency}{" "}
+                            {(() => {
+                              const subtotal =
+                                60 + // BL
+                                45 + // Handling
+                                (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
+                                tarifaOceanFreight!.income + // Ocean Freight
+                                (seguroActivo ? calculateSeguro() : 0); // Seguro
+                              return (subtotal * 0.8).toFixed(2);
+                            })()}
+                          </strong>
+                        </div>
+                      )}
+
                       {/* Mensaje de advertencia si el seguro está activo pero no hay valor de mercadería */}
                       {seguroActivo && !valorMercaderia && (
                         <div
@@ -1851,14 +1902,18 @@ function QuoteLCL() {
                         <span className="fs-5 fw-bold">TOTAL:</span>
                         <span className="fs-5 fw-bold text-success">
                           {rutaSeleccionada.currency}{" "}
-                          {(
-                            60 + // BL
-                            45 + // Handling
-                            (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
-                            tarifaOceanFreight!.income + // Ocean Freight
-                            (seguroActivo ? calculateSeguro() : 0)
-                          ) // Seguro (si está activo)
-                            .toFixed(2)}
+                          {(() => {
+                            const subtotal =
+                              60 + // BL
+                              45 + // Handling
+                              (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
+                              tarifaOceanFreight!.income + // Ocean Freight
+                              (seguroActivo ? calculateSeguro() : 0); // Seguro
+                            const total = hasNotApilable
+                              ? subtotal * 1.8
+                              : subtotal;
+                            return total.toFixed(2);
+                          })()}
                         </span>
                       </div>
                     </div>

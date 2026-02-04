@@ -1,5 +1,5 @@
-import React from 'react';
-import { type PieceData } from './HandlerQuoteAir';
+import React from "react";
+import { type PieceData } from "./HandlerQuoteAir";
 
 interface PieceAccordionProps {
   piece: PieceData;
@@ -20,10 +20,14 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
   onRemove,
   onUpdate,
   packageTypes,
-  canRemove
+  canRemove,
 }) => {
   // Calcular volumen (L x W x H) en m³
-  const calculateVolume = (length: number, width: number, height: number): number => {
+  const calculateVolume = (
+    length: number,
+    width: number,
+    height: number,
+  ): number => {
     if (!length || !width || !height) return 0;
     return (length * width * height) / 1000000; // cm³ a m³
   };
@@ -34,37 +38,44 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
   };
 
   // Handler para actualizar dimensiones y recalcular
-  const handleDimensionChange = (field: 'length' | 'width' | 'height', value: number) => {
+  const handleDimensionChange = (
+    field: "length" | "width" | "height",
+    value: number,
+  ) => {
     onUpdate(field, value);
-    
+
     // Recalcular volumen y peso volumétrico
-    const newLength = field === 'length' ? value : piece.length;
-    const newWidth = field === 'width' ? value : piece.width;
-    const newHeight = field === 'height' ? value : piece.height;
-    
+    const newLength = field === "length" ? value : piece.length;
+    const newWidth = field === "width" ? value : piece.width;
+    const newHeight = field === "height" ? value : piece.height;
+
     const newVolume = calculateVolume(newLength, newWidth, newHeight);
     const newVolumeWeight = calculateVolumeWeight(newVolume);
-    
-    onUpdate('volume', newVolume);
-    onUpdate('totalVolume', newVolume);
-    onUpdate('volumeWeight', newVolumeWeight);
-    onUpdate('totalVolumeWeight', newVolumeWeight);
+
+    onUpdate("volume", newVolume);
+    onUpdate("totalVolume", newVolume);
+    onUpdate("volumeWeight", newVolumeWeight);
+    onUpdate("totalVolumeWeight", newVolumeWeight);
   };
 
   // Handler para actualizar peso
   const handleWeightChange = (value: number) => {
-    onUpdate('weight', value);
-    onUpdate('totalWeight', value);
+    onUpdate("weight", value);
+    onUpdate("totalWeight", value);
   };
 
   return (
     <div className="card mb-3">
-      <div className="card-header d-flex justify-content-between align-items-center" style={{ cursor: 'pointer' }}>
+      <div
+        className="card-header d-flex justify-content-between align-items-center"
+        style={{ cursor: "pointer" }}
+      >
         <div onClick={onToggle} className="flex-grow-1">
           <strong>Pieza {index + 1}</strong>
           {piece.weight > 0 && (
             <span className="ms-3 text-muted">
-              ({piece.weight} kg | {piece.length}x{piece.width}x{piece.height} cm)
+              ({piece.weight} kg | {piece.length}x{piece.width}x{piece.height}{" "}
+              cm)
             </span>
           )}
         </div>
@@ -74,7 +85,7 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
             className="btn btn-sm btn-link text-decoration-none"
             onClick={onToggle}
           >
-            <i className={`bi bi-chevron-${isOpen ? 'up' : 'down'}`}></i>
+            <i className={`bi bi-chevron-${isOpen ? "up" : "down"}`}></i>
           </button>
           {canRemove && (
             <button
@@ -84,12 +95,12 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
               title="Eliminar pieza"
               onClick={onRemove}
             >
-              <i className="bi bi-trash" style={{ fontSize: '1.1rem' }}></i>
+              <i className="bi bi-trash" style={{ fontSize: "1.1rem" }}></i>
             </button>
           )}
         </div>
       </div>
-      
+
       {isOpen && (
         <div className="card-body">
           <div className="row g-3">
@@ -99,7 +110,7 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
               <select
                 className="form-select"
                 value={piece.packageType}
-                onChange={(e) => onUpdate('packageType', e.target.value)}
+                onChange={(e) => onUpdate("packageType", e.target.value)}
               >
                 <option value="">Seleccionar tipo</option>
                 {packageTypes.map((type) => (
@@ -117,7 +128,7 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
                 type="text"
                 className="form-control"
                 value={piece.description}
-                onChange={(e) => onUpdate('description', e.target.value)}
+                onChange={(e) => onUpdate("description", e.target.value)}
                 placeholder="Descripción de la pieza"
               />
             </div>
@@ -128,8 +139,10 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
               <input
                 type="number"
                 className="form-control"
-                value={piece.length || ''}
-                onChange={(e) => handleDimensionChange('length', Number(e.target.value))}
+                value={piece.length || ""}
+                onChange={(e) =>
+                  handleDimensionChange("length", Number(e.target.value))
+                }
                 min="0"
                 step="0.01"
               />
@@ -140,8 +153,10 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
               <input
                 type="number"
                 className="form-control"
-                value={piece.width || ''}
-                onChange={(e) => handleDimensionChange('width', Number(e.target.value))}
+                value={piece.width || ""}
+                onChange={(e) =>
+                  handleDimensionChange("width", Number(e.target.value))
+                }
                 min="0"
                 step="0.01"
               />
@@ -152,8 +167,10 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
               <input
                 type="number"
                 className="form-control"
-                value={piece.height || ''}
-                onChange={(e) => handleDimensionChange('height', Number(e.target.value))}
+                value={piece.height || ""}
+                onChange={(e) =>
+                  handleDimensionChange("height", Number(e.target.value))
+                }
                 min="0"
                 step="0.01"
               />
@@ -164,7 +181,7 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
               <input
                 type="number"
                 className="form-control"
-                value={piece.weight || ''}
+                value={piece.weight || ""}
                 onChange={(e) => handleWeightChange(Number(e.target.value))}
                 min="0"
                 step="0.01"

@@ -9,6 +9,7 @@ export interface PieceData {
   width: number;
   height: number;
   weight: number;
+  isNotApilable: boolean;
   // Calculados
   volume: number;
   totalVolume: number;
