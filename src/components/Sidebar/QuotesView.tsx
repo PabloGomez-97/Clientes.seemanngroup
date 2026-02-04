@@ -1862,19 +1862,67 @@ function QuotesView() {
                       {isOpen && (
                         <tr key={`accordion-${quoteId}`}>
                           <td colSpan={7} style={{ padding: 0 }}>
-                            <div className="accordion-content">
+                            <div
+                              className="accordion-content"
+                              style={{
+                                backgroundColor: "#f8fafc",
+                                borderTop: "1px solid #e2e8f0",
+                                padding: "24px",
+                                borderRadius: "0 0 12px 12px",
+                              }}
+                            >
                               {/* RouteDisplay encima de los tabs */}
-                              <div className="accordion-route-section">
+                              <div
+                                className="accordion-route-section"
+                                style={{
+                                  marginBottom: "24px",
+                                  padding: "16px",
+                                  backgroundColor: "white",
+                                  borderRadius: "8px",
+                                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+                                }}
+                              >
                                 <RouteDisplay quote={quote} />
                               </div>
 
                               {/* Tabs horizontales */}
-                              <div className="tabs-container">
+                              <div
+                                className="tabs-container"
+                                style={{
+                                  display: "flex",
+                                  borderBottom: "1px solid #e2e8f0",
+                                  marginBottom: "24px",
+                                  overflowX: "auto",
+                                }}
+                              >
                                 <button
                                   className={`tab-button ${activeTabIndex === 0 ? "active" : ""}`}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setActiveTab(quoteId, 0);
+                                  }}
+                                  style={{
+                                    padding: "12px 20px",
+                                    background: "transparent",
+                                    color:
+                                      activeTabIndex === 0
+                                        ? "#1f2937"
+                                        : "#64748b",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 0
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    borderRadius: "0",
+                                    cursor: "pointer",
+                                    fontWeight:
+                                      activeTabIndex === 0 ? "700" : "500",
+                                    fontSize: "0.875rem",
+                                    transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
                                   }}
                                 >
                                   Información General
@@ -1885,6 +1933,29 @@ function QuotesView() {
                                     e.stopPropagation();
                                     setActiveTab(quoteId, 1);
                                   }}
+                                  style={{
+                                    padding: "12px 20px",
+                                    background: "transparent",
+                                    color:
+                                      activeTabIndex === 1
+                                        ? "#1f2937"
+                                        : "#64748b",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 1
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    borderRadius: "0",
+                                    cursor: "pointer",
+                                    fontWeight:
+                                      activeTabIndex === 1 ? "700" : "500",
+                                    fontSize: "0.875rem",
+                                    transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                  }}
                                 >
                                   Información de Carga
                                 </button>
@@ -1893,6 +1964,29 @@ function QuotesView() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setActiveTab(quoteId, 2);
+                                  }}
+                                  style={{
+                                    padding: "12px 20px",
+                                    background: "transparent",
+                                    color:
+                                      activeTabIndex === 2
+                                        ? "#1f2937"
+                                        : "#64748b",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 2
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    borderRadius: "0",
+                                    cursor: "pointer",
+                                    fontWeight:
+                                      activeTabIndex === 2 ? "700" : "500",
+                                    fontSize: "0.875rem",
+                                    transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
                                   }}
                                 >
                                   Documentación Operativa (
@@ -1904,6 +1998,29 @@ function QuotesView() {
                                     e.stopPropagation();
                                     setActiveTab(quoteId, 3);
                                   }}
+                                  style={{
+                                    padding: "12px 20px",
+                                    background: "transparent",
+                                    color:
+                                      activeTabIndex === 3
+                                        ? "#1f2937"
+                                        : "#64748b",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 3
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    borderRadius: "0",
+                                    cursor: "pointer",
+                                    fontWeight:
+                                      activeTabIndex === 3 ? "700" : "500",
+                                    fontSize: "0.875rem",
+                                    transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                  }}
                                 >
                                   Resumen Financiero
                                 </button>
@@ -1914,6 +2031,29 @@ function QuotesView() {
                                       e.stopPropagation();
                                       setActiveTab(quoteId, 4);
                                     }}
+                                    style={{
+                                      padding: "12px 20px",
+                                      background: "transparent",
+                                      color:
+                                        activeTabIndex === 4
+                                          ? "#1f2937"
+                                          : "#64748b",
+                                      border: "none",
+                                      borderBottom:
+                                        activeTabIndex === 4
+                                          ? "2px solid #1f2937"
+                                          : "2px solid transparent",
+                                      borderRadius: "0",
+                                      cursor: "pointer",
+                                      fontWeight:
+                                        activeTabIndex === 4 ? "700" : "500",
+                                      fontSize: "0.875rem",
+                                      transition: "all 0.2s",
+                                      whiteSpace: "nowrap",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                    }}
                                   >
                                     Notas
                                   </button>
@@ -1921,57 +2061,149 @@ function QuotesView() {
                               </div>
 
                               {/* Contenido de los tabs */}
-                              <div className="tab-content">
+                              <div
+                                className="tab-content"
+                                style={{
+                                  backgroundColor: "white",
+                                  borderRadius: "8px",
+                                  padding: "24px",
+                                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+                                }}
+                              >
                                 {/* Tab 0: Información General */}
                                 {activeTabIndex === 0 && (
                                   <div
                                     style={{
-                                      display: "flex",
-                                      flexWrap: "wrap",
-                                      gap: "12px",
+                                      display: "grid",
+                                      gridTemplateColumns:
+                                        "repeat(auto-fit, minmax(280px, 1fr))",
+                                      gap: "16px",
                                     }}
                                   >
-                                    <InfoField
-                                      label="Número de Cotización"
-                                      value={quote.number}
-                                    />
-                                    <InfoField
-                                      label="Fecha de Emisión"
-                                      value={
-                                        quote.date
-                                          ? formatDate(quote.date)
-                                          : null
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Válida Hasta"
-                                      value={
-                                        quote.validUntil_Date
-                                          ? formatDate(quote.validUntil_Date)
-                                          : null
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Días de Tránsito"
-                                      value={quote.transitDays}
-                                    />
-                                    <InfoField
-                                      label="Referencia Cliente"
-                                      value={quote.customerReference}
-                                    />
-                                    <InfoField
-                                      label="Modo de Transporte"
-                                      value={quote.modeOfTransportation}
-                                    />
-                                    <InfoField
-                                      label="Tipo de Pago"
-                                      value={quote.paymentType}
-                                    />
-                                    <InfoField
-                                      label="Carrier/Broker"
-                                      value={quote.carrierBroker}
-                                      fullWidth
-                                    />
+                                    <div
+                                      style={{
+                                        backgroundColor: "#f1f5f9",
+                                        borderRadius: "8px",
+                                        padding: "16px",
+                                        border: "1px solid #e2e8f0",
+                                      }}
+                                    >
+                                      <h4
+                                        style={{
+                                          margin: "0 0 12px 0",
+                                          fontSize: "1rem",
+                                          color: "#1e293b",
+                                          fontWeight: "600",
+                                        }}
+                                      >
+                                        Detalles de Cotización
+                                      </h4>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "8px",
+                                        }}
+                                      >
+                                        <InfoField
+                                          label="Número de Cotización"
+                                          value={quote.number}
+                                        />
+                                        <InfoField
+                                          label="Fecha de Emisión"
+                                          value={
+                                            quote.date
+                                              ? formatDate(quote.date)
+                                              : null
+                                          }
+                                        />
+                                        <InfoField
+                                          label="Válida Hasta"
+                                          value={
+                                            quote.validUntil_Date
+                                              ? formatDate(
+                                                  quote.validUntil_Date,
+                                                )
+                                              : null
+                                          }
+                                        />
+                                      </div>
+                                    </div>
+                                    <div
+                                      style={{
+                                        backgroundColor: "#f1f5f9",
+                                        borderRadius: "8px",
+                                        padding: "16px",
+                                        border: "1px solid #e2e8f0",
+                                      }}
+                                    >
+                                      <h4
+                                        style={{
+                                          margin: "0 0 12px 0",
+                                          fontSize: "1rem",
+                                          color: "#1e293b",
+                                          fontWeight: "600",
+                                        }}
+                                      >
+                                        Logística
+                                      </h4>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "8px",
+                                        }}
+                                      >
+                                        <InfoField
+                                          label="Días de Tránsito"
+                                          value={quote.transitDays}
+                                        />
+                                        <InfoField
+                                          label="Modo de Transporte"
+                                          value={quote.modeOfTransportation}
+                                        />
+                                        <InfoField
+                                          label="Tipo de Pago"
+                                          value={quote.paymentType}
+                                        />
+                                      </div>
+                                    </div>
+                                    <div
+                                      style={{
+                                        backgroundColor: "#f1f5f9",
+                                        borderRadius: "8px",
+                                        padding: "16px",
+                                        border: "1px solid #e2e8f0",
+                                      }}
+                                    >
+                                      <h4
+                                        style={{
+                                          margin: "0 0 12px 0",
+                                          fontSize: "1rem",
+                                          color: "#1e293b",
+                                          fontWeight: "600",
+                                        }}
+                                      >
+                                        Información del Cliente
+                                      </h4>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "8px",
+                                        }}
+                                      >
+                                        <InfoField
+                                          label="Referencia Cliente"
+                                          value={quote.customerReference}
+                                        />
+                                        <InfoField
+                                          label="Carrier/Broker"
+                                          value={quote.carrierBroker}
+                                          fullWidth
+                                        />
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
 
@@ -1979,63 +2211,154 @@ function QuotesView() {
                                 {activeTabIndex === 1 && (
                                   <div
                                     style={{
-                                      display: "flex",
-                                      flexWrap: "wrap",
-                                      gap: "12px",
+                                      display: "grid",
+                                      gridTemplateColumns:
+                                        "repeat(auto-fit, minmax(280px, 1fr))",
+                                      gap: "16px",
                                     }}
                                   >
-                                    <InfoField
-                                      label="Total de Piezas"
-                                      value={quote.totalCargo_Pieces}
-                                    />
-                                    <InfoField
-                                      label="Contenedores"
-                                      value={quote.totalCargo_Container}
-                                    />
-                                    <InfoField
-                                      label="Peso Total"
-                                      value={
-                                        quote.totalCargo_WeightDisplayValue
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Volumen Total"
-                                      value={
-                                        quote.totalCargo_VolumeDisplayValue
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Peso Volumétrico"
-                                      value={
-                                        quote.totalCargo_VolumeWeightDisplayValue
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Carga Peligrosa"
-                                      value={quote.hazardous}
-                                    />
-                                    <InfoField
-                                      label="Estado de Carga"
-                                      value={quote.cargoStatus}
-                                    />
+                                    <div
+                                      style={{
+                                        backgroundColor: "#f1f5f9",
+                                        borderRadius: "8px",
+                                        padding: "16px",
+                                        border: "1px solid #e2e8f0",
+                                      }}
+                                    >
+                                      <h4
+                                        style={{
+                                          margin: "0 0 12px 0",
+                                          fontSize: "1rem",
+                                          color: "#1e293b",
+                                          fontWeight: "600",
+                                        }}
+                                      >
+                                        Cantidades
+                                      </h4>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "8px",
+                                        }}
+                                      >
+                                        <InfoField
+                                          label="Total de Piezas"
+                                          value={quote.totalCargo_Pieces}
+                                        />
+                                        <InfoField
+                                          label="Contenedores"
+                                          value={quote.totalCargo_Container}
+                                        />
+                                      </div>
+                                    </div>
+                                    <div
+                                      style={{
+                                        backgroundColor: "#f1f5f9",
+                                        borderRadius: "8px",
+                                        padding: "16px",
+                                        border: "1px solid #e2e8f0",
+                                      }}
+                                    >
+                                      <h4
+                                        style={{
+                                          margin: "0 0 12px 0",
+                                          fontSize: "1rem",
+                                          color: "#1e293b",
+                                          fontWeight: "600",
+                                        }}
+                                      >
+                                        Pesos y Volúmenes
+                                      </h4>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "8px",
+                                        }}
+                                      >
+                                        <InfoField
+                                          label="Peso Total"
+                                          value={
+                                            quote.totalCargo_WeightDisplayValue
+                                          }
+                                        />
+                                        <InfoField
+                                          label="Volumen Total"
+                                          value={
+                                            quote.totalCargo_VolumeDisplayValue
+                                          }
+                                        />
+                                        <InfoField
+                                          label="Peso Volumétrico"
+                                          value={
+                                            quote.totalCargo_VolumeWeightDisplayValue
+                                          }
+                                        />
+                                      </div>
+                                    </div>
+                                    <div
+                                      style={{
+                                        backgroundColor: "#f1f5f9",
+                                        borderRadius: "8px",
+                                        padding: "16px",
+                                        border: "1px solid #e2e8f0",
+                                      }}
+                                    >
+                                      <h4
+                                        style={{
+                                          margin: "0 0 12px 0",
+                                          fontSize: "1rem",
+                                          color: "#1e293b",
+                                          fontWeight: "600",
+                                        }}
+                                      >
+                                        Estado y Seguridad
+                                      </h4>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "8px",
+                                        }}
+                                      >
+                                        <InfoField
+                                          label="Carga Peligrosa"
+                                          value={quote.hazardous}
+                                        />
+                                        <InfoField
+                                          label="Estado de Carga"
+                                          value={quote.cargoStatus}
+                                        />
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
 
                                 {/* Tab 2: Documentación Operativa */}
                                 {activeTabIndex === 2 && (
-                                  <DocumentosSection
-                                    quoteId={String(
-                                      quote.id || quote.number || "",
-                                    )}
-                                    onCountChange={(count) =>
-                                      setDocumentCounts((prev) => ({
-                                        ...prev,
-                                        [String(
-                                          quote.id || quote.number || "",
-                                        )]: count,
-                                      }))
-                                    }
-                                  />
+                                  <div
+                                    style={{
+                                      backgroundColor: "#f8fafc",
+                                      borderRadius: "8px",
+                                      padding: "16px",
+                                      border: "1px solid #e2e8f0",
+                                    }}
+                                  >
+                                    <DocumentosSection
+                                      quoteId={String(
+                                        quote.id || quote.number || "",
+                                      )}
+                                      onCountChange={(count) =>
+                                        setDocumentCounts((prev) => ({
+                                          ...prev,
+                                          [String(
+                                            quote.id || quote.number || "",
+                                          )]: count,
+                                        }))
+                                      }
+                                    />
+                                  </div>
                                 )}
 
                                 {/* Tab 3: Resumen Financiero */}
@@ -2043,19 +2366,21 @@ function QuotesView() {
                                   <div
                                     style={{
                                       backgroundColor:
-                                        "rgba(16, 185, 129, 0.1)",
-                                      borderRadius: "8px",
-                                      padding: "20px",
+                                        "rgba(16, 185, 129, 0.05)",
+                                      borderRadius: "12px",
+                                      padding: "32px",
                                       border:
                                         "2px solid rgba(16, 185, 129, 0.2)",
                                       textAlign: "center",
+                                      boxShadow:
+                                        "0 4px 6px rgba(16, 185, 129, 0.1)",
                                     }}
                                   >
                                     <div
                                       style={{
-                                        fontSize: "0.85rem",
-                                        color: "#6b7280",
-                                        marginBottom: "8px",
+                                        fontSize: "1rem",
+                                        color: "#374151",
+                                        marginBottom: "16px",
                                         fontWeight: "600",
                                         textTransform: "uppercase",
                                         letterSpacing: "0.5px",
@@ -2065,14 +2390,23 @@ function QuotesView() {
                                     </div>
                                     <div
                                       style={{
-                                        fontSize: "2rem",
+                                        fontSize: "2.5rem",
                                         fontWeight: "700",
                                         color: "#10b981",
+                                        marginBottom: "8px",
                                       }}
                                     >
                                       {formatCLP(
                                         quote.totalCharge_IncomeDisplayValue,
                                       ) || "$0 CLP"}
+                                    </div>
+                                    <div
+                                      style={{
+                                        fontSize: "0.875rem",
+                                        color: "#6b7280",
+                                      }}
+                                    >
+                                      Monto estimado para esta cotización
                                     </div>
                                   </div>
                                 )}
@@ -2083,17 +2417,34 @@ function QuotesView() {
                                   quote.notes !== "N/A" && (
                                     <div
                                       style={{
-                                        padding: "12px",
-                                        backgroundColor: "#fffbeb",
-                                        borderRadius: "6px",
+                                        backgroundColor: "#fefce8",
+                                        borderRadius: "8px",
+                                        padding: "20px",
                                         border: "1px solid #fde047",
-                                        color: "#713f12",
-                                        fontSize: "0.875rem",
-                                        whiteSpace: "pre-wrap",
-                                        lineHeight: "1.6",
+                                        boxShadow:
+                                          "0 1px 3px rgba(253, 224, 71, 0.2)",
                                       }}
                                     >
-                                      {quote.notes}
+                                      <h4
+                                        style={{
+                                          margin: "0 0 12px 0",
+                                          fontSize: "1rem",
+                                          color: "#92400e",
+                                          fontWeight: "600",
+                                        }}
+                                      >
+                                        Notas Importantes
+                                      </h4>
+                                      <div
+                                        style={{
+                                          color: "#713f12",
+                                          fontSize: "0.875rem",
+                                          whiteSpace: "pre-wrap",
+                                          lineHeight: "1.6",
+                                        }}
+                                      >
+                                        {quote.notes}
+                                      </div>
                                     </div>
                                   )}
                               </div>

@@ -1207,9 +1207,30 @@ function OceanShipmentsView() {
                               </div>
 
                               {/* Tabs horizontales */}
-                              <div className="tabs-container">
+                              <div
+                                style={{
+                                  display: "flex",
+                                  borderBottom: "1px solid #e5e7eb",
+                                  marginBottom: "20px",
+                                }}
+                              >
                                 <button
-                                  className={`tab-button ${activeTabIndex === 0 ? "active" : ""}`}
+                                  style={{
+                                    padding: "12px 16px",
+                                    background: "none",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 0
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    color:
+                                      activeTabIndex === 0
+                                        ? "#1f2937"
+                                        : "#6b7280",
+                                    fontWeight: "500",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s",
+                                  }}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setActiveTab(shipmentId, 0);
@@ -1218,7 +1239,22 @@ function OceanShipmentsView() {
                                   Información General
                                 </button>
                                 <button
-                                  className={`tab-button ${activeTabIndex === 1 ? "active" : ""}`}
+                                  style={{
+                                    padding: "12px 16px",
+                                    background: "none",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 1
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    color:
+                                      activeTabIndex === 1
+                                        ? "#1f2937"
+                                        : "#6b7280",
+                                    fontWeight: "500",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s",
+                                  }}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setActiveTab(shipmentId, 1);
@@ -1227,7 +1263,22 @@ function OceanShipmentsView() {
                                   Información de Carga
                                 </button>
                                 <button
-                                  className={`tab-button ${activeTabIndex === 2 ? "active" : ""}`}
+                                  style={{
+                                    padding: "12px 16px",
+                                    background: "none",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 2
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    color:
+                                      activeTabIndex === 2
+                                        ? "#1f2937"
+                                        : "#6b7280",
+                                    fontWeight: "500",
+                                    cursor: "pointer",
+                                    transition: "all 0.2s",
+                                  }}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setActiveTab(shipmentId, 2);
@@ -1240,7 +1291,22 @@ function OceanShipmentsView() {
                                   shipment.amsNumber ||
                                   shipment.broker) && (
                                   <button
-                                    className={`tab-button ${activeTabIndex === 3 ? "active" : ""}`}
+                                    style={{
+                                      padding: "12px 16px",
+                                      background: "none",
+                                      border: "none",
+                                      borderBottom:
+                                        activeTabIndex === 3
+                                          ? "2px solid #1f2937"
+                                          : "2px solid transparent",
+                                      color:
+                                        activeTabIndex === 3
+                                          ? "#1f2937"
+                                          : "#6b7280",
+                                      fontWeight: "500",
+                                      cursor: "pointer",
+                                      transition: "all 0.2s",
+                                    }}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActiveTab(shipmentId, 3);
@@ -1251,7 +1317,22 @@ function OceanShipmentsView() {
                                 )}
                                 {shipment.notes && shipment.notes !== "N/A" && (
                                   <button
-                                    className={`tab-button ${activeTabIndex === 4 ? "active" : ""}`}
+                                    style={{
+                                      padding: "12px 16px",
+                                      background: "none",
+                                      border: "none",
+                                      borderBottom:
+                                        activeTabIndex === 4
+                                          ? "2px solid #1f2937"
+                                          : "2px solid transparent",
+                                      color:
+                                        activeTabIndex === 4
+                                          ? "#1f2937"
+                                          : "#6b7280",
+                                      fontWeight: "500",
+                                      cursor: "pointer",
+                                      transition: "all 0.2s",
+                                    }}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActiveTab(shipmentId, 4);

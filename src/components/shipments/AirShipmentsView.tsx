@@ -1363,6 +1363,29 @@ function AirShipmentsView() {
                                     e.stopPropagation();
                                     setActiveTab(shipmentId, 0);
                                   }}
+                                  style={{
+                                    padding: "12px 20px",
+                                    background: "transparent",
+                                    color:
+                                      activeTabIndex === 0
+                                        ? "#1f2937"
+                                        : "#64748b",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 0
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    borderRadius: "0",
+                                    cursor: "pointer",
+                                    fontWeight:
+                                      activeTabIndex === 0 ? "700" : "500",
+                                    fontSize: "0.875rem",
+                                    transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                  }}
                                 >
                                   Información General
                                 </button>
@@ -1372,6 +1395,29 @@ function AirShipmentsView() {
                                     e.stopPropagation();
                                     setActiveTab(shipmentId, 5);
                                   }}
+                                  style={{
+                                    padding: "12px 20px",
+                                    background: "transparent",
+                                    color:
+                                      activeTabIndex === 5
+                                        ? "#1f2937"
+                                        : "#64748b",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 5
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    borderRadius: "0",
+                                    cursor: "pointer",
+                                    fontWeight:
+                                      activeTabIndex === 5 ? "700" : "500",
+                                    fontSize: "0.875rem",
+                                    transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                  }}
                                 >
                                   Documentos
                                 </button>
@@ -1380,6 +1426,29 @@ function AirShipmentsView() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setActiveTab(shipmentId, 1);
+                                  }}
+                                  style={{
+                                    padding: "12px 20px",
+                                    background: "transparent",
+                                    color:
+                                      activeTabIndex === 1
+                                        ? "#1f2937"
+                                        : "#64748b",
+                                    border: "none",
+                                    borderBottom:
+                                      activeTabIndex === 1
+                                        ? "2px solid #1f2937"
+                                        : "2px solid transparent",
+                                    borderRadius: "0",
+                                    cursor: "pointer",
+                                    fontWeight:
+                                      activeTabIndex === 1 ? "700" : "500",
+                                    fontSize: "0.875rem",
+                                    transition: "all 0.2s",
+                                    whiteSpace: "nowrap",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
                                   }}
                                 >
                                   Origen y Destino
@@ -1391,6 +1460,29 @@ function AirShipmentsView() {
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setActiveTab(shipmentId, 2);
+                                      }}
+                                      style={{
+                                        padding: "12px 20px",
+                                        background: "transparent",
+                                        color:
+                                          activeTabIndex === 2
+                                            ? "#1f2937"
+                                            : "#64748b",
+                                        border: "none",
+                                        borderBottom:
+                                          activeTabIndex === 2
+                                            ? "2px solid #1f2937"
+                                            : "2px solid transparent",
+                                        borderRadius: "0",
+                                        cursor: "pointer",
+                                        fontWeight:
+                                          activeTabIndex === 2 ? "700" : "500",
+                                        fontSize: "0.875rem",
+                                        transition: "all 0.2s",
+                                        whiteSpace: "nowrap",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
                                       }}
                                     >
                                       Carga
@@ -1404,6 +1496,29 @@ function AirShipmentsView() {
                                         e.stopPropagation();
                                         setActiveTab(shipmentId, 3);
                                       }}
+                                      style={{
+                                        padding: "12px 20px",
+                                        background: "transparent",
+                                        color:
+                                          activeTabIndex === 3
+                                            ? "#1f2937"
+                                            : "#64748b",
+                                        border: "none",
+                                        borderBottom:
+                                          activeTabIndex === 3
+                                            ? "2px solid #1f2937"
+                                            : "2px solid transparent",
+                                        borderRadius: "0",
+                                        cursor: "pointer",
+                                        fontWeight:
+                                          activeTabIndex === 3 ? "700" : "500",
+                                        fontSize: "0.875rem",
+                                        transition: "all 0.2s",
+                                        whiteSpace: "nowrap",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                      }}
                                     >
                                       Cotización ({shipment.subShipments.length}
                                       )
@@ -1415,6 +1530,29 @@ function AirShipmentsView() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setActiveTab(shipmentId, 4);
+                                    }}
+                                    style={{
+                                      padding: "12px 20px",
+                                      background: "transparent",
+                                      color:
+                                        activeTabIndex === 4
+                                          ? "#1f2937"
+                                          : "#64748b",
+                                      border: "none",
+                                      borderBottom:
+                                        activeTabIndex === 4
+                                          ? "2px solid #1f2937"
+                                          : "2px solid transparent",
+                                      borderRadius: "0",
+                                      cursor: "pointer",
+                                      fontWeight:
+                                        activeTabIndex === 4 ? "700" : "500",
+                                      fontSize: "0.875rem",
+                                      transition: "all 0.2s",
+                                      whiteSpace: "nowrap",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
                                     }}
                                   >
                                     Notas
