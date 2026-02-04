@@ -1,4 +1,5 @@
 import React from "react";
+import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import { type PieceData } from "./HandlerQuoteAir";
 
 interface PieceAccordionProps {
@@ -72,6 +73,9 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
       >
         <div onClick={onToggle} className="flex-grow-1">
           <strong>Pieza {index + 1}</strong>
+          {piece.noApilable && (
+            <span className="badge bg-warning text-dark ms-2">No Apilable</span>
+          )}
           {piece.weight > 0 && (
             <span className="ms-3 text-muted">
               ({piece.weight} kg | {piece.length}x{piece.width}x{piece.height}{" "}
@@ -186,6 +190,34 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
                 min="0"
                 step="0.01"
               />
+            </div>
+
+            {/* Checkbox No Apilable */}
+            <div className="col-12">
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  id={`noApilable-${piece.id}`}
+                  checked={piece.noApilable || false}
+                  onChange={(e) => onUpdate("noApilable", e.target.checked)}
+                />
+                <label
+                  className="form-check-label"
+                  htmlFor={`noApilable-${piece.id}`}
+                >
+                  No apilable
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={<Tooltip>Carga sin nada encima</Tooltip>}
+                  >
+                    <i
+                      className="bi bi-info-circle text-danger ms-1"
+                      style={{ cursor: "pointer" }}
+                    ></i>
+                  </OverlayTrigger>
+                </label>
+              </div>
             </div>
           </div>
         </div>

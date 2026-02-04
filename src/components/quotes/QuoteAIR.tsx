@@ -61,6 +61,7 @@ function QuoteAPITester() {
       width: 0,
       height: 0,
       weight: 0,
+      noApilable: false,
       volume: 0,
       totalVolume: 0,
       volumeWeight: 0,
@@ -113,6 +114,12 @@ function QuoteAPITester() {
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
   const [valorMercaderia, setValorMercaderia] = useState<string>("");
+
+  // Calcular si hay alguna pieza no apilable
+  const noApilableActivo = useMemo(
+    () => piecesData.some((piece) => piece.noApilable),
+    [piecesData],
+  );
 
   // ============================================================================
   // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
@@ -266,6 +273,7 @@ function QuoteAPITester() {
       width: 0,
       height: 0,
       weight: 0,
+      noApilable: false,
       volume: 0,
       totalVolume: 0,
       volumeWeight: 0,
@@ -542,6 +550,25 @@ function QuoteAPITester() {
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
   };
 
+  // Función para calcular el cobro de no apilable (TOTAL SIN MARKUP * 0.6)
+  const calculateNoApilable = (): number => {
+    if (!noApilableActivo || !tarifaAirFreight) return 0;
+
+    const { totalRealWeight } = calculateTotals();
+
+    const totalSinMarkup =
+      45 + // Handling
+      (incoterm === "EXW"
+        ? calculateEXWRate(totalRealWeight, pesoChargeable)
+        : 0) + // EXW
+      30 + // AWB
+      Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
+      tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
+      (seguroActivo ? calculateSeguro() : 0); // Seguro (si está activo)
+
+    return totalSinMarkup * 0.6;
+  };
+
   // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
@@ -722,6 +749,19 @@ function QuoteAPITester() {
           unit: "Shipment",
           rate: seguroAmount,
           amount: seguroAmount,
+        });
+      }
+
+      // No Apilable (solo si está activo)
+      if (noApilableActivo) {
+        const noApilableAmount = calculateNoApilable();
+        pdfCharges.push({
+          code: "NA",
+          description: "NO APILABLE",
+          quantity: 1,
+          unit: "Shipment",
+          rate: noApilableAmount,
+          amount: noApilableAmount,
         });
       }
 
@@ -1045,6 +1085,41 @@ function QuoteAPITester() {
             reference: "TEST-REF-SEGURO",
             showOnDocument: true,
             notes: "Seguro opcional - Protección adicional para la carga",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
+
+      // Cobro de NO APILABLE (solo si está activo)
+      if (noApilableActivo) {
+        const noApilableAmount = calculateNoApilable();
+        charges.push({
+          service: {
+            id: 115954,
+            code: "NA",
+            description: "NO APILABLE",
+          },
+          income: {
+            quantity: 1,
+            unit: "NO APILABLE",
+            rate: noApilableAmount,
+            amount: noApilableAmount,
+            showamount: noApilableAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: user?.username,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "TEST-REF-NOAPILABLE",
+            showOnDocument: true,
+            notes: "Cargo adicional por carga no apilable - 60% del total base",
           },
           expense: {
             currency: {
@@ -2658,9 +2733,20 @@ function QuoteAPITester() {
                     {seguroActivo && calculateSeguro() > 0 && (
                       <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
                         <span>Seguro:</span>
-                        <strong className="text-info">
+                        <strong className="">
                           {rutaSeleccionada.currency}{" "}
                           {calculateSeguro().toFixed(2)}
+                        </strong>
+                      </div>
+                    )}
+
+                    {/* Mostrar el cargo del no apilable si está activo */}
+                    {noApilableActivo && calculateNoApilable() > 0 && (
+                      <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
+                        <span>No Apilable:</span>
+                        <strong className="">
+                          {rutaSeleccionada.currency}{" "}
+                          {calculateNoApilable().toFixed(2)}
                         </strong>
                       </div>
                     )}
@@ -2728,21 +2814,22 @@ function QuoteAPITester() {
                         {(() => {
                           const { totalRealWeight: totalWeight } =
                             calculateTotals();
+                          const totalBase =
+                            45 + // Handling
+                            (incoterm === "EXW"
+                              ? calculateEXWRate(totalWeight, pesoChargeable)
+                              : 0) + // EXW
+                            30 + // AWB
+                            Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
+                            tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
+                            (seguroActivo ? calculateSeguro() : 0); // Seguro (si está activo)
+                          const totalFinal =
+                            totalBase +
+                            (noApilableActivo ? calculateNoApilable() : 0);
                           return (
                             rutaSeleccionada.currency +
                             " " +
-                            (
-                              45 + // Handling
-                              (incoterm === "EXW"
-                                ? calculateEXWRate(totalWeight, pesoChargeable)
-                                : 0) + // EXW
-                              30 + // AWB
-                              Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-                              tarifaAirFreight.precioConMarkup *
-                                pesoChargeable + // Air Freight
-                              (seguroActivo ? calculateSeguro() : 0)
-                            ) // Seguro (si está activo)
-                              .toFixed(2)
+                            totalFinal.toFixed(2)
                           );
                         })()}
                       </span>

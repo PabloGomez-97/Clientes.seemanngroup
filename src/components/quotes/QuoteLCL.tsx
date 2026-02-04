@@ -1868,8 +1868,8 @@ function QuoteLCL() {
                       {/* Mostrar el cargo adicional por No Apilable */}
                       {hasNotApilable && (
                         <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                          <span>No Apilable (80% adicional):</span>
-                          <strong className="text-warning">
+                          <span>No Apilable:</span>
+                          <strong className="">
                             {rutaSeleccionada.currency}{" "}
                             {(() => {
                               const subtotal =
