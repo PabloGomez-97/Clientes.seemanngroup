@@ -1405,7 +1405,7 @@ function AirShipmentsView() {
                                         setActiveTab(shipmentId, 3);
                                       }}
                                     >
-                                      Sub-Envíos ({shipment.subShipments.length}
+                                      Cotización ({shipment.subShipments.length}
                                       )
                                     </button>
                                   )}
