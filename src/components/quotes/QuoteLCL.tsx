@@ -1031,7 +1031,7 @@ function QuoteLCL() {
         >
           <h5 className="mb-0">
             <i className="bi bi-geo-alt me-2" style={{ color: "#0d6efd" }}></i>
-            Paso 1: Selecciona Ruta
+            Selecciona Ruta
             {rutaSeleccionada && (
               <span className="badge bg-success ms-3">
                 <i className="bi bi-check-circle-fill me-1"></i>
@@ -1501,7 +1501,7 @@ function QuoteLCL() {
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
-            <h5 className="card-title mb-4">Paso 2: Datos del Commodity</h5>
+            <h5 className="card-title mb-4">Datos del Commodity</h5>
             {/* Formulario */}
             <div className="row g-3">
               <div className="col-12 mb-3">
