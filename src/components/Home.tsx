@@ -128,8 +128,11 @@ const Home: React.FC = () => {
           <div className="hal-page-container-content">
             <div className="hal-container hal-container--plain hal-module--light">
               <div className="hal-container-content">
-                {/* First Row: Schedule & Tracking */}
-                <div className="hal-columns hal-columns--2">
+                {/* ItineraryFinder Row */}
+                <div
+                  className="hal-columns hal-columns--1"
+                  style={{ gridTemplateColumns: "1fr" }}
+                >
                   <div className="hal-column">
                     <div className="hal-column-content">
                       <div className="hal-contentqat">
@@ -149,15 +152,33 @@ const Home: React.FC = () => {
                               Encontrar un itinerario
                             </label>
                           </span>
-                          <ItineraryFinder />
+                          <div className="itinerary-finder-wrapper">
+                            <ItineraryFinder />
+                          </div>
                         </span>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="hal-column">
-                    <div className="hal-column-content">
-                      <div className="hal-container-tracing">
+                {/* Three Cards Row */}
+                <div
+                  className="hal-columns hal-columns--3"
+                  style={{ display: "flex", gap: "20px" }}
+                >
+                  <div className="hal-column" style={{ flex: 1 }}>
+                    <div
+                      className="hal-column-content"
+                      style={{ display: "flex", flexDirection: "column" }}
+                    >
+                      <div
+                        className="hal-container-tracing"
+                        style={{
+                          height: "100%",
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
+                      >
                         <div className="hal-container-tracing-panel">
                           <div className="hal-container-tracing-head">
                             <span className="hal-container-tracing-icon">
@@ -172,7 +193,14 @@ const Home: React.FC = () => {
                             </span>
                             <label className="hal-label">Tracking</label>
                           </div>
-                          <div className="hal-container-tracing-body">
+                          <div
+                            className="hal-container-tracing-body"
+                            style={{
+                              flexGrow: 1,
+                              display: "flex",
+                              flexDirection: "column",
+                            }}
+                          >
                             <div className="hal-input-wrapper">
                               <label className="hal-input-label">
                                 Ingresar número de Contenedor / Booking o B/L
@@ -200,14 +228,21 @@ const Home: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Second Row: Quote & Booking */}
-                <div className="hal-columns hal-columns--2">
-                  <div className="hal-column">
-                    <div className="hal-column-content">
-                      <div className="hal-contentqat hal-module--space-sm">
-                        <span className="hal-contentqat-panel">
+                  <div className="hal-column" style={{ flex: 1 }}>
+                    <div
+                      className="hal-column-content"
+                      style={{ display: "flex", flexDirection: "column" }}
+                    >
+                      <div className="hal-contentqat">
+                        <span
+                          className="hal-contentqat-panel"
+                          style={{
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                          }}
+                        >
                           <span className="hal-contentqat-head">
                             <span className="hal-contentqat-icon">
                               <svg
@@ -221,8 +256,18 @@ const Home: React.FC = () => {
                             </span>
                             <label className="hal-label">Cotización</label>
                           </span>
-                          <span className="hal-contentqat-body">
-                            <span className="hal-contentqat-text-wrapper">
+                          <span
+                            className="hal-contentqat-body"
+                            style={{
+                              flexGrow: 1,
+                              display: "flex",
+                              flexDirection: "column",
+                            }}
+                          >
+                            <span
+                              className="hal-contentqat-text-wrapper"
+                              style={{ flexGrow: 1 }}
+                            >
                               <p className="hal-contentqat-text">
                                 Su cotización de embarque de contenedores en 30
                                 segundos.
@@ -242,10 +287,20 @@ const Home: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="hal-column">
-                    <div className="hal-column-content">
-                      <div className="hal-contentqat hal-module--space-sm">
-                        <span className="hal-contentqat-panel">
+                  <div className="hal-column" style={{ flex: 1 }}>
+                    <div
+                      className="hal-column-content"
+                      style={{ display: "flex", flexDirection: "column" }}
+                    >
+                      <div className="hal-contentqat">
+                        <span
+                          className="hal-contentqat-panel"
+                          style={{
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                          }}
+                        >
                           <span className="hal-contentqat-head">
                             <span className="hal-contentqat-icon">
                               <svg
@@ -259,8 +314,18 @@ const Home: React.FC = () => {
                             </span>
                             <label className="hal-label">Booking</label>
                           </span>
-                          <span className="hal-contentqat-body">
-                            <span className="hal-contentqat-text-wrapper">
+                          <span
+                            className="hal-contentqat-body"
+                            style={{
+                              flexGrow: 1,
+                              display: "flex",
+                              flexDirection: "column",
+                            }}
+                          >
+                            <span
+                              className="hal-contentqat-text-wrapper"
+                              style={{ flexGrow: 1 }}
+                            >
                               <p className="hal-contentqat-text">
                                 Su solicitud de reserva guiada.
                               </p>
@@ -301,7 +366,7 @@ const Home: React.FC = () => {
                   <div className="hal-stagenews-scene">
                     <div className="hal-carousel-item hal-carousel-item--left">
                       <picture>
-                        <img src="/oficinas.png" alt="Oficinas" />
+                        <img src="/oficinas.jpg" alt="Oficinas" />
                       </picture>
                       <div className="hal-stagenews-content hal-stagenews-content--left">
                         <div>

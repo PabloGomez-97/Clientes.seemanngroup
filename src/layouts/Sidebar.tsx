@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.tsx - ShipsGo Professional Style (Light Theme)
+// src/layouts/Sidebar.tsx - AWS/Azure Minimalist Design
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import logoSeemann from "./logoseemann.png";
@@ -29,6 +29,17 @@ interface MenuSection {
   items: MenuItem[];
 }
 
+// Design tokens - AWS/Azure inspired
+const colors = {
+  bg: "#232f3e",
+  bgHover: "#2d3a4a",
+  bgActive: "#1a242f",
+  text: "#ffffff",
+  textMuted: "#8d99a8",
+  border: "#3b4754",
+  accent: "#ff9900",
+};
+
 function Sidebar({ isOpen }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -39,28 +50,14 @@ function Sidebar({ isOpen }: SidebarProps) {
     {
       title: "Dashboard",
       items: [
-        {
-          path: "/",
-          name: "Home",
-          icon: "fa fa-home",
-          badge: { text: "NEW", type: "new" },
-        },
-        {
-          path: "/newquotes",
-          name: "Cotiza Aquí",
-          icon: "fa fa-calculator",
-          badge: { text: "NEW", type: "new" },
-        },
+        { path: "/", name: "Home", icon: "fa fa-home" },
+        { path: "/newquotes", name: "Cotiza Aquí", icon: "fa fa-calculator" },
       ],
     },
     {
       title: "Cotizaciones & Operaciones",
       items: [
-        {
-          path: "/quotes",
-          name: "Cotizaciones",
-          icon: "fa fa-folder-open",
-        },
+        { path: "/quotes", name: "Cotizaciones", icon: "fa fa-folder-open" },
         {
           path: "/air-shipments",
           name: "Operaciones Aéreas",
@@ -81,11 +78,7 @@ function Sidebar({ isOpen }: SidebarProps) {
           name: "Track New Shipment",
           icon: "fa fa-route",
         },
-        {
-          path: "/trackings",
-          name: "Mis Envíos",
-          icon: "fa fa-route",
-        },
+        { path: "/trackings", name: "Mis Envíos", icon: "fa fa-route" },
       ],
     },
     {
@@ -115,96 +108,64 @@ function Sidebar({ isOpen }: SidebarProps) {
     );
   };
 
-  const getBadgeStyles = (type: "new" | "beta" | "trial" | "try") => {
-    const styles = {
-      new: {
-        background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-        color: "#dc2626",
-        border: "1px solid #fca5a5",
-        boxShadow: "0 2px 4px rgba(220, 38, 38, 0.1)",
-      },
-      beta: {
-        background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-        color: "#dc2626",
-        border: "1px solid #fca5a5",
-        boxShadow: "0 2px 4px rgba(220, 38, 38, 0.1)",
-      },
-      trial: {
-        background: "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)",
-        color: "#16a34a",
-        border: "1px solid #86efac",
-        boxShadow: "0 2px 4px rgba(22, 163, 74, 0.1)",
-      },
-      try: {
-        background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-        color: "#dc2626",
-        border: "1px solid #fca5a5",
-        boxShadow: "0 2px 4px rgba(220, 38, 38, 0.1)",
-      },
-    };
-    return styles[type];
-  };
-
   return (
     <div
       style={{
         width: "260px",
         minWidth: "260px",
         height: "100vh",
-        background: "linear-gradient(180deg, #ffffff 0%, #fafbfc 100%)",
+        backgroundColor: colors.bg,
         display: "flex",
         flexDirection: "column",
         position: "sticky",
         top: 0,
         left: 0,
-        borderRight: "1px solid #e5e7eb",
+        borderRight: `1px solid ${colors.border}`,
         overflowY: "auto",
         overflowX: "hidden",
-        boxShadow: "2px 0 8px rgba(0, 0, 0, 0.04)",
+        fontFamily:
+          '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
       className="sidebar-scroll"
     >
       {/* Header con Logo */}
       <div
+        className="sidebar-header"
         style={{
           height: "70px",
-          padding: "0 24px",
+          padding: "0 20px",
           display: "flex",
           alignItems: "center",
-          borderBottom: "1px solid #e5e7eb",
-          background:
-            "linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(139, 92, 246, 0.02) 100%)",
-          position: "relative",
+          borderBottom: `1px solid ${colors.border}`,
         }}
       >
+        {/* Logo - Cambiar tamaño aquí: width controla el tamaño */}
         <img
           src={logoSeemann}
           alt="Seemann Group"
+          className="sidebar-logo"
           style={{
-            width: "145px",
+            width: "180px", // <-- CAMBIAR AQUÍ EL TAMAÑO DEL LOGO
             height: "auto",
             objectFit: "contain",
-            filter: "drop-shadow(0 1px 2px rgba(0, 0, 0, 0.05))",
           }}
         />
       </div>
 
       {/* Navigation Menu */}
-      <div style={{ flex: 1, padding: "20px 0" }}>
+      <nav style={{ flex: 1, padding: "12px 0" }}>
         {menuSections.map((section, sectionIdx) => (
-          <div key={sectionIdx} style={{ marginBottom: "10px" }}>
+          <div key={sectionIdx} style={{ marginBottom: "4px" }}>
             {/* Section Title */}
             <div
               style={{
-                padding: "10px 24px 8px 24px",
+                padding: "20px 20px 8px",
                 fontSize: "11px",
-                fontWeight: "700",
-                color: "#6b7280",
+                fontWeight: "600",
+                color: colors.textMuted,
                 textTransform: "uppercase",
                 letterSpacing: "0.8px",
-                marginTop: sectionIdx > 0 ? "16px" : "0",
-                fontFamily:
-                  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                marginTop: sectionIdx > 0 ? "8px" : "0",
               }}
             >
               {section.title}
@@ -235,52 +196,46 @@ function Sidebar({ isOpen }: SidebarProps) {
                       }
                       onMouseLeave={() => setHoveredItem(null)}
                       style={{
-                        padding: "13px 24px",
+                        padding: "15px 20px",
                         display: "flex",
                         alignItems: "center",
                         gap: "14px",
                         cursor: "pointer",
-                        transition: "all 0.15s ease",
-                        background: isItemActive
-                          ? "linear-gradient(90deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%)"
+                        transition: "all 0.12s ease",
+                        backgroundColor: isItemActive
+                          ? colors.bgActive
                           : isHovered
-                            ? "rgba(248, 250, 252, 0.8)"
+                            ? colors.bgHover
                             : "transparent",
                         borderLeft: isItemActive
-                          ? "3px solid #3b82f6"
+                          ? `3px solid ${colors.accent}`
                           : "3px solid transparent",
-                        color: isItemActive ? "#1e40af" : "#4b5563",
+                        color: isItemActive ? colors.text : colors.textMuted,
                         fontSize: "14px",
-                        fontWeight: isItemActive ? "600" : "500",
-                        position: "relative",
-                        fontFamily:
-                          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                        marginBottom: "2px",
+                        fontWeight: isItemActive ? "500" : "400",
+                        marginLeft: "0",
+                        marginRight: "0",
+                        borderRadius: "0",
                       }}
                     >
-                      {/* Icon with gradient background */}
-                      <div
+                      {/* Icon */}
+                      <i
+                        className={item.icon}
                         style={{
-                          width: "20px",
-                          height: "20px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: isItemActive ? "#3b82f6" : "#6b7280",
-                          transition: "all 0.15s ease",
+                          fontSize: "18px",
+                          width: "22px",
+                          textAlign: "center",
+                          opacity: isItemActive ? 1 : 0.75,
                         }}
-                      >
-                        <i
-                          className={item.icon}
-                          style={{
-                            fontSize: "17px",
-                          }}
-                        />
-                      </div>
+                      />
 
                       {/* Name */}
                       <span
-                        style={{ flex: 1, fontSize: "14px", lineHeight: "1.4" }}
+                        style={{
+                          flex: 1,
+                          fontSize: "14px",
+                          fontWeight: isItemActive ? "500" : "400",
+                        }}
                       >
                         {item.name}
                       </span>
@@ -289,13 +244,13 @@ function Sidebar({ isOpen }: SidebarProps) {
                       {item.badge && (
                         <span
                           style={{
-                            ...getBadgeStyles(item.badge.type),
-                            padding: "3px 7px",
-                            borderRadius: "5px",
+                            padding: "2px 6px",
+                            borderRadius: "3px",
                             fontSize: "9px",
-                            fontWeight: "700",
-                            letterSpacing: "0.4px",
-                            marginLeft: "auto",
+                            fontWeight: "600",
+                            backgroundColor: "rgba(255, 255, 255, 0.15)",
+                            color: colors.text,
+                            textTransform: "uppercase",
                           }}
                         >
                           {item.badge.text}
@@ -312,8 +267,7 @@ function Sidebar({ isOpen }: SidebarProps) {
                             transform: isExpanded
                               ? "rotate(90deg)"
                               : "rotate(0deg)",
-                            color: "#9ca3af",
-                            marginLeft: item.badge ? "8px" : "0",
+                            opacity: 0.5,
                           }}
                         />
                       )}
@@ -323,12 +277,9 @@ function Sidebar({ isOpen }: SidebarProps) {
                     {hasSubItems && (
                       <div
                         style={{
-                          maxHeight: isExpanded ? "500px" : "0",
+                          maxHeight: isExpanded ? "300px" : "0",
                           overflow: "hidden",
-                          transition:
-                            "max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                          background:
-                            "linear-gradient(180deg, rgba(249, 250, 251, 0.5) 0%, rgba(243, 244, 246, 0.3) 100%)",
+                          transition: "max-height 0.2s ease",
                         }}
                       >
                         <ul
@@ -355,27 +306,26 @@ function Sidebar({ isOpen }: SidebarProps) {
                                 }
                                 onMouseLeave={() => setHoveredItem(null)}
                                 style={{
-                                  padding: "11px 24px 11px 54px",
+                                  padding: "10px 20px 10px 56px",
                                   cursor: "pointer",
-                                  transition: "all 0.15s ease",
-                                  background: isSubActive
-                                    ? "linear-gradient(90deg, rgba(59, 130, 246, 0.06) 0%, rgba(59, 130, 246, 0.02) 100%)"
+                                  transition: "all 0.12s ease",
+                                  backgroundColor: isSubActive
+                                    ? colors.bgActive
                                     : isSubHovered
-                                      ? "rgba(248, 250, 252, 0.6)"
+                                      ? colors.bgHover
                                       : "transparent",
-                                  borderLeft: isSubActive
-                                    ? "3px solid #3b82f6"
-                                    : "3px solid transparent",
-                                  color: isSubActive ? "#2563eb" : "#6b7280",
-                                  fontSize: "13.5px",
-                                  fontWeight: isSubActive ? "600" : "500",
+                                  color: isSubActive
+                                    ? colors.text
+                                    : colors.textMuted,
+                                  fontSize: "14px",
+                                  fontWeight: isSubActive ? "500" : "400",
                                   position: "relative",
-                                  fontFamily:
-                                    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                                  marginBottom: "1px",
+                                  marginLeft: "0",
+                                  marginRight: "0",
+                                  borderRadius: "0",
                                 }}
                               >
-                                {/* Bullet point for submenu */}
+                                {/* Bullet point */}
                                 <span
                                   style={{
                                     position: "absolute",
@@ -385,10 +335,10 @@ function Sidebar({ isOpen }: SidebarProps) {
                                     width: "5px",
                                     height: "5px",
                                     borderRadius: "50%",
-                                    background: isSubActive
-                                      ? "#3b82f6"
-                                      : "#cbd5e1",
-                                    transition: "all 0.15s ease",
+                                    backgroundColor: isSubActive
+                                      ? colors.accent
+                                      : colors.textMuted,
+                                    opacity: isSubActive ? 1 : 0.5,
                                   }}
                                 />
                                 {subItem.name}
@@ -404,152 +354,52 @@ function Sidebar({ isOpen }: SidebarProps) {
             </ul>
           </div>
         ))}
-      </div>
-
-      {/* Footer */}
-      <div
-        style={{
-          padding: "16px 24px",
-          borderTop: "1px solid #e5e7eb",
-          background: "linear-gradient(180deg, #fafbfc 0%, #f9fafb 100%)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            marginBottom: "12px",
-          }}
-        >
-          <div
-            style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "10px",
-              background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "15px",
-              fontWeight: "700",
-              color: "white",
-              boxShadow: "0 4px 12px rgba(59, 130, 246, 0.25)",
-            }}
-          >
-            S
-          </div>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: "13px",
-                fontWeight: "700",
-                color: "#1f2937",
-                marginBottom: "3px",
-                fontFamily:
-                  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-              }}
-            >
-              <button
-                onClick={() => navigate("/changelog")}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  padding: 0,
-                  margin: 0,
-                  fontSize: "13px",
-                  fontWeight: "700",
-                  color: "#1f2937",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  fontFamily: "inherit",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = "#3b82f6";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = "#1f2937";
-                }}
-                title="Ver Changelog"
-              >
-                Dashboard v2.2.0
-              </button>
-            </div>
-            <div
-              style={{
-                fontSize: "11px",
-                color: "#6b7280",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-                fontFamily:
-                  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-              }}
-            >
-              <div
-                style={{
-                  width: "6px",
-                  height: "6px",
-                  borderRadius: "50%",
-                  background: "#10b981",
-                  boxShadow: "0 0 8px rgba(16, 185, 129, 0.5)",
-                  animation: "pulse 2s ease-in-out infinite",
-                }}
-              />
-              Sistema Activo
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding: "10px 12px",
-            borderRadius: "8px",
-            background:
-              "linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, rgba(139, 92, 246, 0.04) 100%)",
-            border: "1px solid rgba(59, 130, 246, 0.1)",
-            fontSize: "10px",
-            color: "#6b7280",
-            textAlign: "center",
-            fontWeight: "500",
-            fontFamily:
-              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          }}
-        >
-          © 2025 Seemann Group
-        </div>
-      </div>
+      </nav>
 
       <style>{`
         .sidebar-scroll::-webkit-scrollbar {
-          width: 6px;
+          width: 0;
         }
         
         .sidebar-scroll::-webkit-scrollbar-track {
-          background: #f9fafb;
+          background: transparent;
         }
         
         .sidebar-scroll::-webkit-scrollbar-thumb {
-          background: #d1d5db;
-          border-radius: 3px;
+          background: transparent;
         }
         
-        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-          background: #9ca3af;
-        }
-
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-            transform: scale(1);
+        /* Responsive: Tablets */
+        @media (max-width: 1024px) {
+          .sidebar-scroll {
+            width: 240px !important;
+            min-width: 240px !important;
           }
-          50% {
-            opacity: 0.7;
-            transform: scale(1.1);
+          .sidebar-logo {
+            width: 150px !important;
+          }
+          .sidebar-header {
+            height: 60px !important;
           }
         }
-
-        @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+        
+        /* Responsive: Mobile */
+        @media (max-width: 768px) {
+          .sidebar-scroll {
+            position: fixed !important;
+            z-index: 1000 !important;
+            width: 280px !important;
+            min-width: 280px !important;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3) !important;
+          }
+          .sidebar-logo {
+            width: 160px !important;
+          }
+          .sidebar-header {
+            height: 65px !important;
+            padding: 0 16px !important;
+          }
+        }
       `}</style>
     </div>
   );

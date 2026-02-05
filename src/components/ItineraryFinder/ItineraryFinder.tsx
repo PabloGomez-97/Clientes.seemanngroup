@@ -156,11 +156,13 @@ const customSelectStyles: StylesConfig<SelectOption, false> = {
   control: (base, state) => ({
     ...base,
     minHeight: "44px",
-    borderRadius: "8px",
-    borderColor: state.isFocused ? "#0d6efd" : "#dee2e6",
-    boxShadow: state.isFocused ? "0 0 0 3px rgba(13, 110, 253, 0.15)" : "none",
+    border: "none",
+    borderBottom: `1px solid ${state.isFocused ? "#0d6efd" : "#ddd"}`,
+    borderRadius: 0,
+    background: "transparent",
+    boxShadow: "none",
     "&:hover": {
-      borderColor: "#0d6efd",
+      borderBottomColor: "#0d6efd",
     },
   }),
   placeholder: (base) => ({
@@ -320,8 +322,12 @@ const ItineraryFinder: React.FC = () => {
 
   if (!tipoEnvio) {
     return (
-      <div className="hal-schedule-body">
-        <div style={{ marginBottom: "16px" }}>
+      <div
+        className="hal-schedule-body"
+        style={{ display: "flex", gap: "20px" }}
+      >
+        {/* Izquierda: Selección de tipo */}
+        <div style={{ flex: 1 }}>
           <label
             className="hal-input-label"
             style={{ marginBottom: "12px", display: "block" }}
@@ -331,165 +337,129 @@ const ItineraryFinder: React.FC = () => {
           <div
             style={{
               display: "flex",
-              gap: "8px",
-              flexWrap: "wrap",
+              flexDirection: "column",
+              gap: "16px",
             }}
           >
-            {/* Botón Aéreo */}
-            <button
-              type="button"
-              onClick={() => setTipoEnvio("AEREO")}
+            {/* Radio Aéreo */}
+            <label
               style={{
-                flex: "1",
-                minWidth: "90px",
-                padding: "12px 16px",
-                border: "2px solid #3b82f6",
-                borderRadius: "10px",
-                background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
-                color: "#1e40af",
-                fontWeight: "600",
-                fontSize: "13px",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                gap: "6px",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 12px rgba(59, 130, 246, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
+                gap: "8px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
               }}
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
-              </svg>
+              <input
+                type="radio"
+                name="tipoEnvio"
+                value="AEREO"
+                onChange={() => setTipoEnvio("AEREO")}
+                style={{
+                  margin: 0,
+                  width: "16px",
+                  height: "16px",
+                }}
+              />
               Aéreo
-            </button>
+            </label>
 
-            {/* Botón FCL */}
-            <button
-              type="button"
-              onClick={() => setTipoEnvio("FCL")}
+            {/* Radio FCL */}
+            <label
               style={{
-                flex: "1",
-                minWidth: "90px",
-                padding: "12px 16px",
-                border: "2px solid #10b981",
-                borderRadius: "10px",
-                background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)",
-                color: "#047857",
-                fontWeight: "600",
-                fontSize: "13px",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                gap: "6px",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 12px rgba(16, 185, 129, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
+                gap: "8px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
               }}
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.65 2.62.99 4 .99h2v-2h-2zM3.95 19H4c1.6 0 3.02-.88 4-2 .98 1.12 2.4 2 4 2s3.02-.88 4-2c.98 1.12 2.4 2 4 2h.05l1.89-6.68c.08-.26.06-.54-.06-.78s-.34-.42-.6-.5L20 10.62V6c0-1.1-.9-2-2-2h-3V1H9v3H6c-1.1 0-2 .9-2 2v4.62l-1.29.42c-.26.08-.48.26-.6.5s-.15.52-.06.78L3.95 19zM6 6h12v3.97L12 8 6 9.97V6z" />
-              </svg>
+              <input
+                type="radio"
+                name="tipoEnvio"
+                value="FCL"
+                onChange={() => setTipoEnvio("FCL")}
+                style={{
+                  margin: 0,
+                  width: "16px",
+                  height: "16px",
+                }}
+              />
               FCL
-            </button>
+            </label>
 
-            {/* Botón LCL */}
-            <button
-              type="button"
-              onClick={() => setTipoEnvio("LCL")}
+            {/* Radio LCL */}
+            <label
               style={{
-                flex: "1",
-                minWidth: "90px",
-                padding: "12px 16px",
-                border: "2px solid #f59e0b",
-                borderRadius: "10px",
-                background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
-                color: "#b45309",
-                fontWeight: "600",
-                fontSize: "13px",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
                 display: "flex",
-                flexDirection: "column",
                 alignItems: "center",
-                gap: "6px",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 12px rgba(245, 158, 11, 0.3)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
+                gap: "8px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
               }}
             >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
-              </svg>
+              <input
+                type="radio"
+                name="tipoEnvio"
+                value="LCL"
+                onChange={() => setTipoEnvio("LCL")}
+                style={{
+                  margin: 0,
+                  width: "16px",
+                  height: "16px",
+                }}
+              />
               LCL
-            </button>
+            </label>
           </div>
         </div>
 
-        {/* Campos deshabilitados cuando no hay tipo seleccionado */}
-        <div className="hal-input-wrapper" style={{ opacity: 0.5 }}>
-          <label className="hal-input-label">De</label>
-          <input
-            type="text"
-            className="hal-input"
-            placeholder="Primero selecciona el tipo de envío"
-            disabled
-          />
-        </div>
-        <div className="hal-input-wrapper" style={{ opacity: 0.5 }}>
-          <label className="hal-input-label">Para</label>
-          <input
-            type="text"
-            className="hal-input"
-            placeholder="Primero selecciona el tipo de envío"
-            disabled
-          />
-        </div>
-        <div className="hal-input-wrapper" style={{ opacity: 0.5 }}>
-          <label className="hal-input-label">Fecha</label>
-          <input type="date" className="hal-input" disabled />
-        </div>
-        <div className="hal-button-wrapper">
-          <button className="hal-button hal-button--primary" disabled>
-            Buscar
-          </button>
+        {/* Derecha: Campos */}
+        <div
+          style={{
+            flex: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          {/* Arriba: De */}
+          <div className="hal-input-wrapper">
+            <label className="hal-input-label">De</label>
+            <input
+              type="text"
+              className="hal-input"
+              placeholder="Primero selecciona el tipo de envío"
+              disabled
+            />
+          </div>
+
+          {/* Abajo: Para y Fecha */}
+          <div style={{ display: "flex", gap: "16px" }}>
+            <div className="hal-input-wrapper" style={{ flex: 1 }}>
+              <label className="hal-input-label">Para</label>
+              <input
+                type="text"
+                className="hal-input"
+                placeholder="Primero selecciona el tipo de envío"
+                disabled
+              />
+            </div>
+            <div className="hal-input-wrapper" style={{ flex: 1 }}>
+              <label className="hal-input-label">Fecha</label>
+              <input type="date" className="hal-input" disabled />
+            </div>
+          </div>
+
+          <div className="hal-button-wrapper" style={{ textAlign: "right" }}>
+            <button className="hal-button hal-button--primary" disabled>
+              Buscar
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -508,143 +478,190 @@ const ItineraryFinder: React.FC = () => {
   const tipoInfo = tipoLabels[tipoEnvio];
 
   return (
-    <div className="hal-schedule-body">
-      {/* Badge del tipo seleccionado con botón de cambiar */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "16px",
-          padding: "10px 14px",
-          backgroundColor: tipoInfo.bg,
-          borderRadius: "10px",
-          border: `2px solid ${tipoInfo.color}`,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span
+    <div className="hal-schedule-body" style={{ display: "flex", gap: "20px" }}>
+      {/* Izquierda: Selección de tipo */}
+      <div style={{ flex: 1 }}>
+        <label
+          className="hal-input-label"
+          style={{ marginBottom: "12px", display: "block" }}
+        >
+          Selecciona el tipo de envío
+        </label>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          {/* Radio Aéreo */}
+          <label
             style={{
-              fontWeight: "600",
-              color: tipoInfo.color,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
               fontSize: "14px",
+              fontWeight: "500",
             }}
           >
-            Tipo: {tipoInfo.label}
-          </span>
-          {loading && (
-            <span
+            <input
+              type="radio"
+              name="tipoEnvio"
+              value="AEREO"
+              checked={tipoEnvio === "AEREO"}
+              onChange={() => setTipoEnvio("AEREO")}
               style={{
-                fontSize: "12px",
-                color: "#6b7280",
+                margin: 0,
+                width: "16px",
+                height: "16px",
               }}
-            >
-              Cargando rutas...
-            </span>
-          )}
+            />
+            Aéreo
+          </label>
+
+          {/* Radio FCL */}
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: "500",
+            }}
+          >
+            <input
+              type="radio"
+              name="tipoEnvio"
+              value="FCL"
+              checked={tipoEnvio === "FCL"}
+              onChange={() => setTipoEnvio("FCL")}
+              style={{
+                margin: 0,
+                width: "16px",
+                height: "16px",
+              }}
+            />
+            FCL
+          </label>
+
+          {/* Radio LCL */}
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: "500",
+            }}
+          >
+            <input
+              type="radio"
+              name="tipoEnvio"
+              value="LCL"
+              checked={tipoEnvio === "LCL"}
+              onChange={() => setTipoEnvio("LCL")}
+              style={{
+                margin: 0,
+                width: "16px",
+                height: "16px",
+              }}
+            />
+            LCL
+          </label>
         </div>
-        <button
-          type="button"
-          onClick={handleResetTipo}
-          style={{
-            padding: "4px 10px",
-            fontSize: "12px",
-            color: "#6b7280",
-            background: "white",
-            border: "1px solid #d1d5db",
-            borderRadius: "6px",
-            cursor: "pointer",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#f3f4f6";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "white";
-          }}
-        >
-          Cambiar
-        </button>
       </div>
 
-      {/* Campo Origen */}
-      <div className="hal-input-wrapper">
-        <label className="hal-input-label">
-          {tipoEnvio === "AEREO" ? "Origen" : "POL (Puerto de Origen)"}
-        </label>
-        <Select
-          value={originSeleccionado}
-          onChange={(option) => setOriginSeleccionado(option)}
-          options={opcionesOrigin}
-          placeholder={
-            loading
-              ? "Cargando..."
-              : tipoEnvio === "AEREO"
-                ? "Selecciona origen"
-                : "Selecciona POL"
-          }
-          isDisabled={loading}
-          isClearable
-          isSearchable
-          styles={customSelectStyles}
-          noOptionsMessage={() => "No hay opciones disponibles"}
-        />
-      </div>
-
-      {/* Campo Destino */}
-      <div className="hal-input-wrapper">
-        <label className="hal-input-label">
-          {tipoEnvio === "AEREO" ? "Destino" : "POD (Puerto de Destino)"}
-        </label>
-        <Select
-          value={destinationSeleccionado}
-          onChange={(option) => setDestinationSeleccionado(option)}
-          options={opcionesDestination}
-          placeholder={
-            !originSeleccionado
-              ? "Primero selecciona origen"
-              : loading
+      {/* Derecha: Campos */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}
+      >
+        {/* Arriba: Origen */}
+        <div className="hal-input-wrapper">
+          <label className="hal-input-label">
+            {tipoEnvio === "AEREO" ? "Origen" : "POL (Puerto de Origen)"}
+          </label>
+          <Select
+            value={originSeleccionado}
+            onChange={(option) => setOriginSeleccionado(option)}
+            options={opcionesOrigin}
+            placeholder={
+              loading
                 ? "Cargando..."
                 : tipoEnvio === "AEREO"
-                  ? "Selecciona destino"
-                  : "Selecciona POD"
-          }
-          isDisabled={loading || !originSeleccionado}
-          isClearable
-          isSearchable
-          styles={customSelectStyles}
-          noOptionsMessage={() =>
-            originSeleccionado
-              ? "No hay rutas para este origen"
-              : "Selecciona un origen primero"
-          }
-        />
-      </div>
+                  ? "Selecciona origen"
+                  : "Selecciona POL"
+            }
+            isDisabled={loading}
+            isClearable
+            isSearchable
+            styles={customSelectStyles}
+            noOptionsMessage={() => "No hay opciones disponibles"}
+          />
+        </div>
 
-      {/* Campo Fecha */}
-      <div className="hal-input-wrapper">
-        <label className="hal-input-label">Fecha (opcional)</label>
-        <input
-          type="date"
-          className="hal-input"
-          value={fecha}
-          onChange={(e) => setFecha(e.target.value)}
-        />
-      </div>
+        {/* Abajo: Destino y Fecha */}
+        <div style={{ display: "flex", gap: "16px" }}>
+          <div className="hal-input-wrapper" style={{ flex: 1 }}>
+            <label className="hal-input-label">
+              {tipoEnvio === "AEREO" ? "Destino" : "POD (Puerto de Destino)"}
+            </label>
+            <Select
+              value={destinationSeleccionado}
+              onChange={(option) => setDestinationSeleccionado(option)}
+              options={opcionesDestination}
+              placeholder={
+                !originSeleccionado
+                  ? "Primero selecciona origen"
+                  : loading
+                    ? "Cargando..."
+                    : tipoEnvio === "AEREO"
+                      ? "Selecciona destino"
+                      : "Selecciona POD"
+              }
+              isDisabled={loading || !originSeleccionado}
+              isClearable
+              isSearchable
+              styles={customSelectStyles}
+              noOptionsMessage={() =>
+                originSeleccionado
+                  ? "No hay rutas para este origen"
+                  : "Selecciona un origen primero"
+              }
+            />
+          </div>
+          <div className="hal-input-wrapper" style={{ flex: 1 }}>
+            <label className="hal-input-label">Fecha (opcional)</label>
+            <input
+              type="date"
+              className="hal-input"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+            />
+          </div>
+        </div>
 
-      {/* Botón Buscar */}
-      <div className="hal-button-wrapper">
-        <button
-          className="hal-button hal-button--primary"
-          onClick={handleBuscar}
-          disabled={!canSearch}
-          style={{
-            opacity: canSearch ? 1 : 0.6,
-            cursor: canSearch ? "pointer" : "not-allowed",
-          }}
-        >
-          {loading ? "Cargando..." : "Buscar"}
-        </button>
+        {/* Botón Buscar */}
+        <div className="hal-button-wrapper" style={{ textAlign: "right" }}>
+          <button
+            className="hal-button hal-button--primary"
+            onClick={handleBuscar}
+            disabled={!canSearch}
+            style={{
+              opacity: canSearch ? 1 : 0.6,
+              cursor: canSearch ? "pointer" : "not-allowed",
+            }}
+          >
+            {loading ? "Cargando..." : "Buscar"}
+          </button>
+        </div>
       </div>
     </div>
   );
