@@ -5,6 +5,16 @@
       "subtitle": "Por qué tratamos cada carga como si significara el mundo.",
       "button": "Descubra nuestras promesas"
     },
+    "company": {
+      "title": "Nuestra compañía",
+      "subtitle": "Seemann Group en números",
+      "stats":{
+        "experience": "Años de experiencia",
+        "clients": "Clientes satisfechos",
+        "employees": "Empleados dedicados",
+        "countries": "Países atendidos"
+      }
+    },
     "slide2": {
       "title": "Mejor planificación con datos en tiempo real",
       "subtitle": "",

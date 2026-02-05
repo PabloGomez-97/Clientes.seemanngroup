@@ -5,6 +5,16 @@
       "subtitle": "Why we treat every shipment as if it means the world.",
       "button": "Discover our promises"
     },
+    "company":{
+        "title": "Our Company",
+        "subtitle": "Seemann Group in numbers",
+        "stats":{
+          "experience": "Years of experience",
+          "clients": "Satisfied clients",
+          "employees": "Dedicated employees",
+          "countries": "Countries served"
+        }
+    },
     "slide2": {
       "title": "Better planning with real-time data",
       "subtitle": "",
