@@ -24,7 +24,16 @@ import {
 import { PieceAccordion } from "./Handlers/Air/PieceAccordion";
 import type { PieceData } from "./Handlers/Air/HandlerQuoteAir";
 
-function QuoteAPITester() {
+// Props para pre-selección desde ItineraryFinder
+interface QuoteAIRProps {
+  preselectedOrigin?: { value: string; label: string } | null;
+  preselectedDestination?: { value: string; label: string } | null;
+}
+
+function QuoteAPITester({
+  preselectedOrigin,
+  preselectedDestination,
+}: QuoteAIRProps = {}) {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user, token } = useAuth();
   const ejecutivo = user?.ejecutivo;
@@ -184,6 +193,35 @@ function QuoteAPITester() {
     };
     cargarRutas();
   }, []);
+
+  // Aplicar preselección cuando se cargan las rutas y hay datos pre-seleccionados
+  useEffect(() => {
+    if (!loadingRutas && opcionesOrigin.length > 0 && preselectedOrigin) {
+      // Buscar el origen en las opciones disponibles
+      const originOption = opcionesOrigin.find(
+        (opt) => opt.value === preselectedOrigin.value,
+      );
+      if (originOption) {
+        setOriginSeleccionado(originOption);
+      }
+    }
+  }, [loadingRutas, opcionesOrigin, preselectedOrigin]);
+
+  // Aplicar destino pre-seleccionado cuando cambia el origen y hay opciones de destino
+  useEffect(() => {
+    if (
+      originSeleccionado &&
+      preselectedDestination &&
+      opcionesDestination.length > 0
+    ) {
+      const destOption = opcionesDestination.find(
+        (opt) => opt.value === preselectedDestination.value,
+      );
+      if (destOption) {
+        setDestinationSeleccionado(destOption);
+      }
+    }
+  }, [originSeleccionado, opcionesDestination, preselectedDestination]);
 
   // Auto-abrir sección 2 cuando se seleccione una ruta
   useEffect(() => {

@@ -26,7 +26,13 @@ import {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
-function QuoteLCL() {
+// Props para pre-selección desde ItineraryFinder
+interface QuoteLCLProps {
+  preselectedPOL?: { value: string; label: string } | null;
+  preselectedPOD?: { value: string; label: string } | null;
+}
+
+function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
   const { accessToken } = useOutletContext<OutletContext>();
   const token = accessToken;
   const { user, token: jwtToken } = useAuth();
@@ -179,6 +185,31 @@ function QuoteLCL() {
 
     cargarRutas();
   }, []);
+
+  // Aplicar preselección cuando se cargan las rutas y hay datos pre-seleccionados
+  useEffect(() => {
+    if (!loadingRutas && opcionesPOL.length > 0 && preselectedPOL) {
+      // Buscar el POL en las opciones disponibles
+      const polOption = opcionesPOL.find(
+        (opt) => opt.value === preselectedPOL.value,
+      );
+      if (polOption) {
+        setPolSeleccionado(polOption);
+      }
+    }
+  }, [loadingRutas, opcionesPOL, preselectedPOL]);
+
+  // Aplicar POD pre-seleccionado cuando cambia el POL y hay opciones de POD
+  useEffect(() => {
+    if (polSeleccionado && preselectedPOD && opcionesPOD.length > 0) {
+      const podOption = opcionesPOD.find(
+        (opt) => opt.value === preselectedPOD.value,
+      );
+      if (podOption) {
+        setPodSeleccionado(podOption);
+      }
+    }
+  }, [polSeleccionado, opcionesPOD, preselectedPOD]);
 
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE

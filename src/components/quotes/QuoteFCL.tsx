@@ -206,7 +206,13 @@ const parseFCL = (data: any[]): RutaFCL[] => {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
-function QuoteFCL() {
+// Props para pre-selección desde ItineraryFinder
+interface QuoteFCLProps {
+  preselectedPOL?: { value: string; label: string } | null;
+  preselectedPOD?: { value: string; label: string } | null;
+}
+
+function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user, token } = useAuth();
   const ejecutivo = user?.ejecutivo;
@@ -332,6 +338,31 @@ function QuoteFCL() {
 
     cargarRutas();
   }, []);
+
+  // Aplicar preselección cuando se cargan las rutas y hay datos pre-seleccionados
+  useEffect(() => {
+    if (!loadingRutas && opcionesPOL.length > 0 && preselectedPOL) {
+      // Buscar el POL en las opciones disponibles
+      const polOption = opcionesPOL.find(
+        (opt) => opt.value === preselectedPOL.value,
+      );
+      if (polOption) {
+        setPolSeleccionado(polOption);
+      }
+    }
+  }, [loadingRutas, opcionesPOL, preselectedPOL]);
+
+  // Aplicar POD pre-seleccionado cuando cambia el POL y hay opciones de POD
+  useEffect(() => {
+    if (polSeleccionado && preselectedPOD && opcionesPOD.length > 0) {
+      const podOption = opcionesPOD.find(
+        (opt) => opt.value === preselectedPOD.value,
+      );
+      if (podOption) {
+        setPodSeleccionado(podOption);
+      }
+    }
+  }, [polSeleccionado, opcionesPOD, preselectedPOD]);
 
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE

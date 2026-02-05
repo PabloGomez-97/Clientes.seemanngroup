@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "./Home.css";
+import ItineraryFinder from "./ItineraryFinder";
 
 const Home: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -148,33 +149,7 @@ const Home: React.FC = () => {
                               Encontrar un itinerario
                             </label>
                           </span>
-                          <div className="hal-schedule-body">
-                            <div className="hal-input-wrapper">
-                              <label className="hal-input-label">De</label>
-                              <input
-                                type="text"
-                                className="hal-input"
-                                placeholder="Ubicación de origen"
-                              />
-                            </div>
-                            <div className="hal-input-wrapper">
-                              <label className="hal-input-label">Para</label>
-                              <input
-                                type="text"
-                                className="hal-input"
-                                placeholder="Ubicación de destino"
-                              />
-                            </div>
-                            <div className="hal-input-wrapper">
-                              <label className="hal-input-label">Fecha</label>
-                              <input type="date" className="hal-input" />
-                            </div>
-                            <div className="hal-button-wrapper">
-                              <button className="hal-button hal-button--primary">
-                                ¡Proximamente!
-                              </button>
-                            </div>
-                          </div>
+                          <ItineraryFinder />
                         </span>
                       </div>
                     </div>
