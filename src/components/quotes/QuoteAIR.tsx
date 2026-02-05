@@ -7,6 +7,7 @@ import Select from "react-select";
 import { Modal, Button } from "react-bootstrap";
 import { PDFTemplateAIR } from "./Pdftemplate/Pdftemplateair";
 import { generatePDF, formatDateForFilename } from "./Pdftemplate/Pdfutils";
+import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
 import {
   GOOGLE_SHEET_CSV_URL,
@@ -37,6 +38,7 @@ function QuoteAPITester({
   const { accessToken } = useOutletContext<OutletContext>();
   const { user, token } = useAuth();
   const ejecutivo = user?.ejecutivo;
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -1607,10 +1609,8 @@ function QuoteAPITester({
     <div className="container-fluid py-4">
       <div className="row mb-4">
         <div className="col">
-          <h2 className="mb-1">Cotizador Aéreo</h2>
-          <p className="text-muted mb-0">
-            Genera cotizaciones para envíos aéreos
-          </p>
+          <h2 className="mb-1">{t("QuoteAIR.title")}</h2>
+          <p className="text-muted mb-0">{t("QuoteAIR.subtitle")}</p>
         </div>
       </div>
 
@@ -1654,7 +1654,7 @@ function QuoteAPITester({
                     color: "#1a1a1a",
                   }}
                 >
-                  Selecciona Ruta
+                  {t("QuoteAIR.ruta")}
                 </h5>
                 {rutaSeleccionada && (
                   <small
@@ -1681,7 +1681,7 @@ function QuoteAPITester({
         {openSection === 1 && (
           <div className="card-body p-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
-              <h5 className="card-title mb-0">Paso 1: Selecciona Ruta</h5>
+              <h5 className="card-title mb-0">{t("QuoteAIR.ruta")}</h5>
               <button
                 onClick={refrescarTarifas}
                 disabled={loadingRutas}
@@ -1695,12 +1695,12 @@ function QuoteAPITester({
                       role="status"
                       aria-hidden="true"
                     ></span>
-                    Actualizando...
+                    {t("QuoteAIR.actualizando")}
                   </>
                 ) : (
                   <>
                     <i className="bi bi-arrow-clockwise me-1"></i>
-                    Actualizar Tarifas
+                    {t("QuoteAIR.actualizaciontarifa")}
                   </>
                 )}
               </button>
@@ -1713,14 +1713,14 @@ function QuoteAPITester({
               >
                 <span className="text-muted">
                   <i className="bi bi-clock-history me-1"></i>
-                  Última actualización:{" "}
+                  {t("QuoteAIR.actualizacion")}{" "}
                   {lastUpdate.toLocaleTimeString("es-CL", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
                 <span className="badge bg-success">
-                  {rutas.length} rutas disponibles
+                  {rutas.length} {t("QuoteAIR.rutasdisponibles")}
                 </span>
               </div>
             )}
@@ -1728,9 +1728,11 @@ function QuoteAPITester({
             {loadingRutas ? (
               <div className="text-center py-5">
                 <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Cargando...</span>
+                  <span className="visually-hidden">
+                    {t("QuoteAIR.cargando")}
+                  </span>
                 </div>
-                <p className="mt-3 text-muted">Cargando rutas disponibles...</p>
+                <p className="mt-3 text-muted">{t("QuoteAIR.cargandorutas")}</p>
               </div>
             ) : errorRutas ? (
               <div className="alert alert-danger">❌ {errorRutas}</div>
@@ -1739,12 +1741,14 @@ function QuoteAPITester({
                 {/* Selectores de Origen y Destino */}
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
-                    <label className="form-label fw-semibold">Origen</label>
+                    <label className="form-label fw-semibold">
+                      {t("QuoteAIR.Origen")}
+                    </label>
                     <Select
                       value={originSeleccionado}
                       onChange={setOriginSeleccionado}
                       options={opcionesOrigin}
-                      placeholder="Selecciona origen..."
+                      placeholder={t("QuoteAIR.seleccionaorigen")}
                       isClearable
                       styles={{
                         control: (base) => ({
@@ -1757,15 +1761,17 @@ function QuoteAPITester({
                   </div>
 
                   <div className="col-md-6">
-                    <label className="form-label fw-semibold">Destino</label>
+                    <label className="form-label fw-semibold">
+                      {t("QuoteAIR.Destino")}
+                    </label>
                     <Select
                       value={destinationSeleccionado}
                       onChange={setDestinationSeleccionado}
                       options={opcionesDestination}
                       placeholder={
                         originSeleccionado
-                          ? "Selecciona destino..."
-                          : "Primero selecciona origen"
+                          ? t("QuoteAIR.seleccionadestino")
+                          : t("QuoteAIR.seleccionaprimerorigen")
                       }
                       isClearable
                       isDisabled={!originSeleccionado}
@@ -1787,7 +1793,7 @@ function QuoteAPITester({
                     <div className="d-flex justify-content-between align-items-center mb-3">
                       <h6 className="mb-0 d-flex align-items-center gap-2">
                         <i className="bi bi-airplane"></i>
-                        Rutas Disponibles
+                        {t("QuoteAIR.rutasdisponibles1")}
                         <span className="badge bg-light text-dark border">
                           {rutasFiltradas.length}
                         </span>
@@ -1795,7 +1801,7 @@ function QuoteAPITester({
 
                       {rutasFiltradas.length > 0 && (
                         <small className="text-muted">
-                          Selecciona la mejor opción para tu envío
+                          {t("QuoteAIR.seleccionamejor")}
                         </small>
                       )}
                     </div>
@@ -1859,7 +1865,7 @@ function QuoteAPITester({
                                 className="text-center"
                                 style={{ width: "15%" }}
                               >
-                                Salidas
+                                {t("QuoteAIR.salidas")}
                               </th>
                             </tr>
                           </thead>
@@ -1983,7 +1989,8 @@ function QuoteAPITester({
                                         className="fw-semibold text-truncate"
                                         style={{ fontSize: "0.8rem" }}
                                       >
-                                        {ruta.carrier || "Por Confirmar"}
+                                        {ruta.carrier ||
+                                          t("QuoteAIR.porconfirmar")}
                                       </span>
                                     </div>
                                   </td>
@@ -2133,10 +2140,10 @@ function QuoteAPITester({
                   color: "#1a1a1a",
                 }}
               >
-                Paso 2: Datos del cargamento
+                {t("QuoteAIR.datoscargamento")}
               </h5>
               <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-                Configure los detalles de su envío
+                {t("QuoteAIR.configuredetalles")}
               </p>
             </div>
 
@@ -2174,14 +2181,13 @@ function QuoteAPITester({
                     ></i>
                     <div>
                       <strong style={{ color: "#1a1a1a" }}>
-                        Overall Dims and Weight
+                        {t("QuoteAIR.overall")}
                       </strong>
                       <small
                         className="d-block text-muted mt-1"
                         style={{ fontSize: "0.85rem" }}
                       >
-                        Ingrese el peso y volumen total manualmente en lugar de
-                        por piezas
+                        {t("QuoteAIR.ingresomanual")}
                       </small>
                     </div>
                   </div>
@@ -2210,7 +2216,7 @@ function QuoteAPITester({
                     className="badge bg-light text-dark ms-2"
                     style={{ fontSize: "0.7rem", fontWeight: 400 }}
                   >
-                    Obligatorio
+                    {t("QuoteAIR.obligatorio")}
                   </span>
                 </label>
                 <select
@@ -2230,7 +2236,7 @@ function QuoteAPITester({
                   onFocus={(e) => (e.target.style.borderColor = "#185abc")}
                   onBlur={(e) => (e.target.style.borderColor = "#ced4da")}
                 >
-                  <option value="">Seleccione un Incoterm</option>
+                  <option value="">{t("QuoteAIR.incoterm")}</option>
                   <option value="EXW">Ex Works [EXW]</option>
                   <option value="FCA">Free Carrier [FCA]</option>
                 </select>
@@ -2326,14 +2332,16 @@ function QuoteAPITester({
                         className="bi bi-boxes me-2"
                         style={{ color: "#185abc" }}
                       ></i>
-                      Detalles de las Piezas
+                      {t("QuoteAIR.detalles")}
                     </h6>
                     <span
                       className="badge bg-light text-dark"
                       style={{ fontSize: "0.8rem" }}
                     >
                       {piecesData.length}{" "}
-                      {piecesData.length === 1 ? "pieza" : "piezas"}
+                      {piecesData.length === 1
+                        ? t("QuoteAIR.pieza")
+                        : t("QuoteAIR.piezas")}
                     </span>
                   </div>
 
@@ -2381,7 +2389,7 @@ function QuoteAPITester({
                       onClick={handleAddPiece}
                     >
                       <i className="bi bi-plus-circle me-2"></i>
-                      Agregar Pieza Adicional
+                      {t("QuoteAIR.agregarpieza")}
                     </button>
                   </div>
                 </div>
@@ -2393,16 +2401,13 @@ function QuoteAPITester({
                   <div className="mt-2">
                     <small className="text-muted">
                       <i className="bi bi-info-circle me-1"></i>
-                      El largo o ancho no puede superar los 3.0 m (300 cm). La
-                      carga se considera oversize y debe cotizarse caso a caso
-                      con su ejecutivo
+                      {t("QuoteAIR.info1")}
                     </small>
                   </div>
                   <div className="mt-2">
                     <small className="text-muted">
                       <i className="bi bi-info-circle me-1"></i>
-                      El alto no puede superar los 2.4 m (240 cm). Cargas que
-                      excedan esta altura no son aptas para transporte aéreo
+                      {t("QuoteAIR.info2")}
                     </small>
                   </div>
                 </div>
@@ -2418,7 +2423,8 @@ function QuoteAPITester({
                     >
                       <i className="bi bi-exclamation-triangle-fill me-2"></i>
                       <div>
-                        <strong>Carga Oversize:</strong> {oversizeError}
+                        <strong>{t("QuoteAIR.cargaoversize")}:</strong>{" "}
+                        {oversizeError}
                       </div>
                     </div>
                   )}
@@ -2430,7 +2436,7 @@ function QuoteAPITester({
                     >
                       <i className="bi bi-x-circle-fill me-2"></i>
                       <div>
-                        <strong>No apto para transporte aéreo:</strong>{" "}
+                        <strong>{t("QuoteAIR.noaptaparaereo")}:</strong>{" "}
                         {heightError}
                       </div>
                     </div>
@@ -2443,7 +2449,9 @@ function QuoteAPITester({
                     >
                       <i className="bi bi-airplane-fill me-2"></i>
                       <div>
-                        <strong>Vuelos cargueros requeridos:</strong>{" "}
+                        <strong>
+                          {t("QuoteAIR.vueloscarguerosrequeridos")}:
+                        </strong>{" "}
                         {cargoFlightWarning}
                       </div>
                     </div>
@@ -2456,7 +2464,7 @@ function QuoteAPITester({
                     >
                       <i className="bi bi-telephone-fill me-2"></i>
                       <div>
-                        <strong>Verificación requerida:</strong>{" "}
+                        <strong>{t("QuoteAIR.verificacion")}</strong>{" "}
                         {lowHeightWarning}
                       </div>
                     </div>
@@ -2485,7 +2493,7 @@ function QuoteAPITester({
                             className="bi bi-box-seam me-2"
                             style={{ color: "#6c757d" }}
                           ></i>
-                          Peso Total (kg)
+                          {t("QuoteAIR.pesototal")}
                         </label>
                         <input
                           type="number"
@@ -2513,7 +2521,7 @@ function QuoteAPITester({
                           className="text-muted d-block mt-1"
                           style={{ fontSize: "0.8rem" }}
                         >
-                          Peso total de todas las piezas
+                          {t("QuoteAIR.descripcionpeso")}
                         </small>
                         {weightError && (
                           <div className="invalid-feedback">{weightError}</div>
@@ -2529,7 +2537,7 @@ function QuoteAPITester({
                             className="bi bi-rulers me-2"
                             style={{ color: "#6c757d" }}
                           ></i>
-                          Volumen Total (m³)
+                          {t("QuoteAIR.volumentotal")}
                         </label>
                         <input
                           type="number"
@@ -2549,7 +2557,7 @@ function QuoteAPITester({
                           className="text-muted d-block mt-1"
                           style={{ fontSize: "0.8rem" }}
                         >
-                          Volumen total de todas las piezas
+                          {t("QuoteAIR.descripcionvolumen")}
                         </small>
                       </div>
                     </div>
@@ -2568,9 +2576,7 @@ function QuoteAPITester({
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
-            <h5 className="card-title mb-4">
-              Paso 3: Revisión de Piezas y Costos
-            </h5>
+            <h5 className="card-title mb-4">{t("QuoteAIR.revision")}</h5>
 
             {/* Cálculos Automáticos */}
             <div className="mt-4 p-3 border rounded bg-light">
@@ -2586,7 +2592,7 @@ function QuoteAPITester({
                   className="bi bi-box-seam me-2"
                   style={{ color: "#0d6efd" }}
                 ></i>
-                Resumen del cargamento
+                {t("QuoteAIR.resumen")}
               </h6>
               <div className="row g-3">
                 {!overallDimsAndWeight ? (
@@ -2602,28 +2608,28 @@ function QuoteAPITester({
                     return (
                       <>
                         <div className="col-md-4">
-                          <strong>Volumen por pieza:</strong>{" "}
+                          <strong>{t("QuoteAIR.volumenpieza")}</strong>{" "}
                           {(piecesData[0]?.volume ?? 0).toFixed(4)} m³
                         </div>
                         <div className="col-md-4">
-                          <strong>Peso volumétrico por pieza:</strong>{" "}
+                          <strong>{t("QuoteAIR.volumenvolpieza")}</strong>{" "}
                           {(piecesData[0]?.volumeWeight ?? 0).toFixed(2)} kg
                         </div>
                         <div className="col-md-4">
-                          <strong>Volumen total:</strong>{" "}
+                          <strong>{t("QuoteAIR.volumentotal1")}</strong>{" "}
                           {totalVolume.toFixed(4)} m³
                         </div>
                         <div className="col-md-4">
-                          <strong>Peso total:</strong> {totalWeight.toFixed(2)}{" "}
-                          kg
+                          <strong>{t("QuoteAIR.pesototal1")}</strong>{" "}
+                          {totalWeight.toFixed(2)} kg
                         </div>
                         <div className="col-md-4">
-                          <strong>Peso volumétrico total:</strong>{" "}
+                          <strong>{t("QuoteAIR.pesovoltotal")}</strong>{" "}
                           {totalVolumeWeight.toFixed(2)} kg
                         </div>
                         <div className="col-md-4">
                           <strong className="text-primary">
-                            Peso Chargeable:
+                            {t("QuoteAIR.pesochargeable")}
                           </strong>{" "}
                           <span className="text-primary fw-bold">
                             {pesoChargeable.toFixed(2)} kg
@@ -2635,21 +2641,25 @@ function QuoteAPITester({
                 ) : (
                   <>
                     <div className="col-md-6">
-                      <strong>Volumen total:</strong> {manualVolume.toFixed(4)}{" "}
-                      m³
+                      <strong>{t("QuoteAIR.volumentotal1")}</strong>{" "}
+                      {manualVolume.toFixed(4)} m³
                     </div>
                     <div className="col-md-6">
-                      <strong>Peso total:</strong> {manualWeight.toFixed(2)} kg
+                      <strong>{t("QuoteAIR.pesototal1")}</strong>{" "}
+                      {manualWeight.toFixed(2)} kg
                     </div>
                     <div className="col-12">
-                      <strong className="text-primary">Chargeable:</strong>{" "}
+                      <strong className="text-primary">
+                        {t("QuoteAIR.chargeable")}
+                      </strong>{" "}
                       <span className="text-primary fw-bold">
                         {pesoChargeable.toFixed(2)} kg
                       </span>
                       <small className="text-muted d-block mt-1">
-                        (Se cobra por el mayor entre: {manualWeight.toFixed(2)}{" "}
-                        kg vs {(manualVolume * 167).toFixed(2)} kg [peso
-                        volumétrico = {manualVolume.toFixed(2)} m³ × 167])
+                        ({t("QuoteAIR.cobropor")} {manualWeight.toFixed(2)} kg
+                        vs {(manualVolume * 167).toFixed(2)} kg [
+                        {t("QuoteAIR.pesovolumetrico")} ={" "}
+                        {manualVolume.toFixed(2)} m³ × 167])
                       </small>
                     </div>
                   </>
@@ -2664,7 +2674,7 @@ function QuoteAPITester({
                       className="bi bi-cash-coin me-2"
                       style={{ color: "#0d6efd" }}
                     ></i>
-                    Resumen de Cargos
+                    {t("QuoteAIR.resumencargos")}
                   </h6>
 
                   <div className="bg-light rounded p-3">
@@ -2716,7 +2726,9 @@ function QuoteAPITester({
 
                     {/* Sección de Opcionales */}
                     <div className="mb-3 pb-3 border-bottom">
-                      <h6 className="mb-3 text-muted">🔧 Opcionales</h6>
+                      <h6 className="mb-3 text-muted">
+                        🔧 {t("QuoteAIR.opcional")}
+                      </h6>
                       <div className="form-check">
                         <input
                           className="form-check-input"
@@ -2729,10 +2741,10 @@ function QuoteAPITester({
                           className="form-check-label"
                           htmlFor="seguroCheckbox"
                         >
-                          Agregar Seguro
+                          {t("QuoteAIR.agregar")}
                         </label>
                         <small className="text-muted d-block ms-4">
-                          Protección adicional para tu carga
+                          {t("QuoteAIR.protection")}
                         </small>
                       </div>
 
@@ -2743,7 +2755,8 @@ function QuoteAPITester({
                             htmlFor="valorMercaderia"
                             className="form-label small"
                           >
-                            Valor de la Mercadería ({rutaSeleccionada.currency}){" "}
+                            {t("QuoteAIR.valormercaderia")} (
+                            {rutaSeleccionada.currency}){" "}
                             <span className="text-danger">*</span>
                           </label>
                           <input
@@ -2761,7 +2774,7 @@ function QuoteAPITester({
                             }}
                           />
                           <small className="text-muted">
-                            Ingresa el valor total de tu carga
+                            {t("QuoteAIR.ingresavalor")}
                           </small>
                         </div>
                       )}
@@ -2770,7 +2783,7 @@ function QuoteAPITester({
                     {/* Mostrar el cargo del seguro si está activo */}
                     {seguroActivo && calculateSeguro() > 0 && (
                       <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                        <span>Seguro:</span>
+                        <span>{t("QuoteAIR.seguro")}</span>
                         <strong className="">
                           {rutaSeleccionada.currency}{" "}
                           {calculateSeguro().toFixed(2)}
@@ -2781,7 +2794,7 @@ function QuoteAPITester({
                     {/* Mostrar el cargo del no apilable si está activo */}
                     {noApilableActivo && calculateNoApilable() > 0 && (
                       <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                        <span>No Apilable:</span>
+                        <span>{t("QuoteAIR.noapilable")}</span>
                         <strong className="">
                           {rutaSeleccionada.currency}{" "}
                           {calculateNoApilable().toFixed(2)}
@@ -2839,10 +2852,7 @@ function QuoteAPITester({
                         className="alert alert-warning py-2 mb-3"
                         role="alert"
                       >
-                        <small>
-                          ⚠️ Debes ingresar el valor de la mercadería para
-                          calcular el seguro
-                        </small>
+                        <small>⚠️ {t("QuoteAIR.segurocargo")}</small>
                       </div>
                     )}
 
@@ -2887,12 +2897,10 @@ function QuoteAPITester({
                       <i className="bi bi-file-earmark-pdf fs-1 text-success"></i>
                     </div>
                     <h6 className="card-title text-success fw-bold">
-                      Generar Cotización
+                      {t("QuoteAIR.generarcotizacion")}
                     </h6>
                     <p className="card-text small text-muted mb-3">
-                      Solo genera la cotización sin crear una operación en el
-                      sistema. Obtendrás un PDF para tu revisión. ¡Ideal para
-                      comparar opciones!
+                      {t("QuoteAIR.cotizaciongenerada")}
                     </p>
                     <button
                       onClick={() => {
@@ -2917,10 +2925,10 @@ function QuoteAPITester({
                             role="status"
                             aria-hidden="true"
                           ></span>
-                          Generando...
+                          {t("QuoteAIR.generando")}
                         </>
                       ) : (
-                        <>Generar Cotización</>
+                        <>{t("QuoteAIR.generarcotizacion")}</>
                       )}
                     </button>
                   </div>
@@ -2935,12 +2943,11 @@ function QuoteAPITester({
                       <i className="bi bi-gear fs-1 text-danger"></i>
                     </div>
                     <h6 className="card-title text-danger fw-bold">
-                      Generar Operación
+                      {t("QuoteAIR.generaroperacion")}
                     </h6>
                     <p className="card-text small text-muted mb-3">
-                      <strong>¡Acción irreversible!</strong> Crea
-                      automáticamente una operación en el sistema y notifica a
-                      tu ejecutivo comercial. El proceso de envío comienza aquí.
+                      <strong>{t("QuoteAIR.accionirreversible")}</strong>{" "}
+                      {t("QuoteAIR.operaciongenerada")}
                     </p>
                     <button
                       onClick={() => {
@@ -2965,10 +2972,10 @@ function QuoteAPITester({
                             role="status"
                             aria-hidden="true"
                           ></span>
-                          Generando...
+                          {t("QuoteAIR.generandocotizacion")}
                         </>
                       ) : (
-                        <>Generar Operación</>
+                        <>{t("QuoteAIR.generaroperacion")}</>
                       )}
                     </button>
                   </div>
@@ -2978,14 +2985,14 @@ function QuoteAPITester({
 
             {(weightError || dimensionError) && (
               <div className="alert alert-warning mt-3 mb-0">
-                ⚠️ <strong>Corrección necesaria:</strong>{" "}
+                ⚠️ <strong>{t("QuoteAIR.correccion")}</strong>{" "}
                 {weightError || dimensionError}
               </div>
             )}
 
             {!rutaSeleccionada && (
               <div className="alert alert-info mt-3 mb-0">
-                ℹ️ Debes seleccionar una ruta antes de generar la cotización
+                ℹ️ {t("QuoteAIR.seleccionarruta")}
               </div>
             )}
           </div>
@@ -3019,9 +3026,7 @@ function QuoteAPITester({
       {error && (
         <div className="card shadow-sm mb-4 border-danger">
           <div className="card-body">
-            <h5 className="card-title text-danger">
-              ❌ Hubo un error en la cotización
-            </h5>
+            <h5 className="card-title text-danger">❌ {t("QuoteAIR.error")}</h5>
             <pre
               style={{
                 backgroundColor: "#fff5f5",
@@ -3044,7 +3049,7 @@ function QuoteAPITester({
         <div className="card shadow-sm mb-4 border-success">
           <div className="card-body">
             <h5 className="card-title text-success">
-              ✅ Tu cotización se ha generado exitosamente
+              ✅ {t("QuoteAIR.exito")}
             </h5>
             {/*<pre style={{
               backgroundColor: '#f0fdf4',
@@ -3058,8 +3063,7 @@ function QuoteAPITester({
               {JSON.stringify(response, null, 2)}
             </pre>*/}
             <div className="alert alert-success mt-3 mb-0">
-              En unos momentos se descargará automáticamente el PDF de la
-              cotización.
+              {t("QuoteAIR.generarpdf")}
             </div>
           </div>
         </div>

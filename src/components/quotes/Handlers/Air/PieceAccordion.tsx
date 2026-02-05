@@ -1,6 +1,7 @@
 import React from "react";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import { type PieceData } from "./HandlerQuoteAir";
+import { useTranslation } from "react-i18next";
 
 interface PieceAccordionProps {
   piece: PieceData;
@@ -32,6 +33,7 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
     if (!length || !width || !height) return 0;
     return (length * width * height) / 1000000; // cm³ a m³
   };
+  const { t } = useTranslation();
 
   // Calcular peso volumétrico (volumen * 167 para aéreo)
   const calculateVolumeWeight = (volume: number): number => {
@@ -72,9 +74,13 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
         style={{ cursor: "pointer" }}
       >
         <div onClick={onToggle} className="flex-grow-1">
-          <strong>Pieza {index + 1}</strong>
+          <strong>
+            {t("QuoteAIR.pieza")} {index + 1}
+          </strong>
           {piece.noApilable && (
-            <span className="badge bg-warning text-dark ms-2">No Apilable</span>
+            <span className="badge bg-warning text-dark ms-2">
+              {t("QuoteAIR.noapilable1")}
+            </span>
           )}
           {piece.weight > 0 && (
             <span className="ms-3 text-muted">
@@ -110,13 +116,17 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
           <div className="row g-3">
             {/* Package Type */}
             <div className="col-md-6">
-              <label className="form-label">Tipo de Paquete</label>
+              <label className="form-label">
+                {t("Pieceaccordionair.tipopaquete")}
+              </label>
               <select
                 className="form-select"
                 value={piece.packageType}
                 onChange={(e) => onUpdate("packageType", e.target.value)}
               >
-                <option value="">Seleccionar tipo</option>
+                <option value="">
+                  {t("Pieceaccordionair.seleccionartipo")}
+                </option>
                 {packageTypes.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.name}
@@ -127,19 +137,23 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
 
             {/* Description */}
             <div className="col-md-6">
-              <label className="form-label">Descripción</label>
+              <label className="form-label">
+                {t("Pieceaccordionair.descripcion")}
+              </label>
               <input
                 type="text"
                 className="form-control"
                 value={piece.description}
                 onChange={(e) => onUpdate("description", e.target.value)}
-                placeholder="Descripción de la pieza"
+                placeholder={t("Pieceaccordionair.descripcionPlaceholder")}
               />
             </div>
 
             {/* Dimensiones */}
             <div className="col-md-3">
-              <label className="form-label">Largo (cm)</label>
+              <label className="form-label">
+                {t("Pieceaccordionair.largo")}
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -153,7 +167,9 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
             </div>
 
             <div className="col-md-3">
-              <label className="form-label">Ancho (cm)</label>
+              <label className="form-label">
+                {t("Pieceaccordionair.ancho")}
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -167,7 +183,9 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
             </div>
 
             <div className="col-md-3">
-              <label className="form-label">Alto (cm)</label>
+              <label className="form-label">
+                {t("Pieceaccordionair.alto")}
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -181,7 +199,9 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
             </div>
 
             <div className="col-md-3">
-              <label className="form-label">Peso (kg)</label>
+              <label className="form-label">
+                {t("Pieceaccordionair.peso")}
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -206,10 +226,14 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
                   className="form-check-label"
                   htmlFor={`noApilable-${piece.id}`}
                 >
-                  No apilable
+                  {t("Pieceaccordionair.noapilable")}
                   <OverlayTrigger
                     placement="top"
-                    overlay={<Tooltip>Carga sin nada encima</Tooltip>}
+                    overlay={
+                      <Tooltip>
+                        {t("Pieceaccordionair.noapilableTooltip")}
+                      </Tooltip>
+                    }
                   >
                     <i
                       className="bi bi-info-circle text-danger ms-1"
