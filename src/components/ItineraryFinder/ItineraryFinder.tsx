@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Select, { type StylesConfig } from "react-select";
 
 // ============================================================================
@@ -198,6 +199,7 @@ const customSelectStyles: StylesConfig<SelectOption, false> = {
 // ============================================================================
 
 const ItineraryFinder: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   // Estados
@@ -332,7 +334,7 @@ const ItineraryFinder: React.FC = () => {
             className="hal-input-label"
             style={{ marginBottom: "12px", display: "block" }}
           >
-            Selecciona el tipo de envío
+            {t("home.itinerary.selectType")}
           </label>
           <div
             style={{
@@ -363,7 +365,7 @@ const ItineraryFinder: React.FC = () => {
                   height: "16px",
                 }}
               />
-              Aéreo
+              {t("home.itinerary.aereo")}
             </label>
 
             {/* Radio FCL */}
@@ -388,7 +390,7 @@ const ItineraryFinder: React.FC = () => {
                   height: "16px",
                 }}
               />
-              FCL
+              {t("home.itinerary.fcl")}
             </label>
 
             {/* Radio LCL */}
@@ -413,7 +415,7 @@ const ItineraryFinder: React.FC = () => {
                   height: "16px",
                 }}
               />
-              LCL
+              {t("home.itinerary.lcl")}
             </label>
           </div>
         </div>
@@ -429,11 +431,13 @@ const ItineraryFinder: React.FC = () => {
         >
           {/* Arriba: De */}
           <div className="hal-input-wrapper">
-            <label className="hal-input-label">De</label>
+            <label className="hal-input-label">
+              {t("home.itinerary.from")}
+            </label>
             <input
               type="text"
               className="hal-input"
-              placeholder="Primero selecciona el tipo de envío"
+              placeholder={t("home.itinerary.selectTypeFirst")}
               disabled
             />
           </div>
@@ -441,23 +445,27 @@ const ItineraryFinder: React.FC = () => {
           {/* Abajo: Para y Fecha */}
           <div style={{ display: "flex", gap: "16px" }}>
             <div className="hal-input-wrapper" style={{ flex: 1 }}>
-              <label className="hal-input-label">Para</label>
+              <label className="hal-input-label">
+                {t("home.itinerary.to")}
+              </label>
               <input
                 type="text"
                 className="hal-input"
-                placeholder="Primero selecciona el tipo de envío"
+                placeholder={t("home.itinerary.selectTypeFirst")}
                 disabled
               />
             </div>
             <div className="hal-input-wrapper" style={{ flex: 1 }}>
-              <label className="hal-input-label">Fecha</label>
+              <label className="hal-input-label">
+                {t("home.itinerary.date")}
+              </label>
               <input type="date" className="hal-input" disabled />
             </div>
           </div>
 
           <div className="hal-button-wrapper" style={{ textAlign: "right" }}>
             <button className="hal-button hal-button--primary" disabled>
-              Buscar
+              {t("home.itinerary.search")}
             </button>
           </div>
         </div>
@@ -485,7 +493,7 @@ const ItineraryFinder: React.FC = () => {
           className="hal-input-label"
           style={{ marginBottom: "12px", display: "block" }}
         >
-          Selecciona el tipo de envío
+          {t("home.itinerary.selectType")}
         </label>
         <div
           style={{
@@ -517,7 +525,7 @@ const ItineraryFinder: React.FC = () => {
                 height: "16px",
               }}
             />
-            Aéreo
+            {t("home.itinerary.aereo")}
           </label>
 
           {/* Radio FCL */}
@@ -543,7 +551,7 @@ const ItineraryFinder: React.FC = () => {
                 height: "16px",
               }}
             />
-            FCL
+            {t("home.itinerary.fcl")}
           </label>
 
           {/* Radio LCL */}
@@ -569,7 +577,7 @@ const ItineraryFinder: React.FC = () => {
                 height: "16px",
               }}
             />
-            LCL
+            {t("home.itinerary.lcl")}
           </label>
         </div>
       </div>
@@ -586,7 +594,9 @@ const ItineraryFinder: React.FC = () => {
         {/* Arriba: Origen */}
         <div className="hal-input-wrapper">
           <label className="hal-input-label">
-            {tipoEnvio === "AEREO" ? "Origen" : "POL (Puerto de Origen)"}
+            {tipoEnvio === "AEREO"
+              ? t("home.itinerary.origin")
+              : t("home.itinerary.pol")}
           </label>
           <Select
             value={originSeleccionado}
@@ -594,16 +604,16 @@ const ItineraryFinder: React.FC = () => {
             options={opcionesOrigin}
             placeholder={
               loading
-                ? "Cargando..."
+                ? t("home.itinerary.loading")
                 : tipoEnvio === "AEREO"
-                  ? "Selecciona origen"
-                  : "Selecciona POL"
+                  ? t("home.itinerary.selectOrigin")
+                  : t("home.itinerary.selectPol")
             }
             isDisabled={loading}
             isClearable
             isSearchable
             styles={customSelectStyles}
-            noOptionsMessage={() => "No hay opciones disponibles"}
+            noOptionsMessage={() => t("home.itinerary.noOptions")}
           />
         </div>
 
@@ -611,7 +621,9 @@ const ItineraryFinder: React.FC = () => {
         <div style={{ display: "flex", gap: "16px" }}>
           <div className="hal-input-wrapper" style={{ flex: 1 }}>
             <label className="hal-input-label">
-              {tipoEnvio === "AEREO" ? "Destino" : "POD (Puerto de Destino)"}
+              {tipoEnvio === "AEREO"
+                ? t("home.itinerary.destination")
+                : t("home.itinerary.pod")}
             </label>
             <Select
               value={destinationSeleccionado}
@@ -619,12 +631,12 @@ const ItineraryFinder: React.FC = () => {
               options={opcionesDestination}
               placeholder={
                 !originSeleccionado
-                  ? "Primero selecciona origen"
+                  ? t("home.itinerary.selectOriginFirst")
                   : loading
-                    ? "Cargando..."
+                    ? t("home.itinerary.loading")
                     : tipoEnvio === "AEREO"
-                      ? "Selecciona destino"
-                      : "Selecciona POD"
+                      ? t("home.itinerary.selectDestination")
+                      : t("home.itinerary.selectPod")
               }
               isDisabled={loading || !originSeleccionado}
               isClearable
@@ -632,13 +644,15 @@ const ItineraryFinder: React.FC = () => {
               styles={customSelectStyles}
               noOptionsMessage={() =>
                 originSeleccionado
-                  ? "No hay rutas para este origen"
-                  : "Selecciona un origen primero"
+                  ? t("home.itinerary.noRoutes")
+                  : t("home.itinerary.selectOriginFirstShort")
               }
             />
           </div>
           <div className="hal-input-wrapper" style={{ flex: 1 }}>
-            <label className="hal-input-label">Fecha (opcional)</label>
+            <label className="hal-input-label">
+              {t("home.itinerary.optionalDate")}
+            </label>
             <input
               type="date"
               className="hal-input"
@@ -659,7 +673,7 @@ const ItineraryFinder: React.FC = () => {
               cursor: canSearch ? "pointer" : "not-allowed",
             }}
           >
-            {loading ? "Cargando..." : "Buscar"}
+            {loading ? t("home.itinerary.loading") : t("home.itinerary.search")}
           </button>
         </div>
       </div>

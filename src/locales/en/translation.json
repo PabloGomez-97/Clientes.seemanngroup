@@ -1,0 +1,157 @@
+{
+  "home": {
+    "slide1": {
+      "title": "Your cargo, our promise.",
+      "subtitle": "Why we treat every shipment as if it means the world.",
+      "button": "Discover our promises"
+    },
+    "slide2": {
+      "title": "Better planning with real-time data",
+      "subtitle": "",
+      "button": "Learn more"
+    },
+    "slide3": {
+      "title": "Innovation in logistics",
+      "subtitle": "Smart solutions for a connected world",
+      "button": "Learn more"
+    },
+    "headline": {
+      "company": "Seemann Group",
+      "title": "We make global trade happen"
+    },
+    "itinerary": {
+      "label": "Find an itinerary",
+      "selectType": "Select shipment type",
+      "aereo": "Air",
+      "fcl": "FCL",
+      "lcl": "LCL",
+      "from": "From",
+      "to": "To",
+      "date": "Date",
+      "optionalDate": "Date (optional)",
+      "search": "Search",
+      "loading": "Loading...",
+      "selectTypeFirst": "First select shipment type",
+      "origin": "Origin",
+      "pol": "POL (Port of Origin)",
+      "selectOrigin": "Select origin",
+      "selectPol": "Select POL",
+      "destination": "Destination",
+      "pod": "POD (Port of Destination)",
+      "selectDestination": "Select destination",
+      "selectPod": "Select POD",
+      "selectOriginFirst": "First select origin",
+      "noOptions": "No options available",
+      "noRoutes": "No routes available for this origin",
+      "selectOriginFirstShort": "Select an origin first"
+    },
+    "tracking": {
+      "label": "Tracking",
+      "inputLabel": "Enter Container / Booking or B/L number",
+      "placeholder": "Container / Booking or B/L number",
+      "button": "Track"
+    },
+    "quote": {
+      "label": "Quote",
+      "text": "Your container shipping quote in 30 seconds.",
+      "button": "Get a quote"
+    },
+    "booking": {
+      "label": "Booking",
+      "text": "Your guided booking request.",
+      "button": "Book now"
+    },
+    "offices": {
+      "title": "Around the world",
+      "subtitle": "Find your nearest office & local information",
+      "sectionTitle": "Offices & local information",
+      "button": "Discover more"
+    },
+    "news": {
+      "title": "News & Insights",
+      "subtitle": "Top News: Just one click away",
+      "item1": "New Asia-America route speeds up deliveries",
+      "item2": "Digital ports reduce delays",
+      "item3": "Robots in warehouses: 24/7 picking",
+      "item4": "Green transport: biofuels in aviation"
+    },
+    "newsletter": {
+      "title": "Subscribe to get the latest news and rates",
+      "text": "Do you love maritime transport as much as we do? Whether it's exciting stories about our employees on land or at sea, reports on our customers from around the world or the latest information about our services: with our newsletter we always keep you up to date with the latest developments.",
+      "button": "Coming soon!"
+    },
+    "navbar": {
+      "notifications": {
+        "newQuote": "New quote",
+        "quoteCreated": "Quote #1234 created",
+        "shipmentUpdated": "Shipment updated",
+        "airShipmentTransit": "AIR-2024-001 in transit",
+        "pendingDocument": "Pending document",
+        "invoiceReview": "Invoice #5678 requires review"
+      },
+      "profile": {
+        "assignedExecutive": "Your Assigned Executive",
+        "commercialExecutive": "Commercial Executive",
+        "logout": "Log Out"
+      },
+      "search": {
+        "placeholder": "Search quotes, shipments, reports...",
+        "title": "Quick Search",
+        "description": "Search quotes, shipments, reports and more...",
+        "quickAccess": "Quick Access",
+        "newQuote": "New Quote",
+        "airShipments": "Air Shipments",
+        "oceanShipments": "Ocean Shipments",
+        "reports": "Reports",
+        "searching": "Searching"
+      }
+    },
+    "sidebar": {
+      "dashboard": "Dashboard",
+      "home": "Home",
+      "quoteHere": "Quote Here",
+      "quotesOperations": "Quotes & Operations",
+      "quotes": "Quotes",
+      "airOperations": "Air Operations",
+      "oceanOperations": "Ocean Operations",
+      "trackingOperations": "Shipment Tracking",
+      "trackNewShipment": "Track New Shipment",
+      "myShipments": "My Shipments",
+      "reports": "Reports",
+      "reporting": "Reporting",
+      "financial": "Financial",
+      "operational": "Operational"
+    },
+    "userLayout": {
+      "linbisTokenError": "Could not obtain Linbis token",
+      "unknownError": "Unknown error",
+      "loading": "Loading...",
+      "startingSystem": "Starting System",
+      "connectingSeemann": "Connecting with Seemann Group...",
+      "connectionError": "Connection error",
+      "retry": "Retry",
+      "connecting": "Connecting..."
+    },
+    "login": {
+      "title": "Client Portal",
+      "subtitle": "Enter your credentials to continue",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "your@email.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "••••••••",
+      "loginButton": "Sign In",
+      "loggingIn": "Signing in...",
+      "executiveMessage": "We detected you are an executive. Please use the administrative portal to sign in.",
+      "loginError": "Could not sign in",
+      "executiveLink": "Are you an executive?",
+      "executiveLinkText": "Sign in here →",
+      "helpText": "Don't have access?",
+      "helpLink": "Contact administrator",
+      "footer": "© {year} Seemann Group. All rights reserved.",
+      "languageSelector": {
+        "spanish": "Spanish",
+        "english": "English"
+      }
+    }
+  }
+}

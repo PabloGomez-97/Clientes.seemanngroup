@@ -1,30 +1,32 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "./Home.css";
 import ItineraryFinder from "./ItineraryFinder";
 
 const Home: React.FC = () => {
+  const { t } = useTranslation();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [trackingNumber, setTrackingNumber] = useState("");
 
   const slides = [
     {
       image: "/placeholder1.png",
-      title: "Tu carga, nuestra promesa.",
-      subtitle: "Por qué tratamos cada carga como si significara el mundo.",
-      button: { text: "Descubra nuestras promesas", link: "/newquotes" },
+      title: t("home.slide1.title"),
+      subtitle: t("home.slide1.subtitle"),
+      button: { text: t("home.slide1.button"), link: "/newquotes" },
     },
     {
       image: "/placeholder2.png",
-      title: "Mejor planificación con datos en tiempo real",
-      subtitle: "",
-      button: { text: "Más información", link: "/new-tracking" },
+      title: t("home.slide2.title"),
+      subtitle: t("home.slide2.subtitle"),
+      button: { text: t("home.slide2.button"), link: "/new-tracking" },
     },
     {
       image: "/placeholder3.png",
-      title: "Innovación en logística",
-      subtitle: "Soluciones inteligentes para un mundo conectado",
-      button: { text: "Conocer más", link: "/newquotes" },
+      title: t("home.slide3.title"),
+      subtitle: t("home.slide3.subtitle"),
+      button: { text: t("home.slide3.button"), link: "/newquotes" },
     },
   ];
 
@@ -117,8 +119,8 @@ const Home: React.FC = () => {
         <div className="sectionheadline">
           <div className="hal-page-container-content">
             <div className="hal-section-headline">
-              <p className="hal-h4">Seemann Group</p>
-              <h1 className="hal-h1">Hacemos que el comercio global ocurra</h1>
+              <p className="hal-h4">{t("home.headline.company")}</p>
+              <h1 className="hal-h1">{t("home.headline.title")}</h1>
             </div>
           </div>
         </div>
@@ -149,7 +151,7 @@ const Home: React.FC = () => {
                               </svg>
                             </span>
                             <label className="hal-label">
-                              Encontrar un itinerario
+                              {t("home.itinerary.label")}
                             </label>
                           </span>
                           <div className="itinerary-finder-wrapper">
@@ -191,7 +193,9 @@ const Home: React.FC = () => {
                                 <path d="M10 2c-3.31 0-6 2.69-6 6 0 4.5 6 10 6 10s6-5.5 6-10c0-3.31-2.69-6-6-6zm0 8c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
                               </svg>
                             </span>
-                            <label className="hal-label">Tracking</label>
+                            <label className="hal-label">
+                              {t("home.tracking.label")}
+                            </label>
                           </div>
                           <div
                             className="hal-container-tracing-body"
@@ -203,12 +207,12 @@ const Home: React.FC = () => {
                           >
                             <div className="hal-input-wrapper">
                               <label className="hal-input-label">
-                                Ingresar número de Contenedor / Booking o B/L
+                                {t("home.tracking.inputLabel")}
                               </label>
                               <input
                                 type="text"
                                 className="hal-input-tracking"
-                                placeholder="Número de Contenedor / Booking o B/L"
+                                placeholder={t("home.tracking.placeholder")}
                                 value={trackingNumber}
                                 onChange={(e) =>
                                   setTrackingNumber(e.target.value)
@@ -220,7 +224,7 @@ const Home: React.FC = () => {
                                 to={`/new-tracking?awb=${encodeURIComponent(trackingNumber)}`}
                                 className="hal-button hal-button--primary"
                               >
-                                Rastrear
+                                {t("home.tracking.button")}
                               </Link>
                             </div>
                           </div>
@@ -254,7 +258,9 @@ const Home: React.FC = () => {
                                 <path d="M17 6h-2V3c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v14c0 .55.45 1 1 1h10c.55 0 1-.45 1-1v-3h2c.55 0 1-.45 1-1V7c0-.55-.45-1-1-1zM4 3h10v3H4V3zm10 14H4V8h10v9zm3-4h-2V9h2v4z" />
                               </svg>
                             </span>
-                            <label className="hal-label">Cotización</label>
+                            <label className="hal-label">
+                              {t("home.quote.label")}
+                            </label>
                           </span>
                           <span
                             className="hal-contentqat-body"
@@ -269,8 +275,7 @@ const Home: React.FC = () => {
                               style={{ flexGrow: 1 }}
                             >
                               <p className="hal-contentqat-text">
-                                Su cotización de embarque de contenedores en 30
-                                segundos.
+                                {t("home.quote.text")}
                               </p>
                             </span>
                             <span className="hal-contentqat-button-wrapper">
@@ -278,7 +283,7 @@ const Home: React.FC = () => {
                                 to="/newquotes"
                                 className="hal-button hal-button--primary"
                               >
-                                Obtenga una cotización
+                                {t("home.quote.button")}
                               </Link>
                             </span>
                           </span>
@@ -312,7 +317,9 @@ const Home: React.FC = () => {
                                 <path d="M17 2H3c-.55 0-1 .45-1 1v14c0 .55.45 1 1 1h14c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zm-1 14H4V4h12v12zM7 11h6v2H7zm0-3h6v2H7z" />
                               </svg>
                             </span>
-                            <label className="hal-label">Booking</label>
+                            <label className="hal-label">
+                              {t("home.booking.label")}
+                            </label>
                           </span>
                           <span
                             className="hal-contentqat-body"
@@ -327,12 +334,12 @@ const Home: React.FC = () => {
                               style={{ flexGrow: 1 }}
                             >
                               <p className="hal-contentqat-text">
-                                Su solicitud de reserva guiada.
+                                {t("home.booking.text")}
                               </p>
                             </span>
                             <span className="hal-contentqat-button-wrapper">
                               <button className="hal-button hal-button--primary">
-                                Reserve ahora
+                                {t("home.booking.button")}
                               </button>
                             </span>
                           </span>
@@ -350,10 +357,8 @@ const Home: React.FC = () => {
         <div className="sectionheadline">
           <div className="hal-page-container-content">
             <div className="hal-section-headline hal-module--border">
-              <h2 className="hal-h4">Alrededor del mundo</h2>
-              <h3 className="hal-h1">
-                Encuentre su oficina más cercana &amp; información local
-              </h3>
+              <h2 className="hal-h4">{t("home.offices.title")}</h2>
+              <h3 className="hal-h1">{t("home.offices.subtitle")}</h3>
             </div>
           </div>
         </div>
@@ -371,7 +376,7 @@ const Home: React.FC = () => {
                       <div className="hal-stagenews-content hal-stagenews-content--left">
                         <div>
                           <h3 className="hal-h3">
-                            Oficinas &amp; información local
+                            {t("home.offices.sectionTitle")}
                           </h3>
                           <div className="hal-button-container">
                             <a
@@ -380,7 +385,7 @@ const Home: React.FC = () => {
                               target="_blank"
                               rel="noopener noreferrer"
                             >
-                              Descubrir más
+                              {t("home.offices.button")}
                             </a>
                           </div>
                         </div>
@@ -397,8 +402,8 @@ const Home: React.FC = () => {
         <div className="sectionheadline">
           <div className="hal-page-container-content">
             <div className="hal-section-headline hal-module--border">
-              <h2 className="hal-h4">News &amp; Insights</h2>
-              <h3 className="hal-h1">Top News: A solo un clic</h3>
+              <h2 className="hal-h4">{t("home.news.title")}</h2>
+              <h3 className="hal-h1">{t("home.news.subtitle")}</h3>
             </div>
           </div>
         </div>
@@ -420,9 +425,7 @@ const Home: React.FC = () => {
                     </div>
                   </div>
                   <div className="hal-teaser-bottom">
-                    <p className="hal-teaser-text">
-                      Nueva ruta Asia‑América acelera entregas
-                    </p>
+                    <p className="hal-teaser-text">{t("home.news.item1")}</p>
                   </div>
                 </a>
               </div>
@@ -442,9 +445,7 @@ const Home: React.FC = () => {
                     </div>
                   </div>
                   <div className="hal-teaser-bottom">
-                    <p className="hal-teaser-text">
-                      Puertos digitales reducen demoras
-                    </p>
+                    <p className="hal-teaser-text">{t("home.news.item2")}</p>
                   </div>
                 </a>
               </div>
@@ -464,9 +465,7 @@ const Home: React.FC = () => {
                     </div>
                   </div>
                   <div className="hal-teaser-bottom">
-                    <p className="hal-teaser-text">
-                      Robots en almacenes: picking 24/7
-                    </p>
+                    <p className="hal-teaser-text">{t("home.news.item3")}</p>
                   </div>
                 </a>
               </div>
@@ -486,9 +485,7 @@ const Home: React.FC = () => {
                     </div>
                   </div>
                   <div className="hal-teaser-bottom">
-                    <p className="hal-teaser-text">
-                      Transporte verde: biocombustibles en aviación
-                    </p>
+                    <p className="hal-teaser-text">{t("home.news.item4")}</p>
                   </div>
                 </a>
               </div>
@@ -501,22 +498,13 @@ const Home: React.FC = () => {
           <div className="hal-page-container-content">
             <div className="hal-container hal-container--plain hal-module--light">
               <div className="hal-container-content">
-                <h3 className="hal-h3">
-                  Suscríbete para obtener las últimas noticias y tarifas
-                </h3>
+                <h3 className="hal-h3">{t("home.newsletter.title")}</h3>
                 <div className="hal-richtext">
-                  <p>
-                    ¿Te gusta el transporte marítimo tanto como a nosotros? Ya
-                    sean historias emocionantes sobre nuestros empleados en
-                    tierra o en el mar, reportajes sobre nuestros clientes de
-                    todo el mundo o la información más reciente sobre nuestros
-                    servicios: con nuestro boletín siempre le mantenemos al día
-                    de las últimas novedades.
-                  </p>
+                  <p>{t("home.newsletter.text")}</p>
                 </div>
                 <div className="hal-button-container">
                   <button className="hal-button hal-button--primary">
-                    ¡Proximamente!
+                    {t("home.newsletter.button")}
                   </button>
                 </div>
               </div>
@@ -528,8 +516,8 @@ const Home: React.FC = () => {
         <div className="sectionheadline">
           <div className="hal-page-container-content">
             <div className="hal-section-headline hal-module--border">
-              <h2 className="hal-h4">Nuestra compañía</h2>
-              <h3 className="hal-h1">Seemann Group en números</h3>
+              <h2 className="hal-h4">{t("home.company.title")}</h2>
+              <h3 className="hal-h1">{t("home.company.subtitle")}</h3>
             </div>
           </div>
         </div>
@@ -553,7 +541,7 @@ const Home: React.FC = () => {
                           <span>
                             <p className="hal-image-with-tiles-headline">50+</p>
                             <p className="hal-image-with-tiles-subline">
-                              Años de experiencia
+                              {t("home.company.stats.experience")}
                             </p>
                           </span>
                         </a>
@@ -565,7 +553,7 @@ const Home: React.FC = () => {
                               200+
                             </p>
                             <p className="hal-image-with-tiles-subline">
-                              Clientes satisfechos
+                              {t("home.company.stats.clients")}
                             </p>
                           </span>
                         </a>
@@ -577,7 +565,7 @@ const Home: React.FC = () => {
                               100+
                             </p>
                             <p className="hal-image-with-tiles-subline">
-                              Empleados
+                              {t("home.company.stats.employees")}
                             </p>
                           </span>
                         </a>
@@ -587,7 +575,7 @@ const Home: React.FC = () => {
                           <span>
                             <p className="hal-image-with-tiles-headline">15+</p>
                             <p className="hal-image-with-tiles-subline">
-                              Países
+                              {t("home.company.stats.countries")}
                             </p>
                           </span>
                         </a>

@@ -1,6 +1,7 @@
 // src/layouts/Sidebar.tsx - AWS/Azure Minimalist Design
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
 
 interface SidebarProps {
@@ -43,53 +44,66 @@ const colors = {
 function Sidebar({ isOpen }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [expandedMenus, setExpandedMenus] = useState<string[]>(["Reports"]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const menuSections: MenuSection[] = [
     {
-      title: "Dashboard",
+      title: t("home.sidebar.dashboard"),
       items: [
-        { path: "/", name: "Home", icon: "fa fa-home" },
-        { path: "/newquotes", name: "Cotiza Aquí", icon: "fa fa-calculator" },
+        { path: "/", name: t("home.sidebar.home"), icon: "fa fa-home" },
+        {
+          path: "/newquotes",
+          name: t("home.sidebar.quoteHere"),
+          icon: "fa fa-calculator",
+        },
       ],
     },
     {
-      title: "Cotizaciones & Operaciones",
+      title: t("home.sidebar.quotesOperations"),
       items: [
-        { path: "/quotes", name: "Cotizaciones", icon: "fa fa-folder-open" },
+        {
+          path: "/quotes",
+          name: t("home.sidebar.quotes"),
+          icon: "fa fa-folder-open",
+        },
         {
           path: "/air-shipments",
-          name: "Operaciones Aéreas",
+          name: t("home.sidebar.airOperations"),
           icon: "fa fa-plane",
         },
         {
           path: "/ocean-shipments",
-          name: "Operaciones Marítimas",
+          name: t("home.sidebar.oceanOperations"),
           icon: "fa fa-ship",
         },
       ],
     },
     {
-      title: "Rastreo de Operaciones",
+      title: t("home.sidebar.trackingOperations"),
       items: [
         {
           path: "/new-tracking",
-          name: "Track New Shipment",
+          name: t("home.sidebar.trackNewShipment"),
           icon: "fa fa-route",
         },
-        { path: "/trackings", name: "Mis Envíos", icon: "fa fa-route" },
+        {
+          path: "/trackings",
+          name: t("home.sidebar.myShipments"),
+          icon: "fa fa-route",
+        },
       ],
     },
     {
-      title: "Reportes",
+      title: t("home.sidebar.reports"),
       items: [
         {
-          name: "Reportería",
+          name: t("home.sidebar.reporting"),
           icon: "fa fa-chart-bar",
           subItems: [
-            { path: "/financiera", name: "Financiera" },
-            { path: "/operacional", name: "Operacional" },
+            { path: "/financiera", name: t("home.sidebar.financial") },
+            { path: "/operacional", name: t("home.sidebar.operational") },
           ],
         },
       ],

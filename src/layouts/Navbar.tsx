@@ -1,6 +1,8 @@
 // src/layouts/Navbar.tsx - AWS/Azure Minimalist Design
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 
 // Design tokens - AWS/Azure inspired
 const colors = {
@@ -20,31 +22,33 @@ interface NavbarProps {
 
 function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showLanguage, setShowLanguage] = useState(false);
   const [notifications] = useState([
     {
       id: 1,
-      title: "Nueva cotización",
-      message: "Cotización #1234 creada",
+      title: t("home.navbar.notifications.newQuote"),
+      message: t("home.navbar.notifications.quoteCreated"),
       time: "5 min",
       unread: true,
       type: "info",
     },
     {
       id: 2,
-      title: "Envío actualizado",
-      message: "AIR-2024-001 en tránsito",
+      title: t("home.navbar.notifications.shipmentUpdated"),
+      message: t("home.navbar.notifications.airShipmentTransit"),
       time: "15 min",
       unread: true,
       type: "success",
     },
     {
       id: 3,
-      title: "Documento pendiente",
-      message: "Factura #5678 requiere revisión",
+      title: t("home.navbar.notifications.pendingDocument"),
+      message: t("home.navbar.notifications.invoiceReview"),
       time: "1 hora",
       unread: false,
       type: "warning",
@@ -100,6 +104,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
         setShowSearch(false);
         setShowNotifications(false);
         setShowProfile(false);
+        setShowLanguage(false);
       }
     };
 
@@ -122,6 +127,12 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
         !target.closest(".profile-button")
       ) {
         setShowProfile(false);
+      }
+      if (
+        !target.closest(".language-dropdown") &&
+        !target.closest(".language-button")
+      ) {
+        setShowLanguage(false);
       }
     };
 
@@ -156,6 +167,127 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
       >
         {/* Right Section - Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* Language Selector */}
+          <div style={{ position: "relative" }}>
+            <button
+              className="language-button"
+              onClick={() => setShowLanguage(!showLanguage)}
+              style={{
+                height: "36px",
+                padding: "0 12px",
+                borderRadius: "4px",
+                border: `1px solid ${colors.border}`,
+                backgroundColor: showLanguage ? colors.bgHover : "transparent",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                color: colors.text,
+                fontSize: "13px",
+                fontWeight: "500",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                if (!showLanguage) {
+                  e.currentTarget.style.backgroundColor = colors.bgHover;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!showLanguage) {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }
+              }}
+            >
+              <span>{i18n.language === "es" ? "ES" : "EN"}</span>
+              <svg
+                width="12"
+                height="12"
+                fill="currentColor"
+                viewBox="0 0 16 16"
+                style={{
+                  transform: showLanguage ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.15s ease",
+                }}
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"
+                />
+              </svg>
+            </button>
+
+            {showLanguage && (
+              <div
+                className="language-dropdown"
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 8px)",
+                  right: 0,
+                  width: "120px",
+                  backgroundColor: "#ffffff",
+                  borderRadius: "6px",
+                  boxShadow: "0 4px 24px rgba(0, 0, 0, 0.15)",
+                  border: "1px solid #e5e7eb",
+                  overflow: "hidden",
+                  zIndex: 1000,
+                }}
+              >
+                <button
+                  onClick={() => {
+                    i18n.changeLanguage("es");
+                    setShowLanguage(false);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    textAlign: "left",
+                    color: "#374151",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    transition: "background-color 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f3f4f6";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  Español
+                </button>
+                <button
+                  onClick={() => {
+                    i18n.changeLanguage("en");
+                    setShowLanguage(false);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    textAlign: "left",
+                    color: "#374151",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    transition: "background-color 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f3f4f6";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  English
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* User Profile */}
           <div style={{ position: "relative" }}>
             <button
@@ -320,7 +452,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
                         marginBottom: "12px",
                       }}
                     >
-                      Tu Ejecutivo Asignado
+                      {t("home.navbar.profile.assignedExecutive")}
                     </div>
 
                     <div
@@ -399,7 +531,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
                             color: "#6b7280",
                           }}
                         >
-                          Ejecutivo Comercial
+                          {t("home.navbar.profile.commercialExecutive")}
                         </div>
                       </div>
                     </div>
@@ -540,7 +672,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
                         d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"
                       />
                     </svg>
-                    Cerrar Sesión
+                    {t("home.navbar.profile.logout")}
                   </button>
                 </div>
               </div>
@@ -598,7 +730,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Buscar cotizaciones, envíos, reportes..."
+                placeholder={t("home.navbar.search.placeholder")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
@@ -663,7 +795,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
                       color: "#1f2937",
                     }}
                   >
-                    Búsqueda Rápida
+                    {t("home.navbar.search.title")}
                   </h3>
                   <p
                     style={{
@@ -672,7 +804,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
                       color: "#6b7280",
                     }}
                   >
-                    Busca cotizaciones, envíos, reportes y más...
+                    {t("home.navbar.search.description")}
                   </p>
 
                   <div
@@ -693,13 +825,29 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
                         marginBottom: "4px",
                       }}
                     >
-                      Accesos Rápidos
+                      {t("home.navbar.search.quickAccess")}
                     </div>
                     {[
-                      { icon: "📝", label: "Nueva Cotización", key: "N" },
-                      { icon: "✈️", label: "Air Shipments", key: "A" },
-                      { icon: "🚢", label: "Ocean Shipments", key: "O" },
-                      { icon: "📊", label: "Reportes", key: "R" },
+                      {
+                        icon: "📝",
+                        label: t("home.navbar.search.newQuote"),
+                        key: "N",
+                      },
+                      {
+                        icon: "✈️",
+                        label: t("home.navbar.search.airShipments"),
+                        key: "A",
+                      },
+                      {
+                        icon: "🚢",
+                        label: t("home.navbar.search.oceanShipments"),
+                        key: "O",
+                      },
+                      {
+                        icon: "📊",
+                        label: t("home.navbar.search.reports"),
+                        key: "R",
+                      },
                     ].map((item, idx) => (
                       <button
                         key={idx}
@@ -760,7 +908,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
                       fontSize: "13px",
                     }}
                   >
-                    Buscando "{searchQuery}"...
+                    {t("home.navbar.search.searching")} "{searchQuery}"...
                   </div>
                 </div>
               )}
