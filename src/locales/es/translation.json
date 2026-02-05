@@ -162,6 +162,43 @@
         "spanish": "Español",
         "english": "Inglés"
       }
+    },
+    "cotizador": {
+      "title": "Selecciona tu Modalidad",
+      "subtitle": "Escoge el tipo de cotización que mejor se adapte a tus necesidades de envío",
+      "aereo": {
+        "title": "Aéreo",
+        "description": "Cotización de carga aérea con tarifas por kilogramo en diferentes rangos de peso",
+        "description1": "Entregas tempranas y rápidas",
+        "description2": "Ideal para productos de alto valor",
+        "description3": "Tarifas basadas en peso",
+        "button": "Seleccionar Aéreo →",
+        "badge": "⚡ Más Rápido"
+      },
+      "fcl": {
+        "title": "Marítimo FCL",
+        "description": "Full Container Load con tarifas por contenedor completo (20GP, 40HQ, 40NOR)",
+        "description1": "Contenedor exclusivo",
+        "description2": "Ideal para grandes volúmenes",
+        "description3": "Entrega en mayores tiempos y menor costo",
+        "button": "Seleccionar FCL →",
+        "badge": "🔥 Popular",
+        "comparisonDescription": "Ideal para grandes volúmenes. Contenedor exclusivo para máxima seguridad y mejor costo por unidad transportada."
+      },
+      "lcl": {
+        "title": "Marítimo LCL",
+        "description": "Less than Container Load con tarifas por consolidación marítima",
+        "description1": "Comparte espacio en contenedor",
+        "description2": "Volúmenes medianos",
+        "description3": "Múltiples proveedores",
+        "button": "Seleccionar LCL →",
+        "badge": "💰 Económico",
+        "comparisonDescription": "Solución económica para volúmenes medianos. Comparte espacio en contenedor optimizando costos sin sacrificar calidad."
+      },
+      "volver": "Volver a selección",
+      "comparison": {
+        "title": "¿Necesitas ayuda para elegir?"
+      }
     }
   }
 }

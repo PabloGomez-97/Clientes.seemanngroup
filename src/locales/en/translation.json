@@ -162,6 +162,44 @@
         "spanish": "Spanish",
         "english": "English"
       }
+    },
+    "cotizador": {
+      "title": "Select your Modality",
+      "subtitle": "Choose the type of quote that best suits your shipping needs",
+      "aereo": {
+        "title": "Air",
+        "description": "Air freight quotation with rates per kilogram in different weight ranges",
+        "description1": " Early and fast deliveries",
+        "description2": " Ideal for high-value products",
+        "description3": " Rates based on weight",
+        "button": "Select Air →",
+        "badge": "⚡ Fastest",
+        "comparisonDescription": "Perfect for urgent shipments or high-value products. Guaranteed speed with competitive rates based on weight."
+      },
+      "fcl": {
+        "title": "Maritime FCL",
+        "description": "Full Container Load with rates per complete container (20GP, 40HQ, 40NOR)",
+        "description1": " Exclusive container",
+        "description2": " Ideal for large volumes",
+        "description3": " Delivery in longer times and lower cost",
+        "button": "Select FCL →",
+        "badge": "🔥 Popular",
+        "comparisonDescription": "Ideal for large volumes. Exclusive container for maximum security and better cost per unit transported."
+      },
+      "lcl": {
+        "title": "Maritime LCL",
+        "description": "Less than Container Load with rates per maritime consolidation",
+        "description1": " Share container space",
+        "description2": " Medium volumes",
+        "description3": " Multiple suppliers",
+        "button": "Select LCL →",
+        "badge": "💰 Cost-effective",
+        "comparisonDescription": "Economic solution for medium volumes. Share container space optimizing costs without sacrificing quality."
+      },
+      "volver": "Back to selection",
+      "comparison": {
+        "title": "Need help choosing?"
+      }
     }
   }
 }

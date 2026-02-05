@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import CotizadorAereo from "../quotes/QuoteAIR";
 import CotizadorFCL from "../quotes/QuoteFCL";
 import CotizadorLCL from "../quotes/QuoteLCL";
@@ -16,6 +17,7 @@ interface ItineraryState {
 const Cotizador: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [tipoCotizacion, setTipoCotizacion] = useState<TipoCotizacion>(null);
   const [preselectedData, setPreselectedData] = useState<ItineraryState | null>(
     null,
@@ -71,7 +73,7 @@ const Cotizador: React.FC = () => {
                 letterSpacing: "-1px",
               }}
             >
-              Selecciona tu Modalidad
+              {t("home.cotizador.title")}
             </h1>
 
             <p
@@ -83,8 +85,7 @@ const Cotizador: React.FC = () => {
                 lineHeight: "1.6",
               }}
             >
-              Escoge el tipo de cotización que mejor se adapte a tus necesidades
-              de envío
+              {t("home.cotizador.subtitle")}
             </p>
           </div>
 
@@ -144,7 +145,7 @@ const Cotizador: React.FC = () => {
                   animation: "pulse 2s ease infinite",
                 }}
               >
-                ⚡ Más Rápido
+                {t("home.cotizador.aereo.badge")}
               </div>
 
               {/* Icono Premium */}
@@ -177,7 +178,7 @@ const Cotizador: React.FC = () => {
                   letterSpacing: "-0.5px",
                 }}
               >
-                Aéreo
+                {t("home.cotizador.aereo.title")}
               </h2>
 
               {/* Descripción */}
@@ -189,8 +190,7 @@ const Cotizador: React.FC = () => {
                   marginBottom: "24px",
                 }}
               >
-                Cotización de carga aérea con tarifas por kilogramo en
-                diferentes rangos de peso
+                {t("home.cotizador.aereo.description")}
               </p>
 
               {/* Features */}
@@ -212,7 +212,7 @@ const Cotizador: React.FC = () => {
                     }}
                   />
                   <span style={{ fontSize: "14px", color: "#4b5563" }}>
-                    Entregas tempranas y rápidas
+                    {t("home.cotizador.aereo.description1")}
                   </span>
                 </div>
                 <div
@@ -232,7 +232,7 @@ const Cotizador: React.FC = () => {
                     }}
                   />
                   <span style={{ fontSize: "14px", color: "#4b5563" }}>
-                    Ideal para productos de alto valor
+                    {t("home.cotizador.aereo.description2")}
                   </span>
                 </div>
                 <div
@@ -251,7 +251,7 @@ const Cotizador: React.FC = () => {
                     }}
                   />
                   <span style={{ fontSize: "14px", color: "#4b5563" }}>
-                    Tarifas basadas en peso
+                    {t("home.cotizador.aereo.description3")}
                   </span>
                 </div>
               </div>
@@ -284,7 +284,7 @@ const Cotizador: React.FC = () => {
                     "0 4px 12px rgba(59, 130, 246, 0.3)";
                 }}
               >
-                Seleccionar Aéreo →
+                {t("home.cotizador.aereo.button")}
               </button>
             </div>
 
@@ -335,7 +335,7 @@ const Cotizador: React.FC = () => {
                   animation: "pulse 2s ease infinite",
                 }}
               >
-                🔥 Popular
+                {t("home.cotizador.fcl.badge")}
               </div>
 
               {/* Icono Premium */}
@@ -368,7 +368,7 @@ const Cotizador: React.FC = () => {
                   letterSpacing: "-0.5px",
                 }}
               >
-                Marítimo FCL
+                {t("home.cotizador.fcl.title")}
               </h2>
 
               {/* Descripción */}
@@ -380,8 +380,7 @@ const Cotizador: React.FC = () => {
                   marginBottom: "24px",
                 }}
               >
-                Full Container Load con tarifas por contenedor completo (20GP,
-                40HQ, 40NOR)
+                {t("home.cotizador.fcl.description")}
               </p>
 
               {/* Features */}
@@ -403,7 +402,7 @@ const Cotizador: React.FC = () => {
                     }}
                   />
                   <span style={{ fontSize: "14px", color: "#4b5563" }}>
-                    Contenedor exclusivo
+                    {t("home.cotizador.fcl.description1")}
                   </span>
                 </div>
                 <div
@@ -423,7 +422,7 @@ const Cotizador: React.FC = () => {
                     }}
                   />
                   <span style={{ fontSize: "14px", color: "#4b5563" }}>
-                    Ideal para grandes volúmenes
+                    {t("home.cotizador.fcl.description2")}
                   </span>
                 </div>
                 <div
@@ -442,7 +441,7 @@ const Cotizador: React.FC = () => {
                     }}
                   />
                   <span style={{ fontSize: "14px", color: "#4b5563" }}>
-                    Entrega en mayores tiempos y menor costo
+                    {t("home.cotizador.fcl.description3")}
                   </span>
                 </div>
               </div>
@@ -475,7 +474,7 @@ const Cotizador: React.FC = () => {
                     "0 4px 12px rgba(16, 185, 129, 0.3)";
                 }}
               >
-                Seleccionar FCL →
+                {t("home.cotizador.fcl.button")}
               </button>
             </div>
 
@@ -526,7 +525,7 @@ const Cotizador: React.FC = () => {
                   animation: "pulse 2s ease infinite",
                 }}
               >
-                💰 Económico
+                {t("home.cotizador.lcl.badge")}
               </div>
 
               {/* Icono Premium */}
@@ -559,7 +558,7 @@ const Cotizador: React.FC = () => {
                   letterSpacing: "-0.5px",
                 }}
               >
-                Marítimo LCL
+                {t("home.cotizador.lcl.title")}
               </h2>
 
               {/* Descripción */}
@@ -571,7 +570,7 @@ const Cotizador: React.FC = () => {
                   marginBottom: "24px",
                 }}
               >
-                Less than Container Load con tarifas por consolidación marítima
+                {t("home.cotizador.lcl.description")}
               </p>
 
               {/* Features */}
@@ -593,7 +592,7 @@ const Cotizador: React.FC = () => {
                     }}
                   />
                   <span style={{ fontSize: "14px", color: "#4b5563" }}>
-                    Comparte espacio en contenedor
+                    {t("home.cotizador.lcl.description1")}
                   </span>
                 </div>
                 <div
@@ -613,7 +612,7 @@ const Cotizador: React.FC = () => {
                     }}
                   />
                   <span style={{ fontSize: "14px", color: "#4b5563" }}>
-                    Volúmenes medianos
+                    {t("home.cotizador.lcl.description2")}
                   </span>
                 </div>
                 <div
@@ -632,7 +631,7 @@ const Cotizador: React.FC = () => {
                     }}
                   />
                   <span style={{ fontSize: "14px", color: "#4b5563" }}>
-                    Múltiples proveedores
+                    {t("home.cotizador.lcl.description3")}
                   </span>
                 </div>
               </div>
@@ -665,7 +664,7 @@ const Cotizador: React.FC = () => {
                     "0 4px 12px rgba(168, 85, 247, 0.3)";
                 }}
               >
-                Seleccionar LCL →
+                {t("home.cotizador.lcl.button")}
               </button>
             </div>
           </div>
@@ -714,7 +713,7 @@ const Cotizador: React.FC = () => {
                   margin: 0,
                 }}
               >
-                ¿Necesitas ayuda para elegir?
+                {t("home.cotizador.comparison.title")}
               </h3>
             </div>
 
@@ -763,7 +762,7 @@ const Cotizador: React.FC = () => {
                       margin: 0,
                     }}
                   >
-                    Aéreo
+                    {t("home.cotizador.aereo.title")}
                   </h4>
                 </div>
                 <p
@@ -774,9 +773,7 @@ const Cotizador: React.FC = () => {
                     margin: 0,
                   }}
                 >
-                  Perfecto para envíos urgentes o productos de alto valor.
-                  Velocidad garantizada con tarifas competitivas basadas en
-                  peso.
+                  {t("home.cotizador.aereo.comparisonDescription")}
                 </p>
               </div>
 
@@ -818,7 +815,7 @@ const Cotizador: React.FC = () => {
                       margin: 0,
                     }}
                   >
-                    FCL
+                    {t("home.cotizador.fcl.title")}
                   </h4>
                 </div>
                 <p
@@ -829,8 +826,7 @@ const Cotizador: React.FC = () => {
                     margin: 0,
                   }}
                 >
-                  Ideal para grandes volúmenes. Contenedor exclusivo para máxima
-                  seguridad y mejor costo por unidad transportada.
+                  {t("home.cotizador.fcl.comparisonDescription")}
                 </p>
               </div>
 
@@ -872,7 +868,7 @@ const Cotizador: React.FC = () => {
                       margin: 0,
                     }}
                   >
-                    LCL
+                    {t("home.cotizador.lcl.title")}
                   </h4>
                 </div>
                 <p
@@ -883,8 +879,7 @@ const Cotizador: React.FC = () => {
                     margin: 0,
                   }}
                 >
-                  Solución económica para volúmenes medianos. Comparte espacio
-                  en contenedor optimizando costos sin sacrificar calidad.
+                  {t("home.cotizador.lcl.comparisonDescription")}
                 </p>
               </div>
             </div>
@@ -973,7 +968,7 @@ const Cotizador: React.FC = () => {
               d="M12 8a.5.5 0 0 1-.5.5H5.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L5.707 7.5H11.5a.5.5 0 0 1 .5.5z"
             />
           </svg>
-          Volver a selección
+          {t("home.cotizador.volver")}
         </button>
 
         <div
