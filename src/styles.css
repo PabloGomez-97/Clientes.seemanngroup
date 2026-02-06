@@ -1,0 +1,10 @@
+/* src/styles.css - Global CSS Variables */
+
+:root {
+  --primary-color: #ff6200;
+  --secondary-color: #1a1a1a;
+  --primary-hover: #ff6200;
+  --primary-active: #ff6200;
+  --primary-rgb: 255, 98, 0;
+}
+/* var(--primary-hover) <- con ese lo colocamos */

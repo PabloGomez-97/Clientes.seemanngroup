@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { DocumentosSection } from "./Documents/DocumentosSection";
@@ -54,399 +54,32 @@ interface Quote {
   modeOfTransportation?: string;
   [key: string]: any;
 }
-const ITEMS_PER_PAGE = 15;
-// Componente para la Ruta de Envío (visible siempre)
-function RouteDisplay({ quote }: { quote: Quote }) {
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    return new Date(dateString).toLocaleDateString("es-CL", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
 
-  // Función para obtener la ruta de la bandera
-  const getFlagPath = (locationName: string | undefined) => {
-    if (!locationName) return null;
-    // Limpiar el nombre: reemplazar caracteres no válidos en nombres de archivo
-    const cleanName = locationName
-      .trim()
-      .replace(/\//g, "-") // Reemplazar / por -
-      .replace(/\\/g, "-") // Reemplazar \ por -
-      .replace(/:/g, "-") // Reemplazar : por -
-      .replace(/\*/g, "") // Eliminar *
-      .replace(/\?/g, "") // Eliminar ?
-      .replace(/"/g, "") // Eliminar "
-      .replace(/</g, "") // Eliminar
-      .replace(/>/g, "") // Eliminar >
-      .replace(/\|/g, "-"); // Reemplazar | por -
+const ITEMS_PER_PAGE = 10;
 
-    return `/paises/${cleanName}.png`;
-  };
+/* -- Helpers ------------------------------------------------ */
 
-  return (
-    <div
-      style={{
-        padding: "20px",
-        backgroundColor: "#f9fafb",
-        borderRadius: "8px",
-        marginBottom: "20px",
-      }}
-    >
-      <h6
-        style={{
-          margin: 0,
-          color: "#1f2937",
-          fontSize: "0.9rem",
-          fontWeight: "600",
-          marginBottom: "16px",
-        }}
-      >
-        Ruta de Envío
-      </h6>
+function isQuoteValid(validUntilDate?: string): boolean | null {
+  if (!validUntilDate) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const until = new Date(validUntilDate);
+  until.setHours(23, 59, 59, 999);
+  return until >= today;
+}
 
-      {/* Origen → Destino Principal */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-          marginBottom: "20px",
-          padding: "16px",
-          backgroundColor: "white",
-          borderRadius: "8px",
-          border: "2px solid #3b82f6",
-        }}
-      >
-        <div style={{ flex: 1 }}>
-          <div
-            style={{
-              fontSize: "0.7rem",
-              fontWeight: "600",
-              color: "#6b7280",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              marginBottom: "4px",
-            }}
-          >
-            Origen
-          </div>
-          <div
-            style={{
-              fontSize: "1.1rem",
-              fontWeight: "700",
-              color: "#1f2937",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            {getFlagPath(quote.origin) && (
-              <img
-                src={getFlagPath(quote.origin)!}
-                alt={quote.origin || ""}
-                style={{
-                  width: "24px",
-                  height: "18px",
-                  objectFit: "cover",
-                  borderRadius: "3px",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-                }}
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            )}
-            {quote.origin || "N/A"}
-          </div>
-          {quote.deperture_Date && (
-            <div
-              style={{
-                fontSize: "0.75rem",
-                color: "#6b7280",
-                marginTop: "4px",
-              }}
-            >
-              {formatDate(quote.deperture_Date)}
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "4px",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "1.5rem",
-              color: "#3b82f6",
-            }}
-          >
-            →
-          </div>
-          {quote.transitDays && (
-            <div
-              style={{
-                fontSize: "0.7rem",
-                fontWeight: "600",
-                color: "#3b82f6",
-                backgroundColor: "#dbeafe",
-                padding: "2px 8px",
-                borderRadius: "12px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {quote.transitDays} días
-            </div>
-          )}
-        </div>
-
-        <div style={{ flex: 1, textAlign: "right" }}>
-          <div style={{ flex: 1, textAlign: "right" }}>
-            <div
-              style={{
-                fontSize: "0.7rem",
-                fontWeight: "600",
-                color: "#6b7280",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                marginBottom: "4px",
-              }}
-            >
-              Destino
-            </div>
-            <div
-              style={{
-                fontSize: "1.1rem",
-                fontWeight: "700",
-                color: "#1f2937",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                justifyContent: "flex-end",
-              }}
-            >
-              {quote.destination || "N/A"}
-              {getFlagPath(quote.destination) && (
-                <img
-                  src={getFlagPath(quote.destination)!}
-                  alt={quote.destination || ""}
-                  style={{
-                    width: "24px",
-                    height: "18px",
-                    objectFit: "cover",
-                    borderRadius: "3px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-                  }}
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              )}
-            </div>
-          </div>
-          {quote.arrival_Date && (
-            <div
-              style={{
-                fontSize: "0.75rem",
-                color: "#6b7280",
-                marginTop: "4px",
-              }}
-            >
-              {formatDate(quote.arrival_Date)}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Detalles adicionales de la ruta */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "12px",
-        }}
-      >
-        {quote.portOfReceipt && (
-          <div
-            style={{
-              padding: "12px",
-              backgroundColor: "white",
-              borderRadius: "6px",
-              border: "1px solid #e5e7eb",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.7rem",
-                color: "#6b7280",
-                fontWeight: "600",
-                marginBottom: "4px",
-              }}
-            >
-              Puerto de Recepción
-            </div>
-            <div style={{ fontSize: "0.85rem", color: "#1f2937" }}>
-              {quote.portOfReceipt}
-            </div>
-          </div>
-        )}
-
-        {quote.pickupFrom && (
-          <div
-            style={{
-              padding: "12px",
-              backgroundColor: "white",
-              borderRadius: "6px",
-              border: "1px solid #e5e7eb",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.7rem",
-                color: "#6b7280",
-                fontWeight: "600",
-                marginBottom: "4px",
-              }}
-            >
-              Pickup Desde
-            </div>
-            <div style={{ fontSize: "0.85rem", color: "#1f2937" }}>
-              {quote.pickupFrom}
-            </div>
-            {quote.pickupFromAddress && (
-              <div
-                style={{
-                  fontSize: "0.75rem",
-                  color: "#6b7280",
-                  marginTop: "4px",
-                }}
-              >
-                {quote.pickupFromAddress}
-              </div>
-            )}
-          </div>
-        )}
-
-        {quote.shipper && (
-          <div
-            style={{
-              padding: "12px",
-              backgroundColor: "white",
-              borderRadius: "6px",
-              border: "1px solid #e5e7eb",
-              gridColumn: "span 2",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.7rem",
-                color: "#6b7280",
-                fontWeight: "600",
-                marginBottom: "4px",
-              }}
-            >
-              Remitente (Shipper)
-            </div>
-            <div
-              style={{
-                fontSize: "0.85rem",
-                color: "#1f2937",
-                fontWeight: "600",
-              }}
-            >
-              {quote.shipper}
-            </div>
-            {quote.shipperAddress && (
-              <div
-                style={{
-                  fontSize: "0.75rem",
-                  color: "#6b7280",
-                  marginTop: "4px",
-                }}
-              >
-                {quote.shipperAddress}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+function StatusBadge({ validUntilDate }: { validUntilDate?: string }) {
+  const valid = isQuoteValid(validUntilDate);
+  if (valid === null)
+    return <span className="qv-badge qv-badge--neutral">---</span>;
+  return valid ? (
+    <span className="qv-badge qv-badge--valid">Valida</span>
+  ) : (
+    <span className="qv-badge qv-badge--expired">Vencida</span>
   );
 }
 
-// Componente para Secciones Colapsables
-function CollapsibleSection({
-  title,
-  children,
-  defaultOpen = false,
-  icon = "📋",
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-  icon?: string;
-}) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div
-      style={{
-        marginBottom: "12px",
-        border: "1px solid #e5e7eb",
-        borderRadius: "8px",
-        overflow: "hidden",
-      }}
-    >
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          width: "100%",
-          padding: "12px 16px",
-          backgroundColor: isOpen ? "#f9fafb" : "white",
-          border: "none",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          cursor: "pointer",
-          transition: "background-color 0.2s",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span>{icon}</span>
-          <span
-            style={{ fontWeight: "600", color: "#1f2937", fontSize: "0.9rem" }}
-          >
-            {title}
-          </span>
-        </div>
-        <span
-          style={{
-            fontSize: "1.2rem",
-            color: "#6b7280",
-            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.2s",
-          }}
-        >
-          ▼
-        </span>
-      </button>
-
-      {isOpen && (
-        <div style={{ padding: "16px", backgroundColor: "white" }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Componente para mostrar un campo
+/* -- InfoField (modal) -------------------------------------- */
 function InfoField({
   label,
   value,
@@ -458,357 +91,243 @@ function InfoField({
 }) {
   if (value === null || value === undefined || value === "" || value === "N/A")
     return null;
-
   return (
-    <div
-      style={{
-        marginBottom: "12px",
-        flex: fullWidth ? "1 1 100%" : "1 1 48%",
-        minWidth: fullWidth ? "100%" : "200px",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "0.7rem",
-          fontWeight: "600",
-          color: "#6b7280",
-          textTransform: "uppercase",
-          letterSpacing: "0.5px",
-          marginBottom: "4px",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: "0.875rem",
-          color: "#1f2937",
-          wordBreak: "break-word",
-        }}
-      >
-        {String(value)}
-      </div>
+    <div className={`qv-info-field ${fullWidth ? "qv-info-field--full" : ""}`}>
+      <div className="qv-info-field__label">{label}</div>
+      <div className="qv-info-field__value">{String(value)}</div>
     </div>
   );
 }
 
+/* -- CollapsibleSection (modal) ----------------------------- */
+function CollapsibleSection({
+  title,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  return (
+    <div className="qv-collapsible">
+      <button
+        className={`qv-collapsible__header ${isOpen ? "qv-collapsible__header--open" : ""}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="qv-collapsible__title">{title}</span>
+        <svg
+          className={`qv-collapsible__chevron ${isOpen ? "qv-collapsible__chevron--open" : ""}`}
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {isOpen && <div className="qv-collapsible__body">{children}</div>}
+    </div>
+  );
+}
+
+/* -- DetailTabs (accordion inline tabs) --------------------- */
+interface TabDef {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+  content: React.ReactNode;
+  hidden?: boolean;
+}
+
+function DetailTabs({ tabs }: { tabs: TabDef[] }) {
+  const visibleTabs = tabs.filter((t) => !t.hidden);
+  const [activeTab, setActiveTab] = useState(visibleTabs[0]?.key || "");
+
+  const current = visibleTabs.find((t) => t.key === activeTab);
+
+  return (
+    <div className="qv-tabs">
+      <div className="qv-tabs__nav">
+        {visibleTabs.map((tab) => (
+          <button
+            key={tab.key}
+            className={`qv-tabs__btn ${activeTab === tab.key ? "qv-tabs__btn--active" : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab(tab.key);
+            }}
+          >
+            {tab.icon && <span className="qv-tabs__icon">{tab.icon}</span>}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="qv-tabs__panel">{current?.content}</div>
+    </div>
+  );
+}
+
+/* ===========================================================
+   MAIN COMPONENT
+   =========================================================== */
+
 function QuotesView() {
-  const { accessToken, onLogout } = useOutletContext<OutletContext>();
+  const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
+
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Función para obtener la ruta de la bandera
-  const getFlagPath = (locationName: string | undefined) => {
-    if (!locationName) return null;
-    // Limpiar el nombre: reemplazar caracteres no válidos en nombres de archivo
-    const cleanName = locationName
-      .trim()
-      .replace(/\//g, "-") // Reemplazar / por -
-      .replace(/\\/g, "-") // Reemplazar \ por -
-      .replace(/:/g, "-") // Reemplazar : por -
-      .replace(/\*/g, "") // Eliminar *
-      .replace(/\?/g, "") // Eliminar ?
-      .replace(/"/g, "") // Eliminar "
-      .replace(/</g, "") // Eliminar
-      .replace(/>/g, "") // Eliminar >
-      .replace(/\|/g, "-"); // Reemplazar | por -
-
-    return `/paises/${cleanName}.png`;
-  };
-
-  // Componente para mostrar ubicación con bandera
-  const LocationWithFlag = ({ location }: { location: string | undefined }) => {
-    if (!location) return <>-</>;
-
-    const flagPath = getFlagPath(location);
-
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        {flagPath && (
-          <img
-            src={flagPath}
-            alt={location}
-            style={{
-              width: "20px",
-              height: "15px",
-              objectFit: "cover",
-              borderRadius: "2px",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-            }}
-            onError={(e) => {
-              // Si la imagen no carga, ocultar el elemento
-              e.currentTarget.style.display = "none";
-            }}
-          />
-        )}
-        <span
-          style={{
-            fontWeight: "600",
-            maxWidth: "120px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {location}
-        </span>
-      </div>
-    );
-  };
-
-  // Paginación
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreQuotes, setHasMoreQuotes] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [rowsPerPage, setRowsPerPage] = useState(ITEMS_PER_PAGE);
+  const [tablePage, setTablePage] = useState(1);
 
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-
-  const [openAccordions, setOpenAccordions] = useState<(string | number)[]>([]);
-  const [activeTabs, setActiveTabs] = useState<Record<string | number, number>>(
-    {},
-  );
+  // Accordion
+  const [expandedQuoteId, setExpandedQuoteId] = useState<
+    string | number | null
+  >(null);
   const [documentCounts, setDocumentCounts] = useState<
     Record<string | number, number>
   >({});
 
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<string>("number");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // Search
+  const [quickSearch, setQuickSearch] = useState("");
+  const [showingAll, setShowingAll] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [searchNumber, setSearchNumber] = useState("");
   const [searchDate, setSearchDate] = useState("");
   const [searchStartDate, setSearchStartDate] = useState("");
   const [searchEndDate, setSearchEndDate] = useState("");
-  const [searchNumber, setSearchNumber] = useState("");
   const [searchOrigin, setSearchOrigin] = useState("");
   const [searchDestination, setSearchDestination] = useState("");
-  const [showingAll, setShowingAll] = useState(false);
-  const [showAllQuotes, setShowAllQuotes] = useState(false); // Estado para controlar si se muestran todas las cotizaciones
-  const [quickSearch, setQuickSearch] = useState("");
+  const [showAllQuotes, setShowAllQuotes] = useState(false);
 
-  // Tooltips estado
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-
-  // Define los mensajes de ayuda para cada columna
-  const tooltipMessages = {
-    numero: "Número único de identificación de la cotización",
-    gasto: "Se excluyen impuestos asociados",
-  };
-
-  // Agregar estas funciones helper:
-  const toggleAccordion = (quoteId: string | number) => {
-    setOpenAccordions((prev) => {
-      const isOpen = prev.includes(quoteId);
-
-      if (isOpen) {
-        return prev.filter((id) => id !== quoteId);
-      } else {
-        if (prev.length >= 3) {
-          return [...prev.slice(1), quoteId];
-        }
-        return [...prev, quoteId];
-      }
+  /* -- Format helpers --------------------------------------- */
+  const formatDateShort = (dateString?: string) => {
+    if (!dateString) return "---";
+    return new Date(dateString).toLocaleDateString("es-CL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
-
-    if (!activeTabs[quoteId]) {
-      setActiveTabs((prev) => ({ ...prev, [quoteId]: 0 }));
-    }
   };
 
-  const setActiveTab = (quoteId: string | number, tabIndex: number) => {
-    setActiveTabs((prev) => ({ ...prev, [quoteId]: tabIndex }));
-  };
-
-  // Componente de Tooltip mejorado con posicionamiento inteligente
-  const TooltipIcon = ({ id, message }: { id: string; message: string }) => {
-    const iconRef = useRef<HTMLDivElement>(null);
-
-    const handleMouseEnter = () => {
-      if (iconRef.current) {
-        const rect = iconRef.current.getBoundingClientRect();
-        setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top });
-        setActiveTooltip(id);
-      }
-    };
-
-    const handleMouseLeave = () => {
-      setActiveTooltip(null);
-      setTooltipPosition(null);
-    };
-
-    // Calcular si el tooltip debe ir a la izquierda o derecha
-    const getTooltipStyle = () => {
-      if (!tooltipPosition) return {};
-
-      const windowWidth = window.innerWidth;
-      const tooltipWidth = 280; // maxWidth del tooltip
-      const shouldAlignRight =
-        tooltipPosition.x + tooltipWidth / 2 > windowWidth - 20;
-      const shouldAlignLeft = tooltipPosition.x - tooltipWidth / 2 < 20;
-
-      let transform = "translate(-50%, -100%)";
-      let left = tooltipPosition.x;
-
-      if (shouldAlignRight) {
-        // Si está muy a la derecha, alinear el tooltip a la derecha
-        transform = "translate(-100%, -100%)";
-        left = tooltipPosition.x + 8; // pequeño offset
-      } else if (shouldAlignLeft) {
-        // Si está muy a la izquierda, alinear el tooltip a la izquierda
-        transform = "translate(0%, -100%)";
-        left = tooltipPosition.x - 8;
-      }
-
-      return {
-        position: "fixed" as const,
-        left: `${left}px`,
-        top: `${tooltipPosition.y}px`,
-        transform: transform,
-        marginTop: "-12px",
-      };
-    };
-
-    return (
-      <div
-        ref={iconRef}
-        style={{
-          position: "relative",
-          display: "inline-block",
-          marginLeft: "6px",
-          zIndex: 9999,
-        }}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "16px",
-            height: "16px",
-            backgroundColor: "#3b82f6",
-            color: "white",
-            borderRadius: "50%",
-            fontSize: "11px",
-            fontWeight: "bold",
-            cursor: "help",
-            userSelect: "none",
-          }}
-        >
-          ?
-        </span>
-        {activeTooltip === id && tooltipPosition && (
-          <div
-            style={{
-              ...getTooltipStyle(),
-              padding: "10px 14px",
-              backgroundColor: "#1f2937",
-              color: "white",
-              borderRadius: "8px",
-              fontSize: "0.8rem",
-              lineHeight: "1.4",
-              whiteSpace: "normal",
-              maxWidth: "280px",
-              minWidth: "200px",
-              width: "max-content",
-              zIndex: 99999,
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-              pointerEvents: "none",
-              textAlign: "center",
-              wordWrap: "break-word",
-            }}
-          >
-            {message}
-            {/* Flecha del tooltip - ajustar posición según alineación */}
-            <div
-              style={{
-                position: "absolute",
-                top: "100%",
-                left:
-                  tooltipPosition.x + 280 / 2 > window.innerWidth - 20
-                    ? "auto"
-                    : tooltipPosition.x - 280 / 2 < 20
-                      ? "20px"
-                      : "50%",
-                right:
-                  tooltipPosition.x + 280 / 2 > window.innerWidth - 20
-                    ? "20px"
-                    : "auto",
-                transform:
-                  tooltipPosition.x + 280 / 2 > window.innerWidth - 20 ||
-                  tooltipPosition.x - 280 / 2 < 20
-                    ? "none"
-                    : "translateX(-50%)",
-                width: 0,
-                height: 0,
-                borderLeft: "6px solid transparent",
-                borderRight: "6px solid transparent",
-                borderTop: "6px solid #1f2937",
-              }}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Función para formatear precios en CLP
-  const formatCLP = (priceString?: string) => {
-    if (!priceString) return null;
-
-    // Extraer solo los números del string
-    const numberMatch = priceString.match(/[\d.,]+/);
-    if (!numberMatch) return priceString;
-
-    // Convertir a número, manejando tanto puntos como comas
-    const cleanNumber = numberMatch[0].replace(/,/g, "");
-    const number = parseFloat(cleanNumber);
-
-    if (isNaN(number)) return priceString;
-
-    // Formatear con separadores de miles
-    const formatted = new Intl.NumberFormat("es-CL").format(number);
-
-    return `$${formatted} CLP`;
-  };
-
-  const formatDate = (dateString?: string) => {
+  const formatDateLong = (dateString?: string) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-CL", {
+    return new Date(dateString).toLocaleDateString("es-CL", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
   };
 
+  const formatCLP = (priceString?: string) => {
+    if (!priceString) return null;
+    const numberMatch = priceString.match(/[\d.,]+/);
+    if (!numberMatch) return priceString;
+    const cleanNumber = numberMatch[0].replace(/,/g, "");
+    const num = parseFloat(cleanNumber);
+    if (isNaN(num)) return priceString;
+    return `$${new Intl.NumberFormat("es-CL").format(num)} CLP`;
+  };
+
+  /* -- Sorting ---------------------------------------------- */
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  };
+
+  const sortedQuotes = useMemo(() => {
+    const sorted = [...displayedQuotes].sort((a, b) => {
+      let valA: any, valB: any;
+      switch (sortColumn) {
+        case "number":
+          valA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
+          valB = parseInt(b.number?.replace(/\D/g, "") || "0", 10);
+          break;
+        case "date":
+          valA = a.date ? new Date(a.date).getTime() : 0;
+          valB = b.date ? new Date(b.date).getTime() : 0;
+          break;
+        case "validUntil":
+          valA = a.validUntil_Date ? new Date(a.validUntil_Date).getTime() : 0;
+          valB = b.validUntil_Date ? new Date(b.validUntil_Date).getTime() : 0;
+          break;
+        case "origin":
+          valA = (a.origin || "").toLowerCase();
+          valB = (b.origin || "").toLowerCase();
+          break;
+        case "destination":
+          valA = (a.destination || "").toLowerCase();
+          valB = (b.destination || "").toLowerCase();
+          break;
+        case "transit":
+          valA = a.transitDays || 0;
+          valB = b.transitDays || 0;
+          break;
+        default:
+          return 0;
+      }
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [displayedQuotes, sortColumn, sortDirection]);
+
+  /* -- Table pagination (client-side slice) ----------------- */
+  const totalTablePages = Math.max(
+    1,
+    Math.ceil(sortedQuotes.length / rowsPerPage),
+  );
+  const paginatedQuotes = useMemo(() => {
+    const start = (tablePage - 1) * rowsPerPage;
+    return sortedQuotes.slice(start, start + rowsPerPage);
+  }, [sortedQuotes, tablePage, rowsPerPage]);
+
+  const paginationRangeText = useMemo(() => {
+    if (sortedQuotes.length === 0) return "0 de 0";
+    const start = (tablePage - 1) * rowsPerPage + 1;
+    const end = Math.min(tablePage * rowsPerPage, sortedQuotes.length);
+    return `${start}-${end} de ${sortedQuotes.length}`;
+  }, [tablePage, rowsPerPage, sortedQuotes.length]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [displayedQuotes]);
+
+  /* -- Fetch ------------------------------------------------ */
   const fetchQuotes = async (page: number = 1, append: boolean = false) => {
     if (!accessToken) {
       setError("Debes ingresar un token primero");
       return;
     }
-
     if (!user?.username) {
       setError("No se pudo obtener el nombre de usuario");
       return;
     }
-
-    // Si es la primera página, mostrar loading completo
-    if (page === 1) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
-
+    if (page === 1) setLoading(true);
+    else setLoadingMore(true);
     setError(null);
 
     try {
-      // Construir URL con query parameters
       const queryParams = new URLSearchParams({
         ConsigneeName: user.username,
         Page: page.toString(),
@@ -829,171 +348,99 @@ function QuotesView() {
       );
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(
-            "Token inválido o expirado. Obtén un nuevo token desde Postman.",
-          );
-        }
+        if (response.status === 401)
+          throw new Error("Token invalido o expirado.");
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
       const quotesArray: Quote[] = Array.isArray(data) ? data : [];
-
-      // Ordenar las cotizaciones por fecha (más nueva primero)
-      const sortedQuotes = quotesArray.sort((a, b) => {
-        const numberA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
-        const numberB = parseInt(b.number?.replace(/\D/g, "") || "0", 10);
-        return numberB - numberA; // Descendente (mayor al menor)
+      const sortedArr = quotesArray.sort((a, b) => {
+        const nA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
+        const nB = parseInt(b.number?.replace(/\D/g, "") || "0", 10);
+        return nB - nA;
       });
 
-      // Si recibimos menos de 50 cotizaciones, no hay más páginas
       setHasMoreQuotes(quotesArray.length === ITEMS_PER_PAGE);
 
+      const cacheKey = `quotesCache_${user.username}`;
       if (append && page > 1) {
-        // Agregar las nuevas cotizaciones a las existentes y re-ordenar todo
-        const combined = [...quotes, ...sortedQuotes];
-        const resorted = combined.sort((a, b) => {
-          const numberA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
-          const numberB = parseInt(b.number?.replace(/\D/g, "") || "0", 10);
-          return numberB - numberA; // Descendente (mayor al menor)
+        const combined = [...quotes, ...sortedArr].sort((a, b) => {
+          const nA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
+          const nB = parseInt(b.number?.replace(/\D/g, "") || "0", 10);
+          return nB - nA;
         });
-        setQuotes(resorted);
-        setDisplayedQuotes(resorted);
-
-        // Guardar en caché con el username del usuario
-        const cacheKey = `quotesCache_${user.username}`;
-        localStorage.setItem(cacheKey, JSON.stringify(resorted));
+        setQuotes(combined);
+        setDisplayedQuotes(combined);
+        localStorage.setItem(cacheKey, JSON.stringify(combined));
         localStorage.setItem(
           `${cacheKey}_timestamp`,
           new Date().getTime().toString(),
         );
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       } else {
-        // Primera carga: reemplazar todo
-        setQuotes(sortedQuotes);
-        setDisplayedQuotes(sortedQuotes);
+        setQuotes(sortedArr);
+        setDisplayedQuotes(sortedArr);
         setShowingAll(false);
-
-        // Guardar en caché con el username del usuario
-        const cacheKey = `quotesCache_${user.username}`;
-        localStorage.setItem(cacheKey, JSON.stringify(sortedQuotes));
+        localStorage.setItem(cacheKey, JSON.stringify(sortedArr));
         localStorage.setItem(
           `${cacheKey}_timestamp`,
           new Date().getTime().toString(),
         );
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       }
-
-      console.log(
-        `Página ${page}: ${quotesArray.length} cotizaciones cargadas`,
-      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
-      console.error("Error completo:", err);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
   };
 
+  /* -- Initial load / cache --------------------------------- */
   useEffect(() => {
-    if (!accessToken) {
-      console.log("No hay token disponible todavía");
-      return;
-    }
-
-    if (!user?.username) {
-      console.log("No hay usuario disponible todavía");
-      return;
-    }
-
-    // Intentar cargar desde caché primero
+    if (!accessToken || !user?.username) return;
     const cacheKey = `quotesCache_${user.username}`;
     const cachedQuotes = localStorage.getItem(cacheKey);
     const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
     const cachedPage = localStorage.getItem(`${cacheKey}_page`);
 
     if (cachedQuotes && cacheTimestamp) {
-      const oneHour = 60 * 60 * 1000; // 1 hora en milisegundos
-      const now = new Date().getTime();
-      const cacheAge = now - parseInt(cacheTimestamp);
-
+      const oneHour = 60 * 60 * 1000;
+      const cacheAge = new Date().getTime() - parseInt(cacheTimestamp);
       if (cacheAge < oneHour) {
-        // El caché es válido (menos de 1 hora)
         const parsed = JSON.parse(cachedQuotes);
         setQuotes(parsed);
         setDisplayedQuotes(parsed);
-        setShowingAll(false);
-
-        // Restaurar la página actual
-        if (cachedPage) {
-          setCurrentPage(parseInt(cachedPage));
-        }
-
-        // Verificar si hay más cotizaciones disponibles
-        // Si la última carga fue de 50 cotizaciones, probablemente hay más
+        if (cachedPage) setCurrentPage(parseInt(cachedPage));
         const lastPageSize = parsed.length % ITEMS_PER_PAGE;
         setHasMoreQuotes(lastPageSize === 0 && parsed.length >= ITEMS_PER_PAGE);
-
         setLoading(false);
-        console.log(
-          "✅ Cargando desde caché - datos guardados hace",
-          Math.floor(cacheAge / 60000),
-          "minutos",
-        );
-        console.log(`📋 ${parsed.length} cotizaciones en caché`);
         return;
       } else {
-        // El caché expiró, limpiarlo
-        console.log("🗑️ Caché expirado, limpiando...");
         localStorage.removeItem(cacheKey);
         localStorage.removeItem(`${cacheKey}_timestamp`);
         localStorage.removeItem(`${cacheKey}_page`);
       }
     }
-
-    // No hay caché válido, cargar desde la API
     setCurrentPage(1);
     fetchQuotes(1, false);
   }, [accessToken, user?.username]);
 
-  // Obtener orígenes y destinos únicos
-  const uniqueOrigins = useMemo(() => {
-    const origins = quotes
-      .map((q) => q.origin)
-      .filter((o) => o && o !== "N/A")
-      .filter((value, index, self) => self.indexOf(value) === index)
-      .sort();
-    return origins;
-  }, [quotes]);
-
-  const uniqueDestinations = useMemo(() => {
-    const destinations = quotes
-      .map((q) => q.destination)
-      .filter((d) => d && d !== "N/A")
-      .filter((value, index, self) => self.indexOf(value) === index)
-      .sort();
-    return destinations;
-  }, [quotes]);
-
+  /* -- Quick search ----------------------------------------- */
   useEffect(() => {
     const t = setTimeout(() => {
       const term = quickSearch.trim().toLowerCase();
-
       if (!term) {
         setDisplayedQuotes(quotes);
         setShowingAll(false);
         return;
       }
-
       const results = quotes.filter((q) => {
-        const number = (q.number || "").toString().toLowerCase();
-        const origin = (q.origin || "").toString().toLowerCase();
-        const destination = (q.destination || "").toString().toLowerCase();
-        const date = (q.date || "").toString().toLowerCase();
-
-        // Ajusta campos si quieres (customerReference, shipper, etc.)
+        const number = (q.number || "").toLowerCase();
+        const origin = (q.origin || "").toLowerCase();
+        const destination = (q.destination || "").toLowerCase();
+        const date = (q.date || "").toLowerCase();
         return (
           number.includes(term) ||
           origin.includes(term) ||
@@ -1001,19 +448,37 @@ function QuotesView() {
           date.includes(term)
         );
       });
-
       setDisplayedQuotes(results);
       setShowingAll(true);
-    }, 250); // 250ms
-
+    }, 250);
     return () => clearTimeout(t);
   }, [quickSearch, quotes]);
 
-  // Función para cargar más cotizaciones (paginación)
+  /* -- Unique origins/destinations -------------------------- */
+  const uniqueOrigins = useMemo(
+    () =>
+      quotes
+        .map((q) => q.origin)
+        .filter((o) => o && o !== "N/A")
+        .filter((v, i, s) => s.indexOf(v) === i)
+        .sort(),
+    [quotes],
+  );
+  const uniqueDestinations = useMemo(
+    () =>
+      quotes
+        .map((q) => q.destination)
+        .filter((d) => d && d !== "N/A")
+        .filter((v, i, s) => s.indexOf(v) === i)
+        .sort(),
+    [quotes],
+  );
+
+  /* -- Search handlers -------------------------------------- */
   const loadMoreQuotes = () => {
-    const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
-    fetchQuotes(nextPage, true);
+    const next = currentPage + 1;
+    setCurrentPage(next);
+    fetchQuotes(next, true);
   };
 
   const handleSearchByNumber = () => {
@@ -1023,14 +488,10 @@ function QuotesView() {
       setShowAllQuotes(false);
       return;
     }
-
-    const searchTerm = searchNumber.trim().toLowerCase();
-    const results = quotes.filter((quote) => {
-      const number = (quote.number || "").toString().toLowerCase();
-      return number.includes(searchTerm);
-    });
-
-    setDisplayedQuotes(results);
+    const term = searchNumber.trim().toLowerCase();
+    setDisplayedQuotes(
+      quotes.filter((q) => (q.number || "").toLowerCase().includes(term)),
+    );
     setShowingAll(true);
     setShowAllQuotes(false);
     setShowSearchModal(false);
@@ -1043,14 +504,12 @@ function QuotesView() {
       setShowAllQuotes(false);
       return;
     }
-
-    const results = quotes.filter((quote) => {
-      if (!quote.date) return false;
-      const quoteDate = new Date(quote.date).toISOString().split("T")[0];
-      return quoteDate === searchDate;
-    });
-
-    setDisplayedQuotes(results);
+    setDisplayedQuotes(
+      quotes.filter((q) => {
+        if (!q.date) return false;
+        return new Date(q.date).toISOString().split("T")[0] === searchDate;
+      }),
+    );
     setShowingAll(true);
     setShowAllQuotes(false);
     setShowSearchModal(false);
@@ -1063,27 +522,25 @@ function QuotesView() {
       setShowAllQuotes(false);
       return;
     }
-
-    const results = quotes.filter((quote) => {
-      if (!quote.date) return false;
-      const quoteDate = new Date(quote.date);
-
-      if (searchStartDate && searchEndDate) {
-        const start = new Date(searchStartDate);
-        const end = new Date(searchEndDate);
-        end.setHours(23, 59, 59, 999);
-        return quoteDate >= start && quoteDate <= end;
-      } else if (searchStartDate) {
-        return quoteDate >= new Date(searchStartDate);
-      } else if (searchEndDate) {
-        const end = new Date(searchEndDate);
-        end.setHours(23, 59, 59, 999);
-        return quoteDate <= end;
-      }
-      return false;
-    });
-
-    setDisplayedQuotes(results);
+    setDisplayedQuotes(
+      quotes.filter((q) => {
+        if (!q.date) return false;
+        const d = new Date(q.date);
+        if (searchStartDate && searchEndDate) {
+          const s = new Date(searchStartDate);
+          const e = new Date(searchEndDate);
+          e.setHours(23, 59, 59, 999);
+          return d >= s && d <= e;
+        }
+        if (searchStartDate) return d >= new Date(searchStartDate);
+        if (searchEndDate) {
+          const e = new Date(searchEndDate);
+          e.setHours(23, 59, 59, 999);
+          return d <= e;
+        }
+        return false;
+      }),
+    );
     setShowingAll(true);
     setShowAllQuotes(false);
     setShowSearchModal(false);
@@ -1096,15 +553,13 @@ function QuotesView() {
       setShowAllQuotes(false);
       return;
     }
-
-    const results = quotes.filter((quote) => {
-      const matchOrigin = !searchOrigin || quote.origin === searchOrigin;
-      const matchDestination =
-        !searchDestination || quote.destination === searchDestination;
-      return matchOrigin && matchDestination;
-    });
-
-    setDisplayedQuotes(results);
+    setDisplayedQuotes(
+      quotes.filter(
+        (q) =>
+          (!searchOrigin || q.origin === searchOrigin) &&
+          (!searchDestination || q.destination === searchDestination),
+      ),
+    );
     setShowingAll(true);
     setShowAllQuotes(false);
     setShowSearchModal(false);
@@ -1120,53 +575,53 @@ function QuotesView() {
     setSearchDestination("");
     setDisplayedQuotes(quotes);
     setShowingAll(false);
-    setShowAllQuotes(false); // Resetear el estado de ver todas
+    setShowAllQuotes(false);
   };
 
-  // Función para refrescar datos (limpiar caché y recargar)
   const refreshQuotes = () => {
     if (!user?.username) return;
-
-    // Limpiar caché del usuario actual
-    const cacheKey = `quotesCache_${user.username}`;
-    localStorage.removeItem(cacheKey);
-    localStorage.removeItem(`${cacheKey}_timestamp`);
-    localStorage.removeItem(`${cacheKey}_page`);
-
-    // Recargar desde la API
+    const k = `quotesCache_${user.username}`;
+    localStorage.removeItem(k);
+    localStorage.removeItem(`${k}_timestamp`);
+    localStorage.removeItem(`${k}_page`);
     setCurrentPage(1);
     setQuotes([]);
     setDisplayedQuotes([]);
     fetchQuotes(1, false);
-
-    console.log("🔄 Datos refrescados desde la API");
   };
 
-  const openModal = (quote: Quote) => {
-    setSelectedQuote(quote);
-    setShowModal(true);
+  const toggleAccordion = (quote: Quote) => {
+    const quoteKey = quote.id || quote.number || "";
+    setExpandedQuoteId((prev) => (prev === quoteKey ? null : quoteKey));
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedQuote(null);
+  /* -- Sort icon -------------------------------------------- */
+  const SortIcon = ({ column }: { column: string }) => {
+    const active = sortColumn === column;
+    return (
+      <svg
+        className={`qv-sort-icon ${active ? "qv-sort-icon--active" : ""} ${active && sortDirection === "asc" ? "qv-sort-icon--asc" : ""}`}
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+      >
+        <path d="M7 10l5 5 5-5z" />
+      </svg>
+    );
   };
 
-  const openSearchModal = () => {
-    setShowSearchModal(true);
-  };
-
-  const closeSearchModal = () => {
-    setShowSearchModal(false);
-  };
-
+  /* =========================================================
+     RENDER
+     ========================================================= */
   return (
-    <>
-      {/* Interactive Map */}
+    <div className="qv-container">
+      <h2 className="hal-app-name">Mis Cotizaciones</h2>
+      {/* -- Map --------------------------------------------- */}
       <div
         style={{
           marginBottom: "32px",
-          height: "350px", // 👈 MODIFICA ESTE VALOR para ajustar altura (300px-400px)
+          height: "350px",
           borderRadius: "12px",
           overflow: "hidden",
           border: "1px solid #e5e7eb",
@@ -1188,376 +643,154 @@ function QuotesView() {
         </MapContainer>
       </div>
 
-      {/* Botones de acción */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: "12px",
-          marginBottom: "20px",
-          flexWrap: "wrap",
-          fontFamily: "Poppins, sans-serif",
-        }}
-      >
-        <input
-          value={quickSearch}
-          onChange={(e) => setQuickSearch(e.target.value)}
-          placeholder="Buscar (número, origen, destino...)"
-          style={{
-            backgroundColor: "white",
-            color: "#111827",
-            border: "1px solid #d1d5db",
-            borderRadius: "0.375rem",
-            padding: "0.625rem 1.25rem",
-            fontSize: "0.800rem",
-            fontWeight: "400",
-            outline: "none",
-            minWidth: "300px",
-            height: "38px",
-            display: "flex",
-            alignItems: "center",
-          }}
-        />
-
-        {/* Botón Actualizar */}
-        <div className="refresh-button-container">
-          <button
-            onClick={refreshQuotes}
-            className="btn-refresh"
-            title="Actualizar lista de cotizaciones"
-          >
-            🔄 Actualizar
-          </button>
+      {/* -- Toolbar ----------------------------------------- */}
+      <div className="qv-toolbar">
+        <div className="qv-toolbar__left">
+          <input
+            className="qv-search-input"
+            value={quickSearch}
+            onChange={(e) => setQuickSearch(e.target.value)}
+            placeholder="Buscar por numero, origen, destino..."
+          />
         </div>
-
-        {/* Indicador de carga */}
-        {loadingMore && (
-          <div
-            style={{
-              padding: "8px 14px",
-              color: "#6b7280",
-              fontSize: "0.85rem",
-              fontWeight: "400",
-            }}
-          >
-            Cargando…
-          </div>
-        )}
-
-        {/* Limpiar filtros */}
-        {showingAll && (
+        <div className="qv-toolbar__right">
+          {showingAll && (
+            <button className="qv-btn qv-btn--ghost" onClick={clearSearch}>
+              Limpiar filtros
+            </button>
+          )}
           <button
-            onClick={clearSearch}
+            className="qv-btn"
             style={{
-              backgroundColor: "transparent",
-              color: "#6b7280",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              padding: "8px 14px",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              fontWeight: "400",
-              transition: "color 0.2s ease, border-color 0.2s ease",
+              color: "white",
+              backgroundColor: "var(--primary-color)",
             }}
+            onClick={refreshQuotes}
           >
-            Limpiar filtros
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            Actualizar
           </button>
-        )}
+          {loadingMore && <span className="qv-loading-text">Cargando...</span>}
+        </div>
       </div>
 
-      {/* Modal de Búsqueda */}
+      {/* -- Search modal ------------------------------------ */}
       {showSearchModal && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-          style={{
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            zIndex: 9999,
-            animation: "fadeIn 0.3s ease-in-out",
-          }}
-          onClick={closeSearchModal}
-        >
+        <div className="qv-overlay" onClick={() => setShowSearchModal(false)}>
           <div
-            className="bg-white rounded p-4"
-            style={{
-              maxWidth: "500px",
-              width: "90%",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            }}
+            className="qv-modal qv-modal--search"
             onClick={(e) => e.stopPropagation()}
           >
-            <h5 style={{ marginBottom: "20px", color: "#1f2937" }}>
-              Buscar Cotizaciones
-            </h5>
-
-            {/* Búsqueda por Número */}
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Número
-              </label>
+            <h5 className="qv-modal__title">Buscar Cotizaciones</h5>
+            <div className="qv-search-section">
+              <label className="qv-label">Por Numero</label>
               <input
-                type="text"
+                className="qv-input"
                 value={searchNumber}
                 onChange={(e) => setSearchNumber(e.target.value)}
-                placeholder="Ingresa el número de cotización"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                }}
+                placeholder="Numero de cotizacion"
               />
               <button
+                className="qv-btn qv-btn--primary qv-btn--full"
                 onClick={handleSearchByNumber}
-                style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
               >
-                Buscar por Número
+                Buscar
               </button>
             </div>
-
-            {/* Búsqueda por Ruta */}
-            <div
-              style={{
-                borderTop: "1px solid #e5e7eb",
-                paddingTop: "20px",
-                marginBottom: "20px",
-              }}
-            >
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Ruta
-              </label>
-              <div
-                style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
-              >
+            <div className="qv-search-section">
+              <label className="qv-label">Por Ruta</label>
+              <div className="qv-search-row">
                 <select
+                  className="qv-input"
                   value={searchOrigin}
                   onChange={(e) => setSearchOrigin(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: "10px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontSize: "0.9rem",
-                  }}
                 >
                   <option value="">Origen</option>
-                  {uniqueOrigins.map((origin) => (
-                    <option key={origin} value={origin}>
-                      {origin}
+                  {uniqueOrigins.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
                     </option>
                   ))}
                 </select>
                 <select
+                  className="qv-input"
                   value={searchDestination}
                   onChange={(e) => setSearchDestination(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: "10px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontSize: "0.9rem",
-                  }}
                 >
                   <option value="">Destino</option>
-                  {uniqueDestinations.map((destination) => (
-                    <option key={destination} value={destination}>
-                      {destination}
+                  {uniqueDestinations.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
                     </option>
                   ))}
                 </select>
               </div>
               <button
+                className="qv-btn qv-btn--primary qv-btn--full"
                 onClick={handleSearchByRoute}
-                style={{
-                  width: "100%",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
               >
-                Buscar por Ruta
+                Buscar
               </button>
             </div>
-
-            {/* Búsqueda por Fecha */}
-            <div
-              style={{
-                borderTop: "1px solid #e5e7eb",
-                paddingTop: "20px",
-                marginBottom: "20px",
-              }}
-            >
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Fecha Exacta
-              </label>
+            <div className="qv-search-section">
+              <label className="qv-label">Por Fecha Exacta</label>
               <input
+                className="qv-input"
                 type="date"
                 value={searchDate}
                 onChange={(e) => setSearchDate(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                }}
               />
               <button
+                className="qv-btn qv-btn--primary qv-btn--full"
                 onClick={handleSearchByDate}
-                style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
               >
-                Buscar por Fecha
+                Buscar
               </button>
             </div>
-
-            {/* Búsqueda por Rango de Fechas */}
-            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Rango de Fechas
-              </label>
-              <div
-                style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
-              >
+            <div className="qv-search-section">
+              <label className="qv-label">Por Rango de Fechas</label>
+              <div className="qv-search-row">
                 <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "4px",
-                      fontSize: "0.8rem",
-                      color: "#6b7280",
-                    }}
-                  >
-                    Desde
-                  </label>
+                  <span className="qv-label qv-label--small">Desde</span>
                   <input
+                    className="qv-input"
                     type="date"
                     value={searchStartDate}
                     onChange={(e) => setSearchStartDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "0.85rem",
-                    }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "4px",
-                      fontSize: "0.8rem",
-                      color: "#6b7280",
-                    }}
-                  >
-                    Hasta
-                  </label>
+                  <span className="qv-label qv-label--small">Hasta</span>
                   <input
+                    className="qv-input"
                     type="date"
                     value={searchEndDate}
                     onChange={(e) => setSearchEndDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "0.85rem",
-                    }}
                   />
                 </div>
               </div>
               <button
+                className="qv-btn qv-btn--primary qv-btn--full"
                 onClick={handleSearchByDateRange}
-                style={{
-                  width: "100%",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
               >
-                Buscar por Rango
+                Buscar
               </button>
             </div>
-
             <button
-              onClick={closeSearchModal}
-              style={{
-                marginTop: "20px",
-                width: "100%",
-                backgroundColor: "#f3f4f6",
-                color: "#374151",
-                border: "none",
-                borderRadius: "6px",
-                padding: "10px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-              }}
+              className="qv-btn qv-btn--ghost qv-btn--full"
+              onClick={() => setShowSearchModal(false)}
             >
               Cerrar
             </button>
@@ -1565,889 +798,439 @@ function QuotesView() {
         </div>
       )}
 
-      {/* Indicador de carga */}
+      {/* -- Loading ----------------------------------------- */}
       {loading && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px",
-            backgroundColor: "white",
-            borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "3rem",
-              marginBottom: "16px",
-              animation: "pulse 1.5s ease-in-out infinite",
-            }}
-          >
-            📋
-          </div>
-          <p style={{ color: "#6b7280", fontSize: "1rem" }}>
-            Cargando cotizaciones...
-          </p>
+        <div className="qv-empty">
+          <div className="qv-spinner" />
+          <p>Cargando cotizaciones...</p>
         </div>
       )}
 
-      {/* Mensaje de error */}
+      {/* -- Error ------------------------------------------- */}
       {error && (
-        <div
-          style={{
-            padding: "16px",
-            backgroundColor: "#fee2e2",
-            color: "#991b1b",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            border: "1px solid #fecaca",
-          }}
-        >
+        <div className="qv-error">
           <strong>Error:</strong> {error}
         </div>
       )}
-
-      {/* Tabla de Cotizaciones con Accordion */}
+      {/* =====================================================
+          TABLE
+         ===================================================== */}
       {!loading && displayedQuotes.length > 0 && (
-        <div
-          style={{
-            backgroundColor: "white",
-            borderRadius: "12px",
-            overflow: "visible",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "0.875rem",
-              }}
-            >
+        <div className="qv-table-wrapper">
+          <div className="qv-table-scroll">
+            <table className="qv-table">
               <thead>
-                <tr
-                  style={{
-                    backgroundColor: "#f9fafb",
-                    borderBottom: "2px solid #e5e7eb",
-                  }}
-                >
+                <tr>
                   <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="qv-th qv-th--sortable"
+                    onClick={() => handleSort("number")}
                   >
-                    Número
-                    <TooltipIcon id="numero" message={tooltipMessages.numero} />
+                    <span>N Cotizacion</span>
+                    <SortIcon column="number" />
+                  </th>
+                  <th className="qv-th qv-th--center">
+                    <span>Estado</span>
                   </th>
                   <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="qv-th qv-th--sortable"
+                    onClick={() => handleSort("origin")}
                   >
-                    Fecha
+                    <span>Origen</span>
+                    <SortIcon column="origin" />
                   </th>
                   <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      minWidth: "200px",
-                    }}
+                    className="qv-th qv-th--sortable"
+                    onClick={() => handleSort("destination")}
                   >
-                    Ruta
+                    <span>Destino</span>
+                    <SortIcon column="destination" />
+                  </th>
+                  <th className="qv-th">
+                    <span>Transporte</span>
+                  </th>
+                  <th className="qv-th qv-th--center">
+                    <span>Piezas</span>
                   </th>
                   <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="qv-th qv-th--sortable"
+                    onClick={() => handleSort("date")}
                   >
-                    Transporte
+                    <span>Fecha Emision</span>
+                    <SortIcon column="date" />
                   </th>
                   <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "center",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="qv-th qv-th--sortable"
+                    onClick={() => handleSort("validUntil")}
                   >
-                    Piezas
+                    <span>Valida Hasta</span>
+                    <SortIcon column="validUntil" />
                   </th>
                   <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="qv-th qv-th--center qv-th--sortable"
+                    onClick={() => handleSort("transit")}
                   >
-                    Volumen/Peso
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "right",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Gasto Parcial
-                    <TooltipIcon id="gasto" message={tooltipMessages.gasto} />
+                    <span>Transito</span>
+                    <SortIcon column="transit" />
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {displayedQuotes.map((quote, index) => {
-                  const quoteId = quote.id || quote.number || index;
-                  const isOpen = openAccordions.includes(quoteId);
-                  const activeTabIndex = activeTabs[quoteId] || 0;
-
+                {paginatedQuotes.map((quote, index) => {
+                  const quoteKey = quote.id || quote.number || index;
+                  const isExpanded =
+                    expandedQuoteId === (quote.id || quote.number || "");
                   return (
-                    <React.Fragment key={`quote-${quoteId}`}>
-                      {/* Fila de la tabla */}
+                    <React.Fragment key={quoteKey}>
                       <tr
-                        key={`row-${quoteId}`}
-                        onClick={() => toggleAccordion(quoteId)}
-                        className={`quotes-table-row ${isOpen ? "expanded" : ""}`}
-                        style={{
-                          borderBottom:
-                            !isOpen &&
-                            index <
-                              Math.min(displayedQuotes.length, ITEMS_PER_PAGE) -
-                                1
-                              ? "1px solid #f3f4f6"
-                              : "none",
-                        }}
+                        className={`qv-tr ${isExpanded ? "qv-tr--active" : ""}`}
+                        onClick={() => toggleAccordion(quote)}
                       >
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            fontWeight: "600",
-                            color: "#1f2937",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {quote.number || "N/A"}
-                        </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            color: "#4b5563",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {quote.date
-                            ? new Date(quote.date).toLocaleDateString("es-CL", {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                              })
-                            : "-"}
-                        </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            color: "#4b5563",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                            }}
+                        <td className="qv-td qv-td--number">
+                          <svg
+                            className={`qv-row-chevron ${isExpanded ? "qv-row-chevron--open" : ""}`}
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
                           >
-                            <LocationWithFlag location={quote.origin} />
-                            <span style={{ color: "#3b82f6" }}>→</span>
-                            <LocationWithFlag location={quote.destination} />
-                          </div>
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                          {quote.number || "---"}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            color: "#4b5563",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {quote.modeOfTransportation || "-"}
+                        <td className="qv-td qv-td--center">
+                          <StatusBadge validUntilDate={quote.validUntil_Date} />
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            textAlign: "center",
-                            color: "#4b5563",
-                            fontWeight: "600",
-                          }}
-                        >
-                          {quote.totalCargo_Pieces || "-"}
+                        <td className="qv-td">{quote.origin || "---"}</td>
+                        <td className="qv-td">{quote.destination || "---"}</td>
+                        <td className="qv-td">
+                          {quote.modeOfTransportation || "---"}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            color: "#4b5563",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          <div style={{ fontSize: "0.85rem" }}>
-                            {quote.totalCargo_VolumeDisplayValue && (
-                              <div>
-                                📦 {quote.totalCargo_VolumeDisplayValue}
-                              </div>
-                            )}
-                            {quote.totalCargo_WeightDisplayValue && (
-                              <div>
-                                ⚖️ {quote.totalCargo_WeightDisplayValue}
-                              </div>
-                            )}
-                            {!quote.totalCargo_VolumeDisplayValue &&
-                              !quote.totalCargo_WeightDisplayValue &&
-                              "-"}
-                          </div>
+                        <td className="qv-td qv-td--center">
+                          {quote.totalCargo_Pieces ?? "---"}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            textAlign: "right",
-                            color: "#10b981",
-                            fontWeight: "700",
-                            fontSize: "0.95rem",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {formatCLP(quote.totalCharge_IncomeDisplayValue) ||
-                            "-"}
+                        <td className="qv-td">{formatDateShort(quote.date)}</td>
+                        <td className="qv-td">
+                          {formatDateShort(quote.validUntil_Date)}
+                        </td>
+                        <td className="qv-td qv-td--center">
+                          {quote.transitDays != null
+                            ? `${quote.transitDays}d`
+                            : "---"}
                         </td>
                       </tr>
-
-                      {/* Contenido del Accordion */}
-                      {isOpen && (
-                        <tr key={`accordion-${quoteId}`}>
-                          <td colSpan={7} style={{ padding: 0 }}>
-                            <div
-                              className="accordion-content"
-                              style={{
-                                backgroundColor: "#f8fafc",
-                                borderTop: "1px solid #e2e8f0",
-                                padding: "24px",
-                                borderRadius: "0 0 12px 12px",
-                              }}
-                            >
-                              {/* RouteDisplay encima de los tabs */}
-                              <div
-                                className="accordion-route-section"
-                                style={{
-                                  marginBottom: "24px",
-                                  padding: "16px",
-                                  backgroundColor: "white",
-                                  borderRadius: "8px",
-                                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-                                }}
-                              >
-                                <RouteDisplay quote={quote} />
+                      {isExpanded && (
+                        <tr className="qv-accordion-row">
+                          <td colSpan={9} className="qv-accordion-cell">
+                            <div className="qv-accordion-content">
+                              {/* Route summary */}
+                              <div className="qv-route-card">
+                                <div className="qv-route-card__point">
+                                  <span className="qv-route-card__label">
+                                    Origen
+                                  </span>
+                                  <span className="qv-route-card__value">
+                                    {quote.origin || "N/A"}
+                                  </span>
+                                  {quote.deperture_Date && (
+                                    <span className="qv-route-card__date">
+                                      {formatDateShort(quote.deperture_Date)}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="qv-route-card__arrow">
+                                  <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="var(--primary-color)"
+                                    strokeWidth="2"
+                                  >
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                    <polyline points="12 5 19 12 12 19" />
+                                  </svg>
+                                  {quote.transitDays != null && (
+                                    <span className="qv-route-card__transit">
+                                      {quote.transitDays} dias
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="qv-route-card__point qv-route-card__point--end">
+                                  <span className="qv-route-card__label">
+                                    Destino
+                                  </span>
+                                  <span className="qv-route-card__value">
+                                    {quote.destination || "N/A"}
+                                  </span>
+                                  {quote.arrival_Date && (
+                                    <span className="qv-route-card__date">
+                                      {formatDateShort(quote.arrival_Date)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
-                              {/* Tabs horizontales */}
-                              <div
-                                className="tabs-container"
-                                style={{
-                                  display: "flex",
-                                  borderBottom: "1px solid #e2e8f0",
-                                  marginBottom: "24px",
-                                  overflowX: "auto",
-                                }}
-                              >
-                                <button
-                                  className={`tab-button ${activeTabIndex === 0 ? "active" : ""}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(quoteId, 0);
-                                  }}
-                                  style={{
-                                    padding: "12px 20px",
-                                    background: "transparent",
-                                    color:
-                                      activeTabIndex === 0
-                                        ? "#1f2937"
-                                        : "#64748b",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 0
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    borderRadius: "0",
-                                    cursor: "pointer",
-                                    fontWeight:
-                                      activeTabIndex === 0 ? "700" : "500",
-                                    fontSize: "0.875rem",
-                                    transition: "all 0.2s",
-                                    whiteSpace: "nowrap",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                  }}
-                                >
-                                  Información General
-                                </button>
-                                <button
-                                  className={`tab-button ${activeTabIndex === 1 ? "active" : ""}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(quoteId, 1);
-                                  }}
-                                  style={{
-                                    padding: "12px 20px",
-                                    background: "transparent",
-                                    color:
-                                      activeTabIndex === 1
-                                        ? "#1f2937"
-                                        : "#64748b",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 1
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    borderRadius: "0",
-                                    cursor: "pointer",
-                                    fontWeight:
-                                      activeTabIndex === 1 ? "700" : "500",
-                                    fontSize: "0.875rem",
-                                    transition: "all 0.2s",
-                                    whiteSpace: "nowrap",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                  }}
-                                >
-                                  Información de Carga
-                                </button>
-                                <button
-                                  className={`tab-button ${activeTabIndex === 2 ? "active" : ""}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(quoteId, 2);
-                                  }}
-                                  style={{
-                                    padding: "12px 20px",
-                                    background: "transparent",
-                                    color:
-                                      activeTabIndex === 2
-                                        ? "#1f2937"
-                                        : "#64748b",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 2
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    borderRadius: "0",
-                                    cursor: "pointer",
-                                    fontWeight:
-                                      activeTabIndex === 2 ? "700" : "500",
-                                    fontSize: "0.875rem",
-                                    transition: "all 0.2s",
-                                    whiteSpace: "nowrap",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                  }}
-                                >
-                                  Documentación Operativa (
-                                  {documentCounts[quoteId] || 0})
-                                </button>
-                                <button
-                                  className={`tab-button ${activeTabIndex === 3 ? "active" : ""}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(quoteId, 3);
-                                  }}
-                                  style={{
-                                    padding: "12px 20px",
-                                    background: "transparent",
-                                    color:
-                                      activeTabIndex === 3
-                                        ? "#1f2937"
-                                        : "#64748b",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 3
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    borderRadius: "0",
-                                    cursor: "pointer",
-                                    fontWeight:
-                                      activeTabIndex === 3 ? "700" : "500",
-                                    fontSize: "0.875rem",
-                                    transition: "all 0.2s",
-                                    whiteSpace: "nowrap",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                  }}
-                                >
-                                  Resumen Financiero
-                                </button>
-                                {quote.notes && quote.notes !== "N/A" && (
-                                  <button
-                                    className={`tab-button ${activeTabIndex === 4 ? "active" : ""}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveTab(quoteId, 4);
-                                    }}
-                                    style={{
-                                      padding: "12px 20px",
-                                      background: "transparent",
-                                      color:
-                                        activeTabIndex === 4
-                                          ? "#1f2937"
-                                          : "#64748b",
-                                      border: "none",
-                                      borderBottom:
-                                        activeTabIndex === 4
-                                          ? "2px solid #1f2937"
-                                          : "2px solid transparent",
-                                      borderRadius: "0",
-                                      cursor: "pointer",
-                                      fontWeight:
-                                        activeTabIndex === 4 ? "700" : "500",
-                                      fontSize: "0.875rem",
-                                      transition: "all 0.2s",
-                                      whiteSpace: "nowrap",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "8px",
-                                    }}
-                                  >
-                                    Notas
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* Contenido de los tabs */}
-                              <div
-                                className="tab-content"
-                                style={{
-                                  backgroundColor: "white",
-                                  borderRadius: "8px",
-                                  padding: "24px",
-                                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-                                }}
-                              >
-                                {/* Tab 0: Información General */}
-                                {activeTabIndex === 0 && (
-                                  <div
-                                    style={{
-                                      display: "grid",
-                                      gridTemplateColumns:
-                                        "repeat(auto-fit, minmax(280px, 1fr))",
-                                      gap: "16px",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        backgroundColor: "#f1f5f9",
-                                        borderRadius: "8px",
-                                        padding: "16px",
-                                        border: "1px solid #e2e8f0",
-                                      }}
-                                    >
-                                      <h4
-                                        style={{
-                                          margin: "0 0 12px 0",
-                                          fontSize: "1rem",
-                                          color: "#1e293b",
-                                          fontWeight: "600",
-                                        }}
+                              {/* Tabs */}
+                              <DetailTabs
+                                tabs={[
+                                  {
+                                    key: "general",
+                                    label: "Información General",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
                                       >
-                                        Detalles de Cotización
-                                      </h4>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: "8px",
-                                        }}
-                                      >
-                                        <InfoField
-                                          label="Número de Cotización"
-                                          value={quote.number}
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="16" x2="12" y2="12" />
+                                        <line
+                                          x1="12"
+                                          y1="8"
+                                          x2="12.01"
+                                          y2="8"
                                         />
-                                        <InfoField
-                                          label="Fecha de Emisión"
-                                          value={
-                                            quote.date
-                                              ? formatDate(quote.date)
-                                              : null
-                                          }
-                                        />
-                                        <InfoField
-                                          label="Válida Hasta"
-                                          value={
-                                            quote.validUntil_Date
-                                              ? formatDate(
-                                                  quote.validUntil_Date,
-                                                )
-                                              : null
-                                          }
-                                        />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <div className="qv-cards-grid">
+                                        <div className="qv-card">
+                                          <h4>Detalles de Cotización</h4>
+                                          <div className="qv-info-grid">
+                                            <InfoField
+                                              label="Numero de Cotizacion"
+                                              value={quote.number}
+                                            />
+                                            <InfoField
+                                              label="Fecha de Emision"
+                                              value={
+                                                quote.date
+                                                  ? formatDateLong(quote.date)
+                                                  : null
+                                              }
+                                            />
+                                            <InfoField
+                                              label="Valida Hasta"
+                                              value={
+                                                quote.validUntil_Date
+                                                  ? formatDateLong(
+                                                      quote.validUntil_Date,
+                                                    )
+                                                  : null
+                                              }
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="qv-card">
+                                          <h4>Logística</h4>
+                                          <div className="qv-info-grid">
+                                            <InfoField
+                                              label="Dias de Transito"
+                                              value={quote.transitDays}
+                                            />
+                                            <InfoField
+                                              label="Modo de Transporte"
+                                              value={quote.modeOfTransportation}
+                                            />
+                                            <InfoField
+                                              label="Tipo de Pago"
+                                              value={quote.paymentType}
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="qv-card">
+                                          <h4>Información del cliente</h4>
+                                          <div className="qv-info-grid">
+                                            <InfoField
+                                              label="Carrier/Broker"
+                                              value={quote.carrierBroker}
+                                              fullWidth
+                                            />
+                                            <InfoField
+                                              label="Referencia Cliente"
+                                              value={quote.customerReference}
+                                              fullWidth
+                                            />
+                                          </div>
+                                        </div>
                                       </div>
-                                    </div>
-                                    <div
-                                      style={{
-                                        backgroundColor: "#f1f5f9",
-                                        borderRadius: "8px",
-                                        padding: "16px",
-                                        border: "1px solid #e2e8f0",
-                                      }}
-                                    >
-                                      <h4
-                                        style={{
-                                          margin: "0 0 12px 0",
-                                          fontSize: "1rem",
-                                          color: "#1e293b",
-                                          fontWeight: "600",
-                                        }}
+                                    ),
+                                  },
+                                  {
+                                    key: "carga",
+                                    label: "Carga",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
                                       >
-                                        Logística
-                                      </h4>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: "8px",
-                                        }}
-                                      >
-                                        <InfoField
-                                          label="Días de Tránsito"
-                                          value={quote.transitDays}
+                                        <rect
+                                          x="1"
+                                          y="3"
+                                          width="15"
+                                          height="13"
                                         />
-                                        <InfoField
-                                          label="Modo de Transporte"
-                                          value={quote.modeOfTransportation}
-                                        />
-                                        <InfoField
-                                          label="Tipo de Pago"
-                                          value={quote.paymentType}
-                                        />
+                                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                        <circle cx="5.5" cy="18.5" r="2.5" />
+                                        <circle cx="18.5" cy="18.5" r="2.5" />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <div className="qv-cards-grid">
+                                        <div className="qv-card">
+                                          <h4>Cantidades</h4>
+                                          <div className="qv-info-grid">
+                                            <InfoField
+                                              label="Total de Piezas"
+                                              value={quote.totalCargo_Pieces}
+                                            />
+                                            <InfoField
+                                              label="Contenedores"
+                                              value={quote.totalCargo_Container}
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="qv-card">
+                                          <h4>Pesos y Volúmenes</h4>
+                                          <div className="qv-info-grid">
+                                            <InfoField
+                                              label="Peso Total"
+                                              value={
+                                                quote.totalCargo_WeightDisplayValue
+                                              }
+                                            />
+                                            <InfoField
+                                              label="Volumen Total"
+                                              value={
+                                                quote.totalCargo_VolumeDisplayValue
+                                              }
+                                            />
+                                            <InfoField
+                                              label="Peso Volumetrico"
+                                              value={
+                                                quote.totalCargo_VolumeWeightDisplayValue
+                                              }
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="qv-card">
+                                          <h4>Estado y Seguridad</h4>
+                                          <div className="qv-info-grid">
+                                            <InfoField
+                                              label="Carga Peligrosa"
+                                              value={quote.hazardous}
+                                            />
+                                            <InfoField
+                                              label="Estado de Carga"
+                                              value={quote.cargoStatus}
+                                            />
+                                          </div>
+                                        </div>
                                       </div>
-                                    </div>
-                                    <div
-                                      style={{
-                                        backgroundColor: "#f1f5f9",
-                                        borderRadius: "8px",
-                                        padding: "16px",
-                                        border: "1px solid #e2e8f0",
-                                      }}
-                                    >
-                                      <h4
-                                        style={{
-                                          margin: "0 0 12px 0",
-                                          fontSize: "1rem",
-                                          color: "#1e293b",
-                                          fontWeight: "600",
-                                        }}
+                                    ),
+                                  },
+                                  {
+                                    key: "documentos",
+                                    label: "Documentos",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
                                       >
-                                        Información del Cliente
-                                      </h4>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: "8px",
-                                        }}
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="16" y1="13" x2="8" y2="13" />
+                                        <line x1="16" y1="17" x2="8" y2="17" />
+                                        <polyline points="10 9 9 9 8 9" />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <DocumentosSection
+                                        quoteId={String(
+                                          quote.id || quote.number || "",
+                                        )}
+                                        onCountChange={(count) =>
+                                          setDocumentCounts((prev) => ({
+                                            ...prev,
+                                            [String(
+                                              quote.id || quote.number || "",
+                                            )]: count,
+                                          }))
+                                        }
+                                      />
+                                    ),
+                                  },
+                                  {
+                                    key: "financiero",
+                                    label: "Financiero",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
                                       >
-                                        <InfoField
-                                          label="Referencia Cliente"
-                                          value={quote.customerReference}
-                                        />
-                                        <InfoField
-                                          label="Carrier/Broker"
-                                          value={quote.carrierBroker}
-                                          fullWidth
-                                        />
+                                        <line x1="12" y1="1" x2="12" y2="23" />
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <div className="qv-finance-card">
+                                        <span className="qv-finance-card__label">
+                                          Gasto Total (No incluye impuestos)
+                                        </span>
+                                        <span className="qv-finance-card__amount">
+                                          {formatCLP(
+                                            quote.totalCharge_IncomeDisplayValue,
+                                          ) || "$0 CLP"}
+                                        </span>
+                                        <span className="qv-finance-card__note">
+                                          Monto estimado para esta cotizacion
+                                        </span>
                                       </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Tab 1: Información de Carga */}
-                                {activeTabIndex === 1 && (
-                                  <div
-                                    style={{
-                                      display: "grid",
-                                      gridTemplateColumns:
-                                        "repeat(auto-fit, minmax(280px, 1fr))",
-                                      gap: "16px",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        backgroundColor: "#f1f5f9",
-                                        borderRadius: "8px",
-                                        padding: "16px",
-                                        border: "1px solid #e2e8f0",
-                                      }}
-                                    >
-                                      <h4
-                                        style={{
-                                          margin: "0 0 12px 0",
-                                          fontSize: "1rem",
-                                          color: "#1e293b",
-                                          fontWeight: "600",
-                                        }}
+                                    ),
+                                  },
+                                  {
+                                    key: "notas",
+                                    label: "Notas",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
                                       >
-                                        Cantidades
-                                      </h4>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: "8px",
-                                        }}
-                                      >
-                                        <InfoField
-                                          label="Total de Piezas"
-                                          value={quote.totalCargo_Pieces}
-                                        />
-                                        <InfoField
-                                          label="Contenedores"
-                                          value={quote.totalCargo_Container}
-                                        />
-                                      </div>
-                                    </div>
-                                    <div
-                                      style={{
-                                        backgroundColor: "#f1f5f9",
-                                        borderRadius: "8px",
-                                        padding: "16px",
-                                        border: "1px solid #e2e8f0",
-                                      }}
-                                    >
-                                      <h4
-                                        style={{
-                                          margin: "0 0 12px 0",
-                                          fontSize: "1rem",
-                                          color: "#1e293b",
-                                          fontWeight: "600",
-                                        }}
-                                      >
-                                        Pesos y Volúmenes
-                                      </h4>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: "8px",
-                                        }}
-                                      >
-                                        <InfoField
-                                          label="Peso Total"
-                                          value={
-                                            quote.totalCargo_WeightDisplayValue
-                                          }
-                                        />
-                                        <InfoField
-                                          label="Volumen Total"
-                                          value={
-                                            quote.totalCargo_VolumeDisplayValue
-                                          }
-                                        />
-                                        <InfoField
-                                          label="Peso Volumétrico"
-                                          value={
-                                            quote.totalCargo_VolumeWeightDisplayValue
-                                          }
-                                        />
-                                      </div>
-                                    </div>
-                                    <div
-                                      style={{
-                                        backgroundColor: "#f1f5f9",
-                                        borderRadius: "8px",
-                                        padding: "16px",
-                                        border: "1px solid #e2e8f0",
-                                      }}
-                                    >
-                                      <h4
-                                        style={{
-                                          margin: "0 0 12px 0",
-                                          fontSize: "1rem",
-                                          color: "#1e293b",
-                                          fontWeight: "600",
-                                        }}
-                                      >
-                                        Estado y Seguridad
-                                      </h4>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: "8px",
-                                        }}
-                                      >
-                                        <InfoField
-                                          label="Carga Peligrosa"
-                                          value={quote.hazardous}
-                                        />
-                                        <InfoField
-                                          label="Estado de Carga"
-                                          value={quote.cargoStatus}
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Tab 2: Documentación Operativa */}
-                                {activeTabIndex === 2 && (
-                                  <div
-                                    style={{
-                                      backgroundColor: "#f8fafc",
-                                      borderRadius: "8px",
-                                      padding: "16px",
-                                      border: "1px solid #e2e8f0",
-                                    }}
-                                  >
-                                    <DocumentosSection
-                                      quoteId={String(
-                                        quote.id || quote.number || "",
-                                      )}
-                                      onCountChange={(count) =>
-                                        setDocumentCounts((prev) => ({
-                                          ...prev,
-                                          [String(
-                                            quote.id || quote.number || "",
-                                          )]: count,
-                                        }))
-                                      }
-                                    />
-                                  </div>
-                                )}
-
-                                {/* Tab 3: Resumen Financiero */}
-                                {activeTabIndex === 3 && (
-                                  <div
-                                    style={{
-                                      backgroundColor:
-                                        "rgba(16, 185, 129, 0.05)",
-                                      borderRadius: "12px",
-                                      padding: "32px",
-                                      border:
-                                        "2px solid rgba(16, 185, 129, 0.2)",
-                                      textAlign: "center",
-                                      boxShadow:
-                                        "0 4px 6px rgba(16, 185, 129, 0.1)",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        fontSize: "1rem",
-                                        color: "#374151",
-                                        marginBottom: "16px",
-                                        fontWeight: "600",
-                                        textTransform: "uppercase",
-                                        letterSpacing: "0.5px",
-                                      }}
-                                    >
-                                      Gasto Total (No incluye impuestos)
-                                    </div>
-                                    <div
-                                      style={{
-                                        fontSize: "2.5rem",
-                                        fontWeight: "700",
-                                        color: "#10b981",
-                                        marginBottom: "8px",
-                                      }}
-                                    >
-                                      {formatCLP(
-                                        quote.totalCharge_IncomeDisplayValue,
-                                      ) || "$0 CLP"}
-                                    </div>
-                                    <div
-                                      style={{
-                                        fontSize: "0.875rem",
-                                        color: "#6b7280",
-                                      }}
-                                    >
-                                      Monto estimado para esta cotización
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Tab 4: Notas */}
-                                {activeTabIndex === 4 &&
-                                  quote.notes &&
-                                  quote.notes !== "N/A" && (
-                                    <div
-                                      style={{
-                                        backgroundColor: "#fefce8",
-                                        borderRadius: "8px",
-                                        padding: "20px",
-                                        border: "1px solid #fde047",
-                                        boxShadow:
-                                          "0 1px 3px rgba(253, 224, 71, 0.2)",
-                                      }}
-                                    >
-                                      <h4
-                                        style={{
-                                          margin: "0 0 12px 0",
-                                          fontSize: "1rem",
-                                          color: "#92400e",
-                                          fontWeight: "600",
-                                        }}
-                                      >
-                                        Notas Importantes
-                                      </h4>
-                                      <div
-                                        style={{
-                                          color: "#713f12",
-                                          fontSize: "0.875rem",
-                                          whiteSpace: "pre-wrap",
-                                          lineHeight: "1.6",
-                                        }}
-                                      >
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                      </svg>
+                                    ),
+                                    hidden:
+                                      !quote.notes || quote.notes === "N/A",
+                                    content: (
+                                      <div className="qv-notes">
                                         {quote.notes}
                                       </div>
-                                    </div>
-                                  )}
-                              </div>
+                                    ),
+                                  },
+                                ]}
+                              />
                             </div>
                           </td>
                         </tr>
@@ -2459,461 +1242,102 @@ function QuotesView() {
             </table>
           </div>
 
-          {/* Footer de la tabla */}
-          <div
-            style={{
-              padding: "16px 20px",
-              backgroundColor: "#f9fafb",
-              borderTop: "1px solid #e5e7eb",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.875rem",
-                color: "#6b7280",
-              }}
-            >
-              Mostrando{" "}
-              <strong style={{ color: "#1f2937" }}>
-                {displayedQuotes.length}
-              </strong>{" "}
-              cotizaciones
-              {!hasMoreQuotes && <span> (todas cargadas)</span>}
-            </div>
-            {hasMoreQuotes && !loadingMore && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  loadMoreQuotes();
-                }}
-                style={{
-                  backgroundColor: "white",
-                  color: "#3b82f6",
-                  border: "1px solid #3b82f6",
-                  borderRadius: "6px",
-                  padding: "6px 16px",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  fontWeight: "600",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3b82f6";
-                  e.currentTarget.style.color = "white";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "white";
-                  e.currentTarget.style.color = "#3b82f6";
-                }}
-              >
-                Cargar más
-              </button>
-            )}
-            {loadingMore && (
-              <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>
-                Cargando...
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Detalles */}
-      {showModal && selectedQuote && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            zIndex: 9999,
-            overflowY: "auto",
-            animation: "fadeIn 0.3s ease-in-out",
-          }}
-          onClick={closeModal}
-        >
-          <div
-            className="bg-white rounded"
-            style={{
-              maxWidth: "900px",
-              width: "100%",
-              maxHeight: "90vh",
-              boxShadow:
-                "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-              display: "flex",
-              flexDirection: "column",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header del Modal */}
-            <div
-              style={{
-                backgroundColor: "#1F2937",
-                padding: "24px",
-                color: "white",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: "8px",
-                }}
-              >
-                <div>
-                  <h5
-                    style={{
-                      margin: 0,
-                      fontSize: "1.3rem",
-                      fontWeight: "700",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    Cotización #
-                    {selectedQuote.number || selectedQuote.id || "N/A"}
-                  </h5>
-                  {selectedQuote.date && (
-                    <div style={{ fontSize: "0.9rem", opacity: 0.9 }}>
-                      {formatDate(selectedQuote.date)}
-                    </div>
-                  )}
-                </div>
+          {/* -- Table footer / pagination ------------------- */}
+          <div className="qv-table-footer">
+            <div className="qv-table-footer__left">
+              {hasMoreQuotes && !loadingMore && (
                 <button
-                  onClick={closeModal}
-                  style={{
-                    backgroundColor: "rgba(255, 255, 255, 0.2)",
-                    border: "none",
-                    borderRadius: "6px",
-                    width: "32px",
-                    height: "32px",
-                    fontSize: "1.5rem",
-                    cursor: "pointer",
-                    color: "white",
-                    lineHeight: 1,
-                    padding: 0,
-                    transition: "background-color 0.2s",
+                  className="qv-btn qv-btn--ghost qv-btn--sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    loadMoreQuotes();
                   }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor =
-                      "rgba(255, 255, 255, 0.3)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor =
-                      "rgba(255, 255, 255, 0.2)")
-                  }
                 >
-                  ×
+                  Cargar mas desde API
                 </button>
-              </div>
-            </div>
-
-            {/* Contenido del Modal con Scroll */}
-            <div
-              style={{
-                padding: "24px",
-                overflowY: "auto",
-                flex: 1,
-              }}
-            >
-              {/* Ruta de Envío - VISIBLE SIEMPRE */}
-              <RouteDisplay quote={selectedQuote} />
-
-              {/* Información General */}
-              <CollapsibleSection
-                title="Información General"
-                defaultOpen={false}
-                icon=""
-              >
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
-                  <InfoField
-                    label="Número de Cotización"
-                    value={selectedQuote.number}
-                  />
-                  <InfoField
-                    label="Fecha de Emisión"
-                    value={
-                      selectedQuote.date ? formatDate(selectedQuote.date) : null
-                    }
-                  />
-                  <InfoField
-                    label="Válida Hasta"
-                    value={
-                      selectedQuote.validUntil_Date
-                        ? formatDate(selectedQuote.validUntil_Date)
-                        : null
-                    }
-                  />
-                  <InfoField
-                    label="Días de Tránsito"
-                    value={selectedQuote.transitDays}
-                  />
-                  <InfoField
-                    label="Referencia Cliente"
-                    value={selectedQuote.customerReference}
-                  />
-                  <InfoField
-                    label="Modo de Transporte"
-                    value={selectedQuote.modeOfTransportation}
-                  />
-                  <InfoField
-                    label="Tipo de Pago"
-                    value={selectedQuote.paymentType}
-                  />
-                  <InfoField
-                    label="Carrier/Broker"
-                    value={selectedQuote.carrierBroker}
-                    fullWidth
-                  />
-                </div>
-              </CollapsibleSection>
-
-              {/* Información de Carga */}
-              <CollapsibleSection
-                title="Información de Carga"
-                defaultOpen={false}
-                icon=""
-              >
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
-                  <InfoField
-                    label="Total de Piezas"
-                    value={selectedQuote.totalCargo_Pieces}
-                  />
-                  <InfoField
-                    label="Contenedores"
-                    value={selectedQuote.totalCargo_Container}
-                  />
-                  <InfoField
-                    label="Peso Total"
-                    value={selectedQuote.totalCargo_WeightDisplayValue}
-                  />
-                  <InfoField
-                    label="Volumen Total"
-                    value={selectedQuote.totalCargo_VolumeDisplayValue}
-                  />
-                  <InfoField
-                    label="Peso Volumétrico"
-                    value={selectedQuote.totalCargo_VolumeWeightDisplayValue}
-                  />
-                  <InfoField
-                    label="Carga Peligrosa"
-                    value={selectedQuote.hazardous}
-                  />
-                  <InfoField
-                    label="Estado de Carga"
-                    value={selectedQuote.cargoStatus}
-                  />
-                </div>
-              </CollapsibleSection>
-
-              <CollapsibleSection
-                title="Documentación Operativa"
-                defaultOpen={false}
-                icon=""
-              >
-                <DocumentosSection
-                  quoteId={String(
-                    selectedQuote.id || selectedQuote.number || "",
-                  )}
-                  onCountChange={(count) =>
-                    setDocumentCounts((prev) => ({
-                      ...prev,
-                      [String(selectedQuote.id || selectedQuote.number || "")]:
-                        count,
-                    }))
-                  }
-                />
-              </CollapsibleSection>
-
-              {/* Resumen Financiero - SOLO INGRESO */}
-              <CollapsibleSection
-                title="Resumen Financiero"
-                defaultOpen={false}
-                icon=""
-              >
-                <div
-                  style={{
-                    backgroundColor: "rgba(16, 185, 129, 0.1)",
-                    borderRadius: "8px",
-                    padding: "20px",
-                    border: "2px solid rgba(16, 185, 129, 0.2)",
-                    textAlign: "center",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "0.85rem",
-                      color: "#6b7280",
-                      marginBottom: "8px",
-                      fontWeight: "600",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Gasto Total (No incluye impuestos)
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "2rem",
-                      fontWeight: "700",
-                      color: "#10b981",
-                    }}
-                  >
-                    {formatCLP(selectedQuote.totalCharge_IncomeDisplayValue) ||
-                      "$0 CLP"}
-                  </div>
-                </div>
-              </CollapsibleSection>
-
-              {/* Notas */}
-              {selectedQuote.notes && selectedQuote.notes !== "N/A" && (
-                <CollapsibleSection title="Notas" defaultOpen={false} icon="📝">
-                  <div
-                    style={{
-                      padding: "12px",
-                      backgroundColor: "#fffbeb",
-                      borderRadius: "6px",
-                      border: "1px solid #fde047",
-                      color: "#713f12",
-                      fontSize: "0.875rem",
-                      whiteSpace: "pre-wrap",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    {selectedQuote.notes}
-                  </div>
-                </CollapsibleSection>
+              )}
+              {loadingMore && (
+                <span className="qv-loading-text">Cargando...</span>
               )}
             </div>
-
-            {/* Footer del Modal */}
-            <div
-              style={{
-                padding: "16px 24px",
-                borderTop: "1px solid #e5e7eb",
-                display: "flex",
-                justifyContent: "flex-end",
-                backgroundColor: "#f9fafb",
-              }}
-            >
-              <button
-                onClick={closeModal}
-                style={{
-                  background: "#1F2937",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "10px 24px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                  boxShadow: "0 2px 4px rgba(102, 126, 234, 0.3)",
-                  transition: "transform 0.2s",
+            <div className="qv-table-footer__right">
+              <span className="qv-pagination-label">Filas por pagina:</span>
+              <select
+                className="qv-pagination-select"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setTablePage(1);
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "translateY(-1px)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "translateY(0)")
-                }
               >
-                Cerrar
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span className="qv-pagination-range">{paginationRangeText}</span>
+              <button
+                className="qv-pagination-btn"
+                disabled={tablePage <= 1}
+                onClick={() => setTablePage((p) => p - 1)}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <button
+                className="qv-pagination-btn"
+                disabled={tablePage >= totalTablePages}
+                onClick={() => setTablePage((p) => p + 1)}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Estado vacío - Sin resultados de búsqueda */}
+      {/* -- Empty states ------------------------------------- */}
       {displayedQuotes.length === 0 &&
         !loading &&
         quotes.length > 0 &&
         showingAll && (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "60px 20px",
-              backgroundColor: "white",
-              borderRadius: "12px",
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "4rem",
-                marginBottom: "16px",
-                opacity: 0.5,
-              }}
-            >
-              📋
-            </div>
-            <h5
-              style={{
-                color: "#1f2937",
-                marginBottom: "8px",
-                fontSize: "1.2rem",
-              }}
-            >
-              No se encontraron cotizaciones
-            </h5>
-            <p style={{ color: "#6b7280", marginBottom: "24px" }}>
-              No hay cotizaciones que coincidan con tu búsqueda
+          <div className="qv-empty">
+            <p className="qv-empty__title">No se encontraron cotizaciones</p>
+            <p className="qv-empty__subtitle">
+              No hay cotizaciones que coincidan con tu busqueda
             </p>
-            <button
-              onClick={clearSearch}
-              style={{
-                backgroundColor: "#3b82f6",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px 24px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-                boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)",
-              }}
-            >
+            <button className="qv-btn qv-btn--primary" onClick={clearSearch}>
               Ver todas las cotizaciones
             </button>
           </div>
         )}
 
-      {/* Estado vacío - Sin cotizaciones cargadas */}
       {quotes.length === 0 && !loading && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 20px",
-            backgroundColor: "white",
-            borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "4rem",
-              marginBottom: "16px",
-              opacity: 0.5,
-            }}
-          >
-            📦
-          </div>
-          <h5
-            style={{
-              color: "#1f2937",
-              marginBottom: "8px",
-              fontSize: "1.2rem",
-            }}
-          >
-            No hay cotizaciones disponibles
-          </h5>
-          <p style={{ color: "#6b7280" }}>
+        <div className="qv-empty">
+          <p className="qv-empty__title">No hay cotizaciones disponibles</p>
+          <p className="qv-empty__subtitle">
             No se encontraron cotizaciones para tu cuenta
           </p>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

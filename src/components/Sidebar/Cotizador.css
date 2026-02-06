@@ -6,8 +6,7 @@
   padding: 40px 24px;
   margin: -24px;
   margin-bottom: 0;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 .cotizador-container {
@@ -24,6 +23,7 @@
   font-size: 24px;
   font-weight: 600;
   color: #232f3e;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0 0 6px 0;
   letter-spacing: -0.3px;
 }
@@ -31,6 +31,7 @@
 .cotizador-header p {
   font-size: 14px;
   color: #6b7280;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   line-height: 1.5;
 }
@@ -64,8 +65,8 @@
 }
 
 .cotizador-card:hover {
-  border-color: #ff6200;
-  box-shadow: 0 1px 6px rgba(255, 98, 0, 0.08);
+  border-color: var(--primary-color);
+  box-shadow: 0 1px 6px rgba(var(--primary-rgb), 0.08);
 }
 
 .cotizador-card:hover .cotizador-card__indicator {
@@ -89,6 +90,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
+  
   margin-bottom: 16px;
 }
 
@@ -100,6 +102,7 @@
   background-color: #f0f2f4;
   display: flex;
   align-items: center;
+  
   justify-content: center;
   color: #232f3e;
   font-size: 18px;
@@ -109,6 +112,7 @@
   font-size: 16px;
   font-weight: 600;
   color: #232f3e;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   letter-spacing: -0.1px;
 }
@@ -119,6 +123,7 @@
   border-radius: 4px;
   font-size: 10px;
   font-weight: 600;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: #232f3e;
@@ -130,6 +135,7 @@
 /* Card description */
 .cotizador-card__desc {
   font-size: 13px;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #6b7280;
   line-height: 1.55;
   margin: 0 0 20px 0;
@@ -149,6 +155,7 @@
 .cotizador-card__features li {
   font-size: 13px;
   color: #4b5563;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -168,24 +175,24 @@
 .cotizador-card__btn {
   width: 100%;
   padding: 10px 16px;
-  background-color: #ff6200;
+  background-color: var(--primary-color);
   border: none;
   border-radius: 4px;
   color: #ffffff;
   font-size: 13px;
   font-weight: 500;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   cursor: pointer;
   transition: background-color 0.15s ease;
-  font-family: inherit;
   margin-top: auto;
 }
 
 .cotizador-card__btn:hover {
-  background-color: #e55800;
+  background-color: var(--primary-hover);
 }
 
 .cotizador-card__btn:active {
-  background-color: #cc4e00;
+  background-color: var(--primary-active);
 }
 
 /* ── Info Banner (replaces comparison section) ── */
@@ -209,6 +216,7 @@
 
 .cotizador-info__text {
   font-size: 13px;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #6b7280;
   line-height: 1.55;
   margin: 0;
@@ -217,6 +225,7 @@
 .cotizador-info__text strong {
   color: #232f3e;
   font-weight: 600;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* ── Form View Overrides ── */
@@ -243,7 +252,7 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-  font-family: inherit;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin-bottom: 20px;
 }
 
@@ -254,7 +263,7 @@
 
 .cotizador-back--form {
   padding: 12px 24px;
-  background-color: #ff6200;
+  background-color: var(--primary-color);
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   color: #ffffff;
@@ -264,7 +273,7 @@
 }
 
 .cotizador-back--form:hover {
-  background-color: #e55a00;
+  background-color: var(--primary-hover);
   border-color: #d1d5db;
 }
 

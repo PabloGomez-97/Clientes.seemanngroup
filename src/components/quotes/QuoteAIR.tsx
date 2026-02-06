@@ -1636,7 +1636,9 @@ function QuoteAPITester({
                 style={{
                   width: "40px",
                   height: "40px",
-                  backgroundColor: rutaSeleccionada ? "#d4edda" : "#ff6200",
+                  backgroundColor: rutaSeleccionada
+                    ? "#d4edda"
+                    : "var(--primary-hover)",
                   color: rutaSeleccionada ? "#155724" : "white",
                   fontSize: "1.1rem",
                   fontWeight: 600,
@@ -1721,7 +1723,10 @@ function QuoteAPITester({
                 </span>
                 <span
                   className="badge rounded-pill"
-                  style={{ backgroundColor: "#ff6200", color: "white" }}
+                  style={{
+                    backgroundColor: "var(--primary-hover)",
+                    color: "white",
+                  }}
                 >
                   {rutas.length} {t("QuoteAIR.rutasdisponibles")}
                 </span>
@@ -2253,7 +2258,7 @@ function QuoteAPITester({
                     style={{
                       backgroundColor: "#f8f9fa",
                       borderRadius: "8px",
-                      borderLeft: "3px solid #ff6200",
+                      borderLeft: "3px solid var(--primary-hover)",
                     }}
                   >
                     <p
@@ -2374,7 +2379,7 @@ function QuoteAPITester({
                       type="button"
                       className="btn"
                       style={{
-                        backgroundColor: "#ff6200",
+                        backgroundColor: "var(--primary-hover)",
                         borderColor: "#ffffff",
                         color: "white",
                         borderRadius: "8px",
@@ -2387,7 +2392,8 @@ function QuoteAPITester({
                         (e.currentTarget.style.backgroundColor = "#e55a00")
                       }
                       onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#ff6200")
+                        (e.currentTarget.style.backgroundColor =
+                          "var(--primary-hover)")
                       }
                       onClick={handleAddPiece}
                     >
@@ -2483,7 +2489,7 @@ function QuoteAPITester({
                     style={{
                       backgroundColor: "#f8f9fa",
                       borderRadius: "8px",
-                      borderLeft: "3px solid #ff6200",
+                      borderLeft: "3px solid var(--primary-hover)",
                     }}
                   >
                     <div className="row g-3">
@@ -2866,7 +2872,7 @@ function QuoteAPITester({
                       <span className="fs-5 fw-bold">TOTAL:</span>
                       <span
                         className="fs-5 fw-bold "
-                        style={{ color: "#ff6200" }}
+                        style={{ color: "var(--primary-hover)" }}
                       >
                         {(() => {
                           const { totalRealWeight: totalWeight } =
@@ -2933,7 +2939,10 @@ function QuoteAPITester({
                     <div className="text-muted mb-2">
                       <i
                         className="bi bi-file-earmark-pdf"
-                        style={{ fontSize: "1.25rem", color: "#ff6200" }}
+                        style={{
+                          fontSize: "1.25rem",
+                          color: "var(--primary-hover)",
+                        }}
                       ></i>
                     </div>
                     <h6
@@ -2964,8 +2973,8 @@ function QuoteAPITester({
                         className="btn btn-outline-secondary w-100"
                         style={{
                           borderRadius: "6px",
-                          color: "#ff6200",
-                          borderColor: "#ff6200",
+                          color: "var(--primary-hover)",
+                          borderColor: "var(--primary-hover)",
                         }}
                       >
                         {loading ? (
@@ -3001,7 +3010,10 @@ function QuoteAPITester({
                     <div className="text-muted mb-2">
                       <i
                         className="bi bi-gear"
-                        style={{ fontSize: "1.25rem", color: "#ff6200" }}
+                        style={{
+                          fontSize: "1.25rem",
+                          color: "var(--primary-hover)",
+                        }}
                       ></i>
                     </div>
                     <h6
@@ -3035,8 +3047,8 @@ function QuoteAPITester({
                         className="btn btn-outline-secondary w-100"
                         style={{
                           borderRadius: "6px",
-                          color: "#ff6200",
-                          borderColor: "#ff6200",
+                          color: "var(--primary-hover)",
+                          borderColor: "var(--primary-hover)",
                         }}
                       >
                         {loading ? (
