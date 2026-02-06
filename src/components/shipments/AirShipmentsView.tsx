@@ -699,6 +699,17 @@ function AirShipmentsView() {
                                                 </button>
                                               )}
                                             </div>
+                                            <InfoField
+                                              label="Remitente (Shipper)"
+                                              value={shipment.shipper?.name}
+                                              fullWidth
+                                            />
+                                            <InfoField
+                                              label="Agente Forwarding"
+                                              value={
+                                                shipment.forwardingAgent?.name
+                                              }
+                                            />
                                           </div>
                                         </div>
                                         <div className="asv-card">
@@ -749,104 +760,197 @@ function AirShipmentsView() {
                                     content: (
                                       <div>
                                         <div
-                                          className="asv-info-grid"
-                                          style={{ marginBottom: 16 }}
+                                          className="asv-cards-grid"
+                                          style={{
+                                            display: "grid",
+                                            gridTemplateColumns:
+                                              "repeat(2, 1fr)",
+                                            gap: "16px",
+                                            marginBottom: 16,
+                                          }}
                                         >
-                                          <InfoField
-                                            label="Descripción de Carga"
-                                            value={shipment.cargoDescription}
-                                            fullWidth
-                                          />
-                                          <InfoField
-                                            label="Piezas"
-                                            value={shipment.commodities?.pieces}
-                                            fullWidth
-                                          />
-                                          <InfoField
-                                            label="Piezas Manifestadas"
-                                            value={shipment.manifestedPieces}
-                                          />
-                                          <InfoField
-                                            label="Peso Manifestado"
-                                            value={
-                                              shipment.manifestedWeight
-                                                ? `${shipment.manifestedWeight} kg`
-                                                : null
-                                            }
-                                          />
-                                          <InfoField
-                                            label="Pallets"
-                                            value={
-                                              shipment.pallets ||
-                                              shipment.manifestedPallets
-                                            }
-                                          />
-                                          <InfoField
-                                            label="Carga Peligrosa"
-                                            value={shipment.hazardous}
-                                          />
+                                          <div className="asv-card">
+                                            <h4>Descripción Carga</h4>
+                                            <div className="asv-info-grid">
+                                              <InfoField
+                                                label="Descripción de Carga"
+                                                value={
+                                                  shipment.cargoDescription
+                                                }
+                                                fullWidth
+                                              />
+                                              <InfoField
+                                                label="Tipo de Empaque"
+                                                value={(() => {
+                                                  if (
+                                                    shipment.subShipments &&
+                                                    Array.isArray(
+                                                      shipment.subShipments,
+                                                    )
+                                                  ) {
+                                                    const packageTypes =
+                                                      new Set<string>();
+                                                    for (const sub of shipment.subShipments) {
+                                                      if (
+                                                        sub.commodities &&
+                                                        Array.isArray(
+                                                          sub.commodities,
+                                                        )
+                                                      ) {
+                                                        sub.commodities.forEach(
+                                                          (c: any) => {
+                                                            if (
+                                                              c.packageType
+                                                                ?.description
+                                                            ) {
+                                                              packageTypes.add(
+                                                                c.packageType
+                                                                  .description,
+                                                              );
+                                                            }
+                                                          },
+                                                        );
+                                                      }
+                                                    }
+                                                    return packageTypes.size > 0
+                                                      ? Array.from(
+                                                          packageTypes,
+                                                        ).join(", ")
+                                                      : null;
+                                                  }
+                                                  return null;
+                                                })()}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="asv-card">
+                                            <h4>Medidas y Peso</h4>
+                                            <div className="asv-info-grid">
+                                              <InfoField
+                                                label="Piezas"
+                                                value={(() => {
+                                                  if (
+                                                    shipment.subShipments &&
+                                                    Array.isArray(
+                                                      shipment.subShipments,
+                                                    )
+                                                  ) {
+                                                    let total = 0;
+                                                    for (const sub of shipment.subShipments) {
+                                                      if (
+                                                        sub.commodities &&
+                                                        Array.isArray(
+                                                          sub.commodities,
+                                                        )
+                                                      ) {
+                                                        total +=
+                                                          sub.commodities.reduce(
+                                                            (
+                                                              sum: number,
+                                                              c: {
+                                                                pieces?: number;
+                                                              },
+                                                            ) =>
+                                                              sum +
+                                                              (c.pieces || 0),
+                                                            0,
+                                                          );
+                                                      }
+                                                    }
+                                                    return total > 0
+                                                      ? total
+                                                      : null;
+                                                  }
+                                                  return null;
+                                                })()}
+                                              />
+                                              <InfoField
+                                                label="Peso Total"
+                                                value={(() => {
+                                                  if (
+                                                    shipment.subShipments &&
+                                                    Array.isArray(
+                                                      shipment.subShipments,
+                                                    )
+                                                  ) {
+                                                    let total = 0;
+                                                    for (const sub of shipment.subShipments) {
+                                                      if (
+                                                        sub.commodities &&
+                                                        Array.isArray(
+                                                          sub.commodities,
+                                                        )
+                                                      ) {
+                                                        total +=
+                                                          sub.commodities.reduce(
+                                                            (
+                                                              sum: number,
+                                                              c: {
+                                                                totalWeightValue?: number;
+                                                              },
+                                                            ) =>
+                                                              sum +
+                                                              (c.totalWeightValue ||
+                                                                0),
+                                                            0,
+                                                          );
+                                                      }
+                                                    }
+                                                    return total > 0
+                                                      ? `${total} kg`
+                                                      : null;
+                                                  }
+                                                  return null;
+                                                })()}
+                                              />
+                                              <InfoField
+                                                label="Volumen Total"
+                                                value={(() => {
+                                                  if (
+                                                    shipment.subShipments &&
+                                                    Array.isArray(
+                                                      shipment.subShipments,
+                                                    )
+                                                  ) {
+                                                    let total = 0;
+                                                    for (const sub of shipment.subShipments) {
+                                                      if (
+                                                        sub.commodities &&
+                                                        Array.isArray(
+                                                          sub.commodities,
+                                                        )
+                                                      ) {
+                                                        total +=
+                                                          sub.commodities.reduce(
+                                                            (
+                                                              sum: number,
+                                                              c: {
+                                                                totalVolumeValue?: number;
+                                                              },
+                                                            ) =>
+                                                              sum +
+                                                              (c.totalVolumeValue ||
+                                                                0),
+                                                            0,
+                                                          );
+                                                      }
+                                                    }
+                                                    return total > 0
+                                                      ? `${total} m³`
+                                                      : null;
+                                                  }
+                                                  return null;
+                                                })()}
+                                              />
+                                              <InfoField
+                                                label="¿Carga Peligrosa?"
+                                                value={shipment.hazardous}
+                                              />
+                                            </div>
+                                          </div>
                                         </div>
                                         <CommoditiesSection
                                           commodities={shipment.commodities!}
-                                        />
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "route",
-                                    label: "Origen y Destino",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <circle cx="12" cy="10" r="3" />
-                                        <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z" />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <div className="asv-info-grid">
-                                        <InfoField
-                                          label="Remitente (Shipper)"
-                                          value={shipment.shipper?.name}
-                                          fullWidth
-                                        />
-                                        <InfoField
-                                          label="Dirección Remitente"
-                                          value={shipment.shipperAddress}
-                                          fullWidth
-                                        />
-                                        <InfoField
-                                          label="Carrier"
-                                          value={shipment.carrier?.name}
-                                          fullWidth
-                                        />
-                                        <InfoField
-                                          label="Dirección Consignatario"
-                                          value={shipment.consigneeAddress}
-                                          fullWidth
-                                        />
-                                        <InfoField
-                                          label="Notify Party"
-                                          value={
-                                            shipment.notifyParty?.name ||
-                                            shipment.notifyPartyAddress
-                                          }
-                                          fullWidth
-                                        />
-                                        <InfoField
-                                          label="Agente Forwarding"
-                                          value={shipment.forwardingAgent?.name}
-                                        />
-                                        <InfoField
-                                          label="Agente Destino"
-                                          value={
-                                            shipment.destinationAgent?.name
-                                          }
                                         />
                                       </div>
                                     ),
