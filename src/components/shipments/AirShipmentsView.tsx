@@ -1,235 +1,139 @@
-import { useState, useEffect, useRef } from "react";
-import { useOutletContext } from "react-router-dom";
+﻿import React, { useState, useEffect } from "react";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { useNavigate } from "react-router-dom";
-import "./AirShipmentsView.css"; // 👈 Importar el CSS
+import "./AirShipmentsView.css";
 import { DocumentosSectionAir } from "../Sidebar/Documents/DocumentosSectionAir";
 import {
   type OutletContext,
   type AirShipment,
   ShipmentTimeline,
-  CollapsibleSection,
   InfoField,
   CommoditiesSection,
   SubShipmentsList,
 } from "../shipments/Handlers/Handlersairshipments";
 
+/*  DetailTabs  */
+interface TabDef {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+  content: React.ReactNode;
+  hidden?: boolean;
+}
+
+function DetailTabs({ tabs }: { tabs: TabDef[] }) {
+  const visible = tabs.filter((t) => !t.hidden);
+  const [active, setActive] = useState(visible[0]?.key || "");
+  const current = visible.find((t) => t.key === active);
+
+  return (
+    <div className="asv-tabs">
+      <div className="asv-tabs__nav">
+        {visible.map((tab) => (
+          <button
+            key={tab.key}
+            className={`asv-tabs__btn ${active === tab.key ? "asv-tabs__btn--active" : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActive(tab.key);
+            }}
+          >
+            {tab.icon && <span className="asv-tabs__icon">{tab.icon}</span>}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="asv-tabs__panel">{current?.content}</div>
+    </div>
+  );
+}
+
+/* 
+   MAIN COMPONENT
+    */
 function AirShipmentsView() {
-  const { accessToken, onLogout } = useOutletContext<OutletContext>();
+  const { accessToken } = useOutletContext<OutletContext>();
   const { user, token } = useAuth();
   const navigate = useNavigate();
+
   const [shipments, setShipments] = useState<AirShipment[]>([]);
   const [displayedShipments, setDisplayedShipments] = useState<AirShipment[]>(
     [],
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [openAccordions, setOpenAccordions] = useState<(string | number)[]>([]);
-  const [activeTabs, setActiveTabs] = useState<Record<string | number, number>>(
-    {},
-  );
 
-  // Paginación
+  // Accordion  single expanded
+  const [expandedShipmentId, setExpandedShipmentId] = useState<
+    string | number | null
+  >(null);
+
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreShipments, setHasMoreShipments] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Modal state
-  const [selectedShipment, setSelectedShipment] = useState<AirShipment | null>(
-    null,
-  );
-  const [showModal, setShowModal] = useState(false);
+  // Search modal
   const [showSearchModal, setShowSearchModal] = useState(false);
 
-  // Modal para tracking
+  // Track modal
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [trackShipment, setTrackShipment] = useState<AirShipment | null>(null);
   const [trackEmail, setTrackEmail] = useState("");
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
-  // Embed query for ShipsGo map
+  // Embed
   const [embedQuery, setEmbedQuery] = useState<string | null>(null);
 
-  // Búsqueda por fecha
+  // Search fields
   const [searchDate, setSearchDate] = useState("");
   const [searchStartDate, setSearchStartDate] = useState("");
   const [searchEndDate, setSearchEndDate] = useState("");
-
-  // Búsqueda por número
   const [searchNumber, setSearchNumber] = useState("");
-
   const [showingAll, setShowingAll] = useState(false);
 
-  // Tooltips estado
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-
-  // Define los mensajes de ayuda para cada columna
-  const tooltipMessages = {
-    numero:
-      "Número a utilizar para rastrear el envío con la aerolínea o transportista.",
-    gasto: "Se excluyen impuestos asociados",
-  };
-
-  // Componente de Tooltip mejorado con posicionamiento inteligente
-  const TooltipIcon = ({ id, message }: { id: string; message: string }) => {
-    const iconRef = useRef<HTMLDivElement>(null);
-
-    const handleMouseEnter = () => {
-      if (iconRef.current) {
-        const rect = iconRef.current.getBoundingClientRect();
-        setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top });
-        setActiveTooltip(id);
-      }
-    };
-
-    const handleMouseLeave = () => {
-      setActiveTooltip(null);
-      setTooltipPosition(null);
-    };
-
-    // Calcular si el tooltip debe ir a la izquierda o derecha
-    const getTooltipStyle = () => {
-      if (!tooltipPosition) return {};
-
-      const windowWidth = window.innerWidth;
-      const tooltipWidth = 280; // maxWidth del tooltip
-      const shouldAlignRight =
-        tooltipPosition.x + tooltipWidth / 2 > windowWidth - 20;
-      const shouldAlignLeft = tooltipPosition.x - tooltipWidth / 2 < 20;
-
-      let transform = "translate(-50%, -100%)";
-      let left = tooltipPosition.x;
-
-      if (shouldAlignRight) {
-        // Si está muy a la derecha, alinear el tooltip a la derecha
-        transform = "translate(-100%, -100%)";
-        left = tooltipPosition.x + 8; // pequeño offset
-      } else if (shouldAlignLeft) {
-        // Si está muy a la izquierda, alinear el tooltip a la izquierda
-        transform = "translate(0%, -100%)";
-        left = tooltipPosition.x - 8;
-      }
-
-      return {
-        position: "fixed" as const,
-        left: `${left}px`,
-        top: `${tooltipPosition.y}px`,
-        transform: transform,
-        marginTop: "-12px",
-      };
-    };
-
-    return (
-      <div
-        ref={iconRef}
-        style={{
-          position: "relative",
-          display: "inline-block",
-          marginLeft: "6px",
-          zIndex: 9999,
-        }}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "16px",
-            height: "16px",
-            backgroundColor: "#3b82f6",
-            color: "white",
-            borderRadius: "50%",
-            fontSize: "11px",
-            fontWeight: "bold",
-            cursor: "help",
-            userSelect: "none",
-          }}
-        >
-          ?
-        </span>
-        {activeTooltip === id && tooltipPosition && (
-          <div
-            style={{
-              ...getTooltipStyle(),
-              padding: "10px 14px",
-              backgroundColor: "#1f2937",
-              color: "white",
-              borderRadius: "8px",
-              fontSize: "0.8rem",
-              lineHeight: "1.4",
-              whiteSpace: "normal",
-              maxWidth: "280px",
-              minWidth: "200px",
-              width: "max-content",
-              zIndex: 99999,
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-              pointerEvents: "none",
-              textAlign: "center",
-              wordWrap: "break-word",
-            }}
-          >
-            {message}
-            {/* Flecha del tooltip - ajustar posición según alineación */}
-            <div
-              style={{
-                position: "absolute",
-                top: "100%",
-                left:
-                  tooltipPosition.x + 280 / 2 > window.innerWidth - 20
-                    ? "auto"
-                    : tooltipPosition.x - 280 / 2 < 20
-                      ? "20px"
-                      : "50%",
-                right:
-                  tooltipPosition.x + 280 / 2 > window.innerWidth - 20
-                    ? "20px"
-                    : "auto",
-                transform:
-                  tooltipPosition.x + 280 / 2 > window.innerWidth - 20 ||
-                  tooltipPosition.x - 280 / 2 < 20
-                    ? "none"
-                    : "translateX(-50%)",
-                width: 0,
-                height: 0,
-                borderLeft: "6px solid transparent",
-                borderRight: "6px solid transparent",
-                borderTop: "6px solid #1f2937",
-              }}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Función auxiliar para formatear fechas
+  /*  Helpers  */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formatDate = (dateObj: any) => {
-    if (!dateObj || !dateObj.displayDate) return "-";
-
-    if (dateObj.displayDate.trim() === "") return "-";
-
+    if (!dateObj?.displayDate || dateObj.displayDate.trim() === "") return "-";
     try {
-      const [month, day, year] = dateObj.displayDate.split("/");
-      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-
-      return date.toLocaleDateString("es-CL", {
+      const [m, d, y] = dateObj.displayDate.split("/");
+      return new Date(+y, +m - 1, +d).toLocaleDateString("es-CL", {
         year: "numeric",
         month: "long",
         day: "numeric",
       });
-    } catch (error) {
+    } catch {
       return dateObj.displayDate;
     }
   };
 
-  // Obtener air-shipments usando el token con paginación
+  const formatDateInline = (displayDate: string | undefined) => {
+    if (!displayDate || displayDate.trim() === "") return "-";
+    try {
+      const [m, d, y] = displayDate.split("/");
+      return new Date(+y, +m - 1, +d).toLocaleDateString("es-CL", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return displayDate;
+    }
+  };
+
+  const isShipmentArrived = (shipment: AirShipment) => {
+    if (!shipment.arrival?.displayDate) return false;
+    try {
+      const [m, d, y] = shipment.arrival.displayDate.split("/");
+      return new Date(+y, +m - 1, +d) <= new Date();
+    } catch {
+      return false;
+    }
+  };
+
+  /*  API  */
   const fetchAirShipments = async (
     page: number = 1,
     append: boolean = false,
@@ -238,7 +142,6 @@ function AirShipmentsView() {
       setError("Debes ingresar un token primero");
       return;
     }
-
     if (!user?.username) {
       setError("No se pudo obtener el nombre de usuario");
       return;
@@ -249,7 +152,6 @@ function AirShipmentsView() {
     } else {
       setLoadingMore(true);
     }
-
     setError(null);
 
     try {
@@ -273,27 +175,22 @@ function AirShipmentsView() {
       );
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(
-            "Token inválido o expirado. Obtén un nuevo token desde Postman.",
-          );
-        }
+        if (response.status === 401)
+          throw new Error("Token inválido o expirado.");
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
       const shipmentsArray: AirShipment[] = await response.json();
-
-      // Aplanar la lista incluyendo subShipments para evitar duplicados
       const allShipments: AirShipment[] = [];
       const seenIds = new Set<number | string>();
 
-      for (const shipment of shipmentsArray) {
-        if (shipment.id && !seenIds.has(shipment.id)) {
-          allShipments.push(shipment);
-          seenIds.add(shipment.id);
+      for (const s of shipmentsArray) {
+        if (s.id && !seenIds.has(s.id)) {
+          allShipments.push(s);
+          seenIds.add(s.id);
         }
-        if (shipment.subShipments && Array.isArray(shipment.subShipments)) {
-          for (const sub of shipment.subShipments) {
+        if (s.subShipments && Array.isArray(s.subShipments)) {
+          for (const sub of s.subShipments) {
             if (sub.id && !seenIds.has(sub.id)) {
               allShipments.push(sub);
               seenIds.add(sub.id);
@@ -302,30 +199,26 @@ function AirShipmentsView() {
         }
       }
 
-      const sortedShipments = allShipments.sort((a, b) => {
-        const dateA = a.departure?.date
-          ? new Date(a.departure.date)
-          : new Date(0);
-        const dateB = b.departure?.date
-          ? new Date(b.departure.date)
-          : new Date(0);
-        return dateB.getTime() - dateA.getTime();
+      const sorted = allShipments.sort((a, b) => {
+        const da = a.departure?.date ? new Date(a.departure.date) : new Date(0);
+        const db = b.departure?.date ? new Date(b.departure.date) : new Date(0);
+        return db.getTime() - da.getTime();
       });
 
       setHasMoreShipments(shipmentsArray.length === 50);
+      const cacheKey = `airShipmentsCache_${user.username}`;
 
       if (append && page > 1) {
-        const combined = [...shipments, ...sortedShipments];
-        const resorted = combined.sort((a, b) => {
-          const dateA = a.departure?.date
+        const combined = [...shipments, ...sorted].sort((a, b) => {
+          const da = a.departure?.date
             ? new Date(a.departure.date)
             : new Date(0);
-          const dateB = b.departure?.date
+          const db = b.departure?.date
             ? new Date(b.departure.date)
             : new Date(0);
-          return dateB.getTime() - dateA.getTime();
+          return db.getTime() - da.getTime();
         });
-        const filtered = resorted.filter(
+        const filtered = combined.filter(
           (s) =>
             !String(s.number ?? "")
               .toUpperCase()
@@ -333,8 +226,6 @@ function AirShipmentsView() {
         );
         setShipments(filtered);
         setDisplayedShipments(filtered);
-
-        const cacheKey = `airShipmentsCache_${user.username}`;
         localStorage.setItem(cacheKey, JSON.stringify(filtered));
         localStorage.setItem(
           `${cacheKey}_timestamp`,
@@ -342,7 +233,7 @@ function AirShipmentsView() {
         );
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       } else {
-        const filtered = sortedShipments.filter(
+        const filtered = sorted.filter(
           (s) =>
             !String(s.number ?? "")
               .toUpperCase()
@@ -351,8 +242,6 @@ function AirShipmentsView() {
         setShipments(filtered);
         setDisplayedShipments(filtered);
         setShowingAll(false);
-
-        const cacheKey = `airShipmentsCache_${user.username}`;
         localStorage.setItem(cacheKey, JSON.stringify(filtered));
         localStorage.setItem(
           `${cacheKey}_timestamp`,
@@ -374,158 +263,80 @@ function AirShipmentsView() {
   };
 
   const loadMoreShipments = () => {
-    const nextPage = currentPage + 1;
-    setCurrentPage(nextPage);
-    fetchAirShipments(nextPage, true);
+    const next = currentPage + 1;
+    setCurrentPage(next);
+    fetchAirShipments(next, true);
   };
 
-  // Función para obtener la ruta de la bandera
-  const getFlagPath = (locationName: string | undefined) => {
-    if (!locationName) return null;
-    // Limpiar el nombre: reemplazar caracteres no válidos en nombres de archivo
-    const cleanName = locationName
-      .trim()
-      .replace(/\//g, "-") // Reemplazar / por -
-      .replace(/\\/g, "-") // Reemplazar \ por -
-      .replace(/:/g, "-") // Reemplazar : por -
-      .replace(/\*/g, "") // Eliminar *
-      .replace(/\?/g, "") // Eliminar ?
-      .replace(/"/g, "") // Eliminar "
-      .replace(/</g, "") // Eliminar <
-      .replace(/>/g, "") // Eliminar >
-      .replace(/\|/g, "-"); // Reemplazar | por -
-
-    return `/paises/${cleanName}.png`;
-  };
-
-  // Componente para mostrar ubicación con bandera
-  const LocationWithFlag = ({ location }: { location: string | undefined }) => {
-    if (!location) return <>-</>;
-
-    const flagPath = getFlagPath(location);
-
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        {flagPath && (
-          <img
-            src={flagPath}
-            alt={location}
-            style={{
-              width: "20px",
-              height: "15px",
-              objectFit: "cover",
-              borderRadius: "2px",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-            }}
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-        )}
-        <span style={{ fontWeight: "600" }}>{location}</span>
-      </div>
-    );
-  };
-
-  // Funciones para manejar accordion
+  /*  Accordion  */
   const toggleAccordion = (shipmentId: string | number) => {
-    setOpenAccordions((prev) => {
-      const isOpen = prev.includes(shipmentId);
-
-      if (isOpen) {
-        return prev.filter((id) => id !== shipmentId);
-      } else {
-        if (prev.length >= 3) {
-          return [...prev.slice(1), shipmentId];
-        }
-        return [...prev, shipmentId];
-      }
-    });
-
-    if (!activeTabs[shipmentId]) {
-      setActiveTabs((prev) => ({ ...prev, [shipmentId]: 0 }));
+    if (expandedShipmentId === shipmentId) {
+      setExpandedShipmentId(null);
+      setEmbedQuery(null);
+    } else {
+      setExpandedShipmentId(shipmentId);
+      const s = displayedShipments.find((sh) => {
+        const id = sh.id || sh.number;
+        return id === shipmentId;
+      });
+      setEmbedQuery(s?.number || null);
     }
   };
 
-  const setActiveTab = (shipmentId: string | number, tabIndex: number) => {
-    setActiveTabs((prev) => ({ ...prev, [shipmentId]: tabIndex }));
-  };
-
+  /*  Cache  */
   useEffect(() => {
-    if (!accessToken) {
-      console.log("No hay token disponible todavía");
-      return;
-    }
-
-    if (!user?.username) {
-      console.log("No hay usuario disponible todavía");
-      return;
-    }
+    if (!accessToken || !user?.username) return;
 
     const cacheKey = `airShipmentsCache_${user.username}`;
-    const cachedShipments = localStorage.getItem(cacheKey);
-    const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+    const cached = localStorage.getItem(cacheKey);
+    const ts = localStorage.getItem(`${cacheKey}_timestamp`);
     const cachedPage = localStorage.getItem(`${cacheKey}_page`);
 
-    if (cachedShipments && cacheTimestamp) {
-      const oneHour = 60 * 60 * 1000;
-      const now = new Date().getTime();
-      const cacheAge = now - parseInt(cacheTimestamp);
-
-      if (cacheAge < oneHour) {
-        const parsed = JSON.parse(cachedShipments);
-        const filtered = parsed.filter(
-          (s: any) =>
+    if (cached && ts) {
+      const age = Date.now() - parseInt(ts);
+      if (age < 3600000) {
+        const parsed = (JSON.parse(cached) as AirShipment[]).filter(
+          (s) =>
             !String(s.number ?? "")
               .toUpperCase()
               .startsWith("SOG"),
         );
-
-        setShipments(filtered);
-        setDisplayedShipments(filtered);
+        setShipments(parsed);
+        setDisplayedShipments(parsed);
         setShowingAll(false);
-
-        if (cachedPage) {
-          setCurrentPage(parseInt(cachedPage));
-        }
-
-        const lastPageSize = parsed.length % 50;
-        setHasMoreShipments(lastPageSize === 0 && parsed.length >= 50);
-
+        if (cachedPage) setCurrentPage(parseInt(cachedPage));
+        setHasMoreShipments(parsed.length % 50 === 0 && parsed.length >= 50);
         setLoading(false);
         console.log(
-          "✅ Cargando desde caché - datos guardados hace",
-          Math.floor(cacheAge / 60000),
+          "Cargando desde caché - datos guardados hace",
+          Math.floor(age / 60000),
           "minutos",
         );
-        console.log(`📦 ${parsed.length} air-shipments en caché`);
         return;
-      } else {
-        console.log("🗑️ Caché expirado, limpiando...");
-        localStorage.removeItem(cacheKey);
-        localStorage.removeItem(`${cacheKey}_timestamp`);
-        localStorage.removeItem(`${cacheKey}_page`);
       }
+      localStorage.removeItem(cacheKey);
+      localStorage.removeItem(`${cacheKey}_timestamp`);
+      localStorage.removeItem(`${cacheKey}_page`);
     }
 
     setCurrentPage(1);
     fetchAirShipments(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, user?.username]);
 
+  /*  Search  */
   const handleSearchByNumber = () => {
     if (!searchNumber.trim()) {
       setDisplayedShipments(shipments);
       setShowingAll(false);
       return;
     }
-
-    const searchTerm = searchNumber.trim().toLowerCase();
-    const results = shipments.filter((shipment) => {
-      const number = (shipment.number || "").toString().toLowerCase();
-      return number.includes(searchTerm);
-    });
-
-    setDisplayedShipments(results);
+    const term = searchNumber.trim().toLowerCase();
+    setDisplayedShipments(
+      shipments.filter((s) =>
+        (s.number || "").toString().toLowerCase().includes(term),
+      ),
+    );
     setShowingAll(true);
     setShowSearchModal(false);
   };
@@ -536,14 +347,12 @@ function AirShipmentsView() {
       setShowingAll(false);
       return;
     }
-
-    const results = shipments.filter((shipment) => {
-      if (!shipment.date) return false;
-      const shipmentDate = new Date(shipment.date).toISOString().split("T")[0];
-      return shipmentDate === searchDate;
-    });
-
-    setDisplayedShipments(results);
+    setDisplayedShipments(
+      shipments.filter((s) => {
+        if (!s.date) return false;
+        return new Date(s.date).toISOString().split("T")[0] === searchDate;
+      }),
+    );
     setShowingAll(true);
     setShowSearchModal(false);
   };
@@ -554,27 +363,24 @@ function AirShipmentsView() {
       setShowingAll(false);
       return;
     }
-
-    const results = shipments.filter((shipment) => {
-      if (!shipment.date) return false;
-      const shipmentDate = new Date(shipment.date);
-
-      if (searchStartDate && searchEndDate) {
-        const start = new Date(searchStartDate);
-        const end = new Date(searchEndDate);
-        end.setHours(23, 59, 59, 999);
-        return shipmentDate >= start && shipmentDate <= end;
-      } else if (searchStartDate) {
-        return shipmentDate >= new Date(searchStartDate);
-      } else if (searchEndDate) {
-        const end = new Date(searchEndDate);
-        end.setHours(23, 59, 59, 999);
-        return shipmentDate <= end;
-      }
-      return false;
-    });
-
-    setDisplayedShipments(results);
+    setDisplayedShipments(
+      shipments.filter((s) => {
+        if (!s.date) return false;
+        const d = new Date(s.date);
+        if (searchStartDate && searchEndDate) {
+          const end = new Date(searchEndDate);
+          end.setHours(23, 59, 59, 999);
+          return d >= new Date(searchStartDate) && d <= end;
+        }
+        if (searchStartDate) return d >= new Date(searchStartDate);
+        if (searchEndDate) {
+          const end = new Date(searchEndDate);
+          end.setHours(23, 59, 59, 999);
+          return d <= end;
+        }
+        return false;
+      }),
+    );
     setShowingAll(true);
     setShowSearchModal(false);
   };
@@ -590,41 +396,17 @@ function AirShipmentsView() {
 
   const refreshShipments = () => {
     if (!user?.username) return;
-
     const cacheKey = `airShipmentsCache_${user.username}`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);
     localStorage.removeItem(`${cacheKey}_page`);
-
     setCurrentPage(1);
     setShipments([]);
     setDisplayedShipments([]);
     fetchAirShipments(1, false);
-
-    console.log("🔄 Datos refrescados desde la API");
   };
 
-  const openModal = (shipment: AirShipment) => {
-    setSelectedShipment(shipment);
-    setShowModal(true);
-    setEmbedQuery(shipment.number || null);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedShipment(null);
-    setEmbedQuery(null);
-  };
-
-  const openSearchModal = () => {
-    setShowSearchModal(true);
-  };
-
-  const closeSearchModal = () => {
-    setShowSearchModal(false);
-  };
-
-  // Funciones para el modal de tracking
+  /*  Track Modal  */
   const openTrackModal = (shipment: AirShipment) => {
     setTrackShipment(shipment);
     setTrackEmail("");
@@ -641,9 +423,7 @@ function AirShipmentsView() {
 
   const handleTrackSubmit = async () => {
     if (!trackShipment || !trackEmail.trim()) return;
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trackEmail.trim())) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trackEmail.trim())) {
       setTrackError("Por favor ingresa un correo electrónico válido.");
       return;
     }
@@ -654,14 +434,6 @@ function AirShipmentsView() {
     try {
       const cleanAwb =
         trackShipment.number?.toString().replace(/[\s-]/g, "") || "";
-
-      const shipmentData = {
-        reference: user?.username,
-        awb_number: cleanAwb,
-        followers: [trackEmail.trim()],
-        tags: [],
-      };
-
       const API_BASE_URL =
         import.meta.env.MODE === "development"
           ? "http://localhost:4000"
@@ -673,28 +445,30 @@ function AirShipmentsView() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(shipmentData),
+        body: JSON.stringify({
+          reference: user?.username,
+          awb_number: cleanAwb,
+          followers: [trackEmail.trim()],
+          tags: [],
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        if (response.status === 409) {
+        if (response.status === 409)
           setTrackError("Ya existe un trackeo con este AWB en tu cuenta.");
-        } else if (response.status === 402) {
+        else if (response.status === 402)
           setTrackError(
             "No hay créditos disponibles. Contacta a tu ejecutivo de cuenta.",
           );
-        } else {
-          setTrackError(data.error || "Error al crear el trackeo.");
-        }
+        else setTrackError(data.error || "Error al crear el trackeo.");
         return;
       }
 
-      // Éxito: cerrar modal y redirigir
       closeTrackModal();
       navigate("/trackings");
-    } catch (err) {
+    } catch {
       setTrackError(
         "Error de conexión. Verifica tu internet e intenta nuevamente.",
       );
@@ -703,1657 +477,503 @@ function AirShipmentsView() {
     }
   };
 
+  /* 
+     JSX
+      */
   return (
-    <>
-      {/* Interactive Map */}
-      <div
-        style={{
-          marginBottom: "32px",
-          height: "450px",
-          borderRadius: "12px",
-          overflow: "hidden",
-          border: "1px solid #e5e7eb",
-          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-          zIndex: 1,
-          position: "relative",
-        }}
-      >
+    <div className="asv-container">
+      {/* ShipsGo Map Embed */}
+      <div className="asv-map-wrapper">
         <iframe
           id="shipsgo-embed"
           src={`https://embed.shipsgo.com/?token=${import.meta.env.VITE_SHIPSGO_EMBED_TOKEN}${embedQuery ? `&transport=air&query=${embedQuery}` : ""}`}
           width="100%"
           height="450"
           frameBorder="0"
-        ></iframe>
+          title="ShipsGo Air Tracking"
+        />
       </div>
 
-      {/* Botones de acción */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: "12px",
-          marginBottom: "20px",
-          flexWrap: "wrap",
-          fontFamily: "Poppins, sans-serif",
-        }}
-      >
-        <button
-          onClick={openSearchModal}
-          style={{
-            backgroundColor: "transparent",
-            color: "#111827",
-            border: "1px solid #d1d5db",
-            borderRadius: "6px",
-            padding: "8px 14px",
-            cursor: "pointer",
-            fontSize: "0.85rem",
-            fontWeight: "500",
-            transition: "background-color 0.2s ease, border-color 0.2s ease",
-          }}
-        >
-          Buscar
-        </button>
-
-        {/* Botón Actualizar */}
-        <button
-          onClick={refreshShipments}
-          className="btn-refresh"
-          title="Actualizar lista de envíos"
-        >
-          🔄 Actualizar
-        </button>
-
-        {loadingMore && (
-          <div
-            style={{
-              padding: "8px 14px",
-              color: "#6b7280",
-              fontSize: "0.85rem",
-              fontWeight: "400",
-            }}
-          >
-            Cargando…
-          </div>
-        )}
-
-        {showingAll && (
+      {/* Toolbar */}
+      <div className="asv-toolbar">
+        <div className="asv-toolbar__left" />
+        <div className="asv-toolbar__right">
           <button
-            onClick={clearSearch}
-            style={{
-              backgroundColor: "transparent",
-              color: "#6b7280",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              padding: "8px 14px",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              fontWeight: "400",
-              transition: "color 0.2s ease, border-color 0.2s ease",
-            }}
+            className="asv-btn asv-btn--ghost"
+            onClick={() => setShowSearchModal(true)}
           >
-            Limpiar filtros
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            Buscar
           </button>
-        )}
+          <button
+            className="asv-btn asv-btn--primary"
+            onClick={refreshShipments}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            Actualizar
+          </button>
+          {loadingMore && <span className="asv-loading-text">Cargando</span>}
+          {showingAll && (
+            <button
+              className="asv-btn asv-btn--ghost asv-btn--sm"
+              onClick={clearSearch}
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Modal de Búsqueda */}
-      {showSearchModal && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-          style={{
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            zIndex: 9999,
-            animation: "fadeIn 0.3s ease-in-out",
-          }}
-          onClick={closeSearchModal}
-        >
-          <div
-            className="bg-white rounded p-4"
-            style={{
-              maxWidth: "500px",
-              width: "90%",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h5 style={{ marginBottom: "20px", color: "#1f2937" }}>
-              Buscar Air-Shipments
-            </h5>
-
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Número
-              </label>
-              <input
-                type="text"
-                value={searchNumber}
-                onChange={(e) => setSearchNumber(e.target.value)}
-                placeholder="Ingresa el número del shipment"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                }}
-              />
-              <button
-                onClick={handleSearchByNumber}
-                style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
-              >
-                Buscar por Número
-              </button>
-            </div>
-
-            <div
-              style={{
-                borderTop: "1px solid #e5e7eb",
-                paddingTop: "20px",
-                marginBottom: "20px",
-              }}
-            >
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Fecha Exacta
-              </label>
-              <input
-                type="date"
-                value={searchDate}
-                onChange={(e) => setSearchDate(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                }}
-              />
-              <button
-                onClick={handleSearchByDate}
-                style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
-              >
-                Buscar por Fecha
-              </button>
-            </div>
-
-            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Rango de Fechas
-              </label>
-              <div
-                style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "4px",
-                      fontSize: "0.8rem",
-                      color: "#6b7280",
-                    }}
-                  >
-                    Desde
-                  </label>
-                  <input
-                    type="date"
-                    value={searchStartDate}
-                    onChange={(e) => setSearchStartDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "0.85rem",
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "4px",
-                      fontSize: "0.8rem",
-                      color: "#6b7280",
-                    }}
-                  >
-                    Hasta
-                  </label>
-                  <input
-                    type="date"
-                    value={searchEndDate}
-                    onChange={(e) => setSearchEndDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "0.85rem",
-                    }}
-                  />
-                </div>
-              </div>
-              <button
-                onClick={handleSearchByDateRange}
-                style={{
-                  width: "100%",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
-              >
-                Buscar por Rango
-              </button>
-            </div>
-
-            <button
-              onClick={closeSearchModal}
-              style={{
-                marginTop: "20px",
-                width: "100%",
-                backgroundColor: "#f3f4f6",
-                color: "#374151",
-                border: "none",
-                borderRadius: "6px",
-                padding: "10px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-              }}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Indicador de carga */}
+      {/* Loading */}
       {loading && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px",
-            backgroundColor: "white",
-            borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "3rem",
-              marginBottom: "16px",
-              animation: "pulse 1.5s ease-in-out infinite",
-            }}
-          >
-            ✈️
-          </div>
-          <p style={{ color: "#6b7280", fontSize: "1rem" }}>
-            Cargando air-shipments...
-          </p>
+        <div className="asv-empty">
+          <div className="asv-spinner" />
+          <p className="asv-empty__subtitle">Cargando air-shipments</p>
         </div>
       )}
 
-      {/* Mensaje de error */}
+      {/* Error */}
       {error && (
-        <div
-          style={{
-            padding: "16px",
-            backgroundColor: "#fee2e2",
-            color: "#991b1b",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            border: "1px solid #fecaca",
-          }}
-        >
+        <div className="asv-error">
           <strong>Error:</strong> {error}
         </div>
       )}
 
-      {/* Tabla de Air-Shipments con Accordion */}
+      {/* Table */}
       {!loading && displayedShipments.length > 0 && (
-        <div
-          style={{
-            backgroundColor: "white",
-            borderRadius: "12px",
-            overflow: "visible",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "0.875rem",
-              }}
-            >
+        <div className="asv-table-wrapper">
+          <div className="asv-table-scroll">
+            <table className="asv-table">
               <thead>
-                <tr
-                  style={{
-                    backgroundColor: "#f9fafb",
-                    borderBottom: "2px solid #e5e7eb",
-                  }}
-                >
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Número
-                    <TooltipIcon id="numero" message={tooltipMessages.numero} />
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Waybill
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      minWidth: "200px",
-                    }}
-                  >
-                    Consignatario
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "center",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Fecha Salida
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "center",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      minWidth: "150px",
-                    }}
-                  >
-                    Fecha Llegada
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "center",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Carrier
-                  </th>
+                <tr>
+                  <th className="asv-th">Número</th>
+                  <th className="asv-th">Waybill</th>
+                  <th className="asv-th">Consignatario</th>
+                  <th className="asv-th asv-th--center">Fecha Salida</th>
+                  <th className="asv-th asv-th--center">Fecha Llegada</th>
+                  <th className="asv-th asv-th--center">Carrier</th>
                 </tr>
               </thead>
               <tbody>
                 {displayedShipments.map((shipment, index) => {
                   const shipmentId = shipment.id || shipment.number || index;
-                  const isOpen = openAccordions.includes(shipmentId);
-                  const activeTabIndex = activeTabs[shipmentId] || 0;
-
-                  const isDelivered = !!shipment.proofOfDelivery?.podDelivery;
-                  const isInCustoms =
-                    shipment.customsReleased || !!shipment.importSection?.entry;
-                  const hasArrived = (() => {
-                    if (!shipment.arrival || !shipment.arrival.displayDate)
-                      return false;
-                    try {
-                      const [month, day, year] =
-                        shipment.arrival.displayDate.split("/");
-                      const arrivalDate = new Date(
-                        parseInt(year),
-                        parseInt(month) - 1,
-                        parseInt(day),
-                      );
-                      return arrivalDate <= new Date();
-                    } catch {
-                      return false;
-                    }
-                  })();
-                  const inTransit = !!shipment.departure;
-
-                  let statusLabel = "Pendiente";
-                  let statusColor = "#9ca3af";
-                  let statusBg = "#f3f4f6";
-
-                  if (isDelivered) {
-                    statusLabel = "Entregado";
-                    statusColor = "#059669";
-                    statusBg = "#d1fae5";
-                  } else if (isInCustoms) {
-                    statusLabel = "En Aduana";
-                    statusColor = "#d97706";
-                    statusBg = "#fef3c7";
-                  } else if (hasArrived) {
-                    statusLabel = "Arribado";
-                    statusColor = "#2563eb";
-                    statusBg = "#dbeafe";
-                  } else if (inTransit) {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    statusLabel = "En Tránsito";
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    statusColor = "#7c3aed";
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    statusBg = "#ede9fe";
-                  }
+                  const isExpanded = expandedShipmentId === shipmentId;
+                  const arrived = isShipmentArrived(shipment);
 
                   return (
-                    <>
-                      {/* Fila de la tabla */}
+                    <React.Fragment key={shipmentId}>
                       <tr
-                        key={`row-${shipmentId}`}
+                        className={`asv-tr ${isExpanded ? "asv-tr--active" : ""}`}
                         onClick={() => toggleAccordion(shipmentId)}
-                        className={`shipments-table-row ${isOpen ? "expanded" : ""}`}
-                        style={{
-                          borderBottom:
-                            !isOpen && index < displayedShipments.length - 1
-                              ? "1px solid #f3f4f6"
-                              : "none",
-                        }}
                       >
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            fontWeight: "600",
-                            color: "#1f2937",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {shipment.number || "N/A"}
+                        <td className="asv-td asv-td--number">
+                          <svg
+                            className={`asv-row-chevron ${isExpanded ? "asv-row-chevron--open" : ""}`}
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                          >
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                          {shipment.number || "---"}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            color: "#3b82f6",
-                            fontWeight: "500",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
+                        <td className="asv-td asv-td--waybill">
                           {shipment.waybillNumber || "-"}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            color: "#4b5563",
-                          }}
-                        >
+                        <td className="asv-td">
                           {shipment.consignee?.name || "-"}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            textAlign: "center",
-                            color: "#4b5563",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {shipment.departure &&
-                          shipment.departure.displayDate &&
-                          shipment.departure.displayDate.trim() !== ""
-                            ? (() => {
-                                try {
-                                  const [month, day, year] =
-                                    shipment.departure.displayDate.split("/");
-                                  const date = new Date(
-                                    parseInt(year),
-                                    parseInt(month) - 1,
-                                    parseInt(day),
-                                  );
-                                  return date.toLocaleDateString("es-CL", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                  });
-                                } catch {
-                                  return shipment.departure.displayDate;
-                                }
-                              })()
-                            : "-"}
+                        <td className="asv-td asv-td--center">
+                          {formatDateInline(shipment.departure?.displayDate)}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            textAlign: "center",
-                            color: "#4b5563",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {shipment.arrival &&
-                          shipment.arrival.displayDate &&
-                          shipment.arrival.displayDate.trim() !== ""
-                            ? (() => {
-                                try {
-                                  const [month, day, year] =
-                                    shipment.arrival.displayDate.split("/");
-                                  const date = new Date(
-                                    parseInt(year),
-                                    parseInt(month) - 1,
-                                    parseInt(day),
-                                  );
-                                  return date.toLocaleDateString("es-CL", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric",
-                                  });
-                                } catch {
-                                  return shipment.arrival.displayDate;
-                                }
-                              })()
-                            : "-"}
+                        <td className="asv-td asv-td--center">
+                          {formatDateInline(shipment.arrival?.displayDate)}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            textAlign: "center",
-                            color: "#4b5563",
-                          }}
-                        >
+                        <td className="asv-td asv-td--center">
                           {shipment.carrier?.name || "-"}
                         </td>
                       </tr>
 
-                      {/* Contenido del Accordion */}
-                      {isOpen && (
-                        <tr key={`accordion-${shipmentId}`}>
-                          <td
-                            colSpan={6}
-                            style={{
-                              padding: 0,
-                              borderTop: "3px solid #1F2937",
-                            }}
-                          >
-                            <div className="accordion-content">
-                              {/* Timeline Visual encima de los tabs */}
-                              <div className="accordion-timeline-section">
+                      {/* Accordion content */}
+                      {isExpanded && (
+                        <tr className="asv-accordion-row">
+                          <td colSpan={6} className="asv-accordion-cell">
+                            <div className="asv-accordion-content">
+                              {/* ShipmentTimeline  preserved exactly */}
+                              <div className="asv-timeline-section">
                                 <ShipmentTimeline shipment={shipment} />
                               </div>
 
-                              {/* Tabs horizontales */}
-                              <div className="tabs-container">
-                                <button
-                                  className={`tab-button ${activeTabIndex === 0 ? "active" : ""}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(shipmentId, 0);
-                                  }}
-                                  style={{
-                                    padding: "12px 20px",
-                                    background: "transparent",
-                                    color:
-                                      activeTabIndex === 0
-                                        ? "#1f2937"
-                                        : "#64748b",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 0
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    borderRadius: "0",
-                                    cursor: "pointer",
-                                    fontWeight:
-                                      activeTabIndex === 0 ? "700" : "500",
-                                    fontSize: "0.875rem",
-                                    transition: "all 0.2s",
-                                    whiteSpace: "nowrap",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                  }}
-                                >
-                                  Información General
-                                </button>
-                                <button
-                                  className={`tab-button ${activeTabIndex === 5 ? "active" : ""}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(shipmentId, 5);
-                                  }}
-                                  style={{
-                                    padding: "12px 20px",
-                                    background: "transparent",
-                                    color:
-                                      activeTabIndex === 5
-                                        ? "#1f2937"
-                                        : "#64748b",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 5
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    borderRadius: "0",
-                                    cursor: "pointer",
-                                    fontWeight:
-                                      activeTabIndex === 5 ? "700" : "500",
-                                    fontSize: "0.875rem",
-                                    transition: "all 0.2s",
-                                    whiteSpace: "nowrap",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                  }}
-                                >
-                                  Documentos
-                                </button>
-                                <button
-                                  className={`tab-button ${activeTabIndex === 1 ? "active" : ""}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(shipmentId, 1);
-                                  }}
-                                  style={{
-                                    padding: "12px 20px",
-                                    background: "transparent",
-                                    color:
-                                      activeTabIndex === 1
-                                        ? "#1f2937"
-                                        : "#64748b",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 1
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    borderRadius: "0",
-                                    cursor: "pointer",
-                                    fontWeight:
-                                      activeTabIndex === 1 ? "700" : "500",
-                                    fontSize: "0.875rem",
-                                    transition: "all 0.2s",
-                                    whiteSpace: "nowrap",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "8px",
-                                  }}
-                                >
-                                  Origen y Destino
-                                </button>
-                                {shipment.commodities &&
-                                  shipment.commodities.length > 0 && (
-                                    <button
-                                      className={`tab-button ${activeTabIndex === 2 ? "active" : ""}`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setActiveTab(shipmentId, 2);
-                                      }}
-                                      style={{
-                                        padding: "12px 20px",
-                                        background: "transparent",
-                                        color:
-                                          activeTabIndex === 2
-                                            ? "#1f2937"
-                                            : "#64748b",
-                                        border: "none",
-                                        borderBottom:
-                                          activeTabIndex === 2
-                                            ? "2px solid #1f2937"
-                                            : "2px solid transparent",
-                                        borderRadius: "0",
-                                        cursor: "pointer",
-                                        fontWeight:
-                                          activeTabIndex === 2 ? "700" : "500",
-                                        fontSize: "0.875rem",
-                                        transition: "all 0.2s",
-                                        whiteSpace: "nowrap",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "8px",
-                                      }}
-                                    >
-                                      Carga
-                                    </button>
-                                  )}
-                                {shipment.subShipments &&
-                                  shipment.subShipments.length > 0 && (
-                                    <button
-                                      className={`tab-button ${activeTabIndex === 3 ? "active" : ""}`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setActiveTab(shipmentId, 3);
-                                      }}
-                                      style={{
-                                        padding: "12px 20px",
-                                        background: "transparent",
-                                        color:
-                                          activeTabIndex === 3
-                                            ? "#1f2937"
-                                            : "#64748b",
-                                        border: "none",
-                                        borderBottom:
-                                          activeTabIndex === 3
-                                            ? "2px solid #1f2937"
-                                            : "2px solid transparent",
-                                        borderRadius: "0",
-                                        cursor: "pointer",
-                                        fontWeight:
-                                          activeTabIndex === 3 ? "700" : "500",
-                                        fontSize: "0.875rem",
-                                        transition: "all 0.2s",
-                                        whiteSpace: "nowrap",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "8px",
-                                      }}
-                                    >
-                                      Cotización ({shipment.subShipments.length}
-                                      )
-                                    </button>
-                                  )}
-                                {shipment.notes && (
-                                  <button
-                                    className={`tab-button ${activeTabIndex === 4 ? "active" : ""}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveTab(shipmentId, 4);
-                                    }}
-                                    style={{
-                                      padding: "12px 20px",
-                                      background: "transparent",
-                                      color:
-                                        activeTabIndex === 4
-                                          ? "#1f2937"
-                                          : "#64748b",
-                                      border: "none",
-                                      borderBottom:
-                                        activeTabIndex === 4
-                                          ? "2px solid #1f2937"
-                                          : "2px solid transparent",
-                                      borderRadius: "0",
-                                      cursor: "pointer",
-                                      fontWeight:
-                                        activeTabIndex === 4 ? "700" : "500",
-                                      fontSize: "0.875rem",
-                                      transition: "all 0.2s",
-                                      whiteSpace: "nowrap",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "8px",
-                                    }}
-                                  >
-                                    Notas
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* Contenido de los tabs */}
-                              <div className="tab-content">
-                                {/* Tab 0: Información General */}
-                                {activeTabIndex === 0 && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexWrap: "wrap",
-                                      gap: "12px",
-                                    }}
-                                  >
-                                    <InfoField
-                                      label="Número de Envío"
-                                      value={shipment.number}
-                                    />
-                                    <InfoField
-                                      label="Waybill"
-                                      value={shipment.waybillNumber}
-                                    />
-                                    <InfoField
-                                      label="Referencia Cliente"
-                                      value={shipment.customerReference}
-                                    />
-                                    {/* Botón Trackea tu envío */}
-                                    <div
-                                      style={{
-                                        marginBottom: "12px",
-                                        flex: "1 1 48%",
-                                        minWidth: "200px",
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          fontSize: "0.7rem",
-                                          fontWeight: "600",
-                                          color: "#6b7280",
-                                          textTransform: "uppercase",
-                                          letterSpacing: "0.5px",
-                                          marginBottom: "4px",
-                                        }}
+                              {/* Tabs */}
+                              <DetailTabs
+                                tabs={[
+                                  {
+                                    key: "general",
+                                    label: "Información General",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
                                       >
-                                        ¿Quieres trackear tu envío?
-                                      </div>
-                                      {hasArrived ? (
-                                        <div
-                                          style={{
-                                            maxWidth: "5cm",
-                                            padding: "10px 12px",
-                                            background:
-                                              "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-                                            border: "1px solid #fca5a5",
-                                            borderRadius: "6px",
-                                            color: "#dc2626",
-                                            fontSize: "0.875rem",
-                                            fontWeight: "500",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: "6px",
-                                          }}
-                                        >
-                                          <span>❌</span>
-                                          No disponible
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="16" x2="12" y2="12" />
+                                        <line
+                                          x1="12"
+                                          y1="8"
+                                          x2="12.01"
+                                          y2="8"
+                                        />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <div className="asv-cards-grid">
+                                        <div className="asv-card">
+                                          <h4>Detalles del Envío</h4>
+                                          <div className="asv-info-grid">
+                                            <InfoField
+                                              label="Número de Envío"
+                                              value={shipment.number}
+                                            />
+                                            <InfoField
+                                              label="Referencia Cliente"
+                                              value={shipment.customerReference}
+                                            />
+                                            <InfoField
+                                              label="Waybill"
+                                              value={shipment.waybillNumber}
+                                            />
+                                            <InfoField
+                                              label="Carga"
+                                              value={shipment.cargoDescription}
+                                            />
+                                          </div>
                                         </div>
-                                      ) : (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openTrackModal(shipment);
-                                          }}
-                                          style={{
-                                            maxWidth: "5cm",
-                                            padding: "10px 12px",
-                                            background:
-                                              "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
-                                            border: "1px solid #cbd5e1",
-                                            borderRadius: "6px",
-                                            color: "#334155",
-                                            fontSize: "0.875rem",
-                                            fontWeight: "500",
-                                            cursor: "pointer",
-                                            transition: "all 0.2s ease",
-                                            boxShadow:
-                                              "0 1px 2px rgba(0, 0, 0, 0.05)",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: "6px",
-                                          }}
-                                          onMouseEnter={(e) => {
-                                            e.currentTarget.style.background =
-                                              "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)";
-                                            e.currentTarget.style.boxShadow =
-                                              "0 2px 4px rgba(0, 0, 0, 0.1)";
-                                            e.currentTarget.style.transform =
-                                              "translateY(-1px)";
-                                          }}
-                                          onMouseLeave={(e) => {
-                                            e.currentTarget.style.background =
-                                              "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)";
-                                            e.currentTarget.style.boxShadow =
-                                              "0 1px 2px rgba(0, 0, 0, 0.05)";
-                                            e.currentTarget.style.transform =
-                                              "translateY(0)";
-                                          }}
-                                        >
-                                          <span>✈️</span>
-                                          Trackea tu envío
-                                        </button>
-                                      )}
-                                    </div>
-                                    <InfoField
-                                      label="Número de Booking"
-                                      value={shipment.bookingNumber}
-                                    />
-                                    <InfoField
-                                      label="Carrier"
-                                      value={shipment.carrier?.name}
-                                      fullWidth
-                                    />
-                                    <InfoField
-                                      label="Vuelo"
-                                      value={shipment.flight}
-                                    />
-                                    <InfoField
-                                      label="Aeropuerto Salida"
-                                      value={shipment.airportOfDeparture}
-                                    />
-                                    <InfoField
-                                      label="Aeropuerto Llegada"
-                                      value={shipment.airportOfArrival}
-                                    />
-                                    <InfoField
-                                      label="Fecha Salida"
-                                      value={
-                                        shipment.departure
-                                          ? formatDate(shipment.departure)
-                                          : null
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Fecha Llegada"
-                                      value={
-                                        shipment.arrival
-                                          ? formatDate(shipment.arrival)
-                                          : null
-                                      }
-                                    />
-                                  </div>
-                                )}
-
-                                {/* Tab 1: Origen y Destino */}
-                                {activeTabIndex === 1 && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexWrap: "wrap",
-                                      gap: "12px",
-                                    }}
-                                  >
-                                    <InfoField
-                                      label="Remitente (Shipper)"
-                                      value={shipment.shipper?.name}
-                                      fullWidth
-                                    />
-                                    <InfoField
-                                      label="Dirección Remitente"
-                                      value={shipment.shipperAddress}
-                                      fullWidth
-                                    />
-                                    <InfoField
-                                      label="Consignatario"
-                                      value={shipment.consignee?.name}
-                                      fullWidth
-                                    />
-                                    <InfoField
-                                      label="Dirección Consignatario"
-                                      value={shipment.consigneeAddress}
-                                      fullWidth
-                                    />
-                                    <InfoField
-                                      label="Notify Party"
-                                      value={
-                                        shipment.notifyParty?.name ||
-                                        shipment.notifyPartyAddress
-                                      }
-                                      fullWidth
-                                    />
-                                    <InfoField
-                                      label="Agente Forwarding"
-                                      value={shipment.forwardingAgent?.name}
-                                    />
-                                    <InfoField
-                                      label="Agente Destino"
-                                      value={shipment.destinationAgent?.name}
-                                    />
-                                  </div>
-                                )}
-
-                                {/* Tab 2: Carga y Commodities */}
-                                {activeTabIndex === 2 &&
-                                  shipment.commodities &&
-                                  shipment.commodities.length > 0 && (
-                                    <div>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          flexWrap: "wrap",
-                                          gap: "12px",
-                                          marginBottom: "16px",
-                                        }}
+                                        <div className="asv-card">
+                                          <h4>Seguimiento del Envío</h4>
+                                          <div className="asv-info-grid">
+                                            {/* Track button */}
+                                            <div className="asv-track-field">
+                                              <div className="asv-track-field__label">
+                                                ¿Quieres trackear tu envío?
+                                              </div>
+                                              {arrived ? (
+                                                <span className="asv-track-field__unavailable">
+                                                  No disponible
+                                                </span>
+                                              ) : (
+                                                <button
+                                                  className="asv-btn asv-btn--secondary asv-btn--sm"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openTrackModal(shipment);
+                                                  }}
+                                                >
+                                                  Trackea tu envío
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="asv-card">
+                                          <h4>Operación Logística</h4>
+                                          <div className="asv-info-grid">
+                                            <InfoField
+                                              label="Carrier"
+                                              value={shipment.carrier?.name}
+                                            />
+                                            <InfoField
+                                              label="Fecha Salida"
+                                              value={
+                                                shipment.departure
+                                                  ? formatDate(
+                                                      shipment.departure,
+                                                    )
+                                                  : null
+                                              }
+                                            />
+                                            <InfoField
+                                              label="Fecha Llegada"
+                                              value={
+                                                shipment.arrival
+                                                  ? formatDate(shipment.arrival)
+                                                  : null
+                                              }
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ),
+                                  },
+                                  {
+                                    key: "cargo",
+                                    label: "Información de Carga",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
                                       >
-                                        <InfoField
-                                          label="Descripción de Carga"
-                                          value={shipment.cargoDescription}
-                                          fullWidth
-                                        />
-                                        <InfoField
-                                          label="Marcas de Carga"
-                                          value={shipment.cargoMarks}
-                                          fullWidth
-                                        />
-                                        <InfoField
-                                          label="Piezas Manifestadas"
-                                          value={shipment.manifestedPieces}
-                                        />
-                                        <InfoField
-                                          label="Peso Manifestado"
-                                          value={
-                                            shipment.manifestedWeight
-                                              ? `${shipment.manifestedWeight} kg`
-                                              : null
-                                          }
-                                        />
-                                        <InfoField
-                                          label="Pallets"
-                                          value={
-                                            shipment.pallets ||
-                                            shipment.manifestedPallets
-                                          }
-                                        />
-                                        <InfoField
-                                          label="Carga Peligrosa"
-                                          value={shipment.hazardous}
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <div>
+                                        <div
+                                          className="asv-info-grid"
+                                          style={{ marginBottom: 16 }}
+                                        >
+                                          <InfoField
+                                            label="Descripción de Carga"
+                                            value={shipment.cargoDescription}
+                                            fullWidth
+                                          />
+                                          <InfoField
+                                            label="Piezas"
+                                            value={shipment.commodities?.pieces}
+                                            fullWidth
+                                          />
+                                          <InfoField
+                                            label="Piezas Manifestadas"
+                                            value={shipment.manifestedPieces}
+                                          />
+                                          <InfoField
+                                            label="Peso Manifestado"
+                                            value={
+                                              shipment.manifestedWeight
+                                                ? `${shipment.manifestedWeight} kg`
+                                                : null
+                                            }
+                                          />
+                                          <InfoField
+                                            label="Pallets"
+                                            value={
+                                              shipment.pallets ||
+                                              shipment.manifestedPallets
+                                            }
+                                          />
+                                          <InfoField
+                                            label="Carga Peligrosa"
+                                            value={shipment.hazardous}
+                                          />
+                                        </div>
+                                        <CommoditiesSection
+                                          commodities={shipment.commodities!}
                                         />
                                       </div>
-                                      <CommoditiesSection
-                                        commodities={shipment.commodities}
+                                    ),
+                                  },
+                                  {
+                                    key: "route",
+                                    label: "Origen y Destino",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <circle cx="12" cy="10" r="3" />
+                                        <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z" />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <div className="asv-info-grid">
+                                        <InfoField
+                                          label="Remitente (Shipper)"
+                                          value={shipment.shipper?.name}
+                                          fullWidth
+                                        />
+                                        <InfoField
+                                          label="Dirección Remitente"
+                                          value={shipment.shipperAddress}
+                                          fullWidth
+                                        />
+                                        <InfoField
+                                          label="Carrier"
+                                          value={shipment.carrier?.name}
+                                          fullWidth
+                                        />
+                                        <InfoField
+                                          label="Dirección Consignatario"
+                                          value={shipment.consigneeAddress}
+                                          fullWidth
+                                        />
+                                        <InfoField
+                                          label="Notify Party"
+                                          value={
+                                            shipment.notifyParty?.name ||
+                                            shipment.notifyPartyAddress
+                                          }
+                                          fullWidth
+                                        />
+                                        <InfoField
+                                          label="Agente Forwarding"
+                                          value={shipment.forwardingAgent?.name}
+                                        />
+                                        <InfoField
+                                          label="Agente Destino"
+                                          value={
+                                            shipment.destinationAgent?.name
+                                          }
+                                        />
+                                      </div>
+                                    ),
+                                  },
+                                  {
+                                    key: "docs",
+                                    label: "Documentos",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <DocumentosSectionAir
+                                        shipmentId={shipmentId}
                                       />
-                                    </div>
-                                  )}
-
-                                {/* Tab 3: Sub-Shipments */}
-                                {activeTabIndex === 3 &&
-                                  shipment.subShipments &&
-                                  shipment.subShipments.length > 0 && (
-                                    <SubShipmentsList
-                                      subShipments={shipment.subShipments}
-                                    />
-                                  )}
-
-                                {/* Tab 4: Notas */}
-                                {activeTabIndex === 4 && shipment.notes && (
-                                  <div
-                                    style={{
-                                      padding: "12px",
-                                      backgroundColor: "#fffbeb",
-                                      borderRadius: "6px",
-                                      border: "1px solid #fde047",
-                                      color: "#713f12",
-                                      fontSize: "0.875rem",
-                                      whiteSpace: "pre-wrap",
-                                      lineHeight: "1.6",
-                                    }}
-                                  >
-                                    {shipment.notes}
-                                  </div>
-                                )}
-
-                                {/* Tab 5: Documentos */}
-                                {activeTabIndex === 5 && (
-                                  <div style={{ padding: "12px" }}>
-                                    <DocumentosSectionAir
-                                      shipmentId={shipmentId}
-                                    />
-                                  </div>
-                                )}
-                              </div>
+                                    ),
+                                  },
+                                  {
+                                    key: "subshipments",
+                                    label: `Cotización (${shipment.subShipments?.length || 0})`,
+                                    hidden:
+                                      !shipment.subShipments ||
+                                      shipment.subShipments.length === 0,
+                                    content: (
+                                      <SubShipmentsList
+                                        subShipments={shipment.subShipments!}
+                                      />
+                                    ),
+                                  },
+                                  {
+                                    key: "notes",
+                                    label: "Notas",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                      </svg>
+                                    ),
+                                    hidden: !shipment.notes,
+                                    content: (
+                                      <div className="asv-notes">
+                                        {shipment.notes}
+                                      </div>
+                                    ),
+                                  },
+                                ]}
+                              />
                             </div>
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
 
-          {/* Footer de la tabla */}
-          <div
-            style={{
-              padding: "16px 20px",
-              backgroundColor: "#f9fafb",
-              borderTop: "1px solid #e5e7eb",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.875rem",
-                color: "#6b7280",
-              }}
-            >
-              Mostrando{" "}
-              <strong style={{ color: "#1f2937" }}>
-                {displayedShipments.length}
-              </strong>{" "}
-              envíos
+          {/* Table footer */}
+          <div className="asv-table-footer">
+            <div className="asv-table-footer__left">
+              Mostrando <strong>{displayedShipments.length}</strong> envíos
               {!hasMoreShipments && <span> (todos cargados)</span>}
             </div>
-            {hasMoreShipments && !loadingMore && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  loadMoreShipments();
-                }}
-                style={{
-                  backgroundColor: "white",
-                  color: "#3b82f6",
-                  border: "1px solid #3b82f6",
-                  borderRadius: "6px",
-                  padding: "6px 16px",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  fontWeight: "600",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#3b82f6";
-                  e.currentTarget.style.color = "white";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "white";
-                  e.currentTarget.style.color = "#3b82f6";
-                }}
-              >
-                Cargar más
-              </button>
-            )}
-            {loadingMore && (
-              <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>
-                Cargando...
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Detalles MEJORADO */}
-      {showModal && selectedShipment && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center p-3"
-          style={{
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            zIndex: 9999,
-            overflowY: "auto",
-            animation: "fadeIn 0.3s ease-in-out",
-          }}
-          onClick={closeModal}
-        >
-          <div
-            className="bg-white rounded"
-            style={{
-              maxWidth: "900px",
-              width: "100%",
-              maxHeight: "90vh",
-              boxShadow:
-                "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-              display: "flex",
-              flexDirection: "column",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header del Modal */}
-            <div
-              style={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                padding: "24px",
-                color: "white",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: "8px",
-                }}
-              >
-                <div>
-                  <h5
-                    style={{
-                      margin: 0,
-                      fontSize: "1.3rem",
-                      fontWeight: "700",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    Air-Shipment #
-                    {selectedShipment.number || selectedShipment.id || "N/A"}
-                  </h5>
-                  {selectedShipment.waybillNumber && (
-                    <div style={{ fontSize: "0.9rem", opacity: 0.9 }}>
-                      Waybill: {selectedShipment.waybillNumber}
-                    </div>
-                  )}
-                </div>
+            <div className="asv-table-footer__right">
+              {hasMoreShipments && !loadingMore && (
                 <button
-                  onClick={closeModal}
-                  style={{
-                    backgroundColor: "rgba(255, 255, 255, 0.2)",
-                    border: "none",
-                    borderRadius: "6px",
-                    width: "32px",
-                    height: "32px",
-                    fontSize: "1.5rem",
-                    cursor: "pointer",
-                    color: "white",
-                    lineHeight: 1,
-                    padding: 0,
-                    transition: "background-color 0.2s",
+                  className="asv-btn asv-btn--ghost asv-btn--sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    loadMoreShipments();
                   }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor =
-                      "rgba(255, 255, 255, 0.3)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor =
-                      "rgba(255, 255, 255, 0.2)")
-                  }
                 >
-                  ×
+                  Cargar más
                 </button>
-              </div>
-            </div>
-
-            {/* Contenido del Modal con Scroll */}
-            <div
-              style={{
-                padding: "24px",
-                overflowY: "auto",
-                flex: 1,
-              }}
-            >
-              {/* Timeline Visual */}
-              <ShipmentTimeline shipment={selectedShipment} />
-
-              {/* Información en Secciones Colapsables */}
-
-              {/* Información General */}
-              <CollapsibleSection
-                title="Información General"
-                defaultOpen={true}
-                icon="📋"
-              >
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
-                  <InfoField
-                    label="Número de Envío"
-                    value={selectedShipment.number}
-                  />
-                  <InfoField
-                    label="Waybill"
-                    value={selectedShipment.waybillNumber}
-                  />
-                  <InfoField
-                    label="Referencia Cliente"
-                    value={selectedShipment.customerReference}
-                  />
-                  <InfoField
-                    label="Número de Booking"
-                    value={selectedShipment.bookingNumber}
-                  />
-                  <InfoField
-                    label="Carrier"
-                    value={selectedShipment.carrier?.name}
-                    fullWidth
-                  />
-                  <InfoField label="Vuelo" value={selectedShipment.flight} />
-                  <InfoField
-                    label="Aeropuerto Salida"
-                    value={selectedShipment.airportOfDeparture}
-                  />
-                  <InfoField
-                    label="Aeropuerto Llegada"
-                    value={selectedShipment.airportOfArrival}
-                  />
-                  <InfoField
-                    label="Fecha Salida"
-                    value={
-                      selectedShipment.departure
-                        ? formatDate(selectedShipment.departure)
-                        : null
-                    }
-                  />
-                  <InfoField
-                    label="Fecha Llegada"
-                    value={
-                      selectedShipment.arrival
-                        ? formatDate(selectedShipment.arrival)
-                        : null
-                    }
-                  />
-                </div>
-              </CollapsibleSection>
-
-              {/* Origen y Destino */}
-              <CollapsibleSection
-                title="Origen y Destino"
-                defaultOpen={true}
-                icon="🌍"
-              >
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
-                  <InfoField
-                    label="Remitente (Shipper)"
-                    value={selectedShipment.shipper?.name}
-                    fullWidth
-                  />
-                  <InfoField
-                    label="Dirección Remitente"
-                    value={selectedShipment.shipperAddress}
-                    fullWidth
-                  />
-                  <InfoField
-                    label="Consignatario"
-                    value={selectedShipment.consignee?.name}
-                    fullWidth
-                  />
-                  <InfoField
-                    label="Dirección Consignatario"
-                    value={selectedShipment.consigneeAddress}
-                    fullWidth
-                  />
-                  <InfoField
-                    label="Notify Party"
-                    value={
-                      selectedShipment.notifyParty?.name ||
-                      selectedShipment.notifyPartyAddress
-                    }
-                    fullWidth
-                  />
-                  <InfoField
-                    label="Agente Forwarding"
-                    value={selectedShipment.forwardingAgent?.name}
-                  />
-                  <InfoField
-                    label="Agente Destino"
-                    value={selectedShipment.destinationAgent?.name}
-                  />
-                </div>
-              </CollapsibleSection>
-
-              {/* Carga y Commodities */}
-              {selectedShipment.commodities &&
-                selectedShipment.commodities.length > 0 && (
-                  <CollapsibleSection
-                    title="Carga"
-                    defaultOpen={false}
-                    icon="📦"
-                  >
-                    <div style={{ marginBottom: "16px" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: "12px",
-                          marginBottom: "16px",
-                        }}
-                      >
-                        <InfoField
-                          label="Descripción de Carga"
-                          value={selectedShipment.cargoDescription}
-                          fullWidth
-                        />
-                        <InfoField
-                          label="Marcas de Carga"
-                          value={selectedShipment.cargoMarks}
-                          fullWidth
-                        />
-                        <InfoField
-                          label="Piezas Manifestadas"
-                          value={selectedShipment.manifestedPieces}
-                        />
-                        <InfoField
-                          label="Peso Manifestado"
-                          value={
-                            selectedShipment.manifestedWeight
-                              ? `${selectedShipment.manifestedWeight} kg`
-                              : null
-                          }
-                        />
-                        <InfoField
-                          label="Pallets"
-                          value={
-                            selectedShipment.pallets ||
-                            selectedShipment.manifestedPallets
-                          }
-                        />
-                        <InfoField
-                          label="Carga Peligrosa"
-                          value={selectedShipment.hazardous}
-                        />
-                      </div>
-                    </div>
-                    <CommoditiesSection
-                      commodities={selectedShipment.commodities}
-                    />
-                  </CollapsibleSection>
-                )}
-
-              {/* Sub-Shipments */}
-              {selectedShipment.subShipments &&
-                selectedShipment.subShipments.length > 0 && (
-                  <CollapsibleSection
-                    title={`Sub-Envíos (${selectedShipment.subShipments.length})`}
-                    defaultOpen={false}
-                    icon="📦"
-                  >
-                    <SubShipmentsList
-                      subShipments={selectedShipment.subShipments}
-                    />
-                  </CollapsibleSection>
-                )}
-
-              {/* Notas Adicionales */}
-              {selectedShipment.notes && (
-                <CollapsibleSection title="Notas" defaultOpen={false} icon="📝">
-                  <div
-                    style={{
-                      padding: "12px",
-                      backgroundColor: "#f9fafb",
-                      borderRadius: "6px",
-                      color: "#1f2937",
-                      fontSize: "0.875rem",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {selectedShipment.notes}
-                  </div>
-                </CollapsibleSection>
+              )}
+              {loadingMore && (
+                <span className="asv-loading-text">Cargando</span>
               )}
             </div>
-
-            {/* Footer del Modal */}
-            <div
-              style={{
-                padding: "16px 24px",
-                borderTop: "1px solid #e5e7eb",
-                display: "flex",
-                justifyContent: "flex-end",
-                backgroundColor: "#f9fafb",
-              }}
-            >
-              <button
-                onClick={closeModal}
-                style={{
-                  background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "10px 24px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                  boxShadow: "0 2px 4px rgba(102, 126, 234, 0.3)",
-                  transition: "transform 0.2s",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "translateY(-1px)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "translateY(0)")
-                }
-              >
-                Cerrar
-              </button>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Estado vacío - Sin resultados de búsqueda */}
+      {/* Empty  no search results */}
       {displayedShipments.length === 0 &&
         !loading &&
         shipments.length > 0 &&
         showingAll && (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "60px 20px",
-              backgroundColor: "white",
-              borderRadius: "12px",
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "4rem",
-                marginBottom: "16px",
-                opacity: 0.5,
-              }}
-            >
-              📋
-            </div>
-            <h5
-              style={{
-                color: "#1f2937",
-                marginBottom: "8px",
-                fontSize: "1.2rem",
-              }}
-            >
-              No se encontraron air-shipments
-            </h5>
-            <p style={{ color: "#6b7280", marginBottom: "24px" }}>
+          <div className="asv-empty">
+            <p className="asv-empty__title">No se encontraron air-shipments</p>
+            <p className="asv-empty__subtitle">
               No hay air-shipments que coincidan con tu búsqueda
             </p>
-            <button
-              onClick={clearSearch}
-              style={{
-                backgroundColor: "#3b82f6",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px 24px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-                boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)",
-              }}
-            >
-              Ver los últimos 10 air-shipments
+            <button className="asv-btn asv-btn--primary" onClick={clearSearch}>
+              Ver los últimos air-shipments
             </button>
           </div>
         )}
 
-      {/* Estado vacío - Sin air-shipments cargados */}
+      {/* Empty  no shipments */}
       {shipments.length === 0 && !loading && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 20px",
-            backgroundColor: "white",
-            borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "4rem",
-              marginBottom: "16px",
-              opacity: 0.5,
-            }}
-          >
-            ✈️
-          </div>
-          <h5
-            style={{
-              color: "#1f2937",
-              marginBottom: "8px",
-              fontSize: "1.2rem",
-            }}
-          >
-            No hay air-shipments disponibles
-          </h5>
-          <p style={{ color: "#6b7280", marginBottom: "24px" }}>
+        <div className="asv-empty">
+          <p className="asv-empty__title">No hay air-shipments disponibles</p>
+          <p className="asv-empty__subtitle">
             No se encontraron air-shipments para tu cuenta
           </p>
           {hasMoreShipments && (
             <button
+              className="asv-btn asv-btn--primary"
               onClick={() => loadMoreShipments()}
-              style={{
-                backgroundColor: "#3b82f6",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px 24px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-                boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)",
-              }}
             >
               Cargar más páginas
             </button>
@@ -2361,147 +981,148 @@ function AirShipmentsView() {
         </div>
       )}
 
-      {/* Modal para Trackea tu envío */}
-      {showTrackModal && trackShipment && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-          style={{
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            zIndex: 9999,
-            animation: "fadeIn 0.3s ease-in-out",
-          }}
-          onClick={closeTrackModal}
-        >
+      {/* Search Modal */}
+      {showSearchModal && (
+        <div className="asv-overlay" onClick={() => setShowSearchModal(false)}>
           <div
-            className="bg-white rounded p-4"
-            style={{
-              maxWidth: "500px",
-              width: "90%",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            }}
+            className="asv-modal asv-modal--search"
             onClick={(e) => e.stopPropagation()}
           >
-            <h5 style={{ marginBottom: "20px", color: "#1f2937" }}>
-              Trackea tu envío
-            </h5>
+            <h3 className="asv-modal__title">Buscar Air-Shipments</h3>
 
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                AWB Number
-              </label>
+            <div className="asv-search-section">
+              <label className="asv-label">Por Número</label>
               <input
+                className="asv-input"
+                type="text"
+                value={searchNumber}
+                onChange={(e) => setSearchNumber(e.target.value)}
+                placeholder="Ingresa el número del shipment"
+              />
+              <button
+                className="asv-btn asv-btn--primary asv-btn--full"
+                onClick={handleSearchByNumber}
+              >
+                Buscar por Número
+              </button>
+            </div>
+
+            <div className="asv-search-section">
+              <label className="asv-label">Por Fecha Exacta</label>
+              <input
+                className="asv-input"
+                type="date"
+                value={searchDate}
+                onChange={(e) => setSearchDate(e.target.value)}
+              />
+              <button
+                className="asv-btn asv-btn--primary asv-btn--full"
+                onClick={handleSearchByDate}
+              >
+                Buscar por Fecha
+              </button>
+            </div>
+
+            <div className="asv-search-section">
+              <label className="asv-label">Por Rango de Fechas</label>
+              <div className="asv-search-row">
+                <div style={{ flex: 1 }}>
+                  <label className="asv-label asv-label--small">Desde</label>
+                  <input
+                    className="asv-input"
+                    type="date"
+                    value={searchStartDate}
+                    onChange={(e) => setSearchStartDate(e.target.value)}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="asv-label asv-label--small">Hasta</label>
+                  <input
+                    className="asv-input"
+                    type="date"
+                    value={searchEndDate}
+                    onChange={(e) => setSearchEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <button
+                className="asv-btn asv-btn--primary asv-btn--full"
+                onClick={handleSearchByDateRange}
+              >
+                Buscar por Rango
+              </button>
+            </div>
+
+            <button
+              className="asv-btn asv-btn--ghost asv-btn--full"
+              onClick={() => setShowSearchModal(false)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Track Modal */}
+      {showTrackModal && trackShipment && (
+        <div className="asv-overlay" onClick={closeTrackModal}>
+          <div
+            className="asv-modal asv-modal--search"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="asv-modal__title">Trackea tu envío</h3>
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="asv-label">AWB Number</label>
+              <input
+                className="asv-input"
                 type="text"
                 value={trackShipment.number || ""}
                 disabled
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                  backgroundColor: "#f9fafb",
-                }}
               />
             </div>
 
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
+            <div style={{ marginBottom: 16 }}>
+              <label className="asv-label">
                 Correo electrónico para seguimiento
               </label>
               <input
+                className="asv-input"
                 type="email"
                 value={trackEmail}
                 onChange={(e) => setTrackEmail(e.target.value)}
                 placeholder="Ingresa tu correo electrónico"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                }}
               />
-              <small style={{ color: "#6b7280", fontSize: "0.8rem" }}>
+              <small className="asv-hint">
                 Si deseas agregar más correos, dirígete a Mis Envíos.
               </small>
             </div>
 
-            {trackError && (
-              <div
-                style={{
-                  padding: "10px",
-                  backgroundColor: "#fee2e2",
-                  color: "#991b1b",
-                  borderRadius: "6px",
-                  marginBottom: "20px",
-                  fontSize: "0.9rem",
-                }}
-              >
-                {trackError}
-              </div>
-            )}
+            {trackError && <div className="asv-error">{trackError}</div>}
 
-            <div style={{ marginBottom: "20px", textAlign: "center" }}>
-              <p style={{ fontSize: "0.9rem", color: "#374151" }}>
-                ¿Deseas generar el nuevo rastreo de tu envío?
-              </p>
-            </div>
+            <p className="asv-modal__question">
+              ¿Deseas generar el nuevo rastreo de tu envío?
+            </p>
 
-            <div
-              style={{ display: "flex", gap: "10px", justifyContent: "center" }}
-            >
+            <div className="asv-modal__actions">
               <button
+                className="asv-btn asv-btn--ghost"
                 onClick={closeTrackModal}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#f3f4f6",
-                  color: "#374151",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
               >
                 No
               </button>
               <button
+                className="asv-btn asv-btn--primary"
                 onClick={handleTrackSubmit}
                 disabled={trackLoading}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#3389cf",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: trackLoading ? "not-allowed" : "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
               >
-                {trackLoading ? "Creando..." : "Sí"}
+                {trackLoading ? "Creando" : "Sí"}
               </button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
