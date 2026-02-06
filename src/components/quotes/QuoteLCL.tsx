@@ -9,6 +9,7 @@ import { PDFTemplateLCL } from "./Pdftemplate/Pdftemplatelcl";
 import { generatePDF, formatDateForFilename } from "./Pdftemplate/Pdfutils";
 import ReactDOM from "react-dom/client";
 import { PieceAccordionLCL } from "./Handlers/LCL/PieceAccordionLCL.tsx";
+import { useTranslation } from "react-i18next";
 import {
   type PieceData,
   type OutletContext,
@@ -37,6 +38,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
   const token = accessToken;
   const { user, token: jwtToken } = useAuth();
   const ejecutivo = user?.ejecutivo;
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -1962,95 +1964,143 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
       {rutaSeleccionada && tarifaOceanFreight && (
         <>
-          <div className="row g-3 mt-4">
-            {/* Tarjeta para Generar Cotización */}
-            <div className="col-md-6">
-              <div className="card border-success shadow-sm h-100">
-                <div className="card-body text-center">
-                  <div className="mb-3">
-                    <i className="bi bi-file-earmark-pdf fs-1 text-success"></i>
-                  </div>
-                  <h6 className="card-title text-success fw-bold">
-                    Generar Cotización
-                  </h6>
-                  <p className="card-text small text-muted mb-3">
-                    Solo genera la cotización sin crear una operación en el
-                    sistema. Obtendrás un PDF para tu revisión. ¡Ideal para
-                    comparar opciones!
-                  </p>
-                  <button
-                    onClick={() => {
-                      setTipoAccion("cotizacion");
-                      testAPI("cotizacion");
+          <div className="card shadow-sm mb-4">
+            <div className="card-body">
+              <h5 className="card-title mb-4">{t("QuoteAIR.generador")}</h5>
+              <div className="row g-3 mt-4">
+                <div className="col-md-6">
+                  <div
+                    className="card h-100 border"
+                    style={{
+                      borderColor: "#e9ecef",
+                      backgroundColor: "transparent",
                     }}
-                    disabled={
-                      loading ||
-                      !accessToken ||
-                      !incoterm ||
-                      (incoterm === "EXW" &&
-                        (!pickupFromAddress || !deliveryToAddress))
-                    }
-                    className="btn btn-lg btn-success w-100"
                   >
-                    {loading ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        ></span>
-                        Generando...
-                      </>
-                    ) : (
-                      <>Generar Cotización</>
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+                    <div
+                      className="card-body d-flex flex-column"
+                      style={{ gap: "0.5rem" }}
+                    >
+                      <div className="text-muted mb-2">
+                        <i
+                          className="bi bi-file-earmark-pdf"
+                          style={{ fontSize: "1.25rem", color: "#ff6200" }}
+                        ></i>
+                      </div>
+                      <h6
+                        className="card-title mb-1"
+                        style={{ color: "#212529", fontWeight: 600 }}
+                      >
+                        {t("QuoteAIR.generarcotizacion")}
+                      </h6>
+                      <p className="card-text small text-muted mb-3">
+                        {t("QuoteAIR.cotizaciongenerada")}
+                      </p>
 
-            {/* Tarjeta para Generar Operación */}
-            <div className="col-md-6">
-              <div className="card border-danger shadow-sm h-100">
-                <div className="card-body text-center">
-                  <div className="mb-3">
-                    <i className="bi bi-gear fs-1 text-danger"></i>
+                      <div className="mt-auto w-100">
+                        <button
+                          onClick={() => {
+                            setTipoAccion("cotizacion");
+                            testAPI("cotizacion");
+                          }}
+                          disabled={
+                            loading ||
+                            !accessToken ||
+                            !incoterm ||
+                            (incoterm === "EXW" &&
+                              (!pickupFromAddress || !deliveryToAddress))
+                          }
+                          className="btn btn-outline-secondary w-100"
+                          style={{
+                            borderRadius: "6px",
+                            color: "#ff6200",
+                            borderColor: "#ff6200",
+                          }}
+                        >
+                          {loading ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-2"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              {t("QuoteAIR.generando")}
+                            </>
+                          ) : (
+                            <>{t("QuoteAIR.generarcotizacion")}</>
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <h6 className="card-title text-danger fw-bold">
-                    Generar Operación
-                  </h6>
-                  <p className="card-text small text-muted mb-3">
-                    <strong>¡Acción irreversible!</strong> Crea automáticamente
-                    una operación en el sistema y notifica a tu ejecutivo
-                    comercial. El proceso de envío comienza aquí.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setTipoAccion("operacion");
-                      testAPI("operacion");
+                </div>
+
+                <div className="col-md-6">
+                  <div
+                    className="card h-100 border"
+                    style={{
+                      borderColor: "#e9ecef",
+                      backgroundColor: "transparent",
                     }}
-                    disabled={
-                      loading ||
-                      !accessToken ||
-                      !incoterm ||
-                      (incoterm === "EXW" &&
-                        (!pickupFromAddress || !deliveryToAddress))
-                    }
-                    className="btn btn-lg btn-danger w-100"
                   >
-                    {loading ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        ></span>
-                        Generando...
-                      </>
-                    ) : (
-                      <>Generar Operación</>
-                    )}
-                  </button>
+                    <div
+                      className="card-body d-flex flex-column"
+                      style={{ gap: "0.5rem" }}
+                    >
+                      <div className="text-muted mb-2">
+                        <i
+                          className="bi bi-gear"
+                          style={{ fontSize: "1.25rem", color: "#ff6200" }}
+                        ></i>
+                      </div>
+                      <h6
+                        className="card-title mb-1"
+                        style={{ color: "#1a1a1a", fontWeight: 600 }}
+                      >
+                        {t("QuoteAIR.generaroperacion")}
+                      </h6>
+                      <p className="card-text small text-muted mb-3">
+                        <strong className="text-muted">
+                          {t("QuoteAIR.accionirreversible")}
+                        </strong>{" "}
+                        {t("QuoteAIR.operaciongenerada")}
+                      </p>
+
+                      <div className="mt-auto w-100">
+                        <button
+                          onClick={() => {
+                            setTipoAccion("operacion");
+                            testAPI("operacion");
+                          }}
+                          disabled={
+                            loading ||
+                            !accessToken ||
+                            !incoterm ||
+                            (incoterm === "EXW" &&
+                              (!pickupFromAddress || !deliveryToAddress))
+                          }
+                          className="btn btn-outline-secondary w-100"
+                          style={{
+                            borderRadius: "6px",
+                            color: "#ff6200",
+                            borderColor: "#ff6200",
+                          }}
+                        >
+                          {loading ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-2"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              {t("QuoteAIR.generandocotizacion")}
+                            </>
+                          ) : (
+                            <>{t("QuoteAIR.generaroperacion")}</>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

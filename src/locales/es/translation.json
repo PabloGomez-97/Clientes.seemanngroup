@@ -240,6 +240,7 @@
     "descripcionpeso": "Peso total de todas las piezas",
     "descripcionvolumen": "Volumen total de todas las piezas",
     "revision": "Revisión de Piezas y Costos",
+    "generador": "Genera tu cotización u operación",
     "resumen": "Resumen del cargamento",
     "volumenpieza": "Volumen por pieza:",
     "volumenvolpieza": "Peso volumétrico por pieza:",

@@ -241,6 +241,7 @@
     "descripcionpeso": "Total weight of all pieces",
     "descripcionvolumen": "Total volume of all pieces",
     "revision": "Review Pieces and Costs",
+    "generador": "Generate your quotation or operation",
     "resumen": "Shipment Summary",
     "volumenpieza": "Volume per piece",
     "volumenvolpieza": "Volumetric Weight per piece",

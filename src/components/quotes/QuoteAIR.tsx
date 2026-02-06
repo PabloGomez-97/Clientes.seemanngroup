@@ -1636,7 +1636,7 @@ function QuoteAPITester({
                 style={{
                   width: "40px",
                   height: "40px",
-                  backgroundColor: rutaSeleccionada ? "#d4edda" : "#185abc",
+                  backgroundColor: rutaSeleccionada ? "#d4edda" : "#ff6200",
                   color: rutaSeleccionada ? "#155724" : "white",
                   fontSize: "1.1rem",
                   fontWeight: 600,
@@ -1719,7 +1719,10 @@ function QuoteAPITester({
                     minute: "2-digit",
                   })}
                 </span>
-                <span className="badge bg-success">
+                <span
+                  className="badge rounded-pill"
+                  style={{ backgroundColor: "#ff6200", color: "white" }}
+                >
                   {rutas.length} {t("QuoteAIR.rutasdisponibles")}
                 </span>
               </div>
@@ -1754,7 +1757,7 @@ function QuoteAPITester({
                         control: (base) => ({
                           ...base,
                           borderColor: "#dee2e6",
-                          "&:hover": { borderColor: "#0d6efd" },
+                          "&:hover": { borderColor: "#1a1a1a" },
                         }),
                       }}
                     />
@@ -1779,7 +1782,7 @@ function QuoteAPITester({
                         control: (base) => ({
                           ...base,
                           borderColor: "#dee2e6",
-                          "&:hover": { borderColor: "#0d6efd" },
+                          "&:hover": { borderColor: "#1a1a1a" },
                         }),
                       }}
                     />
@@ -2177,7 +2180,7 @@ function QuoteAPITester({
                   <div className="d-flex align-items-center">
                     <i
                       className="bi bi-calculator me-2"
-                      style={{ color: "#185abc" }}
+                      style={{ color: "#1a1a1a" }}
                     ></i>
                     <div>
                       <strong style={{ color: "#1a1a1a" }}>
@@ -2209,7 +2212,7 @@ function QuoteAPITester({
                 >
                   <i
                     className="bi bi-flag me-2"
-                    style={{ color: "#185abc" }}
+                    style={{ color: "#1a1a1a" }}
                   ></i>
                   Incoterm
                   <span
@@ -2233,7 +2236,7 @@ function QuoteAPITester({
                     fontSize: "0.95rem",
                     transition: "all 0.2s ease",
                   }}
-                  onFocus={(e) => (e.target.style.borderColor = "#185abc")}
+                  onFocus={(e) => (e.target.style.borderColor = "#1a1a1a")}
                   onBlur={(e) => (e.target.style.borderColor = "#ced4da")}
                 >
                   <option value="">{t("QuoteAIR.incoterm")}</option>
@@ -2250,7 +2253,7 @@ function QuoteAPITester({
                     style={{
                       backgroundColor: "#f8f9fa",
                       borderRadius: "8px",
-                      borderLeft: "3px solid #185abc",
+                      borderLeft: "3px solid #ff6200",
                     }}
                   >
                     <p
@@ -2269,7 +2272,7 @@ function QuoteAPITester({
                         >
                           <i
                             className="bi bi-box-arrow-up-right me-2"
-                            style={{ color: "#6c757d" }}
+                            style={{ color: "#1a1a1a" }}
                           ></i>
                           Pickup From Address
                         </label>
@@ -2294,7 +2297,7 @@ function QuoteAPITester({
                         >
                           <i
                             className="bi bi-box-arrow-in-down me-2"
-                            style={{ color: "#6c757d" }}
+                            style={{ color: "#1a1a1a" }}
                           ></i>
                           Delivery To Address
                         </label>
@@ -2330,7 +2333,7 @@ function QuoteAPITester({
                     >
                       <i
                         className="bi bi-boxes me-2"
-                        style={{ color: "#185abc" }}
+                        style={{ color: "#1a1a1a" }}
                       ></i>
                       {t("QuoteAIR.detalles")}
                     </h6>
@@ -2371,8 +2374,8 @@ function QuoteAPITester({
                       type="button"
                       className="btn"
                       style={{
-                        backgroundColor: "#185abc",
-                        borderColor: "#185abc",
+                        backgroundColor: "#ff6200",
+                        borderColor: "#ffffff",
                         color: "white",
                         borderRadius: "8px",
                         padding: "0.5rem 1.25rem",
@@ -2381,10 +2384,10 @@ function QuoteAPITester({
                         transition: "all 0.2s ease",
                       }}
                       onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#144a9e")
+                        (e.currentTarget.style.backgroundColor = "#e55a00")
                       }
                       onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#185abc")
+                        (e.currentTarget.style.backgroundColor = "#ff6200")
                       }
                       onClick={handleAddPiece}
                     >
@@ -2480,7 +2483,7 @@ function QuoteAPITester({
                     style={{
                       backgroundColor: "#f8f9fa",
                       borderRadius: "8px",
-                      borderLeft: "3px solid #185abc",
+                      borderLeft: "3px solid #ff6200",
                     }}
                   >
                     <div className="row g-3">
@@ -2590,7 +2593,7 @@ function QuoteAPITester({
               >
                 <i
                   className="bi bi-box-seam me-2"
-                  style={{ color: "#0d6efd" }}
+                  style={{ color: "#1a1a1a" }}
                 ></i>
                 {t("QuoteAIR.resumen")}
               </h6>
@@ -2628,10 +2631,13 @@ function QuoteAPITester({
                           {totalVolumeWeight.toFixed(2)} kg
                         </div>
                         <div className="col-md-4">
-                          <strong className="text-primary">
+                          <strong className="" style={{ color: "#1a1a1a" }}>
                             {t("QuoteAIR.pesochargeable")}
                           </strong>{" "}
-                          <span className="text-primary fw-bold">
+                          <span
+                            className="fw-bold"
+                            style={{ color: "#1a1a1a" }}
+                          >
                             {pesoChargeable.toFixed(2)} kg
                           </span>
                         </div>
@@ -2649,10 +2655,10 @@ function QuoteAPITester({
                       {manualWeight.toFixed(2)} kg
                     </div>
                     <div className="col-12">
-                      <strong className="text-primary">
+                      <strong className="" style={{ color: "#1a1a1a" }}>
                         {t("QuoteAIR.chargeable")}
                       </strong>{" "}
-                      <span className="text-primary fw-bold">
+                      <span className="fw-bold" style={{ color: "#1a1a1a" }}>
                         {pesoChargeable.toFixed(2)} kg
                       </span>
                       <small className="text-muted d-block mt-1">
@@ -2672,7 +2678,7 @@ function QuoteAPITester({
                   <h6 className="mb-3">
                     <i
                       className="bi bi-cash-coin me-2"
-                      style={{ color: "#0d6efd" }}
+                      style={{ color: "#1a1a1a" }}
                     ></i>
                     {t("QuoteAIR.resumencargos")}
                   </h6>
@@ -2858,7 +2864,10 @@ function QuoteAPITester({
 
                     <div className="d-flex justify-content-between">
                       <span className="fs-5 fw-bold">TOTAL:</span>
-                      <span className="fs-5 fw-bold text-success">
+                      <span
+                        className="fs-5 fw-bold "
+                        style={{ color: "#ff6200" }}
+                      >
                         {(() => {
                           const { totalRealWeight: totalWeight } =
                             calculateTotals();
@@ -2887,102 +2896,6 @@ function QuoteAPITester({
               )}
             </div>
 
-            {/* Sección de botones con explicaciones llamativas */}
-            <div className="row g-3 mt-4">
-              {/* Tarjeta para Generar Cotización */}
-              <div className="col-md-6">
-                <div className="card border-success shadow-sm h-100">
-                  <div className="card-body text-center">
-                    <div className="mb-3">
-                      <i className="bi bi-file-earmark-pdf fs-1 text-success"></i>
-                    </div>
-                    <h6 className="card-title text-success fw-bold">
-                      {t("QuoteAIR.generarcotizacion")}
-                    </h6>
-                    <p className="card-text small text-muted mb-3">
-                      {t("QuoteAIR.cotizaciongenerada")}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setTipoAccion("cotizacion");
-                        testAPI("cotizacion");
-                      }}
-                      disabled={
-                        loading ||
-                        !accessToken ||
-                        weightError !== null ||
-                        dimensionError !== null ||
-                        oversizeError !== null ||
-                        heightError !== null ||
-                        !rutaSeleccionada
-                      }
-                      className="btn btn-success w-100"
-                    >
-                      {loading ? (
-                        <>
-                          <span
-                            className="spinner-border spinner-border-sm me-2"
-                            role="status"
-                            aria-hidden="true"
-                          ></span>
-                          {t("QuoteAIR.generando")}
-                        </>
-                      ) : (
-                        <>{t("QuoteAIR.generarcotizacion")}</>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tarjeta para Generar Operación */}
-              <div className="col-md-6">
-                <div className="card border-danger shadow-sm h-100">
-                  <div className="card-body text-center">
-                    <div className="mb-3">
-                      <i className="bi bi-gear fs-1 text-danger"></i>
-                    </div>
-                    <h6 className="card-title text-danger fw-bold">
-                      {t("QuoteAIR.generaroperacion")}
-                    </h6>
-                    <p className="card-text small text-muted mb-3">
-                      <strong>{t("QuoteAIR.accionirreversible")}</strong>{" "}
-                      {t("QuoteAIR.operaciongenerada")}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setTipoAccion("operacion");
-                        testAPI("operacion");
-                      }}
-                      disabled={
-                        loading ||
-                        !accessToken ||
-                        weightError !== null ||
-                        dimensionError !== null ||
-                        oversizeError !== null ||
-                        heightError !== null ||
-                        !rutaSeleccionada
-                      }
-                      className="btn btn-danger w-100"
-                    >
-                      {loading ? (
-                        <>
-                          <span
-                            className="spinner-border spinner-border-sm me-2"
-                            role="status"
-                            aria-hidden="true"
-                          ></span>
-                          {t("QuoteAIR.generandocotizacion")}
-                        </>
-                      ) : (
-                        <>{t("QuoteAIR.generaroperacion")}</>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {(weightError || dimensionError) && (
               <div className="alert alert-warning mt-3 mb-0">
                 ⚠️ <strong>{t("QuoteAIR.correccion")}</strong>{" "}
@@ -2995,6 +2908,155 @@ function QuoteAPITester({
                 ℹ️ {t("QuoteAIR.seleccionarruta")}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Sección de acciones (diseño minimalista y sobrio) */}
+      {rutaSeleccionada && (
+        <div className="card shadow-sm mb-4">
+          <div className="card-body">
+            <h5 className="card-title mb-4">{t("QuoteAIR.generador")}</h5>
+            <div className="row g-3 mt-4">
+              <div className="col-md-6">
+                <div
+                  className="card h-100 border"
+                  style={{
+                    borderColor: "#e9ecef",
+                    backgroundColor: "transparent",
+                  }}
+                >
+                  <div
+                    className="card-body d-flex flex-column"
+                    style={{ gap: "0.5rem" }}
+                  >
+                    <div className="text-muted mb-2">
+                      <i
+                        className="bi bi-file-earmark-pdf"
+                        style={{ fontSize: "1.25rem", color: "#ff6200" }}
+                      ></i>
+                    </div>
+                    <h6
+                      className="card-title mb-1"
+                      style={{ color: "#212529", fontWeight: 600 }}
+                    >
+                      {t("QuoteAIR.generarcotizacion")}
+                    </h6>
+                    <p className="card-text small text-muted mb-3">
+                      {t("QuoteAIR.cotizaciongenerada")}
+                    </p>
+
+                    <div className="mt-auto w-100">
+                      <button
+                        onClick={() => {
+                          setTipoAccion("cotizacion");
+                          testAPI("cotizacion");
+                        }}
+                        disabled={
+                          loading ||
+                          !accessToken ||
+                          weightError !== null ||
+                          dimensionError !== null ||
+                          oversizeError !== null ||
+                          heightError !== null ||
+                          !rutaSeleccionada
+                        }
+                        className="btn btn-outline-secondary w-100"
+                        style={{
+                          borderRadius: "6px",
+                          color: "#ff6200",
+                          borderColor: "#ff6200",
+                        }}
+                      >
+                        {loading ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                            {t("QuoteAIR.generando")}
+                          </>
+                        ) : (
+                          <>{t("QuoteAIR.generarcotizacion")}</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-6">
+                <div
+                  className="card h-100 border"
+                  style={{
+                    borderColor: "#e9ecef",
+                    backgroundColor: "transparent",
+                  }}
+                >
+                  <div
+                    className="card-body d-flex flex-column"
+                    style={{ gap: "0.5rem" }}
+                  >
+                    <div className="text-muted mb-2">
+                      <i
+                        className="bi bi-gear"
+                        style={{ fontSize: "1.25rem", color: "#ff6200" }}
+                      ></i>
+                    </div>
+                    <h6
+                      className="card-title mb-1"
+                      style={{ color: "#1a1a1a", fontWeight: 600 }}
+                    >
+                      {t("QuoteAIR.generaroperacion")}
+                    </h6>
+                    <p className="card-text small text-muted mb-3">
+                      <strong className="text-muted">
+                        {t("QuoteAIR.accionirreversible")}
+                      </strong>{" "}
+                      {t("QuoteAIR.operaciongenerada")}
+                    </p>
+
+                    <div className="mt-auto w-100">
+                      <button
+                        onClick={() => {
+                          setTipoAccion("operacion");
+                          testAPI("operacion");
+                        }}
+                        disabled={
+                          loading ||
+                          !accessToken ||
+                          weightError !== null ||
+                          dimensionError !== null ||
+                          oversizeError !== null ||
+                          heightError !== null ||
+                          !rutaSeleccionada
+                        }
+                        className="btn btn-outline-secondary w-100"
+                        style={{
+                          borderRadius: "6px",
+                          color: "#ff6200",
+                          borderColor: "#ff6200",
+                        }}
+                      >
+                        {loading ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                            {t("QuoteAIR.generandocotizacion")}
+                          </>
+                        ) : (
+                          <>{t("QuoteAIR.generaroperacion")}</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
