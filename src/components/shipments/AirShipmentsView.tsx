@@ -133,6 +133,34 @@ function AirShipmentsView() {
     }
   };
 
+  const filterShipments = (shipments: AirShipment[]): AirShipment[] => {
+    const groups = new Map<string, AirShipment[]>();
+    for (const s of shipments) {
+      const key = String(s.customerReference || "");
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(s);
+    }
+
+    const result: AirShipment[] = [];
+    for (const [key, group] of groups) {
+      if (group.length > 1) {
+        // Excluir los que empiezan con SOG
+        result.push(
+          ...group.filter(
+            (s) =>
+              !String(s.number ?? "")
+                .toUpperCase()
+                .startsWith("SOG"),
+          ),
+        );
+      } else {
+        // Incluir el único
+        result.push(...group);
+      }
+    }
+    return result;
+  };
+
   /*  API  */
   const fetchAirShipments = async (
     page: number = 1,
@@ -218,12 +246,7 @@ function AirShipmentsView() {
             : new Date(0);
           return db.getTime() - da.getTime();
         });
-        const filtered = combined.filter(
-          (s) =>
-            !String(s.number ?? "")
-              .toUpperCase()
-              .startsWith("SOG"),
-        );
+        const filtered = filterShipments(combined);
         setShipments(filtered);
         setDisplayedShipments(filtered);
         localStorage.setItem(cacheKey, JSON.stringify(filtered));
@@ -233,12 +256,7 @@ function AirShipmentsView() {
         );
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       } else {
-        const filtered = sorted.filter(
-          (s) =>
-            !String(s.number ?? "")
-              .toUpperCase()
-              .startsWith("SOG"),
-        );
+        const filtered = filterShipments(sorted);
         setShipments(filtered);
         setDisplayedShipments(filtered);
         setShowingAll(false);
@@ -295,12 +313,7 @@ function AirShipmentsView() {
     if (cached && ts) {
       const age = Date.now() - parseInt(ts);
       if (age < 3600000) {
-        const parsed = (JSON.parse(cached) as AirShipment[]).filter(
-          (s) =>
-            !String(s.number ?? "")
-              .toUpperCase()
-              .startsWith("SOG"),
-        );
+        const parsed = filterShipments(JSON.parse(cached) as AirShipment[]);
         setShipments(parsed);
         setDisplayedShipments(parsed);
         setShowingAll(false);
@@ -946,12 +959,14 @@ function AirShipmentsView() {
                                                 label="¿Carga Peligrosa?"
                                                 value={shipment.hazardous}
                                               />
+                                              <CommoditiesSection
+                                                commodities={
+                                                  shipment.commodities!
+                                                }
+                                              />
                                             </div>
                                           </div>
                                         </div>
-                                        <CommoditiesSection
-                                          commodities={shipment.commodities!}
-                                        />
                                       </div>
                                     ),
                                   },
