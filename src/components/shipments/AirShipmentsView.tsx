@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import "./AirShipmentsView.css";
@@ -11,6 +11,8 @@ import {
   CommoditiesSection,
   SubShipmentsList,
 } from "../shipments/Handlers/Handlersairshipments";
+
+const ITEMS_PER_PAGE = 10;
 
 /*  DetailTabs  */
 interface TabDef {
@@ -72,6 +74,8 @@ function AirShipmentsView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMoreShipments, setHasMoreShipments] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [rowsPerPage, setRowsPerPage] = useState(ITEMS_PER_PAGE);
+  const [tablePage, setTablePage] = useState(1);
 
   // Search modal
   const [showTrackModal, setShowTrackModal] = useState(false);
@@ -97,6 +101,27 @@ function AirShipmentsView() {
   const [isDepartureFocused, setIsDepartureFocused] = useState(false);
   const [isArrivalFocused, setIsArrivalFocused] = useState(false);
   const [isCarrierFocused, setIsCarrierFocused] = useState(false);
+
+  /* -- Table pagination (client-side slice) ----------------- */
+  const totalTablePages = Math.max(
+    1,
+    Math.ceil(displayedShipments.length / rowsPerPage),
+  );
+  const paginatedShipments = useMemo(() => {
+    const start = (tablePage - 1) * rowsPerPage;
+    return displayedShipments.slice(start, start + rowsPerPage);
+  }, [displayedShipments, tablePage, rowsPerPage]);
+
+  const paginationRangeText = useMemo(() => {
+    if (displayedShipments.length === 0) return "0 de 0";
+    const start = (tablePage - 1) * rowsPerPage + 1;
+    const end = Math.min(tablePage * rowsPerPage, displayedShipments.length);
+    return `${start}-${end} de ${displayedShipments.length}`;
+  }, [tablePage, rowsPerPage, displayedShipments.length]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [displayedShipments]);
 
   /*  Helpers  */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -191,7 +216,7 @@ function AirShipmentsView() {
       const queryParams = new URLSearchParams({
         ConsigneeName: user.username,
         Page: page.toString(),
-        ItemsPerPage: "50",
+        ItemsPerPage: ITEMS_PER_PAGE.toString(),
         SortBy: "newest",
       });
 
@@ -238,7 +263,7 @@ function AirShipmentsView() {
         return db.getTime() - da.getTime();
       });
 
-      setHasMoreShipments(shipmentsArray.length === 50);
+      setHasMoreShipments(shipmentsArray.length === ITEMS_PER_PAGE);
       const cacheKey = `airShipmentsCache_${user.username}`;
 
       if (append && page > 1) {
@@ -323,7 +348,10 @@ function AirShipmentsView() {
         setDisplayedShipments(parsed);
         setShowingAll(false);
         if (cachedPage) setCurrentPage(parseInt(cachedPage));
-        setHasMoreShipments(parsed.length % 50 === 0 && parsed.length >= 50);
+        setHasMoreShipments(
+          parsed.length % ITEMS_PER_PAGE === 0 &&
+            parsed.length >= ITEMS_PER_PAGE,
+        );
         setLoading(false);
         console.log(
           "Cargando desde caché - datos guardados hace",
@@ -810,6 +838,14 @@ function AirShipmentsView() {
             Actualizar
           </button>
           {loadingMore && <span className="asv-loading-text">Cargando</span>}
+          {hasMoreShipments && !loadingMore && (
+            <button
+              className="asv-btn asv-btn--ghost"
+              onClick={loadMoreShipments}
+            >
+              Cargar más
+            </button>
+          )}
           {showingAll && (
             <button
               className="asv-btn asv-btn--ghost asv-btn--sm"
@@ -852,7 +888,7 @@ function AirShipmentsView() {
                 </tr>
               </thead>
               <tbody>
-                {displayedShipments.map((shipment, index) => {
+                {paginatedShipments.map((shipment, index) => {
                   const shipmentId = shipment.id || shipment.number || index;
                   const isExpanded = expandedShipmentId === shipmentId;
                   const arrived = isShipmentArrived(shipment);
@@ -1307,24 +1343,60 @@ function AirShipmentsView() {
           {/* Table footer */}
           <div className="asv-table-footer">
             <div className="asv-table-footer__left">
-              Mostrando <strong>{displayedShipments.length}</strong> envíos
-              {!hasMoreShipments && <span> (todos cargados)</span>}
+              {loadingMore && (
+                <span className="asv-loading-text">Cargando...</span>
+              )}
             </div>
             <div className="asv-table-footer__right">
-              {hasMoreShipments && !loadingMore && (
-                <button
-                  className="asv-btn asv-btn--ghost asv-btn--sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    loadMoreShipments();
-                  }}
+              <span className="asv-pagination-label">Filas por pagina:</span>
+              <select
+                className="asv-pagination-select"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setTablePage(1);
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span className="asv-pagination-range">
+                {paginationRangeText}
+              </span>
+              <button
+                className="asv-pagination-btn"
+                disabled={tablePage <= 1}
+                onClick={() => setTablePage((p) => p - 1)}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
                 >
-                  Cargar más
-                </button>
-              )}
-              {loadingMore && (
-                <span className="asv-loading-text">Cargando</span>
-              )}
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <button
+                className="asv-pagination-btn"
+                disabled={tablePage >= totalTablePages}
+                onClick={() => setTablePage((p) => p + 1)}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -1353,14 +1425,6 @@ function AirShipmentsView() {
           <p className="asv-empty__subtitle">
             No se encontraron air-shipments para tu cuenta
           </p>
-          {hasMoreShipments && (
-            <button
-              className="asv-btn asv-btn--primary"
-              onClick={() => loadMoreShipments()}
-            >
-              Cargar más páginas
-            </button>
-          )}
         </div>
       )}
 

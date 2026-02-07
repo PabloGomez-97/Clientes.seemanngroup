@@ -1,289 +1,114 @@
-import { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import {
   type OceanShipment,
   type OutletContext,
   type Quote,
-  OceanShipmentTimeline,
-  OceanRouteDisplay,
   InfoField,
   QuoteModal,
 } from "../shipments/Handlers/Handleroceanshipments";
 import "./OceanShipmentsView.css";
 
+const DEFAULT_ROWS_PER_PAGE = 10;
+
+/* -- DetailTabs (accordion inline tabs) --------------------- */
+interface TabDef {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+  content: React.ReactNode;
+  hidden?: boolean;
+}
+
+function DetailTabs({ tabs }: { tabs: TabDef[] }) {
+  const visibleTabs = tabs.filter((t) => !t.hidden);
+  const [activeTab, setActiveTab] = useState(visibleTabs[0]?.key || "");
+  const current = visibleTabs.find((t) => t.key === activeTab);
+
+  return (
+    <div className="osv-tabs">
+      <div className="osv-tabs__nav">
+        {visibleTabs.map((tab) => (
+          <button
+            key={tab.key}
+            className={`osv-tabs__btn ${activeTab === tab.key ? "osv-tabs__btn--active" : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab(tab.key);
+            }}
+          >
+            {tab.icon && <span className="osv-tabs__icon">{tab.icon}</span>}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <div className="osv-tabs__panel">{current?.content}</div>
+    </div>
+  );
+}
+
+/* ===========================================================
+   MAIN COMPONENT
+   =========================================================== */
 function OceanShipmentsView() {
-  const { accessToken, onLogout } = useOutletContext<OutletContext>();
+  const { accessToken } = useOutletContext<OutletContext>();
   const { user } = useAuth();
+  const filterConsignee = user?.username || "";
+
   const [oceanShipments, setOceanShipments] = useState<OceanShipment[]>([]);
   const [displayedOceanShipments, setDisplayedOceanShipments] = useState<
     OceanShipment[]
   >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const filterConsignee = user?.username || "";
 
-  // Modal state
-  const [selectedOceanShipment, setSelectedOceanShipment] =
-    useState<OceanShipment | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  // Accordion - single expanded
+  const [expandedShipmentId, setExpandedShipmentId] = useState<
+    string | number | null
+  >(null);
+
+  // Search modal
   const [showSearchModal, setShowSearchModal] = useState(false);
 
-  // Quote modal state
+  // Quote modal
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [loadingQuote, setLoadingQuote] = useState(false);
 
-  // Búsqueda por fecha
+  // Embed
+  const [embedQuery, setEmbedQuery] = useState<string | null>(null);
+
+  // Search fields
   const [searchDate, setSearchDate] = useState("");
   const [searchStartDate, setSearchStartDate] = useState("");
   const [searchEndDate, setSearchEndDate] = useState("");
-
-  // Búsqueda por número
   const [searchNumber, setSearchNumber] = useState("");
-
   const [showingAll, setShowingAll] = useState(false);
 
-  // Estados para accordion y tabs
-  const [openAccordions, setOpenAccordions] = useState<(string | number)[]>([]);
-  const [activeTabs, setActiveTabs] = useState<Record<string | number, number>>(
-    {},
-  );
+  // Pagination
+  const [tablePage, setTablePage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
 
-  // Embed query for ShipsGo map
-  const [embedQuery, setEmbedQuery] = useState<string | null>(null);
-
-  // Función para obtener la ruta de la bandera
-  const getFlagPath = (locationName: string | undefined) => {
-    if (!locationName) return null;
-    // Limpiar el nombre: reemplazar caracteres no válidos en nombres de archivo
-    const cleanName = locationName
-      .trim()
-      .replace(/\//g, "-") // Reemplazar / por -
-      .replace(/\\/g, "-") // Reemplazar \ por -
-      .replace(/:/g, "-") // Reemplazar : por -
-      .replace(/\*/g, "") // Eliminar *
-      .replace(/\?/g, "") // Eliminar ?
-      .replace(/"/g, "") // Eliminar "
-      .replace(/</g, "") // Eliminar <
-      .replace(/>/g, "") // Eliminar >
-      .replace(/\|/g, "-"); // Reemplazar | por -
-
-    return `/paises/${cleanName}.png`;
-  };
-
-  // Componente para mostrar ubicación con bandera
-  const LocationWithFlag = ({ location }: { location: string | undefined }) => {
-    if (!location) return <>-</>;
-
-    const flagPath = getFlagPath(location);
-
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-        {flagPath && (
-          <img
-            src={flagPath}
-            alt={location}
-            style={{
-              width: "20px",
-              height: "15px",
-              objectFit: "cover",
-              borderRadius: "2px",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-            }}
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-        )}
-        <span style={{ fontWeight: "600" }}>{location}</span>
-      </div>
-    );
-  };
-
-  // Funciones para manejar accordion
-  const toggleAccordion = (shipmentId: string | number) => {
-    setOpenAccordions((prev) => {
-      const isOpen = prev.includes(shipmentId);
-
-      if (isOpen) {
-        return prev.filter((id) => id !== shipmentId);
-      } else {
-        if (prev.length >= 3) {
-          return [...prev.slice(1), shipmentId];
-        }
-        return [...prev, shipmentId];
-      }
-    });
-
-    if (!activeTabs[shipmentId]) {
-      setActiveTabs((prev) => ({ ...prev, [shipmentId]: 0 }));
-    }
-  };
-
-  const setActiveTab = (shipmentId: string | number, tabIndex: number) => {
-    setActiveTabs((prev) => ({ ...prev, [shipmentId]: tabIndex }));
-  };
-
-  // Tooltips estado
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-
-  // Define los mensajes de ayuda para cada columna
-  const tooltipMessages = {
-    numero: "Número único de identificación de la cotización",
-    gasto: "Se excluyen impuestos asociados",
-  };
-
-  // Componente de Tooltip mejorado con posicionamiento inteligente
-  const TooltipIcon = ({ id, message }: { id: string; message: string }) => {
-    const iconRef = useRef<HTMLDivElement>(null);
-
-    const handleMouseEnter = () => {
-      if (iconRef.current) {
-        const rect = iconRef.current.getBoundingClientRect();
-        setTooltipPosition({ x: rect.left + rect.width / 2, y: rect.top });
-        setActiveTooltip(id);
-      }
-    };
-
-    const handleMouseLeave = () => {
-      setActiveTooltip(null);
-      setTooltipPosition(null);
-    };
-
-    // Calcular si el tooltip debe ir a la izquierda o derecha
-    const getTooltipStyle = () => {
-      if (!tooltipPosition) return {};
-
-      const windowWidth = window.innerWidth;
-      const tooltipWidth = 280; // maxWidth del tooltip
-      const shouldAlignRight =
-        tooltipPosition.x + tooltipWidth / 2 > windowWidth - 20;
-      const shouldAlignLeft = tooltipPosition.x - tooltipWidth / 2 < 20;
-
-      let transform = "translate(-50%, -100%)";
-      let left = tooltipPosition.x;
-
-      if (shouldAlignRight) {
-        // Si está muy a la derecha, alinear el tooltip a la derecha
-        transform = "translate(-100%, -100%)";
-        left = tooltipPosition.x + 8; // pequeño offset
-      } else if (shouldAlignLeft) {
-        // Si está muy a la izquierda, alinear el tooltip a la izquierda
-        transform = "translate(0%, -100%)";
-        left = tooltipPosition.x - 8;
-      }
-
-      return {
-        position: "fixed" as const,
-        left: `${left}px`,
-        top: `${tooltipPosition.y}px`,
-        transform: transform,
-        marginTop: "-12px",
-      };
-    };
-
-    return (
-      <div
-        ref={iconRef}
-        style={{
-          position: "relative",
-          display: "inline-block",
-          marginLeft: "6px",
-          zIndex: 9999,
-        }}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "16px",
-            height: "16px",
-            backgroundColor: "#3b82f6",
-            color: "white",
-            borderRadius: "50%",
-            fontSize: "11px",
-            fontWeight: "bold",
-            cursor: "help",
-            userSelect: "none",
-          }}
-        >
-          ?
-        </span>
-        {activeTooltip === id && tooltipPosition && (
-          <div
-            style={{
-              ...getTooltipStyle(),
-              padding: "10px 14px",
-              backgroundColor: "#1f2937",
-              color: "white",
-              borderRadius: "8px",
-              fontSize: "0.8rem",
-              lineHeight: "1.4",
-              whiteSpace: "normal",
-              maxWidth: "280px",
-              minWidth: "200px",
-              width: "max-content",
-              zIndex: 99999,
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-              pointerEvents: "none",
-              textAlign: "center",
-              wordWrap: "break-word",
-            }}
-          >
-            {message}
-            {/* Flecha del tooltip - ajustar posición según alineación */}
-            <div
-              style={{
-                position: "absolute",
-                top: "100%",
-                left:
-                  tooltipPosition.x + 280 / 2 > window.innerWidth - 20
-                    ? "auto"
-                    : tooltipPosition.x - 280 / 2 < 20
-                      ? "20px"
-                      : "50%",
-                right:
-                  tooltipPosition.x + 280 / 2 > window.innerWidth - 20
-                    ? "20px"
-                    : "auto",
-                transform:
-                  tooltipPosition.x + 280 / 2 > window.innerWidth - 20 ||
-                  tooltipPosition.x - 280 / 2 < 20
-                    ? "none"
-                    : "translateX(-50%)",
-                width: 0,
-                height: 0,
-                borderLeft: "6px solid transparent",
-                borderRight: "6px solid transparent",
-                borderTop: "6px solid #1f2937",
-              }}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Función para formatear fechas
+  /* -- Helpers ------------------------------------------------ */
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("es-CL", {
+    return new Date(dateString).toLocaleDateString("es-CL", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
   };
 
-  // Función para formatear precios en CLP
+  const formatDateShort = (dateString?: string) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString("es-CL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   const formatCLP = (priceString?: string) => {
     if (!priceString) return null;
     const numberMatch = priceString.match(/[\d.,]+/);
@@ -291,14 +116,32 @@ function OceanShipmentsView() {
     const cleanNumber = numberMatch[0].replace(/,/g, "");
     const number = parseFloat(cleanNumber);
     if (isNaN(number)) return priceString;
-    const formatted = new Intl.NumberFormat("es-CL").format(number);
-    return `$${formatted} CLP`;
+    return `$${new Intl.NumberFormat("es-CL").format(number)} CLP`;
   };
 
-  // Función para obtener cotización por número
+  /* -- Pagination ------------------------------------------------ */
+  const totalTablePages = Math.max(
+    1,
+    Math.ceil(displayedOceanShipments.length / rowsPerPage),
+  );
+  const paginatedShipments = useMemo(() => {
+    const start = (tablePage - 1) * rowsPerPage;
+    return displayedOceanShipments.slice(start, start + rowsPerPage);
+  }, [displayedOceanShipments, tablePage, rowsPerPage]);
+
+  const paginationRangeText = useMemo(() => {
+    if (displayedOceanShipments.length === 0) return "0 de 0";
+    const start = (tablePage - 1) * rowsPerPage + 1;
+    const end = Math.min(
+      tablePage * rowsPerPage,
+      displayedOceanShipments.length,
+    );
+    return `${start}-${end} de ${displayedOceanShipments.length}`;
+  }, [tablePage, rowsPerPage, displayedOceanShipments.length]);
+
+  /* -- Quote fetch ------------------------------------------- */
   const fetchQuoteByNumber = async (quoteNumber: string) => {
     if (!accessToken) return;
-
     setLoadingQuote(true);
     try {
       const response = await fetch("https://api.linbis.com/Quotes", {
@@ -309,36 +152,30 @@ function OceanShipmentsView() {
           "Content-Type": "application/json",
         },
       });
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-
+      if (!response.ok) throw new Error(`Error ${response.status}`);
       const data = await response.json();
       const quotesArray: Quote[] = Array.isArray(data) ? data : [];
-      const foundQuote = quotesArray.find((q) => q.number === quoteNumber);
-
-      if (foundQuote) {
-        setSelectedQuote(foundQuote);
+      const found = quotesArray.find((q) => q.number === quoteNumber);
+      if (found) {
+        setSelectedQuote(found);
         setShowQuoteModal(true);
       } else {
-        alert("No se encontró la cotización");
+        alert(`No se encontro la cotizacion ${quoteNumber}`);
       }
     } catch (err) {
-      console.error("Error al cargar cotización:", err);
-      alert("Error al cargar la cotización");
+      console.error("Error al cargar cotizacion:", err);
+      alert("Error al cargar la cotizacion");
     } finally {
       setLoadingQuote(false);
     }
   };
 
-  // Obtener ocean shipments usando el token
+  /* -- API --------------------------------------------------- */
   const fetchOceanShipments = async () => {
     if (!accessToken) {
       setError("Debes ingresar un token primero");
       return;
     }
-
     setLoading(true);
     setError(null);
 
@@ -356,40 +193,32 @@ function OceanShipmentsView() {
       );
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("Token inválido o expirado.");
-        }
+        if (response.status === 401)
+          throw new Error("Token invalido o expirado.");
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
-      const oceanShipmentsArray: OceanShipment[] = Array.isArray(data)
-        ? data
-        : [];
-
-      const filtered = oceanShipmentsArray.filter(
-        (os) => os.consignee === filterConsignee,
-      );
-
+      const arr: OceanShipment[] = Array.isArray(data) ? data : [];
+      const filtered = arr.filter((os) => os.consignee === filterConsignee);
       const sorted = filtered.sort((a, b) => {
-        const dateA = new Date(a.createdOn || 0);
-        const dateB = new Date(b.createdOn || 0);
-        return dateB.getTime() - dateA.getTime();
+        const da = a.departure ? new Date(a.departure) : new Date(0);
+        const db = b.departure ? new Date(b.departure) : new Date(0);
+        return db.getTime() - da.getTime();
       });
 
       setOceanShipments(sorted);
-
       localStorage.setItem("oceanShipmentsCache", JSON.stringify(sorted));
       localStorage.setItem(
         "oceanShipmentsCacheTimestamp",
         new Date().getTime().toString(),
       );
-
-      setDisplayedOceanShipments(sorted.slice(0, 20));
+      setDisplayedOceanShipments(sorted);
       setShowingAll(false);
+      setTablePage(1);
 
       console.log(
-        `${oceanShipmentsArray.length} ocean shipments totales, ${filtered.length} del consignee, mostrando los 20 más recientes`,
+        `${arr.length} ocean shipments totales, ${filtered.length} del consignee`,
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -400,27 +229,29 @@ function OceanShipmentsView() {
   };
 
   useEffect(() => {
-    if (!accessToken) {
-      console.log("No hay token disponible todavía");
-      return;
-    }
+    setTablePage(1);
+  }, [displayedOceanShipments, rowsPerPage]);
+  useEffect(() => {
+    if (!accessToken) return;
 
-    const cachedOceanShipments = localStorage.getItem("oceanShipmentsCache");
-    const cacheTimestamp = localStorage.getItem("oceanShipmentsCacheTimestamp");
+    const cached = localStorage.getItem("oceanShipmentsCache");
+    const ts = localStorage.getItem("oceanShipmentsCacheTimestamp");
 
-    if (cachedOceanShipments && cacheTimestamp) {
-      const oneHour = 60 * 60 * 1000;
-      const now = new Date().getTime();
-      const cacheAge = now - parseInt(cacheTimestamp);
-
-      if (cacheAge < oneHour) {
-        const parsed = JSON.parse(cachedOceanShipments);
-        setOceanShipments(parsed);
-        setDisplayedOceanShipments(parsed.slice(0, 20));
+    if (cached && ts) {
+      const age = Date.now() - parseInt(ts);
+      if (age < 3600000) {
+        const parsed: OceanShipment[] = JSON.parse(cached);
+        const filtered = parsed.filter(
+          (os) => os.consignee === filterConsignee,
+        );
+        setOceanShipments(filtered);
+        setDisplayedOceanShipments(filtered);
         setShowingAll(false);
+        setTablePage(1);
+        setLoading(false);
         console.log(
-          "Cargando desde caché - datos guardados hace",
-          Math.floor(cacheAge / 60000),
+          "Cargando desde cache -",
+          Math.floor(age / 60000),
           "minutos",
         );
         return;
@@ -428,85 +259,88 @@ function OceanShipmentsView() {
     }
 
     fetchOceanShipments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
-  const refreshShipments = () => {
-    localStorage.removeItem("oceanShipmentsCache");
-    localStorage.removeItem("oceanShipmentsCacheTimestamp");
-
-    setOceanShipments([]);
-    setDisplayedOceanShipments([]);
-    fetchOceanShipments();
-
-    console.log("🔄 Datos refrescados desde la API");
+  /* -- Accordion --------------------------------------------- */
+  const toggleAccordion = (shipmentId: string | number) => {
+    if (expandedShipmentId === shipmentId) {
+      setExpandedShipmentId(null);
+      setEmbedQuery(null);
+    } else {
+      setExpandedShipmentId(shipmentId);
+      const s = displayedOceanShipments.find((sh) => {
+        const id = sh.id || sh.number;
+        return id === shipmentId;
+      });
+      setEmbedQuery(s?.number || null);
+    }
   };
 
+  /* -- Search ------------------------------------------------ */
   const handleSearchByNumber = () => {
     if (!searchNumber.trim()) {
-      setDisplayedOceanShipments(oceanShipments.slice(0, 20));
+      setDisplayedOceanShipments(oceanShipments);
       setShowingAll(false);
+      setTablePage(1);
       return;
     }
-
-    const searchTerm = searchNumber.trim().toLowerCase();
-    const results = oceanShipments.filter((oceanShipment) => {
-      const number = (oceanShipment.number || "").toString().toLowerCase();
-      return number.includes(searchTerm);
-    });
-
-    setDisplayedOceanShipments(results);
+    const term = searchNumber.trim().toLowerCase();
+    setDisplayedOceanShipments(
+      oceanShipments.filter((s) =>
+        (s.number || "").toString().toLowerCase().includes(term),
+      ),
+    );
     setShowingAll(true);
+    setTablePage(1);
     setShowSearchModal(false);
   };
 
   const handleSearchByDate = () => {
     if (!searchDate) {
-      setDisplayedOceanShipments(oceanShipments.slice(0, 20));
+      setDisplayedOceanShipments(oceanShipments);
       setShowingAll(false);
+      setTablePage(1);
       return;
     }
-
-    const results = oceanShipments.filter((oceanShipment) => {
-      if (!oceanShipment.createdOn) return false;
-      const shipmentDate = new Date(oceanShipment.createdOn)
-        .toISOString()
-        .split("T")[0];
-      return shipmentDate === searchDate;
-    });
-
-    setDisplayedOceanShipments(results);
+    setDisplayedOceanShipments(
+      oceanShipments.filter((s) => {
+        if (!s.createdOn) return false;
+        return new Date(s.createdOn).toISOString().split("T")[0] === searchDate;
+      }),
+    );
     setShowingAll(true);
+    setTablePage(1);
     setShowSearchModal(false);
   };
 
   const handleSearchByDateRange = () => {
     if (!searchStartDate && !searchEndDate) {
-      setDisplayedOceanShipments(oceanShipments.slice(0, 20));
+      setDisplayedOceanShipments(oceanShipments);
       setShowingAll(false);
+      setTablePage(1);
       return;
     }
-
-    const results = oceanShipments.filter((oceanShipment) => {
-      if (!oceanShipment.createdOn) return false;
-      const shipmentDate = new Date(oceanShipment.createdOn);
-
-      if (searchStartDate && searchEndDate) {
-        const start = new Date(searchStartDate);
-        const end = new Date(searchEndDate);
-        end.setHours(23, 59, 59, 999);
-        return shipmentDate >= start && shipmentDate <= end;
-      } else if (searchStartDate) {
-        return shipmentDate >= new Date(searchStartDate);
-      } else if (searchEndDate) {
-        const end = new Date(searchEndDate);
-        end.setHours(23, 59, 59, 999);
-        return shipmentDate <= end;
-      }
-      return false;
-    });
-
-    setDisplayedOceanShipments(results);
+    setDisplayedOceanShipments(
+      oceanShipments.filter((s) => {
+        if (!s.createdOn) return false;
+        const d = new Date(s.createdOn);
+        if (searchStartDate && searchEndDate) {
+          const end = new Date(searchEndDate);
+          end.setHours(23, 59, 59, 999);
+          return d >= new Date(searchStartDate) && d <= end;
+        }
+        if (searchStartDate) return d >= new Date(searchStartDate);
+        if (searchEndDate) {
+          const end = new Date(searchEndDate);
+          end.setHours(23, 59, 59, 999);
+          return d <= end;
+        }
+        return false;
+      }),
+    );
     setShowingAll(true);
+    setTablePage(1);
     setShowSearchModal(false);
   };
 
@@ -515,349 +349,147 @@ function OceanShipmentsView() {
     setSearchDate("");
     setSearchStartDate("");
     setSearchEndDate("");
-    setDisplayedOceanShipments(oceanShipments.slice(0, 20));
-    setShowingAll(false);
-  };
-
-  const showAllOceanShipments = () => {
     setDisplayedOceanShipments(oceanShipments);
-    setShowingAll(true);
+    setShowingAll(false);
+    setTablePage(1);
   };
 
-  const openModal = (oceanShipment: OceanShipment) => {
-    setSelectedOceanShipment(oceanShipment);
-    setShowModal(true);
-    setEmbedQuery(oceanShipment.number || null);
+  const refreshShipments = () => {
+    localStorage.removeItem("oceanShipmentsCache");
+    localStorage.removeItem("oceanShipmentsCacheTimestamp");
+    setOceanShipments([]);
+    setDisplayedOceanShipments([]);
+    setTablePage(1);
+    fetchOceanShipments();
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedOceanShipment(null);
-    setEmbedQuery(null);
-  };
-
-  const openSearchModal = () => {
-    setShowSearchModal(true);
-  };
-
-  const closeSearchModal = () => {
-    setShowSearchModal(false);
-  };
-
-  const closeQuoteModal = () => {
-    setShowQuoteModal(false);
-    setSelectedQuote(null);
-  };
-
+  /* =========================================================
+     RENDER
+     ========================================================= */
   return (
-    <>
-      {/* Interactive Map */}
-      <div
-        style={{
-          marginBottom: "32px",
-          height: "450px",
-          borderRadius: "12px",
-          overflow: "hidden",
-          border: "1px solid #e5e7eb",
-          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-          zIndex: 1,
-          position: "relative",
-        }}
-      >
+    <div className="osv-container">
+      {/* ShipsGo Map Embed */}
+      <div className="osv-map-wrapper">
         <iframe
           id="shipsgo-embed"
           src={`https://embed.shipsgo.com/?token=${import.meta.env.VITE_SHIPSGO_EMBED_TOKEN}${embedQuery ? `&transport=ocean&query=${embedQuery}` : ""}`}
           width="100%"
           height="450"
           frameBorder="0"
-        ></iframe>
+          title="ShipsGo Ocean Tracking"
+        />
       </div>
 
-      {/* Botones de acción */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: "12px",
-          marginBottom: "20px",
-          flexWrap: "wrap",
-          fontFamily: "Poppins, sans-serif",
-        }}
-      >
-        <button
-          onClick={openSearchModal}
-          style={{
-            backgroundColor: "transparent",
-            color: "#111827",
-            border: "1px solid #d1d5db",
-            borderRadius: "6px",
-            padding: "8px 14px",
-            cursor: "pointer",
-            fontSize: "0.85rem",
-            fontWeight: "500",
-            transition: "background-color 0.2s ease, border-color 0.2s ease",
-          }}
-        >
-          Buscar
-        </button>
-
-        {/* Botón Actualizar */}
-        <button
-          onClick={refreshShipments}
-          className="btn-refresh"
-          title="Actualizar lista de envíos"
-        >
-          🔄 Actualizar
-        </button>
-
-        {!showingAll && oceanShipments.length > 20 && (
+      {/* Toolbar */}
+      <div className="osv-toolbar">
+        <div className="osv-toolbar__left" />
+        <div className="osv-toolbar__right">
+          {showingAll && (
+            <button className="osv-btn osv-btn--ghost" onClick={clearSearch}>
+              Limpiar filtros
+            </button>
+          )}
           <button
-            onClick={showAllOceanShipments}
-            style={{
-              backgroundColor: "#ffffff",
-              color: "#111827",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              padding: "8px 14px",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              fontWeight: "500",
-              transition: "background-color 0.2s ease, border-color 0.2s ease",
-            }}
+            className="osv-btn"
+            style={{ color: "white", backgroundColor: "var(--primary-color)" }}
+            onClick={refreshShipments}
           >
-            Ver todos ({oceanShipments.length})
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            Actualizar
           </button>
-        )}
-
-        {showingAll && (
-          <button
-            onClick={clearSearch}
-            style={{
-              backgroundColor: "transparent",
-              color: "#6b7280",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              padding: "8px 14px",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              fontWeight: "400",
-              transition: "color 0.2s ease, border-color 0.2s ease",
-            }}
-          >
-            Limpiar filtros
-          </button>
-        )}
+          {loadingQuote && (
+            <span className="osv-loading-text">Cargando...</span>
+          )}
+        </div>
       </div>
 
-      {/* Modal de Búsqueda */}
+      {/* Search modal */}
       {showSearchModal && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 9999 }}
-          onClick={closeSearchModal}
-        >
+        <div className="osv-overlay" onClick={() => setShowSearchModal(false)}>
           <div
-            className="bg-white rounded p-4"
-            style={{
-              maxWidth: "500px",
-              width: "90%",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-            }}
+            className="osv-modal osv-modal--search"
             onClick={(e) => e.stopPropagation()}
           >
-            <h5 style={{ marginBottom: "20px", color: "#1f2937" }}>
-              Buscar Ocean Shipments
-            </h5>
+            <h5 className="osv-modal__title">Buscar Ocean Shipments</h5>
 
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Número
-              </label>
+            <div className="osv-search-section">
+              <label className="osv-label">Por Numero</label>
               <input
+                className="osv-input"
                 type="text"
                 value={searchNumber}
                 onChange={(e) => setSearchNumber(e.target.value)}
-                placeholder="Ingresa el número del shipment"
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                }}
+                placeholder="Numero del shipment"
               />
               <button
+                className="osv-btn osv-btn--primary osv-btn--full"
                 onClick={handleSearchByNumber}
-                style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  backgroundColor: "#0ea5e9",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
               >
-                Buscar por Número
+                Buscar
               </button>
             </div>
 
-            <div
-              style={{
-                borderTop: "1px solid #e5e7eb",
-                paddingTop: "20px",
-                marginBottom: "20px",
-              }}
-            >
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Fecha Exacta
-              </label>
+            <div className="osv-search-section">
+              <label className="osv-label">Por Fecha Exacta</label>
               <input
+                className="osv-input"
                 type="date"
                 value={searchDate}
                 onChange={(e) => setSearchDate(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "0.9rem",
-                }}
               />
               <button
+                className="osv-btn osv-btn--primary osv-btn--full"
                 onClick={handleSearchByDate}
-                style={{
-                  marginTop: "10px",
-                  width: "100%",
-                  backgroundColor: "#0ea5e9",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
               >
-                Buscar por Fecha
+                Buscar
               </button>
             </div>
 
-            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "600",
-                  fontSize: "0.9rem",
-                  color: "#374151",
-                }}
-              >
-                Por Rango de Fechas
-              </label>
-              <div
-                style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
-              >
+            <div className="osv-search-section">
+              <label className="osv-label">Por Rango de Fechas</label>
+              <div className="osv-search-row">
                 <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "4px",
-                      fontSize: "0.8rem",
-                      color: "#6b7280",
-                    }}
-                  >
-                    Desde
-                  </label>
+                  <span className="osv-label osv-label--small">Desde</span>
                   <input
+                    className="osv-input"
                     type="date"
                     value={searchStartDate}
                     onChange={(e) => setSearchStartDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "0.85rem",
-                    }}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label
-                    style={{
-                      display: "block",
-                      marginBottom: "4px",
-                      fontSize: "0.8rem",
-                      color: "#6b7280",
-                    }}
-                  >
-                    Hasta
-                  </label>
+                  <span className="osv-label osv-label--small">Hasta</span>
                   <input
+                    className="osv-input"
                     type="date"
                     value={searchEndDate}
                     onChange={(e) => setSearchEndDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "8px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "0.85rem",
-                    }}
                   />
                 </div>
               </div>
               <button
+                className="osv-btn osv-btn--primary osv-btn--full"
                 onClick={handleSearchByDateRange}
-                style={{
-                  width: "100%",
-                  backgroundColor: "#0ea5e9",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "10px",
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  fontWeight: "600",
-                }}
               >
-                Buscar por Rango
+                Buscar
               </button>
             </div>
 
             <button
-              onClick={closeSearchModal}
-              style={{
-                marginTop: "20px",
-                width: "100%",
-                backgroundColor: "#f3f4f6",
-                color: "#374151",
-                border: "none",
-                borderRadius: "6px",
-                padding: "10px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-              }}
+              className="osv-btn osv-btn--ghost osv-btn--full"
+              onClick={() => setShowSearchModal(false)}
             >
               Cerrar
             </button>
@@ -865,883 +497,625 @@ function OceanShipmentsView() {
         </div>
       )}
 
-      {/* Indicador de carga */}
+      {/* Loading */}
       {loading && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "40px",
-            backgroundColor: "white",
-            borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "3rem",
-              marginBottom: "16px",
-            }}
-          >
-            🚢
-          </div>
-          <p style={{ color: "#6b7280", fontSize: "1rem" }}>
-            Cargando ocean shipments...
-          </p>
+        <div className="osv-empty">
+          <div className="osv-spinner" />
+          <p>Cargando ocean shipments...</p>
         </div>
       )}
 
-      {/* Mensaje de error */}
+      {/* Error */}
       {error && (
-        <div
-          style={{
-            padding: "16px",
-            backgroundColor: "#fee2e2",
-            color: "#991b1b",
-            borderRadius: "8px",
-            marginBottom: "20px",
-            border: "1px solid #fecaca",
-          }}
-        >
+        <div className="osv-error">
           <strong>Error:</strong> {error}
         </div>
       )}
 
-      {/* Tabla de Ocean Shipments con Accordion */}
+      {/* =====================================================
+          TABLE
+         ===================================================== */}
       {!loading && displayedOceanShipments.length > 0 && (
-        <div
-          style={{
-            backgroundColor: "white",
-            borderRadius: "12px",
-            overflow: "visible",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "0.875rem",
-              }}
-            >
+        <div className="osv-table-wrapper">
+          <div className="osv-table-scroll">
+            <table className="osv-table">
               <thead>
-                <tr
-                  style={{
-                    backgroundColor: "#f9fafb",
-                    borderBottom: "2px solid #e5e7eb",
-                  }}
-                >
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Número
-                    <TooltipIcon id="numero" message={tooltipMessages.numero} />
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      minWidth: "200px",
-                    }}
-                  >
-                    Ruta
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Fecha Salida
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "left",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Vessel
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "center",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Tipo
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "center",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Piezas
-                  </th>
-                  <th
-                    style={{
-                      padding: "16px 20px",
-                      textAlign: "right",
-                      fontWeight: "600",
-                      color: "#374151",
-                      fontSize: "0.75rem",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Gasto Parcial
-                    <TooltipIcon id="numero" message={tooltipMessages.gasto} />
-                  </th>
+                <tr>
+                  <th className="osv-th">Numero</th>
+                  <th className="osv-th">Ruta</th>
+                  <th className="osv-th">Fecha Salida</th>
+                  <th className="osv-th">Vessel</th>
+                  <th className="osv-th osv-th--center">Tipo</th>
+                  <th className="osv-th osv-th--center">Piezas</th>
                 </tr>
               </thead>
               <tbody>
-                {displayedOceanShipments.map((shipment, index) => {
+                {paginatedShipments.map((shipment, index) => {
                   const shipmentId = shipment.id || shipment.number || index;
-                  const isOpen = openAccordions.includes(shipmentId);
-                  const activeTabIndex = activeTabs[shipmentId] || 0;
+                  const isExpanded = expandedShipmentId === shipmentId;
 
                   return (
-                    <>
-                      {/* Fila de la tabla */}
+                    <React.Fragment key={shipmentId}>
                       <tr
-                        key={`row-${shipmentId}`}
+                        className={`osv-tr ${isExpanded ? "osv-tr--active" : ""}`}
                         onClick={() => toggleAccordion(shipmentId)}
-                        className={`ocean-shipments-table-row ${isOpen ? "expanded" : ""}`}
-                        style={{
-                          borderBottom:
-                            !isOpen &&
-                            index < displayedOceanShipments.length - 1
-                              ? "1px solid #f3f4f6"
-                              : "none",
-                        }}
                       >
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            fontWeight: "600",
-                            color: "#1f2937",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          <div>{shipment.number || "N/A"}</div>
+                        <td className="osv-td osv-td--number">
+                          <svg
+                            className={`osv-row-chevron ${isExpanded ? "osv-row-chevron--open" : ""}`}
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                          >
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                          {shipment.number || "---"}
                           {shipment.quoteNumber && (
-                            <div
+                            <span
+                              className="osv-quote-badge"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 fetchQuoteByNumber(shipment.quoteNumber!);
                               }}
-                              style={{
-                                display: "inline-block",
-                                marginTop: "4px",
-                                fontSize: "0.7rem",
-                                padding: "2px 8px",
-                                backgroundColor: "#d1fae5",
-                                color: "#065f46",
-                                borderRadius: "12px",
-                                cursor: "pointer",
-                                fontWeight: "600",
-                              }}
                             >
-                              📋 {shipment.quoteNumber}
-                            </div>
+                              {shipment.quoteNumber}
+                            </span>
                           )}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            color: "#4b5563",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                            }}
-                          >
-                            <LocationWithFlag
-                              location={shipment.portOfLoading}
-                            />
-                            <span style={{ color: "#0ea5e9" }}>→</span>
-                            <LocationWithFlag
-                              location={shipment.portOfUnloading}
-                            />
-                          </div>
-                        </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            color: "#4b5563",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {shipment.departure
-                            ? new Date(shipment.departure).toLocaleDateString(
-                                "es-CL",
-                                {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                },
-                              )
-                            : "-"}
-                        </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            color: "#4b5563",
-                          }}
-                        >
-                          {shipment.vessel || "-"}
-                        </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            textAlign: "center",
-                          }}
-                        >
-                          <span
-                            style={{
-                              display: "inline-block",
-                              padding: "4px 10px",
-                              borderRadius: "12px",
-                              fontSize: "0.75rem",
-                              fontWeight: "600",
-                              color:
-                                shipment.typeOfMove === "FCL"
-                                  ? "#7c3aed"
-                                  : "#059669",
-                              backgroundColor:
-                                shipment.typeOfMove === "FCL"
-                                  ? "#f3e8ff"
-                                  : "#d1fae5",
-                            }}
-                          >
-                            {shipment.typeOfMove || "-"}
+                        <td className="osv-td">
+                          <span className="osv-route">
+                            {shipment.portOfLoading || "---"}
+                            <svg
+                              className="osv-route__arrow"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            >
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                              <polyline points="12 5 19 12 12 19" />
+                            </svg>
+                            {shipment.portOfUnloading || "---"}
                           </span>
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            textAlign: "center",
-                            color: "#4b5563",
-                            fontWeight: "600",
-                          }}
-                        >
-                          {shipment.totalCargo_Pieces || "-"}
+                        <td className="osv-td">
+                          {formatDateShort(shipment.departure)}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 20px",
-                            textAlign: "right",
-                            color: "#10b981",
-                            fontWeight: "700",
-                            fontSize: "0.95rem",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {formatCLP(shipment.totalCharge_IncomeDisplayValue) ||
-                            "-"}
+                        <td className="osv-td">{shipment.vessel || "-"}</td>
+                        <td className="osv-td osv-td--center">
+                          {shipment.typeOfMove ? (
+                            <span className="osv-badge osv-badge--type">
+                              {shipment.typeOfMove}
+                            </span>
+                          ) : (
+                            "---"
+                          )}
+                        </td>
+                        <td className="osv-td osv-td--center">
+                          {shipment.totalCargo_Pieces ?? "---"}
                         </td>
                       </tr>
 
-                      {/* Contenido del Accordion */}
-                      {isOpen && (
-                        <tr key={`accordion-${shipmentId}`}>
-                          <td
-                            colSpan={7}
-                            style={{
-                              padding: 0,
-                              borderTop: "3px solid #0ea5e9",
-                            }}
-                          >
-                            <div className="accordion-content">
-                              {/* Timeline Visual encima de los tabs */}
-                              <div className="accordion-timeline-section">
-                                <OceanShipmentTimeline shipment={shipment} />
-                              </div>
-
-                              {/* Ruta de Envío */}
-                              <div className="accordion-route-section">
-                                <OceanRouteDisplay shipment={shipment} />
-                              </div>
-
-                              {/* Tabs horizontales */}
-                              <div
-                                style={{
-                                  display: "flex",
-                                  borderBottom: "1px solid #e5e7eb",
-                                  marginBottom: "20px",
-                                }}
-                              >
-                                <button
-                                  style={{
-                                    padding: "12px 16px",
-                                    background: "none",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 0
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    color:
-                                      activeTabIndex === 0
-                                        ? "#1f2937"
-                                        : "#6b7280",
-                                    fontWeight: "500",
-                                    cursor: "pointer",
-                                    transition: "all 0.2s",
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(shipmentId, 0);
-                                  }}
-                                >
-                                  Información General
-                                </button>
-                                <button
-                                  style={{
-                                    padding: "12px 16px",
-                                    background: "none",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 1
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    color:
-                                      activeTabIndex === 1
-                                        ? "#1f2937"
-                                        : "#6b7280",
-                                    fontWeight: "500",
-                                    cursor: "pointer",
-                                    transition: "all 0.2s",
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(shipmentId, 1);
-                                  }}
-                                >
-                                  Información de Carga
-                                </button>
-                                <button
-                                  style={{
-                                    padding: "12px 16px",
-                                    background: "none",
-                                    border: "none",
-                                    borderBottom:
-                                      activeTabIndex === 2
-                                        ? "2px solid #1f2937"
-                                        : "2px solid transparent",
-                                    color:
-                                      activeTabIndex === 2
-                                        ? "#1f2937"
-                                        : "#6b7280",
-                                    fontWeight: "500",
-                                    cursor: "pointer",
-                                    transition: "all 0.2s",
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveTab(shipmentId, 2);
-                                  }}
-                                >
-                                  Resumen Financiero
-                                </button>
-                                {(shipment.entryNumber ||
-                                  shipment.itNumber ||
-                                  shipment.amsNumber ||
-                                  shipment.broker) && (
-                                  <button
-                                    style={{
-                                      padding: "12px 16px",
-                                      background: "none",
-                                      border: "none",
-                                      borderBottom:
-                                        activeTabIndex === 3
-                                          ? "2px solid #1f2937"
-                                          : "2px solid transparent",
-                                      color:
-                                        activeTabIndex === 3
-                                          ? "#1f2937"
-                                          : "#6b7280",
-                                      fontWeight: "500",
-                                      cursor: "pointer",
-                                      transition: "all 0.2s",
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveTab(shipmentId, 3);
-                                    }}
-                                  >
-                                    Importación y Aduana
-                                  </button>
-                                )}
-                                {shipment.notes && shipment.notes !== "N/A" && (
-                                  <button
-                                    style={{
-                                      padding: "12px 16px",
-                                      background: "none",
-                                      border: "none",
-                                      borderBottom:
-                                        activeTabIndex === 4
-                                          ? "2px solid #1f2937"
-                                          : "2px solid transparent",
-                                      color:
-                                        activeTabIndex === 4
-                                          ? "#1f2937"
-                                          : "#6b7280",
-                                      fontWeight: "500",
-                                      cursor: "pointer",
-                                      transition: "all 0.2s",
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveTab(shipmentId, 4);
-                                    }}
-                                  >
-                                    Notas
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* Contenido de los tabs */}
-                              <div className="tab-content">
-                                {/* Tab 0: Información General */}
-                                {activeTabIndex === 0 && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexWrap: "wrap",
-                                      gap: "12px",
-                                    }}
-                                  >
-                                    <InfoField
-                                      label="Número de Envío"
-                                      value={shipment.number}
-                                    />
-                                    <InfoField
-                                      label="Tipo de Operación"
-                                      value={shipment.operationFlow}
-                                    />
-                                    <InfoField
-                                      label="Tipo de Envío"
-                                      value={shipment.shipmentType}
-                                    />
-                                    <InfoField
-                                      label="Tipo de Movimiento"
-                                      value={shipment.typeOfMove}
-                                    />
-                                    <InfoField
-                                      label="Booking Number"
-                                      value={shipment.bookingNumber}
-                                    />
-                                    <InfoField
-                                      label="BL Number"
-                                      value={shipment.waybillNumber}
-                                    />
-                                    <InfoField
-                                      label="Forwarded BL"
-                                      value={shipment.fowaredBl}
-                                    />
-                                    <InfoField
-                                      label="Número de Contenedor"
-                                      value={shipment.containerNumber}
-                                    />
-                                    <InfoField
-                                      label="Referencia Cliente"
-                                      value={shipment.customerReference}
-                                    />
-                                    <InfoField
-                                      label="Representante Ventas"
-                                      value={shipment.salesRep}
-                                    />
-                                    <InfoField
-                                      label="Fecha de Creación"
-                                      value={
-                                        shipment.createdOn
-                                          ? formatDate(shipment.createdOn)
-                                          : null
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Fecha Salida"
-                                      value={
-                                        shipment.departure
-                                          ? formatDate(shipment.departure)
-                                          : null
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Fecha Llegada"
-                                      value={
-                                        shipment.arrival
-                                          ? formatDate(shipment.arrival)
-                                          : null
-                                      }
-                                    />
-                                  </div>
-                                )}
-
-                                {/* Tab 1: Información de Carga */}
-                                {activeTabIndex === 1 && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      flexWrap: "wrap",
-                                      gap: "12px",
-                                    }}
-                                  >
-                                    <InfoField
-                                      label="Total de Piezas"
-                                      value={shipment.totalCargo_Pieces}
-                                    />
-                                    <InfoField
-                                      label="Peso Total"
-                                      value={
-                                        shipment.totalCargo_WeightDisplayValue
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Volumen Total"
-                                      value={
-                                        shipment.totalCargo_VolumeDisplayValue
-                                      }
-                                    />
-                                    <InfoField
-                                      label="Descripción de Carga"
-                                      value={shipment.cargoDescription}
-                                      fullWidth
-                                    />
-                                    <InfoField
-                                      label="Marcas de Carga"
-                                      value={shipment.cargoMarks}
-                                      fullWidth
-                                    />
-                                    <InfoField
-                                      label="Estado de Carga"
-                                      value={shipment.cargoStatus}
-                                    />
-                                    <InfoField
-                                      label="Carga Peligrosa"
-                                      value={shipment.hazardous ? "Sí" : "No"}
-                                    />
-                                    <InfoField
-                                      label="Containerizado"
-                                      value={
-                                        shipment.containerized ? "Sí" : "No"
-                                      }
-                                    />
-                                  </div>
-                                )}
-
-                                {/* Tab 2: Resumen Financiero */}
-                                {activeTabIndex === 2 && (
-                                  <div
-                                    style={{
-                                      backgroundColor:
-                                        "rgba(16, 185, 129, 0.1)",
-                                      borderRadius: "8px",
-                                      padding: "20px",
-                                      border:
-                                        "2px solid rgba(16, 185, 129, 0.2)",
-                                      textAlign: "center",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        fontSize: "0.85rem",
-                                        color: "#6b7280",
-                                        marginBottom: "8px",
-                                        fontWeight: "600",
-                                        textTransform: "uppercase",
-                                        letterSpacing: "0.5px",
-                                      }}
-                                    >
-                                      Total Gasto (No incluye impuestos)
-                                    </div>
-                                    <div
-                                      style={{
-                                        fontSize: "2rem",
-                                        fontWeight: "700",
-                                        color: "#10b981",
-                                      }}
-                                    >
-                                      {formatCLP(
-                                        shipment.totalCharge_IncomeDisplayValue,
-                                      ) || "$0 CLP"}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Tab 3: Información de Importación/Aduana */}
-                                {activeTabIndex === 3 &&
-                                  (shipment.entryNumber ||
-                                    shipment.itNumber ||
-                                    shipment.amsNumber ||
-                                    shipment.broker) && (
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        flexWrap: "wrap",
-                                        gap: "12px",
-                                      }}
-                                    >
-                                      <InfoField
-                                        label="Entry Number"
-                                        value={shipment.entryNumber}
-                                      />
-                                      <InfoField
-                                        label="IT Number"
-                                        value={shipment.itNumber}
-                                      />
-                                      <InfoField
-                                        label="AMS Number"
-                                        value={shipment.amsNumber}
-                                      />
-                                      <InfoField
-                                        label="Broker"
-                                        value={shipment.broker}
-                                      />
-                                      <InfoField
-                                        label="Liberado por Aduana"
-                                        value={
-                                          shipment.customsReleased ? "Sí" : "No"
-                                        }
-                                      />
-                                      <InfoField
-                                        label="Flete Liberado"
-                                        value={
-                                          shipment.freightReleased ? "Sí" : "No"
-                                        }
-                                      />
-                                    </div>
+                      {isExpanded && (
+                        <tr className="osv-accordion-row">
+                          <td colSpan={6} className="osv-accordion-cell">
+                            <div className="osv-accordion-content">
+                              {/* Route summary card */}
+                              <div className="osv-route-card">
+                                <div className="osv-route-card__point">
+                                  <span className="osv-route-card__label">
+                                    Puerto de Carga
+                                  </span>
+                                  <span className="osv-route-card__value">
+                                    {shipment.portOfLoading || "N/A"}
+                                  </span>
+                                  {shipment.departure && (
+                                    <span className="osv-route-card__date">
+                                      {formatDateShort(shipment.departure)}
+                                    </span>
                                   )}
-
-                                {/* Tab 4: Notas */}
-                                {activeTabIndex === 4 &&
-                                  shipment.notes &&
-                                  shipment.notes !== "N/A" && (
-                                    <div
-                                      style={{
-                                        padding: "12px",
-                                        backgroundColor: "#fffbeb",
-                                        borderRadius: "6px",
-                                        border: "1px solid #fde047",
-                                        color: "#713f12",
-                                        fontSize: "0.875rem",
-                                        whiteSpace: "pre-wrap",
-                                        lineHeight: "1.6",
-                                      }}
-                                    >
-                                      {shipment.notes}
-                                    </div>
+                                </div>
+                                <div className="osv-route-card__arrow">
+                                  <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="var(--primary-color)"
+                                    strokeWidth="2"
+                                  >
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                    <polyline points="12 5 19 12 12 19" />
+                                  </svg>
+                                  {shipment.vessel && (
+                                    <span className="osv-route-card__transit">
+                                      {shipment.vessel}
+                                    </span>
                                   )}
+                                </div>
+                                <div className="osv-route-card__point osv-route-card__point--end">
+                                  <span className="osv-route-card__label">
+                                    Puerto de Descarga
+                                  </span>
+                                  <span className="osv-route-card__value">
+                                    {shipment.portOfUnloading || "N/A"}
+                                  </span>
+                                  {shipment.arrival && (
+                                    <span className="osv-route-card__date">
+                                      {formatDateShort(shipment.arrival)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
+
+                              {/* Tabs */}
+                              <DetailTabs
+                                tabs={[
+                                  {
+                                    key: "general",
+                                    label: "Informacion General",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="16" x2="12" y2="12" />
+                                        <line
+                                          x1="12"
+                                          y1="8"
+                                          x2="12.01"
+                                          y2="8"
+                                        />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <div className="osv-cards-grid">
+                                        <div className="osv-card">
+                                          <h4>Detalles del Envio</h4>
+                                          <div className="osv-info-grid">
+                                            <InfoField
+                                              label="Numero de Envio"
+                                              value={shipment.number}
+                                            />
+                                            <InfoField
+                                              label="Tipo de Operacion"
+                                              value={shipment.operationFlow}
+                                            />
+                                            <InfoField
+                                              label="Tipo de Envio"
+                                              value={shipment.shipmentType}
+                                            />
+                                            <InfoField
+                                              label="Tipo de Movimiento"
+                                              value={shipment.typeOfMove}
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="osv-card">
+                                          <h4>Logistica Maritima</h4>
+                                          <div className="osv-info-grid">
+                                            <InfoField
+                                              label="Vessel"
+                                              value={shipment.vessel}
+                                            />
+                                            <InfoField
+                                              label="Voyage"
+                                              value={shipment.voyage}
+                                            />
+                                            <InfoField
+                                              label="Carrier"
+                                              value={shipment.carrier}
+                                            />
+                                            <InfoField
+                                              label="Puerto de Carga"
+                                              value={shipment.portOfLoading}
+                                            />
+                                            <InfoField
+                                              label="Puerto de Descarga"
+                                              value={shipment.portOfUnloading}
+                                            />
+                                            <InfoField
+                                              label="Lugar de Entrega"
+                                              value={shipment.placeOfDelivery}
+                                            />
+                                            <InfoField
+                                              label="Destino Final"
+                                              value={shipment.finalDestination}
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="osv-card">
+                                          <h4>Documentos y Referencias</h4>
+                                          <div className="osv-info-grid">
+                                            <InfoField
+                                              label="Booking Number"
+                                              value={shipment.bookingNumber}
+                                            />
+                                            <InfoField
+                                              label="BL Number"
+                                              value={shipment.waybillNumber}
+                                            />
+                                            <InfoField
+                                              label="Forwarded BL"
+                                              value={shipment.fowaredBl}
+                                            />
+                                            <InfoField
+                                              label="Numero de Contenedor"
+                                              value={shipment.containerNumber}
+                                            />
+                                            <InfoField
+                                              label="Referencia Cliente"
+                                              value={shipment.customerReference}
+                                            />
+                                            <InfoField
+                                              label="Representante Ventas"
+                                              value={shipment.salesRep}
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="osv-card">
+                                          <h4>Fechas</h4>
+                                          <div className="osv-info-grid">
+                                            <InfoField
+                                              label="Fecha de Creacion"
+                                              value={
+                                                shipment.createdOn
+                                                  ? formatDate(
+                                                      shipment.createdOn,
+                                                    )
+                                                  : null
+                                              }
+                                            />
+                                            <InfoField
+                                              label="Fecha Salida"
+                                              value={
+                                                shipment.departure
+                                                  ? formatDate(
+                                                      shipment.departure,
+                                                    )
+                                                  : null
+                                              }
+                                            />
+                                            <InfoField
+                                              label="Fecha Llegada"
+                                              value={
+                                                shipment.arrival
+                                                  ? formatDate(shipment.arrival)
+                                                  : null
+                                              }
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ),
+                                  },
+                                  {
+                                    key: "cargo",
+                                    label: "Carga",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <rect
+                                          x="1"
+                                          y="3"
+                                          width="15"
+                                          height="13"
+                                        />
+                                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                        <circle cx="5.5" cy="18.5" r="2.5" />
+                                        <circle cx="18.5" cy="18.5" r="2.5" />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <div className="osv-cards-grid">
+                                        <div className="osv-card">
+                                          <h4>Cantidades</h4>
+                                          <div className="osv-info-grid">
+                                            <InfoField
+                                              label="Total de Piezas"
+                                              value={shipment.totalCargo_Pieces}
+                                            />
+                                            <InfoField
+                                              label="Peso Total"
+                                              value={
+                                                shipment.totalCargo_WeightDisplayValue
+                                              }
+                                            />
+                                            <InfoField
+                                              label="Volumen Total"
+                                              value={
+                                                shipment.totalCargo_VolumeDisplayValue
+                                              }
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="osv-card">
+                                          <h4>Detalle de Carga</h4>
+                                          <div className="osv-info-grid">
+                                            <InfoField
+                                              label="Descripcion de Carga"
+                                              value={shipment.cargoDescription}
+                                              fullWidth
+                                            />
+                                            <InfoField
+                                              label="Marcas de Carga"
+                                              value={shipment.cargoMarks}
+                                              fullWidth
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="osv-card">
+                                          <h4>Estado y Seguridad</h4>
+                                          <div className="osv-info-grid">
+                                            <InfoField
+                                              label="Estado de Carga"
+                                              value={shipment.cargoStatus}
+                                            />
+                                            <InfoField
+                                              label="Carga Peligrosa"
+                                              value={
+                                                shipment.hazardous ? "Si" : "No"
+                                              }
+                                            />
+                                            <InfoField
+                                              label="Containerizado"
+                                              value={
+                                                shipment.containerized
+                                                  ? "Si"
+                                                  : "No"
+                                              }
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ),
+                                  },
+                                  {
+                                    key: "financiero",
+                                    label: "Financiero",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <line x1="12" y1="1" x2="12" y2="23" />
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                      </svg>
+                                    ),
+                                    content: (
+                                      <div className="osv-finance-card">
+                                        <span className="osv-finance-card__label">
+                                          Gasto Total (No incluye impuestos)
+                                        </span>
+                                        <span className="osv-finance-card__amount">
+                                          {formatCLP(
+                                            shipment.totalCharge_IncomeDisplayValue,
+                                          ) || "$0 CLP"}
+                                        </span>
+                                        <span className="osv-finance-card__note">
+                                          Monto estimado para este envio
+                                        </span>
+                                      </div>
+                                    ),
+                                  },
+                                  {
+                                    key: "customs",
+                                    label: "Importacion y Aduana",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="16" y1="13" x2="8" y2="13" />
+                                        <line x1="16" y1="17" x2="8" y2="17" />
+                                      </svg>
+                                    ),
+                                    hidden: !(
+                                      shipment.entryNumber ||
+                                      shipment.itNumber ||
+                                      shipment.amsNumber ||
+                                      shipment.broker
+                                    ),
+                                    content: (
+                                      <div className="osv-info-grid">
+                                        <InfoField
+                                          label="Entry Number"
+                                          value={shipment.entryNumber}
+                                        />
+                                        <InfoField
+                                          label="IT Number"
+                                          value={shipment.itNumber}
+                                        />
+                                        <InfoField
+                                          label="AMS Number"
+                                          value={shipment.amsNumber}
+                                        />
+                                        <InfoField
+                                          label="Broker"
+                                          value={shipment.broker}
+                                        />
+                                        <InfoField
+                                          label="Liberado por Aduana"
+                                          value={
+                                            shipment.customsReleased
+                                              ? "Si"
+                                              : "No"
+                                          }
+                                        />
+                                        <InfoField
+                                          label="Flete Liberado"
+                                          value={
+                                            shipment.freightReleased
+                                              ? "Si"
+                                              : "No"
+                                          }
+                                        />
+                                      </div>
+                                    ),
+                                  },
+                                  {
+                                    key: "notas",
+                                    label: "Notas",
+                                    icon: (
+                                      <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                      </svg>
+                                    ),
+                                    hidden:
+                                      !shipment.notes ||
+                                      shipment.notes === "N/A",
+                                    content: (
+                                      <div className="osv-notes">
+                                        {shipment.notes}
+                                      </div>
+                                    ),
+                                  },
+                                ]}
+                              />
                             </div>
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
             </table>
           </div>
 
-          {/* Footer de la tabla */}
-          <div
-            style={{
-              padding: "16px 20px",
-              backgroundColor: "#f9fafb",
-              borderTop: "1px solid #e5e7eb",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "0.875rem",
-                color: "#6b7280",
-              }}
-            >
-              Mostrando{" "}
-              <strong style={{ color: "#1f2937" }}>
-                {displayedOceanShipments.length}
-              </strong>{" "}
-              de{" "}
-              <strong style={{ color: "#1f2937" }}>
-                {oceanShipments.length}
-              </strong>{" "}
-              envíos
+          {/* Table footer */}
+          <div className="osv-table-footer">
+            <div className="osv-table-footer__left">
+              {loading && <span className="osv-loading-text">Cargando...</span>}
             </div>
-            {!showingAll &&
-              oceanShipments.length > displayedOceanShipments.length && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    showAllOceanShipments();
-                  }}
-                  style={{
-                    backgroundColor: "white",
-                    color: "#0ea5e9",
-                    border: "1px solid #0ea5e9",
-                    borderRadius: "6px",
-                    padding: "6px 16px",
-                    cursor: "pointer",
-                    fontSize: "0.85rem",
-                    fontWeight: "600",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#0ea5e9";
-                    e.currentTarget.style.color = "white";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "white";
-                    e.currentTarget.style.color = "#0ea5e9";
-                  }}
+            <div className="osv-table-footer__right">
+              <span className="osv-pagination-label">Filas por pagina:</span>
+              <select
+                className="osv-pagination-select"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setTablePage(1);
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <span className="osv-pagination-range">
+                {paginationRangeText}
+              </span>
+              <button
+                className="osv-pagination-btn"
+                disabled={tablePage <= 1}
+                onClick={() => setTablePage((p) => p - 1)}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
                 >
-                  Ver todos
-                </button>
-              )}
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+              </button>
+              <button
+                className="osv-pagination-btn"
+                disabled={tablePage >= totalTablePages}
+                onClick={() => setTablePage((p) => p + 1)}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Cotización */}
+      {/* Quote Modal */}
       {showQuoteModal && (
-        <QuoteModal quote={selectedQuote} onClose={closeQuoteModal} />
+        <QuoteModal
+          quote={selectedQuote}
+          onClose={() => {
+            setShowQuoteModal(false);
+            setSelectedQuote(null);
+          }}
+        />
       )}
 
-      {/* Estado vacío - Sin resultados de búsqueda */}
+      {/* Empty - no search results */}
       {displayedOceanShipments.length === 0 &&
         !loading &&
         oceanShipments.length > 0 &&
         showingAll && (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "60px 20px",
-              backgroundColor: "white",
-              borderRadius: "12px",
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "4rem",
-                marginBottom: "16px",
-                opacity: 0.5,
-              }}
-            >
-              🌊
-            </div>
-            <h5
-              style={{
-                color: "#1f2937",
-                marginBottom: "8px",
-                fontSize: "1.2rem",
-              }}
-            >
+          <div className="osv-empty">
+            <p className="osv-empty__title">
               No se encontraron ocean shipments
-            </h5>
-            <p style={{ color: "#6b7280", marginBottom: "24px" }}>
-              No hay ocean shipments que coincidan con tu búsqueda
             </p>
-            <button
-              onClick={clearSearch}
-              style={{
-                backgroundColor: "#0ea5e9",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                padding: "12px 24px",
-                cursor: "pointer",
-                fontSize: "0.9rem",
-                fontWeight: "600",
-                boxShadow: "0 2px 4px rgba(14, 165, 233, 0.3)",
-              }}
-            >
-              Ver los últimos 20 ocean shipments
+            <p className="osv-empty__subtitle">
+              No hay ocean shipments que coincidan con tu busqueda
+            </p>
+            <button className="osv-btn osv-btn--primary" onClick={clearSearch}>
+              Limpiar filtros
             </button>
           </div>
         )}
 
-      {/* Estado vacío - Sin ocean shipments cargados */}
+      {/* Empty - no shipments */}
       {oceanShipments.length === 0 && !loading && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "60px 20px",
-            backgroundColor: "white",
-            borderRadius: "12px",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: "4rem",
-              marginBottom: "16px",
-              opacity: 0.5,
-            }}
-          >
-            ⚓
-          </div>
-          <h5
-            style={{
-              color: "#1f2937",
-              marginBottom: "8px",
-              fontSize: "1.2rem",
-            }}
-          >
-            No hay ocean shipments disponibles
-          </h5>
-          <p style={{ color: "#6b7280" }}>
+        <div className="osv-empty">
+          <p className="osv-empty__title">No hay ocean shipments disponibles</p>
+          <p className="osv-empty__subtitle">
             No se encontraron ocean shipments para tu cuenta
           </p>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
