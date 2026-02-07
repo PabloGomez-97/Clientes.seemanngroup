@@ -1245,17 +1245,6 @@ function QuotesView() {
           {/* -- Table footer / pagination ------------------- */}
           <div className="qv-table-footer">
             <div className="qv-table-footer__left">
-              {hasMoreQuotes && !loadingMore && (
-                <button
-                  className="qv-btn qv-btn--ghost qv-btn--sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    loadMoreQuotes();
-                  }}
-                >
-                  Cargar mas desde API
-                </button>
-              )}
               {loadingMore && (
                 <span className="qv-loading-text">Cargando...</span>
               )}

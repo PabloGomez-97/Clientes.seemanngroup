@@ -138,7 +138,7 @@ function Sidebar({ isOpen }: SidebarProps) {
         overflowY: "auto",
         overflowX: "hidden",
         fontFamily:
-          '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+          "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
       }}
       className="sidebar-scroll"
     >

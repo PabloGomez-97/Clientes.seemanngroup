@@ -74,9 +74,6 @@ function AirShipmentsView() {
   const [loadingMore, setLoadingMore] = useState(false);
 
   // Search modal
-  const [showSearchModal, setShowSearchModal] = useState(false);
-
-  // Track modal
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [trackShipment, setTrackShipment] = useState<AirShipment | null>(null);
   const [trackEmail, setTrackEmail] = useState("");
@@ -86,12 +83,20 @@ function AirShipmentsView() {
   // Embed
   const [embedQuery, setEmbedQuery] = useState<string | null>(null);
 
-  // Search fields
-  const [searchDate, setSearchDate] = useState("");
-  const [searchStartDate, setSearchStartDate] = useState("");
-  const [searchEndDate, setSearchEndDate] = useState("");
-  const [searchNumber, setSearchNumber] = useState("");
+  // Filter fields
+  const [filterNumber, setFilterNumber] = useState("");
+  const [filterWaybill, setFilterWaybill] = useState("");
+  const [filterDepartureDate, setFilterDepartureDate] = useState("");
+  const [filterArrivalDate, setFilterArrivalDate] = useState("");
+  const [filterCarrier, setFilterCarrier] = useState("");
   const [showingAll, setShowingAll] = useState(false);
+
+  // Focus states for floating labels
+  const [isNumberFocused, setIsNumberFocused] = useState(false);
+  const [isWaybillFocused, setIsWaybillFocused] = useState(false);
+  const [isDepartureFocused, setIsDepartureFocused] = useState(false);
+  const [isArrivalFocused, setIsArrivalFocused] = useState(false);
+  const [isCarrierFocused, setIsCarrierFocused] = useState(false);
 
   /*  Helpers  */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -338,73 +343,64 @@ function AirShipmentsView() {
   }, [accessToken, user?.username]);
 
   /*  Search  */
-  const handleSearchByNumber = () => {
-    if (!searchNumber.trim()) {
-      setDisplayedShipments(shipments);
-      setShowingAll(false);
-      return;
-    }
-    const term = searchNumber.trim().toLowerCase();
-    setDisplayedShipments(
-      shipments.filter((s) =>
-        (s.number || "").toString().toLowerCase().includes(term),
-      ),
-    );
-    setShowingAll(true);
-    setShowSearchModal(false);
-  };
-
-  const handleSearchByDate = () => {
-    if (!searchDate) {
-      setDisplayedShipments(shipments);
-      setShowingAll(false);
-      return;
-    }
-    setDisplayedShipments(
-      shipments.filter((s) => {
-        if (!s.date) return false;
-        return new Date(s.date).toISOString().split("T")[0] === searchDate;
-      }),
-    );
-    setShowingAll(true);
-    setShowSearchModal(false);
-  };
-
-  const handleSearchByDateRange = () => {
-    if (!searchStartDate && !searchEndDate) {
-      setDisplayedShipments(shipments);
-      setShowingAll(false);
-      return;
-    }
-    setDisplayedShipments(
-      shipments.filter((s) => {
-        if (!s.date) return false;
-        const d = new Date(s.date);
-        if (searchStartDate && searchEndDate) {
-          const end = new Date(searchEndDate);
-          end.setHours(23, 59, 59, 999);
-          return d >= new Date(searchStartDate) && d <= end;
-        }
-        if (searchStartDate) return d >= new Date(searchStartDate);
-        if (searchEndDate) {
-          const end = new Date(searchEndDate);
-          end.setHours(23, 59, 59, 999);
-          return d <= end;
-        }
-        return false;
-      }),
-    );
-    setShowingAll(true);
-    setShowSearchModal(false);
-  };
 
   const clearSearch = () => {
-    setSearchNumber("");
-    setSearchDate("");
-    setSearchStartDate("");
-    setSearchEndDate("");
+    setFilterNumber("");
+    setFilterWaybill("");
+    setFilterDepartureDate("");
+    setFilterArrivalDate("");
+    setFilterCarrier("");
+    setIsNumberFocused(false);
+    setIsWaybillFocused(false);
+    setIsDepartureFocused(false);
+    setIsArrivalFocused(false);
+    setIsCarrierFocused(false);
     setDisplayedShipments(shipments);
     setShowingAll(false);
+  };
+
+  const handleApplyFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    let filtered = shipments;
+    if (filterNumber.trim()) {
+      filtered = filtered.filter((s) =>
+        (s.number || "").toLowerCase().includes(filterNumber.toLowerCase()),
+      );
+    }
+    if (filterWaybill.trim()) {
+      filtered = filtered.filter((s) =>
+        (s.waybillNumber || "")
+          .toLowerCase()
+          .includes(filterWaybill.toLowerCase()),
+      );
+    }
+    if (filterDepartureDate) {
+      filtered = filtered.filter((s) => {
+        if (!s.departure?.date) return false;
+        return (
+          new Date(s.departure.date).toISOString().split("T")[0] ===
+          filterDepartureDate
+        );
+      });
+    }
+    if (filterArrivalDate) {
+      filtered = filtered.filter((s) => {
+        if (!s.arrival?.date) return false;
+        return (
+          new Date(s.arrival.date).toISOString().split("T")[0] ===
+          filterArrivalDate
+        );
+      });
+    }
+    if (filterCarrier.trim()) {
+      filtered = filtered.filter((s) =>
+        (s.carrier?.name || "")
+          .toLowerCase()
+          .includes(filterCarrier.toLowerCase()),
+      );
+    }
+    setDisplayedShipments(filtered);
+    setShowingAll(true);
   };
 
   const refreshShipments = () => {
@@ -490,9 +486,6 @@ function AirShipmentsView() {
     }
   };
 
-  /* 
-     JSX
-      */
   return (
     <div className="asv-container">
       {/* ShipsGo Map Embed */}
@@ -508,29 +501,300 @@ function AirShipmentsView() {
       </div>
 
       {/* Toolbar */}
-      <div className="asv-toolbar">
-        <div className="asv-toolbar__left" />
-        <div className="asv-toolbar__right">
-          <button
-            className="asv-btn asv-btn--ghost"
-            onClick={() => setShowSearchModal(true)}
+      <div
+        className="asv-toolbar"
+        style={{ display: "flex", alignItems: "center", gap: "16px" }}
+      >
+        <div
+          className="asv-toolbar__left"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <form
+            className="filters-form"
+            onSubmit={handleApplyFilters}
+            style={{ display: "flex", alignItems: "center", gap: "8px" }}
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <label
+                style={{
+                  position: "absolute",
+                  top: filterNumber || isNumberFocused ? "2px" : "8px",
+                  left: "8px",
+                  fontSize: filterNumber || isNumberFocused ? "10px" : "12px",
+                  fontWeight: "bold",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  color: "#666",
+                  transition: "all 0.2s ease",
+                  pointerEvents: "none",
+                  backgroundColor: "#fff",
+                  padding: "0 2px",
+                  zIndex: 1,
+                }}
+              >
+                Número
+              </label>
+              <input
+                className="q-field__native q-placeholder"
+                type="text"
+                value={filterNumber}
+                onChange={(e) => setFilterNumber(e.target.value)}
+                onFocus={() => setIsNumberFocused(true)}
+                onBlur={() => setIsNumberFocused(false)}
+                placeholder=""
+                style={{
+                  width: "140px",
+                  height: "32px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  padding: "12px 8px 4px 8px",
+                  fontSize: "12px",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  backgroundColor: "#fff",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <label
+                style={{
+                  position: "absolute",
+                  top: filterWaybill || isWaybillFocused ? "2px" : "8px",
+                  left: "8px",
+                  fontSize: filterWaybill || isWaybillFocused ? "10px" : "12px",
+                  fontWeight: "bold",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  color: "#666",
+                  transition: "all 0.2s ease",
+                  pointerEvents: "none",
+                  backgroundColor: "#fff",
+                  padding: "0 2px",
+                  zIndex: 1,
+                }}
+              >
+                Waybill
+              </label>
+              <input
+                className="q-field__native q-placeholder"
+                type="text"
+                value={filterWaybill}
+                onChange={(e) => setFilterWaybill(e.target.value)}
+                onFocus={() => setIsWaybillFocused(true)}
+                onBlur={() => setIsWaybillFocused(false)}
+                placeholder=""
+                style={{
+                  width: "100px",
+                  height: "32px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  padding: "12px 8px 4px 8px",
+                  fontSize: "12px",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  backgroundColor: "#fff",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <label
+                style={{
+                  position: "absolute",
+                  top:
+                    filterDepartureDate || isDepartureFocused ? "2px" : "8px",
+                  left: "8px",
+                  fontSize:
+                    filterDepartureDate || isDepartureFocused ? "10px" : "12px",
+                  fontWeight: "bold",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  color: "#666",
+                  transition: "all 0.2s ease",
+                  pointerEvents: "none",
+                  backgroundColor: "#fff",
+                  padding: "0 2px",
+                  zIndex: 1,
+                }}
+              >
+                Fecha Salida
+              </label>
+              <input
+                className="q-field__native q-placeholder"
+                type="date"
+                value={filterDepartureDate}
+                onChange={(e) => setFilterDepartureDate(e.target.value)}
+                onFocus={() => setIsDepartureFocused(true)}
+                onBlur={() => setIsDepartureFocused(false)}
+                placeholder=""
+                style={{
+                  width: "120px",
+                  height: "32px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  padding: "12px 8px 4px 8px",
+                  fontSize: "12px",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  backgroundColor: "#fff",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <label
+                style={{
+                  position: "absolute",
+                  top: filterArrivalDate || isArrivalFocused ? "2px" : "8px",
+                  left: "8px",
+                  fontSize:
+                    filterArrivalDate || isArrivalFocused ? "10px" : "12px",
+                  fontWeight: "bold",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  color: "#666",
+                  transition: "all 0.2s ease",
+                  pointerEvents: "none",
+                  backgroundColor: "#fff",
+                  padding: "0 2px",
+                  zIndex: 1,
+                }}
+              >
+                Fecha Llegada
+              </label>
+              <input
+                className="q-field__native q-placeholder"
+                type="date"
+                value={filterArrivalDate}
+                onChange={(e) => setFilterArrivalDate(e.target.value)}
+                onFocus={() => setIsArrivalFocused(true)}
+                onBlur={() => setIsArrivalFocused(false)}
+                placeholder=""
+                style={{
+                  width: "120px",
+                  height: "32px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  padding: "12px 8px 4px 8px",
+                  fontSize: "12px",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  backgroundColor: "#fff",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <label
+                style={{
+                  position: "absolute",
+                  top: filterCarrier || isCarrierFocused ? "2px" : "8px",
+                  left: "8px",
+                  fontSize: filterCarrier || isCarrierFocused ? "10px" : "12px",
+                  fontWeight: "bold",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  color: "#666",
+                  transition: "all 0.2s ease",
+                  pointerEvents: "none",
+                  backgroundColor: "#fff",
+                  padding: "0 2px",
+                  zIndex: 1,
+                }}
+              >
+                Carrier
+              </label>
+              <input
+                className="q-field__native q-placeholder"
+                type="text"
+                value={filterCarrier}
+                onChange={(e) => setFilterCarrier(e.target.value)}
+                onFocus={() => setIsCarrierFocused(true)}
+                onBlur={() => setIsCarrierFocused(false)}
+                placeholder=""
+                style={{
+                  width: "100px",
+                  height: "32px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  padding: "12px 8px 4px 8px",
+                  fontSize: "12px",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  backgroundColor: "#fff",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <button
+              className="asv-btn asv-btn--primary"
+              type="submit"
+              style={{
+                height: "32px",
+                padding: "0 12px",
+                fontSize: "12px",
+                borderRadius: "4px",
+                border: "none",
+                fontFamily:
+                  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                backgroundColor: "var(--primary-color)",
+                color: "#fff",
+                cursor: "pointer",
+              }}
             >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            Buscar
-          </button>
+              Apply
+            </button>
+            <button
+              className="asv-btn asv-btn--ghost"
+              type="button"
+              onClick={clearSearch}
+              style={{
+                height: "32px",
+                padding: "0 12px",
+                fontSize: "12px",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                fontFamily:
+                  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                backgroundColor: "#fff",
+                color: "#666",
+                cursor: "pointer",
+              }}
+            >
+              Clear
+            </button>
+          </form>
+        </div>
+        <div
+          className="asv-toolbar__right"
+          style={{ marginLeft: "auto", display: "flex", gap: "8px" }}
+        >
           <button
-            className="asv-btn asv-btn--primary"
+            className="asv-btn"
             onClick={refreshShipments}
+            style={{
+              backgroundColor: "var(--primary-color)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+              padding: "0 12px",
+              height: "32px",
+              fontSize: "12px",
+              cursor: "pointer",
+              fontFamily:
+                '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            }}
           >
             <svg
               width="14"
@@ -1097,88 +1361,6 @@ function AirShipmentsView() {
               Cargar más páginas
             </button>
           )}
-        </div>
-      )}
-
-      {/* Search Modal */}
-      {showSearchModal && (
-        <div className="asv-overlay" onClick={() => setShowSearchModal(false)}>
-          <div
-            className="asv-modal asv-modal--search"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="asv-modal__title">Buscar Air-Shipments</h3>
-
-            <div className="asv-search-section">
-              <label className="asv-label">Por Número</label>
-              <input
-                className="asv-input"
-                type="text"
-                value={searchNumber}
-                onChange={(e) => setSearchNumber(e.target.value)}
-                placeholder="Ingresa el número del shipment"
-              />
-              <button
-                className="asv-btn asv-btn--primary asv-btn--full"
-                onClick={handleSearchByNumber}
-              >
-                Buscar por Número
-              </button>
-            </div>
-
-            <div className="asv-search-section">
-              <label className="asv-label">Por Fecha Exacta</label>
-              <input
-                className="asv-input"
-                type="date"
-                value={searchDate}
-                onChange={(e) => setSearchDate(e.target.value)}
-              />
-              <button
-                className="asv-btn asv-btn--primary asv-btn--full"
-                onClick={handleSearchByDate}
-              >
-                Buscar por Fecha
-              </button>
-            </div>
-
-            <div className="asv-search-section">
-              <label className="asv-label">Por Rango de Fechas</label>
-              <div className="asv-search-row">
-                <div style={{ flex: 1 }}>
-                  <label className="asv-label asv-label--small">Desde</label>
-                  <input
-                    className="asv-input"
-                    type="date"
-                    value={searchStartDate}
-                    onChange={(e) => setSearchStartDate(e.target.value)}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label className="asv-label asv-label--small">Hasta</label>
-                  <input
-                    className="asv-input"
-                    type="date"
-                    value={searchEndDate}
-                    onChange={(e) => setSearchEndDate(e.target.value)}
-                  />
-                </div>
-              </div>
-              <button
-                className="asv-btn asv-btn--primary asv-btn--full"
-                onClick={handleSearchByDateRange}
-              >
-                Buscar por Rango
-              </button>
-            </div>
-
-            <button
-              className="asv-btn asv-btn--ghost asv-btn--full"
-              onClick={() => setShowSearchModal(false)}
-            >
-              Cerrar
-            </button>
-          </div>
         </div>
       )}
 
