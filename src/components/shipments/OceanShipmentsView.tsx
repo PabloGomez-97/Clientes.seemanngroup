@@ -86,6 +86,24 @@ function OceanShipmentsView() {
   const [searchNumber, setSearchNumber] = useState("");
   const [showingAll, setShowingAll] = useState(false);
 
+  // Advanced toolbar filters (replicated from AirShipmentsView)
+  const [filterNumber, setFilterNumber] = useState("");
+  const [filterOrigin, setFilterOrigin] = useState("");
+  const [filterDestination, setFilterDestination] = useState("");
+  const [filterDepartureDate, setFilterDepartureDate] = useState("");
+  const [filterVessel, setFilterVessel] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [filterPieces, setFilterPieces] = useState("");
+
+  // Focus states for floating labels (optional)
+  const [isNumberFocused, setIsNumberFocused] = useState(false);
+  const [isOriginFocused, setIsOriginFocused] = useState(false);
+  const [isDestinationFocused, setIsDestinationFocused] = useState(false);
+  const [isDepartureFocused, setIsDepartureFocused] = useState(false);
+  const [isVesselFocused, setIsVesselFocused] = useState(false);
+  const [isTypeFocused, setIsTypeFocused] = useState(false);
+  const [isPiecesFocused, setIsPiecesFocused] = useState(false);
+
   // Pagination
   const [tablePage, setTablePage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
@@ -349,8 +367,69 @@ function OceanShipmentsView() {
     setSearchDate("");
     setSearchStartDate("");
     setSearchEndDate("");
+    // clear advanced filters as well
+    setFilterNumber("");
+    setFilterOrigin("");
+    setFilterDestination("");
+    setFilterDepartureDate("");
+    setFilterVessel("");
+    setFilterType("");
+    setFilterPieces("");
     setDisplayedOceanShipments(oceanShipments);
     setShowingAll(false);
+    setTablePage(1);
+  };
+
+  const handleApplyFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    let filtered = oceanShipments;
+    if (filterNumber.trim()) {
+      const term = filterNumber.trim().toLowerCase();
+      filtered = filtered.filter((s) =>
+        (s.number || "").toString().toLowerCase().includes(term),
+      );
+    }
+    if (filterOrigin.trim()) {
+      const term = filterOrigin.trim().toLowerCase();
+      filtered = filtered.filter((s) =>
+        (s.portOfLoading || "").toLowerCase().includes(term),
+      );
+    }
+    if (filterDestination.trim()) {
+      const term = filterDestination.trim().toLowerCase();
+      filtered = filtered.filter((s) =>
+        (s.portOfUnloading || "").toLowerCase().includes(term),
+      );
+    }
+    if (filterDepartureDate) {
+      filtered = filtered.filter((s) => {
+        if (!s.departure) return false;
+        return (
+          new Date(s.departure).toISOString().split("T")[0] ===
+          filterDepartureDate
+        );
+      });
+    }
+    if (filterVessel.trim()) {
+      const term = filterVessel.trim().toLowerCase();
+      filtered = filtered.filter((s) =>
+        (s.vessel || "").toLowerCase().includes(term),
+      );
+    }
+    if (filterType.trim()) {
+      const term = filterType.trim().toLowerCase();
+      filtered = filtered.filter((s) =>
+        (s.typeOfMove || "").toLowerCase().includes(term),
+      );
+    }
+    if (filterPieces.trim()) {
+      const term = filterPieces.trim().toLowerCase();
+      filtered = filtered.filter((s) =>
+        (s.totalCargo_Pieces ?? "").toString().toLowerCase().includes(term),
+      );
+    }
+    setDisplayedOceanShipments(filtered);
+    setShowingAll(true);
     setTablePage(1);
   };
 
@@ -380,15 +459,258 @@ function OceanShipmentsView() {
         />
       </div>
 
-      {/* Toolbar */}
-      <div className="osv-toolbar">
-        <div className="osv-toolbar__left" />
-        <div className="osv-toolbar__right">
-          {showingAll && (
-            <button className="osv-btn osv-btn--ghost" onClick={clearSearch}>
-              Limpiar filtros
-            </button>
-          )}
+      {/* Toolbar (advanced search) */}
+      <div
+        className="osv-toolbar"
+        style={{ display: "flex", alignItems: "center", gap: 12 }}
+      >
+        <form
+          className="filters-form"
+          onSubmit={handleApplyFilters}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <label
+              style={{
+                position: "absolute",
+                top: filterNumber || isNumberFocused ? "2px" : "8px",
+                left: "8px",
+                fontSize: filterNumber || isNumberFocused ? "10px" : "12px",
+                fontWeight: "bold",
+                color: "#666",
+                transition: "all 0.2s ease",
+                pointerEvents: "none",
+                backgroundColor: "#fff",
+                padding: "0 2px",
+                zIndex: 1,
+              }}
+            >
+              Numero
+            </label>
+            <input
+              className="osv-input"
+              type="text"
+              value={filterNumber}
+              onChange={(e) => setFilterNumber(e.target.value)}
+              onFocus={() => setIsNumberFocused(true)}
+              onBlur={() => setIsNumberFocused(false)}
+              placeholder=""
+              style={{ width: 140, height: 32 }}
+            />
+          </div>
+
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <label
+              style={{
+                position: "absolute",
+                top: filterOrigin || isOriginFocused ? "2px" : "8px",
+                left: "8px",
+                fontSize: filterOrigin || isOriginFocused ? "10px" : "12px",
+                fontWeight: "bold",
+                color: "#666",
+                transition: "all 0.2s ease",
+                pointerEvents: "none",
+                backgroundColor: "#fff",
+                padding: "0 2px",
+                zIndex: 1,
+              }}
+            >
+              Origen
+            </label>
+            <input
+              className="osv-input"
+              type="text"
+              value={filterOrigin}
+              onChange={(e) => setFilterOrigin(e.target.value)}
+              onFocus={() => setIsOriginFocused(true)}
+              onBlur={() => setIsOriginFocused(false)}
+              placeholder=""
+              style={{ width: 140, height: 32 }}
+            />
+          </div>
+
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <label
+              style={{
+                position: "absolute",
+                top: filterDestination || isDestinationFocused ? "2px" : "8px",
+                left: "8px",
+                fontSize:
+                  filterDestination || isDestinationFocused ? "10px" : "12px",
+                fontWeight: "bold",
+                color: "#666",
+                transition: "all 0.2s ease",
+                pointerEvents: "none",
+                backgroundColor: "#fff",
+                padding: "0 2px",
+                zIndex: 1,
+              }}
+            >
+              Destino
+            </label>
+            <input
+              className="osv-input"
+              type="text"
+              value={filterDestination}
+              onChange={(e) => setFilterDestination(e.target.value)}
+              onFocus={() => setIsDestinationFocused(true)}
+              onBlur={() => setIsDestinationFocused(false)}
+              placeholder=""
+              style={{ width: 140, height: 32 }}
+            />
+          </div>
+
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <label
+              style={{
+                position: "absolute",
+                top: filterDepartureDate || isDepartureFocused ? "2px" : "8px",
+                left: "8px",
+                fontSize:
+                  filterDepartureDate || isDepartureFocused ? "10px" : "12px",
+                fontWeight: "bold",
+                color: "#666",
+                transition: "all 0.2s ease",
+                pointerEvents: "none",
+                backgroundColor: "#fff",
+                padding: "0 2px",
+                zIndex: 1,
+              }}
+            >
+              Fecha Salida
+            </label>
+            <input
+              className="osv-input"
+              type="date"
+              value={filterDepartureDate}
+              onChange={(e) => setFilterDepartureDate(e.target.value)}
+              onFocus={() => setIsDepartureFocused(true)}
+              onBlur={() => setIsDepartureFocused(false)}
+              placeholder=""
+              style={{ width: 140, height: 32 }}
+            />
+          </div>
+
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <label
+              style={{
+                position: "absolute",
+                top: filterVessel || isVesselFocused ? "2px" : "8px",
+                left: "8px",
+                fontSize: filterVessel || isVesselFocused ? "10px" : "12px",
+                fontWeight: "bold",
+                color: "#666",
+                transition: "all 0.2s ease",
+                pointerEvents: "none",
+                backgroundColor: "#fff",
+                padding: "0 2px",
+                zIndex: 1,
+              }}
+            >
+              Vessel
+            </label>
+            <input
+              className="osv-input"
+              type="text"
+              value={filterVessel}
+              onChange={(e) => setFilterVessel(e.target.value)}
+              onFocus={() => setIsVesselFocused(true)}
+              onBlur={() => setIsVesselFocused(false)}
+              placeholder=""
+              style={{ width: 120, height: 32 }}
+            />
+          </div>
+
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <label
+              style={{
+                position: "absolute",
+                top: filterType || isTypeFocused ? "2px" : "8px",
+                left: "8px",
+                fontSize: filterType || isTypeFocused ? "10px" : "12px",
+                fontWeight: "bold",
+                color: "#666",
+                transition: "all 0.2s ease",
+                pointerEvents: "none",
+                backgroundColor: "#fff",
+                padding: "0 2px",
+                zIndex: 1,
+              }}
+            >
+              Tipo
+            </label>
+            <input
+              className="osv-input"
+              type="text"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              onFocus={() => setIsTypeFocused(true)}
+              onBlur={() => setIsTypeFocused(false)}
+              placeholder=""
+              style={{ width: 100, height: 32 }}
+            />
+          </div>
+
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <label
+              style={{
+                position: "absolute",
+                top: filterPieces || isPiecesFocused ? "2px" : "8px",
+                left: "8px",
+                fontSize: filterPieces || isPiecesFocused ? "10px" : "12px",
+                fontWeight: "bold",
+                color: "#666",
+                transition: "all 0.2s ease",
+                pointerEvents: "none",
+                backgroundColor: "#fff",
+                padding: "0 2px",
+                zIndex: 1,
+              }}
+            >
+              Piezas
+            </label>
+            <input
+              className="osv-input"
+              type="text"
+              value={filterPieces}
+              onChange={(e) => setFilterPieces(e.target.value)}
+              onFocus={() => setIsPiecesFocused(true)}
+              onBlur={() => setIsPiecesFocused(false)}
+              placeholder=""
+              style={{ width: 80, height: 32 }}
+            />
+          </div>
+
+          <button
+            className="osv-btn"
+            type="submit"
+            style={{ color: "white", backgroundColor: "var(--primary-color)" }}
+          >
+            Aplicar
+          </button>
+          <button
+            className="osv-btn osv-btn--ghost"
+            type="button"
+            onClick={clearSearch}
+            style={{ height: 32 }}
+          >
+            Limpiar
+          </button>
+        </form>
+
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
           <button
             className="osv-btn"
             style={{ color: "white", backgroundColor: "var(--primary-color)" }}

@@ -215,6 +215,25 @@ function QuotesView() {
   const [searchDestination, setSearchDestination] = useState("");
   const [showAllQuotes, setShowAllQuotes] = useState(false);
 
+  // Advanced toolbar filters
+  const [filterNumber, setFilterNumber] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterOrigin, setFilterOrigin] = useState("");
+  const [filterDestination, setFilterDestination] = useState("");
+  const [filterTransport, setFilterTransport] = useState("");
+  const [filterPieces, setFilterPieces] = useState("");
+  const [filterDate, setFilterDate] = useState("");
+  const [filterValidUntil, setFilterValidUntil] = useState("");
+  const [filterTransit, setFilterTransit] = useState("");
+
+  // Focus states (optional for floating labels)
+  const [isFilterNumberFocused, setIsFilterNumberFocused] = useState(false);
+  const [isFilterOriginFocused, setIsFilterOriginFocused] = useState(false);
+  const [isFilterDestinationFocused, setIsFilterDestinationFocused] =
+    useState(false);
+  const [isFilterTransportFocused, setIsFilterTransportFocused] =
+    useState(false);
+
   /* -- Format helpers --------------------------------------- */
   const formatDateShort = (dateString?: string) => {
     if (!dateString) return "---";
@@ -565,6 +584,77 @@ function QuotesView() {
     setShowSearchModal(false);
   };
 
+  const handleApplyFilters = (e: React.FormEvent) => {
+    e.preventDefault();
+    let filtered = quotes;
+    if (filterNumber.trim()) {
+      const term = filterNumber.trim().toLowerCase();
+      filtered = filtered.filter((q) =>
+        (q.number || "").toLowerCase().includes(term),
+      );
+    }
+    if (filterStatus.trim()) {
+      const term = filterStatus.trim().toLowerCase();
+      filtered = filtered.filter((q) => {
+        const valid = isQuoteValid(q.validUntil_Date);
+        if (term === "valida" || term === "vencida") {
+          return term === "valida" ? valid === true : valid === false;
+        }
+        return (q.validUntil_Date || "").toLowerCase().includes(term);
+      });
+    }
+    if (filterOrigin.trim()) {
+      const term = filterOrigin.trim().toLowerCase();
+      filtered = filtered.filter((q) =>
+        (q.origin || "").toLowerCase().includes(term),
+      );
+    }
+    if (filterDestination.trim()) {
+      const term = filterDestination.trim().toLowerCase();
+      filtered = filtered.filter((q) =>
+        (q.destination || "").toLowerCase().includes(term),
+      );
+    }
+    if (filterTransport.trim()) {
+      const term = filterTransport.trim().toLowerCase();
+      filtered = filtered.filter((q) =>
+        (q.modeOfTransportation || "").toLowerCase().includes(term),
+      );
+    }
+    if (filterPieces.trim()) {
+      const term = filterPieces.trim();
+      filtered = filtered.filter((q) =>
+        (q.totalCargo_Pieces ?? "")
+          .toString()
+          .toLowerCase()
+          .includes(term.toLowerCase()),
+      );
+    }
+    if (filterDate) {
+      filtered = filtered.filter(
+        (q) =>
+          q.date && new Date(q.date).toISOString().split("T")[0] === filterDate,
+      );
+    }
+    if (filterValidUntil) {
+      filtered = filtered.filter(
+        (q) =>
+          q.validUntil_Date &&
+          new Date(q.validUntil_Date).toISOString().split("T")[0] ===
+            filterValidUntil,
+      );
+    }
+    if (filterTransit.trim()) {
+      const term = filterTransit.trim();
+      filtered = filtered.filter((q) =>
+        (q.transitDays ?? "").toString().includes(term),
+      );
+    }
+    setDisplayedQuotes(filtered);
+    setShowingAll(true);
+    setTablePage(1);
+  };
+
   const clearSearch = () => {
     setQuickSearch("");
     setSearchNumber("");
@@ -573,9 +663,20 @@ function QuotesView() {
     setSearchEndDate("");
     setSearchOrigin("");
     setSearchDestination("");
+    // clear advanced filters
+    setFilterNumber("");
+    setFilterStatus("");
+    setFilterOrigin("");
+    setFilterDestination("");
+    setFilterTransport("");
+    setFilterPieces("");
+    setFilterDate("");
+    setFilterValidUntil("");
+    setFilterTransit("");
     setDisplayedQuotes(quotes);
     setShowingAll(false);
     setShowAllQuotes(false);
+    setTablePage(1);
   };
 
   const refreshQuotes = () => {
@@ -643,28 +744,122 @@ function QuotesView() {
         </MapContainer>
       </div>
 
-      {/* -- Toolbar ----------------------------------------- */}
-      <div className="qv-toolbar">
-        <div className="qv-toolbar__left">
+      {/* -- Toolbar (advanced search) ------------------------- */}
+      <div
+        className="qv-toolbar"
+        style={{ display: "flex", alignItems: "center", gap: 12 }}
+      >
+        <form
+          className="qv-filters-form"
+          onSubmit={handleApplyFilters}
+          style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           <input
-            className="qv-search-input"
-            value={quickSearch}
-            onChange={(e) => setQuickSearch(e.target.value)}
-            placeholder="Buscar por numero, origen, destino..."
+            className="qv-input"
+            type="text"
+            placeholder="N Cotizacion"
+            value={filterNumber}
+            onChange={(e) => setFilterNumber(e.target.value)}
+            style={{ width: 120, height: 32 }}
           />
-        </div>
-        <div className="qv-toolbar__right">
-          {showingAll && (
-            <button className="qv-btn qv-btn--ghost" onClick={clearSearch}>
-              Limpiar filtros
-            </button>
-          )}
+          <input
+            className="qv-input"
+            type="text"
+            placeholder="Estado (valida/vencida)"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            style={{ width: 160, height: 32 }}
+          />
+          <input
+            className="qv-input"
+            type="text"
+            placeholder="Origen"
+            value={filterOrigin}
+            onChange={(e) => setFilterOrigin(e.target.value)}
+            style={{ width: 140, height: 32 }}
+          />
+          <input
+            className="qv-input"
+            type="text"
+            placeholder="Destino"
+            value={filterDestination}
+            onChange={(e) => setFilterDestination(e.target.value)}
+            style={{ width: 140, height: 32 }}
+          />
+          <input
+            className="qv-input"
+            type="text"
+            placeholder="Transporte"
+            value={filterTransport}
+            onChange={(e) => setFilterTransport(e.target.value)}
+            style={{ width: 120, height: 32 }}
+          />
+          <input
+            className="qv-input"
+            type="text"
+            placeholder="Piezas"
+            value={filterPieces}
+            onChange={(e) => setFilterPieces(e.target.value)}
+            style={{ width: 80, height: 32 }}
+          />
+          <input
+            className="qv-input"
+            type="date"
+            placeholder="Fecha Emision"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            style={{ width: 140, height: 32 }}
+          />
+          <input
+            className="qv-input"
+            type="date"
+            placeholder="Valida Hasta"
+            value={filterValidUntil}
+            onChange={(e) => setFilterValidUntil(e.target.value)}
+            style={{ width: 140, height: 32 }}
+          />
+          <input
+            className="qv-input"
+            type="text"
+            placeholder="Transito (d)"
+            value={filterTransit}
+            onChange={(e) => setFilterTransit(e.target.value)}
+            style={{ width: 80, height: 32 }}
+          />
+
+          <button
+            className="qv-btn qv-btn--primary"
+            type="submit"
+            style={{ height: 32 }}
+          >
+            Aplicar
+          </button>
+          <button
+            className="qv-btn qv-btn--ghost"
+            type="button"
+            onClick={clearSearch}
+            style={{ height: 32 }}
+          >
+            Limpiar
+          </button>
+        </form>
+
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
           <button
             className="qv-btn"
-            style={{
-              color: "white",
-              backgroundColor: "var(--primary-color)",
-            }}
+            style={{ color: "white", backgroundColor: "var(--primary-color)" }}
             onClick={refreshQuotes}
           >
             <svg

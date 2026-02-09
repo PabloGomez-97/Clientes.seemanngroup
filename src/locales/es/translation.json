@@ -354,5 +354,28 @@
     "noapilable": "No Apilable:",
     "segurocargo": "Debes ingresar el valor de la mercadería para calcular el seguro",
     "selectpuerto": "Selecciona puerto"
+  },
+  "Pieceaccordionlcl":{
+    "pieza": "Pieza",
+    "eliminarpieza": "Eliminar Pieza",
+    "tipodepaquete": "Tipo de Paquete",
+    "seleccionartipo": "Seleccionar tipo",
+    "descripcion": "Descripción",
+    "descripcionPlaceholder": "Descripción de la pieza",
+    "largo": "Largo (cm)",
+    "ancho": "Ancho (cm)",
+    "alto": "Alto (cm)",
+    "peso": "Peso (kg)",
+    "noapilable": "No apilable",
+    "noapilableTooltip": "Nada debe estar encima de la pieza",
+    "inforuta": "Debes seleccionar una ruta antes de generar la cotización",
+    "inforuta1": "Debes seleccionar un Incoterm antes de generar la cotización",
+    "inforuta2": "Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW",
+    "inforuta3": "Debes seleccionar un Tipo de Paquete para todas las piezas antes de generar la cotización",
+    "inforuta4": "No ruta seleccionada para generar PDF",
+    "inforuta5": "No tarifa ocean freight calculada",
+    "segurocargo": "Debes ingresar el valor de la mercadería para calcular el seguro",
+    "ingresoinco": "Debes seleccionar un Incoterm antes de generar la cotización",
+    "debescompl": "Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW"
   }
 }

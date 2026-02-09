@@ -22,6 +22,7 @@ import {
   getPODDisplayName,
   parseLCL,
 } from "./Handlers/LCL/HandlerQuoteLCL.tsx";
+import { Colors } from "chart.js";
 
 interface QuoteLCLProps {
   preselectedPOL?: { value: string; label: string } | null;
@@ -518,28 +519,24 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
     tipoAccion: "cotizacion" | "operacion" = "cotizacion",
   ) => {
     if (!rutaSeleccionada) {
-      setError("Debes seleccionar una ruta antes de generar la cotización");
+      setError(t("QuoteLCL.inforuta"));
       return;
     }
 
     if (!incoterm) {
-      setError("Debes seleccionar un Incoterm antes de generar la cotización");
+      setError(t("QuoteLCL.inforuta1"));
       return;
     }
 
     if (incoterm === "EXW" && (!pickupFromAddress || !deliveryToAddress)) {
-      setError(
-        "Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW",
-      );
+      setError(t("QuoteLCL.inforuta2"));
       return;
     }
 
     // Validar que todas las piezas tengan tipo de paquete seleccionado
     const piezasSinTipo = piecesData.filter((piece) => !piece.packageType);
     if (piezasSinTipo.length > 0) {
-      setError(
-        "Debes seleccionar un Tipo de Paquete para todas las piezas antes de generar la cotización",
-      );
+      setError(t("QuoteLCL.inforuta3"));
       return;
     }
 
@@ -581,12 +578,12 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
   ) => {
     try {
       if (!rutaSeleccionada) {
-        console.error("No ruta seleccionada para generar PDF");
+        console.error(t("QuoteLCL.inforuta4"));
         return;
       }
 
       if (!tarifaOceanFreight) {
-        console.error("No tarifa ocean freight calculada");
+        console.error(t("QuoteLCL.inforuta5"));
         return;
       }
 
@@ -1695,8 +1692,8 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                     type="button"
                     className="btn"
                     style={{
-                      backgroundColor: "#0d6efd",
-                      borderColor: "#0d6efd",
+                      backgroundColor: "#ff6200",
+                      borderColor: "#ff6200",
                       color: "white",
                       borderRadius: "8px",
                       padding: "0.5rem 1.25rem",
@@ -1705,10 +1702,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       transition: "all 0.2s ease",
                     }}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#0b5ed7")
+                      (e.currentTarget.style.backgroundColor = "#ff6200")
                     }
                     onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#0d6efd")
+                      (e.currentTarget.style.backgroundColor = "#ff6200")
                     }
                     onClick={handleAddPiece}
                   >
@@ -1828,7 +1825,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                         <span>
                           Ocean Freight ({chargeableVolume.toFixed(2)} m³):
                         </span>
-                        <strong className="text-success">
+                        <strong className="">
                           {rutaSeleccionada.currency}{" "}
                           {tarifaOceanFreight.income.toFixed(2)}
                         </strong>
@@ -1926,17 +1923,17 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                           className="alert alert-warning py-2 mb-3"
                           role="alert"
                         >
-                          <small>
-                            ⚠️ Debes ingresar el valor de la mercadería para
-                            calcular el seguro
-                          </small>
+                          <small>{t("Pieceaccordionlcl.segurocargo")}</small>
                         </div>
                       )}
 
                       {/* Total */}
                       <div className="d-flex justify-content-between">
                         <span className="fs-5 fw-bold">TOTAL:</span>
-                        <span className="fs-5 fw-bold text-success">
+                        <span
+                          className="fs-5 fw-bold"
+                          style={{ color: "#ff6200" }}
+                        >
                           {rutaSeleccionada.currency}{" "}
                           {(() => {
                             const subtotal =
@@ -2117,14 +2114,13 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
           {!incoterm && rutaSeleccionada && (
             <div className="alert alert-info mt-3 mb-0">
-              ℹ️ Debes seleccionar un Incoterm antes de generar la cotización
+              ℹ️ {t("Pieceaccordionlcl.ingresoinco")}
             </div>
           )}
 
           {incoterm === "EXW" && (!pickupFromAddress || !deliveryToAddress) && (
             <div className="alert alert-warning mt-3 mb-0">
-              ⚠️ Debes completar las direcciones de Pickup y Delivery para el
-              Incoterm EXW
+              ⚠️ {t("Pieceaccordionlcl.debescompl")}
             </div>
           )}
 

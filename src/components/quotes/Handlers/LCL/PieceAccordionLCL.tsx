@@ -1,5 +1,6 @@
 import React from "react";
 import { type PieceData } from "./HandlerQuoteLCL";
+import { useTranslation } from "react-i18next";
 
 interface PieceAccordionLCLProps {
   piece: PieceData;
@@ -22,6 +23,7 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
   packageTypes,
   canRemove,
 }) => {
+  const { t } = useTranslation();
   // Calcular volumen (L x W x H) en m³
   const calculateVolume = (
     length: number,
@@ -83,7 +85,9 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
         style={{ cursor: "pointer" }}
       >
         <div onClick={onToggle} className="flex-grow-1">
-          <strong>Pieza {index + 1}</strong>
+          <strong>
+            {t("Pieceaccordionlcl.pieza")} {index + 1}
+          </strong>
           {piece.weight > 0 && (
             <span className="ms-3 text-muted">
               ({piece.weight} kg | {piece.length}x{piece.width}x{piece.height}{" "}
@@ -104,7 +108,7 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
               type="button"
               className="btn btn-sm btn-link text-danger position-absolute"
               style={{ top: 8, right: 45, zIndex: 2 }}
-              title="Eliminar pieza"
+              title={t("Pieceaccordionlcl.eliminarpieza")}
               onClick={onRemove}
             >
               <i className="bi bi-trash" style={{ fontSize: "1.1rem" }}></i>
@@ -118,13 +122,17 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
           <div className="row g-3">
             {/* Package Type */}
             <div className="col-md-6">
-              <label className="form-label">Tipo de Paquete</label>
+              <label className="form-label">
+                {t("Pieceaccordionlcl.tipodepaquete")}
+              </label>
               <select
                 className="form-select"
                 value={piece.packageType}
                 onChange={(e) => onUpdate("packageType", e.target.value)}
               >
-                <option value="">Seleccionar tipo</option>
+                <option value="">
+                  {t("Pieceaccordionlcl.seleccionartipo")}
+                </option>
                 {packageTypes.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.name}
@@ -135,19 +143,23 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
 
             {/* Description */}
             <div className="col-md-6">
-              <label className="form-label">Descripción</label>
+              <label className="form-label">
+                {t("Pieceaccordionlcl.descripcion")}
+              </label>
               <input
                 type="text"
                 className="form-control"
                 value={piece.description}
                 onChange={(e) => onUpdate("description", e.target.value)}
-                placeholder="Descripción de la pieza"
+                placeholder={t("Pieceaccordionlcl.descripcionPlaceholder")}
               />
             </div>
 
             {/* Dimensiones */}
             <div className="col-md-3">
-              <label className="form-label">Largo (cm)</label>
+              <label className="form-label">
+                {t("Pieceaccordionlcl.largo")}
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -161,7 +173,9 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
             </div>
 
             <div className="col-md-3">
-              <label className="form-label">Ancho (cm)</label>
+              <label className="form-label">
+                {t("Pieceaccordionlcl.ancho")}
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -175,7 +189,9 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
             </div>
 
             <div className="col-md-3">
-              <label className="form-label">Alto (cm)</label>
+              <label className="form-label">
+                {t("Pieceaccordionlcl.alto")}
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -190,7 +206,9 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
             </div>
 
             <div className="col-md-3">
-              <label className="form-label">Peso (kg)</label>
+              <label className="form-label">
+                {t("Pieceaccordionlcl.peso")}
+              </label>
               <input
                 type="number"
                 className="form-control"
@@ -234,10 +252,10 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
                   className="form-check-label"
                   htmlFor={`notApilable-${piece.id}`}
                 >
-                  No apilable
+                  {t("Pieceaccordionlcl.noapilable")}
                   <i
                     className="bi bi-info-circle text-danger ms-1"
-                    title="Tu carga no tendrá nada encima"
+                    title={t("Pieceaccordionlcl.noapilableTooltip")}
                     style={{ cursor: "help" }}
                   ></i>
                 </label>
