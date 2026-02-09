@@ -21,15 +21,12 @@ import {
   capitalize,
   parseAEREO,
   seleccionarTarifaPorPeso,
+  type QuoteAIRProps,
+  type PieceData,
 } from "./Handlers/Air/HandlerQuoteAir";
 import { PieceAccordion } from "./Handlers/Air/PieceAccordion";
-import type { PieceData } from "./Handlers/Air/HandlerQuoteAir";
 
 // Props para pre-selección desde ItineraryFinder
-interface QuoteAIRProps {
-  preselectedOrigin?: { value: string; label: string } | null;
-  preselectedDestination?: { value: string; label: string } | null;
-}
 
 function QuoteAPITester({
   preselectedOrigin,
@@ -180,12 +177,12 @@ function QuoteAPITester({
         setLoadingRutas(false);
         setLastUpdate(new Date());
         console.log(
-          "✅ Tarifas cargadas exitosamente desde Google Sheets:",
+          "Tarifas cargadas exitosamente desde Google Sheets:",
           rutasParsed.length,
           "rutas",
         );
       } catch (err) {
-        console.error("❌ Error al cargar datos desde Google Sheets:", err);
+        console.error("Error al cargar datos desde Google Sheets:", err);
         setErrorRutas(
           "No se pudieron cargar las tarifas desde Google Sheets. " +
             "Por favor, verifica tu conexión a internet o contacta al administrador.",
@@ -284,12 +281,12 @@ function QuoteAPITester({
       setLoadingRutas(false);
       setLastUpdate(new Date());
       console.log(
-        "✅ Tarifas actualizadas exitosamente:",
+        "Tarifas actualizadas exitosamente:",
         rutasParsed.length,
         "rutas",
       );
     } catch (err) {
-      console.error("❌ Error al actualizar tarifas:", err);
+      console.error("Error al actualizar tarifas:", err);
       setErrorRutas(
         "No se pudieron actualizar las tarifas. Por favor, intenta nuevamente.",
       );
@@ -445,17 +442,17 @@ function QuoteAPITester({
 
     setOversizeError(
       hasOversize
-        ? "El largo o ancho supera los 3.0 m (300 cm). Esta carga se considera oversize y debe cotizarse caso a caso."
+        ? "El largo y/o ancho supera los 300 cm. Esta carga se considera oversize y debe cotizarse caso a caso."
         : null,
     );
     setHeightError(
       hasHeightError
-        ? "El alto supera los 2.4 m (240 cm). Esta carga no puede ser manejada vía aérea."
+        ? "El alto supera los 240 cm. Esta carga no puede ser manejada vía aérea."
         : null,
     );
     setCargoFlightWarning(
       hasCargoWarning
-        ? "El alto supera los 1.6 m (160 cm). Esta carga requiere vuelos cargueros. Verifique con su ejecutivo si la tarifa seleccionada corresponde a vuelos cargueros."
+        ? "El alto supera los 160 cm. Esta carga requiere vuelos cargueros. Verifique con su ejecutivo si la tarifa seleccionada corresponde a vuelos cargueros."
         : null,
     );
     setLowHeightWarning(
@@ -945,9 +942,9 @@ function QuoteAPITester({
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-HANDLING",
+          reference: "Amount to Handling",
           showOnDocument: true,
-          notes: "Handling charge created via API",
+          notes: "Handling charge created via Client Portal",
         },
         expense: {
           currency: {
@@ -981,9 +978,9 @@ function QuoteAPITester({
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
             },
-            reference: "TEST-REF-EXW",
+            reference: "Amount to EXW Charges",
             showOnDocument: true,
-            notes: "EXW charge created via API",
+            notes: "EXW charge created via Client Portal",
           },
           expense: {
             currency: {
@@ -1013,9 +1010,9 @@ function QuoteAPITester({
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AWB",
+          reference: "Amount to AWB",
           showOnDocument: true,
-          notes: "AWB charge created via API",
+          notes: "AWB charge created via Client Portal",
         },
         expense: {
           currency: {
@@ -1045,7 +1042,7 @@ function QuoteAPITester({
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AIRPORTTRANSFER",
+          reference: "Amount to AirPort Transfer",
           showOnDocument: true,
           notes: `Airport Transfer charge - 0.15/kg (minimum ${rutaSeleccionada.currency} 50)`,
         },
@@ -1076,7 +1073,7 @@ function QuoteAPITester({
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AIRFREIGHT",
+          reference: "Amount to Air Freight",
           showOnDocument: true,
           notes: `AIR FREIGHT charge - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg + 15%`,
         },
@@ -1122,7 +1119,7 @@ function QuoteAPITester({
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
             },
-            reference: "TEST-REF-SEGURO",
+            reference: "Amount to Insurrance",
             showOnDocument: true,
             notes: "Seguro opcional - Protección adicional para la carga",
           },
@@ -1157,9 +1154,9 @@ function QuoteAPITester({
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
             },
-            reference: "TEST-REF-NOAPILABLE",
+            reference: "Amount to NO STACKEABLE",
             showOnDocument: true,
-            notes: "Cargo adicional por carga no apilable - 60% del total base",
+            notes: "Cargo adicional por carga no apilable",
           },
           expense: {
             currency: {
@@ -1271,7 +1268,7 @@ function QuoteAPITester({
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-HANDLING-OVERALL",
+          reference: "Amount to HANDLING to OVERALL",
           showOnDocument: true,
           notes: "Handling charge created via API (Overall mode)",
         },
@@ -1303,7 +1300,7 @@ function QuoteAPITester({
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
             },
-            reference: "TEST-REF-EXW-OVERALL",
+            reference: "Amount to EXW CHARGES to OVERALL",
             showOnDocument: true,
             notes: "EXW charge created via API (Overall mode)",
           },
@@ -1335,7 +1332,7 @@ function QuoteAPITester({
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AWB-OVERALL",
+          reference: "Amount to AWB to OVERALL",
           showOnDocument: true,
           notes: "AWB charge created via API (Overall mode)",
         },
@@ -1372,9 +1369,9 @@ function QuoteAPITester({
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AIRPORTTRANSFER-OVERALL",
+          reference: "Amount to AIRPORT TRANSFER to OVERALL",
           showOnDocument: true,
-          notes: "Airport Transfer charge - 0.15/kg (min 50, Overall mode)",
+          notes: "Airport Transfer charge",
         },
         expense: {
           currency: {
@@ -1403,7 +1400,7 @@ function QuoteAPITester({
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AIRFREIGHT-OVERALL",
+          reference: "Amount to AIRFREIGHT to OVERALL",
           showOnDocument: true,
           notes: `AIR FREIGHT charge (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} + 15% - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
         },
@@ -1421,7 +1418,7 @@ function QuoteAPITester({
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AIRFREIGHT-OVERALL",
+          reference: "Amount to AIRFREIGHT to OVERALL",
           showOnDocument: true,
           notes: `AIR FREIGHT expense (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
         },
@@ -1449,10 +1446,9 @@ function QuoteAPITester({
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
             },
-            reference: "TEST-REF-SEGURO-OVERALL",
+            reference: "Amount to Insurrance to OVERALL",
             showOnDocument: true,
-            notes:
-              "Seguro opcional - Protección adicional para la carga (0.22% del total) - Overall mode",
+            notes: "Seguro opcional - Protección adicional para la carga",
           },
           expense: {
             currency: {
@@ -1743,7 +1739,7 @@ function QuoteAPITester({
                 <p className="mt-3 text-muted">{t("QuoteAIR.cargandorutas")}</p>
               </div>
             ) : errorRutas ? (
-              <div className="alert alert-danger">❌ {errorRutas}</div>
+              <div className="alert alert-danger"> {errorRutas}</div>
             ) : (
               <>
                 {/* Selectores de Origen y Destino */}
@@ -1820,11 +1816,10 @@ function QuoteAPITester({
                           <i className="bi bi-search text-muted fs-3"></i>
                           <div>
                             <p className="mb-1 fw-semibold">
-                              No se encontraron rutas
+                              {t("QuoteAIR.norutas")}
                             </p>
                             <small className="text-muted">
-                              Intenta ajustar los filtros o seleccionar otras
-                              ubicaciones
+                              {t("QuotesAIR.intenta")}
                             </small>
                           </div>
                         </div>
@@ -2266,7 +2261,7 @@ function QuoteAPITester({
                       style={{ fontSize: "0.9rem", color: "#495057" }}
                     >
                       <i className="bi bi-info-circle me-2"></i>
-                      Complete las direcciones de recogida y entrega
+                      {t("QuoteAIR.completar")}
                     </p>
 
                     <div className="row g-3">
@@ -2279,7 +2274,7 @@ function QuoteAPITester({
                             className="bi bi-box-arrow-up-right me-2"
                             style={{ color: "#1a1a1a" }}
                           ></i>
-                          Pickup From Address
+                          {t("QuoteAIR.pickup")}
                         </label>
                         <textarea
                           className="form-control"
@@ -2304,7 +2299,7 @@ function QuoteAPITester({
                             className="bi bi-box-arrow-in-down me-2"
                             style={{ color: "#1a1a1a" }}
                           ></i>
-                          Delivery To Address
+                          {t("QuoteAIR.delivery")}
                         </label>
                         <textarea
                           className="form-control"
@@ -2825,7 +2820,7 @@ function QuoteAPITester({
                           <div className="modal-content">
                             <div className="modal-header">
                               <h5 className="modal-title">
-                                Límite de Piezas Alcanzado
+                                {t("QuoteAIR.limite")}
                               </h5>
                               <button
                                 type="button"
@@ -2834,15 +2829,8 @@ function QuoteAPITester({
                               ></button>
                             </div>
                             <div className="modal-body">
-                              <p>
-                                El sistema permite un máximo de 10 piezas por
-                                cotización.
-                              </p>
-                              <p className="mb-0">
-                                Si necesita cotizar más de 10 piezas, por favor
-                                contacte a su ejecutivo para un análisis
-                                personalizado.
-                              </p>
+                              <p>{t("QuoteAIR.limitemaximo")}</p>
+                              <p className="mb-0">{t("QuoteAIR.entendido")}</p>
                             </div>
                             <div className="modal-footer">
                               <button
@@ -2850,7 +2838,7 @@ function QuoteAPITester({
                                 className="btn btn-primary"
                                 onClick={() => setShowMaxPiecesModal(false)}
                               >
-                                Entendido
+                                {t("QuoteAIR.entendido")}
                               </button>
                             </div>
                           </div>
@@ -3150,24 +3138,20 @@ function QuoteAPITester({
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>📋 Cotización Personalizada Requerida</Modal.Title>
+          <Modal.Title>{t("QuoteAIR.cotiperso")}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p className="mb-2">
-            <strong>Esta ruta requiere análisis caso a caso.</strong>
+            <strong>{t("QuoteAIR.rutaanalisis")}</strong>
           </p>
-          <p className="mb-0">
-            Por favor, contacta a tu ejecutivo comercial para obtener una
-            cotización personalizada que se ajuste a las características
-            específicas de tu envío.
-          </p>
+          <p className="mb-0">{t("QuoteAIR.comunicacioneje")}</p>
         </Modal.Body>
         <Modal.Footer>
           <Button
             variant="primary"
             onClick={() => setShowPriceZeroModal(false)}
           >
-            Entendido
+            {t("QuoteAIR.entendido")}
           </Button>
         </Modal.Footer>
       </Modal>

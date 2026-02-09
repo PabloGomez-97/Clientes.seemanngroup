@@ -23,11 +23,6 @@ import {
   parseLCL,
 } from "./Handlers/LCL/HandlerQuoteLCL.tsx";
 
-// ============================================================================
-// COMPONENTE PRINCIPAL
-// ============================================================================
-
-// Props para pre-selección desde ItineraryFinder
 interface QuoteLCLProps {
   preselectedPOL?: { value: string; label: string } | null;
   preselectedPOD?: { value: string; label: string } | null;
@@ -171,12 +166,12 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         setLoadingRutas(false);
         setLastUpdate(new Date());
         console.log(
-          "✅ Tarifas LCL cargadas exitosamente desde Google Sheets:",
+          "Tarifas LCL cargadas exitosamente desde Google Sheets:",
           rutasParsed.length,
           "rutas",
         );
       } catch (err) {
-        console.error("❌ Error al cargar datos LCL desde Google Sheets:", err);
+        console.error("Error al cargar datos LCL desde Google Sheets:", err);
         setErrorRutas(
           "No se pudieron cargar las tarifas desde Google Sheets. " +
             "Por favor, verifica tu conexión a internet o contacta al administrador.",
@@ -264,12 +259,12 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       setLoadingRutas(false);
       setLastUpdate(new Date());
       console.log(
-        "✅ Tarifas LCL actualizadas exitosamente:",
+        "Tarifas LCL actualizadas exitosamente:",
         rutasParsed.length,
         "rutas",
       );
     } catch (err) {
-      console.error("❌ Error al actualizar tarifas LCL:", err);
+      console.error("Error al actualizar tarifas LCL:", err);
       setErrorRutas(
         "No se pudieron actualizar las tarifas. Por favor, intenta nuevamente.",
       );
@@ -830,7 +825,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         currency: {
           abbr: divisa,
         },
-        reference: "LCL-BL-REF",
+        reference: "LCL-BL",
         showOnDocument: true,
         notes: "BL charge created via API",
       },
@@ -861,7 +856,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         currency: {
           abbr: divisa,
         },
-        reference: "LCL-HANDLING-REF",
+        reference: "LCL-HANDLING",
         showOnDocument: true,
         notes: "Handling charge created via API",
       },
@@ -894,7 +889,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           currency: {
             abbr: divisa,
           },
-          reference: "LCL-EXW-REF",
+          reference: "LCL-EXW",
           showOnDocument: true,
           notes: `EXW charge - ${piecesData.length} piece(s) × 170`,
         },
@@ -926,7 +921,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         currency: {
           abbr: divisa,
         },
-        reference: "LCL-OCEANFREIGHT-REF",
+        reference: "LCL-OCEANFREIGHT",
         showOnDocument: true,
         notes: `OCEAN FREIGHT charge - ${rutaSeleccionada?.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada?.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)} + 15%`,
       },
@@ -944,7 +939,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         currency: {
           abbr: divisa,
         },
-        reference: "LCL-OCEANFREIGHT-REF",
+        reference: "LCL-OCEANFREIGHT",
         showOnDocument: true,
         notes: `OCEAN FREIGHT expense - ${rutaSeleccionada?.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada?.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)}`,
       },
@@ -972,7 +967,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           currency: {
             abbr: divisa,
           },
-          reference: "LCL-SEGURO-REF",
+          reference: "LCL-SEGURO",
           showOnDocument: true,
           notes: "Seguro charge created via API",
         },
@@ -1012,9 +1007,9 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           currency: {
             abbr: divisa,
           },
-          reference: "LCL-NOAPILABLE-REF",
+          reference: "LCL-NOAPILABLE",
           showOnDocument: true,
-          notes: "No Apilable charge created via API - 80% adicional",
+          notes: "No Apilable charge created via Client Portal",
         },
         expense: {
           currency: {
@@ -1108,10 +1103,8 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
     <div className="container-fluid py-4">
       <div className="row mb-4">
         <div className="col">
-          <h2 className="mb-1">Cotizador LCL</h2>
-          <p className="text-muted mb-0">
-            Genera cotizaciones para envíos Less than Container Load
-          </p>
+          <h2 className="mb-1">{t("Quotelcl.title")}</h2>
+          <p className="text-muted mb-0">{t("Quotelcl.subtitle")}</p>
         </div>
       </div>
 
@@ -1131,11 +1124,11 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         >
           <h5 className="mb-0">
             <i className="bi bi-geo-alt me-2" style={{ color: "#0d6efd" }}></i>
-            Selecciona Ruta
+            {t("Quotelcl.ruta")}
             {rutaSeleccionada && (
               <span className="badge bg-success ms-3">
                 <i className="bi bi-check-circle-fill me-1"></i>
-                Completado
+                {t("Quotelcl.completado")}
               </span>
             )}
           </h5>
@@ -1157,12 +1150,12 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       role="status"
                       aria-hidden="true"
                     ></span>
-                    Actualizando...
+                    {t("Quotelcl.actualizando")}
                   </>
                 ) : (
                   <>
                     <i className="bi bi-arrow-clockwise me-1"></i>
-                    Actualizar Tarifas
+                    {t("Quotelcl.actualizaciontarifa")}
                   </>
                 )}
               </button>
@@ -1188,14 +1181,14 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
               >
                 <span className="text-muted">
                   <i className="bi bi-clock-history me-1"></i>
-                  Última actualización:{" "}
+                  {t("Quotelcl.actualizacion")}{" "}
                   {lastUpdate.toLocaleTimeString("es-CL", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
                 <span className="badge bg-success">
-                  {rutas.length} rutas disponibles
+                  {rutas.length} {t("Quotelcl.rutasdisponibles")}
                 </span>
               </div>
             )}
@@ -1203,9 +1196,11 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
             {loadingRutas ? (
               <div className="text-center py-5">
                 <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Cargando...</span>
+                  <span className="visually-hidden">
+                    {t("Quotelcl.cargando")}
+                  </span>
                 </div>
-                <p className="mt-3 text-muted">Cargando rutas disponibles...</p>
+                <p className="mt-3 text-muted">{t("Quotelcl.cargandorutas")}</p>
               </div>
             ) : errorRutas ? (
               <div className="alert alert-danger">❌ {errorRutas}</div>
@@ -1215,13 +1210,13 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
                     <label className="form-label fw-semibold">
-                      Puerto de Origen (POL)
+                      {t("Quotelcl.puertoorigen")}
                     </label>
                     <Select
                       value={polSeleccionado}
                       onChange={setPolSeleccionado}
                       options={opcionesPOL}
-                      placeholder="Selecciona puerto de origen..."
+                      placeholder={t("Quotelcl.selectpuerto")}
                       isClearable
                       styles={{
                         control: (base) => ({
@@ -1235,7 +1230,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
                   <div className="col-md-6">
                     <label className="form-label fw-semibold">
-                      Puerto de Destino (POD)
+                      {t("Quotelcl.puertodest")}
                     </label>
                     <Select
                       value={podSeleccionado}
@@ -1243,8 +1238,8 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       options={opcionesPOD}
                       placeholder={
                         polSeleccionado
-                          ? "Selecciona puerto de destino..."
-                          : "Primero selecciona origen"
+                          ? t("Quotelcl.selectdest")
+                          : t("Quotelcl.primeropol")
                       }
                       isClearable
                       isDisabled={!polSeleccionado}
@@ -1263,7 +1258,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                 {polSeleccionado && podSeleccionado && (
                   <div className="border-top pt-3 mb-4">
                     <label className="form-label fw-semibold mb-2">
-                      Operadores
+                      {t("Quotelcl.operador")}
                     </label>
                     <div className="d-flex flex-wrap gap-2">
                       {operadoresDisponibles.map((operador) => (
@@ -1299,7 +1294,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                     <div className="d-flex justify-content-between align-items-center mb-3">
                       <h6 className="mb-0 d-flex align-items-center gap-2">
                         <i className="bi bi-boxes"></i>
-                        Rutas Disponibles
+                        {t("Quotelcl.rutasdisponibles")}
                         <span className="badge bg-light text-dark border">
                           {rutasFiltradas.length}
                         </span>
@@ -1307,7 +1302,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
                       {rutasFiltradas.length > 0 && (
                         <small className="text-muted">
-                          Selecciona la mejor opción para tu envío
+                          {t("Quotelcl.seleccionamejor")}
                         </small>
                       )}
                     </div>
@@ -1318,11 +1313,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                           <i className="bi bi-search text-muted fs-3"></i>
                           <div>
                             <p className="mb-1 fw-semibold">
-                              No se encontraron rutas
+                              {t("Quotelcl.norutas")}
                             </p>
                             <small className="text-muted">
-                              Intenta ajustar los filtros o seleccionar otras
-                              ubicaciones
+                              {t("Quotelcl.intenta")}
                             </small>
                           </div>
                         </div>
@@ -1380,8 +1374,8 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                     zIndex: 1,
                                   }}
                                 >
-                                  <i className="bi bi-star-fill"></i> Mejor
-                                  Opción
+                                  <i className="bi bi-star-fill"></i>{" "}
+                                  {t("Quotelcl.mejoropcion")}
                                 </div>
                               )}
 
@@ -1429,7 +1423,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                   {rutaSeleccionada?.id === ruta.id && (
                                     <span className="badge bg-success">
                                       <i className="bi bi-check-circle-fill"></i>{" "}
-                                      Seleccionada
+                                      {t("Quotelcl.seleccionada")}
                                     </span>
                                   )}
                                 </div>
@@ -1443,7 +1437,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                       letterSpacing: "0.5px",
                                     }}
                                   >
-                                    Tarifa OF W/M
+                                    {t("Quotelcl.tarifas")}
                                   </small>
                                   <div className="d-flex align-items-baseline gap-1">
                                     <h4 className="mb-0 text-success fw-bold">
@@ -1465,7 +1459,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                             className="text-muted d-block"
                                             style={{ fontSize: "0.7rem" }}
                                           >
-                                            Servicio
+                                            {t("Quotelcl.servicio")}
                                           </small>
                                           <small className="fw-semibold">
                                             {ruta.servicio}
@@ -1484,7 +1478,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                             className="text-muted d-block"
                                             style={{ fontSize: "0.7rem" }}
                                           >
-                                            Transit Time
+                                            {t("Quotelcl.tt")}
                                           </small>
                                           <small className="fw-semibold">
                                             {ruta.ttAprox}
@@ -1503,7 +1497,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                             className="text-muted d-block"
                                             style={{ fontSize: "0.7rem" }}
                                           >
-                                            Frecuencia
+                                            {t("Quotelcl.frecuencia")}
                                           </small>
                                           <small className="fw-semibold">
                                             {ruta.frecuencia}
@@ -1522,7 +1516,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                             className="text-muted d-block"
                                             style={{ fontSize: "0.7rem" }}
                                           >
-                                            Agente
+                                            {t("Quotelcl.agente")}
                                           </small>
                                           <small className="fw-semibold">
                                             {ruta.agente}
@@ -1537,8 +1531,8 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                 {rutaSeleccionada?.id !== ruta.id && (
                                   <div className="mt-3 text-center">
                                     <small className="text-muted">
-                                      <i className="bi bi-hand-index"></i> Click
-                                      para seleccionar
+                                      <i className="bi bi-hand-index"></i>{" "}
+                                      {t("Quotelcl.clickselect")}
                                     </small>
                                   </div>
                                 )}
@@ -1553,9 +1547,8 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                     {rutasFiltradas.length > 0 && (
                       <div className="alert alert-light border-0 mt-3">
                         <small className="text-muted">
-                          <i className="bi bi-info-circle"></i> Las tarifas son
-                          referenciales y pueden variar según volumen y
-                          servicios adicionales
+                          <i className="bi bi-info-circle"></i>{" "}
+                          {t("Quotelcl.tarifasreferenciales")}
                         </small>
                       </div>
                     )}
@@ -1571,7 +1564,9 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           <div className="card-body py-2 bg-light">
             <div className="d-flex justify-content-between align-items-center">
               <div>
-                <small className="text-muted d-block">Ruta seleccionada:</small>
+                <small className="text-muted d-block">
+                  {t("Quotelcl.rutaselect")}
+                </small>
                 <strong>
                   {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
                 </strong>
@@ -1601,7 +1596,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       {rutaSeleccionada && (
         <div className="card shadow-sm mb-4">
           <div className="card-body">
-            <h5 className="card-title mb-4">Datos del Commodity</h5>
+            <h5 className="card-title mb-4">{t("Quotelcl.datoscommodity")}</h5>
             {/* Formulario */}
             <div className="row g-3">
               <div className="col-12 mb-3">
@@ -1622,7 +1617,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                     className="badge bg-light text-dark ms-2"
                     style={{ fontSize: "0.7rem", fontWeight: 400 }}
                   >
-                    Obligatorio
+                    {t("Quotelcl.obligatorio")}
                   </span>
                 </label>
                 <select
@@ -1642,7 +1637,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                   onFocus={(e) => (e.target.style.borderColor = "#185abc")}
                   onBlur={(e) => (e.target.style.borderColor = "#ced4da")}
                 >
-                  <option value="">Seleccione un Incoterm</option>
+                  <option value="">{t("Quotelcl.selectincoterm")}</option>
                   <option value="EXW">Ex Works [EXW]</option>
                   <option value="FOB">FOB</option>
                 </select>
@@ -1663,7 +1658,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       className="bi bi-boxes me-2"
                       style={{ color: "#0d6efd" }}
                     ></i>
-                    Detalles de las Piezas
+                    {t("Quotelcl.detalles")}
                   </h6>
                   <span
                     className="badge bg-light text-dark"
@@ -1718,7 +1713,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                     onClick={handleAddPiece}
                   >
                     <i className="bi bi-plus-circle me-2"></i>
-                    Agregar Pieza Adicional
+                    {t("Quotelcl.agregarpieza")}
                   </button>
                 </div>
               </div>
@@ -1727,7 +1722,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
               {incoterm === "EXW" && (
                 <>
                   <div className="col-md-6">
-                    <label className="form-label">Pickup From Address</label>
+                    <label className="form-label">{t("Quotelcl.pickup")}</label>
                     <textarea
                       className="form-control"
                       value={pickupFromAddress}
@@ -1738,7 +1733,9 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                   </div>
 
                   <div className="col-md-6">
-                    <label className="form-label">Delivery To Address</label>
+                    <label className="form-label">
+                      {t("Quotelcl.delivery")}
+                    </label>
                     <textarea
                       className="form-control"
                       value={deliveryToAddress}
@@ -1769,23 +1766,27 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                     className="bi bi-box-seam me-2"
                     style={{ color: "#0d6efd" }}
                   ></i>
-                  Resumen del cargamento
+                  {t("Quotelcl.resumen")}
                 </h6>
               </div>
               <div className="row g-2" style={{ fontSize: "0.9rem" }}>
                 <div className="col-md-3">
-                  <strong>Peso Total:</strong> {totalWeightKg.toFixed(2)} kg (
-                  {totalWeightTons.toFixed(4)} t)
+                  <strong>{t("Quotelcl.pesototal1")}</strong>{" "}
+                  {totalWeightKg.toFixed(2)} kg ({totalWeightTons.toFixed(4)} t)
                 </div>
                 <div className="col-md-3">
-                  <strong>Volumen Total:</strong> {totalVolume.toFixed(4)} m³
+                  <strong>{t("Quotelcl.volumentotal1")}</strong>{" "}
+                  {totalVolume.toFixed(4)} m³
                 </div>
                 <div className="col-md-3">
-                  <strong>W/M Chargeable:</strong> {chargeableVolume.toFixed(4)}
+                  <strong>{t("Quotelcl.chargeable")}</strong>{" "}
+                  {chargeableVolume.toFixed(4)}
                 </div>
                 <div className="col-md-3">
-                  <strong>Cobro por:</strong>{" "}
-                  {totalWeightTons > totalVolume ? "Peso" : "Volumen"}
+                  <strong>{t("Quotelcl.cobropor")}</strong>{" "}
+                  {totalWeightTons > totalVolume
+                    ? t("Quotelcl.peso")
+                    : t("Quotelcl.volumen")}
                 </div>
 
                 {tarifaOceanFreight && (
@@ -1795,7 +1796,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                         className="bi bi-cash-coin me-2"
                         style={{ color: "#0d6efd" }}
                       ></i>
-                      Resumen de Cargos
+                      {t("Quotelcl.resumencargos")}
                     </h6>
 
                     <div className="bg-light rounded p-3">
@@ -1835,7 +1836,9 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
                       {/* Sección de Opcionales */}
                       <div className="mb-3 pb-3 border-bottom">
-                        <h6 className="mb-3 text-muted">🔧 Opcionales</h6>
+                        <h6 className="mb-3 text-muted">
+                          🔧 {t("Quotelcl.opcional")}
+                        </h6>
                         <div className="form-check">
                           <input
                             className="form-check-input"
@@ -1848,10 +1851,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                             className="form-check-label"
                             htmlFor="seguroCheckbox"
                           >
-                            Agregar Seguro
+                            {t("Quotelcl.agregar")}
                           </label>
                           <small className="text-muted d-block ms-4">
-                            Protección adicional para tu carga
+                            {t("Quotelcl.protection")}
                           </small>
                         </div>
 
@@ -1862,7 +1865,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                               htmlFor="valorMercaderia"
                               className="form-label small"
                             >
-                              Valor de la Mercadería (
+                              {t("Quotelcl.valormercaderia")} (
                               {rutaSeleccionada.currency}){" "}
                               <span className="text-danger">*</span>
                             </label>
@@ -1881,7 +1884,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                               }}
                             />
                             <small className="text-muted">
-                              Ingresa el valor total de tu carga
+                              {t("Quotelcl.ingresavalor")}
                             </small>
                           </div>
                         )}
@@ -1890,7 +1893,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       {/* Mostrar el cargo del seguro si está activo */}
                       {seguroActivo && calculateSeguro() > 0 && (
                         <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                          <span>Seguro:</span>
+                          <span>{t("Quotelcl.seguro")}</span>
                           <strong className="text-info">
                             {rutaSeleccionada.currency}{" "}
                             {calculateSeguro().toFixed(2)}
@@ -1901,7 +1904,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       {/* Mostrar el cargo adicional por No Apilable */}
                       {hasNotApilable && (
                         <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                          <span>No Apilable:</span>
+                          <span>{t("Quotelcl.noapilable")}</span>
                           <strong className="">
                             {rutaSeleccionada.currency}{" "}
                             {(() => {

@@ -234,6 +234,11 @@ export interface PieceData {
   totalWeight: number;
 }
 
+export interface QuoteAIRProps {
+  preselectedOrigin?: { value: string; label: string } | null;
+  preselectedDestination?: { value: string; label: string } | null;
+}
+
 // FUNCIÓN PARA SELECCIONAR TARIFA SEGÚN PESO CHARGEABLE
 export const seleccionarTarifaPorPeso = (
   ruta: RutaAerea,
