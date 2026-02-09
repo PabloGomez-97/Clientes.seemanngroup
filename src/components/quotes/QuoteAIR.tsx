@@ -1832,43 +1832,49 @@ function QuoteAPITester({
                         >
                           <thead className="table-light">
                             <tr>
-                              <th style={{ width: "5%" }}></th>
-                              <th style={{ width: "20%" }}>Carrier</th>
+                              <th style={{ width: "4%" }}></th>
+                              <th style={{ width: "18%" }}>Carrier</th>
                               <th
                                 className="text-center"
-                                style={{ width: "12%" }}
+                                style={{ width: "10%" }}
                               >
                                 1-99kg
                               </th>
                               <th
                                 className="text-center"
-                                style={{ width: "12%" }}
+                                style={{ width: "10%" }}
                               >
                                 100-299kg
                               </th>
                               <th
                                 className="text-center"
-                                style={{ width: "12%" }}
+                                style={{ width: "10%" }}
                               >
                                 300-499kg
                               </th>
                               <th
                                 className="text-center"
-                                style={{ width: "12%" }}
+                                style={{ width: "10%" }}
                               >
                                 500-999kg
                               </th>
                               <th
                                 className="text-center"
-                                style={{ width: "12%" }}
+                                style={{ width: "10%" }}
                               >
                                 +1000kg
                               </th>
                               <th
                                 className="text-center"
-                                style={{ width: "15%" }}
+                                style={{ width: "14%" }}
                               >
                                 {t("QuoteAIR.salidas")}
+                              </th>
+                              <th
+                                className="text-center"
+                                style={{ width: "10%" }}
+                              >
+                                Válido Hasta
                               </th>
                             </tr>
                           </thead>
@@ -2097,12 +2103,6 @@ function QuoteAPITester({
                                   {/* Detalles adicionales */}
                                   <td className="text-center">
                                     <div style={{ fontSize: "0.75rem" }}>
-                                      {ruta.transitTime && (
-                                        <div className="text-muted mb-1">
-                                          <i className="bi bi-clock"></i>{" "}
-                                          {ruta.transitTime}
-                                        </div>
-                                      )}
                                       {ruta.frequency && (
                                         <div className="text-muted">
                                           <i className="bi bi-calendar-check"></i>{" "}
@@ -2110,6 +2110,16 @@ function QuoteAPITester({
                                         </div>
                                       )}
                                     </div>
+                                  </td>
+
+                                  {/* Válido Hasta */}
+                                  <td className="text-center">
+                                    {ruta.validUntil && (
+                                      <div style={{ fontSize: "0.75rem" }}>
+                                        <i className="bi bi-calendar-event"></i>{" "}
+                                        {ruta.validUntil}
+                                      </div>
+                                    )}
                                   </td>
                                 </tr>
                               );

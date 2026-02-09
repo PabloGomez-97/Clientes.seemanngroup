@@ -22,6 +22,7 @@ export interface RutaAerea {
   routing: string | null;
   remark1: string | null;
   remark2: string | null;
+  validUntil: string | null;
 
   row_number: number;
   priceForComparison: number;
@@ -161,6 +162,7 @@ export const parseAEREO = (data: any[]): RutaAerea[] => {
     const remark1 = row[12];
     const remark2 = row[13];
     const currency = row[14];
+    const validUntil = row[15];
 
     if (
       origin &&
@@ -200,6 +202,7 @@ export const parseAEREO = (data: any[]): RutaAerea[] => {
         routing: routing ? routing.toString().trim() : null,
         remark1: remark1 ? remark1.toString().trim() : null,
         remark2: remark2 ? remark2.toString().trim() : null,
+        validUntil: validUntil ? validUntil.toString().trim() : null,
         row_number: i + 1,
         priceForComparison: lowestPrice.price,
         currency: parsedCurrency, // 🆕 Usar la moneda parseada desde columna [14]
