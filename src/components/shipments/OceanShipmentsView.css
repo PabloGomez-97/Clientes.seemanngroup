@@ -237,6 +237,14 @@
   background: #f3f4f6;
   color: #374151;
 }
+.osv-badge--lcl {
+  background: #f9fafb;
+  color: #374151;
+}
+.osv-badge--fcl {
+  background: #e5e7eb;
+  color: #374151;
+}
 
 /*  Route card (inside accordion)  */
 .osv-route-card {
@@ -675,4 +683,11 @@
   .osv-finance-card__amount {
     font-size: 1.5rem;
   }
+}
+
+/* Custom styles for cards grid */
+.asv-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }

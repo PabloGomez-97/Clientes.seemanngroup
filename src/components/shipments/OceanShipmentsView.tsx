@@ -522,7 +522,8 @@ function OceanShipmentsView() {
               <thead>
                 <tr>
                   <th className="osv-th">Numero</th>
-                  <th className="osv-th">Ruta</th>
+                  <th className="osv-th">Origen</th>
+                  <th className="osv-th">Destino</th>
                   <th className="osv-th">Fecha Salida</th>
                   <th className="osv-th">Vessel</th>
                   <th className="osv-th osv-th--center">Tipo</th>
@@ -566,22 +567,10 @@ function OceanShipmentsView() {
                           )}
                         </td>
                         <td className="osv-td">
-                          <span className="osv-route">
-                            {shipment.portOfLoading || "---"}
-                            <svg
-                              className="osv-route__arrow"
-                              width="16"
-                              height="16"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            >
-                              <line x1="5" y1="12" x2="19" y2="12" />
-                              <polyline points="12 5 19 12 12 19" />
-                            </svg>
-                            {shipment.portOfUnloading || "---"}
-                          </span>
+                          {shipment.portOfLoading || "---"}
+                        </td>
+                        <td className="osv-td">
+                          {shipment.portOfUnloading || "---"}
                         </td>
                         <td className="osv-td">
                           {formatDateShort(shipment.departure)}
@@ -589,7 +578,9 @@ function OceanShipmentsView() {
                         <td className="osv-td">{shipment.vessel || "-"}</td>
                         <td className="osv-td osv-td--center">
                           {shipment.typeOfMove ? (
-                            <span className="osv-badge osv-badge--type">
+                            <span
+                              className={`osv-badge osv-badge--${shipment.typeOfMove.toLowerCase()}`}
+                            >
                               {shipment.typeOfMove}
                             </span>
                           ) : (
@@ -679,10 +670,10 @@ function OceanShipmentsView() {
                                       </svg>
                                     ),
                                     content: (
-                                      <div className="osv-cards-grid">
-                                        <div className="osv-card">
-                                          <h4>Detalles del Envio</h4>
-                                          <div className="osv-info-grid">
+                                      <div className="asv-cards-grid">
+                                        <div className="asv-card">
+                                          <h4>Detalles del Envío</h4>
+                                          <div className="asv-info-grid">
                                             <InfoField
                                               label="Numero de Envio"
                                               value={shipment.number}
@@ -701,9 +692,9 @@ function OceanShipmentsView() {
                                             />
                                           </div>
                                         </div>
-                                        <div className="osv-card">
+                                        <div className="asv-card">
                                           <h4>Logistica Maritima</h4>
-                                          <div className="osv-info-grid">
+                                          <div className="asv-info-grid">
                                             <InfoField
                                               label="Vessel"
                                               value={shipment.vessel}
@@ -734,9 +725,9 @@ function OceanShipmentsView() {
                                             />
                                           </div>
                                         </div>
-                                        <div className="osv-card">
+                                        <div className="asv-card">
                                           <h4>Documentos y Referencias</h4>
-                                          <div className="osv-info-grid">
+                                          <div className="asv-info-grid">
                                             <InfoField
                                               label="Booking Number"
                                               value={shipment.bookingNumber}
@@ -763,11 +754,11 @@ function OceanShipmentsView() {
                                             />
                                           </div>
                                         </div>
-                                        <div className="osv-card">
+                                        <div className="asv-card">
                                           <h4>Fechas</h4>
-                                          <div className="osv-info-grid">
+                                          <div className="asv-info-grid">
                                             <InfoField
-                                              label="Fecha de Creacion"
+                                              label="Fecha de Creación"
                                               value={
                                                 shipment.createdOn
                                                   ? formatDate(
@@ -801,7 +792,7 @@ function OceanShipmentsView() {
                                   },
                                   {
                                     key: "cargo",
-                                    label: "Carga",
+                                    label: "Información de Carga",
                                     icon: (
                                       <svg
                                         width="14"
@@ -823,10 +814,10 @@ function OceanShipmentsView() {
                                       </svg>
                                     ),
                                     content: (
-                                      <div className="osv-cards-grid">
-                                        <div className="osv-card">
+                                      <div className="asv-cards-grid">
+                                        <div className="asv-card">
                                           <h4>Cantidades</h4>
-                                          <div className="osv-info-grid">
+                                          <div className="asv-info-grid">
                                             <InfoField
                                               label="Total de Piezas"
                                               value={shipment.totalCargo_Pieces}
@@ -845,9 +836,9 @@ function OceanShipmentsView() {
                                             />
                                           </div>
                                         </div>
-                                        <div className="osv-card">
+                                        <div className="asv-card">
                                           <h4>Detalle de Carga</h4>
-                                          <div className="osv-info-grid">
+                                          <div className="asv-info-grid">
                                             <InfoField
                                               label="Descripcion de Carga"
                                               value={shipment.cargoDescription}
@@ -860,9 +851,9 @@ function OceanShipmentsView() {
                                             />
                                           </div>
                                         </div>
-                                        <div className="osv-card">
+                                        <div className="asv-card">
                                           <h4>Estado y Seguridad</h4>
-                                          <div className="osv-info-grid">
+                                          <div className="asv-info-grid">
                                             <InfoField
                                               label="Estado de Carga"
                                               value={shipment.cargoStatus}
