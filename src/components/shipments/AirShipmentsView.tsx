@@ -838,14 +838,6 @@ function AirShipmentsView() {
             Actualizar
           </button>
           {loadingMore && <span className="asv-loading-text">Cargando</span>}
-          {hasMoreShipments && !loadingMore && (
-            <button
-              className="asv-btn asv-btn--ghost"
-              onClick={loadMoreShipments}
-            >
-              Cargar más
-            </button>
-          )}
           {showingAll && (
             <button
               className="asv-btn asv-btn--ghost asv-btn--sm"
