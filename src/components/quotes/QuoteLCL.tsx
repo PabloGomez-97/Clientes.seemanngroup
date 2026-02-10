@@ -175,7 +175,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         console.error("Error al cargar datos LCL desde Google Sheets:", err);
         setErrorRutas(
           "No se pudieron cargar las tarifas desde Google Sheets. " +
-            "Por favor, verifica tu conexión a internet o contacta al administrador.",
+          "Por favor, verifica tu conexión a internet o contacta al administrador.",
         );
         setLoadingRutas(false);
       }
@@ -1262,11 +1262,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                         <button
                           key={operador}
                           type="button"
-                          className={`btn btn-sm ${
-                            operadoresActivos.has(operador)
+                          className={`btn btn-sm ${operadoresActivos.has(operador)
                               ? "btn-primary"
                               : "btn-outline-secondary"
-                          }`}
+                            }`}
                           onClick={() => {
                             const newSet = new Set(operadoresActivos);
                             if (newSet.has(operador)) {
@@ -1323,11 +1322,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                         {rutasFiltradas.map((ruta, index) => (
                           <div key={ruta.id} className="col-md-6 col-lg-4">
                             <div
-                              className={`card h-100 position-relative ${
-                                rutaSeleccionada?.id === ruta.id
+                              className={`card h-100 position-relative ${rutaSeleccionada?.id === ruta.id
                                   ? "border-success border-2 shadow-lg"
                                   : "border-0 shadow-sm"
-                              }`}
+                                }`}
                               style={{
                                 cursor: "pointer",
                                 transition: "all 0.3s ease",
