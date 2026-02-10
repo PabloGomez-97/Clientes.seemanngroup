@@ -216,61 +216,83 @@ function AirShipmentsView() {
     setError(null);
 
     try {
-      const queryParams = new URLSearchParams({
-        ConsigneeName: user.username,
-        Page: page.toString(),
-        ItemsPerPage: ITEMS_PER_PAGE.toString(),
-        SortBy: "newest",
-      });
+      const cacheKey = `airShipmentsCache_${user.username}`;
 
-      const response = await fetch(
-        `https://api.linbis.com/air-shipments?${queryParams}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        if (response.status === 401)
-          throw new Error("Token inválido o expirado.");
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-
-      const shipmentsArray: AirShipment[] = await response.json();
-      const allShipments: AirShipment[] = [];
+      // We'll collect results across pages into these
+      const combinedAllShipments: AirShipment[] = [];
       const seenIds = new Set<number | string>();
 
-      for (const s of shipmentsArray) {
-        if (s.id && !seenIds.has(s.id)) {
-          allShipments.push(s);
-          seenIds.add(s.id);
+      let pageToFetch = page;
+      let lastPageCount = 0;
+
+      // Continue fetching pages until we get less than ITEMS_PER_PAGE
+      while (true) {
+        const queryParams = new URLSearchParams({
+          ConsigneeName: user.username,
+          Page: pageToFetch.toString(),
+          ItemsPerPage: ITEMS_PER_PAGE.toString(),
+          SortBy: "newest",
+        });
+
+        const response = await fetch(
+          `https://api.linbis.com/air-shipments?${queryParams}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+        );
+
+        if (!response.ok) {
+          if (response.status === 401)
+            throw new Error("Token inválido o expirado.");
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
-        if (s.subShipments && Array.isArray(s.subShipments)) {
-          for (const sub of s.subShipments) {
-            if (sub.id && !seenIds.has(sub.id)) {
-              allShipments.push(sub);
-              seenIds.add(sub.id);
+
+        const shipmentsArray: AirShipment[] = await response.json();
+        lastPageCount = shipmentsArray.length;
+
+        for (const s of shipmentsArray) {
+          if (s.id && !seenIds.has(s.id)) {
+            combinedAllShipments.push(s);
+            seenIds.add(s.id);
+          }
+          if (s.subShipments && Array.isArray(s.subShipments)) {
+            for (const sub of s.subShipments) {
+              if (sub.id && !seenIds.has(sub.id)) {
+                combinedAllShipments.push(sub);
+                seenIds.add(sub.id);
+              }
             }
           }
         }
+
+        console.log(
+          `Página ${pageToFetch}: ${shipmentsArray.length} air-shipments cargados`,
+        );
+
+        // If this was a single-page append request, or the last fetched page has less than ITEMS_PER_PAGE, stop
+        if (append && pageToFetch === page) break;
+        if (shipmentsArray.length < ITEMS_PER_PAGE) break;
+
+        pageToFetch += 1;
       }
 
-      const sorted = allShipments.sort((a, b) => {
+      // Sort combined results by departure date (newest first)
+      const sorted = combinedAllShipments.sort((a, b) => {
         const da = a.departure?.date ? new Date(a.departure.date) : new Date(0);
         const db = b.departure?.date ? new Date(b.departure.date) : new Date(0);
         return db.getTime() - da.getTime();
       });
 
-      setHasMoreShipments(shipmentsArray.length === ITEMS_PER_PAGE);
-      const cacheKey = `airShipmentsCache_${user.username}`;
+      const filtered = filterShipments(sorted);
 
+      // If append was requested and there were existing shipments, merge them and dedupe
       if (append && page > 1) {
-        const combined = [...shipments, ...sorted].sort((a, b) => {
+        const combined = [...shipments, ...filtered].sort((a, b) => {
           const da = a.departure?.date
             ? new Date(a.departure.date)
             : new Date(0);
@@ -279,17 +301,16 @@ function AirShipmentsView() {
             : new Date(0);
           return db.getTime() - da.getTime();
         });
-        const filtered = filterShipments(combined);
-        setShipments(filtered);
-        setDisplayedShipments(filtered);
-        localStorage.setItem(cacheKey, JSON.stringify(filtered));
+        const finalFiltered = filterShipments(combined);
+        setShipments(finalFiltered);
+        setDisplayedShipments(finalFiltered);
+        localStorage.setItem(cacheKey, JSON.stringify(finalFiltered));
         localStorage.setItem(
           `${cacheKey}_timestamp`,
           new Date().getTime().toString(),
         );
-        localStorage.setItem(`${cacheKey}_page`, page.toString());
+        localStorage.setItem(`${cacheKey}_page`, pageToFetch.toString());
       } else {
-        const filtered = filterShipments(sorted);
         setShipments(filtered);
         setDisplayedShipments(filtered);
         setShowingAll(false);
@@ -298,12 +319,12 @@ function AirShipmentsView() {
           `${cacheKey}_timestamp`,
           new Date().getTime().toString(),
         );
-        localStorage.setItem(`${cacheKey}_page`, page.toString());
+        localStorage.setItem(`${cacheKey}_page`, pageToFetch.toString());
       }
 
-      console.log(
-        `Página ${page}: ${allShipments.length} air-shipments cargados`,
-      );
+      // Update pagination flags
+      setHasMoreShipments(lastPageCount === ITEMS_PER_PAGE);
+      setCurrentPage(pageToFetch);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
       console.error("Error completo:", err);
