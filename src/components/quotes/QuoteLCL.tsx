@@ -6,7 +6,11 @@ import Select from "react-select";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesLCL";
 import { Modal, Button } from "react-bootstrap";
 import { PDFTemplateLCL } from "./Pdftemplate/Pdftemplatelcl";
-import { generatePDF, generatePDFBase64, formatDateForFilename } from "./Pdftemplate/Pdfutils";
+import {
+  generatePDF,
+  generatePDFBase64,
+  formatDateForFilename,
+} from "./Pdftemplate/Pdfutils";
 import ReactDOM from "react-dom/client";
 import { PieceAccordionLCL } from "./Handlers/LCL/PieceAccordionLCL.tsx";
 import { useTranslation } from "react-i18next";
@@ -322,7 +326,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       // Determinar id origen: desde argumento, o última abierta, o última pieza
       let sourceId = fromId;
       if (!sourceId) {
-        sourceId = openAccordions.length > 0 ? openAccordions[openAccordions.length - 1] : null;
+        sourceId =
+          openAccordions.length > 0
+            ? openAccordions[openAccordions.length - 1]
+            : undefined;
       }
       if (!sourceId) {
         sourceId = prev[prev.length - 1].id;
@@ -354,7 +361,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       const inserted = [...before, newPieceRaw, ...after];
 
       // Renumerar IDs
-      const renumbered = inserted.map((piece, i) => ({ ...piece, id: (i + 1).toString() }));
+      const renumbered = inserted.map((piece, i) => ({
+        ...piece,
+        id: (i + 1).toString(),
+      }));
 
       // Actualizar openAccordions para abrir la nueva pieza (limitando a 2 abiertas)
       const newIdStr = (idx + 2).toString(); // posición nueva pieza después de renumeración
@@ -612,12 +622,15 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
               Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
             },
-          }
+          },
         );
         if (preRes.ok) {
           const preData = await preRes.json();
           if (Array.isArray(preData)) {
-            previousMaxId = Math.max(0, ...preData.map((q: any) => Number(q.id) || 0));
+            previousMaxId = Math.max(
+              0,
+              ...preData.map((q: any) => Number(q.id) || 0),
+            );
           }
           console.log("[QuoteLCL] ID máximo ANTES de crear:", previousMaxId);
         }
@@ -642,7 +655,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       }
 
       const data = await res.json();
-      console.log("[QuoteLCL] Respuesta CREATE de Linbis:", JSON.stringify(data));
+      console.log(
+        "[QuoteLCL] Respuesta CREATE de Linbis:",
+        JSON.stringify(data),
+      );
       setResponse(data);
 
       // Generar PDF después de cotización exitosa
@@ -875,11 +891,15 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         // Subir el PDF a MongoDB usando el quoteNumber real de Linbis
         if (pdfBase64) {
           try {
-            console.log("[QuoteLCL] Buscando cotización recién creada (id mayor a", previousMaxId, ")...");
+            console.log(
+              "[QuoteLCL] Buscando cotización recién creada (id mayor a",
+              previousMaxId,
+              ")...",
+            );
             let quoteNumber = "";
 
             // Esperar 2s y buscar la cotización con id más alto
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise((r) => setTimeout(r, 2000));
 
             const linbisRes = await fetch(
               `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
@@ -888,23 +908,32 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                   Authorization: `Bearer ${accessToken}`,
                   Accept: "application/json",
                 },
-              }
+              },
             );
 
             if (linbisRes.ok) {
               const linbisData = await linbisRes.json();
               if (Array.isArray(linbisData) && linbisData.length > 0) {
-                const newestQuote = linbisData.reduce((max: any, q: any) =>
-                  (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max
-                , linbisData[0]);
+                const newestQuote = linbisData.reduce(
+                  (max: any, q: any) =>
+                    (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
+                  linbisData[0],
+                );
 
-                console.log(`[QuoteLCL] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`);
+                console.log(
+                  `[QuoteLCL] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
+                );
 
                 if (Number(newestQuote.id) > (previousMaxId || 0)) {
                   quoteNumber = newestQuote.number;
-                  console.log(`✅ [QuoteLCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`);
+                  console.log(
+                    `✅ [QuoteLCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
+                  );
                 } else {
-                  console.warn("[QuoteLCL] No se encontró cotización con id mayor a", previousMaxId);
+                  console.warn(
+                    "[QuoteLCL] No se encontró cotización con id mayor a",
+                    previousMaxId,
+                  );
                 }
               }
             }
@@ -926,9 +955,15 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                 }),
               });
               const uploadData = await uploadRes.json();
-              console.log("[QuoteLCL] PDF guardado en MongoDB:", uploadRes.status, uploadData);
+              console.log(
+                "[QuoteLCL] PDF guardado en MongoDB:",
+                uploadRes.status,
+                uploadData,
+              );
             } else {
-              console.warn("[QuoteLCL] No se pudo detectar cotización nueva, PDF no subido");
+              console.warn(
+                "[QuoteLCL] No se pudo detectar cotización nueva, PDF no subido",
+              );
             }
           } catch (uploadErr) {
             console.error("Error subiendo PDF a MongoDB:", uploadErr);
@@ -1739,7 +1774,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           {/* Cálculos */}
           <div className="row g-3">
             <div className="col-md-6">
-              <div className="p-3 rounded border d-flex flex-column h-100" style={{ backgroundColor: "var(--qa-bg-light)" }}>
+              <div
+                className="p-3 rounded border d-flex flex-column h-100"
+                style={{ backgroundColor: "var(--qa-bg-light)" }}
+              >
                 <h4 className="fs-6 fw-bold mb-3">{t("Quotelcl.resumen")}</h4>
                 <div className="qa-grid-4" style={{ fontSize: "0.9rem" }}>
                   <div>
@@ -1747,7 +1785,8 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       {t("Quotelcl.pesototal1")}
                     </span>
                     <strong>
-                      {totalWeightKg.toFixed(2)} kg ({totalWeightTons.toFixed(4)} t)
+                      {totalWeightKg.toFixed(2)} kg (
+                      {totalWeightTons.toFixed(4)} t)
                     </strong>
                   </div>
                   <div>
@@ -1778,7 +1817,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
             {tarifaOceanFreight && (
               <div className="col-md-6">
-                <div className="p-3 rounded border d-flex flex-column h-100" style={{ backgroundColor: "var(--qa-bg-light)" }}>
+                <div
+                  className="p-3 rounded border d-flex flex-column h-100"
+                  style={{ backgroundColor: "var(--qa-bg-light)" }}
+                >
                   <h4 className="fs-6 fw-bold mb-3">
                     {t("Quotelcl.resumencargos")}
                   </h4>
@@ -1839,7 +1881,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       </h6>
                       <div
                         className="qa-switch-container"
-                        style={{ width: "fit-content", padding: "0.4rem 0.8rem" }}
+                        style={{
+                          width: "fit-content",
+                          padding: "0.4rem 0.8rem",
+                        }}
                       >
                         <input
                           className="qa-switch-input"

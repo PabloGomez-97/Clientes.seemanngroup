@@ -343,12 +343,12 @@ function QuoteAPITester({
       if (prev.length === 0) return prev;
 
       // Determinar id origen: desde argumento, o última abierta, o última pieza
-      let sourceId = fromId;
+      let sourceId: string | undefined = fromId;
       if (!sourceId) {
         sourceId =
           openAccordions.length > 0
             ? openAccordions[openAccordions.length - 1]
-            : null;
+            : undefined;
       }
       if (!sourceId) {
         sourceId = prev[prev.length - 1].id;
