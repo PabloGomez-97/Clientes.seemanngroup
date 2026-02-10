@@ -177,12 +177,16 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
 
 function QuotesView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // PDF state
+  const [availablePDFs, setAvailablePDFs] = useState<Set<string>>(new Set());
+  const [downloadingPDF, setDownloadingPDF] = useState<string | null>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -696,6 +700,79 @@ function QuotesView() {
     setExpandedQuoteId((prev) => (prev === quoteKey ? null : quoteKey));
   };
 
+  /* -- Fetch available PDFs --------------------------------- */
+  useEffect(() => {
+    console.log("[QuotesView] fetchPDFs effect triggered, token present:", !!token);
+    if (!token) return;
+    const fetchPDFs = async () => {
+      try {
+        const res = await fetch("/api/quote-pdf/list", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log("[QuotesView] PDF list response status:", res.status);
+        if (res.ok) {
+          const data = await res.json();
+          console.log("[QuotesView] PDF list data:", data);
+          if (data.success && Array.isArray(data.pdfs)) {
+            const pdfNumbers = new Set<string>(data.pdfs.map((pdf: { quoteNumber: string }) => pdf.quoteNumber));
+            console.log("[QuotesView] Available PDF quoteNumbers:", [...pdfNumbers]);
+            console.log("[QuotesView] Raw PDF data:", JSON.stringify(data.pdfs.map((p: any) => ({ qn: p.quoteNumber, name: p.nombreArchivo }))));
+            setAvailablePDFs(pdfNumbers);
+          }
+        } else {
+          const errText = await res.text();
+          console.error("[QuotesView] Error fetching PDF list:", res.status, errText);
+        }
+      } catch (err) {
+        console.error("[QuotesView] Error fetching PDF list:", err);
+      }
+    };
+    fetchPDFs();
+  }, [token]);
+
+  // Debug: compare availablePDFs vs displayed quotes
+  useEffect(() => {
+    if (availablePDFs.size > 0 && displayedQuotes.length > 0) {
+      const pdfArr = [...availablePDFs];
+      const quoteNums = displayedQuotes.slice(0, 15).map(q => q.number);
+      console.log("[QuotesView] === PDF MATCH DEBUG ===");
+      console.log("[QuotesView] PDFs in DB:", pdfArr);
+      console.log("[QuotesView] Quote numbers (first 15):", quoteNums);
+      const matches = quoteNums.filter(n => n && availablePDFs.has(n));
+      console.log("[QuotesView] Matches found:", matches.length, matches);
+      if (matches.length === 0) {
+        console.warn("[QuotesView] ⚠️ NO MATCHES! quoteNumbers in DB don't match any quote.number in the list");
+      }
+    }
+  }, [availablePDFs, displayedQuotes]);
+
+  const handleDownloadPDF = async (quoteNumber: string) => {
+    if (!token || !quoteNumber) return;
+    setDownloadingPDF(quoteNumber);
+    try {
+      const res = await fetch(
+        `/api/quote-pdf/download/${encodeURIComponent(quoteNumber)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+      if (!res.ok) throw new Error("PDF no encontrado");
+      const data = await res.json();
+      if (data.success && data.quotePdf?.contenidoBase64) {
+        const link = document.createElement("a");
+        link.href = data.quotePdf.contenidoBase64;
+        link.download = data.quotePdf.nombreArchivo || `Cotizacion_${quoteNumber}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (err) {
+      console.error("Error descargando PDF:", err);
+    } finally {
+      setDownloadingPDF(null);
+    }
+  };
+
   /* -- Sort icon -------------------------------------------- */
   const SortIcon = ({ column }: { column: string }) => {
     const active = sortColumn === column;
@@ -1067,6 +1144,9 @@ function QuotesView() {
                     <span>Transito</span>
                     <SortIcon column="transit" />
                   </th>
+                  <th className="qv-th qv-th--center">
+                    <span>PDF</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -1114,10 +1194,35 @@ function QuotesView() {
                             ? `${quote.transitDays}d`
                             : "---"}
                         </td>
+                        <td className="qv-td qv-td--center" onClick={(e) => e.stopPropagation()}>
+                          {availablePDFs.has(quote.number || "") ? (
+                            <button
+                              className="qv-btn qv-btn--primary"
+                              style={{ fontSize: "11px", padding: "4px 10px", whiteSpace: "nowrap" }}
+                              disabled={downloadingPDF === quote.number}
+                              onClick={() => handleDownloadPDF(quote.number || "")}
+                            >
+                              {downloadingPDF === quote.number ? (
+                                <span className="spinner-border spinner-border-sm" style={{ width: "12px", height: "12px" }} />
+                              ) : (
+                                <>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "4px" }}>
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                  </svg>
+                                  Descargar
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <span style={{ color: "#999", fontSize: "11px" }}>---</span>
+                          )}
+                        </td>
                       </tr>
                       {isExpanded && (
                         <tr className="qv-accordion-row">
-                          <td colSpan={9} className="qv-accordion-cell">
+                          <td colSpan={10} className="qv-accordion-cell">
                             <div className="qv-accordion-content">
                               {/* Route summary */}
                               <div className="qv-route-card">

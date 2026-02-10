@@ -6,7 +6,7 @@ import * as XLSX from "xlsx";
 import Select from "react-select";
 import { Modal, Button } from "react-bootstrap";
 import { PDFTemplateAIR } from "./Pdftemplate/Pdftemplateair";
-import { generatePDF, formatDateForFilename } from "./Pdftemplate/Pdfutils";
+import { generatePDF, generatePDFBase64, formatDateForFilename } from "./Pdftemplate/Pdfutils";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
 import {
@@ -656,6 +656,29 @@ function QuoteAPITester({
     setResponse(null);
 
     try {
+      // Obtener el ID máximo de cotización ANTES de crear la nueva
+      let previousMaxId = 0;
+      try {
+        const preRes = await fetch(
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+            },
+          }
+        );
+        if (preRes.ok) {
+          const preData = await preRes.json();
+          if (Array.isArray(preData)) {
+            previousMaxId = Math.max(0, ...preData.map((q: any) => Number(q.id) || 0));
+          }
+          console.log("[QuoteAIR] ID máximo ANTES de crear:", previousMaxId);
+        }
+      } catch (e) {
+        console.warn("[QuoteAIR] No se pudo obtener cotizaciones previas:", e);
+      }
+
       const payload = getTestPayload();
 
       const res = await fetch("https://api.linbis.com/Quotes/create", {
@@ -673,10 +696,11 @@ function QuoteAPITester({
       }
 
       const data = await res.json();
+      console.log("[QuoteAIR] Respuesta CREATE de Linbis:", JSON.stringify(data));
       setResponse(data);
 
       // Generar PDF después de cotización exitosa
-      await generateQuotePDF(tipoAccion);
+      await generateQuotePDF(tipoAccion, data, previousMaxId);
     } catch (err: any) {
       setError(err.message || "Error desconocido");
     } finally {
@@ -686,6 +710,8 @@ function QuoteAPITester({
 
   const generateQuotePDF = async (
     tipoAccionParam: "cotizacion" | "operacion",
+    apiResponse?: any,
+    previousMaxId?: number,
   ) => {
     try {
       if (!rutaSeleccionada || !tarifaAirFreight) return;
@@ -869,9 +895,84 @@ function QuoteAPITester({
 
       // Generar el PDF
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
+      console.log("[QuoteAIR] pdfElement encontrado:", !!pdfElement);
       if (pdfElement) {
         const filename = `Cotizacion_${user?.username || "Cliente"}_${formatDateForFilename(new Date())}.pdf`;
+        
+        // Generar base64 del PDF para guardarlo en MongoDB
+        console.log("[QuoteAIR] Generando base64...");
+        const pdfBase64 = await generatePDFBase64(pdfElement);
+        console.log("[QuoteAIR] Base64 generado, longitud:", pdfBase64?.length);
+        
+        // Descargar el PDF localmente
         await generatePDF({ filename, element: pdfElement });
+        console.log("[QuoteAIR] PDF descargado localmente");
+
+        // Subir el PDF a MongoDB usando el quoteNumber de Linbis
+        if (pdfBase64) {
+          try {
+            console.log("[QuoteAIR] Buscando cotización recién creada (id mayor a", previousMaxId, ")...");
+            let quoteNumber = "";
+
+            // Esperar 2s y buscar la cotización con id más alto
+            await new Promise(r => setTimeout(r, 2000));
+
+            const linbisRes = await fetch(
+              `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  Accept: "application/json",
+                },
+              }
+            );
+
+            if (linbisRes.ok) {
+              const linbisData = await linbisRes.json();
+              if (Array.isArray(linbisData) && linbisData.length > 0) {
+                // Encontrar la cotización con el id más alto (la más nueva)
+                const newestQuote = linbisData.reduce((max: any, q: any) => 
+                  (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max
+                , linbisData[0]);
+                
+                console.log(`[QuoteAIR] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`);
+                
+                if (Number(newestQuote.id) > (previousMaxId || 0)) {
+                  quoteNumber = newestQuote.number;
+                  console.log(`✅ [QuoteAIR] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`);
+                } else {
+                  console.warn("[QuoteAIR] No se encontró cotización con id mayor a", previousMaxId);
+                }
+              }
+            }
+
+            if (quoteNumber) {
+              const uploadRes = await fetch("/api/quote-pdf/upload", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  quoteNumber,
+                  nombreArchivo: filename,
+                  contenidoBase64: pdfBase64,
+                  tipoServicio: "AIR",
+                  origen: rutaSeleccionada.origin,
+                  destino: rutaSeleccionada.destination,
+                }),
+              });
+              const uploadData = await uploadRes.json();
+              console.log("[QuoteAIR] PDF guardado en MongoDB:", uploadRes.status, uploadData);
+            } else {
+              console.warn("[QuoteAIR] No se pudo detectar cotización nueva, PDF no subido");
+            }
+          } catch (uploadErr) {
+            console.error("Error subiendo PDF a MongoDB:", uploadErr);
+          }
+        } else {
+          console.warn("[QuoteAIR] No se generó base64 del PDF");
+        }
       }
 
       // Limpiar
@@ -899,7 +1000,7 @@ function QuoteAPITester({
             currency: rutaSeleccionada.currency,
             total: total,
             tipoAccion: tipoAccionParam,
-            quoteId: response?.quote?.id,
+            quoteId: (apiResponse || response)?.quote?.id,
           }),
         });
         if (!emailRes.ok) {

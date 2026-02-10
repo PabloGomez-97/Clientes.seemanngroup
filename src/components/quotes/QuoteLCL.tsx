@@ -6,7 +6,7 @@ import Select from "react-select";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesLCL";
 import { Modal, Button } from "react-bootstrap";
 import { PDFTemplateLCL } from "./Pdftemplate/Pdftemplatelcl";
-import { generatePDF, formatDateForFilename } from "./Pdftemplate/Pdfutils";
+import { generatePDF, generatePDFBase64, formatDateForFilename } from "./Pdftemplate/Pdfutils";
 import ReactDOM from "react-dom/client";
 import { PieceAccordionLCL } from "./Handlers/LCL/PieceAccordionLCL.tsx";
 import { useTranslation } from "react-i18next";
@@ -544,6 +544,29 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
     setResponse(null);
 
     try {
+      // Obtener el ID máximo de cotización ANTES de crear la nueva
+      let previousMaxId = 0;
+      try {
+        const preRes = await fetch(
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+            },
+          }
+        );
+        if (preRes.ok) {
+          const preData = await preRes.json();
+          if (Array.isArray(preData)) {
+            previousMaxId = Math.max(0, ...preData.map((q: any) => Number(q.id) || 0));
+          }
+          console.log("[QuoteLCL] ID máximo ANTES de crear:", previousMaxId);
+        }
+      } catch (e) {
+        console.warn("[QuoteLCL] No se pudo obtener cotizaciones previas:", e);
+      }
+
       const payload = getTestPayload();
 
       const res = await fetch("https://api.linbis.com/Quotes/create", {
@@ -561,10 +584,11 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       }
 
       const data = await res.json();
+      console.log("[QuoteLCL] Respuesta CREATE de Linbis:", JSON.stringify(data));
       setResponse(data);
 
       // Generar PDF después de cotización exitosa
-      await generateQuotePDF(tipoAccion);
+      await generateQuotePDF(tipoAccion, data, previousMaxId);
     } catch (err: any) {
       setError(err.message || "Error desconocido");
     } finally {
@@ -574,6 +598,8 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
   const generateQuotePDF = async (
     tipoAccionParam: "cotizacion" | "operacion",
+    apiResponse?: any,
+    previousMaxId?: number,
   ) => {
     try {
       if (!rutaSeleccionada) {
@@ -781,7 +807,77 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
       if (pdfElement) {
         const filename = `Cotizacion_${user?.username || "Cliente"}_${formatDateForFilename(new Date())}.pdf`;
+
+        // Generar base64 del PDF para guardarlo en MongoDB
+        const pdfBase64 = await generatePDFBase64(pdfElement);
+
+        // Descargar el PDF localmente
         await generatePDF({ filename, element: pdfElement });
+
+        // Subir el PDF a MongoDB usando el quoteNumber real de Linbis
+        if (pdfBase64) {
+          try {
+            console.log("[QuoteLCL] Buscando cotización recién creada (id mayor a", previousMaxId, ")...");
+            let quoteNumber = "";
+
+            // Esperar 2s y buscar la cotización con id más alto
+            await new Promise(r => setTimeout(r, 2000));
+
+            const linbisRes = await fetch(
+              `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  Accept: "application/json",
+                },
+              }
+            );
+
+            if (linbisRes.ok) {
+              const linbisData = await linbisRes.json();
+              if (Array.isArray(linbisData) && linbisData.length > 0) {
+                const newestQuote = linbisData.reduce((max: any, q: any) =>
+                  (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max
+                , linbisData[0]);
+
+                console.log(`[QuoteLCL] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`);
+
+                if (Number(newestQuote.id) > (previousMaxId || 0)) {
+                  quoteNumber = newestQuote.number;
+                  console.log(`✅ [QuoteLCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`);
+                } else {
+                  console.warn("[QuoteLCL] No se encontró cotización con id mayor a", previousMaxId);
+                }
+              }
+            }
+
+            if (quoteNumber) {
+              const uploadRes = await fetch("/api/quote-pdf/upload", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${jwtToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  quoteNumber,
+                  nombreArchivo: filename,
+                  contenidoBase64: pdfBase64,
+                  tipoServicio: "LCL",
+                  origen: rutaSeleccionada.pol,
+                  destino: rutaSeleccionada.pod,
+                }),
+              });
+              const uploadData = await uploadRes.json();
+              console.log("[QuoteLCL] PDF guardado en MongoDB:", uploadRes.status, uploadData);
+            } else {
+              console.warn("[QuoteLCL] No se pudo detectar cotización nueva, PDF no subido");
+            }
+          } catch (uploadErr) {
+            console.error("Error subiendo PDF a MongoDB:", uploadErr);
+          }
+        } else {
+          console.warn("[QuoteLCL] No se generó base64 del PDF");
+        }
       }
 
       // Limpiar

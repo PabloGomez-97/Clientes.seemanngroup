@@ -192,6 +192,49 @@ DocumentoSchema.index({ quoteId: 1, usuarioId: 1 });
 const Documento = (mongoose.models.Documento || 
   mongoose.model<IDocumentoDoc>('Documento', DocumentoSchema)) as DocumentoModel;
 
+// ============================================================
+// MODELO DE PDF DE COTIZACIONES
+// ============================================================
+
+interface IQuotePDF {
+  quoteNumber: string;
+  nombreArchivo: string;
+  tamanoBytes: number;
+  contenidoBase64: string;
+  tipoServicio: 'AIR' | 'FCL' | 'LCL';
+  origen: string;
+  destino: string;
+  usuarioId: string;
+  subidoPor: string;
+}
+
+interface IQuotePDFDoc extends IQuotePDF, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type QuotePDFModel = mongoose.Model<IQuotePDFDoc>;
+
+const QuotePDFSchema = new mongoose.Schema<IQuotePDFDoc>(
+  {
+    quoteNumber: { type: String, required: true, index: true },
+    nombreArchivo: { type: String, required: true },
+    tamanoBytes: { type: Number, required: true },
+    contenidoBase64: { type: String, required: true },
+    tipoServicio: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL'] },
+    origen: { type: String, default: '' },
+    destino: { type: String, default: '' },
+    usuarioId: { type: String, required: true, index: true },
+    subidoPor: { type: String, required: true },
+  },
+  { timestamps: true }
+);
+
+QuotePDFSchema.index({ quoteNumber: 1, usuarioId: 1 }, { unique: true });
+
+const QuotePDF = (mongoose.models.QuotePDF || 
+  mongoose.model<IQuotePDFDoc>('QuotePDF', QuotePDFSchema)) as QuotePDFModel;
+
   // ============================================================
 // CONSTANTES PARA DOCUMENTOS
 // ============================================================
@@ -1612,6 +1655,199 @@ Sistema de Cotizaciones Seemann Group
   } catch (err) {
     console.error('Error en /api/send-operation-email:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ============================================================
+// RUTAS DE PDF DE COTIZACIONES
+// ============================================================
+
+// POST /api/quote-pdf/upload - Subir PDF de cotización
+app.post('/api/quote-pdf/upload', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+
+    if (!currentUser || !currentUser.sub || !currentUser.username) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { quoteNumber, nombreArchivo, contenidoBase64, tipoServicio, origen, destino } = req.body;
+
+    if (!quoteNumber || !nombreArchivo || !contenidoBase64 || !tipoServicio) {
+      return res.status(400).json({
+        error: 'Faltan campos requeridos: quoteNumber, nombreArchivo, contenidoBase64, tipoServicio'
+      });
+    }
+
+    if (!['AIR', 'FCL', 'LCL'].includes(tipoServicio)) {
+      return res.status(400).json({ error: 'tipoServicio debe ser AIR, FCL o LCL' });
+    }
+
+    // Calcular tamaño del base64
+    const base64Content = contenidoBase64.includes('base64,')
+      ? contenidoBase64.split('base64,')[1]
+      : contenidoBase64;
+    const padding = (base64Content.match(/=/g) || []).length;
+    const fileSize = (base64Content.length * 3) / 4 - padding;
+
+    if (fileSize > 10 * 1024 * 1024) {
+      return res.status(400).json({ error: 'El PDF excede el tamaño máximo de 10MB' });
+    }
+
+    // Si ya existe un PDF para esta cotización, actualizarlo
+    const existente = await QuotePDF.findOne({
+      quoteNumber: String(quoteNumber),
+      usuarioId: currentUser.username
+    });
+
+    if (existente) {
+      existente.contenidoBase64 = contenidoBase64;
+      existente.nombreArchivo = nombreArchivo;
+      existente.tamanoBytes = fileSize;
+      existente.tipoServicio = tipoServicio;
+      existente.origen = origen || '';
+      existente.destino = destino || '';
+      await existente.save();
+
+      console.log(`[quote-pdf] PDF actualizado para cotización ${quoteNumber}`);
+      return res.status(200).json({
+        success: true,
+        message: 'PDF de cotización actualizado',
+        quotePdf: {
+          id: existente._id,
+          quoteNumber: existente.quoteNumber,
+          nombreArchivo: existente.nombreArchivo,
+          tamanoMB: (existente.tamanoBytes / 1024 / 1024).toFixed(2),
+        }
+      });
+    }
+
+    const nuevoQuotePDF = await QuotePDF.create({
+      quoteNumber: String(quoteNumber),
+      nombreArchivo: String(nombreArchivo),
+      tamanoBytes: fileSize,
+      contenidoBase64,
+      tipoServicio,
+      origen: origen || '',
+      destino: destino || '',
+      usuarioId: currentUser.username,
+      subidoPor: currentUser.sub,
+    });
+
+    console.log(`[quote-pdf] PDF subido para cotización ${quoteNumber}: ${nuevoQuotePDF._id}`);
+
+    return res.status(201).json({
+      success: true,
+      message: 'PDF de cotización guardado',
+      quotePdf: {
+        id: nuevoQuotePDF._id,
+        quoteNumber: nuevoQuotePDF.quoteNumber,
+        nombreArchivo: nuevoQuotePDF.nombreArchivo,
+        tamanoMB: (nuevoQuotePDF.tamanoBytes / 1024 / 1024).toFixed(2),
+      }
+    });
+  } catch (error: any) {
+    console.error('[quote-pdf] Error al subir:', error);
+    return res.status(500).json({ error: 'Error interno al guardar PDF de cotización' });
+  }
+});
+
+// GET /api/quote-pdf/list - Obtener lista de PDFs disponibles para el usuario
+app.get('/api/quote-pdf/list', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+
+    if (!currentUser || !currentUser.username) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const pdfs = await QuotePDF.find({ 
+      usuarioId: currentUser.username,
+      quoteNumber: { $exists: true, $nin: ['', null] }
+    })
+      .select('-contenidoBase64')
+      .sort({ createdAt: -1 });
+
+    const pdfList = pdfs.map(pdf => ({
+      id: pdf._id,
+      quoteNumber: pdf.quoteNumber,
+      nombreArchivo: pdf.nombreArchivo,
+      tipoServicio: pdf.tipoServicio,
+      origen: pdf.origen,
+      destino: pdf.destino,
+      tamanoMB: (pdf.tamanoBytes / 1024 / 1024).toFixed(2),
+      fechaCreacion: pdf.createdAt,
+    }));
+
+    console.log(`[quote-pdf] Listando PDFs para ${currentUser.username}: ${pdfs.length} encontrados`);
+    console.log(`[quote-pdf] quoteNumbers en DB:`, pdfList.map(p => p.quoteNumber));
+
+    return res.json({
+      success: true,
+      pdfs: pdfList,
+    });
+  } catch (error: any) {
+    console.error('[quote-pdf] Error al listar:', error);
+    return res.status(500).json({ error: 'Error interno al listar PDFs' });
+  }
+});
+
+// DELETE /api/quote-pdf/cleanup - Eliminar todos los PDFs del usuario (para limpieza)
+app.delete('/api/quote-pdf/cleanup', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    if (!currentUser || !currentUser.username) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+    const result = await QuotePDF.deleteMany({ usuarioId: currentUser.username });
+    console.log(`[quote-pdf] Limpieza: ${result.deletedCount} PDFs eliminados para ${currentUser.username}`);
+    return res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (error: any) {
+    console.error('[quote-pdf] Error en limpieza:', error);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+// GET /api/quote-pdf/download/:quoteNumber - Descargar PDF de cotización
+app.get('/api/quote-pdf/download/:quoteNumber', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+
+    if (!currentUser || !currentUser.username) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { quoteNumber } = req.params;
+
+    if (!quoteNumber) {
+      return res.status(400).json({ error: 'quoteNumber es requerido' });
+    }
+
+    const quotePdf = await QuotePDF.findOne({
+      quoteNumber: decodeURIComponent(quoteNumber),
+      usuarioId: currentUser.username
+    });
+
+    if (!quotePdf) {
+      return res.status(404).json({ error: 'PDF de cotización no encontrado' });
+    }
+
+    console.log(`[quote-pdf] Descargando PDF cotización ${quoteNumber}`);
+
+    return res.json({
+      success: true,
+      quotePdf: {
+        id: quotePdf._id,
+        quoteNumber: quotePdf.quoteNumber,
+        nombreArchivo: quotePdf.nombreArchivo,
+        tipoServicio: quotePdf.tipoServicio,
+        contenidoBase64: quotePdf.contenidoBase64,
+        tamanoMB: (quotePdf.tamanoBytes / 1024 / 1024).toFixed(2),
+      }
+    });
+  } catch (error: any) {
+    console.error('[quote-pdf] Error al descargar:', error);
+    return res.status(500).json({ error: 'Error interno al descargar PDF' });
   }
 });
 
