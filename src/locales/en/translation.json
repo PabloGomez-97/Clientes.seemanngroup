@@ -5,15 +5,15 @@
       "subtitle": "Why we treat every shipment as if it means the world.",
       "button": "Discover our promises"
     },
-    "company":{
-        "title": "Our Company",
-        "subtitle": "Seemann Group in numbers",
-        "stats":{
-          "experience": "Years of experience",
-          "clients": "Satisfied clients",
-          "employees": "Dedicated employees",
-          "countries": "Countries served"
-        }
+    "company": {
+      "title": "Our Company",
+      "subtitle": "Seemann Group in numbers",
+      "stats": {
+        "experience": "Years of experience",
+        "clients": "Satisfied clients",
+        "employees": "Dedicated employees",
+        "countries": "Countries served"
+      }
     },
     "slide2": {
       "title": "Better planning with real-time data",
@@ -202,7 +202,7 @@
       }
     }
   },
-  "QuoteAIR":{
+  "QuoteAIR": {
     "title": "Air Quote",
     "subtitle": "Generate quotes for air shipments",
     "ruta": "Select Route",
@@ -285,9 +285,10 @@
     "entendido": "Understood",
     "cotiperso": "Customized Quote Required",
     "rutaanalisis": "Case-by-case for this lane—please share cargo details for a spot assessment.",
-    "comunicacioneje": "Please contact your commercial representative to obtain a personalized quotation according to your cargo specifications."
+    "comunicacioneje": "Please contact your commercial representative to obtain a personalized quotation according to your cargo specifications.",
+    "oversize": "The length and/or width exceeds 300 cm. This cargo is considered oversize and must be quoted on a case-by-case basis."
   },
-  "Pieceaccordionair":{
+  "Pieceaccordionair": {
     "tipopaquete": "Package Type",
     "seleccionartipo": "Select type",
     "descripcion": "Description",
@@ -299,7 +300,7 @@
     "noapilable": "Non-stackable",
     "noapilableTooltip": "Cargo that cannot have anything stacked on top of it"
   },
-  "Quotelcl":{
+  "Quotelcl": {
     "title": "LCL Quote",
     "subtitle": "Generate quotes for LCL shipments",
     "ruta": "Select Route",
@@ -353,7 +354,7 @@
     "noapilable": "Non-stackable:",
     "selectpuerto": "Select POL"
   },
-  "Pieceaccordionlcl":{
+  "Pieceaccordionlcl": {
     "pieza": "Piece",
     "eliminarpieza": "Remove Piece",
     "tipodepaquete": "Package Type",

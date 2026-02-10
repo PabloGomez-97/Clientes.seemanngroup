@@ -8,7 +8,7 @@
     "company": {
       "title": "Nuestra compañía",
       "subtitle": "Seemann Group en números",
-      "stats":{
+      "stats": {
         "experience": "Años de experiencia",
         "clients": "Clientes satisfechos",
         "employees": "Empleados dedicados",
@@ -201,7 +201,7 @@
       }
     }
   },
-  "QuoteAIR":{
+  "QuoteAIR": {
     "title": "Cotizador Aéreo",
     "subtitle": "Genera cotizaciones para envíos aéreos",
     "ruta": "Selecciona Ruta",
@@ -242,14 +242,14 @@
     "revision": "Revisión de Piezas y Costos",
     "generador": "Genera tu cotización u operación",
     "resumen": "Resumen del cargamento",
-    "volumenpieza": "Volumen por pieza:",
-    "volumenvolpieza": "Peso volumétrico por pieza:",
-    "volumentotal1": "Volumen total:",
-    "pesototal1": "Peso total:",
-    "pesovoltotal": "Peso volumétrico total:",
-    "pesochargeable": "Peso Chargeable:",
+    "volumenpieza": "Volumen por pieza",
+    "volumenvolpieza": "Peso volumétrico por pieza",
+    "volumentotal1": "Volumen total",
+    "pesototal1": "Peso total",
+    "pesovoltotal": "Peso volumétrico total",
+    "pesochargeable": "Peso Chargeable",
     "chargeable": "Chargeable",
-    "cobropor": "Se cobra por el mayor entre:",
+    "cobropor": "Se cobra por el mayor entre",
     "pesovolumetrico": "Peso volumétrico",
     "resumencargos": "Resumen de Cargos",
     "opcional": "Opcionales",
@@ -285,10 +285,10 @@
     "entendido": "Entendido",
     "cotiperso": "Cotización Personalizada Requerida",
     "rutaanalisis": "Esta ruta requiere análisis caso a caso.",
-    "comunicacioneje": "Por favor, contacta a tu ejecutivo comercial para obtener una cotización personalizada que se ajuste a las características específicas de tu envío."
-
+    "comunicacioneje": "Por favor, contacta a tu ejecutivo comercial para obtener una cotización personalizada que se ajuste a las características específicas de tu envío.",
+    "oversize": "El largo y/o ancho supera los 300 cm. Esta carga se considera oversize y debe cotizarse caso a caso."
   },
-  "Pieceaccordionair":{
+  "Pieceaccordionair": {
     "tipopaquete": "Tipo de Paquete",
     "seleccionartipo": "Seleccionar tipo",
     "descripcion": "Descripción",
@@ -297,10 +297,10 @@
     "ancho": "Ancho (cm)",
     "alto": "Alto (cm)",
     "peso": "Peso (kg)",
-    "noapilable": "No apilable",
+    "noapilable": "No Apilable",
     "noapilableTooltip": "Nada debe estar encima de la pieza"
   },
-  "Quotelcl":{
+  "Quotelcl": {
     "title": "Cotizador LCL",
     "subtitle": "Genera cotizaciones para envíos LCL",
     "ruta": "Selecciona Ruta",
@@ -355,7 +355,7 @@
     "segurocargo": "Debes ingresar el valor de la mercadería para calcular el seguro",
     "selectpuerto": "Selecciona puerto"
   },
-  "Pieceaccordionlcl":{
+  "Pieceaccordionlcl": {
     "pieza": "Pieza",
     "eliminarpieza": "Eliminar Pieza",
     "tipodepaquete": "Tipo de Paquete",

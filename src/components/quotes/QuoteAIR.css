@@ -1,0 +1,341 @@
+/* src/components/quotes/QuoteAIR.css */
+
+/* Variables locales que mapean a las globales */
+:root {
+  --qa-primary: var(--primary-color, #ff6200);
+  --qa-secondary: var(--secondary-color, #1a1a1a);
+  --qa-bg-light: #f8f9fa;
+  --qa-border-color: #e0e0e0;
+  --qa-text-primary: #1a1a1a;
+  --qa-text-secondary: #6c757d;
+  --qa-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --qa-radius: 8px; /* Radio de borde suave y moderno */
+  --qa-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --qa-transition: all 0.2s ease-in-out;
+}
+
+.qa-container {
+  font-family: var(--qa-font-family);
+  color: var(--qa-text-primary);
+  background-color: #fff;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Header Sections */
+.qa-section-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--qa-border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qa-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--qa-text-primary);
+  margin: 0;
+}
+
+.qa-subtitle {
+  font-size: 0.9rem;
+  color: var(--qa-text-secondary);
+  font-weight: 400;
+}
+
+/* Cards (Minimalist Containers) */
+.qa-card {
+  background: #fff;
+  border: 1px solid var(--qa-border-color);
+  border-radius: var(--qa-radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: var(--qa-transition);
+}
+
+.qa-card:hover {
+  border-color: #d0d0d0; /* Sutil hover state */
+  box-shadow: var(--qa-shadow-sm);
+}
+
+.qa-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.qa-card-header h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Table Style for Routes */
+.qa-table-container {
+  overflow-x: auto;
+}
+
+.qa-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.qa-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  color: var(--qa-text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--qa-border-color);
+  background-color: var(--qa-bg-light);
+}
+
+.qa-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--qa-border-color);
+  vertical-align: middle;
+}
+
+.qa-table tr.selected {
+  background-color: rgba(255, 98, 0, 0.05); /* Very light highlight using --primary-color manually converted approx */
+  border-left: 3px solid var(--qa-primary);
+}
+
+.qa-table tr:hover:not(.selected) {
+  background-color: #fafafa;
+  cursor: pointer;
+}
+
+/* Inputs & Form Elements */
+.qa-form-group {
+  margin-bottom: 1rem;
+}
+
+.qa-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--qa-text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.qa-input, .qa-select, .qa-textarea {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  font-family: var(--qa-font-family);
+  font-size: 0.9rem;
+  border: 1px solid var(--qa-border-color);
+  border-radius: 4px; /* Slightly sharper than cards */
+  background-color: #fff;
+  transition: var(--qa-transition);
+}
+
+.qa-input:focus, .qa-select:focus, .qa-textarea:focus {
+  outline: none;
+  border-color: var(--qa-primary);
+  box-shadow: 0 0 0 2px rgba(255, 98, 0, 0.1); /* Primary color shadow */
+}
+
+/* Custom Checkbox/Switch */
+.qa-switch-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: var(--qa-bg-light);
+  border-radius: var(--qa-radius);
+  border: 1px solid var(--qa-border-color);
+  cursor: pointer;
+}
+
+.qa-switch-input {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: var(--qa-primary);
+  cursor: pointer;
+}
+
+/* Buttons */
+.qa-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: var(--qa-transition);
+  border: 1px solid transparent;
+  gap: 0.5rem;
+}
+
+.qa-btn-primary {
+  background-color: var(--qa-primary);
+  color: #fff;
+}
+
+.qa-btn-primary:hover {
+  background-color: #e55a00; /* Darker shade of primary */
+}
+
+.qa-btn-primary:disabled {
+  background-color: #ffccaa;
+  cursor: not-allowed;
+}
+
+.qa-btn-outline {
+  background-color: transparent;
+  border-color: var(--qa-border-color);
+  color: var(--qa-text-primary);
+}
+
+.qa-btn-outline:hover {
+  background-color: var(--qa-bg-light);
+  border-color: var(--qa-text-secondary);
+}
+
+.qa-btn-sm {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+}
+
+/* Accordion (Pieces) */
+.qa-accordion {
+  border: 1px solid var(--qa-border-color);
+  border-radius: var(--qa-radius);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.qa-accordion-header {
+  background-color: #fff;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+}
+
+.qa-accordion-header:hover {
+  background-color: #fafafa;
+}
+
+.qa-accordion-header.open {
+  border-bottom-color: var(--qa-border-color);
+  background-color: var(--qa-bg-light);
+}
+
+.qa-accordion-content {
+  padding: 1.5rem;
+  background-color: #fff;
+}
+
+/* Footer / Sticky Summary */
+.qa-footer {
+  position: sticky;
+  bottom: 0;
+  background-color: #fff;
+  border-top: 1px solid var(--qa-border-color);
+  padding: 1.5rem 2rem;
+  margin-top: 2rem;
+  box-shadow: 0 -4px 10px rgba(0,0,0,0.05); /* Slight lift */
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qa-price-display {
+  display: flex;
+  flex-direction: column;
+}
+
+.qa-price-label {
+  font-size: 0.8rem;
+  color: var(--qa-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.qa-price-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--qa-primary);
+}
+
+.qa-validity-date {
+  font-size: 0.8rem;
+  color: var(--qa-text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Utility Helpers */
+.qa-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.qa-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.qa-flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qa-text-muted {
+  color: var(--qa-text-secondary);
+  font-size: 0.85rem;
+}
+
+.qa-badge {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  font-size: 0.75em;
+  font-weight: 600;
+  border-radius: 4px;
+  background-color: var(--qa-bg-light);
+  color: var(--qa-text-secondary);
+  border: 1px solid var(--qa-border-color);
+}
+
+.qa-badge-primary {
+  background-color: rgba(255, 98, 0, 0.1);
+  color: var(--qa-primary);
+  border-color: rgba(255, 98, 0, 0.2);
+}
+
+/* Alert Boxes Minimalist */
+.qa-alert {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.qa-alert-warning {
+  background-color: #fff8e1;
+  color: #856404;
+  border: 1px solid #ffeeba;
+}
+
+.qa-alert-danger {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}

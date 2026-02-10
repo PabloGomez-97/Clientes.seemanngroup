@@ -68,59 +68,59 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
   };
 
   return (
-    <div className="card mb-3">
+    <div className={`qa-accordion ${isOpen ? "open" : ""}`}>
       <div
-        className="card-header d-flex justify-content-between align-items-center"
-        style={{ cursor: "pointer" }}
+        className={`qa-accordion-header ${isOpen ? "open" : ""}`}
+        onClick={onToggle}
       >
-        <div onClick={onToggle} className="flex-grow-1">
+        <div style={{ flexGrow: 1 }}>
           <strong>
             {t("QuoteAIR.pieza")} {index + 1}
           </strong>
           {piece.noApilable && (
-            <span className="badge bg-warning text-dark ms-2">
+            <span className="qa-badge qa-badge-primary ms-2">
               {t("QuoteAIR.noapilable1")}
             </span>
           )}
           {piece.weight > 0 && (
-            <span className="ms-3 text-muted">
+            <span className="qa-text-muted ms-3">
               ({piece.weight} kg | {piece.length}x{piece.width}x{piece.height}{" "}
               cm)
             </span>
           )}
         </div>
         <div className="d-flex align-items-center gap-2">
-          <button
-            type="button"
-            className="btn btn-sm btn-link text-decoration-none"
-            onClick={onToggle}
-          >
-            <i className={`bi bi-chevron-${isOpen ? "up" : "down"}`}></i>
-          </button>
           {canRemove && (
             <button
               type="button"
-              className="btn btn-sm btn-link text-danger position-absolute"
-              style={{ top: 8, right: 45, zIndex: 2 }}
+              className="qa-btn qa-btn-sm qa-btn-outline"
+              style={{ color: "#dc3545", borderColor: "transparent" }}
               title="Eliminar pieza"
-              onClick={onRemove}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
+              }}
             >
-              <i className="bi bi-trash" style={{ fontSize: "1.1rem" }}></i>
+              <i className="bi bi-trash"></i>
             </button>
           )}
+          <i
+            className={`bi bi-chevron-${isOpen ? "up" : "down"}`}
+            style={{ color: "var(--qa-text-secondary)" }}
+          ></i>
         </div>
       </div>
 
       {isOpen && (
-        <div className="card-body">
+        <div className="qa-accordion-content">
           <div className="row g-3">
             {/* Package Type */}
-            <div className="col-md-6">
-              <label className="form-label">
+            <div className="col-md-6 mb-3">
+              <label className="qa-label">
                 {t("Pieceaccordionair.tipopaquete")}
               </label>
               <select
-                className="form-select"
+                className="qa-select"
                 value={piece.packageType}
                 onChange={(e) => onUpdate("packageType", e.target.value)}
               >
@@ -136,13 +136,13 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
             </div>
 
             {/* Description */}
-            <div className="col-md-6">
-              <label className="form-label">
+            <div className="col-md-6 mb-3">
+              <label className="qa-label">
                 {t("Pieceaccordionair.descripcion")}
               </label>
               <input
                 type="text"
-                className="form-control"
+                className="qa-input"
                 value={piece.description}
                 onChange={(e) => onUpdate("description", e.target.value)}
                 placeholder={t("Pieceaccordionair.descripcionPlaceholder")}
@@ -150,97 +150,99 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
             </div>
 
             {/* Dimensiones */}
-            <div className="col-md-3">
-              <label className="form-label">
-                {t("Pieceaccordionair.largo")}
-              </label>
-              <input
-                type="number"
-                className="form-control"
-                value={piece.length || ""}
-                onChange={(e) =>
-                  handleDimensionChange("length", Number(e.target.value))
-                }
-                min="0"
-                step="0.01"
-              />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">
-                {t("Pieceaccordionair.ancho")}
-              </label>
-              <input
-                type="number"
-                className="form-control"
-                value={piece.width || ""}
-                onChange={(e) =>
-                  handleDimensionChange("width", Number(e.target.value))
-                }
-                min="0"
-                step="0.01"
-              />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">
-                {t("Pieceaccordionair.alto")}
-              </label>
-              <input
-                type="number"
-                className="form-control"
-                value={piece.height || ""}
-                onChange={(e) =>
-                  handleDimensionChange("height", Number(e.target.value))
-                }
-                min="0"
-                step="0.01"
-              />
-            </div>
-
-            <div className="col-md-3">
-              <label className="form-label">
-                {t("Pieceaccordionair.peso")}
-              </label>
-              <input
-                type="number"
-                className="form-control"
-                value={piece.weight || ""}
-                onChange={(e) => handleWeightChange(Number(e.target.value))}
-                min="0"
-                step="0.01"
-              />
+            <div className="col-12">
+              <div className="qa-grid-4">
+                <div>
+                  <label className="qa-label">
+                    {t("Pieceaccordionair.largo")}
+                  </label>
+                  <input
+                    type="number"
+                    className="qa-input"
+                    value={piece.length || ""}
+                    onChange={(e) =>
+                      handleDimensionChange("length", Number(e.target.value))
+                    }
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="qa-label">
+                    {t("Pieceaccordionair.ancho")}
+                  </label>
+                  <input
+                    type="number"
+                    className="qa-input"
+                    value={piece.width || ""}
+                    onChange={(e) =>
+                      handleDimensionChange("width", Number(e.target.value))
+                    }
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="qa-label">
+                    {t("Pieceaccordionair.alto")}
+                  </label>
+                  <input
+                    type="number"
+                    className="qa-input"
+                    value={piece.height || ""}
+                    onChange={(e) =>
+                      handleDimensionChange("height", Number(e.target.value))
+                    }
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+                <div>
+                  <label className="qa-label">
+                    {t("Pieceaccordionair.peso")}
+                  </label>
+                  <input
+                    type="number"
+                    className="qa-input"
+                    value={piece.weight || ""}
+                    onChange={(e) => handleWeightChange(Number(e.target.value))}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Checkbox No Apilable */}
-            <div className="col-12">
-              <div className="form-check">
+            <div className="col-12 mt-3">
+              <div className="qa-switch-container" style={{ width: "fit-content", padding: "0.5rem 1rem" }}>
                 <input
-                  className="form-check-input"
+                  className="qa-switch-input"
                   type="checkbox"
                   id={`noApilable-${piece.id}`}
                   checked={piece.noApilable || false}
                   onChange={(e) => onUpdate("noApilable", e.target.checked)}
                 />
                 <label
-                  className="form-check-label"
+                  className="qa-label mb-0 ms-2"
                   htmlFor={`noApilable-${piece.id}`}
+                  style={{ cursor: "pointer" }}
                 >
                   {t("Pieceaccordionair.noapilable")}
-                  <OverlayTrigger
-                    placement="top"
-                    overlay={
-                      <Tooltip>
-                        {t("Pieceaccordionair.noapilableTooltip")}
-                      </Tooltip>
-                    }
-                  >
-                    <i
-                      className="bi bi-info-circle text-danger ms-1"
-                      style={{ cursor: "pointer" }}
-                    ></i>
-                  </OverlayTrigger>
                 </label>
+                <OverlayTrigger
+                  placement="top"
+                  overlay={
+                    <Tooltip>
+                      {t("Pieceaccordionair.noapilableTooltip")}
+                    </Tooltip>
+                  }
+                >
+                  <i
+                    className="bi bi-info-circle text-muted ms-2"
+                    style={{ cursor: "pointer", fontSize: "0.9rem" }}
+                  ></i>
+                </OverlayTrigger>
               </div>
             </div>
           </div>

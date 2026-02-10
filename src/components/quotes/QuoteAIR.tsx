@@ -25,6 +25,7 @@ import {
   type PieceData,
 } from "./Handlers/Air/HandlerQuoteAir";
 import { PieceAccordion } from "./Handlers/Air/PieceAccordion";
+import "./QuoteAIR.css";
 
 // Props para pre-selección desde ItineraryFinder
 
@@ -185,7 +186,7 @@ function QuoteAPITester({
         console.error("Error al cargar datos desde Google Sheets:", err);
         setErrorRutas(
           "No se pudieron cargar las tarifas desde Google Sheets. " +
-            "Por favor, verifica tu conexión a internet o contacta al administrador.",
+          "Por favor, verifica tu conexión a internet o contacta al administrador.",
         );
         setLoadingRutas(false);
       }
@@ -442,7 +443,7 @@ function QuoteAPITester({
 
     setOversizeError(
       hasOversize
-        ? "El largo y/o ancho supera los 300 cm. Esta carga se considera oversize y debe cotizarse caso a caso."
+        ? t("QuoteAIR.oversize")
         : null,
     );
     setHeightError(
@@ -1602,102 +1603,68 @@ function QuoteAPITester({
   // ============================================================================
 
   return (
-    <div className="container-fluid py-4">
-      <div className="row mb-4">
-        <div className="col">
-          <h2 className="mb-1">{t("QuoteAIR.title")}</h2>
-          <p className="text-muted mb-0">{t("QuoteAIR.subtitle")}</p>
+    <div className="qa-container">
+      <div className="qa-section-header">
+        <div>
+          <h2 className="qa-title">{t("QuoteAIR.title")}</h2>
+          <p className="qa-subtitle">{t("QuoteAIR.subtitle")}</p>
         </div>
       </div>
 
-      {/* ============================================================================ *f/}
-      {/* SECCIÓN 1: SELECCIÓN DE RUTA - CON ACORDEÓN */}
+      {/* ============================================================================ */}
+      {/* SECCIÓN 1: SELECCIÓN DE RUTA */}
       {/* ============================================================================ */}
 
-      <div className="card shadow-sm mb-4">
-        {/* Header clickeable */}
+      <div className="qa-card">
         <div
-          className="card-header bg-white border-0 p-4"
-          style={{
-            cursor: "pointer",
-            borderRadius: openSection === 1 ? "12px 12px 0 0" : "12px",
-            transition: "all 0.3s ease",
-          }}
+          className="qa-card-header"
           onClick={() => handleSectionToggle(1)}
         >
-          <div className="d-flex align-items-center justify-content-between">
-            <div className="d-flex align-items-center">
-              <div
-                className="rounded-circle me-3 d-flex align-items-center justify-content-center"
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  backgroundColor: rutaSeleccionada
-                    ? "#d4edda"
-                    : "var(--primary-hover)",
-                  color: rutaSeleccionada ? "#155724" : "white",
-                  fontSize: "1.1rem",
-                  fontWeight: 600,
-                  transition: "all 0.3s ease",
-                }}
-              >
-                {rutaSeleccionada ? "✓" : "1"}
-              </div>
-              <div>
-                <h5
-                  className="mb-0"
-                  style={{
-                    fontSize: "1.25rem",
-                    fontWeight: 600,
-                    color: "#1a1a1a",
-                  }}
-                >
-                  {t("QuoteAIR.ruta")}
-                </h5>
-                {rutaSeleccionada && (
-                  <small
-                    className="text-muted d-block mt-1"
-                    style={{ fontSize: "0.85rem" }}
-                  >
-                    {rutaSeleccionada.origin} → {rutaSeleccionada.destination}
-                  </small>
-                )}
-              </div>
-            </div>
-            <i
-              className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
+          <div className="d-flex align-items-center gap-3">
+            <div
+              className="d-flex align-items-center justify-content-center bg-light rounded-circle"
               style={{
-                fontSize: "1.2rem",
-                color: "#6c757d",
-                transition: "transform 0.3s ease",
+                width: "32px",
+                height: "32px",
+                color: rutaSeleccionada ? "var(--qa-primary)" : "var(--qa-text-secondary)",
+                fontWeight: "bold",
+                border: rutaSeleccionada ? "1px solid var(--qa-primary)" : "1px solid var(--qa-border-color)"
               }}
-            ></i>
+            >
+              {rutaSeleccionada ? "✓" : "1"}
+            </div>
+            <div>
+              <h3>{t("QuoteAIR.ruta")}</h3>
+              {rutaSeleccionada && (
+                <small className="text-muted">
+                  {rutaSeleccionada.origin} <i className="bi bi-arrow-right mx-1"></i> {rutaSeleccionada.destination}
+                </small>
+              )}
+            </div>
           </div>
+          <i
+            className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
+            style={{ color: "var(--qa-text-secondary)" }}
+          ></i>
         </div>
 
-        {/* Contenido colapsable */}
         {openSection === 1 && (
-          <div className="card-body p-4">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h5 className="card-title mb-0">{t("QuoteAIR.ruta")}</h5>
+          <div className="mt-4">
+            <div className="d-flex justify-content-end mb-3">
               <button
                 onClick={refrescarTarifas}
                 disabled={loadingRutas}
-                className="btn btn-sm btn-outline-primary"
-                title="Actualizar tarifas desde Google Sheets"
+                className="qa-btn qa-btn-sm qa-btn-outline"
+                title="Actualizar tarifas"
               >
                 {loadingRutas ? (
                   <>
-                    <span
-                      className="spinner-border spinner-border-sm me-1"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
+                    <span className="spinner-border spinner-border-sm me-2"></span>
                     {t("QuoteAIR.actualizando")}
                   </>
                 ) : (
                   <>
-                    <i className="bi bi-arrow-clockwise me-1"></i>
+                    <i className="bi bi-arrow-clockwise"></i>
                     {t("QuoteAIR.actualizaciontarifa")}
                   </>
                 )}
@@ -1705,25 +1672,16 @@ function QuoteAPITester({
             </div>
 
             {lastUpdate && !loadingRutas && !errorRutas && (
-              <div
-                className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center justify-content-between"
-                style={{ fontSize: "0.85rem" }}
-              >
-                <span className="text-muted">
-                  <i className="bi bi-clock-history me-1"></i>
+              <div className="d-flex justify-content-between align-items-center mb-4 text-muted small">
+                <span>
+                  <i className="bi bi-clock me-1"></i>
                   {t("QuoteAIR.actualizacion")}{" "}
                   {lastUpdate.toLocaleTimeString("es-CL", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
-                <span
-                  className="badge rounded-pill"
-                  style={{
-                    backgroundColor: "var(--primary-hover)",
-                    color: "white",
-                  }}
-                >
+                <span className="qa-badge">
                   {rutas.length} {t("QuoteAIR.rutasdisponibles")}
                 </span>
               </div>
@@ -1731,43 +1689,38 @@ function QuoteAPITester({
 
             {loadingRutas ? (
               <div className="text-center py-5">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">
-                    {t("QuoteAIR.cargando")}
-                  </span>
-                </div>
+                <div className="spinner-border text-primary" role="status"></div>
                 <p className="mt-3 text-muted">{t("QuoteAIR.cargandorutas")}</p>
               </div>
             ) : errorRutas ? (
-              <div className="alert alert-danger"> {errorRutas}</div>
+              <div className="qa-alert qa-alert-danger">
+                <i className="bi bi-exclamation-circle-fill mt-1"></i>
+                {errorRutas}
+              </div>
             ) : (
               <>
-                {/* Selectores de Origen y Destino */}
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
-                    <label className="form-label fw-semibold">
-                      {t("QuoteAIR.Origen")}
-                    </label>
+                    <label className="qa-label">{t("QuoteAIR.Origen")}</label>
                     <Select
                       value={originSeleccionado}
                       onChange={setOriginSeleccionado}
                       options={opcionesOrigin}
                       placeholder={t("QuoteAIR.seleccionaorigen")}
                       isClearable
+                      classNamePrefix="qa-react-select"
                       styles={{
                         control: (base) => ({
                           ...base,
-                          borderColor: "#dee2e6",
-                          "&:hover": { borderColor: "#1a1a1a" },
+                          borderColor: "#e0e0e0",
+                          boxShadow: "none",
+                          "&:hover": { borderColor: "#b0b0b0" },
                         }),
                       }}
                     />
                   </div>
-
                   <div className="col-md-6">
-                    <label className="form-label fw-semibold">
-                      {t("QuoteAIR.Destino")}
-                    </label>
+                    <label className="qa-label">{t("QuoteAIR.Destino")}</label>
                     <Select
                       value={destinationSeleccionado}
                       onChange={setDestinationSeleccionado}
@@ -1782,27 +1735,21 @@ function QuoteAPITester({
                       styles={{
                         control: (base) => ({
                           ...base,
-                          borderColor: "#dee2e6",
-                          "&:hover": { borderColor: "#1a1a1a" },
+                          borderColor: "#e0e0e0",
+                          boxShadow: "none",
+                          "&:hover": { borderColor: "#b0b0b0" },
                         }),
                       }}
                     />
                   </div>
                 </div>
 
-                {/* Rutas Disponibles */}
                 {originSeleccionado && destinationSeleccionado && (
                   <div className="mt-4">
-                    {/* Header mejorado */}
                     <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h6 className="mb-0 d-flex align-items-center gap-2">
-                        <i className="bi bi-airplane"></i>
-                        {t("QuoteAIR.rutasdisponibles1")}
-                        <span className="badge bg-light text-dark border">
-                          {rutasFiltradas.length}
-                        </span>
+                      <h6 className="mb-0 fw-bold">
+                        {t("QuoteAIR.rutasdisponibles1")} ({rutasFiltradas.length})
                       </h6>
-
                       {rutasFiltradas.length > 0 && (
                         <small className="text-muted">
                           {t("QuoteAIR.seleccionamejor")}
@@ -1811,71 +1758,25 @@ function QuoteAPITester({
                     </div>
 
                     {rutasFiltradas.length === 0 ? (
-                      <div className="alert alert-light border-0 shadow-sm">
-                        <div className="d-flex align-items-center gap-3">
-                          <i className="bi bi-search text-muted fs-3"></i>
-                          <div>
-                            <p className="mb-1 fw-semibold">
-                              {t("QuoteAIR.norutas")}
-                            </p>
-                            <small className="text-muted">
-                              {t("QuotesAIR.intenta")}
-                            </small>
-                          </div>
-                        </div>
+                      <div className="text-center py-4 bg-light rounded text-muted">
+                        <i className="bi bi-search fs-3 d-block mb-2"></i>
+                        <p className="mb-1">{t("QuoteAIR.norutas")}</p>
+                        <small>{t("QuotesAIR.intenta")}</small>
                       </div>
                     ) : (
-                      <div className="table-responsive">
-                        <table
-                          className="table table-hover align-middle mb-0"
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <thead className="table-light">
+                      <div className="qa-table-container">
+                        <table className="qa-table">
+                          <thead>
                             <tr>
-                              <th style={{ width: "4%" }}></th>
-                              <th style={{ width: "18%" }}>Carrier</th>
-                              <th
-                                className="text-center"
-                                style={{ width: "10%" }}
-                              >
-                                1-99kg
-                              </th>
-                              <th
-                                className="text-center"
-                                style={{ width: "10%" }}
-                              >
-                                100-299kg
-                              </th>
-                              <th
-                                className="text-center"
-                                style={{ width: "10%" }}
-                              >
-                                300-499kg
-                              </th>
-                              <th
-                                className="text-center"
-                                style={{ width: "10%" }}
-                              >
-                                500-999kg
-                              </th>
-                              <th
-                                className="text-center"
-                                style={{ width: "10%" }}
-                              >
-                                +1000kg
-                              </th>
-                              <th
-                                className="text-center"
-                                style={{ width: "14%" }}
-                              >
-                                {t("QuoteAIR.salidas")}
-                              </th>
-                              <th
-                                className="text-center"
-                                style={{ width: "10%" }}
-                              >
-                                Válido Hasta
-                              </th>
+                              <th style={{ width: "50px" }}></th>
+                              <th>Carrier</th>
+                              <th className="text-center">1-99kg</th>
+                              <th className="text-center">100-299kg</th>
+                              <th className="text-center">300-499kg</th>
+                              <th className="text-center">500-999kg</th>
+                              <th className="text-center">+1000kg</th>
+                              <th className="text-center">{t("QuoteAIR.salidas")}</th>
+                              <th className="text-center">Válido Hasta</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1885,6 +1786,7 @@ function QuoteAPITester({
                               const precioKg300 = extractPrice(ruta.kg300);
                               const precioKg500 = extractPrice(ruta.kg500);
                               const precioKg1000 = extractPrice(ruta.kg1000);
+                              const isSelected = rutaSeleccionada?.id === ruta.id;
 
                               return (
                                 <tr
@@ -1896,230 +1798,47 @@ function QuoteAPITester({
                                     }
                                     setRutaSeleccionada(ruta);
                                   }}
-                                  className={
-                                    rutaSeleccionada?.id === ruta.id
-                                      ? "table-success"
-                                      : ""
-                                  }
-                                  style={{
-                                    cursor: "pointer",
-                                    transition: "all 0.2s ease",
-                                  }}
+                                  className={isSelected ? "selected" : ""}
                                 >
-                                  {/* Indicador de selección y badges */}
                                   <td className="text-center">
-                                    {rutaSeleccionada?.id === ruta.id ? (
-                                      <i className="bi bi-check-circle-fill text-success fs-5"></i>
+                                    {isSelected ? (
+                                      <i className="bi bi-check-circle-fill text-primary"></i>
                                     ) : (
-                                      <div
-                                        style={{
-                                          width: "20px",
-                                          height: "20px",
-                                        }}
-                                      ></div>
+                                      <i className="bi bi-circle text-muted"></i>
                                     )}
-
-                                    {/* Badges verticales */}
-                                    <div className="d-flex flex-column gap-1 mt-2">
-                                      {index === bestPriceRouteIndex && (
-                                        <span
-                                          className="badge bg-warning text-dark"
-                                          style={{
-                                            fontSize: "0.6rem",
-                                            padding: "0.15rem 0.3rem",
-                                          }}
-                                          title="Mejor precio"
-                                        >
-                                          <i className="bi bi-star-fill"></i>
-                                        </span>
-                                      )}
-                                      {index === fastestRouteIndex && (
-                                        <span
-                                          className="badge bg-success"
-                                          style={{
-                                            fontSize: "0.6rem",
-                                            padding: "0.15rem 0.3rem",
-                                          }}
-                                          title="Menor tiempo"
-                                        >
-                                          <i className="bi bi-lightning-fill"></i>
-                                        </span>
-                                      )}
-                                    </div>
+                                    {index === bestPriceRouteIndex && (
+                                      <div className="mt-1"><span className="qa-badge qa-badge-primary" title="Mejor precio"><i className="bi bi-star-fill"></i></span></div>
+                                    )}
                                   </td>
-
-                                  {/* Carrier con logo */}
                                   <td>
                                     <div className="d-flex align-items-center gap-2">
-                                      {ruta.carrier &&
-                                      ruta.carrier !== "Por Confirmar" ? (
-                                        <div
-                                          className="rounded bg-white border d-flex align-items-center justify-content-center flex-shrink-0"
-                                          style={{
-                                            width: "35px",
-                                            height: "35px",
-                                            overflow: "hidden",
-                                            padding: "4px",
-                                          }}
-                                        >
-                                          <img
-                                            src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
-                                            alt={ruta.carrier}
-                                            style={{
-                                              maxWidth: "100%",
-                                              maxHeight: "100%",
-                                              objectFit: "contain",
-                                            }}
-                                            onError={(e) => {
-                                              e.currentTarget.style.display =
-                                                "none";
-                                              if (
-                                                e.currentTarget.parentElement
-                                              ) {
-                                                e.currentTarget.parentElement.innerHTML = `
-                                              <i class="bi bi-box-seam text-muted"></i>
-                                            `;
-                                              }
-                                            }}
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div
-                                          className="rounded bg-light d-flex align-items-center justify-content-center flex-shrink-0"
-                                          style={{
-                                            width: "35px",
-                                            height: "35px",
-                                          }}
-                                        >
-                                          <i className="bi bi-box-seam text-muted"></i>
-                                        </div>
-                                      )}
-                                      <span
-                                        className="fw-semibold text-truncate"
-                                        style={{ fontSize: "0.8rem" }}
-                                      >
-                                        {ruta.carrier ||
-                                          t("QuoteAIR.porconfirmar")}
-                                      </span>
+                                      {ruta.carrier && ruta.carrier !== "Por Confirmar" ? (
+                                        <img
+                                          src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
+                                          alt={ruta.carrier}
+                                          style={{ width: "24px", height: "24px", objectFit: "contain" }}
+                                          onError={(e) => { e.currentTarget.style.display = "none"; }}
+                                        />
+                                      ) : <i className="bi bi-airplane"></i>}
+                                      <span className="fw-medium">{ruta.carrier || t("QuoteAIR.porconfirmar")}</span>
                                     </div>
                                   </td>
-
-                                  {/* Precios por rango (CON 15% incluido) */}
-                                  <td className="text-center">
-                                    {precioKg45 > 0 ? (
-                                      <div>
-                                        <div className="fw-semibold text-success">
-                                          {ruta.currency}{" "}
-                                          {(precioKg45 * 1.15).toFixed(2)}
+                                  {[precioKg45, precioKg100, precioKg300, precioKg500, precioKg1000].map((price, idx) => (
+                                    <td key={idx} className="text-center">
+                                      {price > 0 ? (
+                                        <div>
+                                          <div className="fw-bold fs-7">
+                                            {ruta.currency} {(price * 1.15).toFixed(2)}
+                                          </div>
                                         </div>
-                                        <small
-                                          className="text-muted"
-                                          style={{ fontSize: "0.7rem" }}
-                                        >
-                                          /kg
-                                        </small>
-                                      </div>
-                                    ) : (
-                                      <span className="text-muted">—</span>
-                                    )}
+                                      ) : <span className="text-muted">—</span>}
+                                    </td>
+                                  ))}
+                                  <td className="text-center text-muted small">
+                                    {ruta.frequency || "—"}
                                   </td>
-
-                                  <td className="text-center">
-                                    {precioKg100 > 0 ? (
-                                      <div>
-                                        <div className="fw-semibold text-success">
-                                          {ruta.currency}{" "}
-                                          {(precioKg100 * 1.15).toFixed(2)}
-                                        </div>
-                                        <small
-                                          className="text-muted"
-                                          style={{ fontSize: "0.7rem" }}
-                                        >
-                                          /kg
-                                        </small>
-                                      </div>
-                                    ) : (
-                                      <span className="text-muted">—</span>
-                                    )}
-                                  </td>
-
-                                  <td className="text-center">
-                                    {precioKg300 > 0 ? (
-                                      <div>
-                                        <div className="fw-semibold text-success">
-                                          {ruta.currency}{" "}
-                                          {(precioKg300 * 1.15).toFixed(2)}
-                                        </div>
-                                        <small
-                                          className="text-muted"
-                                          style={{ fontSize: "0.7rem" }}
-                                        >
-                                          /kg
-                                        </small>
-                                      </div>
-                                    ) : (
-                                      <span className="text-muted">—</span>
-                                    )}
-                                  </td>
-
-                                  <td className="text-center">
-                                    {precioKg500 > 0 ? (
-                                      <div>
-                                        <div className="fw-semibold text-success">
-                                          {ruta.currency}{" "}
-                                          {(precioKg500 * 1.15).toFixed(2)}
-                                        </div>
-                                        <small
-                                          className="text-muted"
-                                          style={{ fontSize: "0.7rem" }}
-                                        >
-                                          /kg
-                                        </small>
-                                      </div>
-                                    ) : (
-                                      <span className="text-muted">—</span>
-                                    )}
-                                  </td>
-
-                                  <td className="text-center">
-                                    {precioKg1000 > 0 ? (
-                                      <div>
-                                        <div className="fw-semibold text-success">
-                                          {ruta.currency}{" "}
-                                          {(precioKg1000 * 1.15).toFixed(2)}
-                                        </div>
-                                        <small
-                                          className="text-muted"
-                                          style={{ fontSize: "0.7rem" }}
-                                        >
-                                          /kg
-                                        </small>
-                                      </div>
-                                    ) : (
-                                      <span className="text-muted">—</span>
-                                    )}
-                                  </td>
-
-                                  {/* Detalles adicionales */}
-                                  <td className="text-center">
-                                    <div style={{ fontSize: "0.75rem" }}>
-                                      {ruta.frequency && (
-                                        <div className="text-muted">
-                                          <i className="bi bi-calendar-check"></i>{" "}
-                                          {ruta.frequency}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-
-                                  {/* Válido Hasta */}
-                                  <td className="text-center">
-                                    {ruta.validUntil && (
-                                      <div style={{ fontSize: "0.75rem" }}>
-                                        <i className="bi bi-calendar-event"></i>{" "}
-                                        {ruta.validUntil}
-                                      </div>
-                                    )}
+                                  <td className="text-center text-muted small">
+                                    {ruta.validUntil || "—"}
                                   </td>
                                 </tr>
                               );
@@ -2141,445 +1860,221 @@ function QuoteAPITester({
       {/* ============================================================================ */}
 
       {rutaSeleccionada && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body p-4">
-            {/* Header de la sección */}
-            <div className="mb-4 pb-3 border-bottom">
-              <h5
-                className="card-title mb-1"
-                style={{
-                  fontSize: "1.25rem",
-                  fontWeight: 600,
-                  color: "#1a1a1a",
-                }}
-              >
-                {t("QuoteAIR.datoscargamento")}
-              </h5>
-              <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-                {t("QuoteAIR.configuredetalles")}
-              </p>
-            </div>
-
-            {/* Switch Overall - Diseño mejorado */}
-            <div
-              className="p-3 mb-4"
-              style={{
-                backgroundColor: "#f8f9fa",
-                borderRadius: "8px",
-                border: "1px solid #e9ecef",
-              }}
-            >
-              <div className="form-check form-switch">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="overallSwitch"
-                  checked={overallDimsAndWeight}
-                  onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
-                  style={{
-                    cursor: "pointer",
-                    width: "3rem",
-                    height: "1.5rem",
-                  }}
-                />
-                <label
-                  className="form-check-label"
-                  htmlFor="overallSwitch"
-                  style={{ cursor: "pointer" }}
-                >
-                  <div className="d-flex align-items-center">
-                    <i
-                      className="bi bi-calculator me-2"
-                      style={{ color: "#1a1a1a" }}
-                    ></i>
-                    <div>
-                      <strong style={{ color: "#1a1a1a" }}>
-                        {t("QuoteAIR.overall")}
-                      </strong>
-                      <small
-                        className="d-block text-muted mt-1"
-                        style={{ fontSize: "0.85rem" }}
-                      >
-                        {t("QuoteAIR.ingresomanual")}
-                      </small>
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            {/* Formulario */}
-            <div className="row g-3">
-              {/* Incoterm - Rediseñado */}
-              <div className="col-12 mb-3">
-                <label
-                  className="form-label mb-2"
-                  style={{
-                    fontSize: "0.95rem",
-                    fontWeight: 500,
-                    color: "#1a1a1a",
-                  }}
-                >
-                  <i
-                    className="bi bi-flag me-2"
-                    style={{ color: "#1a1a1a" }}
-                  ></i>
-                  Incoterm
-                  <span
-                    className="badge bg-light text-dark ms-2"
-                    style={{ fontSize: "0.7rem", fontWeight: 400 }}
-                  >
-                    {t("QuoteAIR.obligatorio")}
-                  </span>
-                </label>
-                <select
-                  className="form-select"
-                  value={incoterm}
-                  onChange={(e) =>
-                    setIncoterm(e.target.value as "EXW" | "FCA" | "")
-                  }
-                  style={{
-                    maxWidth: 400,
-                    borderRadius: "8px",
-                    border: "1px solid #ced4da",
-                    padding: "0.625rem 0.75rem",
-                    fontSize: "0.95rem",
-                    transition: "all 0.2s ease",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "#1a1a1a")}
-                  onBlur={(e) => (e.target.style.borderColor = "#ced4da")}
-                >
-                  <option value="">{t("QuoteAIR.incoterm")}</option>
-                  <option value="EXW">Ex Works [EXW]</option>
-                  <option value="FCA">Free Carrier [FCA]</option>
-                </select>
-              </div>
-
-              {/* Campos condicionales solo para EXW */}
-              {incoterm === "EXW" && (
-                <div className="col-12">
-                  <div
-                    className="p-3 mb-3"
-                    style={{
-                      backgroundColor: "#f8f9fa",
-                      borderRadius: "8px",
-                      borderLeft: "3px solid var(--primary-hover)",
-                    }}
-                  >
-                    <p
-                      className="mb-3"
-                      style={{ fontSize: "0.9rem", color: "#495057" }}
-                    >
-                      <i className="bi bi-info-circle me-2"></i>
-                      {t("QuoteAIR.completar")}
-                    </p>
-
-                    <div className="row g-3">
-                      <div className="col-md-6">
-                        <label
-                          className="form-label"
-                          style={{ fontSize: "0.9rem", fontWeight: 500 }}
-                        >
-                          <i
-                            className="bi bi-box-arrow-up-right me-2"
-                            style={{ color: "#1a1a1a" }}
-                          ></i>
-                          {t("QuoteAIR.pickup")}
-                        </label>
-                        <textarea
-                          className="form-control"
-                          value={pickupFromAddress}
-                          onChange={(e) => setPickupFromAddress(e.target.value)}
-                          placeholder="Ingrese dirección de recogida"
-                          rows={3}
-                          style={{
-                            borderRadius: "8px",
-                            fontSize: "0.9rem",
-                            transition: "all 0.2s ease",
-                          }}
-                        />
-                      </div>
-
-                      <div className="col-md-6">
-                        <label
-                          className="form-label"
-                          style={{ fontSize: "0.9rem", fontWeight: 500 }}
-                        >
-                          <i
-                            className="bi bi-box-arrow-in-down me-2"
-                            style={{ color: "#1a1a1a" }}
-                          ></i>
-                          {t("QuoteAIR.delivery")}
-                        </label>
-                        <textarea
-                          className="form-control"
-                          value={deliveryToAddress}
-                          onChange={(e) => setDeliveryToAddress(e.target.value)}
-                          placeholder="Ingrese dirección de entrega"
-                          rows={3}
-                          style={{
-                            borderRadius: "8px",
-                            fontSize: "0.9rem",
-                            transition: "all 0.2s ease",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Sección de Piezas - Solo en modo normal */}
-              {!overallDimsAndWeight && (
-                <div className="col-12">
-                  <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                    <h6
-                      className="mb-0"
-                      style={{
-                        fontSize: "1.05rem",
-                        fontWeight: 500,
-                        color: "#1a1a1a",
-                      }}
-                    >
-                      <i
-                        className="bi bi-boxes me-2"
-                        style={{ color: "#1a1a1a" }}
-                      ></i>
-                      {t("QuoteAIR.detalles")}
-                    </h6>
-                    <span
-                      className="badge bg-light text-dark"
-                      style={{ fontSize: "0.8rem" }}
-                    >
-                      {piecesData.length}{" "}
-                      {piecesData.length === 1
-                        ? t("QuoteAIR.pieza")
-                        : t("QuoteAIR.piezas")}
-                    </span>
-                  </div>
-
-                  <div className="mb-3">
-                    {piecesData.map((piece, index) => (
-                      <PieceAccordion
-                        key={piece.id}
-                        piece={piece}
-                        index={index}
-                        isOpen={openAccordions.includes(piece.id)}
-                        onToggle={() => handleToggleAccordion(piece.id)}
-                        onRemove={() => handleRemovePiece(piece.id)}
-                        onUpdate={(field, value) =>
-                          handleUpdatePiece(piece.id, field, value)
-                        }
-                        packageTypes={packageTypeOptions.map((opt) => ({
-                          id: String(opt.id),
-                          name: opt.name,
-                        }))}
-                        canRemove={piecesData.length > 1}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="d-flex justify-content-end">
-                    <button
-                      type="button"
-                      className="btn"
-                      style={{
-                        backgroundColor: "var(--primary-hover)",
-                        borderColor: "#ffffff",
-                        color: "white",
-                        borderRadius: "8px",
-                        padding: "0.5rem 1.25rem",
-                        fontSize: "0.9rem",
-                        fontWeight: 500,
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#e55a00")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor =
-                          "var(--primary-hover)")
-                      }
-                      onClick={handleAddPiece}
-                    >
-                      <i className="bi bi-plus-circle me-2"></i>
-                      {t("QuoteAIR.agregarpieza")}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Información sobre restricciones de dimensiones */}
-              {!overallDimsAndWeight && (
-                <div className="col-12">
-                  <div className="mt-2">
-                    <small className="text-muted">
-                      <i className="bi bi-info-circle me-1"></i>
-                      {t("QuoteAIR.info1")}
-                    </small>
-                  </div>
-                  <div className="mt-2">
-                    <small className="text-muted">
-                      <i className="bi bi-info-circle me-1"></i>
-                      {t("QuoteAIR.info2")}
-                    </small>
-                  </div>
-                </div>
-              )}
-
-              {/* Alertas de restricciones de transporte aéreo */}
-              {!overallDimsAndWeight && (
-                <div className="col-8">
-                  {oversizeError && (
-                    <div
-                      className="alert alert-warning d-flex align-items-center mb-3"
-                      style={{ fontSize: "0.9rem" }}
-                    >
-                      <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                      <div>
-                        <strong>{t("QuoteAIR.cargaoversize")}:</strong>{" "}
-                        {oversizeError}
-                      </div>
-                    </div>
-                  )}
-
-                  {heightError && (
-                    <div
-                      className="alert alert-danger d-flex align-items-center mb-3"
-                      style={{ fontSize: "0.9rem" }}
-                    >
-                      <i className="bi bi-x-circle-fill me-2"></i>
-                      <div>
-                        <strong>{t("QuoteAIR.noaptaparaereo")}:</strong>{" "}
-                        {heightError}
-                      </div>
-                    </div>
-                  )}
-
-                  {cargoFlightWarning && (
-                    <div
-                      className="alert alert-info d-flex align-items-center mb-3"
-                      style={{ fontSize: "0.9rem" }}
-                    >
-                      <i className="bi bi-airplane-fill me-2"></i>
-                      <div>
-                        <strong>
-                          {t("QuoteAIR.vueloscarguerosrequeridos")}:
-                        </strong>{" "}
-                        {cargoFlightWarning}
-                      </div>
-                    </div>
-                  )}
-
-                  {lowHeightWarning && (
-                    <div
-                      className="alert alert-info d-flex align-items-center mb-3"
-                      style={{ fontSize: "0.9rem" }}
-                    >
-                      <i className="bi bi-telephone-fill me-2"></i>
-                      <div>
-                        <strong>{t("QuoteAIR.verificacion")}</strong>{" "}
-                        {lowHeightWarning}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Modo Overall */}
-              {overallDimsAndWeight && (
-                <div className="col-12">
-                  <div
-                    className="p-3"
-                    style={{
-                      backgroundColor: "#f8f9fa",
-                      borderRadius: "8px",
-                      borderLeft: "3px solid var(--primary-hover)",
-                    }}
-                  >
-                    <div className="row g-3">
-                      <div className="col-md-6">
-                        <label
-                          className="form-label"
-                          style={{ fontSize: "0.9rem", fontWeight: 500 }}
-                        >
-                          <i
-                            className="bi bi-box-seam me-2"
-                            style={{ color: "#6c757d" }}
-                          ></i>
-                          {t("QuoteAIR.pesototal")}
-                        </label>
-                        <input
-                          type="number"
-                          className={`form-control ${weightError ? "is-invalid" : ""}`}
-                          value={manualWeight}
-                          onChange={(e) => {
-                            const newManualWeight = Number(e.target.value);
-                            setManualWeight(newManualWeight);
-                            if (newManualWeight > 2000) {
-                              setWeightError(
-                                "El peso total no puede exceder 2000 kg",
-                              );
-                            } else {
-                              setWeightError(null);
-                            }
-                          }}
-                          min="0"
-                          step="0.01"
-                          style={{
-                            borderRadius: "8px",
-                            fontSize: "0.95rem",
-                          }}
-                        />
-                        <small
-                          className="text-muted d-block mt-1"
-                          style={{ fontSize: "0.8rem" }}
-                        >
-                          {t("QuoteAIR.descripcionpeso")}
-                        </small>
-                        {weightError && (
-                          <div className="invalid-feedback">{weightError}</div>
-                        )}
-                      </div>
-
-                      <div className="col-md-6">
-                        <label
-                          className="form-label"
-                          style={{ fontSize: "0.9rem", fontWeight: 500 }}
-                        >
-                          <i
-                            className="bi bi-rulers me-2"
-                            style={{ color: "#6c757d" }}
-                          ></i>
-                          {t("QuoteAIR.volumentotal")}
-                        </label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={manualVolume}
-                          onChange={(e) =>
-                            setManualVolume(Number(e.target.value))
-                          }
-                          min="0"
-                          step="0.0001"
-                          style={{
-                            borderRadius: "8px",
-                            fontSize: "0.95rem",
-                          }}
-                        />
-                        <small
-                          className="text-muted d-block mt-1"
-                          style={{ fontSize: "0.8rem" }}
-                        >
-                          {t("QuoteAIR.descripcionvolumen")}
-                        </small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+        <div className="qa-card">
+          <div className="qa-card-header">
+            <div>
+              <h3>{t("QuoteAIR.datoscargamento")}</h3>
+              <p className="qa-subtitle">{t("QuoteAIR.configuredetalles")}</p>
             </div>
           </div>
+
+          <div className="mb-4">
+            <div className="qa-switch-container">
+              <input
+                className="qa-switch-input"
+                type="checkbox"
+                id="overallSwitch"
+                checked={overallDimsAndWeight}
+                onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
+              />
+              <label
+                className="qa-label mb-0"
+                htmlFor="overallSwitch"
+                style={{ cursor: "pointer", flexGrow: 1 }}
+              >
+                <div className="d-flex align-items-center">
+                  <i className="bi bi-calculator me-2" style={{ fontSize: "1.2rem" }}></i>
+                  <div>
+                    <span className="d-block text-dark">{t("QuoteAIR.overall")}</span>
+                    <small className="text-muted fw-normal">
+                      {t("QuoteAIR.ingresomanual")}
+                    </small>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div className="qa-form-group mb-4">
+            <label className="qa-label">
+              <i className="bi bi-flag me-2"></i>
+              Incoterm <span className="text-danger">*</span>
+            </label>
+            <select
+              className="qa-select"
+              value={incoterm}
+              onChange={(e) => setIncoterm(e.target.value as "EXW" | "FCA" | "")}
+              style={{ maxWidth: "300px" }}
+            >
+              <option value="">{t("QuoteAIR.incoterm")}</option>
+              <option value="EXW">Ex Works [EXW]</option>
+              <option value="FCA">Free Carrier [FCA]</option>
+            </select>
+          </div>
+
+          {incoterm === "EXW" && (
+            <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
+              <div>
+                <label className="qa-label">
+                  <i className="bi bi-geo-alt me-1"></i>
+                  {t("QuoteAIR.pickup")}
+                </label>
+                <textarea
+                  className="qa-input"
+                  value={pickupFromAddress}
+                  onChange={(e) => setPickupFromAddress(e.target.value)}
+                  placeholder="Ingrese dirección de recogida"
+                  rows={2}
+                />
+              </div>
+              <div>
+                <label className="qa-label">
+                  <i className="bi bi-geo-alt me-1"></i>
+                  {t("QuoteAIR.delivery")}
+                </label>
+                <textarea
+                  className="qa-input"
+                  value={deliveryToAddress}
+                  onChange={(e) => setDeliveryToAddress(e.target.value)}
+                  placeholder="Ingrese dirección de entrega"
+                  rows={2}
+                />
+              </div>
+            </div>
+          )}
+
+          {!overallDimsAndWeight && (
+            <div>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4 className="fs-6 fw-bold mb-0">
+                  <i className="bi bi-boxes me-2"></i>
+                  {t("QuoteAIR.detalles")}
+                </h4>
+                <span className="qa-badge">
+                  {piecesData.length} {piecesData.length === 1 ? t("QuoteAIR.pieza") : t("QuoteAIR.piezas")}
+                </span>
+              </div>
+
+              <div className="mb-3">
+                {piecesData.map((piece, index) => (
+                  <PieceAccordion
+                    key={piece.id}
+                    piece={piece}
+                    index={index}
+                    isOpen={openAccordions.includes(piece.id)}
+                    onToggle={() => handleToggleAccordion(piece.id)}
+                    onRemove={() => handleRemovePiece(piece.id)}
+                    onUpdate={(field, value) =>
+                      handleUpdatePiece(piece.id, field, value)
+                    }
+                    packageTypes={packageTypeOptions.map((opt) => ({
+                      id: String(opt.id),
+                      name: opt.name,
+                    }))}
+                    canRemove={piecesData.length > 1}
+                  />
+                ))}
+              </div>
+
+              <div className="d-flex justify-content-end">
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-primary"
+                  onClick={handleAddPiece}
+                >
+                  <i className="bi bi-plus-lg"></i>
+                  {t("QuoteAIR.agregarpieza")}
+                </button>
+              </div>
+
+              {/* Alertas de restricciones */}
+              <div className="mt-4">
+                {oversizeError && (
+                  <div className="qa-alert qa-alert-warning">
+                    <i className="bi bi-exclamation-triangle-fill"></i>
+                    <div>
+                      <strong>{t("QuoteAIR.cargaoversize")}:</strong> {oversizeError}
+                    </div>
+                  </div>
+                )}
+                {heightError && (
+                  <div className="qa-alert qa-alert-danger">
+                    <i className="bi bi-x-circle-fill"></i>
+                    <div>
+                      <strong>{t("QuoteAIR.noaptaparaereo")}:</strong> {heightError}
+                    </div>
+                  </div>
+                )}
+                {cargoFlightWarning && (
+                  <div className="qa-alert qa-alert-warning">
+                    <i className="bi bi-airplane-fill"></i>
+                    <div>
+                      <strong>{t("QuoteAIR.vueloscarguerosrequeridos")}:</strong> {cargoFlightWarning}
+                    </div>
+                  </div>
+                )}
+                {lowHeightWarning && (
+                  <div className="qa-alert qa-alert-warning">
+                    <i className="bi bi-info-circle-fill"></i>
+                    <div>
+                      <strong>{t("QuoteAIR.verificacion")}</strong> {lowHeightWarning}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {overallDimsAndWeight && (
+            <div className="qa-grid-2 mt-3 p-3 bg-light rounded border">
+              <div>
+                <label className="qa-label">
+                  <i className="bi bi-box-seam me-1"></i>
+                  {t("QuoteAIR.pesototal")}
+                </label>
+                <input
+                  type="number"
+                  className={`qa-input ${weightError ? "is-invalid" : ""}`} // Keep is-invalid for helper text if needed, or style it
+                  value={manualWeight}
+                  onChange={(e) => {
+                    const newManualWeight = Number(e.target.value);
+                    setManualWeight(newManualWeight);
+                    if (newManualWeight > 2000) {
+                      setWeightError("El peso total no puede exceder 2000 kg");
+                    } else {
+                      setWeightError(null);
+                    }
+                  }}
+                  min="0"
+                  step="0.01"
+                />
+                <small className="text-muted d-block mt-1">
+                  {t("QuoteAIR.descripcionpeso")}
+                </small>
+                {weightError && (
+                  <div className="text-danger small mt-1">{weightError}</div>
+                )}
+              </div>
+
+              <div>
+                <label className="qa-label">
+                  <i className="bi bi-rulers me-1"></i>
+                  {t("QuoteAIR.volumentotal")}
+                </label>
+                <input
+                  type="number"
+                  className="qa-input"
+                  value={manualVolume}
+                  onChange={(e) => setManualVolume(Number(e.target.value))}
+                  min="0"
+                  step="0.0001"
+                />
+                <small className="text-muted d-block mt-1">
+                  {t("QuoteAIR.descripcionvolumen")}
+                </small>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2588,585 +2083,321 @@ function QuoteAPITester({
       {/* ============================================================================ */}
 
       {rutaSeleccionada && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body">
-            <h5 className="card-title mb-4">{t("QuoteAIR.revision")}</h5>
+        <div className="qa-card">
+          <div className="qa-card-header">
+            <h3>{t("QuoteAIR.revision")}</h3>
+          </div>
 
-            {/* Cálculos Automáticos */}
-            <div className="mt-4 p-3 border rounded bg-light">
-              <h6
-                className="mb-3"
-                style={{
-                  fontSize: "1.05rem",
-                  fontWeight: 500,
-                  color: "#1a1a1a",
-                }}
-              >
-                <i
-                  className="bi bi-box-seam me-2"
-                  style={{ color: "#1a1a1a" }}
-                ></i>
-                {t("QuoteAIR.resumen")}
-              </h6>
-              <div className="row g-3">
-                {!overallDimsAndWeight ? (
-                  (() => {
-                    const {
-                      totalRealWeight: totalWeight,
-                      totalVolumetricWeight: totalVolumeWeight,
-                    } = calculateTotals();
-                    const totalVolume = piecesData.reduce(
-                      (sum, piece) => sum + piece.totalVolume,
-                      0,
-                    );
-                    return (
-                      <>
-                        <div className="col-md-4">
-                          <strong>{t("QuoteAIR.volumenpieza")}</strong>{" "}
-                          {(piecesData[0]?.volume ?? 0).toFixed(4)} m³
-                        </div>
-                        <div className="col-md-4">
-                          <strong>{t("QuoteAIR.volumenvolpieza")}</strong>{" "}
-                          {(piecesData[0]?.volumeWeight ?? 0).toFixed(2)} kg
-                        </div>
-                        <div className="col-md-4">
-                          <strong>{t("QuoteAIR.volumentotal1")}</strong>{" "}
-                          {totalVolume.toFixed(4)} m³
-                        </div>
-                        <div className="col-md-4">
-                          <strong>{t("QuoteAIR.pesototal1")}</strong>{" "}
-                          {totalWeight.toFixed(2)} kg
-                        </div>
-                        <div className="col-md-4">
-                          <strong>{t("QuoteAIR.pesovoltotal")}</strong>{" "}
-                          {totalVolumeWeight.toFixed(2)} kg
-                        </div>
-                        <div className="col-md-4">
-                          <strong className="" style={{ color: "#1a1a1a" }}>
-                            {t("QuoteAIR.pesochargeable")}
-                          </strong>{" "}
-                          <span
-                            className="fw-bold"
-                            style={{ color: "#1a1a1a" }}
-                          >
-                            {pesoChargeable.toFixed(2)} kg
-                          </span>
-                        </div>
-                      </>
-                    );
-                  })()
-                ) : (
-                  <>
-                    <div className="col-md-6">
-                      <strong>{t("QuoteAIR.volumentotal1")}</strong>{" "}
-                      {manualVolume.toFixed(4)} m³
+          <div className="qa-grid-2 mb-4">
+            {/* Resumen de Pesos/Volumen */}
+            <div className="p-3 bg-light rounded border">
+              <h6 className="fw-bold mb-3"><i className="bi bi-box-seam me-2"></i>{t("QuoteAIR.resumen")}</h6>
+              {!overallDimsAndWeight ? (
+                (() => {
+                  const {
+                    totalRealWeight: totalWeight,
+                    totalVolumetricWeight: totalVolumeWeight,
+                  } = calculateTotals();
+                  const totalVolume = piecesData.reduce(
+                    (sum, piece) => sum + piece.totalVolume,
+                    0,
+                  );
+                  return (
+                    <div className="row g-2 small">
+                      <div className="col-6 text-muted">{t("QuoteAIR.volumenpieza")}:</div>
+                      <div className="col-6 text-end fw-bold">{(piecesData[0]?.volume ?? 0).toFixed(4)} m³</div>
+
+                      <div className="col-6 text-muted">{t("QuoteAIR.volumenvolpieza")}:</div>
+                      <div className="col-6 text-end fw-bold">{(piecesData[0]?.volumeWeight ?? 0).toFixed(2)} kg</div>
+
+                      <div className="col-12 border-top my-2"></div>
+
+                      <div className="col-6 text-muted">{t("QuoteAIR.volumentotal1")}:</div>
+                      <div className="col-6 text-end fw-bold">{totalVolume.toFixed(4)} m³</div>
+
+                      <div className="col-6 text-muted">{t("QuoteAIR.pesototal1")}:</div>
+                      <div className="col-6 text-end fw-bold">{totalWeight.toFixed(2)} kg</div>
+
+                      <div className="col-6 text-muted">{t("QuoteAIR.pesovoltotal")}:</div>
+                      <div className="col-6 text-end fw-bold">{totalVolumeWeight.toFixed(2)} kg</div>
+
+                      <div className="col-6 text-dark fw-bold">{t("QuoteAIR.pesochargeable")}:</div>
+                      <div className="col-6 text-end fw-bolder text-primary fs-6">{pesoChargeable.toFixed(2)} kg</div>
                     </div>
-                    <div className="col-md-6">
-                      <strong>{t("QuoteAIR.pesototal1")}</strong>{" "}
-                      {manualWeight.toFixed(2)} kg
-                    </div>
-                    <div className="col-12">
-                      <strong className="" style={{ color: "#1a1a1a" }}>
-                        {t("QuoteAIR.chargeable")}
-                      </strong>{" "}
-                      <span className="fw-bold" style={{ color: "#1a1a1a" }}>
-                        {pesoChargeable.toFixed(2)} kg
-                      </span>
-                      <small className="text-muted d-block mt-1">
-                        ({t("QuoteAIR.cobropor")} {manualWeight.toFixed(2)} kg
-                        vs {(manualVolume * 167).toFixed(2)} kg [
-                        {t("QuoteAIR.pesovolumetrico")} ={" "}
-                        {manualVolume.toFixed(2)} m³ × 167])
-                      </small>
-                    </div>
-                  </>
-                )}
-              </div>
+                  );
+                })()
+              ) : (
+                <div className="row g-2 small">
+                  <div className="col-6 text-muted">{t("QuoteAIR.volumentotal1")}:</div>
+                  <div className="col-6 text-end fw-bold">{manualVolume.toFixed(4)} m³</div>
 
-              {/* Versión compacta */}
-              {tarifaAirFreight && (
-                <div className="mt-3 pt-3 border-top">
-                  <h6 className="mb-3">
-                    <i
-                      className="bi bi-cash-coin me-2"
-                      style={{ color: "#1a1a1a" }}
-                    ></i>
-                    {t("QuoteAIR.resumencargos")}
-                  </h6>
+                  <div className="col-6 text-muted">{t("QuoteAIR.pesototal1")}:</div>
+                  <div className="col-6 text-end fw-bold">{manualWeight.toFixed(2)} kg</div>
 
-                  <div className="bg-light rounded p-3">
-                    <div className="d-flex justify-content-between mb-2">
-                      <span>Handling:</span>
-                      <strong>{rutaSeleccionada.currency} 45.00</strong>
-                    </div>
+                  <div className="col-12 border-top my-2"></div>
 
-                    {incoterm === "EXW" &&
-                      (() => {
-                        const { totalRealWeight: totalWeight } =
-                          calculateTotals();
-                        return (
-                          <div className="d-flex justify-content-between mb-2">
-                            <span>EXW Charges:</span>
-                            <strong>
-                              {rutaSeleccionada.currency}{" "}
-                              {calculateEXWRate(
-                                totalWeight,
-                                pesoChargeable,
-                              ).toFixed(2)}
-                            </strong>
-                          </div>
-                        );
-                      })()}
+                  <div className="col-6 text-dark fw-bold">{t("QuoteAIR.chargeable")}:</div>
+                  <div className="col-6 text-end fw-bolder text-primary fs-6">{pesoChargeable.toFixed(2)} kg</div>
 
-                    <div className="d-flex justify-content-between mb-2">
-                      <span>AWB:</span>
-                      <strong>{rutaSeleccionada.currency} 30.00</strong>
-                    </div>
-
-                    <div className="d-flex justify-content-between mb-2">
-                      <span>Airport Transfer:</span>
-                      <strong>
-                        {rutaSeleccionada.currency}{" "}
-                        {Math.max(pesoChargeable * 0.15, 50).toFixed(2)}
-                      </strong>
-                    </div>
-
-                    <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                      <span>Air Freight:</span>
-                      <strong>
-                        {rutaSeleccionada.currency}{" "}
-                        {(
-                          tarifaAirFreight.precioConMarkup * pesoChargeable
-                        ).toFixed(2)}
-                      </strong>
-                    </div>
-
-                    {/* Sección de Opcionales */}
-                    <div className="mb-3 pb-3 border-bottom">
-                      <h6 className="mb-3 text-muted">
-                        🔧 {t("QuoteAIR.opcional")}
-                      </h6>
-                      <div className="form-check">
-                        <input
-                          className="form-check-input"
-                          type="checkbox"
-                          id="seguroCheckbox"
-                          checked={seguroActivo}
-                          onChange={(e) => setSeguroActivo(e.target.checked)}
-                        />
-                        <label
-                          className="form-check-label"
-                          htmlFor="seguroCheckbox"
-                        >
-                          {t("QuoteAIR.agregar")}
-                        </label>
-                        <small className="text-muted d-block ms-4">
-                          {t("QuoteAIR.protection")}
-                        </small>
-                      </div>
-
-                      {/* Input para Valor de Mercadería - Solo visible si seguro está activo */}
-                      {seguroActivo && (
-                        <div className="mt-3 ms-4">
-                          <label
-                            htmlFor="valorMercaderia"
-                            className="form-label small"
-                          >
-                            {t("QuoteAIR.valormercaderia")} (
-                            {rutaSeleccionada.currency}){" "}
-                            <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="valorMercaderia"
-                            placeholder="Ej: 10000 o 10000,50"
-                            value={valorMercaderia}
-                            onChange={(e) => {
-                              // Permitir solo números, punto y coma
-                              const value = e.target.value;
-                              if (value === "" || /^[\d,\.]+$/.test(value)) {
-                                setValorMercaderia(value);
-                              }
-                            }}
-                          />
-                          <small className="text-muted">
-                            {t("QuoteAIR.ingresavalor")}
-                          </small>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Mostrar el cargo del seguro si está activo */}
-                    {seguroActivo && calculateSeguro() > 0 && (
-                      <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                        <span>{t("QuoteAIR.seguro")}</span>
-                        <strong className="">
-                          {rutaSeleccionada.currency}{" "}
-                          {calculateSeguro().toFixed(2)}
-                        </strong>
-                      </div>
-                    )}
-
-                    {/* Mostrar el cargo del no apilable si está activo */}
-                    {noApilableActivo && calculateNoApilable() > 0 && (
-                      <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                        <span>{t("QuoteAIR.noapilable")}</span>
-                        <strong className="">
-                          {rutaSeleccionada.currency}{" "}
-                          {calculateNoApilable().toFixed(2)}
-                        </strong>
-                      </div>
-                    )}
-
-                    {/* Modal de advertencia - Máximo 10 piezas */}
-                    {showMaxPiecesModal && (
-                      <div
-                        className="modal show d-block"
-                        tabIndex={-1}
-                        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-                      >
-                        <div className="modal-dialog modal-dialog-centered">
-                          <div className="modal-content">
-                            <div className="modal-header">
-                              <h5 className="modal-title">
-                                {t("QuoteAIR.limite")}
-                              </h5>
-                              <button
-                                type="button"
-                                className="btn-close"
-                                onClick={() => setShowMaxPiecesModal(false)}
-                              ></button>
-                            </div>
-                            <div className="modal-body">
-                              <p>{t("QuoteAIR.limitemaximo")}</p>
-                              <p className="mb-0">{t("QuoteAIR.entendido")}</p>
-                            </div>
-                            <div className="modal-footer">
-                              <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={() => setShowMaxPiecesModal(false)}
-                              >
-                                {t("QuoteAIR.entendido")}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Mensaje de advertencia si el seguro está activo pero no hay valor de mercadería */}
-                    {seguroActivo && !valorMercaderia && (
-                      <div
-                        className="alert alert-warning py-2 mb-3"
-                        role="alert"
-                      >
-                        <small>⚠️ {t("QuoteAIR.segurocargo")}</small>
-                      </div>
-                    )}
-
-                    <div className="d-flex justify-content-between">
-                      <span className="fs-5 fw-bold">TOTAL:</span>
-                      <span
-                        className="fs-5 fw-bold "
-                        style={{ color: "var(--primary-hover)" }}
-                      >
-                        {(() => {
-                          const { totalRealWeight: totalWeight } =
-                            calculateTotals();
-                          const totalBase =
-                            45 + // Handling
-                            (incoterm === "EXW"
-                              ? calculateEXWRate(totalWeight, pesoChargeable)
-                              : 0) + // EXW
-                            30 + // AWB
-                            Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-                            tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
-                            (seguroActivo ? calculateSeguro() : 0); // Seguro (si está activo)
-                          const totalFinal =
-                            totalBase +
-                            (noApilableActivo ? calculateNoApilable() : 0);
-                          return (
-                            rutaSeleccionada.currency +
-                            " " +
-                            totalFinal.toFixed(2)
-                          );
-                        })()}
-                      </span>
-                    </div>
+                  <div className="col-12 text-muted fst-italic mt-1" style={{ fontSize: "0.75rem" }}>
+                    ({t("QuoteAIR.cobropor")} {manualWeight.toFixed(2)} kg vs {(manualVolume * 167).toFixed(2)} kg)
                   </div>
                 </div>
               )}
             </div>
 
-            {(weightError || dimensionError) && (
-              <div className="alert alert-warning mt-3 mb-0">
-                ⚠️ <strong>{t("QuoteAIR.correccion")}</strong>{" "}
-                {weightError || dimensionError}
-              </div>
-            )}
+            {/* Resumen de Cargos */}
+            {tarifaAirFreight && (
+              <div className="p-3 bg-light rounded border">
+                <h6 className="fw-bold mb-3"><i className="bi bi-cash-coin me-2"></i>{t("QuoteAIR.resumencargos")}</h6>
 
-            {!rutaSeleccionada && (
-              <div className="alert alert-info mt-3 mb-0">
-                ℹ️ {t("QuoteAIR.seleccionarruta")}
+                <div className="d-flex flex-column gap-2 small">
+                  <div className="d-flex justify-content-between">
+                    <span>Handling:</span>
+                    <strong>{rutaSeleccionada.currency} 45.00</strong>
+                  </div>
+
+                  {incoterm === "EXW" && (() => {
+                    const { totalRealWeight: totalWeight } = calculateTotals();
+                    return (
+                      <div className="d-flex justify-content-between">
+                        <span>EXW Charges:</span>
+                        <strong>{rutaSeleccionada.currency} {calculateEXWRate(totalWeight, pesoChargeable).toFixed(2)}</strong>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="d-flex justify-content-between">
+                    <span>AWB:</span>
+                    <strong>{rutaSeleccionada.currency} 30.00</strong>
+                  </div>
+
+                  <div className="d-flex justify-content-between">
+                    <span>Airport Transfer:</span>
+                    <strong>{rutaSeleccionada.currency} {Math.max(pesoChargeable * 0.15, 50).toFixed(2)}</strong>
+                  </div>
+
+                  <div className="d-flex justify-content-between pb-2 border-bottom">
+                    <span>Air Freight:</span>
+                    <strong>{rutaSeleccionada.currency} {(tarifaAirFreight.precioConMarkup * pesoChargeable).toFixed(2)}</strong>
+                  </div>
+
+                  {/* Seguro opcional */}
+                  <div className="mt-2">
+                    <div className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="seguroCheckbox"
+                        checked={seguroActivo}
+                        onChange={(e) => setSeguroActivo(e.target.checked)}
+                      />
+                      <label className="form-check-label small" htmlFor="seguroCheckbox">
+                        {t("QuoteAIR.agregar")} ({t("QuoteAIR.protection")})
+                      </label>
+                    </div>
+                    {seguroActivo && (
+                      <div className="mt-2 ps-4">
+                        <input
+                          type="text"
+                          className="qa-input py-1"
+                          style={{ fontSize: "0.85rem" }}
+                          placeholder="Valor Mercadería"
+                          value={valorMercaderia}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "" || /^[\d,\.]+$/.test(value)) {
+                              setValorMercaderia(value);
+                            }
+                          }}
+                        />
+                        {calculateSeguro() > 0 && (
+                          <div className="d-flex justify-content-between mt-1 text-primary">
+                            <span>{t("QuoteAIR.seguro")}:</span>
+                            <strong>{rutaSeleccionada.currency} {calculateSeguro().toFixed(2)}</strong>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {noApilableActivo && calculateNoApilable() > 0 && (
+                    <div className="d-flex justify-content-between mt-2 pt-2 border-top text-warning-emphasis">
+                      <span>{t("QuoteAIR.noapilable")}:</span>
+                      <strong>{rutaSeleccionada.currency} {calculateNoApilable().toFixed(2)}</strong>
+                    </div>
+                  )}
+
+                  <div className="d-flex justify-content-between mt-3 pt-2 border-top fs-6">
+                    <span className="fw-bold">TOTAL:</span>
+                    <span className="fw-bold text-primary">
+                      {(() => {
+                        const { totalRealWeight: totalWeight } = calculateTotals();
+                        const totalBase = 45 +
+                          (incoterm === "EXW" ? calculateEXWRate(totalWeight, pesoChargeable) : 0) +
+                          30 +
+                          Math.max(pesoChargeable * 0.15, 50) +
+                          tarifaAirFreight.precioConMarkup * pesoChargeable +
+                          (seguroActivo ? calculateSeguro() : 0);
+                        const totalFinal = totalBase + (noApilableActivo ? calculateNoApilable() : 0);
+                        return rutaSeleccionada.currency + " " + totalFinal.toFixed(2);
+                      })()}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
-        </div>
-      )}
 
-      {/* Sección de acciones (diseño minimalista y sobrio) */}
-      {rutaSeleccionada && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body">
-            <h5 className="card-title mb-4">{t("QuoteAIR.generador")}</h5>
-            <div className="row g-3 mt-4">
-              <div className="col-md-6">
-                <div
-                  className="card h-100 border"
-                  style={{
-                    borderColor: "#e9ecef",
-                    backgroundColor: "transparent",
-                  }}
-                >
-                  <div
-                    className="card-body d-flex flex-column"
-                    style={{ gap: "0.5rem" }}
-                  >
-                    <div className="text-muted mb-2">
-                      <i
-                        className="bi bi-file-earmark-pdf"
-                        style={{
-                          fontSize: "1.25rem",
-                          color: "var(--primary-hover)",
-                        }}
-                      ></i>
-                    </div>
-                    <h6
-                      className="card-title mb-1"
-                      style={{ color: "#212529", fontWeight: 600 }}
-                    >
-                      {t("QuoteAIR.generarcotizacion")}
-                    </h6>
-                    <p className="card-text small text-muted mb-3">
-                      {t("QuoteAIR.cotizaciongenerada")}
-                    </p>
-
-                    <div className="mt-auto w-100">
-                      <button
-                        onClick={() => {
-                          setTipoAccion("cotizacion");
-                          testAPI("cotizacion");
-                        }}
-                        disabled={
-                          loading ||
-                          !accessToken ||
-                          weightError !== null ||
-                          dimensionError !== null ||
-                          oversizeError !== null ||
-                          heightError !== null ||
-                          !rutaSeleccionada
-                        }
-                        className="btn btn-outline-secondary w-100"
-                        style={{
-                          borderRadius: "6px",
-                          color: "var(--primary-hover)",
-                          borderColor: "var(--primary-hover)",
-                        }}
-                      >
-                        {loading ? (
-                          <>
-                            <span
-                              className="spinner-border spinner-border-sm me-2"
-                              role="status"
-                              aria-hidden="true"
-                            ></span>
-                            {t("QuoteAIR.generando")}
-                          </>
-                        ) : (
-                          <>{t("QuoteAIR.generarcotizacion")}</>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-6">
-                <div
-                  className="card h-100 border"
-                  style={{
-                    borderColor: "#e9ecef",
-                    backgroundColor: "transparent",
-                  }}
-                >
-                  <div
-                    className="card-body d-flex flex-column"
-                    style={{ gap: "0.5rem" }}
-                  >
-                    <div className="text-muted mb-2">
-                      <i
-                        className="bi bi-gear"
-                        style={{
-                          fontSize: "1.25rem",
-                          color: "var(--primary-hover)",
-                        }}
-                      ></i>
-                    </div>
-                    <h6
-                      className="card-title mb-1"
-                      style={{ color: "#1a1a1a", fontWeight: 600 }}
-                    >
-                      {t("QuoteAIR.generaroperacion")}
-                    </h6>
-                    <p className="card-text small text-muted mb-3">
-                      <strong className="text-muted">
-                        {t("QuoteAIR.accionirreversible")}
-                      </strong>{" "}
-                      {t("QuoteAIR.operaciongenerada")}
-                    </p>
-
-                    <div className="mt-auto w-100">
-                      <button
-                        onClick={() => {
-                          setTipoAccion("operacion");
-                          testAPI("operacion");
-                        }}
-                        disabled={
-                          loading ||
-                          !accessToken ||
-                          weightError !== null ||
-                          dimensionError !== null ||
-                          oversizeError !== null ||
-                          heightError !== null ||
-                          !rutaSeleccionada
-                        }
-                        className="btn btn-outline-secondary w-100"
-                        style={{
-                          borderRadius: "6px",
-                          color: "var(--primary-hover)",
-                          borderColor: "var(--primary-hover)",
-                        }}
-                      >
-                        {loading ? (
-                          <>
-                            <span
-                              className="spinner-border spinner-border-sm me-2"
-                              role="status"
-                              aria-hidden="true"
-                            ></span>
-                            {t("QuoteAIR.generandocotizacion")}
-                          </>
-                        ) : (
-                          <>{t("QuoteAIR.generaroperacion")}</>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+          {(weightError || dimensionError) && (
+            <div className="qa-alert qa-alert-warning mt-3">
+              <i className="bi bi-exclamation-triangle-fill"></i>
+              <div>
+                <strong>{t("QuoteAIR.correccion")}</strong> {weightError || dimensionError}
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Sección de acciones */}
+      {rutaSeleccionada && (
+        <div className="qa-grid-2 mb-5">
+          <div className={`qa-card h-100 d-flex flex-column ${(!accessToken || weightError || dimensionError || oversizeError || heightError) ? "opacity-50" : ""}`}>
+            <div className="mb-3 text-primary">
+              <i className="bi bi-file-earmark-pdf fs-1"></i>
+            </div>
+            <h5 className="fw-bold">{t("QuoteAIR.generarcotizacion")}</h5>
+            <p className="text-muted small mb-4">{t("QuoteAIR.cotizaciongenerada")}</p>
+            <button
+              onClick={() => {
+                setTipoAccion("cotizacion");
+                testAPI("cotizacion");
+              }}
+              disabled={loading || !accessToken || weightError !== null || dimensionError !== null || oversizeError !== null || heightError !== null || !rutaSeleccionada}
+              className="qa-btn qa-btn-outline w-100 mt-auto"
+            >
+              {loading ? <span className="spinner-border spinner-border-sm"></span> : t("QuoteAIR.generarcotizacion")}
+            </button>
+          </div>
+
+          <div className={`qa-card h-100 d-flex flex-column ${(!accessToken || weightError || dimensionError || oversizeError || heightError) ? "opacity-50" : ""}`}>
+            <div className="mb-3 text-dark">
+              <i className="bi bi-gear fs-1"></i>
+            </div>
+            <h5 className="fw-bold">{t("QuoteAIR.generaroperacion")}</h5>
+            <p className="text-muted small mb-4">{t("QuoteAIR.operaciongenerada")}</p>
+            <button
+              onClick={() => {
+                setTipoAccion("operacion");
+                testAPI("operacion");
+              }}
+              disabled={loading || !accessToken || weightError !== null || dimensionError !== null || oversizeError !== null || heightError !== null || !rutaSeleccionada}
+              className="qa-btn qa-btn-primary w-100 mt-auto"
+            >
+              {loading ? <span className="spinner-border spinner-border-sm"></span> : t("QuoteAIR.generaroperacion")}
+            </button>
           </div>
         </div>
       )}
 
-      {/* ============================================================================ */}
-      {/* SECCIÓN 4: PAYLOAD Y RESULTADOS */}
-      {/* ============================================================================ */}
-
-      {/* Payload
-      {rutaSeleccionada && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body">
-            <h5 className="card-title">📤 Payload que se enviará</h5>
-            <pre style={{
-              backgroundColor: '#f8f9fa',
-              padding: '15px',
-              borderRadius: '5px',
-              maxHeight: '300px',
-              overflow: 'auto',
-              fontSize: '0.85rem'
-            }}>
-              {JSON.stringify(getTestPayload(), null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}*/}
-
-      {/* Error */}
+      {/* Error / Success Display (Simplified) */}
       {error && (
-        <div className="card shadow-sm mb-4 border-danger">
-          <div className="card-body">
-            <h5 className="card-title text-danger">❌ {t("QuoteAIR.error")}</h5>
-            <pre
-              style={{
-                backgroundColor: "#fff5f5",
-                padding: "15px",
-                borderRadius: "5px",
-                maxHeight: "400px",
-                overflow: "auto",
-                fontSize: "0.85rem",
-                color: "#c53030",
-              }}
-            >
+        <div className="qa-alert qa-alert-danger mb-4">
+          <i className="bi bi-x-circle-fill"></i>
+          <div className="w-100">
+            <strong>{t("QuoteAIR.error")}</strong>
+            <pre className="mt-2 bg-white p-2 rounded small text-danger border" style={{ maxHeight: "200px", overflow: "auto" }}>
               {error}
             </pre>
           </div>
         </div>
       )}
 
-      {/* Respuesta exitosa */}
       {response && (
-        <div className="card shadow-sm mb-4 border-success">
-          <div className="card-body">
-            <h5 className="card-title text-success">
-              ✅ {t("QuoteAIR.exito")}
-            </h5>
-            {/*<pre style={{
-              backgroundColor: '#f0fdf4',
-              padding: '15px',
-              borderRadius: '5px',
-              maxHeight: '400px',
-              overflow: 'auto',
-              fontSize: '0.85rem',
-              color: '#15803d'
-            }}>
-              {JSON.stringify(response, null, 2)}
-            </pre>*/}
-            <div className="alert alert-success mt-3 mb-0">
-              {t("QuoteAIR.generarpdf")}
-            </div>
+        <div className="qa-alert qa-alert-success mb-4" style={{ backgroundColor: "#d4edda", color: "#155724", borderColor: "#c3e6cb" }}>
+          <i className="bi bi-check-circle-fill"></i>
+          <div>
+            <strong>{t("QuoteAIR.exito")}</strong>
+            <div className="mt-1">{t("QuoteAIR.generarpdf")}</div>
           </div>
         </div>
       )}
 
-      {/* Modal para rutas con precio 0 */}
-      <Modal
-        show={showPriceZeroModal}
-        onHide={() => setShowPriceZeroModal(false)}
-        centered
-      >
+      {/* Footer Sticky */}
+      {rutaSeleccionada && (
+        <div className="qa-footer">
+          <div className="qa-price-display">
+            <span className="qa-price-label">TOTAL ESTIMADO</span>
+            <span className="qa-price-value">
+              {(() => {
+                const { totalRealWeight: totalWeight } = calculateTotals();
+                const totalBase = 45 +
+                  (incoterm === "EXW" ? calculateEXWRate(totalWeight, pesoChargeable) : 0) +
+                  30 +
+                  Math.max(pesoChargeable * 0.15, 50) +
+                  (tarifaAirFreight?.precioConMarkup || 0) * pesoChargeable +
+                  (seguroActivo ? calculateSeguro() : 0);
+                const totalFinal = totalBase + (noApilableActivo ? calculateNoApilable() : 0);
+                return rutaSeleccionada.currency + " " + totalFinal.toFixed(2);
+              })()}
+            </span>
+            {rutaSeleccionada.validUntil && (
+              <span className="qa-validity-date">
+                Válido hasta: {rutaSeleccionada.validUntil}
+              </span>
+            )}
+          </div>
+
+          <div className="d-flex align-items-center gap-3">
+            <button
+              className="qa-btn qa-btn-primary"
+              onClick={() => {
+                setTipoAccion("cotizacion");
+                testAPI("cotizacion");
+              }}
+              disabled={loading || !rutaSeleccionada || weightError !== null}
+            >
+              {t("QuoteAIR.generarcotizacion")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <Modal show={showPriceZeroModal} onHide={() => setShowPriceZeroModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>{t("QuoteAIR.cotiperso")}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p className="mb-2">
-            <strong>{t("QuoteAIR.rutaanalisis")}</strong>
-          </p>
+          <p className="mb-2"><strong>{t("QuoteAIR.rutaanalisis")}</strong></p>
           <p className="mb-0">{t("QuoteAIR.comunicacioneje")}</p>
         </Modal.Body>
         <Modal.Footer>
-          <Button
-            variant="primary"
-            onClick={() => setShowPriceZeroModal(false)}
-          >
+          <Button variant="primary" onClick={() => setShowPriceZeroModal(false)}>
             {t("QuoteAIR.entendido")}
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {showMaxPiecesModal && (
+        <Modal show={showMaxPiecesModal} onHide={() => setShowMaxPiecesModal(false)} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>{t("QuoteAIR.limite")}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>{t("QuoteAIR.limitemaximo")}</p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="primary" onClick={() => setShowMaxPiecesModal(false)}>
+              {t("QuoteAIR.entendido")}
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
+
     </div>
   );
+
 }
 
 export default QuoteAPITester;
