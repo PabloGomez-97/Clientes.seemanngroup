@@ -309,6 +309,64 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
     });
   };
 
+  // Duplicar pieza: clona la pieza indicada (por id) o la última abierta/última pieza
+  const handleDuplicatePiece = (fromId?: string) => {
+    if (piecesData.length >= 10) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+
+    setPiecesData((prev) => {
+      if (prev.length === 0) return prev;
+
+      // Determinar id origen: desde argumento, o última abierta, o última pieza
+      let sourceId = fromId;
+      if (!sourceId) {
+        sourceId = openAccordions.length > 0 ? openAccordions[openAccordions.length - 1] : null;
+      }
+      if (!sourceId) {
+        sourceId = prev[prev.length - 1].id;
+      }
+
+      const sourceIndex = prev.findIndex((p) => p.id === sourceId);
+      const idx = sourceIndex === -1 ? prev.length - 1 : sourceIndex;
+
+      const sourcePiece = prev[idx];
+      const newPieceRaw: PieceData = {
+        id: "",
+        packageType: sourcePiece.packageType,
+        description: sourcePiece.description,
+        length: sourcePiece.length,
+        width: sourcePiece.width,
+        height: sourcePiece.height,
+        weight: sourcePiece.weight,
+        isNotApilable: sourcePiece.isNotApilable,
+        volume: sourcePiece.volume,
+        totalVolume: sourcePiece.totalVolume,
+        weightTons: sourcePiece.weightTons,
+        totalWeightTons: sourcePiece.totalWeightTons,
+        wmChargeable: sourcePiece.wmChargeable,
+      };
+
+      // Insertar nueva pieza justo después de la fuente
+      const before = prev.slice(0, idx + 1);
+      const after = prev.slice(idx + 1);
+      const inserted = [...before, newPieceRaw, ...after];
+
+      // Renumerar IDs
+      const renumbered = inserted.map((piece, i) => ({ ...piece, id: (i + 1).toString() }));
+
+      // Actualizar openAccordions para abrir la nueva pieza (limitando a 2 abiertas)
+      const newIdStr = (idx + 2).toString(); // posición nueva pieza después de renumeración
+      setOpenAccordions((prevOpen) => {
+        const newOpen = [...prevOpen, newIdStr];
+        return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+      });
+
+      return renumbered;
+    });
+  };
+
   // Eliminar pieza
   const handleRemovePiece = (id: string) => {
     const filtered = piecesData.filter((p) => p.id !== id);
@@ -1631,6 +1689,14 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
               </div>
 
               <div className="d-flex justify-content-end">
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-outline qa-btn-sm me-2"
+                  onClick={() => handleDuplicatePiece()}
+                >
+                  <i className="bi bi-files"></i>
+                  Duplicar pieza
+                </button>
                 <button
                   type="button"
                   className="qa-btn qa-btn-primary"

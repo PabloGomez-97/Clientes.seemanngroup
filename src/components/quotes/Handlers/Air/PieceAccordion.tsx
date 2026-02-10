@@ -215,7 +215,10 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
 
             {/* Checkbox No Apilable */}
             <div className="col-12 mt-3">
-              <div className="qa-switch-container" style={{ width: "fit-content", padding: "0.5rem 1rem" }}>
+              <div
+                className="qa-switch-container"
+                style={{ width: "fit-content", padding: "0.5rem 1rem" }}
+              >
                 <input
                   className="qa-switch-input"
                   type="checkbox"
