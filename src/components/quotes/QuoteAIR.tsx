@@ -1617,71 +1617,73 @@ function QuoteAPITester({
 
       <div className="qa-card">
         <div
-          className="qa-card-header"
+          className={`qa-card-header ${openSection === 1 ? "open" : ""}`}
           onClick={() => handleSectionToggle(1)}
         >
-          <div className="d-flex align-items-center gap-3">
-            <div
-              className="d-flex align-items-center justify-content-center bg-light rounded-circle"
-              style={{
-                width: "32px",
-                height: "32px",
-                color: rutaSeleccionada ? "var(--qa-primary)" : "var(--qa-text-secondary)",
-                fontWeight: "bold",
-                border: rutaSeleccionada ? "1px solid var(--qa-primary)" : "1px solid var(--qa-border-color)"
-              }}
-            >
-              {rutaSeleccionada ? "✓" : "1"}
-            </div>
-            <div>
-              <h3>{t("QuoteAIR.ruta")}</h3>
-              {rutaSeleccionada && (
-                <small className="text-muted">
-                  {rutaSeleccionada.origin} <i className="bi bi-arrow-right mx-1"></i> {rutaSeleccionada.destination}
-                </small>
-              )}
-            </div>
+          <div className="d-flex align-items-center">
+            <h3>
+              <i className="bi bi-geo-alt me-2" style={{ color: "var(--qa-primary)" }}></i>
+              Paso 1: Seleccionar Ruta
+            </h3>
+            {rutaSeleccionada && (
+              <span className="qa-badge ms-3" style={{ backgroundColor: "#d1e7dd", color: "#0f5132", borderColor: "transparent" }}>
+                <i className="bi bi-check-circle-fill me-1"></i>
+                Completado
+              </span>
+            )}
           </div>
-          <i
-            className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
-            style={{ color: "var(--qa-text-secondary)" }}
-          ></i>
-        </div>
-
-        {openSection === 1 && (
-          <div className="mt-4">
-            <div className="d-flex justify-content-end mb-3">
+          <div className="d-flex align-items-center gap-2">
+            {!rutaSeleccionada && (
               <button
-                onClick={refrescarTarifas}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  refrescarTarifas();
+                }}
                 disabled={loadingRutas}
                 className="qa-btn qa-btn-sm qa-btn-outline"
                 title="Actualizar tarifas"
               >
                 {loadingRutas ? (
                   <>
-                    <span className="spinner-border spinner-border-sm me-2"></span>
+                    <span
+                      className="spinner-border spinner-border-sm me-1"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     {t("QuoteAIR.actualizando")}
                   </>
                 ) : (
                   <>
-                    <i className="bi bi-arrow-clockwise"></i>
+                    <i className="bi bi-arrow-clockwise me-1"></i>
                     {t("QuoteAIR.actualizaciontarifa")}
                   </>
                 )}
               </button>
-            </div>
+            )}
+            <i
+              className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
+              style={{ color: "var(--qa-text-secondary)" }}
+            ></i>
+          </div>
+        </div>
+
+        {openSection === 1 && (
+          <div className="mt-4">
 
             {lastUpdate && !loadingRutas && !errorRutas && (
-              <div className="d-flex justify-content-between align-items-center mb-4 text-muted small">
-                <span>
-                  <i className="bi bi-clock me-1"></i>
+              <div
+                className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center justify-content-between"
+                style={{ fontSize: "0.85rem" }}
+              >
+                <span className="text-muted">
+                  <i className="bi bi-clock-history me-1"></i>
                   {t("QuoteAIR.actualizacion")}{" "}
                   {lastUpdate.toLocaleTimeString("es-CL", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
-                <span className="qa-badge">
+                <span className="qa-badge bg-success text-white">
                   {rutas.length} {t("QuoteAIR.rutasdisponibles")}
                 </span>
               </div>
@@ -2320,46 +2322,6 @@ function QuoteAPITester({
           <div>
             <strong>{t("QuoteAIR.exito")}</strong>
             <div className="mt-1">{t("QuoteAIR.generarpdf")}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Footer Sticky */}
-      {rutaSeleccionada && (
-        <div className="qa-footer">
-          <div className="qa-price-display">
-            <span className="qa-price-label">TOTAL ESTIMADO</span>
-            <span className="qa-price-value">
-              {(() => {
-                const { totalRealWeight: totalWeight } = calculateTotals();
-                const totalBase = 45 +
-                  (incoterm === "EXW" ? calculateEXWRate(totalWeight, pesoChargeable) : 0) +
-                  30 +
-                  Math.max(pesoChargeable * 0.15, 50) +
-                  (tarifaAirFreight?.precioConMarkup || 0) * pesoChargeable +
-                  (seguroActivo ? calculateSeguro() : 0);
-                const totalFinal = totalBase + (noApilableActivo ? calculateNoApilable() : 0);
-                return rutaSeleccionada.currency + " " + totalFinal.toFixed(2);
-              })()}
-            </span>
-            {rutaSeleccionada.validUntil && (
-              <span className="qa-validity-date">
-                Válido hasta: {rutaSeleccionada.validUntil}
-              </span>
-            )}
-          </div>
-
-          <div className="d-flex align-items-center gap-3">
-            <button
-              className="qa-btn qa-btn-primary"
-              onClick={() => {
-                setTipoAccion("cotizacion");
-                testAPI("cotizacion");
-              }}
-              disabled={loading || !rutaSeleccionada || weightError !== null}
-            >
-              {t("QuoteAIR.generarcotizacion")}
-            </button>
           </div>
         </div>
       )}
