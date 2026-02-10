@@ -702,7 +702,10 @@ function QuotesView() {
 
   /* -- Fetch available PDFs --------------------------------- */
   useEffect(() => {
-    console.log("[QuotesView] fetchPDFs effect triggered, token present:", !!token);
+    console.log(
+      "[QuotesView] fetchPDFs effect triggered, token present:",
+      !!token,
+    );
     if (!token) return;
     const fetchPDFs = async () => {
       try {
@@ -714,14 +717,30 @@ function QuotesView() {
           const data = await res.json();
           console.log("[QuotesView] PDF list data:", data);
           if (data.success && Array.isArray(data.pdfs)) {
-            const pdfNumbers = new Set<string>(data.pdfs.map((pdf: { quoteNumber: string }) => pdf.quoteNumber));
-            console.log("[QuotesView] Available PDF quoteNumbers:", [...pdfNumbers]);
-            console.log("[QuotesView] Raw PDF data:", JSON.stringify(data.pdfs.map((p: any) => ({ qn: p.quoteNumber, name: p.nombreArchivo }))));
+            const pdfNumbers = new Set<string>(
+              data.pdfs.map((pdf: { quoteNumber: string }) => pdf.quoteNumber),
+            );
+            console.log("[QuotesView] Available PDF quoteNumbers:", [
+              ...pdfNumbers,
+            ]);
+            console.log(
+              "[QuotesView] Raw PDF data:",
+              JSON.stringify(
+                data.pdfs.map((p: any) => ({
+                  qn: p.quoteNumber,
+                  name: p.nombreArchivo,
+                })),
+              ),
+            );
             setAvailablePDFs(pdfNumbers);
           }
         } else {
           const errText = await res.text();
-          console.error("[QuotesView] Error fetching PDF list:", res.status, errText);
+          console.error(
+            "[QuotesView] Error fetching PDF list:",
+            res.status,
+            errText,
+          );
         }
       } catch (err) {
         console.error("[QuotesView] Error fetching PDF list:", err);
@@ -734,14 +753,16 @@ function QuotesView() {
   useEffect(() => {
     if (availablePDFs.size > 0 && displayedQuotes.length > 0) {
       const pdfArr = [...availablePDFs];
-      const quoteNums = displayedQuotes.slice(0, 15).map(q => q.number);
+      const quoteNums = displayedQuotes.slice(0, 15).map((q) => q.number);
       console.log("[QuotesView] === PDF MATCH DEBUG ===");
       console.log("[QuotesView] PDFs in DB:", pdfArr);
       console.log("[QuotesView] Quote numbers (first 15):", quoteNums);
-      const matches = quoteNums.filter(n => n && availablePDFs.has(n));
+      const matches = quoteNums.filter((n) => n && availablePDFs.has(n));
       console.log("[QuotesView] Matches found:", matches.length, matches);
       if (matches.length === 0) {
-        console.warn("[QuotesView] ⚠️ NO MATCHES! quoteNumbers in DB don't match any quote.number in the list");
+        console.warn(
+          "[QuotesView] ⚠️ NO MATCHES! quoteNumbers in DB don't match any quote.number in the list",
+        );
       }
     }
   }, [availablePDFs, displayedQuotes]);
@@ -761,7 +782,8 @@ function QuotesView() {
       if (data.success && data.quotePdf?.contenidoBase64) {
         const link = document.createElement("a");
         link.href = data.quotePdf.contenidoBase64;
-        link.download = data.quotePdf.nombreArchivo || `Cotizacion_${quoteNumber}.pdf`;
+        link.download =
+          data.quotePdf.nombreArchivo || `Cotizacion_${quoteNumber}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1194,19 +1216,41 @@ function QuotesView() {
                             ? `${quote.transitDays}d`
                             : "---"}
                         </td>
-                        <td className="qv-td qv-td--center" onClick={(e) => e.stopPropagation()}>
+                        <td
+                          className="qv-td qv-td--center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           {availablePDFs.has(quote.number || "") ? (
                             <button
                               className="qv-btn qv-btn--primary"
-                              style={{ fontSize: "11px", padding: "4px 10px", whiteSpace: "nowrap" }}
+                              style={{
+                                fontSize: "11px",
+                                padding: "4px 10px",
+                                whiteSpace: "nowrap",
+                              }}
                               disabled={downloadingPDF === quote.number}
-                              onClick={() => handleDownloadPDF(quote.number || "")}
+                              onClick={() =>
+                                handleDownloadPDF(quote.number || "")
+                              }
                             >
                               {downloadingPDF === quote.number ? (
-                                <span className="spinner-border spinner-border-sm" style={{ width: "12px", height: "12px" }} />
+                                <span
+                                  className="spinner-border spinner-border-sm"
+                                  style={{ width: "12px", height: "12px" }}
+                                />
                               ) : (
                                 <>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "4px" }}>
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    style={{ marginRight: "4px" }}
+                                  >
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                     <polyline points="7 10 12 15 17 10" />
                                     <line x1="12" y1="15" x2="12" y2="3" />
@@ -1216,7 +1260,9 @@ function QuotesView() {
                               )}
                             </button>
                           ) : (
-                            <span style={{ color: "#999", fontSize: "11px" }}>---</span>
+                            <span style={{ color: "#999", fontSize: "11px" }}>
+                              ---
+                            </span>
                           )}
                         </td>
                       </tr>

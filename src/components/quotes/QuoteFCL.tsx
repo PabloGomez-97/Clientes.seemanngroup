@@ -4,7 +4,11 @@ import { useAuth } from "../../auth/AuthContext";
 import * as XLSX from "xlsx";
 import Select from "react-select";
 import { PDFTemplateFCL } from "./Pdftemplate/Pdftemplatefcl";
-import { generatePDF, generatePDFBase64, formatDateForFilename } from "./Pdftemplate/Pdfutils";
+import {
+  generatePDF,
+  generatePDFBase64,
+  formatDateForFilename,
+} from "./Pdftemplate/Pdfutils";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
 import {
@@ -145,7 +149,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         console.error("❌ Error al cargar datos FCL desde Google Sheets:", err);
         setErrorRutas(
           "No se pudieron cargar las tarifas desde Google Sheets. " +
-          "Por favor, verifica tu conexión a internet o contacta al administrador.",
+            "Por favor, verifica tu conexión a internet o contacta al administrador.",
         );
         setLoadingRutas(false);
       }
@@ -430,12 +434,15 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
               Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
             },
-          }
+          },
         );
         if (preRes.ok) {
           const preData = await preRes.json();
           if (Array.isArray(preData)) {
-            previousMaxId = Math.max(0, ...preData.map((q: any) => Number(q.id) || 0));
+            previousMaxId = Math.max(
+              0,
+              ...preData.map((q: any) => Number(q.id) || 0),
+            );
           }
           console.log("[QuoteFCL] ID máximo ANTES de crear:", previousMaxId);
         }
@@ -460,7 +467,10 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
       }
 
       const data = await res.json();
-      console.log("[QuoteFCL] Respuesta CREATE de Linbis:", JSON.stringify(data));
+      console.log(
+        "[QuoteFCL] Respuesta CREATE de Linbis:",
+        JSON.stringify(data),
+      );
       setResponse(data);
 
       // Generar PDF después de cotización exitosa
@@ -656,11 +666,15 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         // Subir el PDF a MongoDB usando el quoteNumber real de Linbis
         if (pdfBase64) {
           try {
-            console.log("[QuoteFCL] Buscando cotización recién creada (id mayor a", previousMaxId, ")...");
+            console.log(
+              "[QuoteFCL] Buscando cotización recién creada (id mayor a",
+              previousMaxId,
+              ")...",
+            );
             let quoteNumber = "";
 
             // Esperar 2s y buscar la cotización con id más alto
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise((r) => setTimeout(r, 2000));
 
             const linbisRes = await fetch(
               `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
@@ -669,23 +683,32 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                   Authorization: `Bearer ${accessToken}`,
                   Accept: "application/json",
                 },
-              }
+              },
             );
 
             if (linbisRes.ok) {
               const linbisData = await linbisRes.json();
               if (Array.isArray(linbisData) && linbisData.length > 0) {
-                const newestQuote = linbisData.reduce((max: any, q: any) =>
-                  (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max
-                , linbisData[0]);
+                const newestQuote = linbisData.reduce(
+                  (max: any, q: any) =>
+                    (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
+                  linbisData[0],
+                );
 
-                console.log(`[QuoteFCL] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`);
+                console.log(
+                  `[QuoteFCL] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
+                );
 
                 if (Number(newestQuote.id) > (previousMaxId || 0)) {
                   quoteNumber = newestQuote.number;
-                  console.log(`✅ [QuoteFCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`);
+                  console.log(
+                    `✅ [QuoteFCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
+                  );
                 } else {
-                  console.warn("[QuoteFCL] No se encontró cotización con id mayor a", previousMaxId);
+                  console.warn(
+                    "[QuoteFCL] No se encontró cotización con id mayor a",
+                    previousMaxId,
+                  );
                 }
               }
             }
@@ -707,9 +730,15 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                 }),
               });
               const uploadData = await uploadRes.json();
-              console.log("[QuoteFCL] PDF guardado en MongoDB:", uploadRes.status, uploadData);
+              console.log(
+                "[QuoteFCL] PDF guardado en MongoDB:",
+                uploadRes.status,
+                uploadData,
+              );
             } else {
-              console.warn("[QuoteFCL] No se pudo detectar cotización nueva, PDF no subido");
+              console.warn(
+                "[QuoteFCL] No se pudo detectar cotización nueva, PDF no subido",
+              );
             }
           } catch (uploadErr) {
             console.error("Error subiendo PDF a MongoDB:", uploadErr);
@@ -991,11 +1020,21 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         >
           <div className="d-flex align-items-center">
             <h3>
-              <i className="bi bi-geo-alt me-2" style={{ color: "var(--qf-primary)" }}></i>
+              <i
+                className="bi bi-geo-alt me-2"
+                style={{ color: "var(--qf-primary)" }}
+              ></i>
               Paso 1: Selecciona Ruta y Contenedor
             </h3>
             {containerSeleccionado && (
-              <span className="qf-badge ms-3" style={{ backgroundColor: "#d1e7dd", color: "#0f5132", borderColor: "transparent" }}>
+              <span
+                className="qf-badge ms-3"
+                style={{
+                  backgroundColor: "#d1e7dd",
+                  color: "#0f5132",
+                  borderColor: "transparent",
+                }}
+              >
                 <i className="bi bi-check-circle-fill me-1"></i>
                 Completado
               </span>
@@ -1071,9 +1110,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                 {/* Selectores de POL y POD */}
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
-                    <label className="qf-label">
-                      Puerto de Origen (POL)
-                    </label>
+                    <label className="qf-label">Puerto de Origen (POL)</label>
                     <Select
                       value={polSeleccionado}
                       onChange={setPolSeleccionado}
@@ -1089,16 +1126,18 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                         }),
                         option: (base, state) => ({
                           ...base,
-                          backgroundColor: state.isSelected ? "var(--qf-primary)" : state.isFocused ? "var(--qf-bg-light)" : "white",
-                        })
+                          backgroundColor: state.isSelected
+                            ? "var(--qf-primary)"
+                            : state.isFocused
+                              ? "var(--qf-bg-light)"
+                              : "white",
+                        }),
                       }}
                     />
                   </div>
 
                   <div className="col-md-6">
-                    <label className="qf-label">
-                      Puerto de Destino (POD)
-                    </label>
+                    <label className="qf-label">Puerto de Destino (POD)</label>
                     <Select
                       value={podSeleccionado}
                       onChange={setPodSeleccionado}
@@ -1115,13 +1154,19 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                           ...base,
                           borderColor: "var(--qf-border-color)",
                           "&:hover": { borderColor: "var(--qf-primary)" },
-                          backgroundColor: !polSeleccionado ? "var(--qf-bg-light)" : "white",
+                          backgroundColor: !polSeleccionado
+                            ? "var(--qf-bg-light)"
+                            : "white",
                           boxShadow: "none",
                         }),
                         option: (base, state) => ({
                           ...base,
-                          backgroundColor: state.isSelected ? "var(--qf-primary)" : state.isFocused ? "var(--qf-bg-light)" : "white",
-                        })
+                          backgroundColor: state.isSelected
+                            ? "var(--qf-primary)"
+                            : state.isFocused
+                              ? "var(--qf-bg-light)"
+                              : "white",
+                        }),
                       }}
                     />
                   </div>
@@ -1174,9 +1219,18 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                   rutaSeleccionada?.id === ruta.id
                                     ? "translateY(-4px)"
                                     : "none",
-                                borderColor: rutaSeleccionada?.id === ruta.id ? "var(--qf-primary)" : "var(--qf-border-color)",
-                                borderWidth: rutaSeleccionada?.id === ruta.id ? "2px" : "1px",
-                                boxShadow: rutaSeleccionada?.id === ruta.id ? "0 4px 12px rgba(255, 98, 0, 0.15)" : "none"
+                                borderColor:
+                                  rutaSeleccionada?.id === ruta.id
+                                    ? "var(--qf-primary)"
+                                    : "var(--qf-border-color)",
+                                borderWidth:
+                                  rutaSeleccionada?.id === ruta.id
+                                    ? "2px"
+                                    : "1px",
+                                boxShadow:
+                                  rutaSeleccionada?.id === ruta.id
+                                    ? "0 4px 12px rgba(255, 98, 0, 0.15)"
+                                    : "none",
                               }}
                             >
                               {/* Badge de "Mejor Opción" */}
@@ -1247,12 +1301,23 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                 {/* Transit Time y Company */}
                                 {ruta.tt && (
                                   <div className="mb-3">
-                                    <div className="d-flex align-items-center gap-2 p-2 rounded" style={{ backgroundColor: "var(--qf-bg-light)" }}>
-                                      <i className="bi bi-clock" style={{ color: "var(--qf-primary)" }}></i>
+                                    <div
+                                      className="d-flex align-items-center gap-2 p-2 rounded"
+                                      style={{
+                                        backgroundColor: "var(--qf-bg-light)",
+                                      }}
+                                    >
+                                      <i
+                                        className="bi bi-clock"
+                                        style={{ color: "var(--qf-primary)" }}
+                                      ></i>
                                       <div className="flex-grow-1">
                                         <small
                                           className="d-block"
-                                          style={{ fontSize: "0.7rem", color: "var(--qf-text-secondary)" }}
+                                          style={{
+                                            fontSize: "0.7rem",
+                                            color: "var(--qf-text-secondary)",
+                                          }}
                                         >
                                           Tiempo de tránsito
                                         </small>
@@ -1279,11 +1344,12 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                     ruta.gp20 !== "-" && (
                                       <button
                                         type="button"
-                                        className={`qf-btn w-100 justify-content-between ${rutaSeleccionada?.id === ruta.id &&
+                                        className={`qf-btn w-100 justify-content-between ${
+                                          rutaSeleccionada?.id === ruta.id &&
                                           containerSeleccionado?.type === "20GP"
-                                          ? "qf-btn-primary"
-                                          : "qf-btn-outline"
-                                          }`}
+                                            ? "qf-btn-primary"
+                                            : "qf-btn-outline"
+                                        }`}
                                         onClick={() =>
                                           handleSeleccionarContainer(
                                             ruta,
@@ -1293,7 +1359,8 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                       >
                                         <div className="d-flex justify-content-between align-items-center">
                                           <span className="fw-bold">
-                                            <i className="bi bi-box me-2"></i> 20GP
+                                            <i className="bi bi-box me-2"></i>{" "}
+                                            20GP
                                           </span>
                                           <span className="badge bg-light text-dark">
                                             {ruta.currency}{" "}
@@ -1311,11 +1378,12 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                     ruta.hq40 !== "-" && (
                                       <button
                                         type="button"
-                                        className={`qf-btn w-100 justify-content-between ${rutaSeleccionada?.id === ruta.id &&
+                                        className={`qf-btn w-100 justify-content-between ${
+                                          rutaSeleccionada?.id === ruta.id &&
                                           containerSeleccionado?.type === "40HQ"
-                                          ? "qf-btn-primary"
-                                          : "qf-btn-outline"
-                                          }`}
+                                            ? "qf-btn-primary"
+                                            : "qf-btn-outline"
+                                        }`}
                                         onClick={() =>
                                           handleSeleccionarContainer(
                                             ruta,
@@ -1325,7 +1393,8 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                       >
                                         <div className="d-flex justify-content-between align-items-center">
                                           <span className="fw-bold">
-                                            <i className="bi bi-box me-2"></i> 40HQ
+                                            <i className="bi bi-box me-2"></i>{" "}
+                                            40HQ
                                           </span>
                                           <span className="badge bg-light text-dark">
                                             {ruta.currency}{" "}
@@ -1343,12 +1412,13 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                     ruta.nor40 !== "-" && (
                                       <button
                                         type="button"
-                                        className={`qf-btn w-100 justify-content-between ${rutaSeleccionada?.id === ruta.id &&
+                                        className={`qf-btn w-100 justify-content-between ${
+                                          rutaSeleccionada?.id === ruta.id &&
                                           containerSeleccionado?.type ===
-                                          "40NOR"
-                                          ? "qf-btn-primary"
-                                          : "qf-btn-outline"
-                                          }`}
+                                            "40NOR"
+                                            ? "qf-btn-primary"
+                                            : "qf-btn-outline"
+                                        }`}
                                         onClick={() =>
                                           handleSeleccionarContainer(
                                             ruta,
@@ -1358,7 +1428,8 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                       >
                                         <div className="d-flex justify-content-between align-items-center">
                                           <span className="fw-bold">
-                                            <i className="bi bi-box me-2"></i> 40NOR
+                                            <i className="bi bi-box me-2"></i>{" "}
+                                            40NOR
                                           </span>
                                           <span className="badge bg-light text-dark">
                                             {ruta.currency}{" "}
@@ -1385,7 +1456,9 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
 
         {/* Resumen colapsado cuando está cerrado */}
         {openSection !== 1 && containerSeleccionado && rutaSeleccionada && (
-          <div style={{ padding: "1rem", backgroundColor: "var(--qf-bg-light)" }}>
+          <div
+            style={{ padding: "1rem", backgroundColor: "var(--qf-bg-light)" }}
+          >
             <div className="d-flex justify-content-between align-items-center">
               <div>
                 <small className="text-muted d-block">Ruta seleccionada:</small>
@@ -1414,7 +1487,6 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
               </div>
             </div>
           </div>
-
         )}
       </div>
 
@@ -1430,9 +1502,15 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
               {/* Incoterm */}
               <div className="col-12 mb-3">
                 <label className="qf-label">
-                  <i className="bi bi-flag me-2" style={{ color: "var(--qf-primary)" }}></i>
+                  <i
+                    className="bi bi-flag me-2"
+                    style={{ color: "var(--qf-primary)" }}
+                  ></i>
                   Incoterm
-                  <span className="qf-badge ms-2" style={{ fontSize: "0.7rem", fontWeight: 400 }}>
+                  <span
+                    className="qf-badge ms-2"
+                    style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                  >
                     Obligatorio
                   </span>
                 </label>
@@ -1451,9 +1529,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
               </div>
               {/* Cantidad de Contenedores */}
               <div className="col-md-4">
-                <label className="qf-label">
-                  Cantidad de Contenedores
-                </label>
+                <label className="qf-label">Cantidad de Contenedores</label>
                 <input
                   type="number"
                   className="qf-input"
@@ -1476,8 +1552,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                 <>
                   <div className="col-md-4">
                     <label className="qf-label">
-                      Pickup From Address{" "}
-                      <span className="text-danger">*</span>
+                      Pickup From Address <span className="text-danger">*</span>
                     </label>
                     <textarea
                       className="qf-textarea"
@@ -1490,8 +1565,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
 
                   <div className="col-md-4">
                     <label className="qf-label">
-                      Delivery To Address{" "}
-                      <span className="text-danger">*</span>
+                      Delivery To Address <span className="text-danger">*</span>
                     </label>
                     <textarea
                       className="qf-textarea"
@@ -1514,8 +1588,13 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
 
             <div className="qf-grid-2 mb-4">
               {/* COLUMNA 1: Resumen del Cargamento (Info Ruta/Contenedor) */}
-              <div className="p-3 rounded border" style={{ backgroundColor: "var(--qf-bg-light)" }}>
-                <h6 className="fw-bold mb-3"><i className="bi bi-box-seam me-2"></i>Resumen del Cargamento</h6>
+              <div
+                className="p-3 rounded border"
+                style={{ backgroundColor: "var(--qf-bg-light)" }}
+              >
+                <h6 className="fw-bold mb-3">
+                  <i className="bi bi-box-seam me-2"></i>Resumen del Cargamento
+                </h6>
                 <div className="d-flex flex-column gap-3 small">
                   <div>
                     <span className="text-muted d-block">Ruta:</span>
@@ -1532,7 +1611,9 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                       <strong>{rutaSeleccionada.carrier}</strong>
                     </div>
                     <div className="col-6">
-                      <span className="text-muted d-block">Tiempo Tránsito:</span>
+                      <span className="text-muted d-block">
+                        Tiempo Tránsito:
+                      </span>
                       <strong>{rutaSeleccionada.tt || "N/A"}</strong>
                     </div>
                   </div>
@@ -1559,8 +1640,13 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
               </div>
 
               {/* COLUMNA 2: Resumen de Cargos */}
-              <div className="p-3 rounded border" style={{ backgroundColor: "var(--qf-bg-light)" }}>
-                <h6 className="fw-bold mb-3"><i className="bi bi-cash-coin me-2"></i>Resumen de Cargos</h6>
+              <div
+                className="p-3 rounded border"
+                style={{ backgroundColor: "var(--qf-bg-light)" }}
+              >
+                <h6 className="fw-bold mb-3">
+                  <i className="bi bi-cash-coin me-2"></i>Resumen de Cargos
+                </h6>
 
                 <div className="d-flex flex-column gap-2 small">
                   {/* BL */}
@@ -1634,7 +1720,8 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                           htmlFor="valorMercaderia"
                           className="qf-label small"
                         >
-                          Valor Mercadería ({rutaSeleccionada.currency}) <span className="text-danger">*</span>
+                          Valor Mercadería ({rutaSeleccionada.currency}){" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <input
                           type="text"
@@ -1667,20 +1754,23 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                   {/* Total */}
                   <div className="d-flex justify-content-between mt-3 pt-2 border-top">
                     <span className="fs-6 fw-bold">TOTAL:</span>
-                    <span className="fs-6 fw-bold" style={{ color: "var(--qf-primary)" }}>
+                    <span
+                      className="fs-6 fw-bold"
+                      style={{ color: "var(--qf-primary)" }}
+                    >
                       {rutaSeleccionada.currency}{" "}
                       {(
                         60 + // BL
                         45 + // Handling
                         (incoterm === "EXW"
                           ? calculateEXWRate(
-                            containerSeleccionado.type,
-                            cantidadContenedores,
-                          )
+                              containerSeleccionado.type,
+                              cantidadContenedores,
+                            )
                           : 0) + // EXW
                         containerSeleccionado.price *
-                        1.15 *
-                        cantidadContenedores + // Ocean Freight
+                          1.15 *
+                          cantidadContenedores + // Ocean Freight
                         (seguroActivo ? calculateSeguro() : 0)
                       ) // Seguro (si está activo)
                         .toLocaleString(undefined, {
@@ -1705,7 +1795,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                   style={{
                     backgroundColor: "transparent",
                     borderColor: "var(--qf-border-color)",
-                    transition: "all 0.2s"
+                    transition: "all 0.2s",
                   }}
                 >
                   <div className="mb-3">
@@ -1738,7 +1828,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                     className="qf-btn qf-btn-outline w-100"
                     style={{
                       color: "var(--qf-primary)",
-                      borderColor: "var(--qf-primary)"
+                      borderColor: "var(--qf-primary)",
                     }}
                   >
                     {loading ? (
@@ -1763,7 +1853,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                   style={{
                     backgroundColor: "transparent",
                     borderColor: "var(--qf-border-color)",
-                    transition: "all 0.2s"
+                    transition: "all 0.2s",
                   }}
                 >
                   <div className="mb-3">
@@ -1799,7 +1889,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                     className="qf-btn qf-btn-outline w-100"
                     style={{
                       color: "var(--qf-primary)",
-                      borderColor: "var(--qf-primary)"
+                      borderColor: "var(--qf-primary)",
                     }}
                   >
                     {loading ? (
@@ -1857,6 +1947,5 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
     </div>
   );
 }
-
 
 export default QuoteFCL;
