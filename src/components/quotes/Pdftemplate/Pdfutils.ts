@@ -15,6 +15,9 @@ export const generatePDF = async ({ filename, element }: GeneratePDFOptions): Pr
       useCORS: true,
       logging: false
     },
+    pagebreak: {
+      mode: ['css', 'legacy']
+    },
     jsPDF: { 
       unit: 'mm', 
       format: 'a4', 

@@ -59,6 +59,7 @@ export const PDFTemplateFCL: React.FC<PDFTemplateFCLProps> = ({
     width: '210mm',
     minHeight: '297mm',
     padding: '15mm',
+    boxSizing: 'border-box',
     backgroundColor: 'white',
     fontFamily: 'Inter, Helvetica, Arial, sans-serif',
     fontSize: '10pt',
