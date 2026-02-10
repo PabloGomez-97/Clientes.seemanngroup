@@ -22,7 +22,6 @@ import {
   getPODDisplayName,
   parseLCL,
 } from "./Handlers/LCL/HandlerQuoteLCL.tsx";
-import { Colors } from "chart.js";
 
 interface QuoteLCLProps {
   preselectedPOL?: { value: string; label: string } | null;
@@ -175,7 +174,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         console.error("Error al cargar datos LCL desde Google Sheets:", err);
         setErrorRutas(
           "No se pudieron cargar las tarifas desde Google Sheets. " +
-          "Por favor, verifica tu conexión a internet o contacta al administrador.",
+            "Por favor, verifica tu conexión a internet o contacta al administrador.",
         );
         setLoadingRutas(false);
       }
@@ -1097,11 +1096,11 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
   // ============================================================================
 
   return (
-    <div className="container-fluid py-4">
-      <div className="row mb-4">
-        <div className="col">
-          <h2 className="mb-1">{t("Quotelcl.title")}</h2>
-          <p className="text-muted mb-0">{t("Quotelcl.subtitle")}</p>
+    <div className="qa-container">
+      <div className="qa-section-header">
+        <div>
+          <h2 className="qa-title">{t("Quotelcl.title")}</h2>
+          <p className="qa-subtitle">{t("Quotelcl.subtitle")}</p>
         </div>
       </div>
 
@@ -1109,26 +1108,26 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       {/* SECCIÓN 1: SELECCIÓN DE RUTA */}
       {/* ============================================================================ */}
 
-      <div className="card shadow-sm mb-4">
+      <div className="qa-card">
         <div
-          className="card-header d-flex justify-content-between align-items-center"
-          style={{
-            cursor: "pointer",
-            backgroundColor: openSection === 1 ? "#f8f9fa" : "white",
-            borderBottom: openSection === 1 ? "1px solid #dee2e6" : "none",
-          }}
+          className={`qa-card-header ${openSection === 1 ? "open" : ""}`}
           onClick={() => handleSectionToggle(1)}
         >
-          <h5 className="mb-0">
-            <i className="bi bi-geo-alt me-2" style={{ color: "#0d6efd" }}></i>
-            {t("Quotelcl.ruta")}
+          <div className="d-flex align-items-center">
+            <h3>{t("Quotelcl.ruta")}</h3>
             {rutaSeleccionada && (
-              <span className="badge bg-success ms-3">
-                <i className="bi bi-check-circle-fill me-1"></i>
+              <span
+                className="qa-badge ms-3"
+                style={{
+                  backgroundColor: "#d1e7dd",
+                  color: "#0f5132",
+                  borderColor: "transparent",
+                }}
+              >
                 {t("Quotelcl.completado")}
               </span>
             )}
-          </h5>
+          </div>
           <div className="d-flex align-items-center gap-2">
             {!rutaSeleccionada && (
               <button
@@ -1137,8 +1136,8 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                   refrescarTarifas();
                 }}
                 disabled={loadingRutas}
-                className="btn btn-sm btn-outline-primary"
-                title="Actualizar tarifas desde Google Sheets"
+                className="qa-btn qa-btn-sm qa-btn-outline"
+                title="Actualizar tarifas"
               >
                 {loadingRutas ? (
                   <>
@@ -1157,20 +1156,15 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                 )}
               </button>
             )}
-            <button
-              type="button"
-              className="btn btn-link text-decoration-none p-0"
-              style={{ fontSize: "1.5rem" }}
-            >
-              <i
-                className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
-              ></i>
-            </button>
+            <i
+              className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
+              style={{ color: "var(--qa-text-secondary)" }}
+            ></i>
           </div>
         </div>
 
         {openSection === 1 && (
-          <div className="card-body">
+          <div className="mt-4">
             {lastUpdate && !loadingRutas && !errorRutas && (
               <div
                 className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center justify-content-between"
@@ -1184,7 +1178,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                     minute: "2-digit",
                   })}
                 </span>
-                <span className="badge bg-success">
+                <span className="qa-badge bg-success text-white">
                   {rutas.length} {t("Quotelcl.rutasdisponibles")}
                 </span>
               </div>
@@ -1192,21 +1186,22 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
             {loadingRutas ? (
               <div className="text-center py-5">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">
-                    {t("Quotelcl.cargando")}
-                  </span>
-                </div>
+                <div
+                  className="spinner-border text-primary"
+                  role="status"
+                ></div>
                 <p className="mt-3 text-muted">{t("Quotelcl.cargandorutas")}</p>
               </div>
             ) : errorRutas ? (
-              <div className="alert alert-danger">❌ {errorRutas}</div>
+              <div className="qa-alert qa-alert-danger">
+                <i className="bi bi-exclamation-circle-fill mt-1"></i>
+                {errorRutas}
+              </div>
             ) : (
               <>
-                {/* Selectores de POL y POD */}
                 <div className="row g-3 mb-4">
                   <div className="col-md-6">
-                    <label className="form-label fw-semibold">
+                    <label className="qa-label">
                       {t("Quotelcl.puertoorigen")}
                     </label>
                     <Select
@@ -1218,15 +1213,16 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       styles={{
                         control: (base) => ({
                           ...base,
-                          borderColor: "#dee2e6",
-                          "&:hover": { borderColor: "#0d6efd" },
+                          borderColor: "#e0e0e0",
+                          boxShadow: "none",
+                          "&:hover": { borderColor: "#b0b0b0" },
                         }),
                       }}
                     />
                   </div>
 
                   <div className="col-md-6">
-                    <label className="form-label fw-semibold">
+                    <label className="qa-label">
                       {t("Quotelcl.puertodest")}
                     </label>
                     <Select
@@ -1243,8 +1239,9 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                       styles={{
                         control: (base) => ({
                           ...base,
-                          borderColor: "#dee2e6",
-                          "&:hover": { borderColor: "#0d6efd" },
+                          borderColor: "#e0e0e0",
+                          boxShadow: "none",
+                          "&:hover": { borderColor: "#b0b0b0" },
                         }),
                       }}
                     />
@@ -1253,8 +1250,14 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
                 {/* Filtro de Operadores */}
                 {polSeleccionado && podSeleccionado && (
-                  <div className="border-top pt-3 mb-4">
-                    <label className="form-label fw-semibold mb-2">
+                  <div
+                    style={{
+                      borderTop: "1px solid var(--qa-border-color)",
+                      paddingTop: "1rem",
+                      marginBottom: "1.5rem",
+                    }}
+                  >
+                    <label className="qa-label mb-2">
                       {t("Quotelcl.operador")}
                     </label>
                     <div className="d-flex flex-wrap gap-2">
@@ -1262,10 +1265,11 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                         <button
                           key={operador}
                           type="button"
-                          className={`btn btn-sm ${operadoresActivos.has(operador)
-                              ? "btn-primary"
-                              : "btn-outline-secondary"
-                            }`}
+                          className={`qa-btn qa-btn-sm ${
+                            operadoresActivos.has(operador)
+                              ? "qa-btn-primary"
+                              : "qa-btn-outline"
+                          }`}
                           onClick={() => {
                             const newSet = new Set(operadoresActivos);
                             if (newSet.has(operador)) {
@@ -1283,19 +1287,13 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                   </div>
                 )}
 
-                {/* Rutas Disponibles */}
                 {polSeleccionado && podSeleccionado && (
                   <div className="mt-4">
-                    {/* Header mejorado */}
                     <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h6 className="mb-0 d-flex align-items-center gap-2">
-                        <i className="bi bi-boxes"></i>
-                        {t("Quotelcl.rutasdisponibles")}
-                        <span className="badge bg-light text-dark border">
-                          {rutasFiltradas.length}
-                        </span>
+                      <h6 className="mb-0 fw-bold">
+                        {t("Quotelcl.rutasdisponibles")} (
+                        {rutasFiltradas.length})
                       </h6>
-
                       {rutasFiltradas.length > 0 && (
                         <small className="text-muted">
                           {t("Quotelcl.seleccionamejor")}
@@ -1304,245 +1302,124 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                     </div>
 
                     {rutasFiltradas.length === 0 ? (
-                      <div className="alert alert-light border-0 shadow-sm">
-                        <div className="d-flex align-items-center gap-3">
-                          <i className="bi bi-search text-muted fs-3"></i>
-                          <div>
-                            <p className="mb-1 fw-semibold">
-                              {t("Quotelcl.norutas")}
-                            </p>
-                            <small className="text-muted">
-                              {t("Quotelcl.intenta")}
-                            </small>
-                          </div>
-                        </div>
+                      <div className="text-center py-4 bg-light rounded text-muted">
+                        <p className="mb-1">{t("Quotelcl.norutas")}</p>
+                        <small>{t("Quotelcl.intenta")}</small>
                       </div>
                     ) : (
-                      <div className="row g-3">
-                        {rutasFiltradas.map((ruta, index) => (
-                          <div key={ruta.id} className="col-md-6 col-lg-4">
-                            <div
-                              className={`card h-100 position-relative ${rutaSeleccionada?.id === ruta.id
-                                  ? "border-success border-2 shadow-lg"
-                                  : "border-0 shadow-sm"
-                                }`}
-                              style={{
-                                cursor: "pointer",
-                                transition: "all 0.3s ease",
-                                transform:
-                                  rutaSeleccionada?.id === ruta.id
-                                    ? "translateY(-4px)"
-                                    : "none",
-                              }}
-                              onClick={() => {
-                                // Verificar si la tarifa OF W/M es 0
-                                if (ruta.ofWM === 0) {
-                                  setShowPriceZeroModal(true);
-                                  return;
-                                }
-                                setRutaSeleccionada(ruta);
-                                setError(null);
-                                setResponse(null);
-                              }}
-                              onMouseEnter={(e) => {
-                                if (rutaSeleccionada?.id !== ruta.id) {
-                                  e.currentTarget.style.transform =
-                                    "translateY(-2px)";
-                                  e.currentTarget.classList.add("shadow");
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (rutaSeleccionada?.id !== ruta.id) {
-                                  e.currentTarget.style.transform = "none";
-                                  e.currentTarget.classList.remove("shadow");
-                                }
-                              }}
-                            >
-                              {/* Badge de "Mejor Opción" */}
-                              {index === 0 && (
-                                <div
-                                  className="position-absolute top-0 end-0 badge bg-warning text-dark"
-                                  style={{
-                                    borderTopRightRadius: "0.375rem",
-                                    borderBottomLeftRadius: "0.375rem",
-                                    fontSize: "0.7rem",
-                                    zIndex: 1,
-                                  }}
-                                >
-                                  <i className="bi bi-star-fill"></i>{" "}
-                                  {t("Quotelcl.mejoropcion")}
-                                </div>
-                              )}
+                      <div className="qa-table-container">
+                        <table className="qa-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: "50px" }}></th>
+                              <th>{t("Quotelcl.operador")}</th>
+                              <th className="text-center">OF W/M</th>
+                              <th className="text-center">
+                                {t("Quotelcl.servicio")}
+                              </th>
+                              <th className="text-center">
+                                {t("Quotelcl.tt")}
+                              </th>
+                              <th className="text-center">
+                                {t("Quotelcl.frecuencia")}
+                              </th>
+                              <th className="text-center">
+                                {t("Quotelcl.agente")}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rutasFiltradas.map((ruta, index) => {
+                              const isSelected =
+                                rutaSeleccionada?.id === ruta.id;
 
-                              <div className="card-body">
-                                {/* Header del operador con logo */}
-                                <div className="d-flex justify-content-between align-items-start mb-3">
-                                  <div className="d-flex align-items-center gap-2">
-                                    {/* Logo del operador */}
-                                    <div
-                                      className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
-                                      style={{
-                                        width: "50px",
-                                        height: "50px",
-                                        minWidth: "50px",
-                                        overflow: "hidden",
-                                      }}
-                                    >
+                              return (
+                                <tr
+                                  key={ruta.id}
+                                  onClick={() => {
+                                    if (ruta.ofWM === 0) {
+                                      setShowPriceZeroModal(true);
+                                      return;
+                                    }
+                                    setRutaSeleccionada(ruta);
+                                    setError(null);
+                                    setResponse(null);
+                                  }}
+                                  className={isSelected ? "selected" : ""}
+                                >
+                                  <td className="text-center">
+                                    {isSelected ? (
+                                      <i
+                                        className="bi bi-check-circle-fill"
+                                        style={{ color: "var(--qa-primary)" }}
+                                      ></i>
+                                    ) : (
+                                      <i className="bi bi-circle text-muted"></i>
+                                    )}
+                                    {index === 0 && (
+                                      <div className="mt-1">
+                                        <span
+                                          className="qa-badge qa-badge-primary"
+                                          title={t("Quotelcl.mejoropcion")}
+                                        >
+                                          <i className="bi bi-star-fill"></i>
+                                        </span>
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <div className="d-flex align-items-center gap-2">
                                       <img
                                         src={`/logoscarrierlcl/${ruta.operador.toLowerCase().replace(/\s+/g, "_")}.png`}
                                         alt={ruta.operador}
                                         style={{
-                                          maxWidth: "150%",
-                                          maxHeight: "150%",
+                                          width: "24px",
+                                          height: "24px",
                                           objectFit: "contain",
                                         }}
                                         onError={(e) => {
-                                          const target = e.currentTarget;
-                                          target.style.display = "none";
-                                          const parent = target.parentElement;
-                                          if (parent) {
-                                            parent.innerHTML =
-                                              '<i class="bi bi-boxes text-primary fs-4"></i>';
-                                          }
+                                          e.currentTarget.style.display =
+                                            "none";
                                         }}
                                       />
-                                    </div>
-
-                                    <div>
-                                      <span className="badge bg-primary bg-opacity-10 text-primary border border-primary">
+                                      <span className="fw-medium">
                                         {ruta.operador}
                                       </span>
                                     </div>
-                                  </div>
-
-                                  {rutaSeleccionada?.id === ruta.id && (
-                                    <span className="badge bg-success">
-                                      <i className="bi bi-check-circle-fill"></i>{" "}
-                                      {t("Quotelcl.seleccionada")}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Precio destacado */}
-                                <div className="mb-3 p-3 bg-light rounded">
-                                  <small
-                                    className="text-muted text-uppercase d-block mb-1"
-                                    style={{
-                                      fontSize: "0.7rem",
-                                      letterSpacing: "0.5px",
-                                    }}
-                                  >
-                                    {t("Quotelcl.tarifas")}
-                                  </small>
-                                  <div className="d-flex align-items-baseline gap-1">
-                                    <h4 className="mb-0 text-success fw-bold">
-                                      {ruta.currency}{" "}
-                                      {(ruta.ofWM * 1.15).toFixed(2)}
-                                    </h4>
-                                    <small className="text-muted">/W/M</small>
-                                  </div>
-                                </div>
-
-                                {/* Detalles en grid */}
-                                <div className="row g-2">
-                                  {ruta.servicio && (
-                                    <div className="col-12">
-                                      <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                        <i className="bi bi-truck text-primary"></i>
-                                        <div className="flex-grow-1">
-                                          <small
-                                            className="text-muted d-block"
-                                            style={{ fontSize: "0.7rem" }}
-                                          >
-                                            {t("Quotelcl.servicio")}
-                                          </small>
-                                          <small className="fw-semibold">
-                                            {ruta.servicio}
-                                          </small>
-                                        </div>
+                                  </td>
+                                  <td className="text-center">
+                                    {ruta.ofWM > 0 ? (
+                                      <div className="fw-bold">
+                                        {ruta.currency}{" "}
+                                        {(ruta.ofWM * 1.15).toFixed(2)}
                                       </div>
-                                    </div>
-                                  )}
-
-                                  {ruta.ttAprox && (
-                                    <div className="col-12">
-                                      <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                        <i className="bi bi-clock text-primary"></i>
-                                        <div className="flex-grow-1">
-                                          <small
-                                            className="text-muted d-block"
-                                            style={{ fontSize: "0.7rem" }}
-                                          >
-                                            {t("Quotelcl.tt")}
-                                          </small>
-                                          <small className="fw-semibold">
-                                            {ruta.ttAprox}
-                                          </small>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {ruta.frecuencia && (
-                                    <div className="col-12">
-                                      <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                        <i className="bi bi-calendar-check text-primary"></i>
-                                        <div className="flex-grow-1">
-                                          <small
-                                            className="text-muted d-block"
-                                            style={{ fontSize: "0.7rem" }}
-                                          >
-                                            {t("Quotelcl.frecuencia")}
-                                          </small>
-                                          <small className="fw-semibold">
-                                            {ruta.frecuencia}
-                                          </small>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {ruta.agente && (
-                                    <div className="col-12">
-                                      <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                        <i className="bi bi-building text-primary"></i>
-                                        <div className="flex-grow-1">
-                                          <small
-                                            className="text-muted d-block"
-                                            style={{ fontSize: "0.7rem" }}
-                                          >
-                                            {t("Quotelcl.agente")}
-                                          </small>
-                                          <small className="fw-semibold">
-                                            {ruta.agente}
-                                          </small>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Call to action sutil */}
-                                {rutaSeleccionada?.id !== ruta.id && (
-                                  <div className="mt-3 text-center">
-                                    <small className="text-muted">
-                                      <i className="bi bi-hand-index"></i>{" "}
-                                      {t("Quotelcl.clickselect")}
-                                    </small>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                                    ) : (
+                                      <span className="text-muted">—</span>
+                                    )}
+                                  </td>
+                                  <td className="text-center text-muted small">
+                                    {ruta.servicio || "—"}
+                                  </td>
+                                  <td className="text-center text-muted small">
+                                    {ruta.ttAprox || "—"}
+                                  </td>
+                                  <td className="text-center text-muted small">
+                                    {ruta.frecuencia || "—"}
+                                  </td>
+                                  <td className="text-center text-muted small">
+                                    {ruta.agente || "—"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     )}
 
-                    {/* Footer informativo */}
                     {rutasFiltradas.length > 0 && (
-                      <div className="alert alert-light border-0 mt-3">
-                        <small className="text-muted">
-                          <i className="bi bi-info-circle"></i>{" "}
+                      <div className="mt-3">
+                        <small className="qa-text-muted">
                           {t("Quotelcl.tarifasreferenciales")}
                         </small>
                       </div>
@@ -1556,24 +1433,35 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
         {/* Resumen colapsado cuando está cerrado */}
         {openSection !== 1 && rutaSeleccionada && (
-          <div className="card-body py-2 bg-light">
+          <div
+            style={{
+              padding: "0.75rem 1.5rem",
+              backgroundColor: "var(--qa-bg-light)",
+              borderTop: "1px solid var(--qa-border-color)",
+            }}
+          >
             <div className="d-flex justify-content-between align-items-center">
               <div>
-                <small className="text-muted d-block">
+                <small className="qa-text-muted d-block">
                   {t("Quotelcl.rutaselect")}
                 </small>
                 <strong>
                   {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
                 </strong>
-                <span className="ms-3 text-muted">|</span>
-                <span className="ms-2 badge bg-primary">
+                <span className="ms-3 qa-text-muted">|</span>
+                <span className="qa-badge qa-badge-primary ms-2">
                   {rutaSeleccionada.operador}
                 </span>
               </div>
               <div>
                 <span
-                  className="badge bg-success"
-                  style={{ fontSize: "0.9rem" }}
+                  className="qa-badge"
+                  style={{
+                    fontSize: "0.9rem",
+                    backgroundColor: "rgba(255, 98, 0, 0.1)",
+                    color: "var(--qa-primary)",
+                    borderColor: "rgba(255, 98, 0, 0.2)",
+                  }}
                 >
                   {rutaSeleccionada.currency}{" "}
                   {(rutaSeleccionada.ofWM * 1.15).toFixed(2)}/W/M
@@ -1589,369 +1477,322 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       {/* ============================================================================ */}
 
       {rutaSeleccionada && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body">
-            <h5 className="card-title mb-4">{t("Quotelcl.datoscommodity")}</h5>
-            {/* Formulario */}
-            <div className="row g-3">
-              <div className="col-12 mb-3">
-                <label
-                  className="form-label mb-2"
-                  style={{
-                    fontSize: "0.95rem",
-                    fontWeight: 500,
-                    color: "#1a1a1a",
-                  }}
-                >
-                  <i
-                    className="bi bi-flag me-2"
-                    style={{ color: "#185abc" }}
-                  ></i>
-                  Incoterm
-                  <span
-                    className="badge bg-light text-dark ms-2"
-                    style={{ fontSize: "0.7rem", fontWeight: 400 }}
-                  >
-                    {t("Quotelcl.obligatorio")}
-                  </span>
-                </label>
-                <select
-                  className="form-select"
-                  value={incoterm}
-                  onChange={(e) =>
-                    setIncoterm(e.target.value as "EXW" | "FOB" | "")
-                  }
-                  style={{
-                    maxWidth: 400,
-                    borderRadius: "8px",
-                    border: "1px solid #ced4da",
-                    padding: "0.625rem 0.75rem",
-                    fontSize: "0.95rem",
-                    transition: "all 0.2s ease",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "#185abc")}
-                  onBlur={(e) => (e.target.style.borderColor = "#ced4da")}
-                >
-                  <option value="">{t("Quotelcl.selectincoterm")}</option>
-                  <option value="EXW">Ex Works [EXW]</option>
-                  <option value="FOB">FOB</option>
-                </select>
-              </div>
+        <div className="qa-card">
+          <div className="qa-card-header">
+            <div>
+              <h3>{t("Quotelcl.datoscommodity")}</h3>
+              <p className="qa-subtitle">{t("Quotelcl.subtitle")}</p>
+            </div>
+          </div>
 
-              {/* Sección de Piezas */}
-              <div className="col-12">
-                <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                  <h6
-                    className="mb-0"
-                    style={{
-                      fontSize: "1.05rem",
-                      fontWeight: 500,
-                      color: "#1a1a1a",
-                    }}
-                  >
-                    <i
-                      className="bi bi-boxes me-2"
-                      style={{ color: "#0d6efd" }}
-                    ></i>
-                    {t("Quotelcl.detalles")}
-                  </h6>
-                  <span
-                    className="badge bg-light text-dark"
-                    style={{ fontSize: "0.8rem" }}
-                  >
-                    {piecesData.length}{" "}
-                    {piecesData.length === 1 ? "pieza" : "piezas"}
-                  </span>
-                </div>
-
-                <div className="mb-3">
-                  {piecesData.map((piece, index) => (
-                    <PieceAccordionLCL
-                      key={piece.id}
-                      piece={piece}
-                      index={index}
-                      isOpen={openAccordions.includes(piece.id)}
-                      onToggle={() => handleToggleAccordion(piece.id)}
-                      onRemove={() => handleRemovePiece(piece.id)}
-                      onUpdate={(field, value) =>
-                        handleUpdatePiece(piece.id, field, value)
-                      }
-                      packageTypes={packageTypeOptions.map((opt) => ({
-                        id: String(opt.id),
-                        name: opt.name,
-                      }))}
-                      canRemove={piecesData.length > 1}
-                    />
-                  ))}
-                </div>
-
-                <div className="d-flex justify-content-end">
-                  <button
-                    type="button"
-                    className="btn"
-                    style={{
-                      backgroundColor: "#ff6200",
-                      borderColor: "#ff6200",
-                      color: "white",
-                      borderRadius: "8px",
-                      padding: "0.5rem 1.25rem",
-                      fontSize: "0.9rem",
-                      fontWeight: 500,
-                      transition: "all 0.2s ease",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#ff6200")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#ff6200")
-                    }
-                    onClick={handleAddPiece}
-                  >
-                    <i className="bi bi-plus-circle me-2"></i>
-                    {t("Quotelcl.agregarpieza")}
-                  </button>
-                </div>
-              </div>
-
-              {/* Campos condicionales solo para EXW */}
-              {incoterm === "EXW" && (
-                <>
-                  <div className="col-md-6">
-                    <label className="form-label">{t("Quotelcl.pickup")}</label>
-                    <textarea
-                      className="form-control"
-                      value={pickupFromAddress}
-                      onChange={(e) => setPickupFromAddress(e.target.value)}
-                      placeholder="Ingrese dirección de recogida"
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="col-md-6">
-                    <label className="form-label">
-                      {t("Quotelcl.delivery")}
-                    </label>
-                    <textarea
-                      className="form-control"
-                      value={deliveryToAddress}
-                      onChange={(e) => setDeliveryToAddress(e.target.value)}
-                      placeholder="Ingrese dirección de entrega"
-                      rows={3}
-                    />
-                  </div>
-                </>
-              )}
+          <div className="row g-3">
+            <div className="col-12 mb-3">
+              <label className="qa-label">
+                Incoterm <span className="text-danger">*</span>
+              </label>
+              <select
+                className="qa-select"
+                value={incoterm}
+                onChange={(e) =>
+                  setIncoterm(e.target.value as "EXW" | "FOB" | "")
+                }
+                style={{ maxWidth: "300px" }}
+              >
+                <option value="">{t("Quotelcl.selectincoterm")}</option>
+                <option value="EXW">Ex Works [EXW]</option>
+                <option value="FOB">FOB</option>
+              </select>
             </div>
 
-            {/* Cálculos */}
-            <div
-              className="mt-4 p-3 border rounded"
-              style={{ backgroundColor: "#f8f9fa" }}
-            >
-              <div className="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
-                <h6
-                  className="mb-0"
-                  style={{
-                    fontSize: "1.05rem",
-                    fontWeight: 500,
-                    color: "#1a1a1a",
-                  }}
-                >
-                  <i
-                    className="bi bi-box-seam me-2"
-                    style={{ color: "#0d6efd" }}
-                  ></i>
-                  {t("Quotelcl.resumen")}
-                </h6>
+            <div className="col-12">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4 className="fs-6 fw-bold mb-0">{t("Quotelcl.detalles")}</h4>
+                <span className="qa-badge">
+                  {piecesData.length}{" "}
+                  {piecesData.length === 1 ? "pieza" : "piezas"}
+                </span>
               </div>
-              <div className="row g-2" style={{ fontSize: "0.9rem" }}>
-                <div className="col-md-3">
-                  <strong>{t("Quotelcl.pesototal1")}</strong>{" "}
-                  {totalWeightKg.toFixed(2)} kg ({totalWeightTons.toFixed(4)} t)
+
+              <div className="mb-3">
+                {piecesData.map((piece, index) => (
+                  <PieceAccordionLCL
+                    key={piece.id}
+                    piece={piece}
+                    index={index}
+                    isOpen={openAccordions.includes(piece.id)}
+                    onToggle={() => handleToggleAccordion(piece.id)}
+                    onRemove={() => handleRemovePiece(piece.id)}
+                    onUpdate={(field, value) =>
+                      handleUpdatePiece(piece.id, field, value)
+                    }
+                    packageTypes={packageTypeOptions.map((opt) => ({
+                      id: String(opt.id),
+                      name: opt.name,
+                    }))}
+                    canRemove={piecesData.length > 1}
+                  />
+                ))}
+              </div>
+
+              <div className="d-flex justify-content-end">
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-primary"
+                  onClick={handleAddPiece}
+                >
+                  <i className="bi bi-plus-lg"></i>
+                  {t("Quotelcl.agregarpieza")}
+                </button>
+              </div>
+            </div>
+
+            {/* Campos condicionales solo para EXW */}
+            {incoterm === "EXW" && (
+              <>
+                <div className="col-md-6">
+                  <label className="qa-label">{t("Quotelcl.pickup")}</label>
+                  <textarea
+                    className="qa-textarea"
+                    value={pickupFromAddress}
+                    onChange={(e) => setPickupFromAddress(e.target.value)}
+                    placeholder="Ingrese dirección de recogida"
+                    rows={3}
+                  />
                 </div>
-                <div className="col-md-3">
-                  <strong>{t("Quotelcl.volumentotal1")}</strong>{" "}
-                  {totalVolume.toFixed(4)} m³
+
+                <div className="col-md-6">
+                  <label className="qa-label">{t("Quotelcl.delivery")}</label>
+                  <textarea
+                    className="qa-textarea"
+                    value={deliveryToAddress}
+                    onChange={(e) => setDeliveryToAddress(e.target.value)}
+                    placeholder="Ingrese dirección de entrega"
+                    rows={3}
+                  />
                 </div>
-                <div className="col-md-3">
-                  <strong>{t("Quotelcl.chargeable")}</strong>{" "}
-                  {chargeableVolume.toFixed(4)}
+              </>
+            )}
+          </div>
+
+          {/* Cálculos */}
+          <div className="row g-3">
+            <div className="col-md-6">
+              <div className="p-3 rounded border d-flex flex-column h-100" style={{ backgroundColor: "var(--qa-bg-light)" }}>
+                <h4 className="fs-6 fw-bold mb-3">{t("Quotelcl.resumen")}</h4>
+                <div className="qa-grid-4" style={{ fontSize: "0.9rem" }}>
+                  <div>
+                    <span className="qa-text-muted d-block">
+                      {t("Quotelcl.pesototal1")}
+                    </span>
+                    <strong>
+                      {totalWeightKg.toFixed(2)} kg ({totalWeightTons.toFixed(4)} t)
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="qa-text-muted d-block">
+                      {t("Quotelcl.volumentotal1")}
+                    </span>
+                    <strong>{totalVolume.toFixed(4)} m³</strong>
+                  </div>
+                  <div>
+                    <span className="qa-text-muted d-block">
+                      {t("Quotelcl.chargeable")}
+                    </span>
+                    <strong>{chargeableVolume.toFixed(4)}</strong>
+                  </div>
+                  <div>
+                    <span className="qa-text-muted d-block">
+                      {t("Quotelcl.cobropor")}
+                    </span>
+                    <strong>
+                      {totalWeightTons > totalVolume
+                        ? t("Quotelcl.peso")
+                        : t("Quotelcl.volumen")}
+                    </strong>
+                  </div>
                 </div>
-                <div className="col-md-3">
-                  <strong>{t("Quotelcl.cobropor")}</strong>{" "}
-                  {totalWeightTons > totalVolume
-                    ? t("Quotelcl.peso")
-                    : t("Quotelcl.volumen")}
-                </div>
+              </div>
+            </div>
 
-                {tarifaOceanFreight && (
-                  <div className="col-12 mt-3 pt-3 border-top">
-                    <h6 className="mb-3">
-                      <i
-                        className="bi bi-cash-coin me-2"
-                        style={{ color: "#0d6efd" }}
-                      ></i>
-                      {t("Quotelcl.resumencargos")}
-                    </h6>
+            {tarifaOceanFreight && (
+              <div className="col-md-6">
+                <div className="p-3 rounded border d-flex flex-column h-100" style={{ backgroundColor: "var(--qa-bg-light)" }}>
+                  <h4 className="fs-6 fw-bold mb-3">
+                    {t("Quotelcl.resumencargos")}
+                  </h4>
 
-                    <div className="bg-light rounded p-3">
-                      {/* BL */}
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>BL:</span>
-                        <strong>{rutaSeleccionada.currency} 60.00</strong>
-                      </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.5rem",
+                      flex: 1,
+                    }}
+                  >
+                    <div className="d-flex justify-content-between">
+                      <span>BL:</span>
+                      <strong>{rutaSeleccionada.currency} 60.00</strong>
+                    </div>
 
-                      {/* Handling */}
-                      <div className="d-flex justify-content-between mb-2">
-                        <span>Handling:</span>
-                        <strong>{rutaSeleccionada.currency} 45.00</strong>
-                      </div>
+                    <div className="d-flex justify-content-between">
+                      <span>Handling:</span>
+                      <strong>{rutaSeleccionada.currency} 45.00</strong>
+                    </div>
 
-                      {/* EXW - Solo si aplica */}
-                      {incoterm === "EXW" && (
-                        <div className="d-flex justify-content-between mb-2">
-                          <span>EXW Charges ({piecesData.length} piezas):</span>
-                          <strong>
-                            {rutaSeleccionada.currency}{" "}
-                            {calculateEXWRate().toFixed(2)}
-                          </strong>
-                        </div>
-                      )}
-
-                      {/* Ocean Freight */}
-                      <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                        <span>
-                          Ocean Freight ({chargeableVolume.toFixed(2)} m³):
-                        </span>
-                        <strong className="">
+                    {incoterm === "EXW" && (
+                      <div className="d-flex justify-content-between">
+                        <span>EXW Charges ({piecesData.length} piezas):</span>
+                        <strong>
                           {rutaSeleccionada.currency}{" "}
-                          {tarifaOceanFreight.income.toFixed(2)}
+                          {calculateEXWRate().toFixed(2)}
                         </strong>
                       </div>
+                    )}
 
-                      {/* Sección de Opcionales */}
-                      <div className="mb-3 pb-3 border-bottom">
-                        <h6 className="mb-3 text-muted">
-                          🔧 {t("Quotelcl.opcional")}
-                        </h6>
-                        <div className="form-check">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="seguroCheckbox"
-                            checked={seguroActivo}
-                            onChange={(e) => setSeguroActivo(e.target.checked)}
-                          />
-                          <label
-                            className="form-check-label"
-                            htmlFor="seguroCheckbox"
-                          >
-                            {t("Quotelcl.agregar")}
+                    <div
+                      className="d-flex justify-content-between"
+                      style={{
+                        borderBottom: "1px solid var(--qa-border-color)",
+                        paddingBottom: "0.5rem",
+                      }}
+                    >
+                      <span>
+                        Ocean Freight ({chargeableVolume.toFixed(2)} m³):
+                      </span>
+                      <strong>
+                        {rutaSeleccionada.currency}{" "}
+                        {tarifaOceanFreight.income.toFixed(2)}
+                      </strong>
+                    </div>
+
+                    {/* Sección de Opcionales */}
+                    <div
+                      style={{
+                        borderBottom: "1px solid var(--qa-border-color)",
+                        paddingBottom: "0.75rem",
+                      }}
+                    >
+                      <h6 className="qa-text-muted mb-2 mt-2">
+                        {t("Quotelcl.opcional")}
+                      </h6>
+                      <div
+                        className="qa-switch-container"
+                        style={{ width: "fit-content", padding: "0.4rem 0.8rem" }}
+                      >
+                        <input
+                          className="qa-switch-input"
+                          type="checkbox"
+                          id="seguroCheckbox"
+                          checked={seguroActivo}
+                          onChange={(e) => setSeguroActivo(e.target.checked)}
+                        />
+                        <label
+                          className="qa-label mb-0 ms-2"
+                          htmlFor="seguroCheckbox"
+                          style={{ cursor: "pointer" }}
+                        >
+                          {t("Quotelcl.agregar")}
+                        </label>
+                      </div>
+                      <small className="qa-text-muted d-block mt-1 ms-1">
+                        {t("Quotelcl.protection")}
+                      </small>
+
+                      {seguroActivo && (
+                        <div className="mt-3 ms-1">
+                          <label htmlFor="valorMercaderia" className="qa-label">
+                            {t("Quotelcl.valormercaderia")} (
+                            {rutaSeleccionada.currency}){" "}
+                            <span className="text-danger">*</span>
                           </label>
-                          <small className="text-muted d-block ms-4">
-                            {t("Quotelcl.protection")}
+                          <input
+                            type="text"
+                            className="qa-input"
+                            id="valorMercaderia"
+                            placeholder="Ej: 10000 o 10000,50"
+                            value={valorMercaderia}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === "" || /^[\d,\.]+$/.test(value)) {
+                                setValorMercaderia(value);
+                              }
+                            }}
+                            style={{ maxWidth: "300px" }}
+                          />
+                          <small className="qa-text-muted">
+                            {t("Quotelcl.ingresavalor")}
                           </small>
                         </div>
-
-                        {/* Input para Valor de Mercadería - Solo visible si seguro está activo */}
-                        {seguroActivo && (
-                          <div className="mt-3 ms-4">
-                            <label
-                              htmlFor="valorMercaderia"
-                              className="form-label small"
-                            >
-                              {t("Quotelcl.valormercaderia")} (
-                              {rutaSeleccionada.currency}){" "}
-                              <span className="text-danger">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="valorMercaderia"
-                              placeholder="Ej: 10000 o 10000,50"
-                              value={valorMercaderia}
-                              onChange={(e) => {
-                                // Permitir solo números, punto y coma
-                                const value = e.target.value;
-                                if (value === "" || /^[\d,\.]+$/.test(value)) {
-                                  setValorMercaderia(value);
-                                }
-                              }}
-                            />
-                            <small className="text-muted">
-                              {t("Quotelcl.ingresavalor")}
-                            </small>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Mostrar el cargo del seguro si está activo */}
-                      {seguroActivo && calculateSeguro() > 0 && (
-                        <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                          <span>{t("Quotelcl.seguro")}</span>
-                          <strong className="text-info">
-                            {rutaSeleccionada.currency}{" "}
-                            {calculateSeguro().toFixed(2)}
-                          </strong>
-                        </div>
                       )}
+                    </div>
 
-                      {/* Mostrar el cargo adicional por No Apilable */}
-                      {hasNotApilable && (
-                        <div className="d-flex justify-content-between mb-3 pb-3 border-bottom">
-                          <span>{t("Quotelcl.noapilable")}</span>
-                          <strong className="">
-                            {rutaSeleccionada.currency}{" "}
-                            {(() => {
-                              const subtotal =
-                                60 + // BL
-                                45 + // Handling
-                                (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
-                                tarifaOceanFreight!.income + // Ocean Freight
-                                (seguroActivo ? calculateSeguro() : 0); // Seguro
-                              return (subtotal * 0.8).toFixed(2);
-                            })()}
-                          </strong>
-                        </div>
-                      )}
-
-                      {/* Mensaje de advertencia si el seguro está activo pero no hay valor de mercadería */}
-                      {seguroActivo && !valorMercaderia && (
-                        <div
-                          className="alert alert-warning py-2 mb-3"
-                          role="alert"
-                        >
-                          <small>{t("Pieceaccordionlcl.segurocargo")}</small>
-                        </div>
-                      )}
-
-                      {/* Total */}
+                    {seguroActivo && calculateSeguro() > 0 && (
                       <div className="d-flex justify-content-between">
-                        <span className="fs-5 fw-bold">TOTAL:</span>
-                        <span
-                          className="fs-5 fw-bold"
-                          style={{ color: "#ff6200" }}
-                        >
+                        <span>{t("Quotelcl.seguro")}</span>
+                        <strong>
+                          {rutaSeleccionada.currency}{" "}
+                          {calculateSeguro().toFixed(2)}
+                        </strong>
+                      </div>
+                    )}
+
+                    {hasNotApilable && (
+                      <div className="d-flex justify-content-between">
+                        <span>{t("Quotelcl.noapilable")}</span>
+                        <strong>
                           {rutaSeleccionada.currency}{" "}
                           {(() => {
                             const subtotal =
-                              60 + // BL
-                              45 + // Handling
-                              (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
-                              tarifaOceanFreight!.income + // Ocean Freight
-                              (seguroActivo ? calculateSeguro() : 0); // Seguro
-                            const total = hasNotApilable
-                              ? subtotal * 1.8
-                              : subtotal;
-                            return total.toFixed(2);
+                              60 +
+                              45 +
+                              (incoterm === "EXW" ? calculateEXWRate() : 0) +
+                              tarifaOceanFreight!.income +
+                              (seguroActivo ? calculateSeguro() : 0);
+                            return (subtotal * 0.8).toFixed(2);
                           })()}
-                        </span>
+                        </strong>
                       </div>
+                    )}
+
+                    {seguroActivo && !valorMercaderia && (
+                      <div className="qa-alert qa-alert-warning">
+                        <small>{t("Pieceaccordionlcl.segurocargo")}</small>
+                      </div>
+                    )}
+
+                    {/* Total */}
+                    <div
+                      className="d-flex justify-content-between"
+                      style={{
+                        borderTop: "1px solid var(--qa-border-color)",
+                        paddingTop: "0.75rem",
+                        marginTop: "0.5rem",
+                      }}
+                    >
+                      <span className="fs-5 fw-bold">TOTAL:</span>
+                      <span
+                        className="fs-5 fw-bold"
+                        style={{ color: "var(--qa-primary)" }}
+                      >
+                        {rutaSeleccionada.currency}{" "}
+                        {(() => {
+                          const subtotal =
+                            60 +
+                            45 +
+                            (incoterm === "EXW" ? calculateEXWRate() : 0) +
+                            tarifaOceanFreight!.income +
+                            (seguroActivo ? calculateSeguro() : 0);
+                          const total = hasNotApilable
+                            ? subtotal * 1.8
+                            : subtotal;
+                          return total.toFixed(2);
+                        })()}
+                      </span>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -1962,182 +1803,132 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
       {rutaSeleccionada && tarifaOceanFreight && (
         <>
-          <div className="card shadow-sm mb-4">
-            <div className="card-body">
-              <h5 className="card-title mb-4">{t("QuoteAIR.generador")}</h5>
-              <div className="row g-3 mt-4">
-                <div className="col-md-6">
-                  <div
-                    className="card h-100 border"
-                    style={{
-                      borderColor: "#e9ecef",
-                      backgroundColor: "transparent",
+          <div className="qa-card">
+            <div className="qa-card-header">
+              <div>
+                <h3>{t("QuoteAIR.generador")}</h3>
+              </div>
+            </div>
+            <div className="qa-grid-2" style={{ marginTop: "1rem" }}>
+              {/* Generar Cotización */}
+              <div
+                style={{
+                  border: "1px solid var(--qa-border-color)",
+                  borderRadius: "var(--qa-radius)",
+                  padding: "1.5rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
+                <h4 className="fs-6 fw-bold mb-1">
+                  {t("QuoteAIR.generarcotizacion")}
+                </h4>
+                <p className="qa-text-muted small mb-3">
+                  {t("QuoteAIR.cotizaciongenerada")}
+                </p>
+                <div style={{ marginTop: "auto" }}>
+                  <button
+                    onClick={() => {
+                      setTipoAccion("cotizacion");
+                      testAPI("cotizacion");
                     }}
+                    disabled={
+                      loading ||
+                      !accessToken ||
+                      !incoterm ||
+                      (incoterm === "EXW" &&
+                        (!pickupFromAddress || !deliveryToAddress))
+                    }
+                    className="qa-btn qa-btn-outline w-100"
                   >
-                    <div
-                      className="card-body d-flex flex-column"
-                      style={{ gap: "0.5rem" }}
-                    >
-                      <div className="text-muted mb-2">
-                        <i
-                          className="bi bi-file-earmark-pdf"
-                          style={{ fontSize: "1.25rem", color: "#ff6200" }}
-                        ></i>
-                      </div>
-                      <h6
-                        className="card-title mb-1"
-                        style={{ color: "#212529", fontWeight: 600 }}
-                      >
-                        {t("QuoteAIR.generarcotizacion")}
-                      </h6>
-                      <p className="card-text small text-muted mb-3">
-                        {t("QuoteAIR.cotizaciongenerada")}
-                      </p>
-
-                      <div className="mt-auto w-100">
-                        <button
-                          onClick={() => {
-                            setTipoAccion("cotizacion");
-                            testAPI("cotizacion");
-                          }}
-                          disabled={
-                            loading ||
-                            !accessToken ||
-                            !incoterm ||
-                            (incoterm === "EXW" &&
-                              (!pickupFromAddress || !deliveryToAddress))
-                          }
-                          className="btn btn-outline-secondary w-100"
-                          style={{
-                            borderRadius: "6px",
-                            color: "#ff6200",
-                            borderColor: "#ff6200",
-                          }}
-                        >
-                          {loading ? (
-                            <>
-                              <span
-                                className="spinner-border spinner-border-sm me-2"
-                                role="status"
-                                aria-hidden="true"
-                              ></span>
-                              {t("QuoteAIR.generando")}
-                            </>
-                          ) : (
-                            <>{t("QuoteAIR.generarcotizacion")}</>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    {loading ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        {t("QuoteAIR.generando")}
+                      </>
+                    ) : (
+                      <>{t("QuoteAIR.generarcotizacion")}</>
+                    )}
+                  </button>
                 </div>
+              </div>
 
-                <div className="col-md-6">
-                  <div
-                    className="card h-100 border"
-                    style={{
-                      borderColor: "#e9ecef",
-                      backgroundColor: "transparent",
+              {/* Generar Operación */}
+              <div
+                style={{
+                  border: "1px solid var(--qa-border-color)",
+                  borderRadius: "var(--qa-radius)",
+                  padding: "1.5rem",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
+                <h4 className="fs-6 fw-bold mb-1">
+                  {t("QuoteAIR.generaroperacion")}
+                </h4>
+                <p className="qa-text-muted small mb-3">
+                  <strong>{t("QuoteAIR.accionirreversible")}</strong>{" "}
+                  {t("QuoteAIR.operaciongenerada")}
+                </p>
+                <div style={{ marginTop: "auto" }}>
+                  <button
+                    onClick={() => {
+                      setTipoAccion("operacion");
+                      testAPI("operacion");
                     }}
+                    disabled={
+                      loading ||
+                      !accessToken ||
+                      !incoterm ||
+                      (incoterm === "EXW" &&
+                        (!pickupFromAddress || !deliveryToAddress))
+                    }
+                    className="qa-btn qa-btn-outline w-100"
                   >
-                    <div
-                      className="card-body d-flex flex-column"
-                      style={{ gap: "0.5rem" }}
-                    >
-                      <div className="text-muted mb-2">
-                        <i
-                          className="bi bi-gear"
-                          style={{ fontSize: "1.25rem", color: "#ff6200" }}
-                        ></i>
-                      </div>
-                      <h6
-                        className="card-title mb-1"
-                        style={{ color: "#1a1a1a", fontWeight: 600 }}
-                      >
-                        {t("QuoteAIR.generaroperacion")}
-                      </h6>
-                      <p className="card-text small text-muted mb-3">
-                        <strong className="text-muted">
-                          {t("QuoteAIR.accionirreversible")}
-                        </strong>{" "}
-                        {t("QuoteAIR.operaciongenerada")}
-                      </p>
-
-                      <div className="mt-auto w-100">
-                        <button
-                          onClick={() => {
-                            setTipoAccion("operacion");
-                            testAPI("operacion");
-                          }}
-                          disabled={
-                            loading ||
-                            !accessToken ||
-                            !incoterm ||
-                            (incoterm === "EXW" &&
-                              (!pickupFromAddress || !deliveryToAddress))
-                          }
-                          className="btn btn-outline-secondary w-100"
-                          style={{
-                            borderRadius: "6px",
-                            color: "#ff6200",
-                            borderColor: "#ff6200",
-                          }}
-                        >
-                          {loading ? (
-                            <>
-                              <span
-                                className="spinner-border spinner-border-sm me-2"
-                                role="status"
-                                aria-hidden="true"
-                              ></span>
-                              {t("QuoteAIR.generandocotizacion")}
-                            </>
-                          ) : (
-                            <>{t("QuoteAIR.generaroperacion")}</>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    {loading ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        {t("QuoteAIR.generandocotizacion")}
+                      </>
+                    ) : (
+                      <>{t("QuoteAIR.generaroperacion")}</>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
           </div>
 
           {!accessToken && (
-            <div className="alert alert-danger mt-3 mb-0">
-              ⚠️ No hay token de acceso. Asegúrate de estar autenticado.
+            <div className="qa-alert qa-alert-danger">
+              <i className="bi bi-exclamation-circle-fill mt-1"></i>
+              No hay token de acceso. Asegúrate de estar autenticado.
             </div>
           )}
 
           {!incoterm && rutaSeleccionada && (
-            <div className="alert alert-info mt-3 mb-0">
-              ℹ️ {t("Pieceaccordionlcl.ingresoinco")}
+            <div className="qa-alert qa-alert-warning">
+              <i className="bi bi-info-circle mt-1"></i>
+              {t("Pieceaccordionlcl.ingresoinco")}
             </div>
           )}
 
           {incoterm === "EXW" && (!pickupFromAddress || !deliveryToAddress) && (
-            <div className="alert alert-warning mt-3 mb-0">
-              ⚠️ {t("Pieceaccordionlcl.debescompl")}
+            <div className="qa-alert qa-alert-warning">
+              <i className="bi bi-exclamation-triangle mt-1"></i>
+              {t("Pieceaccordionlcl.debescompl")}
             </div>
           )}
-
-          {/* Payload
-          <div className="card shadow-sm mb-4">
-            <div className="card-body">
-              <h5 className="card-title">📤 Payload que se enviará</h5>
-              <pre style={{
-                backgroundColor: '#f8f9fa',
-                padding: '15px',
-                borderRadius: '5px',
-                maxHeight: '300px',
-                overflow: 'auto',
-                fontSize: '0.85rem'
-              }}>
-                {JSON.stringify(getTestPayload(), null, 2)}
-              </pre>
-            </div>
-          </div> */}
         </>
       )}
 
@@ -2145,20 +1936,17 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       {/* SECCIÓN 4: RESULTADOS */}
       {/* ============================================================================ */}
 
-      {/* Error */}
       {error && (
-        <div className="card shadow-sm mb-4 border-danger">
-          <div className="card-body">
-            <h5 className="card-title text-danger">❌ Error en la llamada</h5>
+        <div className="qa-alert qa-alert-danger">
+          <div>
+            <strong>Error en la llamada</strong>
             <pre
               style={{
-                backgroundColor: "#fff5f5",
-                padding: "15px",
-                borderRadius: "5px",
-                maxHeight: "400px",
-                overflow: "auto",
+                backgroundColor: "transparent",
+                padding: "0.5rem 0",
+                margin: 0,
                 fontSize: "0.85rem",
-                color: "#c53030",
+                whiteSpace: "pre-wrap",
               }}
             >
               {error}
@@ -2167,28 +1955,14 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         </div>
       )}
 
-      {/* Respuesta exitosa */}
       {response && (
-        <div className="card shadow-sm mb-4 border-success">
-          <div className="card-body">
-            <h5 className="card-title text-success">
-              ✅ Tu cotización se ha generado exitosamente
-            </h5>
-            {/*<pre style={{
-              backgroundColor: '#f0fdf4',
-              padding: '15px',
-              borderRadius: '5px',
-              maxHeight: '400px',
-              overflow: 'auto',
-              fontSize: '0.85rem',
-              color: '#15803d'
-            }}>
-              {JSON.stringify(response, null, 2)}
-            </pre>*/}
-            <div className="alert alert-success mt-3 mb-0">
+        <div className="qa-alert qa-alert-success">
+          <div>
+            <strong>Tu cotización se ha generado exitosamente</strong>
+            <p className="mb-0 mt-1 small">
               En unos momentos se descargará automáticamente el PDF de la
               cotización.
-            </div>
+            </p>
           </div>
         </div>
       )}
@@ -2200,7 +1974,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         centered
       >
         <Modal.Header closeButton>
-          <Modal.Title>📋 Cotización Personalizada Requerida</Modal.Title>
+          <Modal.Title>Cotización Personalizada Requerida</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p className="mb-2">

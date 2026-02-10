@@ -90,6 +90,7 @@ function AirShipmentsView() {
   // Filter fields
   const [filterNumber, setFilterNumber] = useState("");
   const [filterWaybill, setFilterWaybill] = useState("");
+  const [filterClientReference, setFilterClientReference] = useState("");
   const [filterDepartureDate, setFilterDepartureDate] = useState("");
   const [filterArrivalDate, setFilterArrivalDate] = useState("");
   const [filterCarrier, setFilterCarrier] = useState("");
@@ -98,6 +99,8 @@ function AirShipmentsView() {
   // Focus states for floating labels
   const [isNumberFocused, setIsNumberFocused] = useState(false);
   const [isWaybillFocused, setIsWaybillFocused] = useState(false);
+  const [isClientReferenceFocused, setIsClientReferenceFocused] =
+    useState(false);
   const [isDepartureFocused, setIsDepartureFocused] = useState(false);
   const [isArrivalFocused, setIsArrivalFocused] = useState(false);
   const [isCarrierFocused, setIsCarrierFocused] = useState(false);
@@ -375,11 +378,13 @@ function AirShipmentsView() {
   const clearSearch = () => {
     setFilterNumber("");
     setFilterWaybill("");
+    setFilterClientReference("");
     setFilterDepartureDate("");
     setFilterArrivalDate("");
     setFilterCarrier("");
     setIsNumberFocused(false);
     setIsWaybillFocused(false);
+    setIsClientReferenceFocused(false);
     setIsDepartureFocused(false);
     setIsArrivalFocused(false);
     setIsCarrierFocused(false);
@@ -400,6 +405,13 @@ function AirShipmentsView() {
         (s.waybillNumber || "")
           .toLowerCase()
           .includes(filterWaybill.toLowerCase()),
+      );
+    }
+    if (filterClientReference.trim()) {
+      filtered = filtered.filter((s) =>
+        (s.customerReference || "")
+          .toLowerCase()
+          .includes(filterClientReference.toLowerCase()),
       );
     }
     if (filterDepartureDate) {
@@ -620,6 +632,55 @@ function AirShipmentsView() {
                 placeholder=""
                 style={{
                   width: "100px",
+                  height: "32px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  padding: "12px 8px 4px 8px",
+                  fontSize: "12px",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  backgroundColor: "#fff",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <label
+                style={{
+                  position: "absolute",
+                  top:
+                    filterClientReference || isClientReferenceFocused
+                      ? "2px"
+                      : "8px",
+                  left: "8px",
+                  fontSize:
+                    filterClientReference || isClientReferenceFocused
+                      ? "10px"
+                      : "12px",
+                  fontWeight: "bold",
+                  fontFamily:
+                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                  color: "#666",
+                  transition: "all 0.2s ease",
+                  pointerEvents: "none",
+                  backgroundColor: "#fff",
+                  padding: "0 2px",
+                  zIndex: 1,
+                }}
+              >
+                Ref. Cliente
+              </label>
+              <input
+                className="q-field__native q-placeholder"
+                type="text"
+                value={filterClientReference}
+                onChange={(e) => setFilterClientReference(e.target.value)}
+                onFocus={() => setIsClientReferenceFocused(true)}
+                onBlur={() => setIsClientReferenceFocused(false)}
+                placeholder=""
+                style={{
+                  width: "120px",
                   height: "32px",
                   border: "1px solid #ccc",
                   borderRadius: "4px",
@@ -873,7 +934,7 @@ function AirShipmentsView() {
                 <tr>
                   <th className="asv-th">Número</th>
                   <th className="asv-th">Waybill</th>
-                  <th className="asv-th">Consignatario</th>
+                  <th className="asv-th">Referencia Cliente</th>
                   <th className="asv-th asv-th--center">Fecha Salida</th>
                   <th className="asv-th asv-th--center">Fecha Llegada</th>
                   <th className="asv-th asv-th--center">Carrier</th>
@@ -909,7 +970,7 @@ function AirShipmentsView() {
                           {shipment.waybillNumber || "-"}
                         </td>
                         <td className="asv-td">
-                          {shipment.consignee?.name || "-"}
+                          {shipment.customerReference || "-"}
                         </td>
                         <td className="asv-td asv-td--center">
                           {formatDateInline(shipment.departure?.displayDate)}
@@ -1337,6 +1398,19 @@ function AirShipmentsView() {
             <div className="asv-table-footer__left">
               {loadingMore && (
                 <span className="asv-loading-text">Cargando...</span>
+              )}
+              {hasMoreShipments && !loadingMore && (
+                <button
+                  className="asv-btn asv-btn--primary"
+                  onClick={loadMoreShipments}
+                  style={{
+                    fontSize: "12px",
+                    padding: "4px 8px",
+                    height: "auto",
+                  }}
+                >
+                  Cargar más
+                </button>
               )}
             </div>
             <div className="asv-table-footer__right">
