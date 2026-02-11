@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { MUNDOGAMING_DUMMY_INVOICES } from "./mundogamingDummyInvoiceData";
 import "./ReporteriaFinanciera.css";
 
 interface OutletContext {
@@ -381,6 +382,15 @@ function ReporteriaFinanciera() {
   useEffect(() => {
     if (!accessToken || !user?.username) return;
 
+    // MundoGaming: use hardcoded dummy invoices
+    if (user.username === "MundoGaming") {
+      setInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
+      setDisplayedInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
+      setHasMoreInvoices(false);
+      setLoading(false);
+      return;
+    }
+
     const cacheKey = `invoicesCache_${user.username}`;
     const cachedInvoices = localStorage.getItem(cacheKey);
     const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
@@ -582,6 +592,16 @@ function ReporteriaFinanciera() {
 
   const refreshInvoices = () => {
     if (!user?.username) return;
+
+    // MundoGaming: reload dummy invoices without API call
+    if (user.username === "MundoGaming") {
+      setInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
+      setDisplayedInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
+      setHasMoreInvoices(false);
+      setLoading(false);
+      return;
+    }
+
     const cacheKey = `invoicesCache_${user.username}`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);

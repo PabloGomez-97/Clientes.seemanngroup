@@ -11,6 +11,7 @@ import {
   CommoditiesSection,
   SubShipmentsList,
 } from "../shipments/Handlers/Handlersairshipments";
+import { MUNDOGAMING_DUMMY_SHIPMENTS } from "./Handlers/mundogamingDummyData";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -359,6 +360,25 @@ function AirShipmentsView() {
   useEffect(() => {
     if (!accessToken || !user?.username) return;
 
+    // ── Cuenta dummy MundoGaming: carga datos hardcodeados ──
+    if (user.username === "MundoGaming") {
+      const dummySorted = [...MUNDOGAMING_DUMMY_SHIPMENTS].sort((a, b) => {
+        const da = a.departure?.date ? new Date(a.departure.date) : new Date(0);
+        const db = b.departure?.date ? new Date(b.departure.date) : new Date(0);
+        return db.getTime() - da.getTime();
+      });
+      setShipments(dummySorted);
+      setDisplayedShipments(dummySorted);
+      setHasMoreShipments(false);
+      setLoading(false);
+      console.log(
+        "MundoGaming: cargando datos dummy (",
+        dummySorted.length,
+        "envíos)",
+      );
+      return;
+    }
+
     const cacheKey = `airShipmentsCache_${user.username}`;
     const cached = localStorage.getItem(cacheKey);
     const ts = localStorage.getItem(`${cacheKey}_timestamp`);
@@ -466,6 +486,22 @@ function AirShipmentsView() {
 
   const refreshShipments = () => {
     if (!user?.username) return;
+
+    // ── Cuenta dummy MundoGaming: reload datos hardcodeados ──
+    if (user.username === "MundoGaming") {
+      const dummySorted = [...MUNDOGAMING_DUMMY_SHIPMENTS].sort((a, b) => {
+        const da = a.departure?.date ? new Date(a.departure.date) : new Date(0);
+        const db = b.departure?.date ? new Date(b.departure.date) : new Date(0);
+        return db.getTime() - da.getTime();
+      });
+      setShipments(dummySorted);
+      setDisplayedShipments(dummySorted);
+      setHasMoreShipments(false);
+      setShowingAll(false);
+      console.log("MundoGaming: datos dummy recargados");
+      return;
+    }
+
     const cacheKey = `airShipmentsCache_${user.username}`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);

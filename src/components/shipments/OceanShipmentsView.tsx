@@ -8,6 +8,7 @@ import {
   InfoField,
   QuoteModal,
 } from "../shipments/Handlers/Handleroceanshipments";
+import { MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS } from "./Handlers/mundogamingDummyOceanData";
 import "./OceanShipmentsView.css";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
@@ -252,6 +253,28 @@ function OceanShipmentsView() {
   useEffect(() => {
     if (!accessToken) return;
 
+    // ── Cuenta dummy MundoGaming: carga datos hardcodeados ──
+    if (filterConsignee === "MundoGaming") {
+      const dummySorted = [...MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS].sort(
+        (a, b) => {
+          const da = a.departure ? new Date(a.departure) : new Date(0);
+          const db = b.departure ? new Date(b.departure) : new Date(0);
+          return db.getTime() - da.getTime();
+        },
+      );
+      setOceanShipments(dummySorted);
+      setDisplayedOceanShipments(dummySorted);
+      setShowingAll(false);
+      setTablePage(1);
+      setLoading(false);
+      console.log(
+        "MundoGaming: cargando datos dummy ocean (",
+        dummySorted.length,
+        "envíos)",
+      );
+      return;
+    }
+
     const cached = localStorage.getItem("oceanShipmentsCache");
     const ts = localStorage.getItem("oceanShipmentsCacheTimestamp");
 
@@ -434,6 +457,23 @@ function OceanShipmentsView() {
   };
 
   const refreshShipments = () => {
+    // ── Cuenta dummy MundoGaming: reload datos hardcodeados ──
+    if (filterConsignee === "MundoGaming") {
+      const dummySorted = [...MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS].sort(
+        (a, b) => {
+          const da = a.departure ? new Date(a.departure) : new Date(0);
+          const db = b.departure ? new Date(b.departure) : new Date(0);
+          return db.getTime() - da.getTime();
+        },
+      );
+      setOceanShipments(dummySorted);
+      setDisplayedOceanShipments(dummySorted);
+      setShowingAll(false);
+      setTablePage(1);
+      console.log("MundoGaming: datos dummy ocean recargados");
+      return;
+    }
+
     localStorage.removeItem("oceanShipmentsCache");
     localStorage.removeItem("oceanShipmentsCacheTimestamp");
     setOceanShipments([]);
