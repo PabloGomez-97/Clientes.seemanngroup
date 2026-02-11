@@ -96,10 +96,9 @@ export default function Login() {
             src={logoSeemann}
             alt="Seemann Group"
             style={{
-              height: "40px",
+              height: "80px",
               width: "auto",
               display: "block",
-              filter: "brightness(0) invert(1)",
             }}
           />
         </div>
