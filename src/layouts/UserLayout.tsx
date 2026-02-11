@@ -52,6 +52,8 @@ function UserLayout() {
     setSidebarOpen(!sidebarOpen);
   };
 
+  {
+    /*
   // Mostrar loading mientras obtiene el token
   if (loading) {
     return (
@@ -65,7 +67,6 @@ function UserLayout() {
           backgroundColor: "#1a365d",
         }}
       >
-        {/* Overlay oscuro para mejor contraste */}
         <div
           className="position-absolute w-100 h-100"
           style={{
@@ -74,9 +75,7 @@ function UserLayout() {
           }}
         ></div>
 
-        {/* Contenido centrado */}
         <div className="text-center position-relative" style={{ zIndex: 1 }}>
-          {/* Spinner */}
           <div
             className="spinner-border text-light mx-auto mb-4"
             role="status"
@@ -87,7 +86,6 @@ function UserLayout() {
             </span>
           </div>
 
-          {/* Text */}
           <h4
             className="text-white fw-bold mb-2"
             style={{
@@ -109,7 +107,6 @@ function UserLayout() {
             {t("home.userLayout.connecting")}
           </p>
 
-          {/* Progress dots */}
           <div className="d-flex gap-2 justify-content-center mt-4">
             {[0, 1, 2].map((i) => (
               <div
@@ -135,6 +132,7 @@ function UserLayout() {
         `}</style>
       </div>
     );
+  }*/
   }
 
   // Mostrar error si falla
