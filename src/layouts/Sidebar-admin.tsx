@@ -66,7 +66,58 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           icon: "fa fa-users",
         },
         { path: "/admin/trackeos", name: "Trackeos", icon: "fa fa-route" },
-        { path: "/admin/pricing", name: "Pricing", icon: "fa fa-dollar-sign" },
+      ],
+    },
+    {
+      title: "Tarifario",
+      items: [
+        {
+          path: "/admin/pricing",
+          name: "Tarifas",
+          icon: "fa fa-dollar-sign",
+          badge: { text: "Pricing", type: "admin" as const },
+        },
+      ],
+    },
+    {
+      title: "Gerencia",
+      items: [
+        {
+          path: "/admin/users",
+          name: "Gestión Usuarios",
+          icon: "fa fa-shield-alt",
+          restrictedTo: "superadmin@sphereglobal.io",
+          badge: { text: "CHIEF", type: "admin" as const },
+        },
+        {
+          path: "/admin/ejecutivos",
+          name: "Gestión Ejecutivos",
+          icon: "fa fa-briefcase",
+          restrictedTo: "superadmin@sphereglobal.io",
+          badge: { text: "CHIEF", type: "admin" as const },
+        },
+        {
+          path: "/admin/reportexecutive",
+          name: "Cotizaciones Ejecutivo",
+          icon: "fa fa-file-alt",
+          restrictedTo: [
+            "naguilera@seemanngroup.com",
+            "ifmaldonado@seemanngroup.com",
+            "superadmin@sphereglobal.io",
+          ],
+          badge: { text: "CHIEF", type: "admin" as const },
+        },
+        {
+          path: "/admin/reportoperational",
+          name: "Facturaciones Ejecutivo",
+          icon: "fa fa-file-invoice-dollar",
+          restrictedTo: [
+            "naguilera@seemanngroup.com",
+            "ifmaldonado@seemanngroup.com",
+            "superadmin@sphereglobal.io",
+          ],
+          badge: { text: "CHIEF", type: "admin" as const },
+        },
       ],
     },
     {
@@ -82,45 +133,6 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           name: "Reportería Clientes",
           icon: "fa fa-chart-line",
           badge: { text: "NEW", type: "new" as const },
-        },
-        {
-          path: "/admin/reportexecutive",
-          name: "Cotizaciones Ejecutivo",
-          icon: "fa fa-file-alt",
-          restrictedTo: [
-            "naguilera@seemanngroup.com",
-            "ifmaldonado@seemanngroup.com",
-            "superadmin@sphereglobal.io",
-          ],
-        },
-        {
-          path: "/admin/reportoperational",
-          name: "Facturaciones Ejecutivo",
-          icon: "fa fa-file-invoice-dollar",
-          restrictedTo: [
-            "naguilera@seemanngroup.com",
-            "ifmaldonado@seemanngroup.com",
-            "superadmin@sphereglobal.io",
-          ],
-        },
-      ],
-    },
-    {
-      title: "Administración",
-      items: [
-        {
-          path: "/admin/users",
-          name: "Gestión Usuarios",
-          icon: "fa fa-shield-alt",
-          restrictedTo: "superadmin@sphereglobal.io",
-          badge: { text: "ADMIN", type: "admin" as const },
-        },
-        {
-          path: "/admin/ejecutivos",
-          name: "Gestión Ejecutivos",
-          icon: "fa fa-briefcase",
-          restrictedTo: "superadmin@sphereglobal.io",
-          badge: { text: "ADMIN", type: "admin" as const },
         },
       ],
     },
