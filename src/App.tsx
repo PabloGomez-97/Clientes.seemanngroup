@@ -26,6 +26,8 @@ import Invoicesxejecutivo from "./components/administrador/Facturaciones-Ejecuti
 import Pricing from "./components/administrador/PricingTabs";
 import PricingFCL from "./components/administrador/Pricing/PricingFCL";
 import PricingLCL from "./components/administrador/Pricing/PricingLCL";
+import HomeAdmin from "./components/administrador/HomeAdmin";
+import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
 
 // Reportería Pages
 import ReporteriaDashboard from "./components/administrador/reporteria/pages/ReporteriaDashboard";
@@ -66,11 +68,7 @@ function App() {
         element={
           user ? (
             <Navigate
-              to={
-                user.username === "Administrador"
-                  ? "/admin/cotizador-administrador"
-                  : "/"
-              }
+              to={user.username === "Administrador" ? "/admin/home" : "/"}
               replace
             />
           ) : (
@@ -85,11 +83,7 @@ function App() {
         element={
           user ? (
             <Navigate
-              to={
-                user.username === "Administrador"
-                  ? "/admin/dashboard"
-                  : "/login"
-              }
+              to={user.username === "Administrador" ? "/admin/home" : "/login"}
               replace
             />
           ) : (
@@ -112,7 +106,9 @@ function App() {
           element={<Cotizadoradministrador />}
         />
         <Route path="tusclientes" element={<Clientesejecutivos />} />
-        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route index element={<Navigate to="/admin/home" replace />} />
+        <Route path="home" element={<HomeAdmin />} />
+        <Route path="reporteriaclientes" element={<ReporteriaClientes />} />
         <Route path="dashboard" element={<DashboardAdmin />} />
         <Route path="users" element={<UsersManagement />} />
         <Route path="ejecutivos" element={<EjecutivosManagement />} />
@@ -173,7 +169,7 @@ function App() {
             to={
               user
                 ? user.username === "Administrador"
-                  ? "/admin/dashboard"
+                  ? "/admin/home"
                   : "/"
                 : "/login"
             }

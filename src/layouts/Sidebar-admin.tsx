@@ -1,10 +1,12 @@
-// src/components/layout/Sidebar-admin.tsx - ShipsGo Style (Dark Theme)
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+// src/layouts/Sidebar-admin.tsx - AWS/Azure Minimalist Design (same as client)
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import logoSeemann from "./logoseemann.png";
 
 interface SidebarAdminProps {
   isOpen: boolean;
+  onToggle?: () => void;
 }
 
 interface SubMenuItem {
@@ -20,7 +22,7 @@ interface MenuItem {
   restrictedTo?: string | string[];
   badge?: {
     text: string;
-    type: 'new' | 'beta' | 'admin' | 'super';
+    type: "new" | "beta" | "admin";
   };
   subItems?: SubMenuItem[];
 }
@@ -30,6 +32,17 @@ interface MenuSection {
   items: MenuItem[];
 }
 
+// Design tokens - AWS/Azure inspired (same as client Sidebar)
+const colors = {
+  bg: "#232f3e",
+  bgHover: "#2d3a4a",
+  bgActive: "#1a242f",
+  text: "#ffffff",
+  textMuted: "#8d99a8",
+  border: "#3b4754",
+  accent: "#ff9900",
+};
+
 function SidebarAdmin({ isOpen }: SidebarAdminProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -37,223 +50,178 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  const username = user?.nombreuser || 'Administrador';
-
-  const getUserImage = (nombre?: string) => {
-    if (!nombre) return null;
-    const partes = nombre.trim().split(' ');
-    if (partes.length < 2) return null;
-    const iniciales = partes[0][0].toLowerCase() + partes[1][0].toLowerCase();
-    return `/ejecutivos/${iniciales}.png`;
-  };
-
-  const userImage = getUserImage(user?.nombreuser);
-
   const menuSections: MenuSection[] = [
     {
-      title: 'Main',
+      title: "Principal",
       items: [
+        { path: "/admin/home", name: "Inicio", icon: "fa fa-home" },
         {
-          path: '/admin/cotizador-administrador',
-          name: 'Cotizador',
-          icon: 'fa fa-calculator'
+          path: "/admin/cotizador-administrador",
+          name: "Cotizador",
+          icon: "fa fa-calculator",
         },
         {
-          path: '/admin/tusclientes',
-          name: 'Tus Clientes',
-          icon: 'fa fa-users'
+          path: "/admin/tusclientes",
+          name: "Mis Clientes",
+          icon: "fa fa-users",
         },
-        {
-          path: '/admin/trackeos',
-          name: 'Trackeos de Clientes',
-          icon: 'fa fa-route'
-        },
-        {
-          path: '/admin/pricing',
-          name: 'Pricing',
-          icon: 'fa fa-dollar-sign'
-        },
-        {
-          path: '/admin/users',
-          name: 'Gestión de Usuarios',
-          icon: 'fa fa-user-shield',
-          restrictedTo: 'superadmin@sphereglobal.io',
-          badge: { text: 'ADMIN', type: 'admin' }
-        },
-        {
-          path: '/admin/ejecutivos',
-          name: 'Gestión de Ejecutivos',
-          icon: 'fa fa-user-tie',
-          restrictedTo: 'superadmin@sphereglobal.io',
-          badge: { text: 'ADMIN', type: 'admin' }
-        }
-      ]
+        { path: "/admin/trackeos", name: "Trackeos", icon: "fa fa-route" },
+        { path: "/admin/pricing", name: "Pricing", icon: "fa fa-dollar-sign" },
+      ],
     },
     {
-      title: 'Reports',
+      title: "Reportes",
       items: [
         {
-          path: '/admin/reporteria',
-          name: 'Reportería',
-          icon: 'fa fa-chart-bar'
+          path: "/admin/reporteria",
+          name: "Reportería",
+          icon: "fa fa-chart-bar",
         },
         {
-          path: '/admin/reportexecutive',
-          name: 'Cotizaciones por Ejecutivo',
-          icon: 'fa fa-file-contract',
-          restrictedTo: ['naguilera@seemanngroup.com', 'ifmaldonado@seemanngroup.com', "superadmin@sphereglobal.io"],
-          badge: { text: 'NEW', type: 'super' }
+          path: "/admin/reporteriaclientes",
+          name: "Reportería Clientes",
+          icon: "fa fa-chart-line",
+          badge: { text: "NEW", type: "new" as const },
         },
         {
-          path: '/admin/reportoperational',
-          name: 'Facturaciones por Ejecutivo',
-          icon: 'fa fa-file-contract',
-          restrictedTo: ['naguilera@seemanngroup.com', 'ifmaldonado@seemanngroup.com', "superadmin@sphereglobal.io"],
-          badge: { text: 'Old', type: 'beta' }
-        }
-      ]
+          path: "/admin/reportexecutive",
+          name: "Cotizaciones Ejecutivo",
+          icon: "fa fa-file-alt",
+          restrictedTo: [
+            "naguilera@seemanngroup.com",
+            "ifmaldonado@seemanngroup.com",
+            "superadmin@sphereglobal.io",
+          ],
+        },
+        {
+          path: "/admin/reportoperational",
+          name: "Facturaciones Ejecutivo",
+          icon: "fa fa-file-invoice-dollar",
+          restrictedTo: [
+            "naguilera@seemanngroup.com",
+            "ifmaldonado@seemanngroup.com",
+            "superadmin@sphereglobal.io",
+          ],
+        },
+      ],
     },
     {
-      title: 'Changelogs & Settings',
+      title: "Administración",
       items: [
         {
-          path: '/admin/dashboard',
-          name: 'Registro de Cambios',
-          icon: 'fa fa-history'
-        }
-      ]
-    }
+          path: "/admin/users",
+          name: "Gestión Usuarios",
+          icon: "fa fa-shield-alt",
+          restrictedTo: "superadmin@sphereglobal.io",
+          badge: { text: "ADMIN", type: "admin" as const },
+        },
+        {
+          path: "/admin/ejecutivos",
+          name: "Gestión Ejecutivos",
+          icon: "fa fa-briefcase",
+          restrictedTo: "superadmin@sphereglobal.io",
+          badge: { text: "ADMIN", type: "admin" as const },
+        },
+      ],
+    },
   ];
 
-  // Filter menu items based on user permissions
-  const filteredSections = menuSections.map(section => ({
-    ...section,
-    items: section.items.filter(item => {
-      if (item.restrictedTo) {
-        // Handle both single email and array of emails
-        if (Array.isArray(item.restrictedTo)) {
-          return item.restrictedTo.includes(user?.email || '');
-        }
+  // Filter by permission
+  const filteredSections = menuSections
+    .map((s) => ({
+      ...s,
+      items: s.items.filter((item) => {
+        if (!item.restrictedTo) return true;
+        if (Array.isArray(item.restrictedTo))
+          return item.restrictedTo.includes(user?.email || "");
         return user?.email === item.restrictedTo;
-      }
-      return true;
-    })
-  })).filter(section => section.items.length > 0);
+      }),
+    }))
+    .filter((s) => s.items.length > 0);
 
   if (!isOpen) return null;
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + "/");
 
   const toggleMenu = (menuName: string) => {
-    setExpandedMenus(prev =>
+    setExpandedMenus((prev) =>
       prev.includes(menuName)
-        ? prev.filter(m => m !== menuName)
-        : [...prev, menuName]
+        ? prev.filter((m) => m !== menuName)
+        : [...prev, menuName],
     );
-  };
-
-  const getBadgeStyles = (type: 'new' | 'beta' | 'admin' | 'super') => {
-    const styles = {
-      new: {
-        background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-        color: '#dc2626',
-        border: '1px solid #fca5a5',
-        boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
-      },
-      beta: {
-        background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-        color: '#dc2626',
-        border: '1px solid #fca5a5',
-        boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
-      },
-      admin: {
-        background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
-        color: '#1e40af',
-        border: '1px solid #93c5fd',
-        boxShadow: '0 2px 4px rgba(59, 130, 246, 0.2)'
-      },
-      super: {
-        background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-        color: '#92400e',
-        border: '1px solid #fcd34d',
-        boxShadow: '0 2px 4px rgba(245, 158, 11, 0.2)'
-      }
-    };
-    return styles[type];
   };
 
   return (
     <div
       style={{
-        width: '260px',
-        minWidth: '260px',
-        height: '100vh',
-        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'sticky',
+        width: "260px",
+        minWidth: "260px",
+        height: "100vh",
+        backgroundColor: colors.bg,
+        display: "flex",
+        flexDirection: "column",
+        position: "sticky",
         top: 0,
         left: 0,
-        borderRight: '1px solid rgba(255, 255, 255, 0.06)',
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        boxShadow: '2px 0 12px rgba(0, 0, 0, 0.3)'
+        borderRight: `1px solid ${colors.border}`,
+        overflowY: "auto",
+        overflowX: "hidden",
+        fontFamily:
+          "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
       }}
-      className="sidebar-scroll"
+      className="sidebar-admin-scroll"
     >
       {/* Header con Logo */}
       <div
+        className="sidebar-admin-header"
         style={{
-          padding: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)',
-          minHeight: '120px'
+          height: "70px",
+          padding: "0 20px",
+          display: "flex",
+          alignItems: "center",
+          borderBottom: `1px solid ${colors.border}`,
         }}
       >
         <img
-          src="/logocompleto.png"
+          src={logoSeemann}
           alt="Seemann Group"
+          className="sidebar-admin-logo"
           style={{
-            maxWidth: '100%',
-            maxHeight: '80px',
-            width: 'auto',
-            height: 'auto',
-            objectFit: 'contain',
-            filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
+            width: "180px",
+            height: "auto",
+            objectFit: "contain",
           }}
         />
       </div>
 
       {/* Navigation Menu */}
-      <div style={{ flex: 1, padding: '20px 0' }}>
+      <nav style={{ flex: 1, padding: "12px 0" }}>
         {filteredSections.map((section, sectionIdx) => (
-          <div key={sectionIdx} style={{ marginBottom: '10px' }}>
+          <div key={sectionIdx} style={{ marginBottom: "4px" }}>
             {/* Section Title */}
             <div
               style={{
-                padding: '10px 24px 8px 24px',
-                fontSize: '11px',
-                fontWeight: '700',
-                color: '#94a3b8',
-                textTransform: 'uppercase',
-                letterSpacing: '0.8px',
-                marginTop: sectionIdx > 0 ? '16px' : '0',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                padding: "20px 20px 8px",
+                fontSize: "11px",
+                fontWeight: "600",
+                color: colors.textMuted,
+                textTransform: "uppercase",
+                letterSpacing: "0.8px",
+                marginTop: sectionIdx > 0 ? "8px" : "0",
               }}
             >
               {section.title}
             </div>
 
             {/* Menu Items */}
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {section.items.map((item, itemIdx) => {
                 const hasSubItems = item.subItems && item.subItems.length > 0;
                 const isExpanded = expandedMenus.includes(item.name);
                 const isItemActive = item.path ? isActive(item.path) : false;
-                const isHovered = hoveredItem === `${section.title}-${item.name}`;
+                const isHovered =
+                  hoveredItem === `${section.title}-${item.name}`;
 
                 return (
                   <li key={itemIdx}>
@@ -266,65 +234,69 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
                           navigate(item.path);
                         }
                       }}
-                      onMouseEnter={() => setHoveredItem(`${section.title}-${item.name}`)}
+                      onMouseEnter={() =>
+                        setHoveredItem(`${section.title}-${item.name}`)
+                      }
                       onMouseLeave={() => setHoveredItem(null)}
                       style={{
-                        padding: '13px 24px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                        background: isItemActive
-                          ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.25) 100%)'
+                        padding: "15px 20px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "14px",
+                        cursor: "pointer",
+                        transition: "all 0.12s ease",
+                        backgroundColor: isItemActive
+                          ? colors.bgActive
                           : isHovered
-                          ? 'rgba(255, 255, 255, 0.05)'
-                          : 'transparent',
-                        borderLeft: isItemActive ? '3px solid #6366f1' : '3px solid transparent',
-                        color: isItemActive ? '#c7d2fe' : '#94a3b8',
-                        fontSize: '14px',
-                        fontWeight: isItemActive ? '600' : '500',
-                        position: 'relative',
-                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                        marginBottom: '2px'
+                            ? colors.bgHover
+                            : "transparent",
+                        borderLeft: isItemActive
+                          ? `3px solid ${colors.accent}`
+                          : "3px solid transparent",
+                        color: isItemActive ? colors.text : colors.textMuted,
+                        fontSize: "14px",
+                        fontWeight: isItemActive ? "500" : "400",
+                        marginLeft: "0",
+                        marginRight: "0",
+                        borderRadius: "0",
                       }}
                     >
                       {/* Icon */}
-                      <div
+                      <i
+                        className={item.icon}
                         style={{
-                          width: '20px',
-                          height: '20px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: isItemActive ? '#a5b4fc' : '#64748b',
-                          transition: 'all 0.15s ease'
+                          fontSize: "18px",
+                          width: "22px",
+                          textAlign: "center",
+                          opacity: isItemActive ? 1 : 0.75,
                         }}
-                      >
-                        <i
-                          className={item.icon}
-                          style={{
-                            fontSize: '17px'
-                          }}
-                        />
-                      </div>
+                      />
 
                       {/* Name */}
-                      <span style={{ flex: 1, fontSize: '14px', lineHeight: '1.4' }}>
+                      <span
+                        style={{
+                          flex: 1,
+                          fontSize: "14px",
+                          fontWeight: isItemActive ? "500" : "400",
+                        }}
+                      >
                         {item.name}
                       </span>
 
-                      {/* Badge (if exists) */}
+                      {/* Badge */}
                       {item.badge && (
                         <span
                           style={{
-                            ...getBadgeStyles(item.badge.type),
-                            padding: '3px 7px',
-                            borderRadius: '5px',
-                            fontSize: '9px',
-                            fontWeight: '700',
-                            letterSpacing: '0.4px',
-                            marginLeft: 'auto'
+                            padding: "2px 6px",
+                            borderRadius: "3px",
+                            fontSize: "9px",
+                            fontWeight: "600",
+                            backgroundColor:
+                              item.badge.type === "new"
+                                ? colors.accent
+                                : "rgba(255, 255, 255, 0.15)",
+                            color: colors.text,
+                            textTransform: "uppercase",
                           }}
                         >
                           {item.badge.text}
@@ -336,11 +308,12 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
                         <i
                           className="fa fa-chevron-right"
                           style={{
-                            fontSize: '10px',
-                            transition: 'transform 0.2s ease',
-                            transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                            color: '#64748b',
-                            marginLeft: item.badge ? '8px' : '0'
+                            fontSize: "10px",
+                            transition: "transform 0.2s ease",
+                            transform: isExpanded
+                              ? "rotate(90deg)"
+                              : "rotate(0deg)",
+                            opacity: 0.5,
                           }}
                         />
                       )}
@@ -350,16 +323,33 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
                     {hasSubItems && (
                       <div
                         style={{
-                          maxHeight: isExpanded ? '500px' : '0',
-                          overflow: 'hidden',
-                          transition: 'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          background: 'rgba(0, 0, 0, 0.2)'
+                          maxHeight: isExpanded ? "300px" : "0",
+                          overflow: "hidden",
+                          transition: "max-height 0.2s ease",
                         }}
                       >
-                        <ul style={{ listStyle: 'none', padding: '4px 0', margin: 0 }}>
+                        <ul
+                          style={{
+                            listStyle: "none",
+                            padding: "4px 0",
+                            margin: 0,
+                          }}
+                        >
                           {item.subItems!.map((subItem, subIdx) => {
+                            if (subItem.restrictedTo) {
+                              const allowed = Array.isArray(
+                                subItem.restrictedTo,
+                              )
+                                ? subItem.restrictedTo.includes(
+                                    user?.email || "",
+                                  )
+                                : user?.email === subItem.restrictedTo;
+                              if (!allowed) return null;
+                            }
+
                             const isSubActive = isActive(subItem.path);
-                            const isSubHovered = hoveredItem === `sub-${subItem.path}`;
+                            const isSubHovered =
+                              hoveredItem === `sub-${subItem.path}`;
 
                             return (
                               <li
@@ -368,40 +358,44 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
                                   e.stopPropagation();
                                   navigate(subItem.path);
                                 }}
-                                onMouseEnter={() => setHoveredItem(`sub-${subItem.path}`)}
+                                onMouseEnter={() =>
+                                  setHoveredItem(`sub-${subItem.path}`)
+                                }
                                 onMouseLeave={() => setHoveredItem(null)}
                                 style={{
-                                  padding: '11px 24px 11px 54px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s ease',
-                                  background: isSubActive
-                                    ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)'
+                                  padding: "10px 20px 10px 56px",
+                                  cursor: "pointer",
+                                  transition: "all 0.12s ease",
+                                  backgroundColor: isSubActive
+                                    ? colors.bgActive
                                     : isSubHovered
-                                    ? 'rgba(255, 255, 255, 0.03)'
-                                    : 'transparent',
-                                  borderLeft: isSubActive
-                                    ? '3px solid #6366f1'
-                                    : '3px solid transparent',
-                                  color: isSubActive ? '#a5b4fc' : '#94a3b8',
-                                  fontSize: '13.5px',
-                                  fontWeight: isSubActive ? '600' : '500',
-                                  position: 'relative',
-                                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                                  marginBottom: '1px'
+                                      ? colors.bgHover
+                                      : "transparent",
+                                  color: isSubActive
+                                    ? colors.text
+                                    : colors.textMuted,
+                                  fontSize: "14px",
+                                  fontWeight: isSubActive ? "500" : "400",
+                                  position: "relative",
+                                  marginLeft: "0",
+                                  marginRight: "0",
+                                  borderRadius: "0",
                                 }}
                               >
-                                {/* Bullet point for submenu */}
+                                {/* Bullet point */}
                                 <span
                                   style={{
-                                    position: 'absolute',
-                                    left: '40px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    width: '5px',
-                                    height: '5px',
-                                    borderRadius: '50%',
-                                    background: isSubActive ? '#6366f1' : '#475569',
-                                    transition: 'all 0.15s ease'
+                                    position: "absolute",
+                                    left: "40px",
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                    width: "5px",
+                                    height: "5px",
+                                    borderRadius: "50%",
+                                    backgroundColor: isSubActive
+                                      ? colors.accent
+                                      : colors.textMuted,
+                                    opacity: isSubActive ? 1 : 0.5,
                                   }}
                                 />
                                 {subItem.name}
@@ -417,148 +411,50 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
             </ul>
           </div>
         ))}
-      </div>
-
-      {/* Footer con usuario */}
-      <div
-        style={{
-          padding: '16px 24px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-          background: 'rgba(99, 102, 241, 0.08)'
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '12px'
-          }}
-        >
-          <div
-            style={{
-              width: '44px',
-              height: '44px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
-            }}
-          >
-            {userImage ? (
-              <img
-                src={userImage}
-                alt={username}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            ) : (
-              <i
-                className="fa fa-user"
-                style={{
-                  fontSize: '20px',
-                  color: 'white'
-                }}
-              />
-            )}
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: '13px',
-                fontWeight: '700',
-                color: '#e2e8f0',
-                marginBottom: '3px',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {username}
-            </div>
-            <div
-              style={{
-                fontSize: '11px',
-                color: '#94a3b8',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-              }}
-            >
-              <div
-                style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: '#10b981',
-                  boxShadow: '0 0 8px rgba(16, 185, 129, 0.6)',
-                  animation: 'pulse 2s ease-in-out infinite'
-                }}
-              />
-              En línea
-            </div>
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding: '10px 12px',
-            borderRadius: '8px',
-            background: 'rgba(0, 0, 0, 0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.06)',
-            fontSize: '10px',
-            color: '#64748b',
-            textAlign: 'center',
-            fontWeight: '500',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-          }}
-        >
-          © {new Date().getFullYear()} Seemann Group
-        </div>
-      </div>
+      </nav>
 
       <style>{`
-        .sidebar-scroll::-webkit-scrollbar {
-          width: 6px;
+        .sidebar-admin-scroll::-webkit-scrollbar {
+          width: 0;
+        }
+        .sidebar-admin-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .sidebar-admin-scroll::-webkit-scrollbar-thumb {
+          background: transparent;
         }
         
-        .sidebar-scroll::-webkit-scrollbar-track {
-          background: rgba(0, 0, 0, 0.2);
-        }
-        
-        .sidebar-scroll::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 3px;
-        }
-        
-        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.15);
-        }
-
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-            transform: scale(1);
+        /* Responsive: Tablets */
+        @media (max-width: 1024px) {
+          .sidebar-admin-scroll {
+            width: 240px !important;
+            min-width: 240px !important;
           }
-          50% {
-            opacity: 0.7;
-            transform: scale(1.1);
+          .sidebar-admin-logo {
+            width: 150px !important;
+          }
+          .sidebar-admin-header {
+            height: 60px !important;
           }
         }
-
-        @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+        
+        /* Responsive: Mobile */
+        @media (max-width: 768px) {
+          .sidebar-admin-scroll {
+            position: fixed !important;
+            z-index: 1000 !important;
+            width: 280px !important;
+            min-width: 280px !important;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3) !important;
+          }
+          .sidebar-admin-logo {
+            width: 160px !important;
+          }
+          .sidebar-admin-header {
+            height: 65px !important;
+            padding: 0 16px !important;
+          }
+        }
       `}</style>
     </div>
   );

@@ -1,9 +1,15 @@
-// src/components/administrador/natalia/reportExecutive.tsx
-import { useEffect, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { useAuth } from '../../../auth/AuthContext';
-import ChartExecutivo from './Chartexecutivo';
+// src/components/administrador/Facturaciones-Ejecutivos/Reporteriaexecutivo.tsx
+// Executive Reporting Dashboard — Seemann Group
+import { useEffect, useState, useMemo, type CSSProperties } from "react";
+import { useOutletContext } from "react-router-dom";
+import { useAuth } from "../../../auth/AuthContext";
+import ChartExecutivo from "./Chartexecutivo.tsx";
+import type { QuoteStats, ExecutiveComparison } from "./types";
+export type { QuoteStats, ExecutiveComparison };
 
+// ════════════════════════════════════════════
+// TYPES
+// ════════════════════════════════════════════
 interface OutletContext {
   accessToken: string;
   onLogout: () => void;
@@ -30,394 +36,804 @@ interface Quote {
   totalIncome: number;
   totalExpense: number;
   profit: number;
-  chargeDetails?: any[];
+  chargeDetails?: Record<string, unknown>[];
 }
 
-interface QuoteStats {
-  totalQuotes: number;
-  completedQuotes: number;
-  pendingQuotes: number;
-  airQuotes: number;
-  seaQuotes: number;
-  totalIncome: number;
-  totalExpense: number;
-  totalProfit: number;
-  profitMargin: number;
-  averagePerQuote: number;
-  completionRate: number;
-  uniqueConsignees: number;
+interface MonthlyBreakdown {
+  month: string;
+  label: string;
+  quotes: number;
+  completed: number;
+  air: number;
+  sea: number;
+  truck: number;
+  income: number;
+  expense: number;
+  profit: number;
+  margin: number;
+  clients: number;
 }
 
-interface ExecutiveComparison {
-  nombre: string;
-  stats: QuoteStats;
+interface TransportRow {
+  type: string;
+  quotes: number;
+  income: number;
+  expense: number;
+  profit: number;
+  margin: number;
 }
 
-type TabType = 'individual' | 'comparativa' | 'doble';
-type SortField = 'nombre' | 'totalQuotes' | 'completedQuotes' | 'completionRate' | 'airQuotes' | 'seaQuotes' | 'totalIncome' | 'totalExpense' | 'totalProfit' | 'profitMargin' | 'averagePerQuote' | 'uniqueConsignees';
-type SortDirection = 'asc' | 'desc';
+type TabType = "individual" | "comparativa" | "doble";
+type SortField =
+  | "nombre"
+  | "totalQuotes"
+  | "completedQuotes"
+  | "completionRate"
+  | "airQuotes"
+  | "seaQuotes"
+  | "truckQuotes"
+  | "totalIncome"
+  | "totalExpense"
+  | "totalProfit"
+  | "profitMargin"
+  | "averagePerQuote"
+  | "uniqueConsignees";
+type SortDirection = "asc" | "desc";
 
+// ════════════════════════════════════════════
+// DESIGN SYSTEM
+// ════════════════════════════════════════════
+const FONT =
+  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+const C = {
+  primary: "#ff6200",
+  primaryLight: "#fff7ed",
+  secondary: "#1a1a1a",
+  text: "#111827",
+  textMuted: "#6b7280",
+  textLight: "#9ca3af",
+  border: "#e5e7eb",
+  borderLight: "#f3f4f6",
+  bg: "#f8f9fa",
+  white: "#ffffff",
+  positive: "#059669",
+  positiveLight: "#ecfdf5",
+  negative: "#dc2626",
+  negativeLight: "#fef2f2",
+  warning: "#d97706",
+};
+
+const base: CSSProperties = { fontFamily: FONT };
+
+const styles = {
+  card: {
+    ...base,
+    backgroundColor: C.white,
+    border: `1px solid ${C.border}`,
+    borderRadius: 6,
+  } as CSSProperties,
+  cardPad: {
+    ...base,
+    backgroundColor: C.white,
+    border: `1px solid ${C.border}`,
+    borderRadius: 6,
+    padding: 20,
+  } as CSSProperties,
+  label: {
+    ...base,
+    fontSize: 11,
+    fontWeight: 600,
+    color: C.textMuted,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+    marginBottom: 4,
+  } as CSSProperties,
+  bigVal: {
+    ...base,
+    fontSize: 26,
+    fontWeight: 700,
+    color: C.secondary,
+    lineHeight: 1.2,
+  } as CSSProperties,
+  sub: {
+    ...base,
+    fontSize: 12,
+    color: C.textMuted,
+    marginTop: 4,
+  } as CSSProperties,
+  th: {
+    ...base,
+    padding: "10px 12px",
+    fontSize: 11,
+    fontWeight: 600,
+    color: C.textMuted,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.04em",
+    borderBottom: `2px solid ${C.border}`,
+    whiteSpace: "nowrap" as const,
+    backgroundColor: C.bg,
+  } as CSSProperties,
+  td: {
+    ...base,
+    padding: "10px 12px",
+    fontSize: 13,
+    color: C.text,
+    borderBottom: `1px solid ${C.borderLight}`,
+  } as CSSProperties,
+  sectionTitle: {
+    ...base,
+    fontSize: 13,
+    fontWeight: 600,
+    color: C.secondary,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.04em",
+    marginBottom: 16,
+  } as CSSProperties,
+};
+
+// ════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════
+const fmt = (n: number) =>
+  new Intl.NumberFormat("es-CL", {
+    style: "currency",
+    currency: "CLP",
+    minimumFractionDigits: 0,
+  }).format(n);
+
+const fmtDate = (d: string) =>
+  new Date(d).toLocaleDateString("es-CL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+
+const fmtPct = (v: number) => `${v.toFixed(1)}%`;
+
+const calculateStats = (arr: Quote[]): QuoteStats => {
+  const n = arr.length;
+  const completed = arr.filter((q) => q.status === "Completed").length;
+  const air = arr.filter((q) => q.modeOfTransportation === "40 - Air").length;
+  const sea = arr.filter(
+    (q) =>
+      q.modeOfTransportation === "11 - Vessel, Containerized" ||
+      q.modeOfTransportation === "10 - Vessel",
+  ).length;
+  const truck = arr.filter(
+    (q) => q.modeOfTransportation === "30 - Truck",
+  ).length;
+  const income = arr.reduce((s, q) => s + (q.totalIncome || 0), 0);
+  const expense = arr.reduce((s, q) => s + (q.totalExpense || 0), 0);
+  const profit = arr.reduce((s, q) => s + (q.profit || 0), 0);
+  const clients = new Set(
+    arr
+      .map((q) => q.consignee?.trim())
+      .filter((c): c is string => !!c && c.length > 0),
+  ).size;
+
+  return {
+    totalQuotes: n,
+    completedQuotes: completed,
+    pendingQuotes: n - completed,
+    airQuotes: air,
+    seaQuotes: sea,
+    truckQuotes: truck,
+    totalIncome: income,
+    totalExpense: expense,
+    totalProfit: profit,
+    profitMargin: income > 0 ? (profit / income) * 100 : 0,
+    averagePerQuote: n > 0 ? income / n : 0,
+    averageProfitPerQuote: n > 0 ? profit / n : 0,
+    completionRate: n > 0 ? (completed / n) * 100 : 0,
+    uniqueConsignees: clients,
+  };
+};
+
+const getMonthlyBreakdown = (arr: Quote[]): MonthlyBreakdown[] => {
+  const map = new Map<string, Quote[]>();
+  arr.forEach((q) => {
+    if (!q.date) return;
+    const d = new Date(q.date);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(q);
+  });
+  const mNames = [
+    "Ene",
+    "Feb",
+    "Mar",
+    "Abr",
+    "May",
+    "Jun",
+    "Jul",
+    "Ago",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dic",
+  ];
+  return Array.from(map.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, qs]) => {
+      const st = calculateStats(qs);
+      const [year, m] = month.split("-");
+      return {
+        month,
+        label: `${mNames[parseInt(m) - 1]} ${year}`,
+        quotes: st.totalQuotes,
+        completed: st.completedQuotes,
+        air: st.airQuotes,
+        sea: st.seaQuotes,
+        truck: st.truckQuotes,
+        income: st.totalIncome,
+        expense: st.totalExpense,
+        profit: st.totalProfit,
+        margin: st.profitMargin,
+        clients: st.uniqueConsignees,
+      };
+    });
+};
+
+const getTransportBreakdown = (arr: Quote[]): TransportRow[] => {
+  const types = [
+    { key: "Air", fn: (q: Quote) => q.modeOfTransportation === "40 - Air" },
+    {
+      key: "Sea",
+      fn: (q: Quote) =>
+        q.modeOfTransportation === "11 - Vessel, Containerized" ||
+        q.modeOfTransportation === "10 - Vessel",
+    },
+    { key: "Truck", fn: (q: Quote) => q.modeOfTransportation === "30 - Truck" },
+    {
+      key: "Other",
+      fn: (q: Quote) =>
+        ![
+          "40 - Air",
+          "11 - Vessel, Containerized",
+          "10 - Vessel",
+          "30 - Truck",
+        ].includes(q.modeOfTransportation),
+    },
+  ];
+  return types
+    .map((t) => {
+      const f = arr.filter(t.fn);
+      const st = calculateStats(f);
+      return {
+        type: t.key,
+        quotes: st.totalQuotes,
+        income: st.totalIncome,
+        expense: st.totalExpense,
+        profit: st.totalProfit,
+        margin: st.profitMargin,
+      };
+    })
+    .filter((t) => t.quotes > 0);
+};
+
+const getTopConsignees = (arr: Quote[], limit = 10) => {
+  const map = new Map<
+    string,
+    { count: number; income: number; profit: number }
+  >();
+  arr.forEach((q) => {
+    const c = q.consignee?.trim();
+    if (c && c.length > 0) {
+      const ex = map.get(c) || { count: 0, income: 0, profit: 0 };
+      map.set(c, {
+        count: ex.count + 1,
+        income: ex.income + q.totalIncome,
+        profit: ex.profit + q.profit,
+      });
+    }
+  });
+  return Array.from(map.entries())
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => b.income - a.income)
+    .slice(0, limit);
+};
+
+const getTopRoutes = (arr: Quote[], limit = 10) => {
+  const map = new Map<string, { count: number; income: number }>();
+  arr.forEach((q) => {
+    const route = `${q.origin || "—"} → ${q.destination || "—"}`;
+    const ex = map.get(route) || { count: 0, income: 0 };
+    map.set(route, { count: ex.count + 1, income: ex.income + q.totalIncome });
+  });
+  return Array.from(map.entries())
+    .map(([route, d]) => ({ route, ...d }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+};
+
+// ════════════════════════════════════════════
+// SUB-COMPONENTS
+// ════════════════════════════════════════════
+const Metric = ({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  color?: string;
+}) => (
+  <div style={styles.cardPad}>
+    <div style={styles.label}>{label}</div>
+    <div style={{ ...styles.bigVal, color: color || C.secondary }}>{value}</div>
+    {sub && <div style={styles.sub}>{sub}</div>}
+  </div>
+);
+
+const TransportBar = ({
+  air,
+  sea,
+  truck,
+  total,
+}: {
+  air: number;
+  sea: number;
+  truck: number;
+  total: number;
+}) => {
+  if (total === 0) return null;
+  const other = total - air - sea - truck;
+  const items = [
+    { label: "Air", count: air, pct: (air / total) * 100, color: C.primary },
+    { label: "Sea", count: sea, pct: (sea / total) * 100, color: C.secondary },
+    {
+      label: "Truck",
+      count: truck,
+      pct: (truck / total) * 100,
+      color: C.textMuted,
+    },
+    ...(other > 0
+      ? [
+          {
+            label: "Other",
+            count: other,
+            pct: (other / total) * 100,
+            color: C.textLight,
+          },
+        ]
+      : []),
+  ];
+  return (
+    <div style={styles.cardPad}>
+      <div style={styles.label}>Transport Distribution</div>
+      <div
+        style={{
+          display: "flex",
+          height: 6,
+          borderRadius: 3,
+          overflow: "hidden",
+          backgroundColor: C.borderLight,
+          marginTop: 12,
+          marginBottom: 12,
+        }}
+      >
+        {items.map((it) => (
+          <div
+            key={it.label}
+            style={{
+              width: `${it.pct}%`,
+              backgroundColor: it.color,
+              transition: "width 0.3s",
+            }}
+          />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap", ...base }}>
+        {items.map((it) => (
+          <div
+            key={it.label}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 2,
+                backgroundColor: it.color,
+                display: "inline-block",
+              }}
+            />
+            <span style={{ fontSize: 12, color: C.textMuted, ...base }}>
+              {it.label}
+            </span>
+            <span
+              style={{ fontSize: 13, fontWeight: 600, color: C.text, ...base }}
+            >
+              {it.count}
+            </span>
+            <span style={{ fontSize: 11, color: C.textLight, ...base }}>
+              ({it.pct.toFixed(0)}%)
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const StatusDot = ({ status }: { status: string }) => {
+  const color = status === "Completed" ? C.positive : C.textLight;
+  return (
+    <span
+      style={{ display: "inline-flex", alignItems: "center", gap: 6, ...base }}
+    >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: "50%",
+          backgroundColor: color,
+          display: "inline-block",
+        }}
+      />
+      <span style={{ fontSize: 12, color: C.textMuted }}>
+        {status || "Pending"}
+      </span>
+    </span>
+  );
+};
+
+const EmptyState = ({ title, sub }: { title: string; sub: string }) => (
+  <div style={{ ...styles.cardPad, padding: "60px 24px", textAlign: "center" }}>
+    <div
+      style={{
+        fontSize: 16,
+        fontWeight: 600,
+        color: C.secondary,
+        marginBottom: 6,
+        ...base,
+      }}
+    >
+      {title}
+    </div>
+    <div style={{ fontSize: 13, color: C.textMuted, ...base }}>{sub}</div>
+  </div>
+);
+
+const ErrorBanner = ({ message }: { message: string }) => (
+  <div
+    style={{
+      padding: "14px 20px",
+      backgroundColor: C.negativeLight,
+      border: "1px solid #fecaca",
+      borderRadius: 6,
+      color: C.negative,
+      fontSize: 13,
+      fontWeight: 500,
+      marginBottom: 20,
+      ...base,
+    }}
+  >
+    {message}
+  </div>
+);
+
+const PAGE_SIZE = 20;
+
+// ════════════════════════════════════════════
+// MAIN COMPONENT
+// ════════════════════════════════════════════
 function ReportExecutive() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user, getEjecutivos } = useAuth();
-  
-  // Estados generales
-  const [activeTab, setActiveTab] = useState<TabType>('individual');
+
+  // ── State ──
+  const [activeTab, setActiveTab] = useState<TabType>("individual");
   const [ejecutivos, setEjecutivos] = useState<Ejecutivo[]>([]);
   const [loadingEjecutivos, setLoadingEjecutivos] = useState(true);
-  
-  // Estados para Análisis Individual
-  const [selectedEjecutivo, setSelectedEjecutivo] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+
+  // Individual
+  const [selectedEjecutivo, setSelectedEjecutivo] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [page, setPage] = useState(1);
 
-  // Estados para Análisis Comparativa
-  const [compStartDate, setCompStartDate] = useState<string>('');
-  const [compEndDate, setCompEndDate] = useState<string>('');
-  const [comparativeData, setComparativeData] = useState<ExecutiveComparison[]>([]);
+  // Comparativa
+  const [compStartDate, setCompStartDate] = useState("");
+  const [compEndDate, setCompEndDate] = useState("");
+  const [comparativeData, setComparativeData] = useState<ExecutiveComparison[]>(
+    [],
+  );
   const [allComparativeQuotes, setAllComparativeQuotes] = useState<Quote[]>([]);
   const [loadingComparative, setLoadingComparative] = useState(false);
   const [errorComparative, setErrorComparative] = useState<string | null>(null);
   const [hasSearchedComparative, setHasSearchedComparative] = useState(false);
-  const [sortField, setSortField] = useState<SortField>('totalProfit');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [sortField, setSortField] = useState<SortField>("totalProfit");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  // Estados para Análisis Doble
-  const [ejecutivo1, setEjecutivo1] = useState<string>('');
-  const [ejecutivo2, setEjecutivo2] = useState<string>('');
-  const [doubleStartDate, setDoubleStartDate] = useState<string>('');
-  const [doubleEndDate, setDoubleEndDate] = useState<string>('');
+  // Doble
+  const [ejecutivo1, setEjecutivo1] = useState("");
+  const [ejecutivo2, setEjecutivo2] = useState("");
+  const [doubleStartDate, setDoubleStartDate] = useState("");
+  const [doubleEndDate, setDoubleEndDate] = useState("");
   const [doubleData, setDoubleData] = useState<ExecutiveComparison[]>([]);
   const [allDoubleQuotes, setAllDoubleQuotes] = useState<Quote[]>([]);
   const [loadingDouble, setLoadingDouble] = useState(false);
   const [errorDouble, setErrorDouble] = useState<string | null>(null);
   const [hasSearchedDouble, setHasSearchedDouble] = useState(false);
 
-  // Cargar ejecutivos al montar
+  // ── Effects ──
   useEffect(() => {
-    const fetchEjecutivos = async () => {
+    const load = async () => {
       try {
         setLoadingEjecutivos(true);
         const data = await getEjecutivos();
-        const activeEjecutivos = data.filter((e): e is Ejecutivo => e !== null);
-        setEjecutivos(activeEjecutivos);
+        setEjecutivos(data.filter((e): e is Ejecutivo => e !== null));
       } catch (err) {
-        console.error('Error cargando ejecutivos:', err);
+        console.error("Error cargando ejecutivos:", err);
       } finally {
         setLoadingEjecutivos(false);
       }
     };
-
-    fetchEjecutivos();
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    tooltipTriggerList.forEach(el => {
-      new (window as any).bootstrap.Tooltip(el);
-    });
-  }, []);
+  // ── Derived data ──
+  const stats = useMemo(() => calculateStats(quotes), [quotes]);
+  const monthlyData = useMemo(() => getMonthlyBreakdown(quotes), [quotes]);
+  const transportData = useMemo(() => getTransportBreakdown(quotes), [quotes]);
+  const totalPages = Math.ceil(quotes.length / PAGE_SIZE);
+  const paginatedQuotes = quotes.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE,
+  );
 
+  const sortedComparativeData = useMemo(
+    () =>
+      [...comparativeData].sort((a, b) => {
+        let aVal: number | string = 0;
+        let bVal: number | string = 0;
+        if (sortField === "nombre") {
+          aVal = a.nombre;
+          bVal = b.nombre;
+        } else {
+          aVal = a.stats[sortField] as number;
+          bVal = b.stats[sortField] as number;
+        }
+        if (typeof aVal === "string" && typeof bVal === "string")
+          return sortDirection === "asc"
+            ? aVal.localeCompare(bVal)
+            : bVal.localeCompare(aVal);
+        return sortDirection === "asc"
+          ? (aVal as number) - (bVal as number)
+          : (bVal as number) - (aVal as number);
+      }),
+    [comparativeData, sortField, sortDirection],
+  );
 
-  // Función para calcular estadísticas de un array de quotes
-  const calculateStats = (quotesArray: Quote[]): QuoteStats => {
-    const totalQuotes = quotesArray.length;
-    const completedQuotes = quotesArray.filter(q => q.status === 'Completed').length;
-    const airQuotes = quotesArray.filter(q => q.modeOfTransportation === '40 - Air').length;
-    const seaQuotes = quotesArray.filter(q => 
-      q.modeOfTransportation === '11 - Vessel, Containerized' || 
-      q.modeOfTransportation === '10 - Vessel'
-    ).length;
-    const totalIncome = quotesArray.reduce((sum, q) => sum + (q.totalIncome || 0), 0);
-    const totalExpense = quotesArray.reduce((sum, q) => sum + (q.totalExpense || 0), 0);
-    const totalProfit = quotesArray.reduce((sum, q) => sum + (q.profit || 0), 0);
-    
-    // Calcular consignees únicos
-    const uniqueConsigneesSet = new Set(
-      quotesArray
-        .map(q => q.consignee?.trim())
-        .filter(c => c && c.length > 0)
-    );
-    const uniqueConsignees = uniqueConsigneesSet.size;
+  const globalStats = useMemo(
+    () =>
+      comparativeData.reduce(
+        (acc, ex) => ({
+          totalQuotes: acc.totalQuotes + ex.stats.totalQuotes,
+          totalIncome: acc.totalIncome + ex.stats.totalIncome,
+          totalExpense: acc.totalExpense + ex.stats.totalExpense,
+          totalProfit: acc.totalProfit + ex.stats.totalProfit,
+        }),
+        { totalQuotes: 0, totalIncome: 0, totalExpense: 0, totalProfit: 0 },
+      ),
+    [comparativeData],
+  );
 
-    return {
-      totalQuotes,
-      completedQuotes,
-      pendingQuotes: totalQuotes - completedQuotes,
-      airQuotes,
-      seaQuotes,
-      totalIncome,
-      totalExpense,
-      totalProfit,
-      profitMargin: totalIncome > 0 ? (totalProfit / totalIncome) * 100 : 0,
-      averagePerQuote: totalQuotes > 0 ? totalIncome / totalQuotes : 0,
-      completionRate: totalQuotes > 0 ? (completedQuotes / totalQuotes) * 100 : 0,
-      uniqueConsignees
-    };
-  };
-
-  // Fetch para análisis individual
+  // ── API calls ──
   const fetchQuotes = async () => {
     if (!selectedEjecutivo) {
-      setError('Debes seleccionar un ejecutivo');
+      setError("Debes seleccionar un ejecutivo");
       return;
     }
-
     const cacheKey = `quotesExecutive_${selectedEjecutivo}_${startDate}_${endDate}`;
     const cached = localStorage.getItem(cacheKey);
-    const timestamp = localStorage.getItem(`${cacheKey}_timestamp`);
-    
-    if (cached && timestamp) {
-      const age = Date.now() - parseInt(timestamp);
-      if (age < 5 * 60 * 1000) {
-        setQuotes(JSON.parse(cached));
-        setHasSearched(true);
-        setError(null);
-        console.log('📦 Datos individuales cargados desde caché');
-        return;
-      }
+    const ts = localStorage.getItem(`${cacheKey}_timestamp`);
+    if (cached && ts && Date.now() - parseInt(ts) < 5 * 60 * 1000) {
+      setQuotes(JSON.parse(cached));
+      setHasSearched(true);
+      setError(null);
+      setPage(1);
+      return;
     }
-
     try {
       setLoading(true);
       setError(null);
       setHasSearched(true);
-
+      setPage(1);
       const params = new URLSearchParams({ SalesRepName: selectedEjecutivo });
-      if (startDate) params.append('StartDate', startDate);
-      if (endDate) params.append('EndDate', endDate);
-
-      const response = await fetch(`https://api.linbis.com/Quotes/filter?${params}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) throw new Error('Token inválido o expirado');
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const quotesArray: Quote[] = Array.isArray(data) ? data : [];
-      const sortedQuotes = quotesArray.sort((a, b) => 
-        new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+      if (startDate) params.append("StartDate", startDate);
+      if (endDate) params.append("EndDate", endDate);
+      const res = await fetch(
+        `https://api.linbis.com/Quotes/filter?${params}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        },
       );
-
-      setQuotes(sortedQuotes);
-      localStorage.setItem(cacheKey, JSON.stringify(sortedQuotes));
+      if (!res.ok) {
+        if (res.status === 401) throw new Error("Token inválido o expirado");
+        throw new Error(`Error ${res.status}: ${res.statusText}`);
+      }
+      const data = await res.json();
+      const sorted: Quote[] = (Array.isArray(data) ? data : []).sort(
+        (a: Quote, b: Quote) =>
+          new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+      );
+      setQuotes(sorted);
+      localStorage.setItem(cacheKey, JSON.stringify(sorted));
       localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
-
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch para análisis comparativa
   const fetchComparativeData = async () => {
     const cacheKey = `quotesComparative_${compStartDate}_${compEndDate}`;
     const cached = localStorage.getItem(cacheKey);
-    const timestamp = localStorage.getItem(`${cacheKey}_timestamp`);
-    
-    if (cached && timestamp) {
-      const age = Date.now() - parseInt(timestamp);
-      if (age < 5 * 60 * 1000) {
-        setComparativeData(JSON.parse(cached));
-        setHasSearchedComparative(true);
-        setErrorComparative(null);
-        console.log('📦 Datos comparativos cargados desde caché');
-        return;
-      }
+    const ts = localStorage.getItem(`${cacheKey}_timestamp`);
+    if (cached && ts && Date.now() - parseInt(ts) < 5 * 60 * 1000) {
+      const parsed = JSON.parse(cached);
+      setComparativeData(parsed.comparisons);
+      setAllComparativeQuotes(parsed.allQuotes || []);
+      setHasSearchedComparative(true);
+      setErrorComparative(null);
+      return;
     }
-
     try {
       setLoadingComparative(true);
       setErrorComparative(null);
       setHasSearchedComparative(true);
-
       const comparisons: ExecutiveComparison[] = [];
       const allQuotes: Quote[] = [];
-
-      for (const ejecutivo of ejecutivos) {
-        const params = new URLSearchParams({ SalesRepName: ejecutivo.nombre });
-        if (compStartDate) params.append('StartDate', compStartDate);
-        if (compEndDate) params.append('EndDate', compEndDate);
-
-        const response = await fetch(`https://api.linbis.com/Quotes/filter?${params}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const quotesArray: Quote[] = Array.isArray(data) ? data : [];
-          allQuotes.push(...quotesArray);
-          comparisons.push({
-            nombre: ejecutivo.nombre,
-            stats: calculateStats(quotesArray)
-          });
+      for (const ej of ejecutivos) {
+        const params = new URLSearchParams({ SalesRepName: ej.nombre });
+        if (compStartDate) params.append("StartDate", compStartDate);
+        if (compEndDate) params.append("EndDate", compEndDate);
+        const res = await fetch(
+          `https://api.linbis.com/Quotes/filter?${params}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const arr: Quote[] = Array.isArray(data) ? data : [];
+          allQuotes.push(...arr);
+          comparisons.push({ nombre: ej.nombre, stats: calculateStats(arr) });
         }
       }
-
       setComparativeData(comparisons);
       setAllComparativeQuotes(allQuotes);
-      localStorage.setItem(cacheKey, JSON.stringify(comparisons));
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({ comparisons, allQuotes }),
+      );
       localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
-
     } catch (err) {
-      setErrorComparative(err instanceof Error ? err.message : 'Error desconocido');
+      setErrorComparative(
+        err instanceof Error ? err.message : "Error desconocido",
+      );
     } finally {
       setLoadingComparative(false);
     }
   };
 
-  // Fetch para análisis doble
   const fetchDoubleComparison = async () => {
     if (!ejecutivo1 || !ejecutivo2) {
-      setErrorDouble('Debes seleccionar dos ejecutivos');
+      setErrorDouble("Debes seleccionar dos ejecutivos");
       return;
     }
-
     const cacheKey = `quotesDouble_${ejecutivo1}_${ejecutivo2}_${doubleStartDate}_${doubleEndDate}`;
     const cached = localStorage.getItem(cacheKey);
-    const timestamp = localStorage.getItem(`${cacheKey}_timestamp`);
-    
-    if (cached && timestamp) {
-      const age = Date.now() - parseInt(timestamp);
-      if (age < 5 * 60 * 1000) {
-        setDoubleData(JSON.parse(cached));
-        setHasSearchedDouble(true);
-        setErrorDouble(null);
-        console.log('📦 Comparación doble cargada desde caché');
-        return;
-      }
+    const ts = localStorage.getItem(`${cacheKey}_timestamp`);
+    if (cached && ts && Date.now() - parseInt(ts) < 5 * 60 * 1000) {
+      const parsed = JSON.parse(cached);
+      setDoubleData(parsed.comparisons);
+      setAllDoubleQuotes(parsed.allQuotes || []);
+      setHasSearchedDouble(true);
+      setErrorDouble(null);
+      return;
     }
-
     try {
       setLoadingDouble(true);
       setErrorDouble(null);
       setHasSearchedDouble(true);
-
       const comparisons: ExecutiveComparison[] = [];
       const allQuotes: Quote[] = [];
-
-      for (const ejeName of [ejecutivo1, ejecutivo2]) {
-        const params = new URLSearchParams({ SalesRepName: ejeName });
-        if (doubleStartDate) params.append('StartDate', doubleStartDate);
-        if (doubleEndDate) params.append('EndDate', doubleEndDate);
-
-        const response = await fetch(`https://api.linbis.com/Quotes/filter?${params}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const quotesArray: Quote[] = Array.isArray(data) ? data : [];
-          allQuotes.push(...quotesArray);
-          comparisons.push({
-            nombre: ejeName,
-            stats: calculateStats(quotesArray)
-          });
+      for (const name of [ejecutivo1, ejecutivo2]) {
+        const params = new URLSearchParams({ SalesRepName: name });
+        if (doubleStartDate) params.append("StartDate", doubleStartDate);
+        if (doubleEndDate) params.append("EndDate", doubleEndDate);
+        const res = await fetch(
+          `https://api.linbis.com/Quotes/filter?${params}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const arr: Quote[] = Array.isArray(data) ? data : [];
+          allQuotes.push(...arr);
+          comparisons.push({ nombre: name, stats: calculateStats(arr) });
         }
       }
-
       setDoubleData(comparisons);
       setAllDoubleQuotes(allQuotes);
-      localStorage.setItem(cacheKey, JSON.stringify(comparisons));
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({ comparisons, allQuotes }),
+      );
       localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
-
     } catch (err) {
-      setErrorDouble(err instanceof Error ? err.message : 'Error desconocido');
+      setErrorDouble(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoadingDouble(false);
     }
   };
 
-  // Función de ordenamiento
+  // ── Sort handler ──
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortDirection('desc');
+      setSortDirection("desc");
     }
   };
 
-  // Datos ordenados para tabla comparativa
-  const sortedComparativeData = [...comparativeData].sort((a, b) => {
-    let aVal: number | string = 0;
-    let bVal: number | string = 0;
-
-    if (sortField === 'nombre') {
-      aVal = a.nombre;
-      bVal = b.nombre;
-    } else {
-      aVal = a.stats[sortField];
-      bVal = b.stats[sortField];
-    }
-
-    if (typeof aVal === 'string' && typeof bVal === 'string') {
-      return sortDirection === 'asc' 
-        ? aVal.localeCompare(bVal)
-        : bVal.localeCompare(aVal);
-    }
-
-    return sortDirection === 'asc' 
-      ? (aVal as number) - (bVal as number)
-      : (bVal as number) - (aVal as number);
-  });
-
-  // Calcular totales globales para comparativa
-  const globalStats = comparativeData.reduce((acc, exec) => ({
-    totalQuotes: acc.totalQuotes + exec.stats.totalQuotes,
-    totalIncome: acc.totalIncome + exec.stats.totalIncome,
-    totalExpense: acc.totalExpense + exec.stats.totalExpense,
-    totalProfit: acc.totalProfit + exec.stats.totalProfit
-  }), { totalQuotes: 0, totalIncome: 0, totalExpense: 0, totalProfit: 0 });
-
-  // Stats para análisis individual
-  const stats = calculateStats(quotes);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP',
-      minimumFractionDigits: 0
-    }).format(amount);
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field)
+      return <span style={{ opacity: 0.3, fontSize: 10 }}>&#8597;</span>;
+    return (
+      <span style={{ fontSize: 10 }}>
+        {sortDirection === "asc" ? "▲" : "▼"}
+      </span>
+    );
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
-  // Función para exportar a Excel (CSV)
-  const exportToExcel = (data: Quote[], filename: string) => {
-    const headers = ['Número', 'Fecha', 'Estado', 'Tipo', 'Shipper', 'Consignee', 'Origen', 'Destino', 'Income', 'Expense', 'Profit'];
-    const rows = data.map(q => [
+  // ── Export ──
+  const exportToCSV = (data: Quote[], filename: string) => {
+    const headers = [
+      "Número",
+      "Fecha",
+      "Estado",
+      "Tipo",
+      "Shipper",
+      "Consignee",
+      "Origen",
+      "Destino",
+      "Income",
+      "Expense",
+      "Profit",
+    ];
+    const rows = data.map((q) => [
       q.number,
-      formatDate(q.date),
+      fmtDate(q.date),
       q.status,
       q.modeOfTransportation,
       q.shipper,
@@ -426,1411 +842,1794 @@ function ReportExecutive() {
       q.destination,
       q.totalIncome,
       q.totalExpense,
-      q.profit
+      q.profit,
     ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${filename}.csv`);
-    link.style.visibility = 'hidden';
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => r.map((c) => `"${c}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob(["\ufeff" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.csv`;
+    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Función para exportar comparativa a Excel
-  const exportComparativeToExcel = (data: ExecutiveComparison[], filename: string) => {
-    const headers = ['Ejecutivo', 'Total Quotes', 'Completadas', '% Completado', 'Aéreas', 'Marítimas', 'Clientes Únicos', 'Income', 'Expense', 'Profit', 'Margen %', 'Promedio/Quote'];
-    const rows = data.map(exec => [
-      exec.nombre,
-      exec.stats.totalQuotes,
-      exec.stats.completedQuotes,
-      exec.stats.completionRate.toFixed(1) + '%',
-      exec.stats.airQuotes,
-      exec.stats.seaQuotes,
-      exec.stats.uniqueConsignees,
-      exec.stats.totalIncome,
-      exec.stats.totalExpense,
-      exec.stats.totalProfit,
-      exec.stats.profitMargin.toFixed(1) + '%',
-      exec.stats.averagePerQuote
+  const exportComparativeToCSV = (
+    data: ExecutiveComparison[],
+    filename: string,
+  ) => {
+    const headers = [
+      "Ejecutivo",
+      "Total Quotes",
+      "Completadas",
+      "% Completado",
+      "Air",
+      "Sea",
+      "Truck",
+      "Clientes Únicos",
+      "Income",
+      "Expense",
+      "Profit",
+      "Margen %",
+      "Promedio/Quote",
+    ];
+    const rows = data.map((ex) => [
+      ex.nombre,
+      ex.stats.totalQuotes,
+      ex.stats.completedQuotes,
+      fmtPct(ex.stats.completionRate),
+      ex.stats.airQuotes,
+      ex.stats.seaQuotes,
+      ex.stats.truckQuotes,
+      ex.stats.uniqueConsignees,
+      ex.stats.totalIncome,
+      ex.stats.totalExpense,
+      ex.stats.totalProfit,
+      fmtPct(ex.stats.profitMargin),
+      ex.stats.averagePerQuote,
     ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${filename}.csv`);
-    link.style.visibility = 'hidden';
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => r.map((c) => `"${c}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob(["\ufeff" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${filename}.csv`;
+    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Análisis de Top Clientes
-  const getTopConsignees = (quotesData: Quote[], limit: number = 10) => {
-    const consigneeMap = new Map<string, { count: number; income: number; profit: number }>();
-    
-    quotesData.forEach(q => {
-      const consignee = q.consignee?.trim();
-      if (consignee && consignee.length > 0) {
-        const existing = consigneeMap.get(consignee) || { count: 0, income: 0, profit: 0 };
-        consigneeMap.set(consignee, {
-          count: existing.count + 1,
-          income: existing.income + q.totalIncome,
-          profit: existing.profit + q.profit
-        });
-      }
-    });
-
-    return Array.from(consigneeMap.entries())
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.income - a.income)
-      .slice(0, limit);
+  // ── Shared button styles ──
+  const btnPrimary: CSSProperties = {
+    ...base,
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "8px 20px",
+    borderRadius: 4,
+    border: "none",
+    backgroundColor: C.primary,
+    color: C.white,
+    cursor: "pointer",
+    height: 38,
+    transition: "opacity 0.15s",
   };
 
-  // Análisis de Top Rutas
-  const getTopRoutes = (quotesData: Quote[], limit: number = 10) => {
-    const routeMap = new Map<string, { count: number; income: number }>();
-    
-    quotesData.forEach(q => {
-      const route = `${q.origin} → ${q.destination}`;
-      const existing = routeMap.get(route) || { count: 0, income: 0 };
-      routeMap.set(route, {
-        count: existing.count + 1,
-        income: existing.income + q.totalIncome
-      });
-    });
-
-    return Array.from(routeMap.entries())
-      .map(([route, data]) => ({ route, ...data }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, limit);
+  const btnOutline: CSSProperties = {
+    ...base,
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "8px 20px",
+    borderRadius: 4,
+    border: `1px solid ${C.border}`,
+    backgroundColor: C.white,
+    color: C.text,
+    cursor: "pointer",
+    height: 38,
+    transition: "all 0.15s",
   };
 
-  // Función para obtener todos los quotes de comparativa (para análisis global)
-  const getAllComparativeQuotes = (): Quote[] => {
-    const allQuotes: Quote[] = [];
-    comparativeData.forEach(exec => {
-      // Aquí necesitaríamos acceso a los quotes individuales
-      // Por ahora usaremos un placeholder
-    });
-    return allQuotes;
+  const inputStyle: CSSProperties = {
+    ...base,
+    fontSize: 13,
+    padding: "8px 12px",
+    borderRadius: 4,
+    border: `1px solid ${C.border}`,
+    backgroundColor: C.white,
+    color: C.text,
+    height: 38,
+    width: "100%",
+    outline: "none",
   };
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return <span style={{ opacity: 0.3 }}>⇅</span>;
-    return sortDirection === 'asc' ? '↑' : '↓';
+  const selectStyle: CSSProperties = {
+    ...inputStyle,
+    appearance: "auto" as const,
   };
 
+  // tab styles
+  const tabBase: CSSProperties = {
+    ...base,
+    padding: "12px 24px",
+    fontSize: 13,
+    fontWeight: 600,
+    border: "none",
+    backgroundColor: "transparent",
+    cursor: "pointer",
+    borderBottom: "2px solid transparent",
+    transition: "all 0.15s",
+    color: C.textMuted,
+  };
+
+  const tabActive: CSSProperties = {
+    ...tabBase,
+    color: C.primary,
+    borderBottomColor: C.primary,
+  };
+
+  // ════════════════════════════════════════════
+  // RENDER
+  // ════════════════════════════════════════════
   return (
-    <div className="container-fluid">
+    <div
+      style={{
+        ...base,
+        backgroundColor: C.bg,
+        minHeight: "100vh",
+        padding: "24px 32px",
+      }}
+    >
       {/* Header */}
-      <div className="row mb-4">
-        <div className="col">
-          <h2 style={{
-            fontSize: '28px',
-            fontWeight: '700',
-            color: '#1f2937',
-            marginBottom: '8px',
-            letterSpacing: '-0.5px'
-          }}>
-            Reportería de Ejecutivos
-          </h2>
-          <p style={{
-            fontSize: '15px',
-            color: '#6b7280',
-            margin: 0
-          }}>
-            Bienvenida {user?.nombreuser}
-          </p>
-        </div>
+      <div style={{ marginBottom: 24 }}>
+        <h1
+          style={{
+            ...base,
+            fontSize: 22,
+            fontWeight: 700,
+            color: C.secondary,
+            margin: 0,
+            letterSpacing: "-0.3px",
+          }}
+        >
+          Reportería de Ejecutivos
+        </h1>
+        <p
+          style={{
+            ...base,
+            fontSize: 13,
+            color: C.textMuted,
+            margin: "4px 0 0",
+          }}
+        >
+          {user?.nombreuser || ""}
+        </p>
       </div>
 
       {/* Tabs */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '12px',
-        border: '1px solid #e5e7eb',
-        marginBottom: '24px',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          display: 'flex',
-          borderBottom: '2px solid #e5e7eb'
-        }}>
+      <div
+        style={{
+          display: "flex",
+          borderBottom: `1px solid ${C.border}`,
+          marginBottom: 24,
+          gap: 0,
+        }}
+      >
+        {(
+          [
+            { key: "individual" as TabType, label: "Análisis Individual" },
+            { key: "comparativa" as TabType, label: "Análisis Comparativo" },
+            { key: "doble" as TabType, label: "Comparación Doble" },
+          ] as const
+        ).map((tab) => (
           <button
-            onClick={() => setActiveTab('individual')}
-            style={{
-              flex: 1,
-              padding: '16px 24px',
-              fontSize: '15px',
-              fontWeight: '600',
-              border: 'none',
-              backgroundColor: activeTab === 'individual' ? '#eff6ff' : 'transparent',
-              color: activeTab === 'individual' ? '#2563eb' : '#6b7280',
-              borderBottom: activeTab === 'individual' ? '3px solid #2563eb' : 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={activeTab === tab.key ? tabActive : tabBase}
           >
-            📊 Análisis Individual
+            {tab.label}
           </button>
-          <button
-            onClick={() => setActiveTab('comparativa')}
-            style={{
-              flex: 1,
-              padding: '16px 24px',
-              fontSize: '15px',
-              fontWeight: '600',
-              border: 'none',
-              backgroundColor: activeTab === 'comparativa' ? '#eff6ff' : 'transparent',
-              color: activeTab === 'comparativa' ? '#2563eb' : '#6b7280',
-              borderBottom: activeTab === 'comparativa' ? '3px solid #2563eb' : 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            📈 Análisis Comparativa
-          </button>
-          <button
-            onClick={() => setActiveTab('doble')}
-            style={{
-              flex: 1,
-              padding: '16px 24px',
-              fontSize: '15px',
-              fontWeight: '600',
-              border: 'none',
-              backgroundColor: activeTab === 'doble' ? '#eff6ff' : 'transparent',
-              color: activeTab === 'doble' ? '#2563eb' : '#6b7280',
-              borderBottom: activeTab === 'doble' ? '3px solid #2563eb' : 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            🔄 Análisis Doble
-          </button>
-        </div>
+        ))}
       </div>
 
-      {/* CONTENIDO: ANÁLISIS INDIVIDUAL */}
-      {activeTab === 'individual' && (
+      {/* ══════════════════════════════════════
+          INDIVIDUAL TAB
+         ══════════════════════════════════════ */}
+      {activeTab === "individual" && (
         <>
-          {/* Filtros Individual */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            padding: '24px',
-            marginBottom: '24px'
-          }}>
-            <h4 style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              color: '#1f2937',
-              marginBottom: '20px'
-            }}>
-              Filtros de Búsqueda
-            </h4>
-
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Ejecutivo *
-                </label>
+          {/* Filters */}
+          <div style={{ ...styles.cardPad, marginBottom: 20 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "end",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: "1 1 200px" }}>
+                <label style={styles.label}>Ejecutivo</label>
                 <select
-                  className="form-select"
                   value={selectedEjecutivo}
                   onChange={(e) => setSelectedEjecutivo(e.target.value)}
                   disabled={loadingEjecutivos}
-                  style={{ fontSize: '14px', borderColor: '#d1d5db' }}
+                  style={selectStyle}
                 >
                   <option value="">Seleccionar ejecutivo...</option>
-                  {ejecutivos.map(ej => (
-                    <option key={ej.id} value={ej.nombre}>{ej.nombre}</option>
+                  {ejecutivos.map((ej) => (
+                    <option key={ej.id} value={ej.nombre}>
+                      {ej.nombre}
+                    </option>
                   ))}
                 </select>
               </div>
-
-              <div className="col-md-3">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Fecha Desde
-                </label>
+              <div style={{ flex: "0 1 160px" }}>
+                <label style={styles.label}>Desde</label>
                 <input
                   type="date"
-                  className="form-control"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  style={{ fontSize: '14px', borderColor: '#d1d5db' }}
+                  style={inputStyle}
                 />
               </div>
-
-              <div className="col-md-3">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Fecha Hasta
-                </label>
+              <div style={{ flex: "0 1 160px" }}>
+                <label style={styles.label}>Hasta</label>
                 <input
                   type="date"
-                  className="form-control"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  style={{ fontSize: '14px', borderColor: '#d1d5db' }}
+                  style={inputStyle}
                 />
               </div>
-
-              <div className="col-md-2">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: 'transparent', marginBottom: '8px' }}>-</label>
+              <div>
                 <button
-                  className="btn btn-primary w-100"
                   onClick={fetchQuotes}
                   disabled={loading || !selectedEjecutivo}
-                  style={{ fontSize: '14px', fontWeight: '600', height: '38px' }}
+                  style={{
+                    ...btnPrimary,
+                    opacity: loading || !selectedEjecutivo ? 0.5 : 1,
+                  }}
                 >
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      Buscando...
-                    </>
-                  ) : (
-                    '🔍 Buscar'
-                  )}
+                  {loading ? "Buscando..." : "Buscar"}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* KPIs Individual */}
-          {hasSearched && !loading && (
-            <div className="row g-3 mb-4">
-              <div className="col-md-3">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Total Cotizaciones
-                  </div>
-                  <div style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937', marginBottom: '4px' }}>
-                    {stats.totalQuotes}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#10b981', fontWeight: '500' }}>
-                    ✓ {stats.completedQuotes} Completadas
-                  </div>
-                </div>
-              </div>
+          {error && <ErrorBanner message={error} />}
 
-              <div className="col-md-3">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Por Tipo
-                  </div>
-                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '24px', fontWeight: '700', color: '#3b82f6' }}>{stats.airQuotes}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>✈️ Aéreas</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '24px', fontWeight: '700', color: '#0ea5e9' }}>{stats.seaQuotes}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>🚢 Marítimas</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-3">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Income Total
-                  </div>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981', marginBottom: '4px' }}>
-                    {formatCurrency(stats.totalIncome)}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#ef4444', fontWeight: '500' }}>
-                    Expense: {formatCurrency(stats.totalExpense)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-3">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Profit Total
-                  </div>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: '#8b5cf6', marginBottom: '4px' }}>
-                    {formatCurrency(stats.totalProfit)}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
-                    Margen: {stats.profitMargin.toFixed(1)}%
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-4">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Promedio por Cotización
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#1f2937' }}>
-                    {stats.totalQuotes > 0 ? formatCurrency(stats.averagePerQuote) : '$0'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-4">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Tasa de Completado
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: stats.totalQuotes > 0 ? '#10b981' : '#6b7280' }}>
-                    {stats.completionRate.toFixed(1)}%
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-4">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Profit Promedio
-                  </div>
-                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#8b5cf6' }}>
-                    {stats.totalQuotes > 0 ? formatCurrency(stats.totalProfit / stats.totalQuotes) : '$0'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error Individual */}
-          {error && (
-            <div style={{ padding: '20px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b', marginBottom: '24px' }}>
-              <strong>Error:</strong> {error}
-            </div>
-          )}
-
-          {/* Mensaje: No hay resultados Individual */}
+          {/* Results */}
           {hasSearched && !loading && quotes.length === 0 && !error && (
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '60px 20px', textAlign: 'center' }}>
-              <div style={{ width: '64px', height: '64px', backgroundColor: '#fef3c7', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-                <svg width="32" height="32" fill="#f59e0b" viewBox="0 0 16 16">
-                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                  <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
-                </svg>
-              </div>
-              <p style={{ fontSize: '16px', color: '#6b7280', margin: 0, fontWeight: '500' }}>
-                No se encontraron resultados para las fechas seleccionadas
-              </p>
-            </div>
+            <EmptyState
+              title="Sin resultados"
+              sub="No se encontraron cotizaciones para los filtros seleccionados"
+            />
           )}
 
-          {/* Tabla Individual */}
-          {hasSearched && !loading && quotes.length > 0 && (
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
-                  Detalle de Cotizaciones (6) {/* ({quotes.length}) */}
-                </h4>
-              </div>
-
-              <div style={{ overflowX: 'auto', maxHeight: '600px', overflowY: 'auto' }}>
-                <table className="table table-hover mb-0" style={{ fontSize: '13px' }}>
-                  <thead style={{ position: 'sticky', top: 0, backgroundColor: '#f9fafb', zIndex: 10 }}>
-                    <tr>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Número</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Fecha</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Estado</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Tipo</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151' }}>Shipper</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151' }}>Consignee</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Origen</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>Destino</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'right' }}>Income</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'right' }}>Expense</th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'right' }}>Profit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {quotes.slice(0, 6).map((quote, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#3b82f6' }}>{quote.number}</td>
-                        <td style={{ padding: '12px 16px', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatDate(quote.date)}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span style={{
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            backgroundColor: quote.status === 'Completed' ? '#d1fae5' : '#fef3c7',
-                            color: quote.status === 'Completed' ? '#065f46' : '#92400e'
-                          }}>
-                            {quote.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px 16px', color: '#6b7280', fontSize: '12px' }}>
-                          {quote.modeOfTransportation === '40 - Air' ? '✈️ Aéreo' : 
-                           quote.modeOfTransportation === '11 - Vessel, Containerized' || quote.modeOfTransportation === '10 - Vessel' ? '🚢 Marítimo' :
-                           quote.modeOfTransportation}
-                        </td>
-                        <td style={{ padding: '12px 16px', color: '#1f2937', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{quote.shipper}</td>
-                        <td style={{ padding: '12px 16px', color: '#1f2937', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{quote.consignee}</td>
-                        <td style={{ padding: '12px 16px', color: '#6b7280' }}>{quote.origin}</td>
-                        <td style={{ padding: '12px 16px', color: '#6b7280' }}>{quote.destination}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>{formatCurrency(quote.totalIncome)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#ef4444', fontWeight: '600' }}>{formatCurrency(quote.totalExpense)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#8b5cf6', fontWeight: '700' }}>{formatCurrency(quote.profit)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Diseñame un titulo bonito para anunciar las tablas y hazme un vspace */}
-          <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '25px', marginTop: '20px' }}>
-            Gráficos de Reporte Individual
-          </h4>
-          {/* Gráficos Individual */}
           {hasSearched && !loading && quotes.length > 0 && (
             <>
-              <ChartExecutivo type="individual" data={stats} />
-              
-              {/* Botón Exportar */}
-              <div className="row mb-4">
-                <div className="col-12" style={{ textAlign: 'right' }}>
-                  <button
-                    className="btn btn-outline-primary"
-                    onClick={() => exportToExcel(quotes, `reporte_${selectedEjecutivo}_${new Date().toISOString().split('T')[0]}`)}
-                    style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      padding: '10px 24px',
-                      borderRadius: '6px',
-                      border: '2px solid #3b82f6',
-                      color: '#3b82f6',
-                      backgroundColor: 'white',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#3b82f6';
-                      e.currentTarget.style.color = 'white';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white';
-                      e.currentTarget.style.color = '#3b82f6';
-                    }}
-                  >
-                    📥 Exportar a Excel
-                  </button>
-                </div>
-              </div>
-
-              {/* Top Clientes y Top Rutas */}
-              <div className="row g-4 mb-4">
-                {/* Top 10 Clientes */}
-                <div className="col-md-6">
-                  <div style={{
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    padding: '24px',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                  }}>
-                    <h5 style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#1f2937',
-                      marginBottom: '20px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      👥 Top 10 Clientes por Income
-                    </h5>
-                    <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
-                      <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
-                        <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
-                          <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Cliente</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getTopConsignees(quotes, 10).map((consignee, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
-                              <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
-                                {consignee.name.length > 30 ? consignee.name.substring(0, 30) + '...' : consignee.name}
-                              </td>
-                              <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{consignee.count}</td>
-                              <td style={{ padding: '10px 8px', color: '#10b981', fontWeight: '600', textAlign: 'right' }}>
-                                {formatCurrency(consignee.income)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Top 10 Rutas */}
-                <div className="col-md-6">
-                  <div style={{
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    padding: '24px',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                  }}>
-                    <h5 style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#1f2937',
-                      marginBottom: '20px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      🌍 Top 10 Rutas Más Cotizadas
-                    </h5>
-                    <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
-                      <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
-                        <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
-                          <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Ruta</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
-                            <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getTopRoutes(quotes, 10).map((route, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
-                              <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
-                                {route.route}
-                              </td>
-                              <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{route.count}</td>
-                              <td style={{ padding: '10px 8px', color: '#3b82f6', fontWeight: '600', textAlign: 'right' }}>
-                                {formatCurrency(route.income)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Mensaje inicial Individual */}
-          {!hasSearched && !loading && (
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '60px 20px', textAlign: 'center' }}>
-              <div style={{ width: '64px', height: '64px', backgroundColor: '#eff6ff', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-                <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
-                  <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-                </svg>
-              </div>
-              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                Selecciona un ejecutivo para comenzar
-              </h4>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                Filtra por ejecutivo y rango de fechas para ver la reportería completa
-              </p>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* CONTENIDO: ANÁLISIS COMPARATIVA */}
-      {activeTab === 'comparativa' && (
-        <>
-          {/* Filtros Comparativa */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            padding: '24px',
-            marginBottom: '24px'
-          }}>
-            <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
-              Filtros de Búsqueda
-            </h4>
-
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Fecha Desde
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={compStartDate}
-                  onChange={(e) => setCompStartDate(e.target.value)}
-                  style={{ fontSize: '14px', borderColor: '#d1d5db' }}
+              {/* KPI Row */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 12,
+                  marginBottom: 20,
+                }}
+              >
+                <Metric
+                  label="Total Cotizaciones"
+                  value={stats.totalQuotes}
+                  sub={`${stats.completedQuotes} completadas · ${fmtPct(stats.completionRate)}`}
+                />
+                <Metric
+                  label="Income Total"
+                  value={fmt(stats.totalIncome)}
+                  sub={`Promedio ${fmt(stats.averagePerQuote)} / cotización`}
+                  color={C.positive}
+                />
+                <Metric
+                  label="Expense Total"
+                  value={fmt(stats.totalExpense)}
+                  color={C.negative}
+                />
+                <Metric
+                  label="Profit Total"
+                  value={fmt(stats.totalProfit)}
+                  sub={`Promedio ${fmt(stats.averageProfitPerQuote)} / cotización`}
+                  color={C.primary}
+                />
+                <Metric
+                  label="Margen"
+                  value={fmtPct(stats.profitMargin)}
+                  sub={`${stats.uniqueConsignees} clientes únicos`}
                 />
               </div>
 
-              <div className="col-md-4">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Fecha Hasta
-                </label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={compEndDate}
-                  onChange={(e) => setCompEndDate(e.target.value)}
-                  style={{ fontSize: '14px', borderColor: '#d1d5db' }}
+              {/* Transport Distribution Bar */}
+              <div style={{ marginBottom: 20 }}>
+                <TransportBar
+                  air={stats.airQuotes}
+                  sea={stats.seaQuotes}
+                  truck={stats.truckQuotes}
+                  total={stats.totalQuotes}
                 />
               </div>
 
-              <div className="col-md-4">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: 'transparent', marginBottom: '8px' }}>-</label>
-                <button
-                  className="btn btn-primary w-100"
-                  onClick={fetchComparativeData}
-                  disabled={loadingComparative}
-                  style={{ fontSize: '14px', fontWeight: '600', height: '38px' }}
+              {/* Revenue by Transport Type */}
+              {transportData.length > 0 && (
+                <div
+                  style={{
+                    ...styles.card,
+                    marginBottom: 20,
+                    overflow: "hidden",
+                  }}
                 >
-                  {loadingComparative ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      Cargando...
-                    </>
-                  ) : (
-                    '🔍 Cargar Comparativa'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* KPIs Globales Comparativa */}
-          {hasSearchedComparative && !loadingComparative && comparativeData.length > 0 && (
-            <div className="row g-3 mb-4">
-              <div className="col-md-3">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Total Cotizaciones
-                  </div>
-                  <div style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937' }}>
-                    {globalStats.totalQuotes}
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-3">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Total Income
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#10b981' }}>
-                    {formatCurrency(globalStats.totalIncome)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-3">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Total Expense
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#ef4444' }}>
-                    {formatCurrency(globalStats.totalExpense)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-md-3">
-                <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '20px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
-                  <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Total Profit
-                  </div>
-                  <div style={{ fontSize: '28px', fontWeight: '700', color: '#8b5cf6' }}>
-                    {formatCurrency(globalStats.totalProfit)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Error Comparativa */}
-          {errorComparative && (
-            <div style={{ padding: '20px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b', marginBottom: '24px' }}>
-              <strong>Error:</strong> {errorComparative}
-            </div>
-          )}
-
-          {/* Tabla Comparativa */}
-          {hasSearchedComparative && !loadingComparative && sortedComparativeData.length > 0 && (
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
-                  Comparativa de Ejecutivos ({sortedComparativeData.length})
-                </h4>
-              </div>
-
-              <div style={{ overflowX: 'auto' }}>
-                <table className="table table-hover mb-0" style={{ fontSize: '13px' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
-                    <tr>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleSort('nombre')}>
-                        Ejecutivo <SortIcon field="nombre" />
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('totalQuotes')}>
-                        Total <SortIcon field="totalQuotes" />
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('completedQuotes')}>
-                        Completadas <SortIcon field="completedQuotes" />
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('completionRate')}>
-                        % Compl. <SortIcon field="completionRate" />
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('airQuotes')}>
-                        ✈️ Aéreas <SortIcon field="airQuotes" />
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('seaQuotes')}>
-                        🚢 Marít. <SortIcon field="seaQuotes" />
-                      </th>
-                      <th
-                        style={{
-                          padding: '12px 16px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          cursor: 'pointer',
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap'
-                        }}
-                        onClick={() => handleSort('uniqueConsignees')}
-                      >
-                        👥 Clientes <SortIcon field="uniqueConsignees" />
-
-                        <span
-                          data-bs-toggle="tooltip"
-                          data-bs-placement="top"
-                          title="Clientes únicos"
-                          style={{
-                            marginLeft: '6px',
-                            cursor: 'help',
-                            color: '#9ca3af',
-                            fontSize: '12px'
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          ⓘ
-                        </span>
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'right' }} onClick={() => handleSort('totalIncome')}>
-                        Income <SortIcon field="totalIncome" />
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'right' }} onClick={() => handleSort('totalExpense')}>
-                        Expense <SortIcon field="totalExpense" />
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'right' }} onClick={() => handleSort('totalProfit')}>
-                        Profit <SortIcon field="totalProfit" />
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'center' }} onClick={() => handleSort('profitMargin')}>
-                        Margen % <SortIcon field="profitMargin" />
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', cursor: 'pointer', textAlign: 'right' }} onClick={() => handleSort('averagePerQuote')}>
-                        Prom/Quote <SortIcon field="averagePerQuote" />
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedComparativeData.map((exec, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: '600', color: '#1f2937' }}>{exec.nombre}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#374151', fontWeight: '600' }}>{exec.stats.totalQuotes}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#10b981', fontWeight: '600' }}>{exec.stats.completedQuotes}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{exec.stats.completionRate.toFixed(1)}%</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#3b82f6', fontWeight: '600' }}>{exec.stats.airQuotes}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#0ea5e9', fontWeight: '600' }}>{exec.stats.seaQuotes}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#f59e0b', fontWeight: '600' }}>{exec.stats.uniqueConsignees}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>{formatCurrency(exec.stats.totalIncome)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#ef4444', fontWeight: '600' }}>{formatCurrency(exec.stats.totalExpense)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#8b5cf6', fontWeight: '700' }}>{formatCurrency(exec.stats.totalProfit)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>{exec.stats.profitMargin.toFixed(1)}%</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#374151', fontWeight: '600' }}>{formatCurrency(exec.stats.averagePerQuote)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Diseñame un titulo bonito para anunciar las tablas y hazme un vspace */}
-          <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '25px', marginTop: '20px' }}>
-            Gráficos de Comparativa de Ejecutivos
-          </h4>
-          {/* Gráficos Comparativa */}
-          {hasSearchedComparative && !loadingComparative && comparativeData.length > 0 && (
-            <>
-              <ChartExecutivo type="comparativa" comparativeData={comparativeData} />
-              
-              {/* Botón Exportar */}
-              <div className="row mb-4">
-                <div className="col-12" style={{ textAlign: 'right' }}>
-                  <button
-                    className="btn btn-outline-primary"
-                    onClick={() => exportComparativeToExcel(comparativeData, `comparativa_ejecutivos_${new Date().toISOString().split('T')[0]}`)}
+                  <div
                     style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      padding: '10px 24px',
-                      borderRadius: '6px',
-                      border: '2px solid #3b82f6',
-                      color: '#3b82f6',
-                      backgroundColor: 'white',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#3b82f6';
-                      e.currentTarget.style.color = 'white';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = 'white';
-                      e.currentTarget.style.color = '#3b82f6';
+                      padding: "14px 20px",
+                      borderBottom: `1px solid ${C.border}`,
                     }}
                   >
-                    📥 Exportar a Excel
-                  </button>
-                </div>
-              </div>
-
-              {/* Ranking de Ejecutivos */}
-              <div className="row g-4 mb-4">
-                <div className="col-12">
-                  <div style={{
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    padding: '24px',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                  }}>
-                    <h5 style={{
-                      fontSize: '16px',
-                      fontWeight: '700',
-                      color: '#1f2937',
-                      marginBottom: '20px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}>
-                      🏆 Ranking de Ejecutivos
-                    </h5>
-
-                    <div className="row g-3">
-                      {[...comparativeData]
-                        .sort((a, b) => b.stats.totalProfit - a.stats.totalProfit)
-                        .slice(0, 5)
-                        .map((exec, idx) => {
-                          const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '';
-                          return (
-                            <div className="col-md-4" key={idx}>
-                              <div style={{
-                                backgroundColor: idx < 3 ? '#f9fafb' : 'white',
-                                border: `2px solid ${idx === 0 ? '#fbbf24' : idx === 1 ? '#9ca3af' : idx === 2 ? '#d97706' : '#e5e7eb'}`,
-                                borderRadius: '8px',
-                                padding: '16px',
-                                position: 'relative'
-                              }}>
-                                <div style={{
-                                  position: 'absolute',
-                                  top: '-12px',
-                                  right: '12px',
-                                  backgroundColor: 'white',
-                                  padding: '4px 12px',
-                                  borderRadius: '12px',
-                                  border: '2px solid #e5e7eb',
-                                  fontSize: '20px'
-                                }}>
-                                  {medal || `#${idx + 1}`}
-                                </div>
-                                <div style={{
-                                  fontSize: '18px',
-                                  fontWeight: '700',
-                                  color: '#1f2937',
-                                  marginBottom: '8px',
-                                  paddingRight: '50px'
-                                }}>
-                                  {exec.nombre}
-                                </div>
-                                <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
-                                  Profit: <span style={{ fontWeight: '700', color: '#8b5cf6' }}>{formatCurrency(exec.stats.totalProfit)}</span>
-                                </div>
-                                <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>
-                                  Cotizaciones: <span style={{ fontWeight: '600' }}>{exec.stats.totalQuotes}</span>
-                                </div>
-                                <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                                  Margen: <span style={{ fontWeight: '600', color: '#10b981' }}>{exec.stats.profitMargin.toFixed(1)}%</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                    <div style={styles.sectionTitle}>
+                      Revenue by Transport Type
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Top Clientes y Top Rutas - Nivel Global */}
-              {allComparativeQuotes.length > 0 && (
-                <div className="row g-4 mb-4">
-                  {/* Top 10 Clientes */}
-                  <div className="col-md-6">
-                    <div style={{
-                      backgroundColor: 'white',
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb',
-                      padding: '24px',
-                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                    }}>
-                      <h5 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        marginBottom: '20px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        👥 Top 10 Clientes (Global)
-                      </h5>
-                      <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
-                        <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
-                          <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
-                            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Cliente</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {getTopConsignees(allComparativeQuotes, 10).map((consignee, idx) => (
-                              <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
-                                <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
-                                  {consignee.name.length > 30 ? consignee.name.substring(0, 30) + '...' : consignee.name}
-                                </td>
-                                <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{consignee.count}</td>
-                                <td style={{ padding: '10px 8px', color: '#10b981', fontWeight: '600', textAlign: 'right' }}>
-                                  {formatCurrency(consignee.income)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Top 10 Rutas */}
-                  <div className="col-md-6">
-                    <div style={{
-                      backgroundColor: 'white',
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb',
-                      padding: '24px',
-                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                    }}>
-                      <h5 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        marginBottom: '20px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        🌍 Top 10 Rutas (Global)
-                      </h5>
-                      <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
-                        <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
-                          <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
-                            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Ruta</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {getTopRoutes(allComparativeQuotes, 10).map((route, idx) => (
-                              <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
-                                <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
-                                  {route.route}
-                                </td>
-                                <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{route.count}</td>
-                                <td style={{ padding: '10px 8px', color: '#3b82f6', fontWeight: '600', textAlign: 'right' }}>
-                                  {formatCurrency(route.income)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table
+                      style={{ width: "100%", borderCollapse: "collapse" }}
+                    >
+                      <thead>
+                        <tr>
+                          <th style={styles.th}>Type</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            Quotes
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Income
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Expense
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Profit
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Margin
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transportData.map((t) => (
+                          <tr key={t.type}>
+                            <td style={{ ...styles.td, fontWeight: 600 }}>
+                              {t.type}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {t.quotes}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                color: C.positive,
+                              }}
+                            >
+                              {fmt(t.income)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                color: C.negative,
+                              }}
+                            >
+                              {fmt(t.expense)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {fmt(t.profit)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {fmtPct(t.margin)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
+
+              {/* Monthly Breakdown */}
+              {monthlyData.length > 1 && (
+                <div
+                  style={{
+                    ...styles.card,
+                    marginBottom: 20,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "14px 20px",
+                      borderBottom: `1px solid ${C.border}`,
+                    }}
+                  >
+                    <div style={styles.sectionTitle}>Monthly Breakdown</div>
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table
+                      style={{ width: "100%", borderCollapse: "collapse" }}
+                    >
+                      <thead>
+                        <tr>
+                          <th style={styles.th}>Month</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            Quotes
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            Completed
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            Air
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            Sea
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            Truck
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            Clients
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Income
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Expense
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Profit
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Margin
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monthlyData.map((m) => (
+                          <tr key={m.month}>
+                            <td style={{ ...styles.td, fontWeight: 600 }}>
+                              {m.label}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {m.quotes}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {m.completed}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {m.air}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {m.sea}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {m.truck}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {m.clients}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                color: C.positive,
+                              }}
+                            >
+                              {fmt(m.income)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                color: C.negative,
+                              }}
+                            >
+                              {fmt(m.expense)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {fmt(m.profit)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {fmtPct(m.margin)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Charts */}
+              <div style={{ marginBottom: 20 }}>
+                <ChartExecutivo type="individual" data={stats} />
+              </div>
+
+              {/* Actions bar */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  marginBottom: 16,
+                }}
+              >
+                <button
+                  onClick={() =>
+                    exportToCSV(
+                      quotes,
+                      `reporte_${selectedEjecutivo}_${new Date().toISOString().split("T")[0]}`,
+                    )
+                  }
+                  style={btnOutline}
+                >
+                  Export CSV
+                </button>
+              </div>
+
+              {/* Quotes table */}
+              <div
+                style={{ ...styles.card, marginBottom: 20, overflow: "hidden" }}
+              >
+                <div
+                  style={{
+                    padding: "14px 20px",
+                    borderBottom: `1px solid ${C.border}`,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={styles.sectionTitle}>
+                    Detalle de Cotizaciones ({quotes.length})
+                  </div>
+                  <div style={{ ...base, fontSize: 12, color: C.textMuted }}>
+                    Página {page} de {totalPages}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    overflowX: "auto",
+                    maxHeight: 600,
+                    overflowY: "auto",
+                  }}
+                >
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Número</th>
+                        <th style={styles.th}>Fecha</th>
+                        <th style={styles.th}>Estado</th>
+                        <th style={styles.th}>Tipo</th>
+                        <th style={styles.th}>Shipper</th>
+                        <th style={styles.th}>Consignee</th>
+                        <th style={styles.th}>Origen</th>
+                        <th style={styles.th}>Destino</th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>
+                          Income
+                        </th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>
+                          Expense
+                        </th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>
+                          Profit
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedQuotes.map((q, i) => (
+                        <tr
+                          key={i}
+                          style={{
+                            backgroundColor: i % 2 === 0 ? C.white : C.bg,
+                          }}
+                        >
+                          <td
+                            style={{
+                              ...styles.td,
+                              fontWeight: 600,
+                              color: C.primary,
+                            }}
+                          >
+                            {q.number}
+                          </td>
+                          <td
+                            style={{
+                              ...styles.td,
+                              color: C.textMuted,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {fmtDate(q.date)}
+                          </td>
+                          <td style={styles.td}>
+                            <StatusDot status={q.status} />
+                          </td>
+                          <td style={{ ...styles.td, fontSize: 12 }}>
+                            {q.modeOfTransportation === "40 - Air"
+                              ? "Air"
+                              : q.modeOfTransportation ===
+                                    "11 - Vessel, Containerized" ||
+                                  q.modeOfTransportation === "10 - Vessel"
+                                ? "Sea"
+                                : q.modeOfTransportation === "30 - Truck"
+                                  ? "Truck"
+                                  : q.modeOfTransportation}
+                          </td>
+                          <td
+                            style={{
+                              ...styles.td,
+                              maxWidth: 180,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {q.shipper}
+                          </td>
+                          <td
+                            style={{
+                              ...styles.td,
+                              maxWidth: 180,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {q.consignee}
+                          </td>
+                          <td style={{ ...styles.td, color: C.textMuted }}>
+                            {q.origin}
+                          </td>
+                          <td style={{ ...styles.td, color: C.textMuted }}>
+                            {q.destination}
+                          </td>
+                          <td
+                            style={{
+                              ...styles.td,
+                              textAlign: "right",
+                              color: C.positive,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {fmt(q.totalIncome)}
+                          </td>
+                          <td
+                            style={{
+                              ...styles.td,
+                              textAlign: "right",
+                              color: C.negative,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {fmt(q.totalExpense)}
+                          </td>
+                          <td
+                            style={{
+                              ...styles.td,
+                              textAlign: "right",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {fmt(q.profit)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div
+                    style={{
+                      padding: "12px 20px",
+                      borderTop: `1px solid ${C.border}`,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span style={{ ...base, fontSize: 12, color: C.textMuted }}>
+                      Mostrando {(page - 1) * PAGE_SIZE + 1}-
+                      {Math.min(page * PAGE_SIZE, quotes.length)} de{" "}
+                      {quotes.length}
+                    </span>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button
+                        onClick={() => setPage(Math.max(1, page - 1))}
+                        disabled={page === 1}
+                        style={{
+                          ...btnOutline,
+                          padding: "4px 12px",
+                          height: 30,
+                          fontSize: 12,
+                          opacity: page === 1 ? 0.4 : 1,
+                        }}
+                      >
+                        Anterior
+                      </button>
+                      <button
+                        onClick={() => setPage(Math.min(totalPages, page + 1))}
+                        disabled={page === totalPages}
+                        style={{
+                          ...btnOutline,
+                          padding: "4px 12px",
+                          height: 30,
+                          fontSize: 12,
+                          opacity: page === totalPages ? 0.4 : 1,
+                        }}
+                      >
+                        Siguiente
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Top Clients & Routes */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 16,
+                  marginBottom: 20,
+                }}
+              >
+                {/* Top Clients */}
+                <div style={{ ...styles.card, overflow: "hidden" }}>
+                  <div
+                    style={{
+                      padding: "14px 20px",
+                      borderBottom: `1px solid ${C.border}`,
+                    }}
+                  >
+                    <div style={styles.sectionTitle}>
+                      Top 10 Clients by Income
+                    </div>
+                  </div>
+                  <div style={{ overflowY: "auto", maxHeight: 400 }}>
+                    <table
+                      style={{ width: "100%", borderCollapse: "collapse" }}
+                    >
+                      <thead>
+                        <tr>
+                          <th style={{ ...styles.th, width: 32 }}>#</th>
+                          <th style={styles.th}>Client</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            Quotes
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Income
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Profit
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getTopConsignees(quotes, 10).map((c, i) => (
+                          <tr key={i}>
+                            <td
+                              style={{
+                                ...styles.td,
+                                color: C.textLight,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {i + 1}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                fontWeight: 500,
+                                maxWidth: 200,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {c.name}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {c.count}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                color: C.positive,
+                              }}
+                            >
+                              {fmt(c.income)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {fmt(c.profit)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Top Routes */}
+                <div style={{ ...styles.card, overflow: "hidden" }}>
+                  <div
+                    style={{
+                      padding: "14px 20px",
+                      borderBottom: `1px solid ${C.border}`,
+                    }}
+                  >
+                    <div style={styles.sectionTitle}>Top 10 Routes</div>
+                  </div>
+                  <div style={{ overflowY: "auto", maxHeight: 400 }}>
+                    <table
+                      style={{ width: "100%", borderCollapse: "collapse" }}
+                    >
+                      <thead>
+                        <tr>
+                          <th style={{ ...styles.th, width: 32 }}>#</th>
+                          <th style={styles.th}>Route</th>
+                          <th style={{ ...styles.th, textAlign: "center" }}>
+                            Quotes
+                          </th>
+                          <th style={{ ...styles.th, textAlign: "right" }}>
+                            Income
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {getTopRoutes(quotes, 10).map((r, i) => (
+                          <tr key={i}>
+                            <td
+                              style={{
+                                ...styles.td,
+                                color: C.textLight,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {i + 1}
+                            </td>
+                            <td style={{ ...styles.td, fontWeight: 500 }}>
+                              {r.route}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {r.count}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                color: C.positive,
+                              }}
+                            >
+                              {fmt(r.income)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </>
           )}
 
-          {/* Mensaje inicial Comparativa */}
-          {!hasSearchedComparative && !loadingComparative && (
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '60px 20px', textAlign: 'center' }}>
-              <div style={{ width: '64px', height: '64px', backgroundColor: '#eff6ff', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-                <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
-                  <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zM2.5 2a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zM1 10.5A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3zm6.5.5A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3zm1.5-.5a.5.5 0 0 0-.5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 0-.5-.5h-3z"/>
-                </svg>
-              </div>
-              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                Carga la comparativa de ejecutivos
-              </h4>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                Filtra por rango de fechas para comparar el desempeño de todos los ejecutivos
-              </p>
-            </div>
+          {/* Initial state */}
+          {!hasSearched && !loading && (
+            <EmptyState
+              title="Selecciona un ejecutivo para comenzar"
+              sub="Filtra por ejecutivo y rango de fechas para ver la reportería completa"
+            />
           )}
         </>
       )}
 
-      {/* CONTENIDO: ANÁLISIS DOBLE */}
-      {activeTab === 'doble' && (
+      {/* ══════════════════════════════════════
+          COMPARATIVA TAB
+         ══════════════════════════════════════ */}
+      {activeTab === "comparativa" && (
         <>
-          {/* Filtros Doble */}
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            padding: '24px',
-            marginBottom: '24px'
-          }}>
-            <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '20px' }}>
-              Comparar Dos Ejecutivos
-            </h4>
+          {/* Filters */}
+          <div style={{ ...styles.cardPad, marginBottom: 20 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "end",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: "0 1 160px" }}>
+                <label style={styles.label}>Desde</label>
+                <input
+                  type="date"
+                  value={compStartDate}
+                  onChange={(e) => setCompStartDate(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{ flex: "0 1 160px" }}>
+                <label style={styles.label}>Hasta</label>
+                <input
+                  type="date"
+                  value={compEndDate}
+                  onChange={(e) => setCompEndDate(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <button
+                  onClick={fetchComparativeData}
+                  disabled={loadingComparative}
+                  style={{
+                    ...btnPrimary,
+                    opacity: loadingComparative ? 0.5 : 1,
+                  }}
+                >
+                  {loadingComparative ? "Cargando..." : "Comparar todos"}
+                </button>
+              </div>
+            </div>
+          </div>
 
-            <div className="row g-3">
-              <div className="col-md-3">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Ejecutivo 1 *
-                </label>
+          {errorComparative && <ErrorBanner message={errorComparative} />}
+
+          {hasSearchedComparative &&
+            !loadingComparative &&
+            comparativeData.length > 0 && (
+              <>
+                {/* Global KPIs */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gap: 12,
+                    marginBottom: 20,
+                  }}
+                >
+                  <Metric
+                    label="Total Cotizaciones"
+                    value={globalStats.totalQuotes}
+                  />
+                  <Metric
+                    label="Income Global"
+                    value={fmt(globalStats.totalIncome)}
+                    color={C.positive}
+                  />
+                  <Metric
+                    label="Expense Global"
+                    value={fmt(globalStats.totalExpense)}
+                    color={C.negative}
+                  />
+                  <Metric
+                    label="Profit Global"
+                    value={fmt(globalStats.totalProfit)}
+                    color={C.primary}
+                  />
+                  <Metric
+                    label="Margen Global"
+                    value={fmtPct(
+                      globalStats.totalIncome > 0
+                        ? (globalStats.totalProfit / globalStats.totalIncome) *
+                            100
+                        : 0,
+                    )}
+                  />
+                </div>
+
+                {/* Export */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginBottom: 16,
+                  }}
+                >
+                  <button
+                    onClick={() =>
+                      exportComparativeToCSV(
+                        comparativeData,
+                        `comparativa_${new Date().toISOString().split("T")[0]}`,
+                      )
+                    }
+                    style={btnOutline}
+                  >
+                    Export CSV
+                  </button>
+                </div>
+
+                {/* Ranking Table */}
+                <div
+                  style={{
+                    ...styles.card,
+                    marginBottom: 20,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "14px 20px",
+                      borderBottom: `1px solid ${C.border}`,
+                    }}
+                  >
+                    <div style={styles.sectionTitle}>
+                      Ranking de Ejecutivos ({comparativeData.length})
+                    </div>
+                  </div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table
+                      style={{ width: "100%", borderCollapse: "collapse" }}
+                    >
+                      <thead>
+                        <tr>
+                          {[
+                            {
+                              field: "nombre" as SortField,
+                              label: "Ejecutivo",
+                              align: "left",
+                            },
+                            {
+                              field: "totalQuotes" as SortField,
+                              label: "Quotes",
+                              align: "center",
+                            },
+                            {
+                              field: "completedQuotes" as SortField,
+                              label: "Compl.",
+                              align: "center",
+                            },
+                            {
+                              field: "completionRate" as SortField,
+                              label: "% Compl.",
+                              align: "center",
+                            },
+                            {
+                              field: "airQuotes" as SortField,
+                              label: "Air",
+                              align: "center",
+                            },
+                            {
+                              field: "seaQuotes" as SortField,
+                              label: "Sea",
+                              align: "center",
+                            },
+                            {
+                              field: "truckQuotes" as SortField,
+                              label: "Truck",
+                              align: "center",
+                            },
+                            {
+                              field: "uniqueConsignees" as SortField,
+                              label: "Clients",
+                              align: "center",
+                            },
+                            {
+                              field: "totalIncome" as SortField,
+                              label: "Income",
+                              align: "right",
+                            },
+                            {
+                              field: "totalExpense" as SortField,
+                              label: "Expense",
+                              align: "right",
+                            },
+                            {
+                              field: "totalProfit" as SortField,
+                              label: "Profit",
+                              align: "right",
+                            },
+                            {
+                              field: "profitMargin" as SortField,
+                              label: "Margin",
+                              align: "right",
+                            },
+                            {
+                              field: "averagePerQuote" as SortField,
+                              label: "Avg/Quote",
+                              align: "right",
+                            },
+                          ].map((col) => (
+                            <th
+                              key={col.field}
+                              style={{
+                                ...styles.th,
+                                textAlign:
+                                  col.align as CSSProperties["textAlign"],
+                                cursor: "pointer",
+                                userSelect: "none",
+                              }}
+                              onClick={() => handleSort(col.field)}
+                            >
+                              {col.label} <SortIcon field={col.field} />
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedComparativeData.map((ex, i) => (
+                          <tr
+                            key={ex.nombre}
+                            style={{
+                              backgroundColor: i % 2 === 0 ? C.white : C.bg,
+                            }}
+                          >
+                            <td style={{ ...styles.td, fontWeight: 600 }}>
+                              {ex.nombre}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {ex.stats.totalQuotes}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {ex.stats.completedQuotes}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {fmtPct(ex.stats.completionRate)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {ex.stats.airQuotes}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {ex.stats.seaQuotes}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {ex.stats.truckQuotes}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "center" }}>
+                              {ex.stats.uniqueConsignees}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                color: C.positive,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {fmt(ex.stats.totalIncome)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                color: C.negative,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {fmt(ex.stats.totalExpense)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                fontWeight: 700,
+                              }}
+                            >
+                              {fmt(ex.stats.totalProfit)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {fmtPct(ex.stats.profitMargin)}
+                            </td>
+                            <td style={{ ...styles.td, textAlign: "right" }}>
+                              {fmt(ex.stats.averagePerQuote)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Charts */}
+                <div style={{ marginBottom: 20 }}>
+                  <ChartExecutivo
+                    type="comparativa"
+                    comparativeData={comparativeData}
+                  />
+                </div>
+
+                {/* Top Clients & Routes (global) */}
+                {allComparativeQuotes.length > 0 && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 16,
+                      marginBottom: 20,
+                    }}
+                  >
+                    <div style={{ ...styles.card, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          padding: "14px 20px",
+                          borderBottom: `1px solid ${C.border}`,
+                        }}
+                      >
+                        <div style={styles.sectionTitle}>
+                          Top 10 Clients (Global)
+                        </div>
+                      </div>
+                      <div style={{ overflowY: "auto", maxHeight: 400 }}>
+                        <table
+                          style={{ width: "100%", borderCollapse: "collapse" }}
+                        >
+                          <thead>
+                            <tr>
+                              <th style={{ ...styles.th, width: 32 }}>#</th>
+                              <th style={styles.th}>Client</th>
+                              <th style={{ ...styles.th, textAlign: "center" }}>
+                                Quotes
+                              </th>
+                              <th style={{ ...styles.th, textAlign: "right" }}>
+                                Income
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getTopConsignees(allComparativeQuotes, 10).map(
+                              (c, i) => (
+                                <tr key={i}>
+                                  <td
+                                    style={{
+                                      ...styles.td,
+                                      color: C.textLight,
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {i + 1}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...styles.td,
+                                      fontWeight: 500,
+                                      maxWidth: 200,
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                      whiteSpace: "nowrap",
+                                    }}
+                                  >
+                                    {c.name}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...styles.td,
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    {c.count}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...styles.td,
+                                      textAlign: "right",
+                                      color: C.positive,
+                                    }}
+                                  >
+                                    {fmt(c.income)}
+                                  </td>
+                                </tr>
+                              ),
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div style={{ ...styles.card, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          padding: "14px 20px",
+                          borderBottom: `1px solid ${C.border}`,
+                        }}
+                      >
+                        <div style={styles.sectionTitle}>
+                          Top 10 Routes (Global)
+                        </div>
+                      </div>
+                      <div style={{ overflowY: "auto", maxHeight: 400 }}>
+                        <table
+                          style={{ width: "100%", borderCollapse: "collapse" }}
+                        >
+                          <thead>
+                            <tr>
+                              <th style={{ ...styles.th, width: 32 }}>#</th>
+                              <th style={styles.th}>Route</th>
+                              <th style={{ ...styles.th, textAlign: "center" }}>
+                                Quotes
+                              </th>
+                              <th style={{ ...styles.th, textAlign: "right" }}>
+                                Income
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getTopRoutes(allComparativeQuotes, 10).map(
+                              (r, i) => (
+                                <tr key={i}>
+                                  <td
+                                    style={{
+                                      ...styles.td,
+                                      color: C.textLight,
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {i + 1}
+                                  </td>
+                                  <td style={{ ...styles.td, fontWeight: 500 }}>
+                                    {r.route}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...styles.td,
+                                      textAlign: "center",
+                                    }}
+                                  >
+                                    {r.count}
+                                  </td>
+                                  <td
+                                    style={{
+                                      ...styles.td,
+                                      textAlign: "right",
+                                      color: C.positive,
+                                    }}
+                                  >
+                                    {fmt(r.income)}
+                                  </td>
+                                </tr>
+                              ),
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+          {!hasSearchedComparative && !loadingComparative && (
+            <EmptyState
+              title="Carga la comparativa de ejecutivos"
+              sub="Filtra por rango de fechas para comparar el desempeño de todos los ejecutivos"
+            />
+          )}
+        </>
+      )}
+
+      {/* ══════════════════════════════════════
+          DOBLE TAB
+         ══════════════════════════════════════ */}
+      {activeTab === "doble" && (
+        <>
+          {/* Filters */}
+          <div style={{ ...styles.cardPad, marginBottom: 20 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "end",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={styles.label}>Ejecutivo 1</label>
                 <select
-                  className="form-select"
                   value={ejecutivo1}
                   onChange={(e) => setEjecutivo1(e.target.value)}
                   disabled={loadingEjecutivos}
-                  style={{ fontSize: '14px', borderColor: '#d1d5db' }}
+                  style={selectStyle}
                 >
                   <option value="">Seleccionar...</option>
-                  {ejecutivos.map(ej => (
-                    <option key={ej.id} value={ej.nombre}>{ej.nombre}</option>
+                  {ejecutivos.map((ej) => (
+                    <option key={ej.id} value={ej.nombre}>
+                      {ej.nombre}
+                    </option>
                   ))}
                 </select>
               </div>
-
-              <div className="col-md-3">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Ejecutivo 2 *
-                </label>
+              <div style={{ flex: "1 1 180px" }}>
+                <label style={styles.label}>Ejecutivo 2</label>
                 <select
-                  className="form-select"
                   value={ejecutivo2}
                   onChange={(e) => setEjecutivo2(e.target.value)}
                   disabled={loadingEjecutivos}
-                  style={{ fontSize: '14px', borderColor: '#d1d5db' }}
+                  style={selectStyle}
                 >
                   <option value="">Seleccionar...</option>
-                  {ejecutivos.filter(e => e.nombre !== ejecutivo1).map(ej => (
-                    <option key={ej.id} value={ej.nombre}>{ej.nombre}</option>
-                  ))}
+                  {ejecutivos
+                    .filter((e) => e.nombre !== ejecutivo1)
+                    .map((ej) => (
+                      <option key={ej.id} value={ej.nombre}>
+                        {ej.nombre}
+                      </option>
+                    ))}
                 </select>
               </div>
-
-              <div className="col-md-2">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Fecha Desde
-                </label>
+              <div style={{ flex: "0 1 150px" }}>
+                <label style={styles.label}>Desde</label>
                 <input
                   type="date"
-                  className="form-control"
                   value={doubleStartDate}
                   onChange={(e) => setDoubleStartDate(e.target.value)}
-                  style={{ fontSize: '14px', borderColor: '#d1d5db' }}
+                  style={inputStyle}
                 />
               </div>
-
-              <div className="col-md-2">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                  Fecha Hasta
-                </label>
+              <div style={{ flex: "0 1 150px" }}>
+                <label style={styles.label}>Hasta</label>
                 <input
                   type="date"
-                  className="form-control"
                   value={doubleEndDate}
                   onChange={(e) => setDoubleEndDate(e.target.value)}
-                  style={{ fontSize: '14px', borderColor: '#d1d5db' }}
+                  style={inputStyle}
                 />
               </div>
-
-              <div className="col-md-2">
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: 'transparent', marginBottom: '8px' }}>-</label>
+              <div>
                 <button
-                  className="btn btn-primary w-100"
                   onClick={fetchDoubleComparison}
                   disabled={loadingDouble || !ejecutivo1 || !ejecutivo2}
-                  style={{ fontSize: '14px', fontWeight: '600', height: '38px' }}
+                  style={{
+                    ...btnPrimary,
+                    opacity:
+                      loadingDouble || !ejecutivo1 || !ejecutivo2 ? 0.5 : 1,
+                  }}
                 >
-                  {loadingDouble ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      Comparando...
-                    </>
-                  ) : (
-                    '🔍 Comparar'
-                  )}
+                  {loadingDouble ? "Comparando..." : "Comparar"}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Error Doble */}
-          {errorDouble && (
-            <div style={{ padding: '20px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b', marginBottom: '24px' }}>
-              <strong>Error:</strong> {errorDouble}
-            </div>
-          )}
+          {errorDouble && <ErrorBanner message={errorDouble} />}
 
-          {/* Comparación Doble - Tabla */}
-          {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
-                  Comparación: {doubleData[0].nombre} vs {doubleData[1].nombre}
-                </h4>
-              </div>
-
-              <div style={{ overflowX: 'auto' }}>
-                <table className="table table-hover mb-0" style={{ fontSize: '13px' }}>
-                  <thead style={{ backgroundColor: '#f9fafb' }}>
-                    <tr>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
-                        Ejecutivo
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'center' }}>
-                        Total
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'center' }}>
-                        Completadas
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'center' }}>
-                        % Compl.
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'center' }}>
-                        ✈️ Aéreas
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'center' }}>
-                        🚢 Marít.
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'center' }}>
-                        👥 Clientes
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'right' }}>
-                        Income
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'right' }}>
-                        Expense
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'right' }}>
-                        Profit
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'center' }}>
-                        Margen %
-                      </th>
-                      <th style={{ padding: '12px 16px', fontWeight: '600', color: '#374151', textAlign: 'right' }}>
-                        Prom/Quote
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {doubleData.map((exec, idx) => (
-                      <tr key={idx} style={{ 
-                        borderBottom: '1px solid #f3f4f6',
-                        backgroundColor: idx === 0 ? '#eff6ff' : '#fef3c7'
-                      }}>
-                        <td style={{ padding: '12px 16px', fontWeight: '700', color: idx === 0 ? '#1e40af' : '#92400e', fontSize: '14px' }}>
-                          {exec.nombre}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#374151', fontWeight: '600' }}>
-                          {exec.stats.totalQuotes}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#10b981', fontWeight: '600' }}>
-                          {exec.stats.completedQuotes}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>
-                          {exec.stats.completionRate.toFixed(1)}%
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#3b82f6', fontWeight: '600' }}>
-                          {exec.stats.airQuotes}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#0ea5e9', fontWeight: '600' }}>
-                          {exec.stats.seaQuotes}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#f59e0b', fontWeight: '600' }}>
-                          {exec.stats.uniqueConsignees}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>
-                          {formatCurrency(exec.stats.totalIncome)}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#ef4444', fontWeight: '600' }}>
-                          {formatCurrency(exec.stats.totalExpense)}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#8b5cf6', fontWeight: '700' }}>
-                          {formatCurrency(exec.stats.totalProfit)}
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center', color: '#6b7280' }}>
-                          {exec.stats.profitMargin.toFixed(1)}%
-                        </td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', color: '#374151', fontWeight: '600' }}>
-                          {formatCurrency(exec.stats.averagePerQuote)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-
-          {/* Gráficos Doble */}
           {hasSearchedDouble && !loadingDouble && doubleData.length === 2 && (
             <>
-              {/* Diseñame un titulo bonito para anunciar las tablas y hazme un vspace */}
-              <div style={{ marginTop: '24px', marginBottom: '16px' }}>
-                <h4 style={{
-                  fontSize: '18px',
-                  fontWeight: '700',
-                  color: '#1f2937',
-                  textAlign: 'center'
-                }}>
-                  📊 Análisis Comparativo entre  {doubleData[0].nombre} y {doubleData[1].nombre}
-                </h4>
+              {/* Side-by-side comparison table */}
+              <div
+                style={{ ...styles.card, marginBottom: 20, overflow: "hidden" }}
+              >
+                <div
+                  style={{
+                    padding: "14px 20px",
+                    borderBottom: `1px solid ${C.border}`,
+                  }}
+                >
+                  <div style={styles.sectionTitle}>
+                    {doubleData[0].nombre} vs {doubleData[1].nombre}
+                  </div>
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr>
+                        <th style={styles.th}>Métrica</th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>
+                          {doubleData[0].nombre}
+                        </th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>
+                          {doubleData[1].nombre}
+                        </th>
+                        <th style={{ ...styles.th, textAlign: "right" }}>
+                          Delta
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        {
+                          label: "Total Quotes",
+                          v1: doubleData[0].stats.totalQuotes,
+                          v2: doubleData[1].stats.totalQuotes,
+                          format: (v: number) => String(v),
+                        },
+                        {
+                          label: "Completadas",
+                          v1: doubleData[0].stats.completedQuotes,
+                          v2: doubleData[1].stats.completedQuotes,
+                          format: (v: number) => String(v),
+                        },
+                        {
+                          label: "Tasa Completado",
+                          v1: doubleData[0].stats.completionRate,
+                          v2: doubleData[1].stats.completionRate,
+                          format: fmtPct,
+                        },
+                        {
+                          label: "Air",
+                          v1: doubleData[0].stats.airQuotes,
+                          v2: doubleData[1].stats.airQuotes,
+                          format: (v: number) => String(v),
+                        },
+                        {
+                          label: "Sea",
+                          v1: doubleData[0].stats.seaQuotes,
+                          v2: doubleData[1].stats.seaQuotes,
+                          format: (v: number) => String(v),
+                        },
+                        {
+                          label: "Truck",
+                          v1: doubleData[0].stats.truckQuotes,
+                          v2: doubleData[1].stats.truckQuotes,
+                          format: (v: number) => String(v),
+                        },
+                        {
+                          label: "Clientes Únicos",
+                          v1: doubleData[0].stats.uniqueConsignees,
+                          v2: doubleData[1].stats.uniqueConsignees,
+                          format: (v: number) => String(v),
+                        },
+                        {
+                          label: "Income",
+                          v1: doubleData[0].stats.totalIncome,
+                          v2: doubleData[1].stats.totalIncome,
+                          format: fmt,
+                        },
+                        {
+                          label: "Expense",
+                          v1: doubleData[0].stats.totalExpense,
+                          v2: doubleData[1].stats.totalExpense,
+                          format: fmt,
+                        },
+                        {
+                          label: "Profit",
+                          v1: doubleData[0].stats.totalProfit,
+                          v2: doubleData[1].stats.totalProfit,
+                          format: fmt,
+                        },
+                        {
+                          label: "Margen",
+                          v1: doubleData[0].stats.profitMargin,
+                          v2: doubleData[1].stats.profitMargin,
+                          format: fmtPct,
+                        },
+                        {
+                          label: "Avg Income/Quote",
+                          v1: doubleData[0].stats.averagePerQuote,
+                          v2: doubleData[1].stats.averagePerQuote,
+                          format: fmt,
+                        },
+                        {
+                          label: "Avg Profit/Quote",
+                          v1: doubleData[0].stats.averageProfitPerQuote,
+                          v2: doubleData[1].stats.averageProfitPerQuote,
+                          format: fmt,
+                        },
+                      ].map((row, i) => {
+                        const delta = row.v1 - row.v2;
+                        const deltaColor =
+                          delta > 0
+                            ? C.positive
+                            : delta < 0
+                              ? C.negative
+                              : C.textMuted;
+                        return (
+                          <tr
+                            key={row.label}
+                            style={{
+                              backgroundColor: i % 2 === 0 ? C.white : C.bg,
+                            }}
+                          >
+                            <td style={{ ...styles.td, fontWeight: 600 }}>
+                              {row.label}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {row.format(row.v1)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {row.format(row.v2)}
+                            </td>
+                            <td
+                              style={{
+                                ...styles.td,
+                                textAlign: "right",
+                                color: deltaColor,
+                                fontWeight: 600,
+                                fontSize: 12,
+                              }}
+                            >
+                              {delta > 0 ? "+" : ""}
+                              {row.format(delta)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              
-              <ChartExecutivo type="doble" doubleData={doubleData} />
-              
-              {/* Análisis Adicional para Doble */}
+
+              {/* Charts */}
+              <div style={{ marginBottom: 20 }}>
+                <ChartExecutivo type="doble" doubleData={doubleData} />
+              </div>
+
+              {/* Top Clients & Routes (combined) */}
               {allDoubleQuotes.length > 0 && (
-                <div className="row g-4 mb-4">
-                  {/* Top 10 Clientes */}
-                  <div className="col-md-6">
-                    <div style={{
-                      backgroundColor: 'white',
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb',
-                      padding: '24px',
-                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                    }}>
-                      <h5 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        marginBottom: '20px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        👥 Top 10 Clientes (Ambos Ejecutivos)
-                      </h5>
-                      <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
-                        <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
-                          <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
-                            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Cliente</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {getTopConsignees(allDoubleQuotes, 10).map((consignee, idx) => (
-                              <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
-                                <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
-                                  {consignee.name.length > 30 ? consignee.name.substring(0, 30) + '...' : consignee.name}
-                                </td>
-                                <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{consignee.count}</td>
-                                <td style={{ padding: '10px 8px', color: '#10b981', fontWeight: '600', textAlign: 'right' }}>
-                                  {formatCurrency(consignee.income)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 16,
+                    marginBottom: 20,
+                  }}
+                >
+                  <div style={{ ...styles.card, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        padding: "14px 20px",
+                        borderBottom: `1px solid ${C.border}`,
+                      }}
+                    >
+                      <div style={styles.sectionTitle}>
+                        Top 10 Clients (Combined)
                       </div>
+                    </div>
+                    <div style={{ overflowY: "auto", maxHeight: 400 }}>
+                      <table
+                        style={{ width: "100%", borderCollapse: "collapse" }}
+                      >
+                        <thead>
+                          <tr>
+                            <th style={{ ...styles.th, width: 32 }}>#</th>
+                            <th style={styles.th}>Client</th>
+                            <th style={{ ...styles.th, textAlign: "center" }}>
+                              Quotes
+                            </th>
+                            <th style={{ ...styles.th, textAlign: "right" }}>
+                              Income
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getTopConsignees(allDoubleQuotes, 10).map((c, i) => (
+                            <tr key={i}>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  color: C.textLight,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {i + 1}
+                              </td>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  fontWeight: 500,
+                                  maxWidth: 200,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {c.name}
+                              </td>
+                              <td style={{ ...styles.td, textAlign: "center" }}>
+                                {c.count}
+                              </td>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  textAlign: "right",
+                                  color: C.positive,
+                                }}
+                              >
+                                {fmt(c.income)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
 
-                  {/* Top 10 Rutas */}
-                  <div className="col-md-6">
-                    <div style={{
-                      backgroundColor: 'white',
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb',
-                      padding: '24px',
-                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                    }}>
-                      <h5 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        marginBottom: '20px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        🌍 Top 10 Rutas (Ambos Ejecutivos)
-                      </h5>
-                      <div style={{ overflowY: 'auto', maxHeight: '400px' }}>
-                        <table className="table table-sm mb-0" style={{ fontSize: '13px' }}>
-                          <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
-                            <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', width: '40px' }}>#</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280' }}>Ruta</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'center' }}>Quotes</th>
-                              <th style={{ padding: '8px', fontWeight: '600', color: '#6b7280', textAlign: 'right' }}>Income</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {getTopRoutes(allDoubleQuotes, 10).map((route, idx) => (
-                              <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                <td style={{ padding: '10px 8px', color: '#9ca3af', fontWeight: '600' }}>{idx + 1}</td>
-                                <td style={{ padding: '10px 8px', color: '#1f2937', fontWeight: '500' }}>
-                                  {route.route}
-                                </td>
-                                <td style={{ padding: '10px 8px', color: '#6b7280', textAlign: 'center' }}>{route.count}</td>
-                                <td style={{ padding: '10px 8px', color: '#3b82f6', fontWeight: '600', textAlign: 'right' }}>
-                                  {formatCurrency(route.income)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                  <div style={{ ...styles.card, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        padding: "14px 20px",
+                        borderBottom: `1px solid ${C.border}`,
+                      }}
+                    >
+                      <div style={styles.sectionTitle}>
+                        Top 10 Routes (Combined)
                       </div>
+                    </div>
+                    <div style={{ overflowY: "auto", maxHeight: 400 }}>
+                      <table
+                        style={{ width: "100%", borderCollapse: "collapse" }}
+                      >
+                        <thead>
+                          <tr>
+                            <th style={{ ...styles.th, width: 32 }}>#</th>
+                            <th style={styles.th}>Route</th>
+                            <th style={{ ...styles.th, textAlign: "center" }}>
+                              Quotes
+                            </th>
+                            <th style={{ ...styles.th, textAlign: "right" }}>
+                              Income
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {getTopRoutes(allDoubleQuotes, 10).map((r, i) => (
+                            <tr key={i}>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  color: C.textLight,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {i + 1}
+                              </td>
+                              <td style={{ ...styles.td, fontWeight: 500 }}>
+                                {r.route}
+                              </td>
+                              <td style={{ ...styles.td, textAlign: "center" }}>
+                                {r.count}
+                              </td>
+                              <td
+                                style={{
+                                  ...styles.td,
+                                  textAlign: "right",
+                                  color: C.positive,
+                                }}
+                              >
+                                {fmt(r.income)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
@@ -1838,21 +2637,11 @@ function ReportExecutive() {
             </>
           )}
 
-          {/* Mensaje inicial Doble */}
           {!hasSearchedDouble && !loadingDouble && (
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '60px 20px', textAlign: 'center' }}>
-              <div style={{ width: '64px', height: '64px', backgroundColor: '#eff6ff', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-                <svg width="32" height="32" fill="#2563eb" viewBox="0 0 16 16">
-                  <path d="M8 1a5 5 0 0 0-5 5v1h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a6 6 0 1 1 12 0v6a2.5 2.5 0 0 1-2.5 2.5H9.366a1 1 0 0 1-.866.5h-1a1 1 0 1 1 0-2h1a1 1 0 0 1 .866.5H11.5A1.5 1.5 0 0 0 13 12h-1a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1V6a5 5 0 0 0-5-5z"/>
-                </svg>
-              </div>
-              <h4 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
-                Selecciona dos ejecutivos para comparar
-              </h4>
-              <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
-                Compara el desempeño entre dos ejecutivos específicos
-              </p>
-            </div>
+            <EmptyState
+              title="Selecciona dos ejecutivos para comparar"
+              sub="Compara el desempeño entre dos ejecutivos específicos"
+            />
           )}
         </>
       )}

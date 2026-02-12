@@ -1,7 +1,18 @@
-// src/components/layout/Navbar-admin.tsx
-import { useAuth } from '../auth/AuthContext';
-import { useEffect, useRef, useState } from "react";
+// src/layouts/Navbar-admin.tsx - AWS/Azure Minimalist Design (same as client)
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "../auth/AuthContext";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 
+// Design tokens - AWS/Azure inspired (same as client Navbar)
+const colors = {
+  bg: "#232f3e",
+  bgHover: "#2d3a4a",
+  text: "#ffffff",
+  textMuted: "#8d99a8",
+  border: "#3b4754",
+  accent: "#ff9900",
+};
 
 interface NavbarAdminProps {
   accessToken: string;
@@ -9,351 +20,443 @@ interface NavbarAdminProps {
   toggleSidebar: () => void;
 }
 
-function NavbarAdmin({ accessToken, onLogout, toggleSidebar }: NavbarAdminProps) {
+function NavbarAdmin({
+  accessToken,
+  onLogout,
+  toggleSidebar,
+}: NavbarAdminProps) {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
+  const [showProfile, setShowProfile] = useState(false);
+  const [showLanguage, setShowLanguage] = useState(false);
 
-  const [openUserMenu, setOpenUserMenu] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const btnRef = useRef<HTMLButtonElement | null>(null);
+  // User data
+  const username = user?.nombreuser || user?.username || "Administrador";
+  const email = user?.email || "admin@sphereglobal.io";
 
-  useEffect(() => {
-    const onMouseDown = (e: MouseEvent) => {
-      if (!openUserMenu) return;
-      const target = e.target as Node;
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+  const initials = getInitials(username);
 
-      // Si el click fue dentro del dropdown o del botón, no cierre
-      if (dropdownRef.current?.contains(target)) return;
-      if (btnRef.current?.contains(target)) return;
-
-      setOpenUserMenu(false);
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpenUserMenu(false);
-    };
-
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [openUserMenu]);
-
+  const getUserImage = (nombre?: string) => {
+    if (!nombre) return null;
+    const partes = nombre.trim().split(" ");
+    if (partes.length < 2) return null;
+    return `/ejecutivos/${partes[0][0].toLowerCase()}${partes[1][0].toLowerCase()}.png`;
+  };
+  const userImage = getUserImage(user?.nombreuser);
 
   const handleLogout = () => {
     logout();
     if (onLogout) onLogout();
+    setShowProfile(false);
   };
 
-  const getUserImage = (nombre?: string) => {
-    if (!nombre) return null;
+  // Keyboard shortcut: Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowProfile(false);
+        setShowLanguage(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
-    const partes = nombre.trim().split(' ');
-    if (partes.length < 2) return null;
-
-    const iniciales =
-      partes[0][0].toLowerCase() + partes[1][0].toLowerCase();
-
-    return `/ejecutivos/${iniciales}.png`;
-  };
-
-  const userImage = getUserImage(user?.nombreuser);
-
-
-  const username = user?.nombreuser || 'Administrador';
-  const userEmail = user?.email || 'admin@sphereglobal.io';
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        !target.closest(".admin-profile-dropdown") &&
+        !target.closest(".admin-profile-button")
+      ) {
+        setShowProfile(false);
+      }
+      if (
+        !target.closest(".admin-language-dropdown") &&
+        !target.closest(".admin-language-button")
+      ) {
+        setShowLanguage(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
-    <nav 
-      className="navbar navbar-expand-lg navbar-dark shadow-sm"
-      style={{ 
-        minHeight: '70px',
-        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-        borderBottom: '2px solid rgba(99, 102, 241, 0.3)'
+    <nav
+      className="main-navbar-admin"
+      style={{
+        height: "70px",
+        minHeight: "70px",
+        maxHeight: "70px",
+        flexShrink: 0,
+        backgroundColor: colors.bg,
+        borderBottom: `1px solid ${colors.border}`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        padding: "0 20px",
+        gap: "12px",
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        fontFamily:
+          '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
-      <div className="container-fluid px-4">
-        {/* Toggle Sidebar Button */}
-        <button
-          className="btn btn-link text-white p-2 me-3 rounded-3 border-0"
-          onClick={toggleSidebar}
-          style={{
-            background: 'rgba(99, 102, 241, 0.15)',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(99, 102, 241, 0.25)';
-            e.currentTarget.style.transform = 'rotate(90deg)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(99, 102, 241, 0.15)';
-            e.currentTarget.style.transform = 'rotate(0deg)';
-          }}
-          aria-label="Abrir/cerrar menú"
-        >
-          <svg width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
-            <path fillRule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
-          </svg>
-        </button>
+      {/* Right Section - Actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {/* Language Selector */}
+        <div style={{ position: "relative" }}>
+          <button
+            className="admin-language-button"
+            onClick={() => setShowLanguage(!showLanguage)}
+            style={{
+              height: "36px",
+              padding: "0 12px",
+              borderRadius: "4px",
+              border: `1px solid ${colors.border}`,
+              backgroundColor: showLanguage ? colors.bgHover : "transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              color: colors.text,
+              fontSize: "13px",
+              fontWeight: "500",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!showLanguage)
+                e.currentTarget.style.backgroundColor = colors.bgHover;
+            }}
+            onMouseLeave={(e) => {
+              if (!showLanguage)
+                e.currentTarget.style.backgroundColor = "transparent";
+            }}
+          >
+            <span>{i18n.language === "es" ? "ES" : "EN"}</span>
+            <svg
+              width="12"
+              height="12"
+              fill="currentColor"
+              viewBox="0 0 16 16"
+              style={{
+                transform: showLanguage ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.15s ease",
+              }}
+            >
+              <path
+                fillRule="evenodd"
+                d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"
+              />
+            </svg>
+          </button>
 
-        {/* Right side items */}
-        <div className="ms-auto d-flex align-items-center gap-3">
-          {/* Connection Status Badge */}
-          {accessToken ? (
-            <span 
-              className="badge rounded-pill px-3 py-2 shadow-sm"
+          {showLanguage && (
+            <div
+              className="admin-language-dropdown"
               style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                letterSpacing: '0.5px'
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                right: 0,
+                width: "120px",
+                backgroundColor: "#ffffff",
+                borderRadius: "6px",
+                boxShadow: "0 4px 24px rgba(0, 0, 0, 0.15)",
+                border: "1px solid #e5e7eb",
+                overflow: "hidden",
+                zIndex: 1000,
               }}
             >
-              <span className="me-2">●</span>
-              Conectado
-            </span>
-          ) : (
-            <span 
-              className="badge rounded-pill px-3 py-2 shadow-sm"
-              style={{
-                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                letterSpacing: '0.5px'
-              }}
-            >
-              Sin token
-            </span>
+              {[
+                { code: "es", label: "Español" },
+                { code: "en", label: "English" },
+              ].map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => {
+                    i18n.changeLanguage(lang.code);
+                    setShowLanguage(false);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    textAlign: "left",
+                    color: "#374151",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    transition: "background-color 0.15s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f3f4f6";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                  }}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
           )}
+        </div>
 
-          {/* User Dropdown (React controlled) */}
-          <div className="position-relative" ref={dropdownRef}>
-            <button
-              ref={btnRef}
-              className="btn btn-link text-white d-flex align-items-center gap-2 p-2 px-3 rounded-3 border-0 text-decoration-none"
-              type="button"
-              aria-expanded={openUserMenu}
+        {/* User Profile */}
+        <div style={{ position: "relative" }}>
+          <button
+            className="admin-profile-button"
+            onClick={() => setShowProfile(!showProfile)}
+            style={{
+              height: "36px",
+              padding: "0 12px",
+              borderRadius: "4px",
+              border: `1px solid ${colors.border}`,
+              backgroundColor: showProfile ? colors.bgHover : "transparent",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              cursor: "pointer",
+              transition: "background-color 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              if (!showProfile)
+                e.currentTarget.style.backgroundColor = colors.bgHover;
+            }}
+            onMouseLeave={(e) => {
+              if (!showProfile)
+                e.currentTarget.style.backgroundColor = "transparent";
+            }}
+          >
+            <div
               style={{
-                background: "rgba(99, 102, 241, 0.15)",
-                transition: "all 0.3s ease",
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenUserMenu((v) => !v);
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(99, 102, 241, 0.25)";
-                e.currentTarget.style.transform = "translateY(-2px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(99, 102, 241, 0.15)";
-                e.currentTarget.style.transform = "translateY(0)";
+                width: "26px",
+                height: "26px",
+                borderRadius: "4px",
+                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: colors.text,
+                fontSize: "11px",
+                fontWeight: "600",
+                overflow: "hidden",
               }}
             >
-              <div
-                className="rounded-3 me-3 shadow-sm overflow-hidden"
-                style={{
-                  width: "44px",
-                  height: "44px",
-                  background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-                }}
-              >
-                {userImage ? (
-                  <img
-                    src={userImage}
-                    alt={username}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div className="d-flex align-items-center justify-content-center h-100">
-                    <svg width="20" height="20" fill="white" viewBox="0 0 16 16">
-                      <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
-                      <path fillRule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z" />
-                    </svg>
-                  </div>
-                )}
-              </div>
-
-              <div className="d-none d-md-block text-start">
-                <div className="fw-semibold" style={{ fontSize: "0.9rem", lineHeight: "1.2" }}>
-                  {username}
-                </div>
-              </div>
-
-              <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16" className="ms-1">
-                <path
-                  fillRule="evenodd"
-                  d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"
+              {userImage ? (
+                <img
+                  src={userImage}
+                  alt={username}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
                 />
-              </svg>
-            </button>
+              ) : (
+                initials
+              )}
+            </div>
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: "500",
+                color: colors.text,
+              }}
+            >
+              {username}
+            </span>
+            <svg
+              width="12"
+              height="12"
+              fill={colors.textMuted}
+              viewBox="0 0 16 16"
+              style={{
+                transition: "transform 0.15s ease",
+                transform: showProfile ? "rotate(180deg)" : "rotate(0deg)",
+              }}
+            >
+              <path
+                fillRule="evenodd"
+                d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"
+              />
+            </svg>
+          </button>
 
-            {openUserMenu && (
+          {/* Profile Dropdown */}
+          {showProfile && (
+            <div
+              className="admin-profile-dropdown"
+              style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                right: 0,
+                width: "320px",
+                backgroundColor: "#ffffff",
+                borderRadius: "6px",
+                boxShadow: "0 4px 24px rgba(0, 0, 0, 0.15)",
+                border: "1px solid #e5e7eb",
+                overflow: "hidden",
+                zIndex: 1000,
+                fontFamily:
+                  '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+              }}
+            >
+              {/* User info header */}
               <div
-                className="shadow-lg border-0 mt-2"
                 style={{
-                  position: "absolute",
-                  right: 0,
-                  top: "100%",
-                  background: "linear-gradient(135deg, #1e293b 0%, #0f172a 100%)",
-                  minWidth: "280px",
-                  borderRadius: "16px",
-                  zIndex: 3000,
-                  overflow: "hidden",
+                  padding: "16px",
+                  borderBottom: "1px solid #e5e7eb",
+                  backgroundColor: "#f9fafb",
                 }}
-                role="menu"
               >
-                {/* User Profile Header */}
-                <div className="p-3 border-bottom border-secondary border-opacity-25">
-                  <div className="d-flex align-items-center gap-3">
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "6px",
+                      backgroundColor: colors.bg,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#ffffff",
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {userImage ? (
+                      <img
+                        src={userImage}
+                        alt={username}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      initials
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
                     <div
-                      className="rounded-3 me-3 shadow-sm overflow-hidden"
                       style={{
-                        width: "44px",
-                        height: "44px",
-                        background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: "#1f2937",
+                        marginBottom: "2px",
                       }}
                     >
-                      {userImage ? (
-                        <img
-                          src={userImage}
-                          alt={username}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <div className="d-flex align-items-center justify-content-center h-100">
-                          <svg width="20" height="20" fill="white" viewBox="0 0 16 16">
-                            <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
-                            <path fillRule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z" />
-                          </svg>
-                        </div>
-                      )}
+                      {username}
                     </div>
-
-                    <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                      <div className="text-white fw-semibold mb-1" style={{ fontSize: "0.95rem" }}>
-                        {username}
-                      </div>
-                      <div className="text-white-50 text-truncate" style={{ fontSize: "0.8rem" }}>
-                        {userEmail}
-                      </div>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {email}
                     </div>
                   </div>
                 </div>
-
-                {/* Menu Items */}
-                <div className="p-2">
-                  <button
-                    className="w-100 d-flex align-items-center gap-2 text-white rounded-3 border-0"
-                    style={{
-                      padding: "10px 12px",
-                      background: "transparent",
-                      transition: "all 0.2s ease",
-                      textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(99, 102, 241, 0.2)";
-                      e.currentTarget.style.transform = "translateX(4px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.transform = "translateX(0)";
-                    }}
-                    onClick={() => {
-                      // TODO: navegar a perfil
-                      setOpenUserMenu(false);
-                    }}
-                  >
-                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
-                      <path
-                        fillRule="evenodd"
-                        d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z"
-                      />
-                    </svg>
-                    Mi Perfil
-                  </button>
-                </div>
-
-                <div className="p-2">
-                  <button
-                    className="w-100 d-flex align-items-center gap-2 text-white rounded-3 border-0"
-                    style={{
-                      padding: "10px 12px",
-                      background: "transparent",
-                      transition: "all 0.2s ease",
-                      textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(99, 102, 241, 0.2)";
-                      e.currentTarget.style.transform = "translateX(4px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.transform = "translateX(0)";
-                    }}
-                    onClick={() => {
-                      // TODO: navegar a configuración
-                      setOpenUserMenu(false);
-                    }}
-                  >
-                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-                      <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492z" />
-                      <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z" />
-                    </svg>
-                    Configuración
-                  </button>
-                </div>
-
-                {/* Logout */}
-                <div className="p-2 border-top border-secondary border-opacity-25">
-                  <button
-                    className="w-100 d-flex align-items-center gap-2 rounded-3 border-0 fw-semibold"
-                    onClick={() => {
-                      setOpenUserMenu(false);
-                      handleLogout();
-                    }}
-                    style={{
-                      padding: "10px 12px",
-                      color: "#ef4444",
-                      background: "transparent",
-                      transition: "all 0.2s ease",
-                      textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
-                      e.currentTarget.style.transform = "translateX(4px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.transform = "translateX(0)";
-                    }}
-                  >
-                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-                      <path
-                        fillRule="evenodd"
-                        d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"
-                      />
-                      <path
-                        fillRule="evenodd"
-                        d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"
-                      />
-                    </svg>
-                    Cerrar Sesión
-                  </button>
-                </div>
               </div>
-            )}
-          </div>
+
+              {/* Logout button */}
+              <div style={{ padding: "12px 16px" }}>
+                <button
+                  onClick={handleLogout}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "4px",
+                    backgroundColor: "#ffffff",
+                    color: "#dc2626",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#fef2f2";
+                    e.currentTarget.style.borderColor = "#fecaca";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#ffffff";
+                    e.currentTarget.style.borderColor = "#e5e7eb";
+                  }}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    fill="currentColor"
+                    viewBox="0 0 16 16"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0v2z"
+                    />
+                    <path
+                      fillRule="evenodd"
+                      d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z"
+                    />
+                  </svg>
+                  {t("home.navbar.profile.logout")}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        /* Responsive: Tablets */
+        @media (max-width: 1024px) {
+          .main-navbar-admin {
+            height: 60px !important;
+            min-height: 60px !important;
+            max-height: 60px !important;
+            padding: 0 16px !important;
+          }
+        }
+        
+        /* Responsive: Mobile */
+        @media (max-width: 768px) {
+          .main-navbar-admin {
+            height: 65px !important;
+            min-height: 65px !important;
+            max-height: 65px !important;
+            padding: 0 12px !important;
+          }
+        }
+      `}</style>
     </nav>
   );
 }
