@@ -218,7 +218,7 @@ function QuoteAPITester({
   // ✅ NUEVO: Cargar clientes asignados al ejecutivo
   useEffect(() => {
     const cargarClientes = async () => {
-      if (user?.username !== "Administrador") {
+      if (user?.username !== "Ejecutivo") {
         setLoadingClientes(false);
         return;
       }
@@ -1087,7 +1087,7 @@ function QuoteAPITester({
               destino: rutaSeleccionada.destination,
             };
 
-            if (user?.username === "Administrador" && clienteSeleccionado) {
+            if (user?.username === "Ejecutivo" && clienteSeleccionado) {
               bodyPayload.usuarioId = clienteSeleccionado.username;
               bodyPayload.subidoPor = clienteSeleccionado.email;
             }
@@ -1856,7 +1856,7 @@ function QuoteAPITester({
       {/* SELECTOR DE CLIENTE (Solo para ejecutivos) */}
       {/* ============================================================================ */}
 
-      {user?.username === "Administrador" && (
+      {user?.username === "Ejecutivo" && (
         <div
           className="card shadow-sm mb-4"
           style={{

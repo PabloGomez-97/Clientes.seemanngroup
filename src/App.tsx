@@ -68,7 +68,7 @@ function App() {
         element={
           user ? (
             <Navigate
-              to={user.username === "Administrador" ? "/admin/home" : "/"}
+              to={user.username === "Ejecutivo" ? "/admin/home" : "/"}
               replace
             />
           ) : (
@@ -83,7 +83,7 @@ function App() {
         element={
           user ? (
             <Navigate
-              to={user.username === "Administrador" ? "/admin/home" : "/login"}
+              to={user.username === "Ejecutivo" ? "/admin/home" : "/login"}
               replace
             />
           ) : (
@@ -92,7 +92,7 @@ function App() {
         }
       />
 
-      {/* Rutas de Administrador */}
+      {/* Rutas de Ejecutivo */}
       <Route
         path="/admin"
         element={
@@ -168,7 +168,7 @@ function App() {
           <Navigate
             to={
               user
-                ? user.username === "Administrador"
+                ? user.username === "Ejecutivo"
                   ? "/admin/home"
                   : "/"
                 : "/login"

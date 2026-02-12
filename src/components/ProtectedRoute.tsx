@@ -19,12 +19,12 @@ export default function ProtectedRoute({
   }
 
   // Si requiere admin pero no lo es, redirigir
-  if (requireAdmin && user.username !== "Administrador") {
+  if (requireAdmin && user.username !== "Ejecutivo") {
     return <Navigate to="/" replace />;
   }
 
-  // Si NO requiere admin pero ES admin, redirigir al dashboard admin
-  if (!requireAdmin && user.username === "Administrador") {
+  // Si NO requiere admin pero ES ejecutivo, redirigir al dashboard admin
+  if (!requireAdmin && user.username === "Ejecutivo") {
     return <Navigate to="/admin/dashboard" replace />;
   }
 

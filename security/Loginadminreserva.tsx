@@ -21,9 +21,9 @@ export default function LoginAdmin() {
       // ✅ Login retorna el usuario directamente
       const loggedUser = await login(email, password);
 
-      // ✅ Validar inmediatamente si es Administrador
-      if (loggedUser.username !== "Administrador") {
-        // ❌ No es administrador - hacer logout completo
+      // ✅ Validar inmediatamente si es Ejecutivo
+      if (loggedUser.username !== "Ejecutivo") {
+        // ❌ No es ejecutivo - hacer logout completo
         logout(); // ✅ ESTO limpia todo el estado
         setErr(
           "Acceso denegado. Esta área es exclusiva para ejecutivos. Por favor, ingresa como cliente usando el enlace de abajo.",
@@ -32,7 +32,7 @@ export default function LoginAdmin() {
         return;
       }
 
-      // ✅ Es administrador - redirigir al dashboard
+      // ✅ Es ejecutivo - redirigir al dashboard
       navigate("/admin/dashboard", { replace: true });
     } catch (e: any) {
       setErr(e.message || "No se pudo iniciar sesión");

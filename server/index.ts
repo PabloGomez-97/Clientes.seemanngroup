@@ -434,7 +434,7 @@ app.get('/api/ejecutivo/clientes', auth, async (req, res) => {
 
     // Buscar clientes asociados a ese ejecutivoId
     const clientes = await User.find(
-      { ejecutivoId: ejecutivoObjectId, username: { $ne: 'Administrador' } },
+      { ejecutivoId: ejecutivoObjectId, username: { $ne: 'Ejecutivo' } },
       { passwordHash: 0 }
     )
       .populate('ejecutivoId')
@@ -487,11 +487,11 @@ app.get('/api/ejecutivos', auth, async (req, res) => {
   }
 });
 
-// Listar ejecutivos (solo administradores)
+// Listar ejecutivos (solo ejecutivos)
 app.get('/api/admin/ejecutivos', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    if (currentUser.username !== 'Administrador') {
+    if (currentUser.username !== 'Ejecutivo') {
       return res.status(403).json({ error: 'No tienes permisos' });
     }
 
@@ -523,11 +523,11 @@ app.get('/api/admin/ejecutivos', auth, async (req, res) => {
   }
 });
 
-// Crear ejecutivo (solo administradores)
+// Crear ejecutivo (solo ejecutivos)
 app.post('/api/admin/ejecutivos', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    if (currentUser.username !== 'Administrador') {
+    if (currentUser.username !== 'Ejecutivo') {
       return res.status(403).json({ error: 'No tienes permisos' });
     }
 
@@ -564,11 +564,11 @@ app.post('/api/admin/ejecutivos', auth, async (req, res) => {
   }
 });
 
-// Actualizar ejecutivo (solo administradores)
+// Actualizar ejecutivo (solo ejecutivos)
 app.put('/api/admin/ejecutivos/:id', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    if (currentUser.username !== 'Administrador') {
+    if (currentUser.username !== 'Ejecutivo') {
       return res.status(403).json({ error: 'No tienes permisos' });
     }
 
@@ -613,11 +613,11 @@ app.put('/api/admin/ejecutivos/:id', auth, async (req, res) => {
   }
 });
 
-// Eliminar ejecutivo (solo administradores)
+// Eliminar ejecutivo (solo ejecutivos)
 app.delete('/api/admin/ejecutivos/:id', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    if (currentUser.username !== 'Administrador') {
+    if (currentUser.username !== 'Ejecutivo') {
       return res.status(403).json({ error: 'No tienes permisos' });
     }
 
@@ -649,11 +649,11 @@ app.delete('/api/admin/ejecutivos/:id', auth, async (req, res) => {
 // ENDPOINTS DE ADMINISTRACIÓN DE USUARIOS
 // ============================================================
 
-// Crear nuevo usuario (solo para administradores)
+// Crear nuevo usuario (solo para ejecutivos)
 app.post('/api/admin/create-user', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    if (currentUser.username !== 'Administrador') {
+    if (currentUser.username !== 'Ejecutivo') {
       return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
     }
 
@@ -697,11 +697,11 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
   }
 });
 
-// Listar usuarios (solo administradores)
+// Listar usuarios (solo ejecutivos)
 app.get('/api/admin/users', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    if (currentUser.username !== 'Administrador') {
+    if (currentUser.username !== 'Ejecutivo') {
       return res.status(403).json({ error: 'No tienes permisos para ver usuarios' });
     }
 
@@ -731,11 +731,11 @@ app.get('/api/admin/users', auth, async (req, res) => {
   }
 });
 
-// Actualizar usuario (solo administradores)
+// Actualizar usuario (solo ejecutivos)
 app.put('/api/admin/users/:id', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    if (currentUser.username !== 'Administrador') {
+    if (currentUser.username !== 'Ejecutivo') {
       return res.status(403).json({ error: 'No tienes permisos para actualizar usuarios' });
     }
 
@@ -747,8 +747,8 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (userToUpdate.username === 'Administrador') {
-      return res.status(400).json({ error: 'No puedes modificar la cuenta de administrador' });
+    if (userToUpdate.username === 'Ejecutivo') {
+      return res.status(400).json({ error: 'No puedes modificar la cuenta de ejecutivo' });
     }
 
     // Actualizar campos
@@ -789,19 +789,19 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
   }
 });
 
-// Eliminar usuario (solo administradores)
+// Eliminar usuario (solo ejecutivos)
 app.delete('/api/admin/users/:id', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    if (currentUser.username !== 'Administrador') {
+    if (currentUser.username !== 'Ejecutivo') {
       return res.status(403).json({ error: 'No tienes permisos para eliminar usuarios' });
     }
 
     const { id } = req.params;
 
     const userToDelete = await User.findById(id);
-    if (userToDelete?.username === 'Administrador') {
-      return res.status(400).json({ error: 'No puedes eliminar la cuenta de administrador' });
+    if (userToDelete?.username === 'Ejecutivo') {
+      return res.status(400).json({ error: 'No puedes eliminar la cuenta de ejecutivo' });
     }
 
     await User.findByIdAndDelete(id);
@@ -1674,15 +1674,15 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
     const { quoteNumber, nombreArchivo, contenidoBase64, tipoServicio, origen, destino } = req.body;
 
     // Permitir que el cliente (front) envíe `usuarioId` y `subidoPor` cuando
-    // el usuario autenticado es el administrador/ejecutivo que actúa en nombre
+    // el usuario autenticado es el ejecutivo que actúa en nombre
     // de un cliente. Esto evita cambiar el comportamiento para usuarios
     // autenticados normales (clientes). Sólo se usará el override cuando
-    // ambos campos estén presentes y el username sea 'Administrador'.
+    // ambos campos estén presentes y el username sea 'Ejecutivo'.
     const overrideUsuarioId = typeof (req.body.usuarioId) === 'string' ? String(req.body.usuarioId) : null;
     const overrideSubidoPor = typeof (req.body.subidoPor) === 'string' ? String(req.body.subidoPor) : null;
 
     const shouldUseOverride =
-      currentUser.username === 'Administrador' && overrideUsuarioId && overrideSubidoPor;
+      currentUser.username === 'Ejecutivo' && overrideUsuarioId && overrideSubidoPor;
 
     const resolvedUsuarioId = shouldUseOverride ? overrideUsuarioId : currentUser.username;
     const resolvedSubidoPor = shouldUseOverride ? overrideSubidoPor : currentUser.sub;

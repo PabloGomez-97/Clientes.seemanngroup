@@ -485,7 +485,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path === '/api/ejecutivos' && method === 'GET') {
       try {
         const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Administrador') {
+        if (currentUser.username !== 'Ejecutivo') {
           return res.status(403).json({ error: 'No tienes permisos' });
         }
         
@@ -514,7 +514,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path === '/api/admin/ejecutivos' && method === 'GET') {
       try {
         const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Administrador') {
+        if (currentUser.username !== 'Ejecutivo') {
           return res.status(403).json({ error: 'No tienes permisos' });
         }
 
@@ -544,7 +544,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path === '/api/admin/ejecutivos' && method === 'POST') {
       try {
         const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Administrador') {
+        if (currentUser.username !== 'Ejecutivo') {
           return res.status(403).json({ error: 'No tienes permisos' });
         }
 
@@ -591,7 +591,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path?.startsWith('/api/admin/ejecutivos/') && method === 'PUT') {
       try {
         const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Administrador') {
+        if (currentUser.username !== 'Ejecutivo') {
           return res.status(403).json({ error: 'No tienes permisos' });
         }
 
@@ -634,7 +634,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path?.startsWith('/api/admin/ejecutivos/') && method === 'DELETE') {
       try {
         const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Administrador') {
+        if (currentUser.username !== 'Ejecutivo') {
           return res.status(403).json({ error: 'No tienes permisos' });
         }
 
@@ -670,7 +670,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path === '/api/admin/create-user' && method === 'POST') {
       try {
         const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Administrador') {
+        if (currentUser.username !== 'Ejecutivo') {
           return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
         }
 
@@ -718,7 +718,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path === '/api/admin/users' && method === 'GET') {
       try {
         const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Administrador') {
+        if (currentUser.username !== 'Ejecutivo') {
           return res.status(403).json({ error: 'No tienes permisos para ver usuarios' });
         }
 
@@ -755,7 +755,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path?.startsWith('/api/admin/users/') && method === 'PUT') {
       try {
         const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Administrador') {
+        if (currentUser.username !== 'Ejecutivo') {
           return res.status(403).json({ error: 'No tienes permisos para actualizar usuarios' });
         }
 
@@ -767,8 +767,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
-        if (userToUpdate.username === 'Administrador') {
-          return res.status(400).json({ error: 'No puedes modificar la cuenta de administrador' });
+        if (userToUpdate.username === 'Ejecutivo') {
+          return res.status(400).json({ error: 'No puedes modificar la cuenta de ejecutivo' });
         }
 
         if (username) {
@@ -813,15 +813,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (path?.startsWith('/api/admin/users/') && method === 'DELETE') {
       try {
         const currentUser = requireAuth(req);
-        if (currentUser.username !== 'Administrador') {
+        if (currentUser.username !== 'Ejecutivo') {
           return res.status(403).json({ error: 'No tienes permisos para eliminar usuarios' });
         }
 
         const id = path.split('/').pop();
 
         const userToDelete = await User.findById(id);
-        if (userToDelete?.username === 'Administrador') {
-          return res.status(400).json({ error: 'No puedes eliminar la cuenta de administrador' });
+        if (userToDelete?.username === 'Ejecutivo') {
+          return res.status(400).json({ error: 'No puedes eliminar la cuenta de ejecutivo' });
         }
 
         await User.findByIdAndDelete(id);
@@ -1761,12 +1761,12 @@ Sistema de Cotizaciones Seemann Group
 
         const { quoteNumber, nombreArchivo, contenidoBase64, tipoServicio, origen, destino } = req.body;
 
-        // Permitir override desde el frontend cuando el administrador/ejecutivo
+        // Permitir override desde el frontend cuando el ejecutivo
         // genera el PDF en nombre de un cliente. Sólo se usará si ambos campos
-        // están presentes y el usuario autenticado tiene username === 'Administrador'.
+        // están presentes y el usuario autenticado tiene username === 'Ejecutivo'.
         const overrideUsuarioId = typeof (req.body.usuarioId) === 'string' ? String(req.body.usuarioId) : null;
         const overrideSubidoPor = typeof (req.body.subidoPor) === 'string' ? String(req.body.subidoPor) : null;
-        const shouldUseOverride = currentUser.username === 'Administrador' && overrideUsuarioId && overrideSubidoPor;
+        const shouldUseOverride = currentUser.username === 'Ejecutivo' && overrideUsuarioId && overrideSubidoPor;
         const resolvedUsuarioId = shouldUseOverride ? overrideUsuarioId : currentUser.username;
         const resolvedSubidoPor = shouldUseOverride ? overrideSubidoPor : currentUser.sub;
 

@@ -31,7 +31,7 @@ export default function Login() {
     try {
       const loggedUser = await login(email, password);
 
-      if (loggedUser.username === "Administrador") {
+      if (loggedUser.username === "Ejecutivo") {
         logout();
         setErr(t("home.login.executiveMessage"));
         setLoading(false);

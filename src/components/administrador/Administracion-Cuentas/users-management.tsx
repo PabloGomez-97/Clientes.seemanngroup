@@ -96,13 +96,13 @@ function UsersManagement() {
 
   // ✨ NUEVO: Filtrar usuarios según el toggle
   const filteredUsers = users.filter((user) => {
-    const isAdmin = user.username === "Administrador";
+    const isAdmin = user.username === "Ejecutivo";
     return showAdmins ? isAdmin : !isAdmin;
   });
 
   // ✨ NUEVO: Contar admins y usuarios
-  const adminCount = users.filter((u) => u.username === "Administrador").length;
-  const userCount = users.filter((u) => u.username !== "Administrador").length;
+  const adminCount = users.filter((u) => u.username === "Ejecutivo").length;
+  const userCount = users.filter((u) => u.username !== "Ejecutivo").length;
 
   const resetForm = () => {
     setEmail("");
@@ -246,7 +246,7 @@ function UsersManagement() {
 
   // Función para descargar Excel de clientes
   const handleDownloadClients = () => {
-    const clients = users.filter((user) => user.username !== "Administrador");
+    const clients = users.filter((user) => user.username !== "Ejecutivo");
     const data = clients.map((user) => ({
       Email: user.email,
       "Nombre/Empresa": user.username,
@@ -294,7 +294,7 @@ function UsersManagement() {
                   margin: 0,
                 }}
               >
-                Administra cuentas de clientes y administradores del sistema
+                Administra cuentas de clientes y ejecutivos del sistema
               </p>
             </div>
             <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
@@ -502,7 +502,7 @@ function UsersManagement() {
               </p>
             </div>
 
-            {/* Card Administradores */}
+            {/* Card Ejecutivos */}
             <div
               onClick={() => setShowAdmins(true)}
               style={{
@@ -599,7 +599,7 @@ function UsersManagement() {
                   margin: 0,
                 }}
               >
-                Administradores
+                Ejecutivos
               </p>
             </div>
 
@@ -1095,7 +1095,7 @@ function UsersManagement() {
                           d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5Z"
                         />
                       </svg>
-                      Administradores
+                      Ejecutivos
                     </>
                   ) : (
                     <>
@@ -1166,7 +1166,7 @@ function UsersManagement() {
                 </div>
                 <p style={{ color: "#6b7280", fontSize: "15px" }}>
                   {showAdmins
-                    ? "No hay administradores registrados"
+                    ? "No hay ejecutivos registrados"
                     : "No hay clientes registrados"}
                 </p>
               </div>
@@ -1286,7 +1286,7 @@ function UsersManagement() {
                           }}
                         >
                           {user.username}
-                          {user.username === "Administrador" && (
+                          {user.username === "Ejecutivo" && (
                             <span
                               style={{
                                 marginLeft: "8px",
@@ -1300,7 +1300,7 @@ function UsersManagement() {
                                 boxShadow: "0 2px 4px rgba(168, 85, 247, 0.3)",
                               }}
                             >
-                              ADMIN
+                              EJECUTIVO
                             </span>
                           )}
                         </td>
@@ -1367,7 +1367,7 @@ function UsersManagement() {
                             textAlign: "right",
                           }}
                         >
-                          {user.username !== "Administrador" && (
+                          {user.username !== "Ejecutivo" && (
                             <div
                               style={{
                                 display: "flex",

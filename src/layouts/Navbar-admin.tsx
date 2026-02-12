@@ -31,7 +31,7 @@ function NavbarAdmin({
   const [showLanguage, setShowLanguage] = useState(false);
 
   // User data
-  const username = user?.nombreuser || user?.username || "Administrador";
+  const username = user?.nombreuser || user?.username || "Ejecutivo";
   const email = user?.email || "admin@sphereglobal.io";
 
   const getInitials = (name: string) => {

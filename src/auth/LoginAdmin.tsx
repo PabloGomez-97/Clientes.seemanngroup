@@ -26,7 +26,7 @@ export default function LoginAdmin() {
     try {
       const loggedUser = await login(email, password);
 
-      if (loggedUser.username !== "Administrador") {
+      if (loggedUser.username !== "Ejecutivo") {
         logout();
         setErr(
           "Acceso denegado. Esta área es exclusiva para ejecutivos. Por favor, ingresa como cliente usando el enlace de abajo.",

@@ -28,8 +28,8 @@ export default function Login() {
       // ✅ Login retorna el usuario directamente
       const loggedUser = await login(email, password);
 
-      // ✅ Si es Administrador, sugerir que use el login de ejecutivos
-      if (loggedUser.username === "Administrador") {
+      // ✅ Si es Ejecutivo, sugerir que use el login de ejecutivos
+      if (loggedUser.username === "Ejecutivo") {
         logout(); // ✅ ESTO limpia todo el estado
         setErr(t("home.login.executiveMessage"));
         setLoading(false);
