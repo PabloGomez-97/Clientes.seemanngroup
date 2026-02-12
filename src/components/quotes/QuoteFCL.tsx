@@ -651,12 +651,12 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
             ).toLocaleDateString()}
             incoterm={incoterm}
             pickupFromAddress={
-              incoterm === "EXW" ? pickupFromAddress : undefined
+              incoterm === "EXW" ? (pickupFromAddress ?? undefined) : undefined
             }
             deliveryToAddress={
-              incoterm === "EXW" ? deliveryToAddress : undefined
+              incoterm === "EXW" ? (deliveryToAddress ?? undefined) : undefined
             }
-            salesRep={ejecutivo?.nombre || "Ignacio Maldonado"}
+            salesRep={ejecutivo?.nombre ?? "Ignacio Maldonado"}
             containerType={containerName}
             containerQuantity={cantidadContenedores}
             description={"Cargamento Marítimo FCL"}
@@ -664,7 +664,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
             carrier={rutaSeleccionada.carrier}
-            transitTime={rutaSeleccionada.tt}
+            transitTime={rutaSeleccionada?.tt ?? undefined}
             remarks={rutaSeleccionada.remarks}
           />,
         );

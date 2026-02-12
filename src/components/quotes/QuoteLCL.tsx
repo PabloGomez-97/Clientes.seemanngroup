@@ -868,12 +868,12 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
             ).toLocaleDateString()}
             incoterm={incoterm}
             pickupFromAddress={
-              incoterm === "EXW" ? pickupFromAddress : undefined
+              incoterm === "EXW" ? (pickupFromAddress ?? undefined) : undefined
             }
             deliveryToAddress={
-              incoterm === "EXW" ? deliveryToAddress : undefined
+              incoterm === "EXW" ? (deliveryToAddress ?? undefined) : undefined
             }
-            salesRep={ejecutivo?.nombre || "Ignacio Maldonado"}
+            salesRep={ejecutivo?.nombre ?? "Ignacio Maldonado"}
             pieces={piecesData.length}
             packageTypeName={packageTypeName}
             length={piecesData[0]?.length || 0}
@@ -889,9 +889,9 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
             carrier={rutaSeleccionada.operador}
-            transitTime={rutaSeleccionada.ttAprox}
-            frequency={rutaSeleccionada.frecuencia}
-            service={rutaSeleccionada.servicio}
+            transitTime={rutaSeleccionada?.ttAprox ?? undefined}
+            frequency={rutaSeleccionada?.frecuencia ?? undefined}
+            service={rutaSeleccionada?.servicio ?? undefined}
           />,
         );
 
