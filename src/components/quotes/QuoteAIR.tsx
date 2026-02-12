@@ -906,13 +906,60 @@ function QuoteAPITester({
         0,
       );
 
-      // Crear un contenedor temporal para renderizar el PDF
+      // ── 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF ──
+      let quoteNumber = "";
+      try {
+        console.log(
+          "[QuoteAIR] Buscando cotización recién creada (id mayor a",
+          previousMaxId,
+          ")...",
+        );
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const linbisRes = await fetch(
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+            },
+          },
+        );
+
+        if (linbisRes.ok) {
+          const linbisData = await linbisRes.json();
+          if (Array.isArray(linbisData) && linbisData.length > 0) {
+            const newestQuote = linbisData.reduce(
+              (max: any, q: any) =>
+                (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
+              linbisData[0],
+            );
+            console.log(
+              `[QuoteAIR] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
+            );
+            if (Number(newestQuote.id) > (previousMaxId || 0)) {
+              quoteNumber = newestQuote.number;
+              console.log(
+                `✅ [QuoteAIR] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
+              );
+            } else {
+              console.warn(
+                "[QuoteAIR] No se encontró cotización con id mayor a",
+                previousMaxId,
+              );
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[QuoteAIR] Error obteniendo quoteNumber:", e);
+      }
+
+      // ── 2. Renderizar el PDF con quoteNumber real ──
       const tempDiv = document.createElement("div");
       tempDiv.style.position = "absolute";
       tempDiv.style.left = "-9999px";
       document.body.appendChild(tempDiv);
 
-      // Renderizar el template del PDF
       const root = ReactDOM.createRoot(tempDiv);
 
       await new Promise<void>((resolve) => {
@@ -924,6 +971,7 @@ function QuoteAPITester({
 
         root.render(
           <PDFTemplateAIR
+            quoteNumber={quoteNumber}
             customerName={user?.username || "Customer"}
             origin={rutaSeleccionada.origin}
             destination={rutaSeleccionada.destination}
@@ -957,112 +1005,66 @@ function QuoteAPITester({
             currency={rutaSeleccionada.currency}
             overallMode={overallDimsAndWeight}
             piecesData={overallDimsAndWeight ? [] : piecesData}
+            carrier={rutaSeleccionada.carrier || undefined}
+            transitTime={rutaSeleccionada.transitTime || undefined}
+            frequency={rutaSeleccionada.frequency || undefined}
+            routing={rutaSeleccionada.routing || undefined}
           />,
         );
 
-        // Esperar a que el DOM se actualice
         setTimeout(resolve, 500);
       });
 
-      // Generar el PDF
+      // ── 3. Generar base64 + subir a MongoDB ANTES de descargar ──
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
       console.log("[QuoteAIR] pdfElement encontrado:", !!pdfElement);
+
       if (pdfElement) {
-        const filename = `Cotizacion_${user?.username || "Cliente"}_${formatDateForFilename(new Date())}.pdf`;
+        const customerClean = (user?.username || "Cliente").replace(
+          /[^a-zA-Z0-9]/g,
+          "_",
+        );
+        const filename = quoteNumber
+          ? `${quoteNumber}_${customerClean}.pdf`
+          : `Cotizacion_${customerClean}_${formatDateForFilename(new Date())}.pdf`;
 
         // Generar base64 del PDF para guardarlo en MongoDB
         console.log("[QuoteAIR] Generando base64...");
         const pdfBase64 = await generatePDFBase64(pdfElement);
         console.log("[QuoteAIR] Base64 generado, longitud:", pdfBase64?.length);
 
-        // Descargar el PDF localmente
-        await generatePDF({ filename, element: pdfElement });
-        console.log("[QuoteAIR] PDF descargado localmente");
-
-        // Subir el PDF a MongoDB usando el quoteNumber de Linbis
-        if (pdfBase64) {
+        // Subir el PDF a MongoDB
+        if (pdfBase64 && quoteNumber) {
           try {
-            console.log(
-              "[QuoteAIR] Buscando cotización recién creada (id mayor a",
-              previousMaxId,
-              ")...",
-            );
-            let quoteNumber = "";
-
-            // Esperar 2s y buscar la cotización con id más alto
-            await new Promise((r) => setTimeout(r, 2000));
-
-            const linbisRes = await fetch(
-              `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  Accept: "application/json",
-                },
+            const uploadRes = await fetch("/api/quote-pdf/upload", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
               },
+              body: JSON.stringify({
+                quoteNumber,
+                nombreArchivo: filename,
+                contenidoBase64: pdfBase64,
+                tipoServicio: "AIR",
+                origen: rutaSeleccionada.origin,
+                destino: rutaSeleccionada.destination,
+              }),
+            });
+            const uploadData = await uploadRes.json();
+            console.log(
+              "[QuoteAIR] PDF guardado en MongoDB:",
+              uploadRes.status,
+              uploadData,
             );
-
-            if (linbisRes.ok) {
-              const linbisData = await linbisRes.json();
-              if (Array.isArray(linbisData) && linbisData.length > 0) {
-                // Encontrar la cotización con el id más alto (la más nueva)
-                const newestQuote = linbisData.reduce(
-                  (max: any, q: any) =>
-                    (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
-                  linbisData[0],
-                );
-
-                console.log(
-                  `[QuoteAIR] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
-                );
-
-                if (Number(newestQuote.id) > (previousMaxId || 0)) {
-                  quoteNumber = newestQuote.number;
-                  console.log(
-                    `✅ [QuoteAIR] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
-                  );
-                } else {
-                  console.warn(
-                    "[QuoteAIR] No se encontró cotización con id mayor a",
-                    previousMaxId,
-                  );
-                }
-              }
-            }
-
-            if (quoteNumber) {
-              const uploadRes = await fetch("/api/quote-pdf/upload", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  quoteNumber,
-                  nombreArchivo: filename,
-                  contenidoBase64: pdfBase64,
-                  tipoServicio: "AIR",
-                  origen: rutaSeleccionada.origin,
-                  destino: rutaSeleccionada.destination,
-                }),
-              });
-              const uploadData = await uploadRes.json();
-              console.log(
-                "[QuoteAIR] PDF guardado en MongoDB:",
-                uploadRes.status,
-                uploadData,
-              );
-            } else {
-              console.warn(
-                "[QuoteAIR] No se pudo detectar cotización nueva, PDF no subido",
-              );
-            }
           } catch (uploadErr) {
             console.error("Error subiendo PDF a MongoDB:", uploadErr);
           }
-        } else {
-          console.warn("[QuoteAIR] No se generó base64 del PDF");
         }
+
+        // ── 4. Descargar el PDF localmente (ÚLTIMO) ──
+        await generatePDF({ filename, element: pdfElement });
+        console.log("[QuoteAIR] PDF descargado localmente");
       }
 
       // Limpiar
@@ -1101,7 +1103,6 @@ function QuoteAPITester({
       }
     } catch (error) {
       console.error("Error generating PDF:", error);
-      // No mostramos error al usuario, el PDF es opcional
     }
   };
 

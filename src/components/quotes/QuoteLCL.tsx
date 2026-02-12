@@ -698,36 +698,6 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         : subtotalAmount;
       const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
 
-      // Enviar notificación por email al ejecutivo
-      try {
-        const emailResponse = await fetch("/api/send-operation-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwtToken}`,
-          },
-          body: JSON.stringify({
-            ejecutivoEmail: ejecutivo?.email,
-            ejecutivoNombre: ejecutivo?.nombre,
-            clienteNombre: user?.nombreuser,
-            tipoServicio: "Marítimo LCL",
-            origen: rutaSeleccionada.pol,
-            destino: rutaSeleccionada.pod,
-            carrier: rutaSeleccionada.operador,
-            precio: tarifaOceanFreight.income,
-            currency: rutaSeleccionada.currency,
-            total: total,
-            tipoAccion: tipoAccionParam,
-            quoteId: response?.quote?.id,
-          }),
-        });
-        if (!emailResponse.ok) {
-          console.error("Error sending email");
-        }
-      } catch (error) {
-        console.error("Error enviando notificación por correo:", error);
-      }
-
       // Obtener el nombre del packageType
       const packageType = packageTypeOptions.find(
         (opt) => opt.id === selectedPackageType,
@@ -829,18 +799,66 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         0,
       );
 
-      // Crear un contenedor temporal para renderizar el PDF
+      // ── 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF ──
+      let quoteNumber = "";
+      try {
+        console.log(
+          "[QuoteLCL] Buscando cotización recién creada (id mayor a",
+          previousMaxId,
+          ")...",
+        );
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const linbisRes = await fetch(
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+            },
+          },
+        );
+
+        if (linbisRes.ok) {
+          const linbisData = await linbisRes.json();
+          if (Array.isArray(linbisData) && linbisData.length > 0) {
+            const newestQuote = linbisData.reduce(
+              (max: any, q: any) =>
+                (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
+              linbisData[0],
+            );
+            console.log(
+              `[QuoteLCL] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
+            );
+            if (Number(newestQuote.id) > (previousMaxId || 0)) {
+              quoteNumber = newestQuote.number;
+              console.log(
+                `✅ [QuoteLCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
+              );
+            } else {
+              console.warn(
+                "[QuoteLCL] No se encontró cotización con id mayor a",
+                previousMaxId,
+              );
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[QuoteLCL] Error obteniendo quoteNumber:", e);
+      }
+
+      // ── 2. Renderizar el PDF con quoteNumber real ──
       const tempDiv = document.createElement("div");
       tempDiv.style.position = "absolute";
       tempDiv.style.left = "-9999px";
       document.body.appendChild(tempDiv);
 
-      // Renderizar el template del PDF
       const root = ReactDOM.createRoot(tempDiv);
 
       await new Promise<void>((resolve) => {
         root.render(
           <PDFTemplateLCL
+            quoteNumber={quoteNumber}
             customerName={user?.username || "Customer"}
             pol={rutaSeleccionada.pol}
             pod={rutaSeleccionada.pod}
@@ -870,115 +888,98 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
             charges={pdfCharges}
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
+            carrier={rutaSeleccionada.operador}
+            transitTime={rutaSeleccionada.ttAprox}
+            frequency={rutaSeleccionada.frecuencia}
+            service={rutaSeleccionada.servicio}
           />,
         );
 
-        // Esperar a que el DOM se actualice
         setTimeout(resolve, 500);
       });
 
-      // Generar el PDF
+      // ── 3. Generar base64 + subir a MongoDB ANTES de descargar ──
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
       if (pdfElement) {
-        const filename = `Cotizacion_${user?.username || "Cliente"}_${formatDateForFilename(new Date())}.pdf`;
+        const customerClean = (user?.username || "Cliente").replace(
+          /[^a-zA-Z0-9]/g,
+          "_",
+        );
+        const filename = quoteNumber
+          ? `${quoteNumber}_${customerClean}.pdf`
+          : `Cotizacion_${customerClean}_${formatDateForFilename(new Date())}.pdf`;
 
-        // Generar base64 del PDF para guardarlo en MongoDB
         const pdfBase64 = await generatePDFBase64(pdfElement);
 
-        // Descargar el PDF localmente
-        await generatePDF({ filename, element: pdfElement });
-
-        // Subir el PDF a MongoDB usando el quoteNumber real de Linbis
-        if (pdfBase64) {
+        // Subir el PDF a MongoDB
+        if (pdfBase64 && quoteNumber) {
           try {
-            console.log(
-              "[QuoteLCL] Buscando cotización recién creada (id mayor a",
-              previousMaxId,
-              ")...",
-            );
-            let quoteNumber = "";
-
-            // Esperar 2s y buscar la cotización con id más alto
-            await new Promise((r) => setTimeout(r, 2000));
-
-            const linbisRes = await fetch(
-              `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  Accept: "application/json",
-                },
+            const uploadRes = await fetch("/api/quote-pdf/upload", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${jwtToken}`,
+                "Content-Type": "application/json",
               },
+              body: JSON.stringify({
+                quoteNumber,
+                nombreArchivo: filename,
+                contenidoBase64: pdfBase64,
+                tipoServicio: "LCL",
+                origen: rutaSeleccionada.pol,
+                destino: rutaSeleccionada.pod,
+              }),
+            });
+            const uploadData = await uploadRes.json();
+            console.log(
+              "[QuoteLCL] PDF guardado en MongoDB:",
+              uploadRes.status,
+              uploadData,
             );
-
-            if (linbisRes.ok) {
-              const linbisData = await linbisRes.json();
-              if (Array.isArray(linbisData) && linbisData.length > 0) {
-                const newestQuote = linbisData.reduce(
-                  (max: any, q: any) =>
-                    (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
-                  linbisData[0],
-                );
-
-                console.log(
-                  `[QuoteLCL] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
-                );
-
-                if (Number(newestQuote.id) > (previousMaxId || 0)) {
-                  quoteNumber = newestQuote.number;
-                  console.log(
-                    `✅ [QuoteLCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
-                  );
-                } else {
-                  console.warn(
-                    "[QuoteLCL] No se encontró cotización con id mayor a",
-                    previousMaxId,
-                  );
-                }
-              }
-            }
-
-            if (quoteNumber) {
-              const uploadRes = await fetch("/api/quote-pdf/upload", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${jwtToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  quoteNumber,
-                  nombreArchivo: filename,
-                  contenidoBase64: pdfBase64,
-                  tipoServicio: "LCL",
-                  origen: rutaSeleccionada.pol,
-                  destino: rutaSeleccionada.pod,
-                }),
-              });
-              const uploadData = await uploadRes.json();
-              console.log(
-                "[QuoteLCL] PDF guardado en MongoDB:",
-                uploadRes.status,
-                uploadData,
-              );
-            } else {
-              console.warn(
-                "[QuoteLCL] No se pudo detectar cotización nueva, PDF no subido",
-              );
-            }
           } catch (uploadErr) {
             console.error("Error subiendo PDF a MongoDB:", uploadErr);
           }
-        } else {
-          console.warn("[QuoteLCL] No se generó base64 del PDF");
         }
+
+        // ── 4. Descargar el PDF localmente (ÚLTIMO) ──
+        await generatePDF({ filename, element: pdfElement });
+        console.log("[QuoteLCL] PDF descargado localmente");
       }
 
       // Limpiar
       root.unmount();
       document.body.removeChild(tempDiv);
+
+      // Enviar notificación por email al ejecutivo
+      try {
+        const emailResponse = await fetch("/api/send-operation-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwtToken}`,
+          },
+          body: JSON.stringify({
+            ejecutivoEmail: ejecutivo?.email,
+            ejecutivoNombre: ejecutivo?.nombre,
+            clienteNombre: user?.nombreuser,
+            tipoServicio: "Marítimo LCL",
+            origen: rutaSeleccionada.pol,
+            destino: rutaSeleccionada.pod,
+            carrier: rutaSeleccionada.operador,
+            precio: tarifaOceanFreight.income,
+            currency: rutaSeleccionada.currency,
+            total: total,
+            tipoAccion: tipoAccionParam,
+            quoteId: (apiResponse || response)?.quote?.id,
+          }),
+        });
+        if (!emailResponse.ok) {
+          console.error("Error sending email");
+        }
+      } catch (error) {
+        console.error("Error enviando notificación por correo:", error);
+      }
     } catch (error) {
       console.error("Error generating PDF:", error);
-      // No mostramos error al usuario, el PDF es opcional
     }
   };
 

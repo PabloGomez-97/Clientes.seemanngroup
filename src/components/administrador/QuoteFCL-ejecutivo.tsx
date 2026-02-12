@@ -659,18 +659,61 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         0,
       );
 
-      // Crear un contenedor temporal para renderizar el PDF
+      // ── 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF ──
+      let quoteNumber = "";
+      try {
+        console.log(
+          "[QuoteFCL-Ej] Buscando cotización recién creada (id mayor a",
+          previousMaxId,
+          ")...",
+        );
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const linbisRes = await fetch(
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(clienteSeleccionado?.username || "")}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+            },
+          },
+        );
+
+        if (linbisRes.ok) {
+          const linbisData = await linbisRes.json();
+          if (Array.isArray(linbisData) && linbisData.length > 0) {
+            const newestQuote = linbisData.reduce(
+              (max: any, q: any) =>
+                (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
+              linbisData[0],
+            );
+            console.log(
+              `[QuoteFCL-Ej] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
+            );
+            if (Number(newestQuote.id) > (previousMaxId || 0)) {
+              quoteNumber = newestQuote.number;
+              console.log(
+                `✅ [QuoteFCL-Ej] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
+              );
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[QuoteFCL-Ej] Error obteniendo quoteNumber:", e);
+      }
+
+      // ── 2. Renderizar el PDF con quoteNumber real ──
       const tempDiv = document.createElement("div");
       tempDiv.style.position = "absolute";
       tempDiv.style.left = "-9999px";
       document.body.appendChild(tempDiv);
 
-      // Renderizar el template del PDF
       const root = ReactDOM.createRoot(tempDiv);
 
       await new Promise<void>((resolve) => {
         root.render(
           <PDFTemplateFCL
+            quoteNumber={quoteNumber}
             customerName={clienteSeleccionado?.username || "Customer"}
             pol={rutaSeleccionada.pol}
             pod={rutaSeleccionada.pod}
@@ -692,115 +735,65 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
             charges={pdfCharges}
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
+            carrier={rutaSeleccionada.carrier || undefined}
+            transitTime={rutaSeleccionada.tt || undefined}
+            remarks={rutaSeleccionada.remarks || undefined}
           />,
         );
 
-        // Esperar a que el DOM se actualice
         setTimeout(resolve, 500);
       });
 
-      // Generar el PDF
+      // ── 3. Generar base64 + subir a MongoDB ANTES de descargar ──
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
       if (pdfElement) {
-        const filename = `Cotizacion_${clienteSeleccionado?.username || "Cliente"}_${formatDateForFilename(new Date())}.pdf`;
+        const customerClean = (
+          clienteSeleccionado?.username || "Cliente"
+        ).replace(/[^a-zA-Z0-9]/g, "_");
+        const filename = quoteNumber
+          ? `${quoteNumber}_${customerClean}.pdf`
+          : `Cotizacion_${customerClean}_${formatDateForFilename(new Date())}.pdf`;
 
-        // Generar base64 del PDF para guardarlo en MongoDB
         const pdfBase64 = await generatePDFBase64(pdfElement);
 
-        // Descargar el PDF localmente
-        await generatePDF({ filename, element: pdfElement });
-
-        // Subir el PDF a MongoDB usando el quoteNumber real de Linbis
-        if (pdfBase64) {
+        if (pdfBase64 && quoteNumber) {
           try {
-            console.log(
-              "[QuoteFCL] Buscando cotización recién creada (id mayor a",
-              previousMaxId,
-              ")...",
-            );
-            let quoteNumber = "";
+            const bodyPayload: any = {
+              quoteNumber,
+              nombreArchivo: filename,
+              contenidoBase64: pdfBase64,
+              tipoServicio: "FCL",
+              origen: rutaSeleccionada.pol,
+              destino: rutaSeleccionada.pod,
+            };
 
-            // Esperar 2s y buscar la cotización con id más alto
-            await new Promise((r) => setTimeout(r, 2000));
+            if (user?.username === "Administrador" && clienteSeleccionado) {
+              bodyPayload.usuarioId = clienteSeleccionado.username;
+              bodyPayload.subidoPor = clienteSeleccionado.email;
+            }
 
-            const linbisRes = await fetch(
-              `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(clienteSeleccionado?.username || "")}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  Accept: "application/json",
-                },
+            const uploadRes = await fetch("/api/quote-pdf/upload", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
               },
+              body: JSON.stringify(bodyPayload),
+            });
+            const uploadData = await uploadRes.json();
+            console.log(
+              "[QuoteFCL-Ej] PDF guardado en MongoDB:",
+              uploadRes.status,
+              uploadData,
             );
-
-            if (linbisRes.ok) {
-              const linbisData = await linbisRes.json();
-              if (Array.isArray(linbisData) && linbisData.length > 0) {
-                const newestQuote = linbisData.reduce(
-                  (max: any, q: any) =>
-                    (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
-                  linbisData[0],
-                );
-
-                console.log(
-                  `[QuoteFCL] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
-                );
-
-                if (Number(newestQuote.id) > (previousMaxId || 0)) {
-                  quoteNumber = newestQuote.number;
-                  console.log(
-                    `✅ [QuoteFCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
-                  );
-                } else {
-                  console.warn(
-                    "[QuoteFCL] No se encontró cotización con id mayor a",
-                    previousMaxId,
-                  );
-                }
-              }
-            }
-
-            if (quoteNumber) {
-              const bodyPayload: any = {
-                quoteNumber,
-                nombreArchivo: filename,
-                contenidoBase64: pdfBase64,
-                tipoServicio: "FCL",
-                origen: rutaSeleccionada.pol,
-                destino: rutaSeleccionada.pod,
-              };
-
-              // Enviar override cuando el ejecutivo (Administrador) genera la cotización
-              if (user?.username === "Administrador" && clienteSeleccionado) {
-                bodyPayload.usuarioId = clienteSeleccionado.username;
-                bodyPayload.subidoPor = clienteSeleccionado.email;
-              }
-
-              const uploadRes = await fetch("/api/quote-pdf/upload", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(bodyPayload),
-              });
-              const uploadData = await uploadRes.json();
-              console.log(
-                "[QuoteFCL] PDF guardado en MongoDB:",
-                uploadRes.status,
-                uploadData,
-              );
-            } else {
-              console.warn(
-                "[QuoteFCL] No se pudo detectar cotización nueva, PDF no subido",
-              );
-            }
           } catch (uploadErr) {
             console.error("Error subiendo PDF a MongoDB:", uploadErr);
           }
-        } else {
-          console.warn("[QuoteFCL] No se generó base64 del PDF");
         }
+
+        // ── 4. Descargar el PDF localmente (ÚLTIMO) ──
+        await generatePDF({ filename, element: pdfElement });
+        console.log("[QuoteFCL-Ej] PDF descargado localmente");
       }
 
       // Limpiar
@@ -808,7 +801,6 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
       document.body.removeChild(tempDiv);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      // No mostramos error al usuario, el PDF es opcional
     }
   };
 
