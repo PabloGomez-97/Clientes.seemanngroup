@@ -1,229 +1,38 @@
-// @ts-nocheck
-import { useState, useEffect, useMemo } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useState, useEffect, useMemo } from "react";
+import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { packageTypeOptions } from '../quotes/PackageTypes/PiecestypesAIR';
-import * as XLSX from 'xlsx';
-import Select from 'react-select';
-import { Modal, Button } from 'react-bootstrap';
+import { packageTypeOptions } from "../quotes/PackageTypes/PiecestypesAIR";
+import * as XLSX from "xlsx";
+import Select from "react-select";
+import { Modal, Button } from "react-bootstrap";
+import { PDFTemplateAIR } from "../quotes/Pdftemplate/Pdftemplateair";
+import {
+  generatePDF,
+  generatePDFBase64,
+  formatDateForFilename,
+} from "../quotes/Pdftemplate/Pdfutils";
+import { useTranslation } from "react-i18next";
+import ReactDOM from "react-dom/client";
+import {
+  GOOGLE_SHEET_CSV_URL,
+  type RutaAerea,
+  type SelectOption,
+  type OutletContext,
+  type Currency,
+  extractPrice,
+  normalize,
+  parseCSV,
+  capitalize,
+  parseAEREO,
+  seleccionarTarifaPorPeso,
+  type QuoteAIRProps,
+  type PieceData,
+} from "../quotes/Handlers/Air/HandlerQuoteAir";
+import { PieceAccordion } from "../quotes/Handlers/Air/PieceAccordion";
+import "../quotes/QuoteAIR.css";
 
-interface OutletContext {
-  accessToken: string;
-  onLogout: () => void;
-}
+// Props para pre-selección desde ItineraryFinder
 
-// ============================================================================
-// TIPOS E INTERFACES PARA RUTAS AÉREAS
-// ============================================================================
-
-interface RutaAerea {
-  id: string;
-  origin: string;
-  originNormalized: string;
-  destination: string;
-  destinationNormalized: string;
-  
-  kg45: string | null;
-  kg100: string | null;
-  kg300: string | null;
-  kg500: string | null;
-  kg1000: string | null;
-  
-  carrier: string | null;
-  carrierNormalized: string | null;
-  frequency: string | null;
-  transitTime: string | null;
-  routing: string | null;
-  remark1: string | null;
-  remark2: string | null;
-  
-  row_number: number;
-  priceForComparison: number;
-  currency: 'USD' | 'EUR' | 'GBP';
-}
-
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
-type Currency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'CHF' | 'CLP' | 'SEK';
-
-// ============================================================================
-// FUNCIONES HELPER PARA RUTAS AÉREAS
-// ============================================================================
-
-const extractPrice = (priceStr: string | null): number => {
-  if (!priceStr) return 0;
-  const cleaned = priceStr.toString().replace(/[^\d,\.]/g, '');
-  const normalized = cleaned.replace(',', '.');
-  const price = parseFloat(normalized);
-  return isNaN(price) ? 0 : price;
-};
-
-const extractCurrency = (priceStr: string | null): Currency => {
-  if (!priceStr) return 'USD';
-  const str = priceStr.toString().toUpperCase();
-  
-  if (str.includes('EUR')) return 'EUR';
-  if (str.includes('GBP')) return 'GBP';
-  if (str.includes('CAD')) return 'CAD';
-  if (str.includes('CHF')) return 'CHF';
-  if (str.includes('CLP')) return 'CLP';
-  if (str.includes('SEK')) return 'SEK';
-  return 'USD';
-};
-
-const normalize = (str: string | null): string => {
-  if (!str) return '';
-  return str.toString().toLowerCase().trim();
-};
-
-const capitalize = (str: string): string => {
-  if (!str) return '';
-  return str
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
-const getLowestPrice = (ruta: RutaAerea): { price: number; currency: Currency } => {
-  const tarifas = [
-    ruta.kg45,
-    ruta.kg100,
-    ruta.kg300,
-    ruta.kg500,
-    ruta.kg1000
-  ];
-  
-  for (const tarifa of tarifas) {
-    if (tarifa) {
-      return {
-        price: extractPrice(tarifa),
-        currency: extractCurrency(tarifa)
-      };
-    }
-  }
-  
-  return { price: 0, currency: 'USD' };
-};
-
-const parseAEREO = (data: any[]): RutaAerea[] => {
-  const rutas: RutaAerea[] = [];
-  let idCounter = 1;
-
-  for (let i = 2; i < data.length; i++) {
-    const row: any = data[i];
-    if (!row) continue;
-
-    const origin = row[1];
-    const destination = row[2];
-    const kg45 = row[3];
-    const kg100 = row[4];
-    const kg300 = row[5];
-    const kg500 = row[6];
-    const kg1000 = row[7];
-    const carrier = row[8];
-    const frequency = row[9];
-    const tt = row[10];
-    const routing = row[11];
-    const remark1 = row[12];
-    const remark2 = row[13];
-
-    if (origin && destination && typeof origin === 'string' && typeof destination === 'string') {
-      const lowestPrice = getLowestPrice({
-        kg45: kg45 ? kg45.toString().trim() : null,
-        kg100: kg100 ? kg100.toString().trim() : null,
-        kg300: kg300 ? kg300.toString().trim() : null,
-        kg500: kg500 ? kg500.toString().trim() : null,
-        kg1000: kg1000 ? kg1000.toString().trim() : null,
-      } as RutaAerea);
-
-      rutas.push({
-        id: `AEREO-${idCounter++}`,
-        origin: origin.trim(),
-        originNormalized: normalize(origin),
-        destination: destination.trim(),
-        destinationNormalized: normalize(destination),
-        kg45: kg45 ? kg45.toString().trim() : null,
-        kg100: kg100 ? kg100.toString().trim() : null,
-        kg300: kg300 ? kg300.toString().trim() : null,
-        kg500: kg500 ? kg500.toString().trim() : null,
-        kg1000: kg1000 ? kg1000.toString().trim() : null,
-        carrier: carrier ? carrier.toString().trim() : null,
-        carrierNormalized: carrier ? normalize(carrier) : null,
-        frequency: frequency ? frequency.toString().trim() : null,
-        transitTime: tt ? tt.toString().trim() : null,
-        routing: routing ? routing.toString().trim() : null,
-        remark1: remark1 ? remark1.toString().trim() : null,
-        remark2: remark2 ? remark2.toString().trim() : null,
-        row_number: i + 1,
-        priceForComparison: lowestPrice.price,
-        currency: lowestPrice.currency
-      });
-    }
-  }
-
-  return rutas;
-};
-
-// ============================================================================
-// FUNCIÓN PARA SELECCIONAR TARIFA SEGÚN PESO CHARGEABLE
-// ============================================================================
-
-interface TarifaSeleccionada {
-  precio: number;
-  moneda: Currency;
-  rango: string;
-  precioConMarkup: number;
-}
-
-const seleccionarTarifaPorPeso = (ruta: RutaAerea, pesoChargeable: number): TarifaSeleccionada | null => {
-  // Definir los rangos en orden ascendente
-  const rangos = [
-    { limite: 45, tarifa: ruta.kg45, nombre: '45kg' },
-    { limite: 100, tarifa: ruta.kg100, nombre: '100kg' },
-    { limite: 300, tarifa: ruta.kg300, nombre: '300kg' },
-    { limite: 500, tarifa: ruta.kg500, nombre: '500kg' },
-    { limite: 1000, tarifa: ruta.kg1000, nombre: '1000kg' }
-  ];
-
-  // Encontrar el rango adecuado: el más alto que sea <= al peso chargeable
-  let rangoSeleccionado = null;
-  
-  for (const rango of rangos) {
-    if (rango.tarifa && pesoChargeable >= rango.limite) {
-      rangoSeleccionado = rango;
-    }
-  }
-
-  // Si el peso es menor que 45kg, usar kg45 si existe
-  if (!rangoSeleccionado && pesoChargeable < 45 && rangos[0].tarifa) {
-    rangoSeleccionado = rangos[0];
-  }
-
-  if (!rangoSeleccionado) {
-    return null;
-  }
-
-  const precio = extractPrice(rangoSeleccionado.tarifa);
-  const moneda = extractCurrency(rangoSeleccionado.tarifa);
-  const precioConMarkup = precio * 1.15; // 15% adicional para income
-
-  return {
-    precio,
-    moneda,
-    rango: rangoSeleccionado.nombre,
-    precioConMarkup
-  };
-};
-
-// ============================================================================
-// COMPONENTE PRINCIPAL
-// ============================================================================
-
-// ✅ NUEVO: Interface para clientes asignados
 interface ClienteAsignado {
   id: string;
   email: string;
@@ -232,11 +41,15 @@ interface ClienteAsignado {
   createdAt: string;
 }
 
-function QuoteAIR() {
+function QuoteAPITester({
+  preselectedOrigin,
+  preselectedDestination,
+}: QuoteAIRProps = {}) {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, getMisClientes } = useAuth();
+  const { user, token, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
-  
+  const { t } = useTranslation();
+
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -244,95 +57,522 @@ function QuoteAIR() {
   // Estados para validaciones
   const [weightError, setWeightError] = useState<string | null>(null);
   const [dimensionError, setDimensionError] = useState<string | null>(null);
+  const [oversizeError, setOversizeError] = useState<string | null>(null);
+  const [heightError, setHeightError] = useState<string | null>(null);
+  const [cargoFlightWarning, setCargoFlightWarning] = useState<string | null>(
+    null,
+  );
+  const [lowHeightWarning, setLowHeightWarning] = useState<string | null>(null);
 
   // Estados para el commodity
   const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
-  const [pieces, setPieces] = useState(1);
   const [description, setDescription] = useState("Cargamento Aéreo");
-  const [length, setLength] = useState(100);
-  const [width, setWidth] = useState(80);
-  const [height, setHeight] = useState(60);
-  const [weight, setWeight] = useState(50);
+  const [incoterm, setIncoterm] = useState<"EXW" | "FCA" | "">("");
+  const [pickupFromAddress, setPickupFromAddress] = useState("");
+  const [deliveryToAddress, setDeliveryToAddress] = useState("");
   const [manualVolume, setManualVolume] = useState(0.48);
   const [manualWeight, setManualWeight] = useState(100);
   const [selectedPackageType, setSelectedPackageType] = useState(97);
+  const [piecesData, setPiecesData] = useState<PieceData[]>([
+    {
+      id: "1",
+      packageType: "",
+      description: "",
+      length: 0,
+      width: 0,
+      height: 0,
+      weight: 0,
+      noApilable: false,
+      volume: 0,
+      totalVolume: 0,
+      volumeWeight: 0,
+      totalVolumeWeight: 0,
+      totalWeight: 0,
+    },
+  ]);
+  const [openAccordions, setOpenAccordions] = useState<string[]>(["1"]);
+  const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
+  const [openSection, setOpenSection] = useState<number>(1);
 
-  // ============================================================================
-  // ESTADOS PARA RUTAS AÉREAS
-  // ============================================================================
-  
-  const [rutas, setRutas] = useState<RutaAerea[]>([]);
-  const [loadingRutas, setLoadingRutas] = useState(true);
-  const [errorRutas, setErrorRutas] = useState<string | null>(null);
-  
-  const [originSeleccionado, setOriginSeleccionado] = useState<SelectOption | null>(null);
-  const [destinationSeleccionado, setDestinationSeleccionado] = useState<SelectOption | null>(null);
-  const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaAerea | null>(null);
-  
-  const [opcionesOrigin, setOpcionesOrigin] = useState<SelectOption[]>([]);
-  const [opcionesDestination, setOpcionesDestination] = useState<SelectOption[]>([]);
-  
-  const [carriersActivos, setCarriersActivos] = useState<Set<string>>(new Set());
-  const [monedasActivas, setMonedasActivas] = useState<Set<Currency>>(new Set(['USD', 'EUR', 'GBP', 'CAD', 'CHF', 'CLP', 'SEK']));
-  const [carriersDisponibles, setCarriersDisponibles] = useState<string[]>([]);
-  
-  // Estado para modal de precio 0
-  const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
+  // Estado para el tipo de acción: cotización u operación
+  const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
+    "cotizacion",
+  );
 
   // ✅ NUEVO: Estados para selección de cliente
-  const [clientesAsignados, setClientesAsignados] = useState<ClienteAsignado[]>([]);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteAsignado | null>(null);
+  const [clientesAsignados, setClientesAsignados] = useState<ClienteAsignado[]>(
+    [],
+  );
+  const [clienteSeleccionado, setClienteSeleccionado] =
+    useState<ClienteAsignado | null>(null);
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
 
   // ============================================================================
-  // CARGA DE DATOS AEREO.XLSX
+  // ESTADOS PARA RUTAS AÉREAS
+  // ============================================================================
+
+  const [rutas, setRutas] = useState<RutaAerea[]>([]);
+  const [loadingRutas, setLoadingRutas] = useState(true);
+  const [errorRutas, setErrorRutas] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  const [originSeleccionado, setOriginSeleccionado] =
+    useState<SelectOption | null>(null);
+  const [destinationSeleccionado, setDestinationSeleccionado] =
+    useState<SelectOption | null>(null);
+  const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaAerea | null>(
+    null,
+  );
+
+  const [opcionesOrigin, setOpcionesOrigin] = useState<SelectOption[]>([]);
+  const [opcionesDestination, setOpcionesDestination] = useState<
+    SelectOption[]
+  >([]);
+
+  const [carriersActivos, setCarriersActivos] = useState<Set<string>>(
+    new Set(),
+  );
+  const [monedasActivas, setMonedasActivas] = useState<Set<Currency>>(
+    new Set(["USD", "EUR", "GBP", "CAD", "CHF", "CLP", "SEK"]),
+  );
+  const [carriersDisponibles, setCarriersDisponibles] = useState<string[]>([]);
+
+  // Estado para modal de precio 0
+  const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
+
+  // Estado para el seguro opcional
+  const [seguroActivo, setSeguroActivo] = useState(false);
+  const [valorMercaderia, setValorMercaderia] = useState<string>("");
+
+  // Calcular si hay alguna pieza no apilable
+  const noApilableActivo = useMemo(
+    () => piecesData.some((piece) => piece.noApilable),
+    [piecesData],
+  );
+
+  // ============================================================================
+  // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
   // ============================================================================
 
   useEffect(() => {
     const cargarRutas = async () => {
       try {
         setLoadingRutas(true);
-        const response = await fetch('/assets/AÉREO.xlsx');
-        const arrayBuffer = await response.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
+        setErrorRutas(null);
+
+        // Fetch del CSV desde Google Sheets
+        const response = await fetch(GOOGLE_SHEET_CSV_URL);
+
+        if (!response.ok) {
+          throw new Error(
+            `Error al cargar datos: ${response.status} ${response.statusText}`,
+          );
+        }
+
+        const csvText = await response.text();
+
+        // Parsear CSV a array de arrays (similar al formato de XLSX)
+        const data = parseCSV(csvText);
+
         const rutasParsed = parseAEREO(data);
         setRutas(rutasParsed);
 
         // Extraer origins únicos
-        const originsUnicos = Array.from(new Set(rutasParsed.map(r => r.origin)))
+        const originsUnicos = Array.from(
+          new Set(rutasParsed.map((r) => r.origin)),
+        )
           .sort()
-          .map(origin => ({
+          .map((origin) => ({
             value: normalize(origin),
-            label: capitalize(origin)
+            label: capitalize(origin),
           }));
         setOpcionesOrigin(originsUnicos);
 
         // Extraer carriers únicos
         const carriersUnicos = Array.from(
-          new Set(
-            rutasParsed
-              .map(r => r.carrier)
-              .filter(c => c !== null)
-          )
+          new Set(rutasParsed.map((r) => r.carrier).filter((c) => c !== null)),
         ).sort() as string[];
         setCarriersDisponibles(carriersUnicos);
         setCarriersActivos(new Set(carriersUnicos));
 
         setLoadingRutas(false);
+        setLastUpdate(new Date());
+        console.log(
+          "Tarifas cargadas exitosamente desde Google Sheets:",
+          rutasParsed.length,
+          "rutas",
+        );
       } catch (err) {
-        console.error('Error al cargar AEREO.xlsx:', err);
-        setErrorRutas('No se pudo cargar el archivo AEREO.xlsx');
+        console.error("Error al cargar datos desde Google Sheets:", err);
+        setErrorRutas(
+          "No se pudieron cargar las tarifas desde Google Sheets. " +
+            "Por favor, verifica tu conexión a internet o contacta al administrador.",
+        );
         setLoadingRutas(false);
       }
     };
-
     cargarRutas();
   }, []);
+
+  // ✅ NUEVO: Cargar clientes asignados al ejecutivo
+  useEffect(() => {
+    const cargarClientes = async () => {
+      if (user?.username !== "Administrador") {
+        setLoadingClientes(false);
+        return;
+      }
+
+      try {
+        setLoadingClientes(true);
+        const clientes = await getMisClientes();
+        setClientesAsignados(clientes);
+
+        if (clientes.length === 1) {
+          setClienteSeleccionado(clientes[0]);
+        }
+      } catch (err) {
+        console.error("Error cargando clientes:", err);
+        setErrorClientes(
+          err instanceof Error ? err.message : "Error al cargar clientes",
+        );
+      } finally {
+        setLoadingClientes(false);
+      }
+    };
+
+    cargarClientes();
+  }, [user, getMisClientes]);
+
+  // Aplicar preselección cuando se cargan las rutas y hay datos pre-seleccionados
+  useEffect(() => {
+    if (!loadingRutas && opcionesOrigin.length > 0 && preselectedOrigin) {
+      // Buscar el origen en las opciones disponibles
+      const originOption = opcionesOrigin.find(
+        (opt) => opt.value === preselectedOrigin.value,
+      );
+      if (originOption) {
+        setOriginSeleccionado(originOption);
+      }
+    }
+  }, [loadingRutas, opcionesOrigin, preselectedOrigin]);
+
+  // Aplicar destino pre-seleccionado cuando cambia el origen y hay opciones de destino
+  useEffect(() => {
+    if (
+      originSeleccionado &&
+      preselectedDestination &&
+      opcionesDestination.length > 0
+    ) {
+      const destOption = opcionesDestination.find(
+        (opt) => opt.value === preselectedDestination.value,
+      );
+      if (destOption) {
+        setDestinationSeleccionado(destOption);
+      }
+    }
+  }, [originSeleccionado, opcionesDestination, preselectedDestination]);
+
+  // Auto-abrir sección 2 cuando se seleccione una ruta
+  useEffect(() => {
+    if (rutaSeleccionada && openSection === 1) {
+      setOpenSection(2);
+    }
+  }, [rutaSeleccionada]);
+
+  // Función para manejar el toggle de secciones
+  const handleSectionToggle = (section: number) => {
+    setOpenSection(openSection === section ? 0 : section);
+  };
+
+  // ============================================================================
+  // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
+  // ============================================================================
+
+  const refrescarTarifas = async () => {
+    try {
+      setLoadingRutas(true);
+      setErrorRutas(null);
+
+      // Fetch del CSV desde Google Sheets con timestamp para evitar caché
+      const timestamp = new Date().getTime();
+      const response = await fetch(
+        `${GOOGLE_SHEET_CSV_URL}&timestamp=${timestamp}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Error al cargar datos: ${response.status} ${response.statusText}`,
+        );
+      }
+
+      const csvText = await response.text();
+      const data = parseCSV(csvText);
+      const rutasParsed = parseAEREO(data);
+      setRutas(rutasParsed);
+
+      // Extraer origins únicos
+      const originsUnicos = Array.from(
+        new Set(rutasParsed.map((r) => r.origin)),
+      )
+        .sort()
+        .map((origin) => ({
+          value: normalize(origin),
+          label: capitalize(origin),
+        }));
+      setOpcionesOrigin(originsUnicos);
+
+      // Extraer carriers únicos
+      const carriersUnicos = Array.from(
+        new Set(rutasParsed.map((r) => r.carrier).filter((c) => c !== null)),
+      ).sort() as string[];
+      setCarriersDisponibles(carriersUnicos);
+      setCarriersActivos(new Set(carriersUnicos));
+
+      setLoadingRutas(false);
+      setLastUpdate(new Date());
+      console.log(
+        "Tarifas actualizadas exitosamente:",
+        rutasParsed.length,
+        "rutas",
+      );
+    } catch (err) {
+      console.error("Error al actualizar tarifas:", err);
+      setErrorRutas(
+        "No se pudieron actualizar las tarifas. Por favor, intenta nuevamente.",
+      );
+      setLoadingRutas(false);
+    }
+  };
+
+  // Agregar nueva pieza
+  const handleAddPiece = () => {
+    if (piecesData.length >= 10) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+
+    const newId = (piecesData.length + 1).toString();
+    const newPiece: PieceData = {
+      id: newId,
+      packageType: "",
+      description: "",
+      length: 0,
+      width: 0,
+      height: 0,
+      weight: 0,
+      noApilable: false,
+      volume: 0,
+      totalVolume: 0,
+      volumeWeight: 0,
+      totalVolumeWeight: 0,
+      totalWeight: 0,
+    };
+
+    setPiecesData([...piecesData, newPiece]);
+
+    // Abrir la nueva pieza y cerrar otras si ya hay 2 abiertas
+    setOpenAccordions((prev) => {
+      const newOpen = [...prev, newId];
+      return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+    });
+  };
+
+  // Duplicar pieza: clona la pieza indicada (por id) o la última abierta/última pieza
+  const handleDuplicatePiece = (fromId?: string) => {
+    if (piecesData.length >= 10) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+
+    setPiecesData((prev) => {
+      if (prev.length === 0) return prev;
+
+      // Determinar id origen: desde argumento, o última abierta, o última pieza
+      let sourceId: string | undefined = fromId;
+      if (!sourceId) {
+        sourceId =
+          openAccordions.length > 0
+            ? openAccordions[openAccordions.length - 1]
+            : undefined;
+      }
+      if (!sourceId) {
+        sourceId = prev[prev.length - 1].id;
+      }
+
+      const sourceIndex = prev.findIndex((p) => p.id === sourceId);
+      const idx = sourceIndex === -1 ? prev.length - 1 : sourceIndex;
+
+      const sourcePiece = prev[idx];
+      const newPieceRaw: PieceData = {
+        // id será renumerada más abajo
+        id: "",
+        packageType: sourcePiece.packageType,
+        description: sourcePiece.description,
+        length: sourcePiece.length,
+        width: sourcePiece.width,
+        height: sourcePiece.height,
+        weight: sourcePiece.weight,
+        noApilable: sourcePiece.noApilable,
+        volume: sourcePiece.volume,
+        totalVolume: sourcePiece.totalVolume,
+        volumeWeight: sourcePiece.volumeWeight,
+        totalVolumeWeight: sourcePiece.totalVolumeWeight,
+        totalWeight: sourcePiece.totalWeight,
+      };
+
+      // Insertar nueva pieza justo después de la fuente
+      const before = prev.slice(0, idx + 1);
+      const after = prev.slice(idx + 1);
+      const inserted = [...before, newPieceRaw, ...after];
+
+      // Renumerar IDs
+      const renumbered = inserted.map((piece, i) => ({
+        ...piece,
+        id: (i + 1).toString(),
+      }));
+
+      // Actualizar openAccordions para abrir la nueva pieza (limitando a 2 abiertas)
+      const newIdStr = (idx + 2).toString(); // posición nueva pieza después de renumeración
+      setOpenAccordions((prevOpen) => {
+        const newOpen = [...prevOpen, newIdStr];
+        return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+      });
+
+      return renumbered;
+    });
+  };
+
+  // Eliminar pieza
+  const handleRemovePiece = (id: string) => {
+    const filtered = piecesData.filter((p) => p.id !== id);
+
+    // Renumerar las piezas
+    const renumbered = filtered.map((piece, index) => ({
+      ...piece,
+      id: (index + 1).toString(),
+    }));
+
+    setPiecesData(renumbered);
+
+    // Actualizar accordions abiertos
+    setOpenAccordions((prev) =>
+      prev
+        .filter((openId) => openId !== id)
+        .map((openId, index) => {
+          const oldIndex = parseInt(openId) - 1;
+          const newIndex = renumbered.findIndex((_, i) => i === oldIndex);
+          return newIndex !== -1 ? (newIndex + 1).toString() : openId;
+        }),
+    );
+  };
+
+  // Toggle accordion
+  const handleToggleAccordion = (id: string) => {
+    setOpenAccordions((prev) => {
+      const isOpen = prev.includes(id);
+
+      if (isOpen) {
+        // Cerrar
+        return prev.filter((openId) => openId !== id);
+      } else {
+        // Abrir (máximo 2)
+        const newOpen = [...prev, id];
+        return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+      }
+    });
+  };
+
+  // Actualizar campo de una pieza
+  const handleUpdatePiece = (
+    id: string,
+    field: keyof PieceData,
+    value: any,
+  ) => {
+    setPiecesData((prev) =>
+      prev.map((piece) =>
+        piece.id === id ? { ...piece, [field]: value } : piece,
+      ),
+    );
+  };
+
+  // Calcular totales de todas las piezas
+  const calculateTotals = () => {
+    const totalRealWeight = piecesData.reduce(
+      (sum, piece) => sum + piece.weight,
+      0,
+    );
+    const totalVolumetricWeight = piecesData.reduce(
+      (sum, piece) => sum + piece.volumeWeight,
+      0,
+    );
+    const chargeableWeight = Math.max(totalRealWeight, totalVolumetricWeight);
+
+    return {
+      totalRealWeight,
+      totalVolumetricWeight,
+      chargeableWeight,
+    };
+  };
+
+  // ============================================================================
+  // VALIDACIONES DE DIMENSIONES PARA TRANSPORTE AÉREO
+  // ============================================================================
+
+  useEffect(() => {
+    if (overallDimsAndWeight) {
+      // En modo overall, no hay dimensiones específicas, así que limpiamos errores
+      setOversizeError(null);
+      setHeightError(null);
+      setCargoFlightWarning(null);
+      setLowHeightWarning(null);
+      return;
+    }
+
+    let hasOversize = false;
+    let hasHeightError = false;
+    let hasCargoWarning = false;
+    let hasLowHeight = false;
+
+    piecesData.forEach((piece) => {
+      // Validar largo o ancho > 300 cm (3m)
+      if (piece.length > 300 || piece.width > 300) {
+        hasOversize = true;
+      }
+
+      // Validar alto > 240 cm (2.4m)
+      if (piece.height > 240) {
+        hasHeightError = true;
+      }
+
+      // Validar alto > 160 cm (1.6m) para vuelos cargueros
+      if (piece.height > 160) {
+        hasCargoWarning = true;
+      }
+
+      // Validar alto < 160 cm para alerta de ejecutivo
+      if (piece.height > 0 && piece.height < 160) {
+        hasLowHeight = true;
+      }
+    });
+
+    setOversizeError(hasOversize ? t("QuoteAIR.oversize") : null);
+    setHeightError(
+      hasHeightError
+        ? "El alto supera los 240 cm. Esta carga no puede ser manejada vía aérea."
+        : null,
+    );
+    setCargoFlightWarning(
+      hasCargoWarning
+        ? "El alto supera los 160 cm. Esta carga requiere vuelos cargueros. Verifique con su ejecutivo si la tarifa seleccionada corresponde a vuelos cargueros."
+        : null,
+    );
+    setLowHeightWarning(
+      hasLowHeight
+        ? "Para cargas con alto mayor a 160 cm, comuníquese con su ejecutivo para verificar la cotización en vuelo carguero."
+        : null,
+    );
+  }, [piecesData, overallDimsAndWeight]);
 
   // ============================================================================
   // ACTUALIZAR DESTINATIONS CUANDO CAMBIA ORIGIN
@@ -341,16 +581,16 @@ function QuoteAIR() {
   useEffect(() => {
     if (originSeleccionado) {
       const destinationsParaOrigin = rutas
-        .filter(r => r.originNormalized === originSeleccionado.value)
-        .map(r => r.destination);
-      
+        .filter((r) => r.originNormalized === originSeleccionado.value)
+        .map((r) => r.destination);
+
       const destinationsUnicos = Array.from(new Set(destinationsParaOrigin))
         .sort()
-        .map(dest => ({
+        .map((dest) => ({
           value: normalize(dest),
-          label: capitalize(dest)
+          label: capitalize(dest),
         }));
-      
+
       setOpcionesDestination(destinationsUnicos);
       setDestinationSeleccionado(null);
       setRutaSeleccionada(null);
@@ -361,66 +601,28 @@ function QuoteAIR() {
     }
   }, [originSeleccionado, rutas]);
 
-  // ✅ NUEVO: Cargar clientes asignados al ejecutivo
-  useEffect(() => {
-    const cargarClientes = async () => {
-      if (user?.username !== 'Administrador') {
-        setLoadingClientes(false);
-        return;
-      }
-
-      try {
-        setLoadingClientes(true);
-        const clientes = await getMisClientes();
-        setClientesAsignados(clientes);
-        
-        if (clientes.length === 1) {
-          setClienteSeleccionado(clientes[0]);
-        }
-      } catch (err) {
-        console.error('Error cargando clientes:', err);
-        setErrorClientes(err instanceof Error ? err.message : 'Error al cargar clientes');
-      } finally {
-        setLoadingClientes(false);
-      }
-    };
-
-    cargarClientes();
-  }, [user, getMisClientes]);
-
   // ============================================================================
   // FILTRAR RUTAS
   // ============================================================================
 
-  const rutasFiltradas = rutas.filter(ruta => {
-    if (!originSeleccionado || !destinationSeleccionado) return false;
-    
-    const matchOrigin = ruta.originNormalized === originSeleccionado.value;
-    const matchDestination = ruta.destinationNormalized === destinationSeleccionado.value;
-    
-    const matchCarrier = !ruta.carrier || carriersActivos.has(ruta.carrier);
-    const matchMoneda = monedasActivas.has(ruta.currency);
-    
-    return matchOrigin && matchDestination && matchCarrier && matchMoneda;
-  }).sort((a, b) => a.priceForComparison - b.priceForComparison);
+  const rutasFiltradas = rutas
+    .filter((ruta) => {
+      if (!originSeleccionado || !destinationSeleccionado) return false;
+
+      const matchOrigin = ruta.originNormalized === originSeleccionado.value;
+      const matchDestination =
+        ruta.destinationNormalized === destinationSeleccionado.value;
+
+      const matchCarrier = !ruta.carrier || carriersActivos.has(ruta.carrier);
+      const matchMoneda = monedasActivas.has(ruta.currency);
+
+      return matchOrigin && matchDestination && matchCarrier && matchMoneda;
+    })
+    .sort((a, b) => a.priceForComparison - b.priceForComparison);
 
   // ============================================================================
   // CÁLCULOS AUTOMÁTICOS
   // ============================================================================
-
-  const calculateVolume = () => {
-    return (length * width * height) / 1000000;
-  };
-
-  const calculateVolumeWeight = () => {
-    return calculateVolume() * 167;
-  };
-
-  const volume = calculateVolume();
-  const volumeWeight = calculateVolumeWeight();
-  const totalVolume = volume * pieces;
-  const totalWeight = weight * pieces;
-  const totalVolumeWeight = volumeWeight * pieces;
 
   // Cálculo del peso chargeable (para ambos modos)
   const getPesoChargeable = () => {
@@ -428,22 +630,25 @@ function QuoteAIR() {
       const pesoVolumetricoOverall = manualVolume * 167;
       return Math.max(manualWeight, pesoVolumetricoOverall);
     } else {
-      return Math.max(totalWeight, totalVolumeWeight);
+      const { chargeableWeight } = calculateTotals();
+      return chargeableWeight;
     }
   };
 
   const pesoChargeable = getPesoChargeable();
-  
+
   // Calcular peso volumétrico para determinar la unidad de cobro en modo Overall
   const pesoVolumetricoOverall = overallDimsAndWeight ? manualVolume * 167 : 0;
-  
+
   // Determinar si se cobra por peso o volumen en modo Overall
-  const chargeableUnit = overallDimsAndWeight 
-    ? (manualWeight >= pesoVolumetricoOverall ? 'kg' : 'kg')
-    : 'kg';
+  const chargeableUnit = overallDimsAndWeight
+    ? manualWeight >= pesoVolumetricoOverall
+      ? "kg"
+      : "kg"
+    : "kg";
 
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
-  const tarifaAirFreight = rutaSeleccionada 
+  const tarifaAirFreight = rutaSeleccionada
     ? seleccionarTarifaPorPeso(rutaSeleccionada, pesoChargeable)
     : null;
 
@@ -453,9 +658,9 @@ function QuoteAIR() {
 
   const calculateEXWRate = (weightKg: number, volumeWeightKg: number) => {
     const chargeableWeight = Math.max(weightKg, volumeWeightKg);
-    
+
     let ratePerKg = 0;
-    
+
     if (chargeableWeight >= 1000) {
       ratePerKg = 0.6;
     } else if (chargeableWeight >= 500) {
@@ -465,23 +670,95 @@ function QuoteAIR() {
     } else {
       ratePerKg = 0.8;
     }
-    
+
     const calculatedRate = chargeableWeight * ratePerKg;
-    return Math.max(calculatedRate, 150);
+    return Math.max(calculatedRate, 190);
   };
 
-  const calculateAWBRate = (weightKg: number, volumeWeightKg: number) => {
-    const chargeableWeight = Math.max(weightKg, volumeWeightKg);
-    return chargeableWeight * 0.15;
+  // Función para calcular el seguro (TOTAL * 1.1 * 0.002)
+  const calculateSeguro = (): number => {
+    if (!seguroActivo || !tarifaAirFreight) return 0;
+
+    // Convertir valorMercaderia a número (reemplazar coma por punto)
+    const valorCarga = parseFloat(valorMercaderia.replace(",", ".")) || 0;
+
+    // Si no hay valor de mercadería ingresado, retornar 0
+    if (valorCarga === 0) return 0;
+
+    const { totalRealWeight } = calculateTotals();
+
+    const totalSinSeguro =
+      45 + // Handling
+      (incoterm === "EXW"
+        ? calculateEXWRate(totalRealWeight, pesoChargeable)
+        : 0) + // EXW
+      30 + // AWB
+      Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
+      tarifaAirFreight.precioConMarkup * pesoChargeable; // Air Freight
+
+    return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
+  };
+
+  // Función para calcular el cobro de no apilable (TOTAL SIN MARKUP * 0.6)
+  const calculateNoApilable = (): number => {
+    if (!noApilableActivo || !tarifaAirFreight) return 0;
+
+    const { totalRealWeight } = calculateTotals();
+
+    const totalSinMarkup =
+      45 + // Handling
+      (incoterm === "EXW"
+        ? calculateEXWRate(totalRealWeight, pesoChargeable)
+        : 0) + // EXW
+      30 + // AWB
+      Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
+      tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
+      (seguroActivo ? calculateSeguro() : 0); // Seguro (si está activo)
+
+    return totalSinMarkup * 0.6;
   };
 
   // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
 
-  const testAPI = async () => {
+  const testAPI = async (
+    tipoAccion: "cotizacion" | "operacion" = "cotizacion",
+  ) => {
     if (!rutaSeleccionada) {
-      setError('Debes seleccionar una ruta antes de generar la cotización');
+      setError("Debes seleccionar una ruta antes de generar la cotización");
+      return;
+    }
+
+    if (!incoterm) {
+      setError("Debes seleccionar un Incoterm antes de generar la cotización");
+      return;
+    }
+
+    // Validar que todas las piezas tengan tipo de paquete seleccionado
+    if (!overallDimsAndWeight) {
+      // Modo por piezas: validar que cada pieza tenga packageType
+      const piezasSinTipo = piecesData.filter((piece) => !piece.packageType);
+      if (piezasSinTipo.length > 0) {
+        setError(
+          "Debes seleccionar un Tipo de Paquete para todas las piezas antes de generar la cotización",
+        );
+        return;
+      }
+    } else {
+      // Modo overall: validar que se haya seleccionado un packageType
+      if (!selectedPackageType) {
+        setError(
+          "Debes seleccionar un Tipo de Paquete antes de generar la cotización",
+        );
+        return;
+      }
+    }
+
+    if (incoterm === "EXW" && (!pickupFromAddress || !deliveryToAddress)) {
+      setError(
+        "Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW",
+      );
       return;
     }
 
@@ -490,15 +767,41 @@ function QuoteAIR() {
     setResponse(null);
 
     try {
+      // Obtener el ID máximo de cotización ANTES de crear la nueva
+      let previousMaxId = 0;
+      try {
+        const preRes = await fetch(
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+            },
+          },
+        );
+        if (preRes.ok) {
+          const preData = await preRes.json();
+          if (Array.isArray(preData)) {
+            previousMaxId = Math.max(
+              0,
+              ...preData.map((q: any) => Number(q.id) || 0),
+            );
+          }
+          console.log("[QuoteAIR] ID máximo ANTES de crear:", previousMaxId);
+        }
+      } catch (e) {
+        console.warn("[QuoteAIR] No se pudo obtener cotizaciones previas:", e);
+      }
+
       const payload = getTestPayload();
-      
-      const res = await fetch('https://api.linbis.com/Quotes/create', {
-        method: 'POST',
+
+      const res = await fetch("https://api.linbis.com/Quotes/create", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -507,11 +810,344 @@ function QuoteAIR() {
       }
 
       const data = await res.json();
+      console.log(
+        "[QuoteAIR] Respuesta CREATE de Linbis:",
+        JSON.stringify(data),
+      );
       setResponse(data);
+
+      // Generar PDF después de cotización exitosa
+      await generateQuotePDF(tipoAccion, data, previousMaxId);
     } catch (err: any) {
-      setError(err.message || 'Error desconocido');
+      setError(err.message || "Error desconocido");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateQuotePDF = async (
+    tipoAccionParam: "cotizacion" | "operacion",
+    apiResponse?: any,
+    previousMaxId?: number,
+  ) => {
+    try {
+      if (!rutaSeleccionada || !tarifaAirFreight) return;
+
+      // Obtener el nombre del packageType
+      const packageType = packageTypeOptions.find(
+        (opt) => opt.id === selectedPackageType,
+      );
+      const packageTypeName = packageType ? packageType.name : "CARGA GENERAL";
+
+      // Preparar los charges para el PDF
+      const pdfCharges: Array<{
+        code: string;
+        description: string;
+        quantity: number;
+        unit: string;
+        rate: number;
+        amount: number;
+      }> = [];
+
+      // Handling
+      pdfCharges.push({
+        code: "H",
+        description: "HANDLING",
+        quantity: 1,
+        unit: "Each",
+        rate: 45,
+        amount: 45,
+      });
+
+      // EXW (solo si incoterm es EXW)
+      if (incoterm === "EXW") {
+        const { totalRealWeight } = calculateTotals();
+        // Calcular peso chargeable correctamente
+        const chargeableWeightCalc = overallDimsAndWeight
+          ? Math.max(manualWeight, manualVolume * 167)
+          : Math.max(totalRealWeight, calculateTotals().totalVolumetricWeight);
+        const exwRate = calculateEXWRate(totalRealWeight, chargeableWeightCalc);
+        pdfCharges.push({
+          code: "EC",
+          description: "EXW CHARGES",
+          quantity: 1,
+          unit: "Shipment",
+          rate: exwRate,
+          amount: exwRate,
+        });
+      }
+
+      // AWB (Air Waybill)
+      pdfCharges.push({
+        code: "AWB",
+        description: "AWB",
+        quantity: 1,
+        unit: "Each",
+        rate: 30,
+        amount: 30,
+      });
+
+      // Airport Transfer - Obligatorio
+      const chargeableWeightForTransfer = overallDimsAndWeight
+        ? Math.max(manualWeight, manualVolume * 167)
+        : calculateTotals().chargeableWeight;
+
+      const airportTransferAmount = Math.max(
+        50,
+        chargeableWeightForTransfer * 0.15,
+      );
+
+      pdfCharges.push({
+        code: "A/T",
+        description: "AIRPORT TRANSFER",
+        quantity: chargeableWeightForTransfer,
+        unit: "kg",
+        rate: 0.15,
+        amount: airportTransferAmount,
+      });
+
+      // Air Freight - Usar el mismo cálculo que pesoChargeable
+      const chargeableWeight = overallDimsAndWeight
+        ? Math.max(manualWeight, manualVolume * 167)
+        : calculateTotals().chargeableWeight;
+
+      pdfCharges.push({
+        code: "AF",
+        description: "AIR FREIGHT",
+        quantity: chargeableWeight,
+        unit: "kg",
+        rate: tarifaAirFreight.precioConMarkup,
+        amount: tarifaAirFreight.precioConMarkup * chargeableWeight,
+      });
+
+      // Seguro (solo si está activo)
+      if (seguroActivo) {
+        const seguroAmount = calculateSeguro();
+        pdfCharges.push({
+          code: "S",
+          description: "SEGURO",
+          quantity: 1,
+          unit: "Shipment",
+          rate: seguroAmount,
+          amount: seguroAmount,
+        });
+      }
+
+      // No Apilable (solo si está activo)
+      if (noApilableActivo) {
+        const noApilableAmount = calculateNoApilable();
+        pdfCharges.push({
+          code: "NA",
+          description: "NO APILABLE",
+          quantity: 1,
+          unit: "Shipment",
+          rate: noApilableAmount,
+          amount: noApilableAmount,
+        });
+      }
+
+      // Calcular total
+      const totalCharges = pdfCharges.reduce(
+        (sum, charge) => sum + charge.amount,
+        0,
+      );
+
+      // Crear un contenedor temporal para renderizar el PDF
+      const tempDiv = document.createElement("div");
+      tempDiv.style.position = "absolute";
+      tempDiv.style.left = "-9999px";
+      document.body.appendChild(tempDiv);
+
+      // Renderizar el template del PDF
+      const root = ReactDOM.createRoot(tempDiv);
+
+      await new Promise<void>((resolve) => {
+        const { totalRealWeight, chargeableWeight } = calculateTotals();
+        const totalVolumePieces = piecesData.reduce(
+          (sum, piece) => sum + piece.totalVolume,
+          0,
+        );
+
+        root.render(
+          <PDFTemplateAIR
+            customerName={clienteSeleccionado?.username || "Customer"}
+            origin={rutaSeleccionada.origin}
+            destination={rutaSeleccionada.destination}
+            effectiveDate={new Date().toLocaleDateString()}
+            expirationDate={new Date(
+              Date.now() + 7 * 24 * 60 * 60 * 1000,
+            ).toLocaleDateString()}
+            incoterm={incoterm}
+            pickupFromAddress={
+              incoterm === "EXW" ? pickupFromAddress : undefined
+            }
+            deliveryToAddress={
+              incoterm === "EXW" ? deliveryToAddress : undefined
+            }
+            salesRep={ejecutivo?.nombre || "Ignacio Maldonado"}
+            pieces={piecesData.length}
+            packageTypeName={packageTypeName}
+            length={overallDimsAndWeight ? 0 : piecesData[0]?.length || 0}
+            width={overallDimsAndWeight ? 0 : piecesData[0]?.width || 0}
+            height={overallDimsAndWeight ? 0 : piecesData[0]?.height || 0}
+            description={description}
+            totalWeight={overallDimsAndWeight ? manualWeight : totalRealWeight}
+            totalVolume={
+              overallDimsAndWeight ? manualVolume : totalVolumePieces
+            }
+            chargeableWeight={chargeableWeight}
+            weightUnit="kg"
+            volumeUnit="m³"
+            charges={pdfCharges}
+            totalCharges={totalCharges}
+            currency={rutaSeleccionada.currency}
+            overallMode={overallDimsAndWeight}
+            piecesData={overallDimsAndWeight ? [] : piecesData}
+          />,
+        );
+
+        // Esperar a que el DOM se actualice
+        setTimeout(resolve, 500);
+      });
+
+      // Generar el PDF
+      const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
+      console.log("[QuoteAIR] pdfElement encontrado:", !!pdfElement);
+      if (pdfElement) {
+        const filename = `Cotizacion_${clienteSeleccionado?.username || "Cliente"}_${formatDateForFilename(new Date())}.pdf`;
+
+        // Generar base64 del PDF para guardarlo en MongoDB
+        console.log("[QuoteAIR] Generando base64...");
+        const pdfBase64 = await generatePDFBase64(pdfElement);
+        console.log("[QuoteAIR] Base64 generado, longitud:", pdfBase64?.length);
+
+        // Descargar el PDF localmente
+        await generatePDF({ filename, element: pdfElement });
+        console.log("[QuoteAIR] PDF descargado localmente");
+
+        // Subir el PDF a MongoDB usando el quoteNumber de Linbis
+        if (pdfBase64) {
+          try {
+            console.log(
+              "[QuoteAIR] Buscando cotización recién creada (id mayor a",
+              previousMaxId,
+              ")...",
+            );
+            let quoteNumber = "";
+
+            // Esperar 2s y buscar la cotización con id más alto
+            await new Promise((r) => setTimeout(r, 2000));
+
+            const linbisRes = await fetch(
+              `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  Accept: "application/json",
+                },
+              },
+            );
+
+            if (linbisRes.ok) {
+              const linbisData = await linbisRes.json();
+              if (Array.isArray(linbisData) && linbisData.length > 0) {
+                // Encontrar la cotización con el id más alto (la más nueva)
+                const newestQuote = linbisData.reduce(
+                  (max: any, q: any) =>
+                    (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
+                  linbisData[0],
+                );
+
+                console.log(
+                  `[QuoteAIR] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
+                );
+
+                if (Number(newestQuote.id) > (previousMaxId || 0)) {
+                  quoteNumber = newestQuote.number;
+                  console.log(
+                    `✅ [QuoteAIR] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
+                  );
+                } else {
+                  console.warn(
+                    "[QuoteAIR] No se encontró cotización con id mayor a",
+                    previousMaxId,
+                  );
+                }
+              }
+            }
+
+            if (quoteNumber) {
+              const uploadRes = await fetch("/api/quote-pdf/upload", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  quoteNumber,
+                  nombreArchivo: filename,
+                  contenidoBase64: pdfBase64,
+                  tipoServicio: "AIR",
+                  origen: rutaSeleccionada.origin,
+                  destino: rutaSeleccionada.destination,
+                }),
+              });
+              const uploadData = await uploadRes.json();
+              console.log(
+                "[QuoteAIR] PDF guardado en MongoDB:",
+                uploadRes.status,
+                uploadData,
+              );
+            } else {
+              console.warn(
+                "[QuoteAIR] No se pudo detectar cotización nueva, PDF no subido",
+              );
+            }
+          } catch (uploadErr) {
+            console.error("Error subiendo PDF a MongoDB:", uploadErr);
+          }
+        } else {
+          console.warn("[QuoteAIR] No se generó base64 del PDF");
+        }
+      }
+
+      // Limpiar
+      root.unmount();
+      document.body.removeChild(tempDiv);
+
+      // Enviar notificación por email al ejecutivo
+      try {
+        const total = rutaSeleccionada.currency + " " + totalCharges.toFixed(2);
+        const emailRes = await fetch("/api/send-operation-email", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ejecutivoEmail: ejecutivo?.email,
+            ejecutivoNombre: ejecutivo?.nombre,
+            clienteNombre: user?.nombreuser,
+            tipoServicio: "Aéreo",
+            origen: rutaSeleccionada.origin,
+            destino: rutaSeleccionada.destination,
+            carrier: rutaSeleccionada.carrier,
+            precio: tarifaAirFreight.precioConMarkup * chargeableWeight,
+            currency: rutaSeleccionada.currency,
+            total: total,
+            tipoAccion: tipoAccionParam,
+            quoteId: (apiResponse || response)?.quote?.id,
+          }),
+        });
+        if (!emailRes.ok) {
+          console.error("Error sending email");
+        }
+      } catch (emailErr) {
+        console.error("Error enviando notificación por correo:", emailErr);
+      }
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      // No mostramos error al usuario, el PDF es opcional
     }
   };
 
@@ -524,12 +1160,11 @@ function QuoteAIR() {
 
     // MODO NORMAL
     if (!overallDimsAndWeight) {
-
       // Cobro de Handling
       charges.push({
         service: {
           id: 162,
-          code: "H"
+          code: "H",
         },
         income: {
           quantity: 1,
@@ -540,58 +1175,64 @@ function QuoteAIR() {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: clienteSeleccionado?.username || user?.username
+            name: clienteSeleccionado?.username || user?.username,
           },
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+            abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-HANDLING",
+          reference: "Amount to Handling",
           showOnDocument: true,
-          notes: "Handling charge created via API"
+          notes: "Handling charge created via Client Portal",
         },
         expense: {
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
-          }
-        }
+            abbr: (rutaSeleccionada.currency || "USD") as any,
+          },
+        },
       });
 
-      // Cobro de EXW
-      charges.push({
-        service: {
-          id: 271,
-          code: "EC"
-        },
-        income: {
-          quantity: 1,
-          unit: "EXW CHARGES",
-          rate: calculateEXWRate(totalWeight, totalVolumeWeight),
-          amount: calculateEXWRate(totalWeight, totalVolumeWeight),
-          showamount: calculateEXWRate(totalWeight, totalVolumeWeight),
-          payment: "Prepaid",
-          billApplyTo: "Other",
-          billTo: {
-            name: clienteSeleccionado?.username || user?.username
+      // Cobro de EXW (solo si incoterm es EXW)
+      if (incoterm === "EXW") {
+        const { totalRealWeight, totalVolumetricWeight } = calculateTotals();
+        charges.push({
+          service: {
+            id: 271,
+            code: "EC",
           },
-          currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+          income: {
+            quantity: 1,
+            unit: "EXW CHARGES",
+            rate: calculateEXWRate(totalRealWeight, totalVolumetricWeight),
+            amount: calculateEXWRate(totalRealWeight, totalVolumetricWeight),
+            showamount: calculateEXWRate(
+              totalRealWeight,
+              totalVolumetricWeight,
+            ),
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: clienteSeleccionado?.username || user?.username,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to EXW Charges",
+            showOnDocument: true,
+            notes: "EXW charge created via Client Portal",
           },
-          reference: "TEST-REF-EXW",
-          showOnDocument: true,
-          notes: "EXW charge created via API"
-        },
-        expense: {
-          currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
-          }
-        }
-      });
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
 
       // Cobro de AWB
       charges.push({
         service: {
           id: 335,
-          code: "AWB"
+          code: "AWB",
         },
         income: {
           quantity: 1,
@@ -602,27 +1243,59 @@ function QuoteAIR() {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: clienteSeleccionado?.username || user?.username
+            name: clienteSeleccionado?.username || user?.username,
           },
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+            abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AWB",
+          reference: "Amount to AWB",
           showOnDocument: true,
-          notes: "AWB charge created via API"
+          notes: "AWB charge created via Client Portal",
         },
         expense: {
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
-          }
-        }
+            abbr: (rutaSeleccionada.currency || "USD") as any,
+          },
+        },
+      });
+
+      // Cobro de Airport Transfer (mínimo 50)
+      const airportTransferAmount = Math.max(pesoChargeable * 0.15, 50);
+      charges.push({
+        service: {
+          id: 110936,
+          code: "A/T",
+        },
+        income: {
+          quantity: pesoChargeable,
+          unit: "kg",
+          rate: 0.15,
+          amount: airportTransferAmount,
+          showamount: airportTransferAmount,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: clienteSeleccionado?.username || user?.username,
+          },
+          currency: {
+            abbr: (rutaSeleccionada.currency || "USD") as any,
+          },
+          reference: "Amount to AirPort Transfer",
+          showOnDocument: true,
+          notes: `Airport Transfer charge - 0.15/kg (minimum ${rutaSeleccionada.currency} 50)`,
+        },
+        expense: {
+          currency: {
+            abbr: (rutaSeleccionada.currency || "USD") as any,
+          },
+        },
       });
 
       // Cobro de AIR FREIGHT
       charges.push({
         service: {
           id: 4,
-          code: "AF"
+          code: "AF",
         },
         income: {
           quantity: pesoChargeable,
@@ -633,14 +1306,14 @@ function QuoteAIR() {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: clienteSeleccionado?.username || user?.username
+            name: clienteSeleccionado?.username || user?.username,
           },
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+            abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AIRFREIGHT",
+          reference: "Amount to Air Freight",
           showOnDocument: true,
-          notes: `AIR FREIGHT charge - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg + 15%`
+          notes: `AIR FREIGHT charge - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg + 15%`,
         },
         expense: {
           quantity: pesoChargeable,
@@ -651,84 +1324,164 @@ function QuoteAIR() {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: clienteSeleccionado?.username || user?.username
+            name: clienteSeleccionado?.username || user?.username,
           },
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+            abbr: (rutaSeleccionada.currency || "USD") as any,
           },
           reference: "TEST-REF-AIRFREIGHT",
           showOnDocument: true,
-          notes: `AIR FREIGHT expense - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg`
-        }
+          notes: `AIR FREIGHT expense - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg`,
+        },
       });
+
+      // Cobro de SEGURO (solo si está activo)
+      if (seguroActivo) {
+        const seguroAmount = calculateSeguro();
+        charges.push({
+          service: {
+            id: 111361,
+            code: "S",
+          },
+          income: {
+            quantity: 1,
+            unit: "SEGURO",
+            rate: seguroAmount,
+            amount: seguroAmount,
+            showamount: seguroAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: clienteSeleccionado?.username || user?.username,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to Insurrance",
+            showOnDocument: true,
+            notes: "Seguro opcional - Protección adicional para la carga",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
+
+      // Cobro de NO APILABLE (solo si está activo)
+      if (noApilableActivo) {
+        const noApilableAmount = calculateNoApilable();
+        charges.push({
+          service: {
+            id: 115954,
+            code: "NA",
+            description: "NO APILABLE",
+          },
+          income: {
+            quantity: 1,
+            unit: "NO APILABLE",
+            rate: noApilableAmount,
+            amount: noApilableAmount,
+            showamount: noApilableAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: clienteSeleccionado?.username || user?.username,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to NO STACKEABLE",
+            showOnDocument: true,
+            notes: "Cargo adicional por carga no apilable",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
 
       return {
         date: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        validUntil: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         transitDays: 5,
+        project: {
+          name: "AIR",
+        },
         customerReference: "Portal Created [AIR]",
         contact: {
-          name: clienteSeleccionado?.username || user?.username
+          name: clienteSeleccionado?.username || user?.username,
         },
         origin: {
-          name: rutaSeleccionada.origin
+          name: rutaSeleccionada.origin,
         },
         destination: {
-          name: rutaSeleccionada.destination
+          name: rutaSeleccionada.destination,
         },
         modeOfTransportation: {
-          id: 8
+          id: 8,
         },
         rateCategoryId: 2,
+        incoterm: {
+          code: incoterm,
+          name: incoterm,
+        },
+        ...(incoterm === "EXW" && {
+          pickupFromAddress: pickupFromAddress,
+          deliveryToAddress: deliveryToAddress,
+        }),
         portOfReceipt: {
-          name: rutaSeleccionada.origin
+          name: rutaSeleccionada.origin,
         },
         shipper: {
-          name: clienteSeleccionado?.username || user?.username
+          name: clienteSeleccionado?.username || user?.username,
         },
         consignee: {
-          name: clienteSeleccionado?.username || user?.username
+          name: clienteSeleccionado?.username || user?.username,
         },
         issuingCompany: {
-          name: rutaSeleccionada?.carrier || "Por Confirmar"
+          name: rutaSeleccionada?.carrier || "Por Confirmar",
         },
         serviceType: {
-          name: "Overall Dims & Weight"
+          name: "Normal",
         },
         salesRep: {
-          name: ejecutivo?.nombre || "Ignacio Maldonado"
+          name: ejecutivo?.nombre || "Ignacio Maldonado",
         },
-        commodities: [
-          {
-            commodityType: "Standard",
-            packageType: {
-              id: selectedPackageType
-            },
-            pieces: pieces,
-            description: description,
-            weightPerUnitValue: weight,
-            weightPerUnitUOM: "kg",
-            totalWeightValue: totalWeight,
-            totalWeightUOM: "kg",
-            lengthValue: length,
-            lengthUOM: "cm",
-            widthValue: width,
-            widthUOM: "cm",
-            heightValue: height,
-            heightUOM: "cm",
-            volumeValue: volume,
-            volumeUOM: "m3",
-            totalVolumeValue: totalVolume,
-            totalVolumeUOM: "m3",
-            volumeWeightValue: volumeWeight,
-            volumeWeightUOM: "kg",
-            totalVolumeWeightValue: totalVolumeWeight,
-            totalVolumeWeightUOM: "kg"
-          }
-        ],
-        charges
+        commodities: piecesData.map((piece) => ({
+          commodityType: "Standard",
+          packageType: {
+            id: piece.packageType,
+          },
+          pieces: 1, // Siempre 1 ahora
+          description: piece.description,
+          weightPerUnitValue: piece.weight,
+          weightPerUnitUOM: "kg",
+          totalWeightValue: piece.totalWeight,
+          totalWeightUOM: "kg",
+          lengthValue: piece.length,
+          lengthUOM: "cm",
+          widthValue: piece.width,
+          widthUOM: "cm",
+          heightValue: piece.height,
+          heightUOM: "cm",
+          volumeValue: piece.volume,
+          volumeUOM: "m3",
+          totalVolumeValue: piece.totalVolume,
+          totalVolumeUOM: "m3",
+          volumeWeightValue: piece.volumeWeight,
+          volumeWeightUOM: "kg",
+          totalVolumeWeightValue: piece.totalVolumeWeight,
+          totalVolumeWeightUOM: "kg",
+        })),
+        charges,
       };
-    } 
+    }
     // MODO OVERALL
     else {
       // En modo Overall: el chargeable es el mayor numéricamente entre peso y volumen
@@ -737,7 +1490,7 @@ function QuoteAIR() {
       charges.push({
         service: {
           id: 162,
-          code: "H"
+          code: "H",
         },
         income: {
           quantity: 1,
@@ -748,58 +1501,60 @@ function QuoteAIR() {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: clienteSeleccionado?.username || user?.username
+            name: clienteSeleccionado?.username || user?.username,
           },
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+            abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-HANDLING-OVERALL",
+          reference: "Amount to HANDLING to OVERALL",
           showOnDocument: true,
-          notes: "Handling charge created via API (Overall mode)"
+          notes: "Handling charge created via API (Overall mode)",
         },
         expense: {
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
-          }
-        }
+            abbr: (rutaSeleccionada.currency || "USD") as any,
+          },
+        },
       });
 
-      // Cobro de EXW - Usar peso real y volumen sin conversións
-      charges.push({
-        service: {
-          id: 271,
-          code: "EC"
-        },
-        income: {
-          quantity: 1,
-          unit: "EXW CHARGES",
-          rate: calculateEXWRate(manualWeight, manualVolume),
-          amount: calculateEXWRate(manualWeight, manualVolume),
-          showamount: calculateEXWRate(manualWeight, manualVolume),
-          payment: "Prepaid",
-          billApplyTo: "Other",
-          billTo: {
-            name: clienteSeleccionado?.username || user?.username
+      // Cobro de EXW - Usar peso real y volumen sin conversións (solo si incoterm es EXW)
+      if (incoterm === "EXW") {
+        charges.push({
+          service: {
+            id: 271,
+            code: "EC",
           },
-          currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+          income: {
+            quantity: 1,
+            unit: "EXW CHARGES",
+            rate: calculateEXWRate(manualWeight, manualVolume),
+            amount: calculateEXWRate(manualWeight, manualVolume),
+            showamount: calculateEXWRate(manualWeight, manualVolume),
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: clienteSeleccionado?.username || user?.username,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to EXW CHARGES to OVERALL",
+            showOnDocument: true,
+            notes: "EXW charge created via API (Overall mode)",
           },
-          reference: "TEST-REF-EXW-OVERALL",
-          showOnDocument: true,
-          notes: "EXW charge created via API (Overall mode)"
-        },
-        expense: {
-          currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
-          }
-        }
-      });
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
 
       // Cobro de AWB - Usar peso real y volumen sin conversión
       charges.push({
         service: {
           id: 335,
-          code: "AWB"
+          code: "AWB",
         },
         income: {
           quantity: 1,
@@ -810,118 +1565,199 @@ function QuoteAIR() {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: clienteSeleccionado?.username || user?.username
+            name: clienteSeleccionado?.username || user?.username,
           },
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+            abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AWB-OVERALL",
+          reference: "Amount to AWB to OVERALL",
           showOnDocument: true,
-          notes: "AWB charge created via API (Overall mode)"
+          notes: "AWB charge created via API (Overall mode)",
         },
         expense: {
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
-          }
-        }
+            abbr: (rutaSeleccionada.currency || "USD") as any,
+          },
+        },
+      });
+
+      // Cobro de Airport Transfer (modo overall) - Mínimo 50
+      const pesoChargeableOverall = Math.max(manualWeight, manualVolume * 167);
+      const airportTransferAmountOverall = Math.max(
+        pesoChargeableOverall * 0.15,
+        50,
+      );
+
+      charges.push({
+        service: {
+          id: 110936,
+          code: "A/T",
+        },
+        income: {
+          quantity: pesoChargeableOverall,
+          unit: "kg",
+          rate: 0.15,
+          amount: airportTransferAmountOverall,
+          showamount: airportTransferAmountOverall,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: clienteSeleccionado?.username || user?.username,
+          },
+          currency: {
+            abbr: (rutaSeleccionada.currency || "USD") as any,
+          },
+          reference: "Amount to AIRPORT TRANSFER to OVERALL",
+          showOnDocument: true,
+          notes: "Airport Transfer charge",
+        },
+        expense: {
+          currency: {
+            abbr: (rutaSeleccionada.currency || "USD") as any,
+          },
+        },
       });
 
       // Cobro de AIR FREIGHT - NUEVO
       charges.push({
         service: {
           id: 4,
-          code: "AF"
+          code: "AF",
         },
         income: {
           quantity: pesoChargeable,
-          unit: chargeableUnit === 'kg' ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
+          unit: chargeableUnit === "kg" ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
           rate: tarifaAirFreight.precioConMarkup,
           amount: pesoChargeable * tarifaAirFreight.precioConMarkup,
           showamount: pesoChargeable * tarifaAirFreight.precioConMarkup,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: clienteSeleccionado?.username || user?.username
+            name: clienteSeleccionado?.username || user?.username,
           },
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+            abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AIRFREIGHT-OVERALL",
+          reference: "Amount to AIRFREIGHT to OVERALL",
           showOnDocument: true,
-          notes: `AIR FREIGHT charge (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} + 15% - Cobrado por ${chargeableUnit === 'kg' ? 'peso' : 'volumen'}`
+          notes: `AIR FREIGHT charge (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} + 15% - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
         },
         expense: {
           quantity: pesoChargeable,
-          unit: chargeableUnit === 'kg' ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
+          unit: chargeableUnit === "kg" ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
           rate: tarifaAirFreight.precio,
           amount: pesoChargeable * tarifaAirFreight.precio,
           showamount: pesoChargeable * tarifaAirFreight.precio,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: clienteSeleccionado?.username || user?.username
+            name: clienteSeleccionado?.username || user?.username,
           },
           currency: {
-            abbr: (rutaSeleccionada.currency || "USD") as any
+            abbr: (rutaSeleccionada.currency || "USD") as any,
           },
-          reference: "TEST-REF-AIRFREIGHT-OVERALL",
+          reference: "Amount to AIRFREIGHT to OVERALL",
           showOnDocument: true,
-          notes: `AIR FREIGHT expense (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === 'kg' ? 'peso' : 'volumen'}`
-        }
+          notes: `AIR FREIGHT expense (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
+        },
       });
+
+      // Cobro de SEGURO (solo si está activo) - Overall mode
+      if (seguroActivo) {
+        const seguroAmount = calculateSeguro();
+        charges.push({
+          service: {
+            id: 111361,
+            code: "S",
+          },
+          income: {
+            quantity: 1,
+            unit: "SEGURO",
+            rate: seguroAmount,
+            amount: seguroAmount,
+            showamount: seguroAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: clienteSeleccionado?.username || user?.username,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to Insurrance to OVERALL",
+            showOnDocument: true,
+            notes: "Seguro opcional - Protección adicional para la carga",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
 
       return {
         date: new Date().toISOString(),
-        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        validUntil: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         transitDays: 5,
         customerReference: "Portal-Created [AIR-OVERALL]",
         contact: {
-          name: clienteSeleccionado?.username || user?.username
+          name: clienteSeleccionado?.username || user?.username,
         },
         origin: {
-          name: rutaSeleccionada.origin
+          name: rutaSeleccionada.origin,
         },
         destination: {
-          name: rutaSeleccionada.destination
+          name: rutaSeleccionada.destination,
         },
         modeOfTransportation: {
-          id: 1
+          id: 8,
         },
         rateCategoryId: 2,
+        incoterm: {
+          code: incoterm,
+          name: incoterm,
+        },
+        ...(incoterm === "EXW" && {
+          pickupFromAddress: pickupFromAddress,
+          deliveryToAddress: deliveryToAddress,
+        }),
         portOfReceipt: {
-          name: rutaSeleccionada.origin
+          name: rutaSeleccionada.origin,
         },
         shipper: {
-          name: clienteSeleccionado?.username || user?.username
+          name: clienteSeleccionado?.username || user?.username,
         },
         consignee: {
-          name: clienteSeleccionado?.username || user?.username
+          name: clienteSeleccionado?.username || user?.username,
         },
         issuingCompany: {
-          name: rutaSeleccionada?.carrier || "Por Confirmar"
+          name: rutaSeleccionada?.carrier || "Por Confirmar",
         },
         serviceType: {
-          name: "Overall Dims & Weight"
+          name: "Overall Dims & Weight",
         },
         salesRep: {
-          name: ejecutivo?.nombre || "Ignacio Maldonado"
+          name: ejecutivo?.nombre || "Ignacio Maldonado",
         },
         commodities: [
           {
             commodityType: "Standard",
             packageType: {
-              id: selectedPackageType
+              id: selectedPackageType,
             },
-            pieces: pieces,
+            pieces: 1,
             description: description,
             overallDimsAndWeight: true,
             totalWeightValue: manualWeight,
             totalWeightUOM: "kg",
             totalVolumeValue: manualVolume,
-            totalVolumeUOM: "m3"
-          }
+            totalVolumeUOM: "m3",
+          },
         ],
-        charges
+        charges,
       };
     }
   };
@@ -929,10 +1765,11 @@ function QuoteAIR() {
   // Primero: Rutas SOLO filtradas por origen y destino (sin carriers ni monedas)
   const rutasPorOrigenDestino = useMemo(() => {
     if (!originSeleccionado || !destinationSeleccionado) return [];
-    
-    return rutas.filter(ruta => {
+
+    return rutas.filter((ruta) => {
       const matchOrigin = ruta.originNormalized === originSeleccionado.value;
-      const matchDestination = ruta.destinationNormalized === destinationSeleccionado.value;
+      const matchDestination =
+        ruta.destinationNormalized === destinationSeleccionado.value;
       return matchOrigin && matchDestination;
     });
   }, [rutas, originSeleccionado, destinationSeleccionado]);
@@ -940,7 +1777,7 @@ function QuoteAIR() {
   // Extraer TODOS los carriers disponibles para origen-destino
   const carriersDisponiblesEnRutas = useMemo(() => {
     const carriers = new Set<string>();
-    rutasPorOrigenDestino.forEach(ruta => {
+    rutasPorOrigenDestino.forEach((ruta) => {
       if (ruta.carrier) {
         carriers.add(ruta.carrier);
       }
@@ -951,7 +1788,7 @@ function QuoteAIR() {
   // Extraer TODAS las monedas disponibles para origen-destino
   const monedasDisponiblesEnRutas = useMemo(() => {
     const monedas = new Set<Currency>();
-    rutasPorOrigenDestino.forEach(ruta => {
+    rutasPorOrigenDestino.forEach((ruta) => {
       if (ruta.currency) {
         monedas.add(ruta.currency as Currency);
       }
@@ -964,7 +1801,8 @@ function QuoteAIR() {
     let fastestIndex = -1;
     let minDays = Infinity;
 
-    rutasFiltradas.forEach((ruta, index) => {  // ✅ CORRECTO
+    rutasFiltradas.forEach((ruta, index) => {
+      // ✅ CORRECTO
       if (ruta.transitTime) {
         // Extraer los días del string (ej: "15-20 días" -> toma 15)
         const match = ruta.transitTime.match(/(\d+)/);
@@ -979,7 +1817,7 @@ function QuoteAIR() {
     });
 
     return fastestIndex;
-  }, [rutasFiltradas]);  // ✅ CORRECTO
+  }, [rutasFiltradas]); // ✅ CORRECTO
 
   // Función para encontrar el índice de la ruta con menor precio (excluyendo precio 0)
   const bestPriceRouteIndex = useMemo(() => {
@@ -1002,37 +1840,51 @@ function QuoteAIR() {
   // ============================================================================
 
   return (
-    <div className="container-fluid py-4">
-      <div className="row mb-4">
-        <div className="col">
-          <h2 className="mb-1">✈️ Cotizador Aéreo</h2>
-          <p className="text-muted mb-0">Genera cotizaciones para envíos aéreos</p>
+    <div className="qa-container">
+      <div className="qa-section-header">
+        <div>
+          <h2 className="qa-title">{t("QuoteAIR.title")}</h2>
+          <p className="qa-subtitle">{t("QuoteAIR.subtitle")}</p>
         </div>
       </div>
 
       {/* ============================================================================ */}
       {/* SELECTOR DE CLIENTE (Solo para ejecutivos) */}
       {/* ============================================================================ */}
-      
-      {user?.username === 'Administrador' && (
-        <div className="card shadow-sm mb-4" style={{
-          borderLeft: '4px solid #0d6efd',
-          background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)'
-        }}>
+
+      {user?.username === "Administrador" && (
+        <div
+          className="card shadow-sm mb-4"
+          style={{
+            borderLeft: "4px solid #0d6efd",
+            background: "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
+          }}
+        >
           <div className="card-body">
             <h5 className="card-title mb-3">
-              <svg width="20" height="20" fill="currentColor" className="me-2" viewBox="0 0 16 16">
-                <path d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm.256 7a4.474 4.474 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10c.26 0 .507.009.74.025.226-.341.496-.65.804-.918C9.077 9.038 8.564 9 8 9c-5 0-6 3-6 4s1 1 1 1h5.256Z"/>
+              <svg
+                width="20"
+                height="20"
+                fill="currentColor"
+                className="me-2"
+                viewBox="0 0 16 16"
+              >
+                <path d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm.256 7a4.474 4.474 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10c.26 0 .507.009.74.025.226-.341.496-.65.804-.918C9.077 9.038 8.564 9 8 9c-5 0-6 3-6 4s1 1 1 1h5.256Z" />
               </svg>
               Seleccionar Cliente
             </h5>
 
             {loadingClientes ? (
               <div className="text-center py-3">
-                <div className="spinner-border spinner-border-sm text-primary" role="status">
+                <div
+                  className="spinner-border spinner-border-sm text-primary"
+                  role="status"
+                >
                   <span className="visually-hidden">Cargando clientes...</span>
                 </div>
-                <span className="ms-2 text-muted">Cargando clientes asignados...</span>
+                <span className="ms-2 text-muted">
+                  Cargando clientes asignados...
+                </span>
               </div>
             ) : errorClientes ? (
               <div className="alert alert-danger mb-0">
@@ -1041,61 +1893,93 @@ function QuoteAIR() {
             ) : clientesAsignados.length === 0 ? (
               <div className="alert alert-warning mb-0">
                 <strong>⚠️ Sin clientes asignados</strong>
-                <p className="mb-0 mt-2 small">No tienes clientes asignados. Contacta al administrador.</p>
+                <p className="mb-0 mt-2 small">
+                  No tienes clientes asignados. Contacta al administrador.
+                </p>
               </div>
             ) : (
               <div className="row g-3">
                 <div className="col-md-8">
                   <label className="form-label fw-semibold">
-                    Cliente para esta cotización <span className="text-danger">*</span>
+                    Cliente para esta cotización{" "}
+                    <span className="text-danger">*</span>
                   </label>
                   <Select
-                    value={clienteSeleccionado ? {
-                      value: clienteSeleccionado.id,
-                      label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`
-                    } : null}
+                    value={
+                      clienteSeleccionado
+                        ? {
+                            value: clienteSeleccionado.id,
+                            label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
+                          }
+                        : null
+                    }
                     onChange={(option) => {
-                      const cliente = clientesAsignados.find(c => c.id === option?.value);
+                      const cliente = clientesAsignados.find(
+                        (c) => c.id === option?.value,
+                      );
                       setClienteSeleccionado(cliente || null);
                     }}
-                    options={clientesAsignados.map(c => ({
+                    options={clientesAsignados.map((c) => ({
                       value: c.id,
-                      label: `${c.username} (${c.email})`
+                      label: `${c.username} (${c.email})`,
                     }))}
                     placeholder="Selecciona un cliente..."
                     isClearable={false}
                     styles={{
                       control: (base, state) => ({
                         ...base,
-                        borderColor: clienteSeleccionado ? '#198754' : (state.isFocused ? '#0d6efd' : '#dee2e6'),
-                        boxShadow: state.isFocused ? '0 0 0 0.25rem rgba(13, 110, 253, 0.25)' : 'none',
-                        '&:hover': { borderColor: '#0d6efd' }
+                        borderColor: clienteSeleccionado
+                          ? "#198754"
+                          : state.isFocused
+                            ? "#0d6efd"
+                            : "#dee2e6",
+                        boxShadow: state.isFocused
+                          ? "0 0 0 0.25rem rgba(13, 110, 253, 0.25)"
+                          : "none",
+                        "&:hover": { borderColor: "#0d6efd" },
                       }),
                       option: (base, state) => ({
                         ...base,
-                        backgroundColor: state.isSelected ? '#0d6efd' : (state.isFocused ? '#e7f1ff' : 'white'),
-                        color: state.isSelected ? 'white' : '#212529'
-                      })
+                        backgroundColor: state.isSelected
+                          ? "#0d6efd"
+                          : state.isFocused
+                            ? "#e7f1ff"
+                            : "white",
+                        color: state.isSelected ? "white" : "#212529",
+                      }),
                     }}
                   />
                   {!clienteSeleccionado && (
                     <small className="text-danger d-block mt-1">
-                      ⚠️ Debes seleccionar un cliente antes de generar la cotización
+                      ⚠️ Debes seleccionar un cliente antes de generar la
+                      cotización
                     </small>
                   )}
                 </div>
-                
+
                 {clienteSeleccionado && (
                   <div className="col-md-4">
-                    <label className="form-label fw-semibold">Cliente Seleccionado</label>
+                    <label className="form-label fw-semibold">
+                      Cliente Seleccionado
+                    </label>
                     <div className="p-3 bg-success bg-opacity-10 border border-success rounded">
                       <div className="d-flex align-items-center">
-                        <svg width="24" height="24" fill="#198754" className="me-2" viewBox="0 0 16 16">
-                          <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                        <svg
+                          width="24"
+                          height="24"
+                          fill="#198754"
+                          className="me-2"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
                         </svg>
                         <div>
-                          <div className="fw-semibold text-success">{clienteSeleccionado.username}</div>
-                          <small className="text-muted">{clienteSeleccionado.email}</small>
+                          <div className="fw-semibold text-success">
+                            {clienteSeleccionado.username}
+                          </div>
+                          <small className="text-muted">
+                            {clienteSeleccionado.email}
+                          </small>
                         </div>
                       </div>
                     </div>
@@ -1111,839 +1995,958 @@ function QuoteAIR() {
       {/* SECCIÓN 1: SELECCIÓN DE RUTA */}
       {/* ============================================================================ */}
 
-      <div className="card shadow-sm mb-4">
-        <div className="card-body">
-          <h5 className="card-title mb-4">📍 Paso 1: Selecciona Ruta</h5>
+      <div className="qa-card">
+        <div
+          className={`qa-card-header ${openSection === 1 ? "open" : ""}`}
+          onClick={() => handleSectionToggle(1)}
+        >
+          <div className="d-flex align-items-center">
+            <h3>
+              <i
+                className="bi bi-geo-alt me-2"
+                style={{ color: "var(--qa-primary)" }}
+              ></i>
+              Paso 1: Seleccionar Ruta
+            </h3>
+            {rutaSeleccionada && (
+              <span
+                className="qa-badge ms-3"
+                style={{
+                  backgroundColor: "#d1e7dd",
+                  color: "#0f5132",
+                  borderColor: "transparent",
+                }}
+              >
+                <i className="bi bi-check-circle-fill me-1"></i>
+                Completado
+              </span>
+            )}
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            {!rutaSeleccionada && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  refrescarTarifas();
+                }}
+                disabled={loadingRutas}
+                className="qa-btn qa-btn-sm qa-btn-outline"
+                title="Actualizar tarifas"
+              >
+                {loadingRutas ? (
+                  <>
+                    <span
+                      className="spinner-border spinner-border-sm me-1"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    {t("QuoteAIR.actualizando")}
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-arrow-clockwise me-1"></i>
+                    {t("QuoteAIR.actualizaciontarifa")}
+                  </>
+                )}
+              </button>
+            )}
+            <i
+              className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
+              style={{ color: "var(--qa-text-secondary)" }}
+            ></i>
+          </div>
+        </div>
 
-          {loadingRutas ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Cargando...</span>
+        {openSection === 1 && (
+          <div className="mt-4">
+            {lastUpdate && !loadingRutas && !errorRutas && (
+              <div
+                className="alert alert-light py-2 px-3 mb-3 d-flex align-items-center justify-content-between"
+                style={{ fontSize: "0.85rem" }}
+              >
+                <span className="text-muted">
+                  <i className="bi bi-clock-history me-1"></i>
+                  {t("QuoteAIR.actualizacion")}{" "}
+                  {lastUpdate.toLocaleTimeString("es-CL", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                <span className="qa-badge bg-success text-white">
+                  {rutas.length} {t("QuoteAIR.rutasdisponibles")}
+                </span>
               </div>
-              <p className="mt-3 text-muted">Cargando rutas disponibles...</p>
-            </div>
-          ) : errorRutas ? (
-            <div className="alert alert-danger">
-              ❌ {errorRutas}
-            </div>
-          ) : (
-            <>
-              {/* Selectores de Origen y Destino */}
-              <div className="row g-3 mb-4">
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Origen</label>
-                  <Select
-                    value={originSeleccionado}
-                    onChange={setOriginSeleccionado}
-                    options={opcionesOrigin}
-                    placeholder="Selecciona origen..."
-                    isClearable
-                    styles={{
-                      control: (base) => ({
-                        ...base,
-                        borderColor: '#dee2e6',
-                        '&:hover': { borderColor: '#0d6efd' }
-                      })
-                    }}
-                  />
-                </div>
+            )}
 
-                <div className="col-md-6">
-                  <label className="form-label fw-semibold">Destino</label>
-                  <Select
-                    value={destinationSeleccionado}
-                    onChange={setDestinationSeleccionado}
-                    options={opcionesDestination}
-                    placeholder={originSeleccionado ? "Selecciona destino..." : "Primero selecciona origen"}
-                    isClearable
-                    isDisabled={!originSeleccionado}
-                    styles={{
-                      control: (base) => ({
-                        ...base,
-                        borderColor: '#dee2e6',
-                        '&:hover': { borderColor: '#0d6efd' }
-                      })
-                    }}
-                  />
-                </div>
+            {loadingRutas ? (
+              <div className="text-center py-5">
+                <div
+                  className="spinner-border text-primary"
+                  role="status"
+                ></div>
+                <p className="mt-3 text-muted">{t("QuoteAIR.cargandorutas")}</p>
               </div>
-
-              {/* Filtros de Carriers y Monedas */}
-              {originSeleccionado && destinationSeleccionado && (
-                <div className="border-top pt-3">
-                  <div className="row g-3">
-                    {/* Filtro de Carriers */}
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold mb-2">Carriers Disponibles</label>
-                      <div className="d-flex flex-wrap gap-2">
-                        {carriersDisponiblesEnRutas.map(carrier => (
-                          <button
-                            key={carrier}
-                            type="button"
-                            className={`btn btn-sm ${
-                              carriersActivos.has(carrier)
-                                ? 'btn-primary'
-                                : 'btn-outline-secondary'
-                            }`}
-                            onClick={() => {
-                              const newSet = new Set(carriersActivos);
-                              if (newSet.has(carrier)) {
-                                newSet.delete(carrier);
-                              } else {
-                                newSet.add(carrier);
-                              }
-                              setCarriersActivos(newSet);
-                            }}
-                          >
-                            {carrier}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Filtro de Monedas */}
-                    <div className="col-md-6">
-                      <label className="form-label fw-semibold mb-2">Monedas</label>
-                      <div className="d-flex flex-wrap gap-2">
-                        {monedasDisponiblesEnRutas.map(moneda => (
-                          <button
-                            key={moneda}
-                            type="button"
-                            className={`btn btn-sm ${
-                              monedasActivas.has(moneda)
-                                ? 'btn-success'
-                                : 'btn-outline-secondary'
-                            }`}
-                            onClick={() => {
-                              const newSet = new Set(monedasActivas);
-                              if (newSet.has(moneda)) {
-                                newSet.delete(moneda);
-                              } else {
-                                newSet.add(moneda);
-                              }
-                              setMonedasActivas(newSet);
-                            }}
-                          >
-                            {moneda}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+            ) : errorRutas ? (
+              <div className="qa-alert qa-alert-danger">
+                <i className="bi bi-exclamation-circle-fill mt-1"></i>
+                {errorRutas}
+              </div>
+            ) : (
+              <>
+                <div className="row g-3 mb-4">
+                  <div className="col-md-6">
+                    <label className="qa-label">{t("QuoteAIR.Origen")}</label>
+                    <Select
+                      value={originSeleccionado}
+                      onChange={setOriginSeleccionado}
+                      options={opcionesOrigin}
+                      placeholder={t("QuoteAIR.seleccionaorigen")}
+                      isClearable
+                      classNamePrefix="qa-react-select"
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          borderColor: "#e0e0e0",
+                          boxShadow: "none",
+                          "&:hover": { borderColor: "#b0b0b0" },
+                        }),
+                      }}
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="qa-label">{t("QuoteAIR.Destino")}</label>
+                    <Select
+                      value={destinationSeleccionado}
+                      onChange={setDestinationSeleccionado}
+                      options={opcionesDestination}
+                      placeholder={
+                        originSeleccionado
+                          ? t("QuoteAIR.seleccionadestino")
+                          : t("QuoteAIR.seleccionaprimerorigen")
+                      }
+                      isClearable
+                      isDisabled={!originSeleccionado}
+                      styles={{
+                        control: (base) => ({
+                          ...base,
+                          borderColor: "#e0e0e0",
+                          boxShadow: "none",
+                          "&:hover": { borderColor: "#b0b0b0" },
+                        }),
+                      }}
+                    />
                   </div>
                 </div>
-              )}
 
-              {/* Rutas Disponibles */}
-              {originSeleccionado && destinationSeleccionado && (
-                <div className="mt-4">
-                  {/* Header mejorado */}
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h6 className="mb-0 d-flex align-items-center gap-2">
-                      <i className="bi bi-airplane"></i>
-                      Rutas Disponibles 
-                      <span className="badge bg-light text-dark border">{rutasFiltradas.length}</span>
-                    </h6>
-                    
-                    {rutasFiltradas.length > 0 && (
-                      <small className="text-muted">
-                        Selecciona la mejor opción para tu envío
-                      </small>
+                {originSeleccionado && destinationSeleccionado && (
+                  <div className="mt-4">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h6 className="mb-0 fw-bold">
+                        {t("QuoteAIR.rutasdisponibles1")} (
+                        {rutasFiltradas.length})
+                      </h6>
+                      {rutasFiltradas.length > 0 && (
+                        <small className="text-muted">
+                          {t("QuoteAIR.seleccionamejor")}
+                        </small>
+                      )}
+                    </div>
+
+                    {rutasFiltradas.length === 0 ? (
+                      <div className="text-center py-4 bg-light rounded text-muted">
+                        <i className="bi bi-search fs-3 d-block mb-2"></i>
+                        <p className="mb-1">{t("QuoteAIR.norutas")}</p>
+                        <small>{t("QuotesAIR.intenta")}</small>
+                      </div>
+                    ) : (
+                      <div className="qa-table-container">
+                        <table className="qa-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: "50px" }}></th>
+                              <th>Carrier</th>
+                              <th className="text-center">1-99kg</th>
+                              <th className="text-center">100-299kg</th>
+                              <th className="text-center">300-499kg</th>
+                              <th className="text-center">500-999kg</th>
+                              <th className="text-center">+1000kg</th>
+                              <th className="text-center">
+                                {t("QuoteAIR.salidas")}
+                              </th>
+                              <th className="text-center">Válido Hasta</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rutasFiltradas.map((ruta, index) => {
+                              const precioKg45 = extractPrice(ruta.kg45);
+                              const precioKg100 = extractPrice(ruta.kg100);
+                              const precioKg300 = extractPrice(ruta.kg300);
+                              const precioKg500 = extractPrice(ruta.kg500);
+                              const precioKg1000 = extractPrice(ruta.kg1000);
+                              const isSelected =
+                                rutaSeleccionada?.id === ruta.id;
+
+                              return (
+                                <tr
+                                  key={ruta.id}
+                                  onClick={() => {
+                                    if (ruta.priceForComparison === 0) {
+                                      setShowPriceZeroModal(true);
+                                      return;
+                                    }
+                                    setRutaSeleccionada(ruta);
+                                  }}
+                                  className={isSelected ? "selected" : ""}
+                                >
+                                  <td className="text-center">
+                                    {isSelected ? (
+                                      <i className="bi bi-check-circle-fill text-primary"></i>
+                                    ) : (
+                                      <i className="bi bi-circle text-muted"></i>
+                                    )}
+                                    {index === bestPriceRouteIndex && (
+                                      <div className="mt-1">
+                                        <span
+                                          className="qa-badge qa-badge-primary"
+                                          title="Mejor precio"
+                                        >
+                                          <i className="bi bi-star-fill"></i>
+                                        </span>
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <div className="d-flex align-items-center gap-2">
+                                      {ruta.carrier &&
+                                      ruta.carrier !== "Por Confirmar" ? (
+                                        <img
+                                          src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
+                                          alt={ruta.carrier}
+                                          style={{
+                                            width: "24px",
+                                            height: "24px",
+                                            objectFit: "contain",
+                                          }}
+                                          onError={(e) => {
+                                            e.currentTarget.style.display =
+                                              "none";
+                                          }}
+                                        />
+                                      ) : (
+                                        <i className="bi bi-airplane"></i>
+                                      )}
+                                      <span className="fw-medium">
+                                        {ruta.carrier ||
+                                          t("QuoteAIR.porconfirmar")}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  {[
+                                    precioKg45,
+                                    precioKg100,
+                                    precioKg300,
+                                    precioKg500,
+                                    precioKg1000,
+                                  ].map((price, idx) => (
+                                    <td key={idx} className="text-center">
+                                      {price > 0 ? (
+                                        <div>
+                                          <div className="fw-bold fs-7">
+                                            {ruta.currency}{" "}
+                                            {(price * 1.15).toFixed(2)}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <span className="text-muted">—</span>
+                                      )}
+                                    </td>
+                                  ))}
+                                  <td className="text-center text-muted small">
+                                    {ruta.frequency || "—"}
+                                  </td>
+                                  <td className="text-center text-muted small">
+                                    {ruta.validUntil || "—"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
-
-                  {rutasFiltradas.length === 0 ? (
-                    <div className="alert alert-light border-0 shadow-sm">
-                      <div className="d-flex align-items-center gap-3">
-                        <i className="bi bi-search text-muted fs-3"></i>
-                        <div>
-                          <p className="mb-1 fw-semibold">No se encontraron rutas</p>
-                          <small className="text-muted">
-                            Intenta ajustar los filtros o seleccionar otras ubicaciones
-                          </small>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="row g-3">
-                      {rutasFiltradas.map((ruta, index) => (
-                        <div key={ruta.id} className="col-md-6 col-lg-4">
-                          <div 
-                            className={`card h-100 position-relative ${
-                              rutaSeleccionada?.id === ruta.id 
-                                ? 'border-primary border-2 shadow-lg' 
-                                : 'border-0 shadow-sm'
-                            }`}
-                            style={{ 
-                              cursor: 'pointer', 
-                              transition: 'all 0.3s ease',
-                              transform: rutaSeleccionada?.id === ruta.id ? 'translateY(-4px)' : 'none'
-                            }}
-                            onClick={() => {
-                              // Verificar si la ruta tiene precio 0
-                              if (ruta.priceForComparison === 0) {
-                                setShowPriceZeroModal(true);
-                                return;
-                              }
-                              setRutaSeleccionada(ruta);
-                            }}
-                            onMouseEnter={(e) => {
-                              if (rutaSeleccionada?.id !== ruta.id) {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.classList.add('shadow');
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (rutaSeleccionada?.id !== ruta.id) {
-                                e.currentTarget.style.transform = 'none';
-                                e.currentTarget.classList.remove('shadow');
-                              }
-                            }}
-                          >
-                            {/* Badge de "Mejor Opción" para la ruta más barata (excluyendo precio 0) */}
-                            {index === bestPriceRouteIndex && (
-                              <div 
-                                className="position-absolute top-0 end-0 badge bg-warning text-dark"
-                                style={{ 
-                                  borderTopRightRadius: '0.375rem',
-                                  borderBottomLeftRadius: '0.375rem',
-                                  fontSize: '0.7rem'
-                                }}
-                              >
-                                <i className="bi bi-star-fill"></i> Mejor Opción
-                              </div>
-                            )}
-
-                            {/* Badge de "Menor tiempo" para la ruta más rápida */}
-                            {index === fastestRouteIndex && index !== 0 && (
-                              <div 
-                                className="position-absolute badge bg-success text-white"
-                                style={{ 
-                                  top: '0',
-                                  right: '0',
-                                  borderTopRightRadius: '0.375rem',
-                                  borderBottomLeftRadius: '0.375rem',
-                                  fontSize: '0.7rem'
-                                }}
-                              >
-                                <i className="bi bi-lightning-fill"></i> Menor tiempo
-                              </div>
-                            )}
-
-                            {/* Si la ruta es tanto la mejor opción como la más rápida */}
-                            {index === 0 && index === fastestRouteIndex && (
-                              <div 
-                                className="position-absolute badge bg-success text-white"
-                                style={{ 
-                                  top: '2rem',
-                                  right: '0',
-                                  borderTopRightRadius: '0.375rem',
-                                  borderBottomLeftRadius: '0.375rem',
-                                  fontSize: '0.7rem'
-                                }}
-                              >
-                                <i className="bi bi-lightning-fill"></i> Menor tiempo
-                              </div>
-                            )}
-
-                            <div className="card-body">
-                              {/* Header del carrier con logo */}
-                              <div className="d-flex justify-content-between align-items-start mb-3">
-                                <div className="d-flex align-items-center gap-2">
-                                  {/* Logo del carrier */}
-                                  {ruta.carrier && ruta.carrier !== 'Por Confirmar' ? (
-                                    <div 
-                                      className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
-                                      style={{ 
-                                        width: '50px', 
-                                        height: '50px',
-                                        overflow: 'hidden'
-                                      }}
-                                    >
-                                      <img 
-                                        src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
-                                        alt={ruta.carrier}
-                                        style={{ 
-                                          maxWidth: '150%', 
-                                          maxHeight: '150%',
-                                          objectFit: 'contain'
-                                        }}
-                                        onError={(e) => {
-                                          // Fallback si la imagen no carga
-                                          e.currentTarget.style.display = 'none';
-                                          e.currentTarget.parentElement.innerHTML = `
-                                            <i class="bi bi-box-seam text-primary fs-4"></i>
-                                          `;
-                                        }}
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div 
-                                      className="rounded-circle bg-primary bg-opacity-10 p-2 d-flex align-items-center justify-content-center"
-                                      style={{ width: '50px', height: '50px' }}
-                                    >
-                                      <i className="bi bi-box-seam text-primary fs-5"></i>
-                                    </div>
-                                  )}
-                                  
-                                  <div>
-                                    <span className="badge bg-primary bg-opacity-10 text-primary border border-primary">
-                                      {ruta.carrier || 'Por Confirmar'}
-                                    </span>
-                                  </div>
-                                </div>
-                                
-                                {rutaSeleccionada?.id === ruta.id && (
-                                  <div className="position-relative">
-                                    <span className="badge bg-success">
-                                      <i className="bi bi-check-circle-fill"></i> Seleccionada
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Precio destacado */}
-                              <div className="mb-3 p-3 bg-light rounded">
-                                <small className="text-muted text-uppercase d-block mb-1" style={{ fontSize: '0.7rem', letterSpacing: '0.5px' }}>
-                                  Precio desde
-                                </small>
-                                <div className="d-flex align-items-baseline gap-1">
-                                  <h4 className="mb-0 text-primary fw-bold">
-                                    {ruta.currency} {(ruta.priceForComparison * 1.15).toFixed(2)}
-                                  </h4>
-                                  <small className="text-muted">/kg</small>
-                                </div>
-                              </div>
-
-                              {/* Detalles en grid */}
-                              <div className="row g-2">
-                                {ruta.transitTime && (
-                                  <div className="col-12">
-                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                      <i className="bi bi-clock text-primary"></i>
-                                      <div className="flex-grow-1">
-                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
-                                          Tiempo de tránsito
-                                        </small>
-                                        <small className="fw-semibold">{ruta.transitTime}</small>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {ruta.frequency && (
-                                  <div className="col-12">
-                                    <div className="d-flex align-items-center gap-2 p-2 bg-white rounded border">
-                                      <i className="bi bi-calendar-check text-primary"></i>
-                                      <div className="flex-grow-1">
-                                        <small className="text-muted d-block" style={{ fontSize: '0.7rem' }}>
-                                          Frecuencia
-                                        </small>
-                                        <small className="fw-semibold">{ruta.frequency}</small>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Call to action sutil */}
-                              {rutaSeleccionada?.id !== ruta.id && (
-                                <div className="mt-3 text-center">
-                                  <small className="text-muted">
-                                    <i className="bi bi-hand-index"></i> Click para seleccionar
-                                  </small>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Footer informativo si hay rutas */}
-                  {rutasFiltradas.length > 0 && (
-                    <div className="alert alert-light border-0 mt-3">
-                      <small className="text-muted">
-                        <i className="bi bi-info-circle"></i> Los precios son referenciales y pueden variar según dimensiones y servicios adicionales
-                      </small>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Información de ruta seleccionada */}
-              {rutaSeleccionada && (
-                <div className="alert alert-success mt-4 mb-0 border-0 shadow-sm">
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <div className="d-flex align-items-center gap-2">
-                      <i className="bi bi-check-circle-fill"></i>
-                      <strong>✓ Ruta Seleccionada</strong>
-                    </div>
-                    <button 
-                      className="btn btn-sm btn-outline-success"
-                      onClick={() => setRutaSeleccionada(null)}
-                      style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-                    >
-                      Cambiar
-                    </button>
-                  </div>
-                  
-                  <div className="small">
-                    <strong>Origen:</strong> {rutaSeleccionada.origin} → <strong>Destino:</strong> {rutaSeleccionada.destination}
-                  </div>
-                  
-                  <div className="small mt-1">
-                    <strong>Carrier:</strong> {rutaSeleccionada.carrier || 'Por Confirmar'}
-                  </div>
-                  
-                  {(rutaSeleccionada.transitTime || rutaSeleccionada.frequency) && (
-                    <div className="small mt-1 text-success-emphasis">
-                      {rutaSeleccionada.transitTime && `⏱️ ${rutaSeleccionada.transitTime}`}
-                      {rutaSeleccionada.transitTime && rutaSeleccionada.frequency && ' • '}
-                      {rutaSeleccionada.frequency && `📅 ${rutaSeleccionada.frequency}`}
-                    </div>
-                  )}
-                  
-                  <div className="mt-2">
-                    <strong className="small">Tarifas disponibles:</strong>
-                    <div className="d-flex flex-wrap gap-1 mt-1">
-                      {rutaSeleccionada.kg45 && (
-                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          45kg: {rutaSeleccionada.kg45}
-                        </span>
-                      )}
-                      {rutaSeleccionada.kg100 && (
-                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          100kg: {rutaSeleccionada.kg100}
-                        </span>
-                      )}
-                      {rutaSeleccionada.kg300 && (
-                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          300kg: {rutaSeleccionada.kg300}
-                        </span>
-                      )}
-                      {rutaSeleccionada.kg500 && (
-                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          500kg: {rutaSeleccionada.kg500}
-                        </span>
-                      )}
-                      {rutaSeleccionada.kg1000 && (
-                        <span className="badge bg-white text-success border border-success" style={{ fontSize: '0.7rem' }}>
-                          1000kg: {rutaSeleccionada.kg1000}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ============================================================================ */}
-      {/* SECCIÓN 2: DATOS DEL COMMODITY */}
+      {/* SECCIÓN 2: DATOS DEL CARGAMENTO */}
       {/* ============================================================================ */}
 
       {rutaSeleccionada && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body">
-            <h5 className="card-title mb-4">📦 Paso 2: Datos del Commodity</h5>
+        <div className="qa-card">
+          <div className="qa-card-header">
+            <div>
+              <h3>{t("QuoteAIR.datoscargamento")}</h3>
+              <p className="qa-subtitle">{t("QuoteAIR.configuredetalles")}</p>
+            </div>
+          </div>
 
-            {/* Switch Overall */}
-            <div className="form-check form-switch mb-4">
+          <div className="mb-4">
+            <div className="qa-switch-container">
               <input
-                className="form-check-input"
+                className="qa-switch-input"
                 type="checkbox"
                 id="overallSwitch"
                 checked={overallDimsAndWeight}
                 onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
               />
-              <label className="form-check-label" htmlFor="overallSwitch">
-                <strong>Overall Dims and Weight</strong>
-                <small className="d-block text-muted">
-                  Activa esta opción si deseas ingresar el peso y volumen total manualmente
-                </small>
+              <label
+                className="qa-label mb-0"
+                htmlFor="overallSwitch"
+                style={{ cursor: "pointer", flexGrow: 1 }}
+              >
+                <div className="d-flex align-items-center">
+                  <i
+                    className="bi bi-calculator me-2"
+                    style={{ fontSize: "1.2rem" }}
+                  ></i>
+                  <div>
+                    <span className="d-block text-dark">
+                      {t("QuoteAIR.overall")}
+                    </span>
+                    <small className="text-muted fw-normal">
+                      {t("QuoteAIR.ingresomanual")}
+                    </small>
+                  </div>
+                </div>
               </label>
             </div>
+          </div>
 
-            {/* Formulario */}
-            <div className="row g-3">
-              <div className="col-md-6">
-                <label className="form-label">Tipo de Paquete</label>
-                <select
-                  className="form-select"
-                  value={selectedPackageType}
-                  onChange={(e) => setSelectedPackageType(Number(e.target.value))}
-                >
-                  {packageTypeOptions.map(opt => (
-                    <option key={opt.id} value={opt.id}>
-                      {opt.code} - {opt.name}
-                    </option>
-                  ))}
-                </select>
+          <div className="qa-form-group mb-4">
+            <label className="qa-label">
+              <i className="bi bi-flag me-2"></i>
+              Incoterm <span className="text-danger">*</span>
+            </label>
+            <select
+              className="qa-select"
+              value={incoterm}
+              onChange={(e) =>
+                setIncoterm(e.target.value as "EXW" | "FCA" | "")
+              }
+              style={{ maxWidth: "300px" }}
+            >
+              <option value="">{t("QuoteAIR.incoterm")}</option>
+              <option value="EXW">Ex Works [EXW]</option>
+              <option value="FCA">Free Carrier [FCA]</option>
+            </select>
+          </div>
+
+          {incoterm === "EXW" && (
+            <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
+              <div>
+                <label className="qa-label">
+                  <i className="bi bi-geo-alt me-1"></i>
+                  {t("QuoteAIR.pickup")}
+                </label>
+                <textarea
+                  className="qa-input"
+                  value={pickupFromAddress}
+                  onChange={(e) => setPickupFromAddress(e.target.value)}
+                  placeholder="Ingrese dirección de recogida"
+                  rows={2}
+                />
+              </div>
+              <div>
+                <label className="qa-label">
+                  <i className="bi bi-geo-alt me-1"></i>
+                  {t("QuoteAIR.delivery")}
+                </label>
+                <textarea
+                  className="qa-input"
+                  value={deliveryToAddress}
+                  onChange={(e) => setDeliveryToAddress(e.target.value)}
+                  placeholder="Ingrese dirección de entrega"
+                  rows={2}
+                />
+              </div>
+            </div>
+          )}
+
+          {!overallDimsAndWeight && (
+            <div>
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4 className="fs-6 fw-bold mb-0">
+                  <i className="bi bi-boxes me-2"></i>
+                  {t("QuoteAIR.detalles")}
+                </h4>
+                <span className="qa-badge">
+                  {piecesData.length}{" "}
+                  {piecesData.length === 1
+                    ? t("QuoteAIR.pieza")
+                    : t("QuoteAIR.piezas")}
+                </span>
               </div>
 
-              <div className="col-md-6">
-                <label className="form-label">Número de Piezas</label>
+              <div className="mb-3">
+                {piecesData.map((piece, index) => (
+                  <PieceAccordion
+                    key={piece.id}
+                    piece={piece}
+                    index={index}
+                    isOpen={openAccordions.includes(piece.id)}
+                    onToggle={() => handleToggleAccordion(piece.id)}
+                    onRemove={() => handleRemovePiece(piece.id)}
+                    onUpdate={(field, value) =>
+                      handleUpdatePiece(piece.id, field, value)
+                    }
+                    packageTypes={packageTypeOptions.map((opt) => ({
+                      id: String(opt.id),
+                      name: opt.name,
+                    }))}
+                    canRemove={piecesData.length > 1}
+                  />
+                ))}
+              </div>
+
+              <div className="d-flex justify-content-end">
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-outline qa-btn-sm me-2"
+                  onClick={() => handleDuplicatePiece()}
+                >
+                  <i className="bi bi-files"></i>
+                  Duplicar pieza
+                </button>
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-primary"
+                  onClick={handleAddPiece}
+                >
+                  <i className="bi bi-plus-lg"></i>
+                  {t("QuoteAIR.agregarpieza")}
+                </button>
+              </div>
+
+              {/* Alertas de restricciones */}
+              <div className="mt-4">
+                {oversizeError && (
+                  <div className="qa-alert qa-alert-warning">
+                    <i className="bi bi-exclamation-triangle-fill"></i>
+                    <div>
+                      <strong>{t("QuoteAIR.cargaoversize")}:</strong>{" "}
+                      {oversizeError}
+                    </div>
+                  </div>
+                )}
+                {heightError && (
+                  <div className="qa-alert qa-alert-danger">
+                    <i className="bi bi-x-circle-fill"></i>
+                    <div>
+                      <strong>{t("QuoteAIR.noaptaparaereo")}:</strong>{" "}
+                      {heightError}
+                    </div>
+                  </div>
+                )}
+                {cargoFlightWarning && (
+                  <div className="qa-alert qa-alert-warning">
+                    <i className="bi bi-airplane-fill"></i>
+                    <div>
+                      <strong>
+                        {t("QuoteAIR.vueloscarguerosrequeridos")}:
+                      </strong>{" "}
+                      {cargoFlightWarning}
+                    </div>
+                  </div>
+                )}
+                {lowHeightWarning && (
+                  <div className="qa-alert qa-alert-warning">
+                    <i className="bi bi-info-circle-fill"></i>
+                    <div>
+                      <strong>{t("QuoteAIR.verificacion")}</strong>{" "}
+                      {lowHeightWarning}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {overallDimsAndWeight && (
+            <div className="qa-grid-2 mt-3 p-3 bg-light rounded border">
+              <div>
+                <label className="qa-label">
+                  <i className="bi bi-box-seam me-1"></i>
+                  {t("QuoteAIR.pesototal")}
+                </label>
                 <input
                   type="number"
-                  className="form-control"
-                  value={pieces}
-                  onChange={(e) => setPieces(Number(e.target.value))}
-                  min="1"
+                  className={`qa-input ${weightError ? "is-invalid" : ""}`} // Keep is-invalid for helper text if needed, or style it
+                  value={manualWeight}
+                  onChange={(e) => {
+                    const newManualWeight = Number(e.target.value);
+                    setManualWeight(newManualWeight);
+                    if (newManualWeight > 2000) {
+                      setWeightError("El peso total no puede exceder 2000 kg");
+                    } else {
+                      setWeightError(null);
+                    }
+                  }}
+                  min="0"
+                  step="0.01"
                 />
-              </div>
-
-              <div className="col-12">
-                <label className="form-label">Descripción</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-
-              {/* Modo Normal */}
-              {!overallDimsAndWeight && (
-                <>
-                  <div className="col-md-3">
-                    <label className="form-label">Largo (cm)</label>
-                    <input
-                      type="number"
-                      className={`form-control ${dimensionError && dimensionError.includes('Largo') ? 'is-invalid' : ''}`}
-                      value={length}
-                      onChange={(e) => {
-                        const newLength = Number(e.target.value);
-                        setLength(newLength);
-                        if (newLength > 290) {
-                          setDimensionError('El largo no puede exceder 290 cm');
-                        } else if (width > 290 || height > 160) {
-                          // Mantener error si hay otros problemas
-                        } else {
-                          setDimensionError(null);
-                        }
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    {dimensionError && dimensionError.includes('largo') && (
-                      <div className="invalid-feedback">{dimensionError}</div>
-                    )}
-                  </div>
-
-                  <div className="col-md-3">
-                    <label className="form-label">Ancho (cm)</label>
-                    <input
-                      type="number"
-                      className={`form-control ${dimensionError && dimensionError.includes('Ancho') ? 'is-invalid' : ''}`}
-                      value={width}
-                      onChange={(e) => {
-                        const newWidth = Number(e.target.value);
-                        setWidth(newWidth);
-                        if (newWidth > 290) {
-                          setDimensionError('El ancho no puede exceder 290 cm');
-                        } else if (length > 290 || height > 160) {
-                          // Mantener error si hay otros problemas
-                        } else {
-                          setDimensionError(null);
-                        }
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    {dimensionError && dimensionError.includes('ancho') && (
-                      <div className="invalid-feedback">{dimensionError}</div>
-                    )}
-                  </div>
-
-                  <div className="col-md-3">
-                    <label className="form-label">Alto (cm)</label>
-                    <input
-                      type="number"
-                      className={`form-control ${dimensionError && dimensionError.includes('Alto') ? 'is-invalid' : ''}`}
-                      value={height}
-                      onChange={(e) => {
-                        const newHeight = Number(e.target.value);
-                        setHeight(newHeight);
-                        if (newHeight > 160) {
-                          setDimensionError('El alto no puede exceder 160 cm');
-                        } else if (length > 290 || width > 290) {
-                          // Mantener error si hay otros problemas
-                        } else {
-                          setDimensionError(null);
-                        }
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    {dimensionError && dimensionError.includes('alto') && (
-                      <div className="invalid-feedback">{dimensionError}</div>
-                    )}
-                  </div>
-
-                  <div className="col-md-3">
-                    <label className="form-label">Peso por pieza (kg)</label>
-                    <input
-                      type="number"
-                      className={`form-control ${weightError ? 'is-invalid' : ''}`}
-                      value={weight}
-                      onChange={(e) => {
-                        const newWeight = Number(e.target.value);
-                        setWeight(newWeight);
-                        const newTotalWeight = newWeight * pieces;
-                        if (newTotalWeight > 2000) {
-                          setWeightError('El peso total no puede exceder 2000 kg');
-                        } else {
-                          setWeightError(null);
-                        }
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    {weightError && <div className="invalid-feedback">{weightError}</div>}
-                  </div>
-                </>
-              )}
-
-              {/* Modo Overall */}
-              {overallDimsAndWeight && (
-                <>
-                  <div className="col-md-6">
-                    <label className="form-label">Peso Total (kg)</label>
-                    <input
-                      type="number"
-                      className={`form-control ${weightError ? 'is-invalid' : ''}`}
-                      value={manualWeight}
-                      onChange={(e) => {
-                        const newManualWeight = Number(e.target.value);
-                        setManualWeight(newManualWeight);
-                        if (newManualWeight > 2000) {
-                          setWeightError('El peso total no puede exceder 2000 kg');
-                        } else {
-                          setWeightError(null);
-                        }
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    <small className="text-muted">Este es el peso total de todas las piezas</small>
-                    {weightError && <div className="invalid-feedback">{weightError}</div>}
-                  </div>
-
-                  <div className="col-md-6">
-                    <label className="form-label">Volumen Total (m³)</label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={manualVolume}
-                      onChange={(e) => setManualVolume(Number(e.target.value))}
-                      min="0"
-                      step="0.0001"
-                    />
-                    <small className="text-muted">Este es el volumen total de todas las piezas</small>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Cálculos Automáticos */}
-            <div className="mt-4 p-3 border rounded bg-light">
-              <h6 className="mb-3">🧮 Cálculos {overallDimsAndWeight ? '(Modo Overall)' : '(Modo Normal)'}</h6>
-              <div className="row g-3">
-                {!overallDimsAndWeight ? (
-                  <>
-                    <div className="col-md-6">
-                      <strong>Volumen por pieza:</strong> {volume.toFixed(4)} m³
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Peso volumétrico por pieza:</strong> {volumeWeight.toFixed(2)} kg
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Volumen total:</strong> {totalVolume.toFixed(4)} m³
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Peso total:</strong> {totalWeight.toFixed(2)} kg
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Peso volumétrico total:</strong> {totalVolumeWeight.toFixed(2)} kg
-                    </div>
-                    <div className="col-md-6">
-                      <strong className="text-primary">Peso Chargeable:</strong>{' '}
-                      <span className="text-primary fw-bold">{pesoChargeable.toFixed(2)} kg</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="col-md-6">
-                      <strong>Volumen total:</strong> {manualVolume.toFixed(4)} m³
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Peso total:</strong> {manualWeight.toFixed(2)} kg
-                    </div>
-                    <div className="col-12">
-                      <strong className="text-primary">Chargeable:</strong>{' '}
-                      <span className="text-primary fw-bold">
-                        {pesoChargeable.toFixed(2)} kg
-                      </span>
-                      <small className="text-muted d-block mt-1">
-                        (Se cobra por el mayor entre: {manualWeight.toFixed(2)} kg vs {(manualVolume * 167).toFixed(2)} kg [peso volumétrico = {manualVolume.toFixed(2)} m³ × 167])
-                      </small>
-                    </div>
-                  </>
+                <small className="text-muted d-block mt-1">
+                  {t("QuoteAIR.descripcionpeso")}
+                </small>
+                {weightError && (
+                  <div className="text-danger small mt-1">{weightError}</div>
                 )}
               </div>
 
-              {/* Tarifa AIR FREIGHT calculada */}
-              {tarifaAirFreight && (
-                <div className="mt-3 pt-3 border-top">
-                  <h6 className="mb-2 text-success">✈️ Tarifa AIR FREIGHT</h6>
-                  <div className="row g-2">
-                    <div className="col-md-6">
-                      <strong>Rango aplicable:</strong> {tarifaAirFreight.rango}
+              <div>
+                <label className="qa-label">
+                  <i className="bi bi-rulers me-1"></i>
+                  {t("QuoteAIR.volumentotal")}
+                </label>
+                <input
+                  type="number"
+                  className="qa-input"
+                  value={manualVolume}
+                  onChange={(e) => setManualVolume(Number(e.target.value))}
+                  min="0"
+                  step="0.0001"
+                />
+                <small className="text-muted d-block mt-1">
+                  {t("QuoteAIR.descripcionvolumen")}
+                </small>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================================ */}
+      {/* SECCIÓN 3: REVISIÓN DE PIEZAS Y COSTOS */}
+      {/* ============================================================================ */}
+
+      {rutaSeleccionada && (
+        <div className="qa-card">
+          <div className="qa-card-header">
+            <h3>{t("QuoteAIR.revision")}</h3>
+          </div>
+
+          <div className="qa-grid-2 mb-4">
+            {/* Resumen de Pesos/Volumen */}
+            <div className="p-3 bg-light rounded border">
+              <h6 className="fw-bold mb-3">
+                <i className="bi bi-box-seam me-2"></i>
+                {t("QuoteAIR.resumen")}
+              </h6>
+              {!overallDimsAndWeight ? (
+                (() => {
+                  const {
+                    totalRealWeight: totalWeight,
+                    totalVolumetricWeight: totalVolumeWeight,
+                  } = calculateTotals();
+                  const totalVolume = piecesData.reduce(
+                    (sum, piece) => sum + piece.totalVolume,
+                    0,
+                  );
+                  return (
+                    <div className="row g-2 small">
+                      <div className="col-6 text-muted">
+                        {t("QuoteAIR.volumenpieza")}:
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        {(piecesData[0]?.volume ?? 0).toFixed(4)} m³
+                      </div>
+
+                      <div className="col-6 text-muted">
+                        {t("QuoteAIR.volumenvolpieza")}:
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        {(piecesData[0]?.volumeWeight ?? 0).toFixed(2)} kg
+                      </div>
+
+                      <div className="col-12 border-top my-2"></div>
+
+                      <div className="col-6 text-muted">
+                        {t("QuoteAIR.volumentotal1")}:
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        {totalVolume.toFixed(4)} m³
+                      </div>
+
+                      <div className="col-6 text-muted">
+                        {t("QuoteAIR.pesototal1")}:
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        {totalWeight.toFixed(2)} kg
+                      </div>
+
+                      <div className="col-6 text-muted">
+                        {t("QuoteAIR.pesovoltotal")}:
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        {totalVolumeWeight.toFixed(2)} kg
+                      </div>
+
+                      <div className="col-6 text-dark fw-bold">
+                        {t("QuoteAIR.pesochargeable")}:
+                      </div>
+                      <div className="col-6 text-end fw-bolder text-primary fs-6">
+                        {pesoChargeable.toFixed(2)} kg
+                      </div>
                     </div>
-                    <div className="col-md-6">
-                      <strong>Tarifa base:</strong>{' '}
-                      <span className="text-success">
-                        {tarifaAirFreight.moneda} {tarifaAirFreight.precio.toFixed(2)}/kg
-                      </span>
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Expense (tarifa × peso):</strong>{' '}
-                      <span className="text-info">
-                        {rutaSeleccionada.currency} {(tarifaAirFreight.precio * pesoChargeable).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="col-md-6">
-                      <strong>Income (tarifa + 15% × peso):</strong>{' '}
-                      <span className="text-success fw-bold">
-                        {rutaSeleccionada.currency} {(tarifaAirFreight.precioConMarkup * pesoChargeable).toFixed(2)}
-                      </span>
-                    </div>
+                  );
+                })()
+              ) : (
+                <div className="row g-2 small">
+                  <div className="col-6 text-muted">
+                    {t("QuoteAIR.volumentotal1")}:
+                  </div>
+                  <div className="col-6 text-end fw-bold">
+                    {manualVolume.toFixed(4)} m³
+                  </div>
+
+                  <div className="col-6 text-muted">
+                    {t("QuoteAIR.pesototal1")}:
+                  </div>
+                  <div className="col-6 text-end fw-bold">
+                    {manualWeight.toFixed(2)} kg
+                  </div>
+
+                  <div className="col-12 border-top my-2"></div>
+
+                  <div className="col-6 text-dark fw-bold">
+                    {t("QuoteAIR.chargeable")}:
+                  </div>
+                  <div className="col-6 text-end fw-bolder text-primary fs-6">
+                    {pesoChargeable.toFixed(2)} kg
+                  </div>
+
+                  <div
+                    className="col-12 text-muted fst-italic mt-1"
+                    style={{ fontSize: "0.75rem" }}
+                  >
+                    ({t("QuoteAIR.cobropor")} {manualWeight.toFixed(2)} kg vs{" "}
+                    {(manualVolume * 167).toFixed(2)} kg)
                   </div>
                 </div>
               )}
             </div>
 
+            {/* Resumen de Cargos */}
+            {tarifaAirFreight && (
+              <div className="p-3 bg-light rounded border">
+                <h6 className="fw-bold mb-3">
+                  <i className="bi bi-cash-coin me-2"></i>
+                  {t("QuoteAIR.resumencargos")}
+                </h6>
+
+                <div className="d-flex flex-column gap-2 small">
+                  <div className="d-flex justify-content-between">
+                    <span>Handling:</span>
+                    <strong>{rutaSeleccionada.currency} 45.00</strong>
+                  </div>
+
+                  {incoterm === "EXW" &&
+                    (() => {
+                      const { totalRealWeight: totalWeight } =
+                        calculateTotals();
+                      return (
+                        <div className="d-flex justify-content-between">
+                          <span>EXW Charges:</span>
+                          <strong>
+                            {rutaSeleccionada.currency}{" "}
+                            {calculateEXWRate(
+                              totalWeight,
+                              pesoChargeable,
+                            ).toFixed(2)}
+                          </strong>
+                        </div>
+                      );
+                    })()}
+
+                  <div className="d-flex justify-content-between">
+                    <span>AWB:</span>
+                    <strong>{rutaSeleccionada.currency} 30.00</strong>
+                  </div>
+
+                  <div className="d-flex justify-content-between">
+                    <span>Airport Transfer:</span>
+                    <strong>
+                      {rutaSeleccionada.currency}{" "}
+                      {Math.max(pesoChargeable * 0.15, 50).toFixed(2)}
+                    </strong>
+                  </div>
+
+                  <div className="d-flex justify-content-between pb-2 border-bottom">
+                    <span>Air Freight:</span>
+                    <strong>
+                      {rutaSeleccionada.currency}{" "}
+                      {(
+                        tarifaAirFreight.precioConMarkup * pesoChargeable
+                      ).toFixed(2)}
+                    </strong>
+                  </div>
+
+                  {/* Seguro opcional */}
+                  <div className="mt-2">
+                    <div className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="seguroCheckbox"
+                        checked={seguroActivo}
+                        onChange={(e) => setSeguroActivo(e.target.checked)}
+                      />
+                      <label
+                        className="form-check-label small"
+                        htmlFor="seguroCheckbox"
+                      >
+                        {t("QuoteAIR.agregar")} ({t("QuoteAIR.protection")})
+                      </label>
+                    </div>
+                    {seguroActivo && (
+                      <div className="mt-2 ps-4">
+                        <input
+                          type="text"
+                          className="qa-input py-1"
+                          style={{ fontSize: "0.85rem" }}
+                          placeholder="Valor Mercadería"
+                          value={valorMercaderia}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "" || /^[\d,\.]+$/.test(value)) {
+                              setValorMercaderia(value);
+                            }
+                          }}
+                        />
+                        {calculateSeguro() > 0 && (
+                          <div className="d-flex justify-content-between mt-1 text-primary">
+                            <span>{t("QuoteAIR.seguro")}:</span>
+                            <strong>
+                              {rutaSeleccionada.currency}{" "}
+                              {calculateSeguro().toFixed(2)}
+                            </strong>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {noApilableActivo && calculateNoApilable() > 0 && (
+                    <div className="d-flex justify-content-between mt-2 pt-2 border-top text-warning-emphasis">
+                      <span>{t("QuoteAIR.noapilable")}:</span>
+                      <strong>
+                        {rutaSeleccionada.currency}{" "}
+                        {calculateNoApilable().toFixed(2)}
+                      </strong>
+                    </div>
+                  )}
+
+                  <div className="d-flex justify-content-between mt-3 pt-2 border-top fs-6">
+                    <span className="fw-bold">TOTAL:</span>
+                    <span className="fw-bold text-primary">
+                      {(() => {
+                        const { totalRealWeight: totalWeight } =
+                          calculateTotals();
+                        const totalBase =
+                          45 +
+                          (incoterm === "EXW"
+                            ? calculateEXWRate(totalWeight, pesoChargeable)
+                            : 0) +
+                          30 +
+                          Math.max(pesoChargeable * 0.15, 50) +
+                          tarifaAirFreight.precioConMarkup * pesoChargeable +
+                          (seguroActivo ? calculateSeguro() : 0);
+                        const totalFinal =
+                          totalBase +
+                          (noApilableActivo ? calculateNoApilable() : 0);
+                        return (
+                          rutaSeleccionada.currency +
+                          " " +
+                          totalFinal.toFixed(2)
+                        );
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {(weightError || dimensionError) && (
+            <div className="qa-alert qa-alert-warning mt-3">
+              <i className="bi bi-exclamation-triangle-fill"></i>
+              <div>
+                <strong>{t("QuoteAIR.correccion")}</strong>{" "}
+                {weightError || dimensionError}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sección de acciones */}
+      {rutaSeleccionada && (
+        <div className="qa-grid-2 mb-5">
+          <div
+            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError ? "opacity-50" : ""}`}
+          >
+            <div className="mb-3 text-primary">
+              <i className="bi bi-file-earmark-pdf fs-1"></i>
+            </div>
+            <h5 className="fw-bold">{t("QuoteAIR.generarcotizacion")}</h5>
+            <p className="text-muted small mb-4">
+              {t("QuoteAIR.cotizaciongenerada")}
+            </p>
             <button
-              onClick={testAPI}
-              disabled={loading || !accessToken || weightError !== null || dimensionError !== null || !rutaSeleccionada}
-              className="btn btn-lg btn-success w-100 mt-4"
+              onClick={() => {
+                setTipoAccion("cotizacion");
+                testAPI("cotizacion");
+              }}
+              disabled={
+                loading ||
+                !accessToken ||
+                weightError !== null ||
+                dimensionError !== null ||
+                oversizeError !== null ||
+                heightError !== null ||
+                !rutaSeleccionada
+              }
+              className="qa-btn qa-btn-outline w-100 mt-auto"
             >
               {loading ? (
-                <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  Generando...
-                </>
+                <span className="spinner-border spinner-border-sm"></span>
               ) : (
-                <>✨ Generar Cotización</>
+                t("QuoteAIR.generarcotizacion")
               )}
             </button>
+          </div>
 
-            {(weightError || dimensionError) && (
-              <div className="alert alert-warning mt-3 mb-0">
-                ⚠️ <strong>Corrección necesaria:</strong> {weightError || dimensionError}
-              </div>
-            )}
-
-            {!rutaSeleccionada && (
-              <div className="alert alert-info mt-3 mb-0">
-                ℹ️ Debes seleccionar una ruta antes de generar la cotización
-              </div>
-            )}
+          <div
+            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError ? "opacity-50" : ""}`}
+          >
+            <div className="mb-3 text-dark">
+              <i className="bi bi-gear fs-1"></i>
+            </div>
+            <h5 className="fw-bold">{t("QuoteAIR.generaroperacion")}</h5>
+            <p className="text-muted small mb-4">
+              {t("QuoteAIR.operaciongenerada")}
+            </p>
+            <button
+              onClick={() => {
+                setTipoAccion("operacion");
+                testAPI("operacion");
+              }}
+              disabled={
+                loading ||
+                !accessToken ||
+                weightError !== null ||
+                dimensionError !== null ||
+                oversizeError !== null ||
+                heightError !== null ||
+                !rutaSeleccionada
+              }
+              className="qa-btn qa-btn-primary w-100 mt-auto"
+            >
+              {loading ? (
+                <span className="spinner-border spinner-border-sm"></span>
+              ) : (
+                t("QuoteAIR.generaroperacion")
+              )}
+            </button>
           </div>
         </div>
       )}
 
-      {/* ============================================================================ */}
-      {/* SECCIÓN 3: PAYLOAD Y RESULTADOS */}
-      {/* ============================================================================ */}
-
-      {/* Payload */}
-      {rutaSeleccionada && (
-        <div className="card shadow-sm mb-4">
-          <div className="card-body">
-            <h5 className="card-title">📤 Payload que se enviará</h5>
-            <pre style={{
-              backgroundColor: '#f8f9fa',
-              padding: '15px',
-              borderRadius: '5px',
-              maxHeight: '300px',
-              overflow: 'auto',
-              fontSize: '0.85rem'
-            }}>
-              {JSON.stringify(getTestPayload(), null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {/* Error */}
+      {/* Error / Success Display (Simplified) */}
       {error && (
-        <div className="card shadow-sm mb-4 border-danger">
-          <div className="card-body">
-            <h5 className="card-title text-danger">❌ Error en la llamada</h5>
-            <pre style={{
-              backgroundColor: '#fff5f5',
-              padding: '15px',
-              borderRadius: '5px',
-              maxHeight: '400px',
-              overflow: 'auto',
-              fontSize: '0.85rem',
-              color: '#c53030'
-            }}>
+        <div className="qa-alert qa-alert-danger mb-4">
+          <i className="bi bi-x-circle-fill"></i>
+          <div className="w-100">
+            <strong>{t("QuoteAIR.error")}</strong>
+            <pre
+              className="mt-2 bg-white p-2 rounded small text-danger border"
+              style={{ maxHeight: "200px", overflow: "auto" }}
+            >
               {error}
             </pre>
           </div>
         </div>
       )}
 
-      {/* Respuesta exitosa */}
       {response && (
-        <div className="card shadow-sm mb-4 border-success">
-          <div className="card-body">
-            <h5 className="card-title text-success">✅ ¡Éxito! Respuesta de la API</h5>
-            <pre style={{
-              backgroundColor: '#f0fdf4',
-              padding: '15px',
-              borderRadius: '5px',
-              maxHeight: '400px',
-              overflow: 'auto',
-              fontSize: '0.85rem',
-              color: '#15803d'
-            }}>
-              {JSON.stringify(response, null, 2)}
-            </pre>
-            <div className="alert alert-success mt-3 mb-0">
-              🎉 <strong>¡Perfecto!</strong> Cotización creada exitosamente.
-            </div>
+        <div
+          className="qa-alert qa-alert-success mb-4"
+          style={{
+            backgroundColor: "#d4edda",
+            color: "#155724",
+            borderColor: "#c3e6cb",
+          }}
+        >
+          <i className="bi bi-check-circle-fill"></i>
+          <div>
+            <strong>{t("QuoteAIR.exito")}</strong>
+            <div className="mt-1">{t("QuoteAIR.generarpdf")}</div>
           </div>
         </div>
       )}
 
-      {/* Modal para rutas con precio 0 */}
-      <Modal show={showPriceZeroModal} onHide={() => setShowPriceZeroModal(false)} centered>
+      <Modal
+        show={showPriceZeroModal}
+        onHide={() => setShowPriceZeroModal(false)}
+        centered
+      >
         <Modal.Header closeButton>
-          <Modal.Title>📋 Cotización Personalizada Requerida</Modal.Title>
+          <Modal.Title>{t("QuoteAIR.cotiperso")}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <p className="mb-2">
-            <strong>Esta ruta requiere análisis caso a caso.</strong>
+            <strong>{t("QuoteAIR.rutaanalisis")}</strong>
           </p>
-          <p className="mb-0">
-            Por favor, contacta a tu ejecutivo comercial para obtener una cotización personalizada 
-            que se ajuste a las características específicas de tu envío.
-          </p>
+          <p className="mb-0">{t("QuoteAIR.comunicacioneje")}</p>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="primary" onClick={() => setShowPriceZeroModal(false)}>
-            Entendido
+          <Button
+            variant="primary"
+            onClick={() => setShowPriceZeroModal(false)}
+          >
+            {t("QuoteAIR.entendido")}
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {showMaxPiecesModal && (
+        <Modal
+          show={showMaxPiecesModal}
+          onHide={() => setShowMaxPiecesModal(false)}
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>{t("QuoteAIR.limite")}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>{t("QuoteAIR.limitemaximo")}</p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              variant="primary"
+              onClick={() => setShowMaxPiecesModal(false)}
+            >
+              {t("QuoteAIR.entendido")}
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
     </div>
   );
 }
 
-export default QuoteAIR;
+export default QuoteAPITester;

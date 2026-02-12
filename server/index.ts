@@ -1673,6 +1673,20 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
 
     const { quoteNumber, nombreArchivo, contenidoBase64, tipoServicio, origen, destino } = req.body;
 
+    // Permitir que el cliente (front) envíe `usuarioId` y `subidoPor` cuando
+    // el usuario autenticado es el administrador/ejecutivo que actúa en nombre
+    // de un cliente. Esto evita cambiar el comportamiento para usuarios
+    // autenticados normales (clientes). Sólo se usará el override cuando
+    // ambos campos estén presentes y el username sea 'Administrador'.
+    const overrideUsuarioId = typeof (req.body.usuarioId) === 'string' ? String(req.body.usuarioId) : null;
+    const overrideSubidoPor = typeof (req.body.subidoPor) === 'string' ? String(req.body.subidoPor) : null;
+
+    const shouldUseOverride =
+      currentUser.username === 'Administrador' && overrideUsuarioId && overrideSubidoPor;
+
+    const resolvedUsuarioId = shouldUseOverride ? overrideUsuarioId : currentUser.username;
+    const resolvedSubidoPor = shouldUseOverride ? overrideSubidoPor : currentUser.sub;
+
     if (!quoteNumber || !nombreArchivo || !contenidoBase64 || !tipoServicio) {
       return res.status(400).json({
         error: 'Faltan campos requeridos: quoteNumber, nombreArchivo, contenidoBase64, tipoServicio'
@@ -1694,10 +1708,10 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
       return res.status(400).json({ error: 'El PDF excede el tamaño máximo de 10MB' });
     }
 
-    // Si ya existe un PDF para esta cotización, actualizarlo
+    // Si ya existe un PDF para esta cotización (para el usuario resuelto), actualizarlo
     const existente = await QuotePDF.findOne({
       quoteNumber: String(quoteNumber),
-      usuarioId: currentUser.username
+      usuarioId: resolvedUsuarioId
     });
 
     if (existente) {
@@ -1730,8 +1744,8 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
       tipoServicio,
       origen: origen || '',
       destino: destino || '',
-      usuarioId: currentUser.username,
-      subidoPor: currentUser.sub,
+      usuarioId: resolvedUsuarioId,
+      subidoPor: resolvedSubidoPor,
     });
 
     console.log(`[quote-pdf] PDF subido para cotización ${quoteNumber}: ${nuevoQuotePDF._id}`);

@@ -1761,6 +1761,15 @@ Sistema de Cotizaciones Seemann Group
 
         const { quoteNumber, nombreArchivo, contenidoBase64, tipoServicio, origen, destino } = req.body;
 
+        // Permitir override desde el frontend cuando el administrador/ejecutivo
+        // genera el PDF en nombre de un cliente. Sólo se usará si ambos campos
+        // están presentes y el usuario autenticado tiene username === 'Administrador'.
+        const overrideUsuarioId = typeof (req.body.usuarioId) === 'string' ? String(req.body.usuarioId) : null;
+        const overrideSubidoPor = typeof (req.body.subidoPor) === 'string' ? String(req.body.subidoPor) : null;
+        const shouldUseOverride = currentUser.username === 'Administrador' && overrideUsuarioId && overrideSubidoPor;
+        const resolvedUsuarioId = shouldUseOverride ? overrideUsuarioId : currentUser.username;
+        const resolvedSubidoPor = shouldUseOverride ? overrideSubidoPor : currentUser.sub;
+
         if (!quoteNumber || !nombreArchivo || !contenidoBase64 || !tipoServicio) {
           return res.status(400).json({
             error: 'Faltan campos requeridos: quoteNumber, nombreArchivo, contenidoBase64, tipoServicio'
@@ -1783,10 +1792,10 @@ Sistema de Cotizaciones Seemann Group
           return res.status(400).json({ error: 'El PDF excede el tamaño máximo de 10MB' });
         }
 
-        // Si ya existe un PDF para esta cotización, actualizarlo
+        // Si ya existe un PDF para esta cotización (para el usuario resuelto), actualizarlo
         const existente = await QuotePDF.findOne({
           quoteNumber: String(quoteNumber),
-          usuarioId: currentUser.username
+          usuarioId: resolvedUsuarioId
         });
 
         if (existente) {
@@ -1819,8 +1828,8 @@ Sistema de Cotizaciones Seemann Group
           tipoServicio,
           origen: origen || '',
           destino: destino || '',
-          usuarioId: currentUser.username,
-          subidoPor: currentUser.sub,
+          usuarioId: resolvedUsuarioId,
+          subidoPor: resolvedSubidoPor,
         });
 
         console.log(`[quote-pdf] PDF subido para cotización ${quoteNumber}: ${nuevoQuotePDF._id}`);
