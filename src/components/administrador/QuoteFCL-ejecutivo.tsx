@@ -475,7 +475,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
       let previousMaxId = 0;
       try {
         const preRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(clienteSeleccionado?.username || "")}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -724,7 +724,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
             await new Promise((r) => setTimeout(r, 2000));
 
             const linbisRes = await fetch(
-              `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+              `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(clienteSeleccionado?.username || "")}`,
               {
                 headers: {
                   Authorization: `Bearer ${accessToken}`,
@@ -761,20 +761,28 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
             }
 
             if (quoteNumber) {
+              const bodyPayload: any = {
+                quoteNumber,
+                nombreArchivo: filename,
+                contenidoBase64: pdfBase64,
+                tipoServicio: "FCL",
+                origen: rutaSeleccionada.pol,
+                destino: rutaSeleccionada.pod,
+              };
+
+              // Enviar override cuando el ejecutivo (Administrador) genera la cotización
+              if (user?.username === "Administrador" && clienteSeleccionado) {
+                bodyPayload.usuarioId = clienteSeleccionado.username;
+                bodyPayload.subidoPor = clienteSeleccionado.email;
+              }
+
               const uploadRes = await fetch("/api/quote-pdf/upload", {
                 method: "POST",
                 headers: {
                   Authorization: `Bearer ${token}`,
                   "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                  quoteNumber,
-                  nombreArchivo: filename,
-                  contenidoBase64: pdfBase64,
-                  tipoServicio: "FCL",
-                  origen: rutaSeleccionada.pol,
-                  destino: rutaSeleccionada.pod,
-                }),
+                body: JSON.stringify(bodyPayload),
               });
               const uploadData = await uploadRes.json();
               console.log(
