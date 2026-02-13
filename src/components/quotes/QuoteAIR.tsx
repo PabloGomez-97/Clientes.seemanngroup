@@ -4,7 +4,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesAIR";
 import * as XLSX from "xlsx";
 import Select from "react-select";
-import { Modal, Button } from "react-bootstrap";
+import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { PDFTemplateAIR } from "./Pdftemplate/Pdftemplateair";
 import {
   generatePDF,
@@ -1774,21 +1774,61 @@ function QuoteAPITester({
     return fastestIndex;
   }, [rutasFiltradas]); // ✅ CORRECTO
 
-  // Función para encontrar el índice de la ruta con menor precio (excluyendo precio 0)
-  const bestPriceRouteIndex = useMemo(() => {
-    let bestIndex = -1;
-    let minPrice = Infinity;
+  // ==========================================================================
+  // VALIDITY PARSER: determina si la fecha "Válido Hasta" está vigente
+  // ==========================================================================
+  const getValidityClass = (
+    validUntil?: string | null,
+  ): "valid" | "expired" | null => {
+    if (!validUntil) return null;
 
-    rutasFiltradas.forEach((ruta, index) => {
-      // Solo considerar rutas con precio mayor a 0
-      if (ruta.priceForComparison > 0 && ruta.priceForComparison < minPrice) {
-        minPrice = ruta.priceForComparison;
-        bestIndex = index;
-      }
-    });
+    // Normalizar texto: eliminar comas, ceros sobrantes, etc.
+    const txt = String(validUntil).trim().toLowerCase();
 
-    return bestIndex;
-  }, [rutasFiltradas]);
+    // Regex para capturar día, mes y año opcional (ej: "28 febrero" o "28 febrero 2026")
+    const match = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
+    if (!match) return null;
+
+    const day = parseInt(match[1], 10);
+    const monthName = match[2];
+    const year = match[3] ? parseInt(match[3], 10) : new Date().getFullYear();
+
+    const monthMap: Record<string, number> = {
+      enero: 0,
+      febrero: 1,
+      marzo: 2,
+      abril: 3,
+      mayo: 4,
+      junio: 5,
+      julio: 6,
+      agosto: 7,
+      septiembre: 8,
+      octubre: 9,
+      noviembre: 10,
+      diciembre: 11,
+      ene: 0,
+      feb: 1,
+      mar: 2,
+      abr: 3,
+      may: 4,
+      jun: 5,
+      jul: 6,
+      ago: 7,
+      sep: 8,
+      oct: 9,
+      nov: 10,
+      dic: 11,
+    };
+
+    const monthIndex = monthMap[monthName.toLowerCase()];
+    if (monthIndex === undefined) return null;
+
+    // Construir fecha al final del día para que la misma fecha sea considerada vigente
+    const expiry = new Date(year, monthIndex, day, 23, 59, 59, 999);
+    const now = new Date();
+
+    return expiry >= now ? "valid" : "expired";
+  };
 
   // ============================================================================
   // RENDER
@@ -1983,9 +2023,11 @@ function QuoteAPITester({
                               <th className="text-center">500-999kg</th>
                               <th className="text-center">+1000kg</th>
                               <th className="text-center">
-                                {t("QuoteAIR.salidas")}
+                                {t("QuoteAIR.tiempoenruta")}
                               </th>
-                              <th className="text-center">Válido Hasta</th>
+                              <th className="text-center">
+                                {t("QuoteAIR.valido")}
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1997,6 +2039,10 @@ function QuoteAPITester({
                               const precioKg1000 = extractPrice(ruta.kg1000);
                               const isSelected =
                                 rutaSeleccionada?.id === ruta.id;
+
+                              const validityState = getValidityClass(
+                                ruta.validUntil,
+                              );
 
                               return (
                                 <tr
@@ -2015,16 +2061,6 @@ function QuoteAPITester({
                                       <i className="bi bi-check-circle-fill text-primary"></i>
                                     ) : (
                                       <i className="bi bi-circle text-muted"></i>
-                                    )}
-                                    {index === bestPriceRouteIndex && (
-                                      <div className="mt-1">
-                                        <span
-                                          className="qa-badge qa-badge-primary"
-                                          title="Mejor precio"
-                                        >
-                                          <i className="bi bi-star-fill"></i>
-                                        </span>
-                                      </div>
                                     )}
                                   </td>
                                   <td>
@@ -2074,10 +2110,45 @@ function QuoteAPITester({
                                     </td>
                                   ))}
                                   <td className="text-center text-muted small">
-                                    {ruta.frequency || "—"}
+                                    {ruta.transitTime ? (
+                                      ruta.transitTime
+                                    ) : (
+                                      <OverlayTrigger
+                                        placement="top"
+                                        overlay={
+                                          <Tooltip id={`tt-transit-${ruta.id}`}>
+                                            To Be Confirmed
+                                          </Tooltip>
+                                        }
+                                      >
+                                        <span
+                                          style={{
+                                            textDecoration: "underline",
+                                            color: "var(--qa-primary)",
+                                            cursor: "help",
+                                          }}
+                                        >
+                                          TBC
+                                        </span>
+                                      </OverlayTrigger>
+                                    )}
                                   </td>
                                   <td className="text-center text-muted small">
-                                    {ruta.validUntil || "—"}
+                                    {ruta.validUntil ? (
+                                      <span
+                                        className={`qa-validity ${
+                                          validityState === "valid"
+                                            ? "valid"
+                                            : validityState === "expired"
+                                              ? "expired"
+                                              : ""
+                                        }`}
+                                      >
+                                        {ruta.validUntil}
+                                      </span>
+                                    ) : (
+                                      "—"
+                                    )}
                                   </td>
                                 </tr>
                               );
