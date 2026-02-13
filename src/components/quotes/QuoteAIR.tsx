@@ -556,12 +556,72 @@ function QuoteAPITester({
   }, [originSeleccionado, rutas]);
 
   // ============================================================================
-  // FILTRAR RUTAS
+  // VALIDITY PARSER (moved here): determina si la fecha "Válido Hasta" está vigente
+  // ============================================================================
+  const getValidityClass = (
+    validUntil?: string | null,
+  ): "valid" | "expired" | null => {
+    if (!validUntil) return null;
+
+    // Normalizar texto: eliminar comas, ceros sobrantes, etc.
+    const txt = String(validUntil).trim().toLowerCase();
+
+    // Regex para capturar día, mes y año opcional (ej: "28 febrero" o "28 febrero 2026")
+    const match = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
+    if (!match) return null;
+
+    const day = parseInt(match[1], 10);
+    const monthName = match[2];
+    const year = match[3] ? parseInt(match[3], 10) : new Date().getFullYear();
+
+    const monthMap: Record<string, number> = {
+      enero: 0,
+      febrero: 1,
+      marzo: 2,
+      abril: 3,
+      mayo: 4,
+      junio: 5,
+      julio: 6,
+      agosto: 7,
+      septiembre: 8,
+      octubre: 9,
+      noviembre: 10,
+      diciembre: 11,
+      ene: 0,
+      feb: 1,
+      mar: 2,
+      abr: 3,
+      may: 4,
+      jun: 5,
+      jul: 6,
+      ago: 7,
+      sep: 8,
+      oct: 9,
+      nov: 10,
+      dic: 11,
+    };
+
+    const monthIndex = monthMap[monthName.toLowerCase()];
+    if (monthIndex === undefined) return null;
+
+    // Construir fecha al final del día para que la misma fecha sea considerada vigente
+    const expiry = new Date(year, monthIndex, day, 23, 59, 59, 999);
+    const now = new Date();
+
+    return expiry >= now ? "valid" : "expired";
+  };
+
+  // ============================================================================
+  // FILTRAR RUTAS (ahora excluye rutas con fecha vencida)
   // ============================================================================
 
   const rutasFiltradas = rutas
     .filter((ruta) => {
       if (!originSeleccionado || !destinationSeleccionado) return false;
+
+      // Excluir rutas cuya validez haya expirado
+      const validityState = getValidityClass(ruta.validUntil);
+      if (validityState === "expired") return false;
 
       const matchOrigin = ruta.originNormalized === originSeleccionado.value;
       const matchDestination =
@@ -1774,62 +1834,7 @@ function QuoteAPITester({
     return fastestIndex;
   }, [rutasFiltradas]); // ✅ CORRECTO
 
-  // ==========================================================================
-  // VALIDITY PARSER: determina si la fecha "Válido Hasta" está vigente
-  // ==========================================================================
-  const getValidityClass = (
-    validUntil?: string | null,
-  ): "valid" | "expired" | null => {
-    if (!validUntil) return null;
-
-    // Normalizar texto: eliminar comas, ceros sobrantes, etc.
-    const txt = String(validUntil).trim().toLowerCase();
-
-    // Regex para capturar día, mes y año opcional (ej: "28 febrero" o "28 febrero 2026")
-    const match = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
-    if (!match) return null;
-
-    const day = parseInt(match[1], 10);
-    const monthName = match[2];
-    const year = match[3] ? parseInt(match[3], 10) : new Date().getFullYear();
-
-    const monthMap: Record<string, number> = {
-      enero: 0,
-      febrero: 1,
-      marzo: 2,
-      abril: 3,
-      mayo: 4,
-      junio: 5,
-      julio: 6,
-      agosto: 7,
-      septiembre: 8,
-      octubre: 9,
-      noviembre: 10,
-      diciembre: 11,
-      ene: 0,
-      feb: 1,
-      mar: 2,
-      abr: 3,
-      may: 4,
-      jun: 5,
-      jul: 6,
-      ago: 7,
-      sep: 8,
-      oct: 9,
-      nov: 10,
-      dic: 11,
-    };
-
-    const monthIndex = monthMap[monthName.toLowerCase()];
-    if (monthIndex === undefined) return null;
-
-    // Construir fecha al final del día para que la misma fecha sea considerada vigente
-    const expiry = new Date(year, monthIndex, day, 23, 59, 59, 999);
-    const now = new Date();
-
-    return expiry >= now ? "valid" : "expired";
-  };
-
+  // getValidityClass moved earlier to be usable during filtering
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -2008,7 +2013,7 @@ function QuoteAPITester({
                       <div className="text-center py-4 bg-light rounded text-muted">
                         <i className="bi bi-search fs-3 d-block mb-2"></i>
                         <p className="mb-1">{t("QuoteAIR.norutas")}</p>
-                        <small>{t("QuotesAIR.intenta")}</small>
+                        <small>{t("QuoteAIR.intenta")}</small>
                       </div>
                     ) : (
                       <div className="qa-table-container">

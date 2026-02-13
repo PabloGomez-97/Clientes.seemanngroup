@@ -275,7 +275,7 @@
     "generarpdf": "En unos momentos se descargará automáticamente el PDF de la cotización.",
     "porconfirmar": "Por Confirmar",
     "norutas": "No se encontraron rutas",
-    "intenta": "Intenta ajustar los filtros o seleccionar otras ubicaciones",
+    "intenta": "No hay rutas disponibles para el origen y destino seleccionado.",
     "completar": "Complete las direcciones de Recogida y Entrega",
     "pickup": "Dirección de Recogida",
     "delivery": "Dirección de Entrega",

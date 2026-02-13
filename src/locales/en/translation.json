@@ -276,7 +276,7 @@
     "generarpdf": "The quotation PDF will be downloaded automatically in a few moments.",
     "porconfirmar": "To be confirmed",
     "norutas": " No routes available",
-    "intenta": "Please try again",
+    "intenta": "No routes available for the selected origin and destination.",
     "pickup": "Pickup From Address",
     "delivery": "Delivery To Address",
     "excesopeso": "Total weight cannot exceed 2,000 kg.",
