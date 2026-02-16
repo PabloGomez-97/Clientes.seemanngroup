@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useAuditLog } from "../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 import Select from "react-select";
 import { PDFTemplateFCL } from "../quotes/Pdftemplate/Pdftemplatefcl";
@@ -44,6 +45,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
   const { user, token, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
+  const { registrarEvento } = useAuditLog();
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -519,6 +521,23 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         JSON.stringify(data),
       );
       setResponse(data);
+
+      // Registrar auditoría
+      registrarEvento({
+        accion: "COTIZACION_FCL_EJECUTIVO",
+        categoria: "COTIZACION",
+        descripcion: `Cotización FCL creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${clienteSeleccionado?.username || ""}`,
+        detalles: {
+          tipo: tipoAccion,
+          pol: polSeleccionado?.label || "",
+          pod: podSeleccionado?.label || "",
+          carrier: rutaSeleccionada?.carrier || "",
+          container: containerSeleccionado?.type || "",
+          cantidad: cantidadContenedores,
+          incoterm,
+        },
+        clienteAfectado: clienteSeleccionado?.username || "",
+      });
 
       // Generar PDF después de cotización exitosa
       await generateQuotePDF(tipoAccion, data, previousMaxId);

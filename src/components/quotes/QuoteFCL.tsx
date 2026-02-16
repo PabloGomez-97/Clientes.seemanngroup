@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useAuditLog } from "../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 import Select from "react-select";
 import { PDFTemplateFCL } from "./Pdftemplate/Pdftemplatefcl";
@@ -35,6 +36,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
   const { user, token } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
+  const { registrarEvento } = useAuditLog();
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -472,6 +474,22 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         JSON.stringify(data),
       );
       setResponse(data);
+
+      // Registrar auditoría
+      registrarEvento({
+        accion: "COTIZACION_FCL_CREADA",
+        categoria: "COTIZACION",
+        descripcion: `Cotización FCL creada: ${polSeleccionado?.label || ""} → ${podSeleccionado?.label || ""}`,
+        detalles: {
+          tipo: tipoAccion,
+          pol: polSeleccionado?.label || "",
+          pod: podSeleccionado?.label || "",
+          carrier: rutaSeleccionada?.carrier || "",
+          container: containerSeleccionado?.type || "",
+          cantidad: cantidadContenedores,
+          incoterm,
+        },
+      });
 
       // Generar PDF después de cotización exitosa
       await generateQuotePDF(tipoAccion, data, previousMaxId);

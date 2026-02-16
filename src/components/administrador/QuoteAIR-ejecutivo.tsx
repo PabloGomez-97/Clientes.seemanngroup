@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useAuditLog } from "../../hooks/useAuditLog";
 import { packageTypeOptions } from "../quotes/PackageTypes/PiecestypesAIR";
 import * as XLSX from "xlsx";
 import Select from "react-select";
@@ -49,6 +50,7 @@ function QuoteAPITester({
   const { user, token, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
+  const { registrarEvento } = useAuditLog();
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -815,6 +817,21 @@ function QuoteAPITester({
         JSON.stringify(data),
       );
       setResponse(data);
+
+      // Registrar auditoría
+      registrarEvento({
+        accion: "COTIZACION_AIR_EJECUTIVO",
+        categoria: "COTIZACION",
+        descripcion: `Cotización aérea creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${clienteSeleccionado?.username || ""}`,
+        detalles: {
+          tipo: tipoAccion,
+          origen: originSeleccionado?.label || "",
+          destino: destinationSeleccionado?.label || "",
+          carrier: rutaSeleccionada?.carrier || "",
+          incoterm,
+        },
+        clienteAfectado: clienteSeleccionado?.username || "",
+      });
 
       // Generar PDF después de cotización exitosa
       await generateQuotePDF(tipoAccion, data, previousMaxId);

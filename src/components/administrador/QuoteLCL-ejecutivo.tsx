@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useAuditLog } from "../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 import Select from "react-select";
 import { packageTypeOptions } from "../quotes/PackageTypes/PiecestypesLCL";
@@ -47,6 +48,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
   const { user, token: jwtToken, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
+  const { registrarEvento } = useAuditLog();
 
   // ✅ NUEVO: Estados para selección de cliente
   const [clientesAsignados, setClientesAsignados] = useState<ClienteAsignado[]>(
@@ -707,6 +709,21 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         JSON.stringify(data),
       );
       setResponse(data);
+
+      // Registrar auditoría
+      registrarEvento({
+        accion: "COTIZACION_LCL_EJECUTIVO",
+        categoria: "COTIZACION",
+        descripcion: `Cotización LCL creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${clienteSeleccionado?.username || ""}`,
+        detalles: {
+          tipo: tipoAccion,
+          pol: polSeleccionado?.label || "",
+          pod: podSeleccionado?.label || "",
+          operador: rutaSeleccionada?.operador || "",
+          incoterm,
+        },
+        clienteAfectado: clienteSeleccionado?.username || "",
+      });
 
       // Generar PDF después de cotización exitosa
       await generateQuotePDF(tipoAccion, data, previousMaxId);

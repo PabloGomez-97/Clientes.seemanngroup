@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
+import { useAuditLog } from "../../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 
 interface Ejecutivo {
@@ -28,6 +29,7 @@ interface OutletContext {
 function UsersManagement() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { token } = useAuth();
+  const { registrarEvento } = useAuditLog();
   const [users, setUsers] = useState<User[]>([]);
   const [ejecutivos, setEjecutivos] = useState<Ejecutivo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -154,6 +156,18 @@ function UsersManagement() {
       }
 
       setSuccess("Usuario creado exitosamente");
+      // Registrar auditoría
+      registrarEvento({
+        accion: "USUARIO_CREADO",
+        categoria: "GESTION_USUARIOS",
+        descripcion: `Usuario creado: ${nombreuser} (${email})`,
+        detalles: {
+          email,
+          username,
+          nombreuser,
+          ejecutivoId: ejecutivoId || "sin asignar",
+        },
+      });
       resetForm();
       fetchUsers();
     } catch (err) {
@@ -196,6 +210,19 @@ function UsersManagement() {
       }
 
       setSuccess("Usuario actualizado exitosamente");
+      // Registrar auditoría
+      registrarEvento({
+        accion: "USUARIO_ACTUALIZADO",
+        categoria: "GESTION_USUARIOS",
+        descripcion: `Usuario actualizado: ${nombreuser} (ID: ${editingUserId})`,
+        detalles: {
+          userId: editingUserId,
+          username,
+          nombreuser,
+          ejecutivoId: ejecutivoId || "sin asignar",
+          passwordChanged: !!password.trim(),
+        },
+      });
       resetForm();
       fetchUsers();
     } catch (err) {
@@ -227,6 +254,16 @@ function UsersManagement() {
       }
 
       setSuccess("Usuario eliminado exitosamente");
+      // Registrar auditoría
+      registrarEvento({
+        accion: "USUARIO_ELIMINADO",
+        categoria: "GESTION_USUARIOS",
+        descripcion: `Usuario eliminado: ${userEmail}`,
+        detalles: {
+          userId,
+          email: userEmail,
+        },
+      });
       fetchUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");

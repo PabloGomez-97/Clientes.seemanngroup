@@ -28,6 +28,7 @@ import PricingFCL from "./components/administrador/Pricing/PricingFCL";
 import PricingLCL from "./components/administrador/Pricing/PricingLCL";
 import HomeAdmin from "./components/administrador/HomeAdmin";
 import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
+import Auditoria from "./components/administrador/Auditoria";
 
 // Reportería Pages
 import ReporteriaDashboard from "./components/administrador/reporteria/pages/ReporteriaDashboard";
@@ -130,6 +131,7 @@ function App() {
           <Route path="ejecutivos" element={<ReporteriaExecutives />} />
           <Route path="tendencias" element={<ReporteriaTrends />} />
         </Route>
+        <Route path="auditoria" element={<Auditoria />} />
         <Route path="settings" element={<SettingsAdmin />} />
       </Route>
 

@@ -1,6 +1,7 @@
 // src/components/shipsgo/CreateShipmentForm.tsx
 import { useState, useEffect, type FormEvent } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useAuditLog } from "../../hooks/useAuditLog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "./CreateShipmentForm.css";
 
@@ -11,6 +12,7 @@ const API_BASE_URL =
 
 function CreateShipmentForm() {
   const { user, token } = useAuth();
+  const { registrarEvento } = useAuditLog();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -129,6 +131,18 @@ function CreateShipmentForm() {
 
       setCreatedShipment(data.shipment);
       setShowSuccessModal(true);
+
+      // Registrar auditoría
+      registrarEvento({
+        accion: "TRACKING_CREADO",
+        categoria: "TRACKING",
+        descripcion: `Tracking creado con AWB: ${cleanAwb}`,
+        detalles: {
+          awb: cleanAwb,
+          followers: followers.length,
+          tags,
+        },
+      });
     } catch {
       setError("Error de conexión. Verifica tu internet e intenta nuevamente.");
     } finally {

@@ -97,6 +97,13 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           badge: { text: "CHIEF", type: "admin" as const },
         },
         {
+          path: "/admin/auditoria",
+          name: "Auditoría",
+          icon: "fa fa-clipboard-list",
+          restrictedTo: "superadmin@sphereglobal.io",
+          badge: { text: "AUDIT", type: "admin" as const },
+        },
+        {
           path: "/admin/reportexecutive",
           name: "Cotizaciones Ejecutivo",
           icon: "fa fa-file-alt",

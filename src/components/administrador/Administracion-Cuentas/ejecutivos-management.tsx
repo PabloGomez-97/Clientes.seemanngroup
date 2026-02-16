@@ -1,6 +1,7 @@
 // src/components/administrador/ejecutivos-management.tsx
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../auth/AuthContext";
+import { useAuditLog } from "../../../hooks/useAuditLog";
 
 interface Ejecutivo {
   id: string;
@@ -21,6 +22,7 @@ interface Cliente {
 
 function EjecutivosManagement() {
   const { token } = useAuth();
+  const { registrarEvento } = useAuditLog();
   const [ejecutivos, setEjecutivos] = useState<Ejecutivo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,6 +154,21 @@ function EjecutivosManagement() {
           ? "Ejecutivo actualizado exitosamente"
           : "Ejecutivo creado exitosamente",
       );
+      // Registrar auditoría
+      registrarEvento({
+        accion: editingId ? "EJECUTIVO_ACTUALIZADO" : "EJECUTIVO_CREADO",
+        categoria: "GESTION_EJECUTIVOS",
+        descripcion: editingId
+          ? `Ejecutivo actualizado: ${nombre} (${email})`
+          : `Ejecutivo creado: ${nombre} (${email})`,
+        detalles: {
+          ejecutivoId: editingId || data.ejecutivo?.id || "",
+          nombre,
+          email,
+          telefono,
+          activo,
+        },
+      });
       resetForm();
       fetchEjecutivos();
     } catch (err) {
@@ -203,6 +220,16 @@ function EjecutivosManagement() {
       }
 
       setSuccess("Ejecutivo eliminado exitosamente");
+      // Registrar auditoría
+      registrarEvento({
+        accion: "EJECUTIVO_ELIMINADO",
+        categoria: "GESTION_EJECUTIVOS",
+        descripcion: `Ejecutivo eliminado: ${ejecutivoNombre}`,
+        detalles: {
+          ejecutivoId,
+          nombre: ejecutivoNombre,
+        },
+      });
       fetchEjecutivos();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");

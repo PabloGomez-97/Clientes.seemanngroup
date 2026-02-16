@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useAuditLog } from "../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 import Select from "react-select";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesLCL";
@@ -38,6 +39,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
   const { user, token: jwtToken } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
+  const { registrarEvento } = useAuditLog();
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -660,6 +662,20 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         JSON.stringify(data),
       );
       setResponse(data);
+
+      // Registrar auditoría
+      registrarEvento({
+        accion: "COTIZACION_LCL_CREADA",
+        categoria: "COTIZACION",
+        descripcion: `Cotización LCL creada: ${polSeleccionado?.label || ""} → ${podSeleccionado?.label || ""}`,
+        detalles: {
+          tipo: tipoAccion,
+          pol: polSeleccionado?.label || "",
+          pod: podSeleccionado?.label || "",
+          operador: rutaSeleccionada?.operador || "",
+          incoterm,
+        },
+      });
 
       // Generar PDF después de cotización exitosa
       await generateQuotePDF(tipoAccion, data, previousMaxId);

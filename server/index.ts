@@ -277,6 +277,54 @@ function getMimeTypeFromBase64(base64String: string): string | null {
   return match ? match[1] : null;
 }
 
+// ============================================================
+// MODELO DE AUDITORÍA
+// ============================================================
+
+interface IAuditLog {
+  usuario: string;
+  email: string;
+  rol: 'cliente' | 'ejecutivo';
+  ejecutivo: string | null;
+  ejecutivoEmail: string | null;
+  accion: string;
+  categoria: string;
+  descripcion: string;
+  detalles: Record<string, unknown>;
+  clienteAfectado: string | null;
+  ip: string | null;
+}
+
+interface IAuditLogDoc extends IAuditLog, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type AuditLogModel = mongoose.Model<IAuditLogDoc>;
+
+const AuditLogSchema = new mongoose.Schema<IAuditLogDoc>(
+  {
+    usuario: { type: String, required: true, index: true },
+    email: { type: String, required: true, index: true },
+    rol: { type: String, required: true, enum: ['cliente', 'ejecutivo'] },
+    ejecutivo: { type: String, default: null },
+    ejecutivoEmail: { type: String, default: null },
+    accion: { type: String, required: true, index: true },
+    categoria: { type: String, required: true, index: true },
+    descripcion: { type: String, required: true },
+    detalles: { type: mongoose.Schema.Types.Mixed, default: {} },
+    clienteAfectado: { type: String, default: null, index: true },
+    ip: { type: String, default: null },
+  },
+  { timestamps: true }
+);
+
+AuditLogSchema.index({ createdAt: -1 });
+AuditLogSchema.index({ categoria: 1, createdAt: -1 });
+AuditLogSchema.index({ usuario: 1, createdAt: -1 });
+
+const AuditLog = (mongoose.models.AuditLog || mongoose.model<IAuditLogDoc>('AuditLog', AuditLogSchema)) as AuditLogModel;
+
 // Conectar a MongoDB
 mongoose
   .connect(MONGODB_URI, { bufferCommands: false })
@@ -1865,6 +1913,121 @@ app.get('/api/quote-pdf/download/:quoteNumber', auth, async (req, res) => {
   }
 });
 
+
+// ============================================================
+// RUTAS DE AUDITORÍA
+// ============================================================
+
+// POST /api/audit — Registrar evento de auditoría
+app.post('/api/audit', auth, async (req, res) => {
+  try {
+    const { usuario, email, rol, ejecutivo, ejecutivoEmail, accion, categoria, descripcion, detalles, clienteAfectado } = req.body;
+
+    if (!accion || !categoria || !descripcion) {
+      return res.status(400).json({ error: 'accion, categoria y descripcion son requeridos' });
+    }
+
+    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || null;
+
+    const auditEntry = await AuditLog.create({
+      usuario: usuario || (req as any).user?.username || 'desconocido',
+      email: email || (req as any).user?.sub || '',
+      rol: rol || 'cliente',
+      ejecutivo: ejecutivo || null,
+      ejecutivoEmail: ejecutivoEmail || null,
+      accion,
+      categoria,
+      descripcion,
+      detalles: detalles || {},
+      clienteAfectado: clienteAfectado || null,
+      ip: typeof ip === 'string' ? ip : Array.isArray(ip) ? ip[0] : null,
+    });
+
+    console.log(`[audit] ${accion} por ${usuario || 'unknown'} — ${descripcion}`);
+    return res.status(201).json({ success: true, id: auditEntry._id });
+  } catch (error: any) {
+    console.error('[audit] Error al registrar evento:', error);
+    return res.status(500).json({ error: 'Error al registrar evento de auditoría' });
+  }
+});
+
+// GET /api/audit — Listar eventos de auditoría (solo ejecutivos/admins)
+app.get('/api/audit', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    
+    // Solo ejecutivos pueden ver la auditoría
+    if (currentUser.username !== 'Ejecutivo') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const {
+      page = '1',
+      limit = '50',
+      categoria,
+      accion,
+      usuario,
+      desde,
+      hasta,
+      busqueda,
+    } = req.query as Record<string, string>;
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+
+    const filter: any = {};
+    if (categoria) filter.categoria = categoria;
+    if (accion) filter.accion = accion;
+    if (usuario) filter.usuario = { $regex: usuario, $options: 'i' };
+    if (desde || hasta) {
+      filter.createdAt = {};
+      if (desde) filter.createdAt.$gte = new Date(desde);
+      if (hasta) filter.createdAt.$lte = new Date(hasta + 'T23:59:59.999Z');
+    }
+    if (busqueda) {
+      filter.$or = [
+        { usuario: { $regex: busqueda, $options: 'i' } },
+        { email: { $regex: busqueda, $options: 'i' } },
+        { descripcion: { $regex: busqueda, $options: 'i' } },
+        { accion: { $regex: busqueda, $options: 'i' } },
+        { clienteAfectado: { $regex: busqueda, $options: 'i' } },
+        { ejecutivo: { $regex: busqueda, $options: 'i' } },
+      ];
+    }
+
+    const [logs, total] = await Promise.all([
+      AuditLog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      AuditLog.countDocuments(filter),
+    ]);
+
+    // Estadísticas rápidas
+    const stats = await AuditLog.aggregate([
+      { $group: { _id: '$categoria', count: { $sum: 1 } } },
+    ]);
+
+    return res.json({
+      success: true,
+      logs,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+      stats: stats.reduce((acc: any, s: any) => {
+        acc[s._id] = s.count;
+        return acc;
+      }, {}),
+    });
+  } catch (error: any) {
+    console.error('[audit] Error al listar eventos:', error);
+    return res.status(500).json({ error: 'Error al obtener auditoría' });
+  }
+});
 
 /** =========================
  *  Start
