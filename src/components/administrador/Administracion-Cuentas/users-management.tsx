@@ -1521,19 +1521,6 @@ function UsersManagement() {
                       >
                         Email
                       </th>
-                      <th
-                        style={{
-                          padding: "12px 24px",
-                          textAlign: "left",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          color: "#6b7280",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px",
-                        }}
-                      >
-                        Nombre / Empresa
-                      </th>
                       {showAdmins && (
                         <th
                           style={{
@@ -1625,33 +1612,6 @@ function UsersManagement() {
                         >
                           {user.email}
                         </td>
-                        <td
-                          style={{
-                            padding: "16px 24px",
-                            fontSize: "14px",
-                            color: "#1f2937",
-                            fontWeight: "500",
-                          }}
-                        >
-                          {user.username}
-                          {user.username === "Ejecutivo" && (
-                            <span
-                              style={{
-                                marginLeft: "8px",
-                                padding: "2px 8px",
-                                background:
-                                  "linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)",
-                                color: "white",
-                                fontSize: "11px",
-                                fontWeight: "600",
-                                borderRadius: "4px",
-                                boxShadow: "0 2px 4px rgba(168, 85, 247, 0.3)",
-                              }}
-                            >
-                              EJECUTIVO
-                            </span>
-                          )}
-                        </td>
                         {showAdmins && (
                           <td
                             style={{
@@ -1679,7 +1639,7 @@ function UsersManagement() {
                                 return (
                                   <span
                                     style={{
-                                      color: "#9ca3af",
+                                      color: "var(--primary-color)",
                                       fontStyle: "italic",
                                       fontSize: "12px",
                                     }}
@@ -1699,7 +1659,7 @@ function UsersManagement() {
                                     <span
                                       style={{
                                         padding: "2px 8px",
-                                        backgroundColor: "#7e22ce",
+                                        backgroundColor: "var(--primary-color)",
                                         color: "white",
                                         fontSize: "11px",
                                         fontWeight: "600",
@@ -1713,7 +1673,7 @@ function UsersManagement() {
                                     <span
                                       style={{
                                         padding: "2px 8px",
-                                        backgroundColor: "#2563eb",
+                                        backgroundColor: "var(--primary-color)",
                                         color: "white",
                                         fontSize: "11px",
                                         fontWeight: "600",
@@ -1727,7 +1687,7 @@ function UsersManagement() {
                                     <span
                                       style={{
                                         padding: "2px 8px",
-                                        backgroundColor: "#16a34a",
+                                        backgroundColor: "var(--primary-color)",
                                         color: "white",
                                         fontSize: "11px",
                                         fontWeight: "600",
