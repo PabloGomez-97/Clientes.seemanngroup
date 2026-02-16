@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { canSeeSidebarItem } from "../config/roleRoutes";
 import logoSeemann from "./logoseemann.png";
 
 interface SidebarAdminProps {
@@ -86,43 +87,24 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
           path: "/admin/users",
           name: "Gestión Usuarios",
           icon: "fa fa-shield-alt",
-          restrictedTo: "superadmin@sphereglobal.io",
           badge: { text: "CHIEF", type: "admin" as const },
         },
         {
           path: "/admin/ejecutivos",
           name: "Gestión Ejecutivos",
           icon: "fa fa-briefcase",
-          restrictedTo: "superadmin@sphereglobal.io",
           badge: { text: "CHIEF", type: "admin" as const },
-        },
-        {
-          path: "/admin/auditoria",
-          name: "Auditoría",
-          icon: "fa fa-clipboard-list",
-          restrictedTo: "superadmin@sphereglobal.io",
-          badge: { text: "AUDIT", type: "admin" as const },
         },
         {
           path: "/admin/reportexecutive",
           name: "Cotizaciones Ejecutivo",
           icon: "fa fa-file-alt",
-          restrictedTo: [
-            "naguilera@seemanngroup.com",
-            "ifmaldonado@seemanngroup.com",
-            "superadmin@sphereglobal.io",
-          ],
           badge: { text: "CHIEF", type: "admin" as const },
         },
         {
           path: "/admin/reportoperational",
           name: "Facturaciones Ejecutivo",
           icon: "fa fa-file-invoice-dollar",
-          restrictedTo: [
-            "naguilera@seemanngroup.com",
-            "ifmaldonado@seemanngroup.com",
-            "superadmin@sphereglobal.io",
-          ],
           badge: { text: "CHIEF", type: "admin" as const },
         },
       ],
@@ -132,7 +114,7 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
       items: [
         {
           path: "/admin/reporteria",
-          name: "Reportería",
+          name: "Reportería Natalia",
           icon: "fa fa-chart-bar",
         },
         {
@@ -143,17 +125,37 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
         },
       ],
     },
+    {
+      title: "AUDITORIA",
+      items: [
+        {
+          path: "/admin/auditoria",
+          name: "Auditoría",
+          icon: "fa fa-clipboard-list",
+          badge: { text: "AUDIT", type: "admin" as const },
+        },
+      ],
+    },
   ];
 
-  // Filter by permission
+  // Filter by permission (restrictedTo + roles)
   const filteredSections = menuSections
     .map((s) => ({
       ...s,
       items: s.items.filter((item) => {
-        if (!item.restrictedTo) return true;
-        if (Array.isArray(item.restrictedTo))
-          return item.restrictedTo.includes(user?.email || "");
-        return user?.email === item.restrictedTo;
+        // Verificar restricción por email (restrictedTo)
+        if (item.restrictedTo) {
+          if (Array.isArray(item.restrictedTo)) {
+            if (!item.restrictedTo.includes(user?.email || "")) return false;
+          } else {
+            if (user?.email !== item.restrictedTo) return false;
+          }
+        }
+        // Verificar acceso por rol (si tiene roles definidos)
+        if (user?.roles && item.path) {
+          return canSeeSidebarItem(user.roles, item.path);
+        }
+        return true;
       }),
     }))
     .filter((s) => s.items.length > 0);

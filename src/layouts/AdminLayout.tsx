@@ -1,15 +1,28 @@
 // src/layouts/AdminLayout.tsx - Same structure as UserLayout
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation, Navigate } from "react-router-dom";
 import NavbarAdmin from "./Navbar-admin";
 import SidebarAdmin from "./Sidebar-admin";
 import ChatWidget from "../components/ChatWidget";
+import { useAuth } from "../auth/AuthContext";
+import { canAccessRoute } from "../config/roleRoutes";
 
 function AdminLayout() {
+  const { user } = useAuth();
   const [accessToken, setAccessToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const location = useLocation();
+
+  // Verificar acceso por rol a la ruta actual
+  if (
+    user?.username === "Ejecutivo" &&
+    user?.roles &&
+    !canAccessRoute(user.roles, location.pathname)
+  ) {
+    return <Navigate to="/admin/home" replace />;
+  }
 
   // Obtener token de Linbis automáticamente al cargar
   useEffect(() => {

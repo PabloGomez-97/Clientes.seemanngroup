@@ -57,6 +57,11 @@ interface IEjecutivo {
   email: string;
   telefono: string;
   activo: boolean;
+  roles: {
+    administrador: boolean;
+    pricing: boolean;
+    ejecutivo: boolean;
+  };
 }
 
 interface IEjecutivoDoc extends IEjecutivo, mongoose.Document {
@@ -72,6 +77,11 @@ const EjecutivoSchema = new mongoose.Schema<IEjecutivoDoc>(
     email: { type: String, required: true, lowercase: true, trim: true },
     telefono: { type: String, required: true, trim: true },
     activo: { type: Boolean, default: true },
+    roles: {
+      administrador: { type: Boolean, default: false },
+      pricing: { type: Boolean, default: false },
+      ejecutivo: { type: Boolean, default: true },
+    },
   },
   { timestamps: true }
 );
@@ -393,8 +403,25 @@ app.post('/api/login', async (req, res) => {
 
     const token = signToken({ sub: user.email, username: user.username });
     
-    // ✅ MODIFICADO: Retornar datos del ejecutivo si existe
+    // Retornar datos del ejecutivo si existe
     const ejecutivo = user.ejecutivoId as any;
+
+    // Buscar roles del ejecutivo (por populate o por email)
+    let roles = null;
+    if (user.username === 'Ejecutivo') {
+      let ejDoc = ejecutivo;
+      if (!ejDoc || !ejDoc._id) {
+        ejDoc = await Ejecutivo.findOne({ email: user.email });
+      }
+      if (ejDoc) {
+        roles = {
+          administrador: ejDoc.roles?.administrador || false,
+          pricing: ejDoc.roles?.pricing || false,
+          ejecutivo: ejDoc.roles?.ejecutivo !== false, // default true
+        };
+      }
+    }
+
     return res.json({
       token,
       user: { 
@@ -406,7 +433,8 @@ app.post('/api/login', async (req, res) => {
           nombre: ejecutivo.nombre,
           email: ejecutivo.email,
           telefono: ejecutivo.telefono
-        } : null
+        } : null,
+        roles,
       },
     });
   } catch (e) {
@@ -425,8 +453,25 @@ app.get('/api/me', auth, async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // ✅ MODIFICADO: Retornar datos del ejecutivo si existe
+    // Retornar datos del ejecutivo si existe
     const ejecutivo = user.ejecutivoId as any;
+
+    // Buscar roles del ejecutivo
+    let roles = null;
+    if (user.username === 'Ejecutivo') {
+      let ejDoc = ejecutivo;
+      if (!ejDoc || !ejDoc._id) {
+        ejDoc = await Ejecutivo.findOne({ email: user.email });
+      }
+      if (ejDoc) {
+        roles = {
+          administrador: ejDoc.roles?.administrador || false,
+          pricing: ejDoc.roles?.pricing || false,
+          ejecutivo: ejDoc.roles?.ejecutivo !== false,
+        };
+      }
+    }
+
     res.json({ 
       user: {
         sub: user.email,
@@ -437,7 +482,8 @@ app.get('/api/me', auth, async (req, res) => {
           nombre: ejecutivo.nombre,
           email: ejecutivo.email,
           telefono: ejecutivo.telefono
-        } : null
+        } : null,
+        roles,
       }
     });
   } catch (e) {
@@ -555,6 +601,11 @@ app.get('/api/admin/ejecutivos', auth, async (req, res) => {
           email: ej.email,
           telefono: ej.telefono,
           activo: ej.activo,
+          roles: {
+            administrador: ej.roles?.administrador || false,
+            pricing: ej.roles?.pricing || false,
+            ejecutivo: ej.roles?.ejecutivo !== false,
+          },
           clientesAsignados: count,
           createdAt: ej.createdAt
         };
@@ -621,10 +672,21 @@ app.put('/api/admin/ejecutivos/:id', auth, async (req, res) => {
     }
 
     const { id } = req.params;
-    const { nombre, email, telefono, activo } = (req.body as any) || {};
+    const { nombre, email, telefono, activo, roles } = (req.body as any) || {};
 
     if (!nombre || !email || !telefono) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+
+    // Validar roles si se envían
+    if (roles) {
+      const { administrador, pricing, ejecutivo: rolEjecutivo } = roles;
+      if (administrador && (pricing || rolEjecutivo)) {
+        return res.status(400).json({ error: 'El rol Administrador no se puede combinar con otros roles' });
+      }
+      if (!administrador && !pricing && !rolEjecutivo) {
+        return res.status(400).json({ error: 'Debe tener al menos un rol asignado' });
+      }
     }
 
     const ejecutivo = await Ejecutivo.findByIdAndUpdate(
@@ -633,7 +695,8 @@ app.put('/api/admin/ejecutivos/:id', auth, async (req, res) => {
         nombre: String(nombre).trim(),
         email: String(email).toLowerCase().trim(),
         telefono: String(telefono).trim(),
-        activo: activo !== undefined ? activo : true
+        activo: activo !== undefined ? activo : true,
+        ...(roles ? { roles } : {}),
       },
       { new: true }
     );
@@ -652,7 +715,12 @@ app.put('/api/admin/ejecutivos/:id', auth, async (req, res) => {
         nombre: ejecutivo.nombre,
         email: ejecutivo.email,
         telefono: ejecutivo.telefono,
-        activo: ejecutivo.activo
+        activo: ejecutivo.activo,
+        roles: {
+          administrador: ejecutivo.roles?.administrador || false,
+          pricing: ejecutivo.roles?.pricing || false,
+          ejecutivo: ejecutivo.roles?.ejecutivo !== false,
+        }
       }
     });
   } catch (e) {
@@ -788,7 +856,7 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
     }
 
     const { id } = req.params;
-    const { username, nombreuser, password, ejecutivoId } = (req.body as any) || {}; // ✅ AGREGADO nombreuser
+    const { username, nombreuser, password, ejecutivoId, roles } = (req.body as any) || {};
 
     const userToUpdate = await User.findById(id);
     if (!userToUpdate) {
@@ -796,7 +864,46 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
     }
 
     if (userToUpdate.username === 'Ejecutivo') {
-      return res.status(400).json({ error: 'No puedes modificar la cuenta de ejecutivo' });
+      // Permitir editar ejecutivos: solo nombreuser y password
+      if (nombreuser) {
+        userToUpdate.nombreuser = String(nombreuser).trim();
+      }
+      if (password) {
+        userToUpdate.passwordHash = bcrypt.hashSync(String(password), 12);
+      }
+
+      // Actualizar roles en el documento Ejecutivo vinculado
+      if (roles) {
+        const { administrador, pricing, ejecutivo: rolEjecutivo } = roles;
+        if (administrador && (pricing || rolEjecutivo)) {
+          return res.status(400).json({ error: 'El rol Administrador no se puede combinar con otros roles' });
+        }
+        if (!administrador && !pricing && !rolEjecutivo) {
+          return res.status(400).json({ error: 'Debe tener al menos un rol asignado' });
+        }
+
+        // Buscar ejecutivo por email o ejecutivoId
+        let ejDoc = userToUpdate.ejecutivoId
+          ? await Ejecutivo.findById(userToUpdate.ejecutivoId)
+          : await Ejecutivo.findOne({ email: userToUpdate.email });
+
+        if (ejDoc) {
+          ejDoc.roles = roles;
+          await ejDoc.save();
+        }
+      }
+
+      await userToUpdate.save();
+      console.log('[admin] Ejecutivo actualizado:', userToUpdate.email);
+      return res.json({
+        success: true,
+        message: 'Ejecutivo actualizado exitosamente',
+        user: {
+          id: userToUpdate._id,
+          email: userToUpdate.email,
+          username: userToUpdate.username
+        }
+      });
     }
 
     // Actualizar campos
@@ -849,7 +956,24 @@ app.delete('/api/admin/users/:id', auth, async (req, res) => {
 
     const userToDelete = await User.findById(id);
     if (userToDelete?.username === 'Ejecutivo') {
-      return res.status(400).json({ error: 'No puedes eliminar la cuenta de ejecutivo' });
+      // Verificar que NO se elimine a sí mismo
+      if (userToDelete.email === currentUser.sub) {
+        return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' });
+      }
+      // Verificar si el ejecutivo tiene clientes asignados
+      const ejDoc = userToDelete.ejecutivoId
+        ? await Ejecutivo.findById(userToDelete.ejecutivoId)
+        : await Ejecutivo.findOne({ email: userToDelete.email });
+      if (ejDoc) {
+        const clientesAsignados = await User.countDocuments({ ejecutivoId: ejDoc._id });
+        if (clientesAsignados > 0) {
+          return res.status(400).json({ 
+            error: `No se puede eliminar. Hay ${clientesAsignados} cliente(s) asignado(s) a este ejecutivo.` 
+          });
+        }
+        // Eliminar también el documento Ejecutivo
+        await Ejecutivo.findByIdAndDelete(ejDoc._id);
+      }
     }
 
     await User.findByIdAndDelete(id);

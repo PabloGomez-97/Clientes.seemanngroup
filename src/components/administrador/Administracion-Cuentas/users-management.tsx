@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { useAuditLog } from "../../../hooks/useAuditLog";
+import { validateRoles, getRoleLabels } from "../../../config/roleRoutes";
 import * as XLSX from "xlsx";
 
 interface Ejecutivo {
@@ -10,6 +11,11 @@ interface Ejecutivo {
   nombre: string;
   email: string;
   telefono: string;
+  roles?: {
+    administrador: boolean;
+    pricing: boolean;
+    ejecutivo: boolean;
+  };
 }
 
 interface User {
@@ -48,6 +54,14 @@ function UsersManagement() {
   const [password, setPassword] = useState("");
   const [ejecutivoId, setEjecutivoId] = useState<string>("");
   const [formLoading, setFormLoading] = useState(false);
+
+  // Estado de roles para edición de ejecutivos
+  const [isEditingEjecutivo, setIsEditingEjecutivo] = useState(false);
+  const [editRoles, setEditRoles] = useState({
+    administrador: false,
+    pricing: false,
+    ejecutivo: true,
+  });
 
   // Cargar ejecutivos
   const fetchEjecutivos = async () => {
@@ -114,6 +128,8 @@ function UsersManagement() {
     setEjecutivoId("");
     setEditingUserId(null);
     setShowForm(false);
+    setIsEditingEjecutivo(false);
+    setEditRoles({ administrador: false, pricing: false, ejecutivo: true });
   };
 
   const handleEditUser = (user: User) => {
@@ -123,6 +139,20 @@ function UsersManagement() {
     setNombreuser(user.nombreuser);
     setPassword("");
     setEjecutivoId(user.ejecutivo?.id || "");
+
+    // Si es un ejecutivo, buscar sus roles en la lista de ejecutivos
+    if (user.username === "Ejecutivo") {
+      setIsEditingEjecutivo(true);
+      const matchingEj = ejecutivos.find((e) => e.email === user.email);
+      if (matchingEj?.roles) {
+        setEditRoles({ ...matchingEj.roles });
+      } else {
+        setEditRoles({ administrador: false, pricing: false, ejecutivo: true });
+      }
+    } else {
+      setIsEditingEjecutivo(false);
+    }
+
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -183,12 +213,27 @@ function UsersManagement() {
     setError(null);
     setSuccess(null);
 
+    // Validar roles si es ejecutivo
+    if (isEditingEjecutivo) {
+      const roleError = validateRoles(editRoles);
+      if (roleError) {
+        setError(roleError);
+        setFormLoading(false);
+        return;
+      }
+    }
+
     try {
-      const updateData: any = {
-        username,
-        nombreuser,
-        ejecutivoId: ejecutivoId || null,
-      };
+      const updateData: any = isEditingEjecutivo
+        ? {
+            nombreuser,
+            roles: editRoles,
+          }
+        : {
+            username,
+            nombreuser,
+            ejecutivoId: ejecutivoId || null,
+          };
 
       if (password.trim()) {
         updateData.password = password;
@@ -209,22 +254,42 @@ function UsersManagement() {
         throw new Error(data.error || "Error al actualizar usuario");
       }
 
-      setSuccess("Usuario actualizado exitosamente");
+      setSuccess(
+        isEditingEjecutivo
+          ? "Ejecutivo actualizado exitosamente"
+          : "Usuario actualizado exitosamente",
+      );
+
       // Registrar auditoría
       registrarEvento({
-        accion: "USUARIO_ACTUALIZADO",
-        categoria: "GESTION_USUARIOS",
-        descripcion: `Usuario actualizado: ${nombreuser} (ID: ${editingUserId})`,
-        detalles: {
-          userId: editingUserId,
-          username,
-          nombreuser,
-          ejecutivoId: ejecutivoId || "sin asignar",
-          passwordChanged: !!password.trim(),
-        },
+        accion: isEditingEjecutivo
+          ? "EJECUTIVO_ACTUALIZADO"
+          : "USUARIO_ACTUALIZADO",
+        categoria: isEditingEjecutivo
+          ? "GESTION_EJECUTIVOS"
+          : "GESTION_USUARIOS",
+        descripcion: isEditingEjecutivo
+          ? `Ejecutivo actualizado: ${nombreuser} (${email}) — Roles: ${getRoleLabels(editRoles).join(", ")}`
+          : `Usuario actualizado: ${nombreuser} (ID: ${editingUserId})`,
+        detalles: isEditingEjecutivo
+          ? {
+              userId: editingUserId,
+              email,
+              nombreuser,
+              roles: editRoles,
+              passwordChanged: !!password.trim(),
+            }
+          : {
+              userId: editingUserId,
+              username,
+              nombreuser,
+              ejecutivoId: ejecutivoId || "sin asignar",
+              passwordChanged: !!password.trim(),
+            },
       });
       resetForm();
       fetchUsers();
+      if (isEditingEjecutivo) fetchEjecutivos();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
@@ -234,8 +299,13 @@ function UsersManagement() {
 
   const handleSubmit = editingUserId ? handleUpdateUser : handleCreateUser;
 
-  const handleDeleteUser = async (userId: string, userEmail: string) => {
-    if (!confirm(`¿Estás seguro de eliminar al usuario ${userEmail}?`)) {
+  const handleDeleteUser = async (
+    userId: string,
+    userEmail: string,
+    isEjecutivo: boolean = false,
+  ) => {
+    const label = isEjecutivo ? "ejecutivo" : "usuario";
+    if (!confirm(`¿Estás seguro de eliminar al ${label} ${userEmail}?`)) {
       return;
     }
 
@@ -250,21 +320,24 @@ function UsersManagement() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Error al eliminar usuario");
+        throw new Error(data.error || `Error al eliminar ${label}`);
       }
 
-      setSuccess("Usuario eliminado exitosamente");
+      setSuccess(
+        `${isEjecutivo ? "Ejecutivo" : "Usuario"} eliminado exitosamente`,
+      );
       // Registrar auditoría
       registrarEvento({
-        accion: "USUARIO_ELIMINADO",
-        categoria: "GESTION_USUARIOS",
-        descripcion: `Usuario eliminado: ${userEmail}`,
+        accion: isEjecutivo ? "EJECUTIVO_ELIMINADO" : "USUARIO_ELIMINADO",
+        categoria: isEjecutivo ? "GESTION_EJECUTIVOS" : "GESTION_USUARIOS",
+        descripcion: `${isEjecutivo ? "Ejecutivo" : "Usuario"} eliminado: ${userEmail}`,
         detalles: {
           userId,
           email: userEmail,
         },
       });
       fetchUsers();
+      if (isEjecutivo) fetchEjecutivos();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
     }
@@ -371,65 +444,67 @@ function UsersManagement() {
                   Descargar Excel
                 </button>
               )}
-              <button
-                onClick={() => {
-                  if (showForm) {
-                    resetForm();
-                  } else {
-                    setShowForm(true);
+              {(!showAdmins || showForm) && (
+                <button
+                  onClick={() => {
+                    if (showForm) {
+                      resetForm();
+                    } else {
+                      setShowForm(true);
+                    }
+                  }}
+                  style={{
+                    backgroundColor: showForm ? "#6b7280" : "#2563eb",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "12px 24px",
+                    fontSize: "15px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = showForm
+                      ? "#4b5563"
+                      : "#1d4ed8")
                   }
-                }}
-                style={{
-                  backgroundColor: showForm ? "#6b7280" : "#2563eb",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "12px 24px",
-                  fontSize: "15px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = showForm
-                    ? "#4b5563"
-                    : "#1d4ed8")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = showForm
-                    ? "#6b7280"
-                    : "#2563eb")
-                }
-              >
-                {showForm ? (
-                  <>
-                    <svg
-                      width="18"
-                      height="18"
-                      fill="currentColor"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z" />
-                    </svg>
-                    Cancelar
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      width="18"
-                      height="18"
-                      fill="currentColor"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
-                    </svg>
-                    Crear Usuario
-                  </>
-                )}
-              </button>
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = showForm
+                      ? "#6b7280"
+                      : "#2563eb")
+                  }
+                >
+                  {showForm ? (
+                    <>
+                      <svg
+                        width="18"
+                        height="18"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                      >
+                        <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z" />
+                      </svg>
+                      Cancelar
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        width="18"
+                        height="18"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                      >
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+                      </svg>
+                      Crear Usuario
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
@@ -771,7 +846,7 @@ function UsersManagement() {
                         d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"
                       />
                     </svg>
-                    Editar Usuario
+                    {isEditingEjecutivo ? "Editar Ejecutivo" : "Editar Usuario"}
                   </>
                 ) : (
                   "Crear Nuevo Usuario"
@@ -841,7 +916,9 @@ function UsersManagement() {
                       color: "#374151",
                     }}
                   >
-                    Nombre del Cliente *
+                    {isEditingEjecutivo
+                      ? "Nombre del Ejecutivo *"
+                      : "Nombre del Cliente *"}
                   </label>
                   <input
                     type="text"
@@ -869,41 +946,256 @@ function UsersManagement() {
                   />
                 </div>
 
-                <div style={{ marginBottom: "16px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      color: "#374151",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    Nombre / Empresa *
-                  </label>
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                    placeholder="EMPRESA SPA"
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      fontSize: "15px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      outline: "none",
-                      transition: "border-color 0.2s",
-                    }}
-                    onFocus={(e) =>
-                      (e.currentTarget.style.borderColor = "#3b82f6")
-                    }
-                    onBlur={(e) =>
-                      (e.currentTarget.style.borderColor = "#d1d5db")
-                    }
-                  />
-                </div>
+                {!isEditingEjecutivo && (
+                  <div style={{ marginBottom: "16px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: "#374151",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Nombre / Empresa *
+                    </label>
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      required
+                      placeholder="EMPRESA SPA"
+                      style={{
+                        width: "100%",
+                        padding: "10px 14px",
+                        fontSize: "15px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                      }}
+                      onFocus={(e) =>
+                        (e.currentTarget.style.borderColor = "#3b82f6")
+                      }
+                      onBlur={(e) =>
+                        (e.currentTarget.style.borderColor = "#d1d5db")
+                      }
+                    />
+                  </div>
+                )}
+
+                {/* Roles del ejecutivo (solo visible al editar ejecutivos) */}
+                {isEditingEjecutivo && (
+                  <div style={{ marginBottom: "16px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: "#374151",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      Roles del Ejecutivo *
+                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "10px",
+                      }}
+                    >
+                      {/* Administrador */}
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          padding: "12px 16px",
+                          borderRadius: "8px",
+                          border: editRoles.administrador
+                            ? "2px solid #7e22ce"
+                            : "1px solid #d1d5db",
+                          cursor: "pointer",
+                          backgroundColor: editRoles.administrador
+                            ? "#faf5ff"
+                            : "white",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={editRoles.administrador}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEditRoles({
+                                administrador: true,
+                                pricing: false,
+                                ejecutivo: false,
+                              });
+                            } else {
+                              setEditRoles({
+                                administrador: false,
+                                pricing: false,
+                                ejecutivo: true,
+                              });
+                            }
+                          }}
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            accentColor: "#7e22ce",
+                          }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div
+                            style={{
+                              fontWeight: "600",
+                              fontSize: "14px",
+                              color: "#1f2937",
+                            }}
+                          >
+                            Administrador
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                            Acceso completo a todas las funciones
+                          </div>
+                        </div>
+                        {editRoles.administrador && (
+                          <span
+                            style={{
+                              padding: "2px 8px",
+                              backgroundColor: "#7e22ce",
+                              color: "white",
+                              fontSize: "11px",
+                              fontWeight: "600",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            EXCLUSIVO
+                          </span>
+                        )}
+                      </label>
+
+                      {/* Pricing */}
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          padding: "12px 16px",
+                          borderRadius: "8px",
+                          border: editRoles.pricing
+                            ? "2px solid #2563eb"
+                            : "1px solid #d1d5db",
+                          cursor: editRoles.administrador
+                            ? "not-allowed"
+                            : "pointer",
+                          backgroundColor: editRoles.pricing
+                            ? "#eff6ff"
+                            : "white",
+                          opacity: editRoles.administrador ? 0.5 : 1,
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={editRoles.pricing}
+                          disabled={editRoles.administrador}
+                          onChange={(e) =>
+                            setEditRoles({
+                              ...editRoles,
+                              pricing: e.target.checked,
+                            })
+                          }
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            accentColor: "#2563eb",
+                          }}
+                        />
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: "600",
+                              fontSize: "14px",
+                              color: "#1f2937",
+                            }}
+                          >
+                            Pricing
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                            Acceso a cotizaciones y tarifas
+                          </div>
+                        </div>
+                      </label>
+
+                      {/* Ejecutivo */}
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          padding: "12px 16px",
+                          borderRadius: "8px",
+                          border: editRoles.ejecutivo
+                            ? "2px solid #16a34a"
+                            : "1px solid #d1d5db",
+                          cursor: editRoles.administrador
+                            ? "not-allowed"
+                            : "pointer",
+                          backgroundColor: editRoles.ejecutivo
+                            ? "#f0fdf4"
+                            : "white",
+                          opacity: editRoles.administrador ? 0.5 : 1,
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={editRoles.ejecutivo}
+                          disabled={editRoles.administrador}
+                          onChange={(e) =>
+                            setEditRoles({
+                              ...editRoles,
+                              ejecutivo: e.target.checked,
+                            })
+                          }
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            accentColor: "#16a34a",
+                          }}
+                        />
+                        <div>
+                          <div
+                            style={{
+                              fontWeight: "600",
+                              fontSize: "14px",
+                              color: "#1f2937",
+                            }}
+                          >
+                            Ejecutivo
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                            Acceso a clientes, trackeos y reportería
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        marginTop: "8px",
+                        marginBottom: 0,
+                      }}
+                    >
+                      Administrador es exclusivo y no puede combinarse con otros
+                      roles
+                    </p>
+                  </div>
+                )}
 
                 <div style={{ marginBottom: "16px" }}>
                   <label
@@ -958,59 +1250,61 @@ function UsersManagement() {
                   )}
                 </div>
 
-                <div style={{ marginBottom: "24px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      color: "#374151",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    Ejecutivo Asignado
-                  </label>
-                  <select
-                    value={ejecutivoId}
-                    onChange={(e) => setEjecutivoId(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      fontSize: "15px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      outline: "none",
-                      transition: "border-color 0.2s",
-                      backgroundColor: "white",
-                      cursor: "pointer",
-                    }}
-                    onFocus={(e) =>
-                      (e.currentTarget.style.borderColor = "#3b82f6")
-                    }
-                    onBlur={(e) =>
-                      (e.currentTarget.style.borderColor = "#d1d5db")
-                    }
-                  >
-                    <option value="">Sin asignar</option>
-                    {ejecutivos.map((ej) => (
-                      <option key={ej.id} value={ej.id}>
-                        {ej.nombre} - {ej.email}
-                      </option>
-                    ))}
-                  </select>
-                  <p
-                    style={{
-                      fontSize: "12px",
-                      color: "#6b7280",
-                      marginTop: "6px",
-                      marginBottom: 0,
-                    }}
-                  >
-                    {editingUserId
-                      ? "Selecciona un ejecutivo diferente para reasignar el cliente"
-                      : "El cliente verá los datos de contacto de su ejecutivo en el portal"}
-                  </p>
-                </div>
+                {!isEditingEjecutivo && (
+                  <div style={{ marginBottom: "24px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: "#374151",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Ejecutivo Asignado
+                    </label>
+                    <select
+                      value={ejecutivoId}
+                      onChange={(e) => setEjecutivoId(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 14px",
+                        fontSize: "15px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                        backgroundColor: "white",
+                        cursor: "pointer",
+                      }}
+                      onFocus={(e) =>
+                        (e.currentTarget.style.borderColor = "#3b82f6")
+                      }
+                      onBlur={(e) =>
+                        (e.currentTarget.style.borderColor = "#d1d5db")
+                      }
+                    >
+                      <option value="">Sin asignar</option>
+                      {ejecutivos.map((ej) => (
+                        <option key={ej.id} value={ej.id}>
+                          {ej.nombre} - {ej.email}
+                        </option>
+                      ))}
+                    </select>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        marginTop: "6px",
+                        marginBottom: 0,
+                      }}
+                    >
+                      {editingUserId
+                        ? "Selecciona un ejecutivo diferente para reasignar el cliente"
+                        : "El cliente verá los datos de contacto de su ejecutivo en el portal"}
+                    </p>
+                  </div>
+                )}
 
                 <div style={{ display: "flex", gap: "12px" }}>
                   <button
@@ -1042,7 +1336,9 @@ function UsersManagement() {
                         ? "Actualizando..."
                         : "Creando..."
                       : editingUserId
-                        ? "Actualizar Usuario"
+                        ? isEditingEjecutivo
+                          ? "Actualizar Ejecutivo"
+                          : "Actualizar Usuario"
                         : "Crear Usuario"}
                   </button>
 
@@ -1253,6 +1549,21 @@ function UsersManagement() {
                           Nombre del Ejecutivo
                         </th>
                       )}
+                      {showAdmins && (
+                        <th
+                          style={{
+                            padding: "12px 24px",
+                            textAlign: "left",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            color: "#6b7280",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}
+                        >
+                          Rol
+                        </th>
+                      )}
                       {!showAdmins && (
                         <th
                           style={{
@@ -1353,6 +1664,84 @@ function UsersManagement() {
                             {user.nombreuser || "-"}
                           </td>
                         )}
+                        {showAdmins && (
+                          <td
+                            style={{
+                              padding: "16px 24px",
+                              fontSize: "14px",
+                            }}
+                          >
+                            {(() => {
+                              const ej = ejecutivos.find(
+                                (e) => e.email === user.email,
+                              );
+                              if (!ej?.roles)
+                                return (
+                                  <span
+                                    style={{
+                                      color: "#9ca3af",
+                                      fontStyle: "italic",
+                                      fontSize: "12px",
+                                    }}
+                                  >
+                                    Sin rol
+                                  </span>
+                                );
+                              return (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    gap: "4px",
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  {ej.roles.administrador && (
+                                    <span
+                                      style={{
+                                        padding: "2px 8px",
+                                        backgroundColor: "#7e22ce",
+                                        color: "white",
+                                        fontSize: "11px",
+                                        fontWeight: "600",
+                                        borderRadius: "4px",
+                                      }}
+                                    >
+                                      Admin
+                                    </span>
+                                  )}
+                                  {ej.roles.pricing && (
+                                    <span
+                                      style={{
+                                        padding: "2px 8px",
+                                        backgroundColor: "#2563eb",
+                                        color: "white",
+                                        fontSize: "11px",
+                                        fontWeight: "600",
+                                        borderRadius: "4px",
+                                      }}
+                                    >
+                                      Pricing
+                                    </span>
+                                  )}
+                                  {ej.roles.ejecutivo && (
+                                    <span
+                                      style={{
+                                        padding: "2px 8px",
+                                        backgroundColor: "#16a34a",
+                                        color: "white",
+                                        fontSize: "11px",
+                                        fontWeight: "600",
+                                        borderRadius: "4px",
+                                      }}
+                                    >
+                                      Ejecutivo
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </td>
+                        )}
                         {!showAdmins && (
                           <td
                             style={{
@@ -1404,75 +1793,77 @@ function UsersManagement() {
                             textAlign: "right",
                           }}
                         >
-                          {user.username !== "Ejecutivo" && (
-                            <div
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "8px",
+                              justifyContent: "flex-end",
+                            }}
+                          >
+                            <button
+                              onClick={() => handleEditUser(user)}
                               style={{
-                                display: "flex",
-                                gap: "8px",
-                                justifyContent: "flex-end",
+                                backgroundColor: "transparent",
+                                color: "#2563eb",
+                                border: "1px solid #bfdbfe",
+                                borderRadius: "6px",
+                                padding: "6px 12px",
+                                fontSize: "13px",
+                                fontWeight: "500",
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor =
+                                  "#eff6ff";
+                                e.currentTarget.style.transform =
+                                  "translateY(-1px)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor =
+                                  "transparent";
+                                e.currentTarget.style.transform =
+                                  "translateY(0)";
                               }}
                             >
-                              <button
-                                onClick={() => handleEditUser(user)}
-                                style={{
-                                  backgroundColor: "transparent",
-                                  color: "#2563eb",
-                                  border: "1px solid #bfdbfe",
-                                  borderRadius: "6px",
-                                  padding: "6px 12px",
-                                  fontSize: "13px",
-                                  fontWeight: "500",
-                                  cursor: "pointer",
-                                  transition: "all 0.2s",
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.backgroundColor =
-                                    "#eff6ff";
-                                  e.currentTarget.style.transform =
-                                    "translateY(-1px)";
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.backgroundColor =
-                                    "transparent";
-                                  e.currentTarget.style.transform =
-                                    "translateY(0)";
-                                }}
-                              >
-                                Editar
-                              </button>
+                              Editar
+                            </button>
 
-                              <button
-                                onClick={() =>
-                                  handleDeleteUser(user.id, user.email)
-                                }
-                                style={{
-                                  backgroundColor: "transparent",
-                                  color: "#dc2626",
-                                  border: "1px solid #fecaca",
-                                  borderRadius: "6px",
-                                  padding: "6px 12px",
-                                  fontSize: "13px",
-                                  fontWeight: "500",
-                                  cursor: "pointer",
-                                  transition: "all 0.2s",
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.backgroundColor =
-                                    "#fee2e2";
-                                  e.currentTarget.style.transform =
-                                    "translateY(-1px)";
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.backgroundColor =
-                                    "transparent";
-                                  e.currentTarget.style.transform =
-                                    "translateY(0)";
-                                }}
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          )}
+                            <button
+                              onClick={() =>
+                                handleDeleteUser(
+                                  user.id,
+                                  user.email,
+                                  user.username === "Ejecutivo",
+                                )
+                              }
+                              style={{
+                                backgroundColor: "transparent",
+                                color: "#dc2626",
+                                border: "1px solid #fecaca",
+                                borderRadius: "6px",
+                                padding: "6px 12px",
+                                fontSize: "13px",
+                                fontWeight: "500",
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor =
+                                  "#fee2e2";
+                                e.currentTarget.style.transform =
+                                  "translateY(-1px)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor =
+                                  "transparent";
+                                e.currentTarget.style.transform =
+                                  "translateY(0)";
+                              }}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
