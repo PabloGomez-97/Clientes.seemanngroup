@@ -39,7 +39,7 @@ function QuoteAPITester({
   preselectedDestination,
 }: QuoteAIRProps = {}) {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, token } = useAuth();
+  const { user, token, activeUsername } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
@@ -787,7 +787,7 @@ function QuoteAPITester({
       let previousMaxId = 0;
       try {
         const preRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -993,7 +993,7 @@ function QuoteAPITester({
         await new Promise((r) => setTimeout(r, 2000));
 
         const linbisRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -1048,7 +1048,7 @@ function QuoteAPITester({
         root.render(
           <PDFTemplateAIR
             quoteNumber={quoteNumber}
-            customerName={user?.username || "Customer"}
+            customerName={activeUsername || "Customer"}
             origin={rutaSeleccionada.origin}
             destination={rutaSeleccionada.destination}
             effectiveDate={new Date().toLocaleDateString()}
@@ -1096,7 +1096,7 @@ function QuoteAPITester({
       console.log("[QuoteAIR] pdfElement encontrado:", !!pdfElement);
 
       if (pdfElement) {
-        const customerClean = (user?.username || "Cliente").replace(
+        const customerClean = (activeUsername || "Cliente").replace(
           /[^a-zA-Z0-9]/g,
           "_",
         );
@@ -1206,7 +1206,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1242,7 +1242,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: user?.username,
+              name: activeUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1274,7 +1274,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1306,7 +1306,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1337,7 +1337,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1355,7 +1355,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1383,7 +1383,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: user?.username,
+              name: activeUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1418,7 +1418,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: user?.username,
+              name: activeUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1446,7 +1446,7 @@ function QuoteAPITester({
         },
         customerReference: "Portal Created [AIR]",
         contact: {
-          name: user?.username,
+          name: activeUsername,
         },
         origin: {
           name: rutaSeleccionada.origin,
@@ -1470,10 +1470,10 @@ function QuoteAPITester({
           name: rutaSeleccionada.origin,
         },
         shipper: {
-          name: user?.username,
+          name: activeUsername,
         },
         consignee: {
-          name: user?.username,
+          name: activeUsername,
         },
         issuingCompany: {
           name: rutaSeleccionada?.carrier || "Por Confirmar",
@@ -1532,7 +1532,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1564,7 +1564,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: user?.username,
+              name: activeUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1596,7 +1596,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1633,7 +1633,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1664,7 +1664,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1682,7 +1682,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1710,7 +1710,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: user?.username,
+              name: activeUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1735,7 +1735,7 @@ function QuoteAPITester({
         transitDays: 5,
         customerReference: "Portal-Created [AIR-OVERALL]",
         contact: {
-          name: user?.username,
+          name: activeUsername,
         },
         origin: {
           name: rutaSeleccionada.origin,
@@ -1759,10 +1759,10 @@ function QuoteAPITester({
           name: rutaSeleccionada.origin,
         },
         shipper: {
-          name: user?.username,
+          name: activeUsername,
         },
         consignee: {
-          name: user?.username,
+          name: activeUsername,
         },
         issuingCompany: {
           name: rutaSeleccionada?.carrier || "Por Confirmar",

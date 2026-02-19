@@ -54,8 +54,8 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    =========================================================== */
 function OceanShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user } = useAuth();
-  const filterConsignee = user?.username || "";
+  const { user, activeUsername } = useAuth();
+  const filterConsignee = activeUsername || "";
 
   const [oceanShipments, setOceanShipments] = useState<OceanShipment[]>([]);
   const [displayedOceanShipments, setDisplayedOceanShipments] = useState<

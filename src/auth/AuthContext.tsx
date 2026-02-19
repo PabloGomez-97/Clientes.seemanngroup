@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 
 type Ejecutivo = {
   id: string;
@@ -16,6 +22,7 @@ type Roles = {
 type User = {
   email: string;
   username: string;
+  usernames: string[]; // Múltiples empresas/cuentas asignadas
   nombreuser: string;
   ejecutivo?: Ejecutivo;
   roles?: Roles;
@@ -33,12 +40,15 @@ type Cliente = {
 type AuthCtx = {
   user: User;
   token: string | null;
+  activeUsername: string; // Empresa activa seleccionada
+  setActiveUsername: (username: string) => void; // Cambiar empresa activa
   login: (
     email: string,
     password: string,
   ) => Promise<{
     email: string;
     username: string;
+    usernames: string[];
     nombreuser: string;
     ejecutivo?: Ejecutivo;
     roles?: Roles;
@@ -55,23 +65,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.getItem("auth_token"),
   );
   const [user, setUser] = useState<User>(null);
+  const [activeUsername, setActiveUsernameState] = useState<string>(
+    () => localStorage.getItem("active_username") || "",
+  );
+
+  // Setter que persiste en localStorage
+  const setActiveUsername = useCallback((username: string) => {
+    setActiveUsernameState(username);
+    localStorage.setItem("active_username", username);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
     fetch("/api/me", { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) =>
+      .then((d) => {
+        const usernames =
+          d.user.usernames && d.user.usernames.length > 0
+            ? d.user.usernames
+            : [d.user.username];
+
         setUser({
           email: d.user.sub,
           username: d.user.username,
+          usernames,
           nombreuser: d.user.nombreuser,
           ejecutivo: d.user.ejecutivo || null,
           roles: d.user.roles || null,
-        }),
-      )
+        });
+
+        // Establecer activeUsername si no hay uno válido guardado
+        const stored = localStorage.getItem("active_username");
+        if (!stored || !usernames.includes(stored)) {
+          setActiveUsername(usernames[0]);
+        }
+      })
       .catch(() => {
         setToken(null);
         localStorage.removeItem("auth_token");
+        localStorage.removeItem("active_username");
       });
   }, [token]);
 
@@ -88,14 +120,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await r.json();
     setToken(data.token);
     localStorage.setItem("auth_token", data.token);
-    setUser(data.user);
 
-    return data.user;
+    const usernames =
+      data.user.usernames && data.user.usernames.length > 0
+        ? data.user.usernames
+        : [data.user.username];
+
+    const userData = {
+      ...data.user,
+      usernames,
+    };
+    setUser(userData);
+
+    // Establecer la primera empresa como activa
+    setActiveUsername(usernames[0]);
+
+    return userData;
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
+    setActiveUsernameState("");
     localStorage.clear();
   };
 
@@ -143,7 +189,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, logout, getEjecutivos, getMisClientes }}
+      value={{
+        user,
+        token,
+        activeUsername,
+        setActiveUsername,
+        login,
+        logout,
+        getEjecutivos,
+        getMisClientes,
+      }}
     >
       {children}
     </AuthContext.Provider>

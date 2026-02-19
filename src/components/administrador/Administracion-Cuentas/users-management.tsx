@@ -22,6 +22,7 @@ interface User {
   id: string;
   email: string;
   username: string;
+  usernames: string[];
   nombreuser: string;
   createdAt: string;
   ejecutivo: Ejecutivo | null;
@@ -49,7 +50,7 @@ function UsersManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
+  const [usernames, setUsernames] = useState<string[]>([""]);
   const [nombreuser, setNombreuser] = useState("");
   const [password, setPassword] = useState("");
   const [ejecutivoId, setEjecutivoId] = useState<string>("");
@@ -122,7 +123,7 @@ function UsersManagement() {
 
   const resetForm = () => {
     setEmail("");
-    setUsername("");
+    setUsernames([""]);
     setNombreuser("");
     setPassword("");
     setEjecutivoId("");
@@ -135,7 +136,11 @@ function UsersManagement() {
   const handleEditUser = (user: User) => {
     setEditingUserId(user.id);
     setEmail(user.email);
-    setUsername(user.username);
+    setUsernames(
+      user.usernames && user.usernames.length > 0
+        ? [...user.usernames]
+        : [user.username],
+    );
     setNombreuser(user.nombreuser);
     setPassword("");
     setEjecutivoId(user.ejecutivo?.id || "");
@@ -163,6 +168,14 @@ function UsersManagement() {
     setError(null);
     setSuccess(null);
 
+    // Filtrar usernames vacíos
+    const cleanUsernames = usernames.map((u) => u.trim()).filter(Boolean);
+    if (cleanUsernames.length === 0) {
+      setError("Debe agregar al menos una empresa");
+      setFormLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch("/api/admin/create-user", {
         method: "POST",
@@ -172,7 +185,8 @@ function UsersManagement() {
         },
         body: JSON.stringify({
           email,
-          username,
+          username: cleanUsernames[0],
+          usernames: cleanUsernames,
           nombreuser,
           password,
           ejecutivoId: ejecutivoId || undefined,
@@ -193,7 +207,7 @@ function UsersManagement() {
         descripcion: `Usuario creado: ${nombreuser} (${email})`,
         detalles: {
           email,
-          username,
+          usernames: cleanUsernames,
           nombreuser,
           ejecutivoId: ejecutivoId || "sin asignar",
         },
@@ -224,13 +238,16 @@ function UsersManagement() {
     }
 
     try {
+      const cleanUsernames = usernames.map((u) => u.trim()).filter(Boolean);
+
       const updateData: any = isEditingEjecutivo
         ? {
             nombreuser,
             roles: editRoles,
           }
         : {
-            username,
+            username: cleanUsernames[0] || "",
+            usernames: cleanUsernames,
             nombreuser,
             ejecutivoId: ejecutivoId || null,
           };
@@ -281,7 +298,7 @@ function UsersManagement() {
             }
           : {
               userId: editingUserId,
-              username,
+              usernames: usernames.map((u) => u.trim()).filter(Boolean),
               nombreuser,
               ejecutivoId: ejecutivoId || "sin asignar",
               passwordChanged: !!password.trim(),
@@ -359,7 +376,10 @@ function UsersManagement() {
     const clients = users.filter((user) => user.username !== "Ejecutivo");
     const data = clients.map((user) => ({
       Email: user.email,
-      "Nombre/Empresa": user.username,
+      "Nombre/Empresa": (user.usernames && user.usernames.length > 0
+        ? user.usernames
+        : [user.username]
+      ).join(" | "),
       Ejecutivo: user.ejecutivo
         ? `${user.ejecutivo.nombre} - ${user.ejecutivo.email}`
         : "Sin asignar",
@@ -957,30 +977,152 @@ function UsersManagement() {
                         marginBottom: "8px",
                       }}
                     >
-                      Nombre / Empresa *
+                      Nombre / Empresa *{" "}
+                      {usernames.filter((u) => u.trim()).length > 1 && (
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color: "#6b7280",
+                            fontWeight: "400",
+                          }}
+                        >
+                          ({usernames.filter((u) => u.trim()).length} empresas)
+                        </span>
+                      )}
                     </label>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                      placeholder="EMPRESA SPA"
+
+                    {usernames.map((uname, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          marginBottom: "8px",
+                          alignItems: "center",
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={uname}
+                          onChange={(e) => {
+                            const updated = [...usernames];
+                            updated[index] = e.target.value;
+                            setUsernames(updated);
+                          }}
+                          required={index === 0}
+                          placeholder={
+                            index === 0
+                              ? "EMPRESA PRINCIPAL SPA"
+                              : `Empresa ${index + 1}`
+                          }
+                          style={{
+                            flex: 1,
+                            padding: "10px 14px",
+                            fontSize: "15px",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "8px",
+                            outline: "none",
+                            transition: "border-color 0.2s",
+                          }}
+                          onFocus={(e) =>
+                            (e.currentTarget.style.borderColor = "#3b82f6")
+                          }
+                          onBlur={(e) =>
+                            (e.currentTarget.style.borderColor = "#d1d5db")
+                          }
+                        />
+                        {usernames.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = usernames.filter(
+                                (_, i) => i !== index,
+                              );
+                              setUsernames(updated);
+                            }}
+                            style={{
+                              backgroundColor: "transparent",
+                              color: "#dc2626",
+                              border: "1px solid #fecaca",
+                              borderRadius: "6px",
+                              padding: "8px 10px",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.backgroundColor =
+                                "#fee2e2")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.backgroundColor =
+                                "transparent")
+                            }
+                            title="Eliminar empresa"
+                          >
+                            <svg
+                              width="16"
+                              height="16"
+                              fill="currentColor"
+                              viewBox="0 0 16 16"
+                            >
+                              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => setUsernames([...usernames, ""])}
                       style={{
-                        width: "100%",
-                        padding: "10px 14px",
-                        fontSize: "15px",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "8px",
-                        outline: "none",
-                        transition: "border-color 0.2s",
+                        backgroundColor: "transparent",
+                        color: "#2563eb",
+                        border: "1px solid #bfdbfe",
+                        borderRadius: "6px",
+                        padding: "8px 14px",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        marginTop: "4px",
                       }}
-                      onFocus={(e) =>
-                        (e.currentTarget.style.borderColor = "#3b82f6")
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#eff6ff")
                       }
-                      onBlur={(e) =>
-                        (e.currentTarget.style.borderColor = "#d1d5db")
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "transparent")
                       }
-                    />
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                      >
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+                      </svg>
+                      Agregar empresa
+                    </button>
+
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "#6b7280",
+                        marginTop: "6px",
+                        marginBottom: 0,
+                      }}
+                    >
+                      Puedes asignar múltiples empresas al mismo cliente. La
+                      primera será la empresa principal.
+                    </p>
                   </div>
                 )}
 
@@ -1563,6 +1705,21 @@ function UsersManagement() {
                             letterSpacing: "0.5px",
                           }}
                         >
+                          Empresas
+                        </th>
+                      )}
+                      {!showAdmins && (
+                        <th
+                          style={{
+                            padding: "12px 24px",
+                            textAlign: "left",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            color: "#6b7280",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}
+                        >
                           Ejecutivo
                         </th>
                       )}
@@ -1697,6 +1854,52 @@ function UsersManagement() {
                                       Ejecutivo
                                     </span>
                                   )}
+                                </div>
+                              );
+                            })()}
+                          </td>
+                        )}
+                        {!showAdmins && (
+                          <td
+                            style={{
+                              padding: "16px 24px",
+                              fontSize: "14px",
+                              color: "#1f2937",
+                            }}
+                          >
+                            {(() => {
+                              const names =
+                                user.usernames && user.usernames.length > 0
+                                  ? user.usernames
+                                  : [user.username];
+                              return (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexWrap: "wrap",
+                                    gap: "4px",
+                                  }}
+                                >
+                                  {names.map((name, i) => (
+                                    <span
+                                      key={i}
+                                      style={{
+                                        padding: "2px 8px",
+                                        backgroundColor:
+                                          i === 0 ? "#dbeafe" : "#f3f4f6",
+                                        color: i === 0 ? "#1e40af" : "#374151",
+                                        fontSize: "12px",
+                                        fontWeight: "500",
+                                        borderRadius: "4px",
+                                        border:
+                                          i === 0
+                                            ? "1px solid #bfdbfe"
+                                            : "1px solid #e5e7eb",
+                                      }}
+                                    >
+                                      {name}
+                                    </span>
+                                  ))}
                                 </div>
                               );
                             })()}

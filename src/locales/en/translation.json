@@ -377,5 +377,8 @@
     "segurocargo": "You must enter the value of the goods to calculate the insurance",
     "ingresoinco": "You must select an Incoterm before generating the quote",
     "debescompl": "You must complete the Pickup and Delivery addresses for the EXW Incoterm"
+  },
+  "sidebar": {
+    "account": "Active Account"
   }
 }

@@ -21,7 +21,7 @@ interface NavbarProps {
 }
 
 function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, activeUsername } = useAuth();
   const { t } = useTranslation();
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,7 +57,7 @@ function Navbar({ accessToken, onLogout, toggleSidebar }: NavbarProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // User data
-  const username = user?.username || "Usuarios";
+  const username = activeUsername || user?.username || "Usuarios";
   const email = user?.email || "usuario@ejemplo.com";
   const ejecutivo = user?.ejecutivo;
   const hasEjecutivo = !!ejecutivo;

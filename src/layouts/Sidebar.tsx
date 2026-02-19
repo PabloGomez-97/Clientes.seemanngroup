@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../auth/AuthContext";
 import logoSeemann from "./logoseemann.png";
 
 interface SidebarProps {
@@ -45,8 +46,13 @@ function Sidebar({ isOpen }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user, activeUsername, setActiveUsername } = useAuth();
   const [expandedMenus, setExpandedMenus] = useState<string[]>(["Reports"]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  // Determinar si se muestra el selector de cuenta
+  const usernames = user?.usernames || [];
+  const showAccountSelector = usernames.length > 1;
 
   const menuSections: MenuSection[] = [
     {
@@ -165,6 +171,77 @@ function Sidebar({ isOpen }: SidebarProps) {
           }}
         />
       </div>
+
+      {/* Account Selector - solo si el usuario tiene más de una empresa */}
+      {showAccountSelector && (
+        <div
+          style={{
+            padding: "12px 16px",
+            borderBottom: `1px solid ${colors.border}`,
+          }}
+        >
+          <label
+            style={{
+              display: "block",
+              fontSize: "10px",
+              fontWeight: "600",
+              color: colors.textMuted,
+              textTransform: "uppercase",
+              letterSpacing: "0.8px",
+              marginBottom: "6px",
+            }}
+          >
+            {t("sidebar.account")}
+          </label>
+          <select
+            value={activeUsername}
+            onChange={(e) => {
+              setActiveUsername(e.target.value);
+              // Limpiar cachés al cambiar de cuenta
+              const keysToRemove: string[] = [];
+              for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (
+                  key &&
+                  (key.startsWith("quotesCache_") ||
+                    key.startsWith("airShipmentsCache_") ||
+                    key.startsWith("oceanShipmentsCache_") ||
+                    key.startsWith("invoicesCache_") ||
+                    key.startsWith("shipmentsCache_"))
+                ) {
+                  keysToRemove.push(key);
+                }
+              }
+              keysToRemove.forEach((k) => localStorage.removeItem(k));
+              // Recargar la página para refrescar datos
+              window.location.reload();
+            }}
+            style={{
+              width: "100%",
+              padding: "8px 10px",
+              fontSize: "13px",
+              fontWeight: "500",
+              backgroundColor: colors.bgHover,
+              color: colors.text,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "6px",
+              outline: "none",
+              cursor: "pointer",
+              appearance: "none",
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238d99a8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E")`,
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 10px center",
+              paddingRight: "30px",
+            }}
+          >
+            {usernames.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Navigation Menu */}
       <nav style={{ flex: 1, padding: "12px 0" }}>

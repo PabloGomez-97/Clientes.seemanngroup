@@ -79,6 +79,7 @@ const Ejecutivo = (mongoose.models.Ejecutivo || mongoose.model<IEjecutivoDoc>('E
 interface IUser {
   email: string;
   username: string;
+  usernames: string[];  // Múltiples empresas/cuentas asignadas
   nombreuser: string;
   passwordHash: string;
   ejecutivoId?: mongoose.Types.ObjectId;
@@ -95,6 +96,7 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
+    usernames: { type: [String], default: [] },  // Múltiples empresas
     nombreuser: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
     ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
@@ -450,11 +452,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
+      // Construir usernames
+      const usernames = (user.usernames && user.usernames.length > 0)
+        ? user.usernames
+        : [user.username];
+
       return res.json({
         token,
         user: { 
           email: user.email, 
           username: user.username,
+          usernames,
           nombreuser: user.nombreuser,
           ejecutivo: ejecutivo ? {
             id: ejecutivo._id,
@@ -500,10 +508,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
+        // Construir usernames
+        const usernames = (user.usernames && user.usernames.length > 0)
+          ? user.usernames
+          : [user.username];
+
         return res.json({ 
           user: {
             sub: user.email,
             username: user.username,
+            usernames,
             nombreuser: user.nombreuser,
             ejecutivo: ejecutivo ? {
               id: ejecutivo._id,
@@ -790,7 +804,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
         }
 
-        const { email, username, nombreuser, password, ejecutivoId } = (req.body as any) || {};
+        const { email, username, nombreuser, password, ejecutivoId, usernames } = (req.body as any) || {};
         if (!email || !username || !nombreuser || !password) {
           return res.status(400).json({ error: 'Faltan campos requeridos' });
         }
@@ -803,9 +817,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const passwordHash = bcrypt.hashSync(String(password), 12);
 
+        // Construir array de usernames
+        const usernamesArray = Array.isArray(usernames) && usernames.length > 0
+          ? usernames.map((u: string) => String(u).trim()).filter(Boolean)
+          : [String(username).trim()];
+
         const newUser = new User({
           email: normalizedEmail,
           username: String(username).trim(),
+          usernames: usernamesArray,
           nombreuser: String(nombreuser).trim(),
           passwordHash,
           ejecutivoId: ejecutivoId || undefined
@@ -848,6 +868,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             id: u._id,
             email: u.email,
             username: u.username,
+            usernames: (u.usernames && u.usernames.length > 0) ? u.usernames : [u.username],
             nombreuser: u.nombreuser,
             createdAt: u.createdAt,
             ejecutivo: u.ejecutivoId ? {
@@ -927,6 +948,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (username) {
           userToUpdate.username = String(username).trim();
+        }
+
+        // ✅ AGREGADO: Actualizar usernames
+        const { usernames: newUsernames } = (req.body as any) || {};
+        if (Array.isArray(newUsernames)) {
+          const cleanUsernames = newUsernames.map((u: string) => String(u).trim()).filter(Boolean);
+          if (cleanUsernames.length > 0) {
+            userToUpdate.usernames = cleanUsernames;
+            // Sincronizar username con el primer elemento
+            userToUpdate.username = cleanUsernames[0];
+          }
         }
 
         if (nombreuser) {

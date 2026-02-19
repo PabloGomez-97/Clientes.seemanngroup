@@ -56,7 +56,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
     */
 function AirShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, token } = useAuth();
+  const { user, token, activeUsername } = useAuth();
   const navigate = useNavigate();
 
   const [shipments, setShipments] = useState<AirShipment[]>([]);
@@ -204,7 +204,7 @@ function AirShipmentsView() {
       setError("Debes ingresar un token primero");
       return;
     }
-    if (!user?.username) {
+    if (!activeUsername) {
       setError("No se pudo obtener el nombre de usuario");
       return;
     }
@@ -217,7 +217,7 @@ function AirShipmentsView() {
     setError(null);
 
     try {
-      const cacheKey = `airShipmentsCache_${user.username}`;
+      const cacheKey = `airShipmentsCache_${activeUsername}`;
 
       // We'll collect results across pages into these
       const combinedAllShipments: AirShipment[] = [];
@@ -229,7 +229,7 @@ function AirShipmentsView() {
       // Continue fetching pages until we get less than ITEMS_PER_PAGE
       while (true) {
         const queryParams = new URLSearchParams({
-          ConsigneeName: user.username,
+          ConsigneeName: activeUsername,
           Page: pageToFetch.toString(),
           ItemsPerPage: ITEMS_PER_PAGE.toString(),
           SortBy: "newest",
@@ -358,10 +358,10 @@ function AirShipmentsView() {
 
   /*  Cache  */
   useEffect(() => {
-    if (!accessToken || !user?.username) return;
+    if (!accessToken || !activeUsername) return;
 
     // ── Cuenta dummy MundoGaming: carga datos hardcodeados ──
-    if (user.username === "MundoGaming") {
+    if (activeUsername === "MundoGaming") {
       const dummySorted = [...MUNDOGAMING_DUMMY_SHIPMENTS].sort((a, b) => {
         const da = a.departure?.date ? new Date(a.departure.date) : new Date(0);
         const db = b.departure?.date ? new Date(b.departure.date) : new Date(0);
@@ -379,7 +379,7 @@ function AirShipmentsView() {
       return;
     }
 
-    const cacheKey = `airShipmentsCache_${user.username}`;
+    const cacheKey = `airShipmentsCache_${activeUsername}`;
     const cached = localStorage.getItem(cacheKey);
     const ts = localStorage.getItem(`${cacheKey}_timestamp`);
     const cachedPage = localStorage.getItem(`${cacheKey}_page`);
@@ -412,7 +412,7 @@ function AirShipmentsView() {
     setCurrentPage(1);
     fetchAirShipments(1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken, user?.username]);
+  }, [accessToken, activeUsername]);
 
   /*  Search  */
 
@@ -485,10 +485,10 @@ function AirShipmentsView() {
   };
 
   const refreshShipments = () => {
-    if (!user?.username) return;
+    if (!activeUsername) return;
 
     // ── Cuenta dummy MundoGaming: reload datos hardcodeados ──
-    if (user.username === "MundoGaming") {
+    if (activeUsername === "MundoGaming") {
       const dummySorted = [...MUNDOGAMING_DUMMY_SHIPMENTS].sort((a, b) => {
         const da = a.departure?.date ? new Date(a.departure.date) : new Date(0);
         const db = b.departure?.date ? new Date(b.departure.date) : new Date(0);
@@ -502,7 +502,7 @@ function AirShipmentsView() {
       return;
     }
 
-    const cacheKey = `airShipmentsCache_${user.username}`;
+    const cacheKey = `airShipmentsCache_${activeUsername}`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);
     localStorage.removeItem(`${cacheKey}_page`);
@@ -552,7 +552,7 @@ function AirShipmentsView() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          reference: user?.username,
+          reference: activeUsername,
           awb_number: cleanAwb,
           followers: [trackEmail.trim()],
           tags: [],

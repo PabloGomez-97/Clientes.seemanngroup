@@ -137,7 +137,7 @@ function StatusBadge({ status }: { status: "paid" | "pending" | "overdue" }) {
 
 function ReporteriaFinanciera() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user } = useAuth();
+  const { user, activeUsername } = useAuth();
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [displayedInvoices, setDisplayedInvoices] = useState<Invoice[]>([]);
@@ -288,7 +288,7 @@ function ReporteriaFinanciera() {
       setError("Debes ingresar un token primero");
       return;
     }
-    if (!user?.username) {
+    if (!activeUsername) {
       setError("No se pudo obtener el nombre de usuario");
       return;
     }
@@ -299,7 +299,7 @@ function ReporteriaFinanciera() {
 
     try {
       const queryParams = new URLSearchParams({
-        ConsigneeName: user.username,
+        ConsigneeName: activeUsername,
         Page: page.toString(),
         ItemsPerPage: "50",
         SortBy: "newest",
@@ -337,7 +337,7 @@ function ReporteriaFinanciera() {
 
       setHasMoreInvoices(invoicesArray.length === 50);
 
-      const cacheKey = `invoicesCache_${user.username}`;
+      const cacheKey = `invoicesCache_${activeUsername}`;
 
       if (append && page > 1) {
         const combined = [...invoices, ...sortedInvoices].sort((a, b) => {
@@ -380,10 +380,10 @@ function ReporteriaFinanciera() {
   /* -- Initial load / cache --------------------------------- */
 
   useEffect(() => {
-    if (!accessToken || !user?.username) return;
+    if (!accessToken || !activeUsername) return;
 
     // MundoGaming: use hardcoded dummy invoices
-    if (user.username === "MundoGaming") {
+    if (activeUsername === "MundoGaming") {
       setInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
       setDisplayedInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
       setHasMoreInvoices(false);
@@ -391,7 +391,7 @@ function ReporteriaFinanciera() {
       return;
     }
 
-    const cacheKey = `invoicesCache_${user.username}`;
+    const cacheKey = `invoicesCache_${activeUsername}`;
     const cachedInvoices = localStorage.getItem(cacheKey);
     const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
     const cachedPage = localStorage.getItem(`${cacheKey}_page`);
@@ -417,7 +417,7 @@ function ReporteriaFinanciera() {
 
     setCurrentPage(1);
     fetchInvoices(1, false);
-  }, [accessToken, user?.username]);
+  }, [accessToken, activeUsername]);
 
   /* -- Period filter ---------------------------------------- */
 
@@ -591,10 +591,10 @@ function ReporteriaFinanciera() {
   /* -- Refresh ---------------------------------------------- */
 
   const refreshInvoices = () => {
-    if (!user?.username) return;
+    if (!activeUsername) return;
 
     // MundoGaming: reload dummy invoices without API call
-    if (user.username === "MundoGaming") {
+    if (activeUsername === "MundoGaming") {
       setInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
       setDisplayedInvoices(MUNDOGAMING_DUMMY_INVOICES as Invoice[]);
       setHasMoreInvoices(false);
@@ -602,7 +602,7 @@ function ReporteriaFinanciera() {
       return;
     }
 
-    const cacheKey = `invoicesCache_${user.username}`;
+    const cacheKey = `invoicesCache_${activeUsername}`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);
     localStorage.removeItem(`${cacheKey}_page`);
@@ -633,7 +633,7 @@ function ReporteriaFinanciera() {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Reporte Financiero - ${user?.username}</title>
+  <title>Reporte Financiero - ${activeUsername}</title>
   <style>
     @media print { @page { margin: 1cm; } body { margin: 0; } .print-button { display: none; } }
     body { font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; color: #1a1a1a; line-height: 1.6; }
@@ -659,7 +659,7 @@ function ReporteriaFinanciera() {
 <body>
   <div class="header">
     <h1>Reporte Financiero</h1>
-    <p><strong>Cliente:</strong> ${user?.username || "N/A"}</p>
+    <p><strong>Cliente:</strong> ${activeUsername || "N/A"}</p>
     <p><strong>Periodo:</strong> ${periodLabel}</p>
     <p><strong>Generado:</strong> ${new Date().toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
   </div>

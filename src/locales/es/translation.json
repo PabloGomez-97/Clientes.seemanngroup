@@ -378,5 +378,8 @@
     "segurocargo": "Debes ingresar el valor de la mercadería para calcular el seguro",
     "ingresoinco": "Debes seleccionar un Incoterm antes de generar la cotización",
     "debescompl": "Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW"
+  },
+  "sidebar": {
+    "account": "Cuenta Activa"
   }
 }

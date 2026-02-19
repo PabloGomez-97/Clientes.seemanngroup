@@ -177,7 +177,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
 
 function QuotesView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, token } = useAuth();
+  const { user, token, activeUsername } = useAuth();
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
@@ -342,7 +342,7 @@ function QuotesView() {
       setError("Debes ingresar un token primero");
       return;
     }
-    if (!user?.username) {
+    if (!activeUsername) {
       setError("No se pudo obtener el nombre de usuario");
       return;
     }
@@ -352,7 +352,7 @@ function QuotesView() {
 
     try {
       const queryParams = new URLSearchParams({
-        ConsigneeName: user.username,
+        ConsigneeName: activeUsername,
         Page: page.toString(),
         ItemsPerPage: ITEMS_PER_PAGE.toString(),
         SortBy: "newest",
@@ -386,7 +386,7 @@ function QuotesView() {
 
       setHasMoreQuotes(quotesArray.length === ITEMS_PER_PAGE);
 
-      const cacheKey = `quotesCache_${user.username}`;
+      const cacheKey = `quotesCache_${activeUsername}`;
       if (append && page > 1) {
         const combined = [...quotes, ...sortedArr].sort((a, b) => {
           const nA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
@@ -422,8 +422,8 @@ function QuotesView() {
 
   /* -- Initial load / cache --------------------------------- */
   useEffect(() => {
-    if (!accessToken || !user?.username) return;
-    const cacheKey = `quotesCache_${user.username}`;
+    if (!accessToken || !activeUsername) return;
+    const cacheKey = `quotesCache_${activeUsername}`;
     const cachedQuotes = localStorage.getItem(cacheKey);
     const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
     const cachedPage = localStorage.getItem(`${cacheKey}_page`);
@@ -448,7 +448,7 @@ function QuotesView() {
     }
     setCurrentPage(1);
     fetchQuotes(1, false);
-  }, [accessToken, user?.username]);
+  }, [accessToken, activeUsername]);
 
   /* -- Quick search ----------------------------------------- */
   useEffect(() => {
@@ -684,8 +684,8 @@ function QuotesView() {
   };
 
   const refreshQuotes = () => {
-    if (!user?.username) return;
-    const k = `quotesCache_${user.username}`;
+    if (!activeUsername) return;
+    const k = `quotesCache_${activeUsername}`;
     localStorage.removeItem(k);
     localStorage.removeItem(`${k}_timestamp`);
     localStorage.removeItem(`${k}_page`);

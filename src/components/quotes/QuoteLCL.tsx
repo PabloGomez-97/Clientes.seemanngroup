@@ -36,7 +36,7 @@ interface QuoteLCLProps {
 function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
   const { accessToken } = useOutletContext<OutletContext>();
   const token = accessToken;
-  const { user, token: jwtToken } = useAuth();
+  const { user, token: jwtToken, activeUsername } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
@@ -618,7 +618,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       let previousMaxId = 0;
       try {
         const preRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -826,7 +826,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         await new Promise((r) => setTimeout(r, 2000));
 
         const linbisRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -875,7 +875,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         root.render(
           <PDFTemplateLCL
             quoteNumber={quoteNumber}
-            customerName={user?.username || "Customer"}
+            customerName={activeUsername || "Customer"}
             pol={rutaSeleccionada.pol}
             pod={rutaSeleccionada.pod}
             effectiveDate={new Date().toLocaleDateString()}
@@ -917,7 +917,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       // ── 3. Generar base64 + subir a MongoDB ANTES de descargar ──
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
       if (pdfElement) {
-        const customerClean = (user?.username || "Cliente").replace(
+        const customerClean = (activeUsername || "Cliente").replace(
           /[^a-zA-Z0-9]/g,
           "_",
         );
@@ -1022,7 +1022,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: user?.username,
+          name: activeUsername,
         },
         currency: {
           abbr: divisa,
@@ -1053,7 +1053,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: user?.username,
+          name: activeUsername,
         },
         currency: {
           abbr: divisa,
@@ -1086,7 +1086,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: divisa,
@@ -1118,7 +1118,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: user?.username,
+          name: activeUsername,
         },
         currency: {
           abbr: divisa,
@@ -1136,7 +1136,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: user?.username,
+          name: activeUsername,
         },
         currency: {
           abbr: divisa,
@@ -1164,7 +1164,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: divisa,
@@ -1204,7 +1204,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: divisa,
@@ -1230,7 +1230,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       },
       customerReference: "Portal Created [LCL]",
       contact: {
-        name: user?.username,
+        name: activeUsername,
       },
       origin: {
         name: rutaSeleccionada.pol,
@@ -1254,10 +1254,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         name: rutaSeleccionada.pol,
       },
       shipper: {
-        name: user?.username,
+        name: activeUsername,
       },
       consignee: {
-        name: user?.username,
+        name: activeUsername,
       },
       issuingCompany: {
         name: rutaSeleccionada?.operador || "Por Confirmar",

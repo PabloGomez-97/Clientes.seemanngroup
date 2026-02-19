@@ -33,7 +33,7 @@ import "./QuoteFCL.css";
 
 function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, token } = useAuth();
+  const { user, token, activeUsername } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
@@ -430,7 +430,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
       let previousMaxId = 0;
       try {
         const preRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -611,7 +611,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         await new Promise((r) => setTimeout(r, 2000));
 
         const linbisRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(user?.username || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -660,7 +660,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         root.render(
           <PDFTemplateFCL
             quoteNumber={quoteNumber}
-            customerName={user?.username || "Customer"}
+            customerName={activeUsername || "Customer"}
             pol={rutaSeleccionada.pol}
             pod={rutaSeleccionada.pod}
             effectiveDate={new Date().toLocaleDateString()}
@@ -693,7 +693,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
       // ── 3. Generar base64 + subir a MongoDB ANTES de descargar ──
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
       if (pdfElement) {
-        const customerClean = (user?.username || "Cliente").replace(
+        const customerClean = (activeUsername || "Cliente").replace(
           /[^a-zA-Z0-9]/g,
           "_",
         );
@@ -796,7 +796,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: user?.username,
+          name: activeUsername,
         },
         currency: {
           abbr: rutaSeleccionada.currency,
@@ -826,7 +826,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: user?.username,
+          name: activeUsername,
         },
         currency: {
           abbr: rutaSeleccionada.currency,
@@ -861,7 +861,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: rutaSeleccionada.currency,
@@ -894,7 +894,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: user?.username,
+          name: activeUsername,
         },
         currency: {
           abbr: rutaSeleccionada.currency,
@@ -935,7 +935,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: user?.username,
+            name: activeUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -961,7 +961,7 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
       },
       customerReference: "Portal Created [FCL]",
       contact: {
-        name: user?.username,
+        name: activeUsername,
       },
       origin: {
         name: rutaSeleccionada.pol,
@@ -985,10 +985,10 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         name: rutaSeleccionada.pol,
       },
       shipper: {
-        name: user?.username,
+        name: activeUsername,
       },
       consignee: {
-        name: user?.username,
+        name: activeUsername,
       },
       issuingCompany: {
         name: rutaSeleccionada?.carrier || "",

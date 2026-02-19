@@ -93,6 +93,7 @@ interface IUser {
   email: string;
   nombreuser: string;
   username: string;
+  usernames: string[];  // Múltiples empresas/cuentas asignadas
   passwordHash: string;
   ejecutivoId?: mongoose.Types.ObjectId;  // Referencia al ejecutivo
 }
@@ -108,6 +109,7 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     username: { type: String, required: true, trim: true },
+    usernames: { type: [String], default: [] },  // Múltiples empresas
     nombreuser: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
     ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
@@ -422,11 +424,17 @@ app.post('/api/login', async (req, res) => {
       }
     }
 
+    // Construir usernames: usar el array si existe, sino fallback a [username]
+    const usernames = (user.usernames && user.usernames.length > 0)
+      ? user.usernames
+      : [user.username];
+
     return res.json({
       token,
       user: { 
         email: user.email, 
         username: user.username,
+        usernames,
         nombreuser: user.nombreuser,
         ejecutivo: ejecutivo ? {
           id: ejecutivo._id,
@@ -472,10 +480,16 @@ app.get('/api/me', auth, async (req, res) => {
       }
     }
 
+    // Construir usernames: usar el array si existe, sino fallback a [username]
+    const usernames = (user.usernames && user.usernames.length > 0)
+      ? user.usernames
+      : [user.username];
+
     res.json({ 
       user: {
         sub: user.email,
         username: user.username,
+        usernames,
         nombreuser: user.nombreuser,
         ejecutivo: ejecutivo ? {
           id: ejecutivo._id,
@@ -773,8 +787,8 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       return res.status(403).json({ error: 'No tienes permisos para crear usuarios' });
     }
 
-    // ✅ MODIFICADO: Recibir ejecutivoId y nombreuser
-    const { email, username, nombreuser, password, ejecutivoId } = (req.body as any) || {}; // ✅ AGREGADO nombreuser
+    // ✅ MODIFICADO: Recibir ejecutivoId, nombreuser y usernames
+    const { email, username, nombreuser, password, ejecutivoId, usernames } = (req.body as any) || {}; // ✅ AGREGADO usernames
     if (!email || !username || !nombreuser || !password) { // ✅ AGREGADO nombreuser
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
@@ -787,9 +801,15 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
 
     const passwordHash = bcrypt.hashSync(String(password), 12);
 
+    // Construir array de usernames
+    const usernamesArray = Array.isArray(usernames) && usernames.length > 0
+      ? usernames.map((u: string) => String(u).trim()).filter(Boolean)
+      : [String(username).trim()];
+
     const newUser = new User({
       email: normalizedEmail,
       username: String(username).trim(),
+      usernames: usernamesArray,
       nombreuser: String(nombreuser).trim(), // ✅ AGREGADO
       passwordHash,
       ejecutivoId: ejecutivoId || undefined
@@ -831,6 +851,7 @@ app.get('/api/admin/users', auth, async (req, res) => {
         id: u._id,
         email: u.email,
         username: u.username,
+        usernames: (u.usernames && u.usernames.length > 0) ? u.usernames : [u.username],
         nombreuser: u.nombreuser,
         createdAt: u.createdAt,
         ejecutivo: u.ejecutivoId ? {
@@ -909,6 +930,17 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
     // Actualizar campos
     if (username) {
       userToUpdate.username = String(username).trim();
+    }
+
+    // ✅ AGREGADO: Actualizar usernames
+    const { usernames: newUsernames } = (req.body as any) || {};
+    if (Array.isArray(newUsernames)) {
+      const cleanUsernames = newUsernames.map((u: string) => String(u).trim()).filter(Boolean);
+      if (cleanUsernames.length > 0) {
+        userToUpdate.usernames = cleanUsernames;
+        // Sincronizar username con el primer elemento
+        userToUpdate.username = cleanUsernames[0];
+      }
     }
 
     // ✅ AGREGADO: Actualizar nombreuser

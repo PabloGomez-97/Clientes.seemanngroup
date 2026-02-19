@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import logoSeemann from "../../public/logo.png";
 
 export default function ChatWidget() {
-  const { user } = useAuth();
+  const { user, activeUsername } = useAuth();
   const {
     messages,
     isOpen,
@@ -260,7 +260,7 @@ export default function ChatWidget() {
                     fontWeight: "500",
                   }}
                 >
-                  Bienvenido {user?.username ?? ""}
+                  Bienvenido {activeUsername ?? ""}
                 </p>
                 <p
                   style={{

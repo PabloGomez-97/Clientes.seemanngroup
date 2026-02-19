@@ -11,7 +11,7 @@ const API_BASE_URL =
     : "https://portalclientes.seemanngroup.com";
 
 function CreateShipmentForm() {
-  const { user, token } = useAuth();
+  const { user, token, activeUsername } = useAuth();
   const { registrarEvento } = useAuditLog();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -107,7 +107,7 @@ function CreateShipmentForm() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          reference: user?.username,
+          reference: activeUsername,
           awb_number: cleanAwb,
           followers,
           tags,
@@ -193,7 +193,7 @@ function CreateShipmentForm() {
                   type="text"
                   id="csf-reference"
                   className="csf-input"
-                  value={user?.username || ""}
+                  value={activeUsername || ""}
                   disabled
                 />
               </div>

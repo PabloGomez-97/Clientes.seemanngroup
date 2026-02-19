@@ -75,7 +75,7 @@ const API_BASE_URL =
     : "https://portalclientes.seemanngroup.com";
 
 function ShipsGoTracking() {
-  const { user } = useAuth();
+  const { user, activeUsername } = useAuth();
   const navigate = useNavigate();
 
   const [allShipments, setAllShipments] = useState<Shipment[]>([]);
@@ -87,11 +87,11 @@ function ShipsGoTracking() {
   const [showModal, setShowModal] = useState(false);
 
   const userShipments = useMemo(() => {
-    if (!user?.username) return [];
+    if (!activeUsername) return [];
     return allShipments.filter(
-      (s) => s.reference !== null && s.reference === user.username,
+      (s) => s.reference !== null && s.reference === activeUsername,
     );
-  }, [allShipments, user?.username]);
+  }, [allShipments, activeUsername]);
 
   // Stats
   const stats = useMemo(() => {
@@ -200,7 +200,7 @@ function ShipsGoTracking() {
           <div className="sg-page-header">
             <div className="sg-page-header-left">
               <h1>Rastreo de envíos</h1>
-              <p>{user?.username}</p>
+              <p>{activeUsername}</p>
             </div>
           </div>
           <div className="sg-loading">
@@ -220,7 +220,7 @@ function ShipsGoTracking() {
           <div className="sg-page-header">
             <div className="sg-page-header-left">
               <h1>Rastreo de envíos</h1>
-              <p>{user?.username}</p>
+              <p>{activeUsername}</p>
             </div>
           </div>
           <div className="sg-error">
@@ -243,7 +243,7 @@ function ShipsGoTracking() {
           <div className="sg-page-header">
             <div className="sg-page-header-left">
               <h1>Rastreo de envíos</h1>
-              <p>{user?.username}</p>
+              <p>{activeUsername}</p>
             </div>
           </div>
           <div className="sg-empty">
@@ -269,7 +269,7 @@ function ShipsGoTracking() {
         <div className="sg-page-header">
           <div className="sg-page-header-left">
             <h1>Rastreo de envíos</h1>
-            <p>{user?.username}</p>
+            <p>{activeUsername}</p>
           </div>
           <button
             className="sg-btn-new"
