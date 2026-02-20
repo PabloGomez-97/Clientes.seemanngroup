@@ -52,6 +52,7 @@ import ReporteriaOperacional from "./components/Sidebar/ReporteriaOperacional";
 import Changelog from "./components/Sidebar/Changelog";
 import ShipsGoTracking from "./components/Sidebar/Shipsgotracking";
 import CreateShipmentForm from "./components/Sidebar/CreateShipmentForm";
+import Novedades from "./components/Sidebar/Novedades";
 
 // OFF
 import Operacionales from "./components/Sidebar/RO2";
@@ -161,6 +162,7 @@ function App() {
         <Route path="changelog" element={<Changelog />} />
         <Route path="operacional" element={<ReporteriaOperacional />} />
         <Route path="new-tracking" element={<CreateShipmentForm />} />
+        <Route path="novedades" element={<Novedades />} />
       </Route>
 
       {/* Ruta por defecto */}

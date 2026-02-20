@@ -1,13 +1,33 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { format } from "date-fns";
+import { es, enUS } from "date-fns/locale";
+import { getRecentPosts } from "../services/contentful";
+import type { BlogPost } from "../services/contentful";
 import "./Home.css";
 import ItineraryFinder from "./ItineraryFinder";
 
 const Home: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+
+  const dateLocale = i18n.language === "es" ? es : enUS;
+
+  useEffect(() => {
+    getRecentPosts(4).then(setBlogPosts);
+  }, []);
+
+  const formatBlogDate = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), "d MMM yyyy", { locale: dateLocale });
+    } catch {
+      return dateStr;
+    }
+  };
 
   const slides = [
     {
@@ -410,86 +430,61 @@ const Home: React.FC = () => {
 
         <div className="hal-teasers hal-teasers--home">
           <div className="hal-carousel--news">
-            <div className="hal-teaser hal-teaser--secondary">
-              <div className="hal-teaser-content hal-module--grey">
-                <a href="#" onClick={(e) => e.preventDefault()}>
-                  <div className="hal-teaser-top">
-                    <div
-                      className="hal-teaser-img"
-                      style={{
-                        backgroundImage: `url(/insights1.png)`,
-                      }}
-                    ></div>
-                    <div className="hal-meta">
-                      <time>4 feb 2026</time>
+            {blogPosts.length > 0
+              ? blogPosts.map((post) => (
+                  <div
+                    key={post.id}
+                    className="hal-teaser hal-teaser--secondary"
+                    onClick={() =>
+                      navigate("/novedades", { state: { slug: post.slug } })
+                    }
+                    style={{ cursor: "pointer" }}
+                  >
+                    <div className="hal-teaser-content hal-module--grey">
+                      <div className="hal-teaser-top">
+                        <div
+                          className="hal-teaser-img"
+                          style={{
+                            backgroundImage: post.featuredImageUrl
+                              ? `url(${post.featuredImageUrl})`
+                              : "linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)",
+                          }}
+                        ></div>
+                        <div className="hal-meta">
+                          <time>{formatBlogDate(post.publishDate)}</time>
+                        </div>
+                      </div>
+                      <div className="hal-teaser-bottom">
+                        <p className="hal-teaser-text">{post.title}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="hal-teaser-bottom">
-                    <p className="hal-teaser-text">{t("home.news.item1")}</p>
-                  </div>
-                </a>
-              </div>
-            </div>
-            <div className="hal-teaser hal-teaser--secondary">
-              <div className="hal-teaser-content hal-module--grey">
-                <a href="#" onClick={(e) => e.preventDefault()}>
-                  <div className="hal-teaser-top">
-                    <div
-                      className="hal-teaser-img"
-                      style={{
-                        backgroundImage: `url(/insights2.png)`,
-                      }}
-                    ></div>
-                    <div className="hal-meta">
-                      <time>4 feb 2026</time>
+                ))
+              : [1, 2, 3, 4].map((i) => (
+                  <div key={i} className="hal-teaser hal-teaser--secondary">
+                    <div className="hal-teaser-content hal-module--grey">
+                      <div className="hal-teaser-top">
+                        <div
+                          className="hal-teaser-img"
+                          style={{
+                            backgroundImage: `url(/insights${i}.png)`,
+                          }}
+                        ></div>
+                        <div className="hal-meta">
+                          <time>—</time>
+                        </div>
+                      </div>
+                      <div className="hal-teaser-bottom">
+                        <p
+                          className="hal-teaser-text"
+                          style={{ color: "#d1d5db" }}
+                        >
+                          {t("novedades.loading")}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                  <div className="hal-teaser-bottom">
-                    <p className="hal-teaser-text">{t("home.news.item2")}</p>
-                  </div>
-                </a>
-              </div>
-            </div>
-            <div className="hal-teaser hal-teaser--secondary">
-              <div className="hal-teaser-content hal-module--grey">
-                <a href="#" onClick={(e) => e.preventDefault()}>
-                  <div className="hal-teaser-top">
-                    <div
-                      className="hal-teaser-img"
-                      style={{
-                        backgroundImage: `url(/insights3.png)`,
-                      }}
-                    ></div>
-                    <div className="hal-meta">
-                      <time>4 feb 2026</time>
-                    </div>
-                  </div>
-                  <div className="hal-teaser-bottom">
-                    <p className="hal-teaser-text">{t("home.news.item3")}</p>
-                  </div>
-                </a>
-              </div>
-            </div>
-            <div className="hal-teaser hal-teaser--secondary">
-              <div className="hal-teaser-content hal-module--grey">
-                <a href="#" onClick={(e) => e.preventDefault()}>
-                  <div className="hal-teaser-top">
-                    <div
-                      className="hal-teaser-img"
-                      style={{
-                        backgroundImage: `url(/insights4.png)`,
-                      }}
-                    ></div>
-                    <div className="hal-meta">
-                      <time>4 feb 2026</time>
-                    </div>
-                  </div>
-                  <div className="hal-teaser-bottom">
-                    <p className="hal-teaser-text">{t("home.news.item4")}</p>
-                  </div>
-                </a>
-              </div>
-            </div>
+                ))}
           </div>
         </div>
 

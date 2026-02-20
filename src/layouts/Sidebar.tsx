@@ -87,6 +87,16 @@ function Sidebar({ isOpen }: SidebarProps) {
       ],
     },
     {
+      title: t("home.sidebar.news"),
+      items: [
+        {
+          path: "/novedades",
+          name: t("home.sidebar.novedades"),
+          icon: "fa fa-newspaper",
+        },
+      ],
+    },
+    {
       title: t("home.sidebar.trackingOperations"),
       items: [
         {

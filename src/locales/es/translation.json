@@ -130,7 +130,9 @@
       "reports": "Reportes",
       "reporting": "Reportería",
       "financial": "Financiera",
-      "operational": "Operacional"
+      "operational": "Operacional",
+      "news": "Novedades",
+      "novedades": "Novedades"
     },
     "userLayout": {
       "linbisTokenError": "No se pudo obtener el token de Linbis",
@@ -381,5 +383,13 @@
   },
   "sidebar": {
     "account": "Cuenta Activa"
+  },
+  "novedades": {
+    "title": "Novedades",
+    "subtitle": "Últimas noticias y artículos del blog",
+    "loading": "Cargando...",
+    "noPosts": "No hay publicaciones disponibles",
+    "readMore": "Leer más",
+    "backToList": "Volver al listado"
   }
 }
