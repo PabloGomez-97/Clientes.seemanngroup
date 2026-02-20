@@ -114,6 +114,16 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
         const data = parseCSV(csvText);
 
         const rutasParsed = parseFCL(data);
+        // Debug: mostrar formato de validUntil que llega del CSV
+        const conValidez = rutasParsed.filter((r) => r.validUntil);
+        if (conValidez.length > 0) {
+          console.log(
+            "📅 Formato validUntil del CSV (primeras 5):",
+            conValidez
+              .slice(0, 5)
+              .map((r) => ({ carrier: r.carrier, validUntil: r.validUntil })),
+          );
+        }
         setRutas(rutasParsed);
 
         // Extraer POLs únicos
@@ -301,12 +311,112 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
   }, [containerSeleccionado]);
 
   // ============================================================================
-  // FILTRAR RUTAS
+  // VALIDITY PARSER: determina si la fecha "Validez" está vigente
+  // Formato esperado: DD/M/YYYY (ej: 28/2/2026)
+  // ============================================================================
+  const getValidityClass = (
+    validUntil?: string | null,
+  ): "valid" | "expired" | null => {
+    if (!validUntil) return null;
+
+    const txt = String(validUntil).trim();
+    if (!txt) return null;
+
+    let expiry: Date | null = null;
+
+    // 1) Intentar formato numérico serial de Google Sheets (ej: 46072)
+    if (/^\d{5}$/.test(txt)) {
+      const serial = parseInt(txt, 10);
+      // Google Sheets usa epoch 30/12/1899
+      const epoch = new Date(1899, 11, 30);
+      expiry = new Date(epoch.getTime() + serial * 86400000);
+    }
+
+    // 2) Intentar formato DD/MM/YYYY o DD/M/YYYY
+    if (!expiry) {
+      const match = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (match) {
+        const part1 = parseInt(match[1], 10);
+        const part2 = parseInt(match[2], 10);
+        const year = parseInt(match[3], 10);
+
+        // Si part1 > 12, es definitivamente DD/M/YYYY
+        // Si part2 > 12, es definitivamente M/D/YYYY
+        // Si ambos <= 12, asumimos DD/M/YYYY (formato latino)
+        if (part1 > 12) {
+          // DD/M/YYYY → part1=día, part2=mes
+          expiry = new Date(year, part2 - 1, part1, 23, 59, 59, 999);
+        } else if (part2 > 12) {
+          // M/D/YYYY → part1=mes, part2=día
+          expiry = new Date(year, part1 - 1, part2, 23, 59, 59, 999);
+        } else {
+          // Ambos <= 12: asumimos DD/M/YYYY (formato del Excel en español)
+          expiry = new Date(year, part2 - 1, part1, 23, 59, 59, 999);
+        }
+      }
+    }
+
+    // 3) Intentar formato texto español (ej: "28 febrero 2026" o "28 febrero")
+    if (!expiry) {
+      const matchText = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
+      if (matchText) {
+        const day = parseInt(matchText[1], 10);
+        const monthName = matchText[2].toLowerCase();
+        const year = matchText[3]
+          ? parseInt(matchText[3], 10)
+          : new Date().getFullYear();
+
+        const monthMap: Record<string, number> = {
+          enero: 0,
+          febrero: 1,
+          marzo: 2,
+          abril: 3,
+          mayo: 4,
+          junio: 5,
+          julio: 6,
+          agosto: 7,
+          septiembre: 8,
+          octubre: 9,
+          noviembre: 10,
+          diciembre: 11,
+          ene: 0,
+          feb: 1,
+          mar: 2,
+          abr: 3,
+          may: 4,
+          jun: 5,
+          jul: 6,
+          ago: 7,
+          sep: 8,
+          oct: 9,
+          nov: 10,
+          dic: 11,
+        };
+
+        const monthIndex = monthMap[monthName];
+        if (monthIndex !== undefined) {
+          expiry = new Date(year, monthIndex, day, 23, 59, 59, 999);
+        }
+      }
+    }
+
+    if (!expiry || isNaN(expiry.getTime())) return null;
+
+    const now = new Date();
+    return expiry >= now ? "valid" : "expired";
+  };
+
+  // ============================================================================
+  // FILTRAR RUTAS (excluye rutas con fecha vencida)
   // ============================================================================
 
   const rutasFiltradas = rutas
     .filter((ruta) => {
       if (!polSeleccionado || !podSeleccionado) return false;
+
+      // Excluir rutas cuya validez haya expirado
+      const validityState = getValidityClass(ruta.validUntil);
+      if (validityState === "expired") return false;
 
       const matchPOL = ruta.polNormalized === polSeleccionado.value;
       const matchPOD = ruta.podNormalized === podSeleccionado.value;
@@ -1216,11 +1326,10 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                           <i className="bi bi-search text-muted fs-3"></i>
                           <div>
                             <p className="mb-1 fw-semibold">
-                              No se encontraron rutas
+                              {t("Quotelcl.norutas")}
                             </p>
                             <small className="text-muted">
-                              Intenta ajustar los filtros o seleccionar otras
-                              ubicaciones
+                              {t("Quotelcl.intenta")}
                             </small>
                           </div>
                         </div>
@@ -1251,22 +1360,6 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                     : "none",
                               }}
                             >
-                              {/* Badge de "Mejor Opción" */}
-                              {index === 0 && (
-                                <div
-                                  className="position-absolute top-0 end-0 badge bg-warning text-dark"
-                                  style={{
-                                    borderTopRightRadius: "0.375rem",
-                                    borderBottomLeftRadius: "0.375rem",
-                                    fontSize: "0.7rem",
-                                    zIndex: 1,
-                                  }}
-                                >
-                                  <i className="bi bi-star-fill"></i> Mejor
-                                  Opción
-                                </div>
-                              )}
-
                               <div>
                                 {/* Header del carrier con logo */}
                                 <div className="d-flex justify-content-between align-items-start mb-3">
@@ -1353,6 +1446,50 @@ function QuoteFCL({ preselectedPOL, preselectedPOD }: QuoteFCLProps = {}) {
                                     {ruta.company}
                                   </p>
                                 )}
+
+                                {/* Validez */}
+                                <div className="mb-3">
+                                  <div
+                                    className="d-flex align-items-center gap-2 p-2 rounded"
+                                    style={{
+                                      backgroundColor: ruta.validUntil
+                                        ? "rgba(25, 135, 84, 0.08)"
+                                        : "var(--qf-bg-light)",
+                                    }}
+                                  >
+                                    <i
+                                      className="bi bi-calendar-check"
+                                      style={{
+                                        color: ruta.validUntil
+                                          ? "#198754"
+                                          : "var(--qf-text-secondary)",
+                                      }}
+                                    ></i>
+                                    <div className="flex-grow-1">
+                                      <small
+                                        className="d-block"
+                                        style={{
+                                          fontSize: "0.7rem",
+                                          color: "var(--qf-text-secondary)",
+                                        }}
+                                      >
+                                        Validez
+                                      </small>
+                                      <small
+                                        className="fw-semibold"
+                                        style={{
+                                          color: ruta.validUntil
+                                            ? "#198754"
+                                            : "var(--qf-text-secondary)",
+                                        }}
+                                      >
+                                        {ruta.validUntil
+                                          ? `Válido hasta ${ruta.validUntil}`
+                                          : "Sin validez"}
+                                      </small>
+                                    </div>
+                                  </div>
+                                </div>
 
                                 {/* Botones de Contenedores */}
                                 <div className="d-flex flex-column gap-2">

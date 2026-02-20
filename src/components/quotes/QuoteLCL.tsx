@@ -516,12 +516,105 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
   const hasNotApilable = piecesData.some((piece) => piece.isNotApilable);
 
   // ============================================================================
-  // FILTRAR RUTAS
+  // VALIDITY PARSER: determina si la fecha "Validez" está vigente
+  // Formato esperado: DD/M/YYYY (ej: 28/2/2026)
+  // ============================================================================
+  const getValidityClass = (
+    validUntil?: string | null,
+  ): "valid" | "expired" | null => {
+    if (!validUntil) return null;
+
+    const txt = String(validUntil).trim();
+    if (!txt) return null;
+
+    let expiry: Date | null = null;
+
+    // 1) Intentar formato numérico serial de Google Sheets (ej: 46072)
+    if (/^\d{5}$/.test(txt)) {
+      const serial = parseInt(txt, 10);
+      const epoch = new Date(1899, 11, 30);
+      expiry = new Date(epoch.getTime() + serial * 86400000);
+    }
+
+    // 2) Intentar formato DD/MM/YYYY o DD/M/YYYY
+    if (!expiry) {
+      const match = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (match) {
+        const part1 = parseInt(match[1], 10);
+        const part2 = parseInt(match[2], 10);
+        const year = parseInt(match[3], 10);
+
+        if (part1 > 12) {
+          expiry = new Date(year, part2 - 1, part1, 23, 59, 59, 999);
+        } else if (part2 > 12) {
+          expiry = new Date(year, part1 - 1, part2, 23, 59, 59, 999);
+        } else {
+          expiry = new Date(year, part2 - 1, part1, 23, 59, 59, 999);
+        }
+      }
+    }
+
+    // 3) Intentar formato texto español (ej: "28 febrero 2026")
+    if (!expiry) {
+      const matchText = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
+      if (matchText) {
+        const day = parseInt(matchText[1], 10);
+        const monthName = matchText[2].toLowerCase();
+        const year = matchText[3]
+          ? parseInt(matchText[3], 10)
+          : new Date().getFullYear();
+
+        const monthMap: Record<string, number> = {
+          enero: 0,
+          febrero: 1,
+          marzo: 2,
+          abril: 3,
+          mayo: 4,
+          junio: 5,
+          julio: 6,
+          agosto: 7,
+          septiembre: 8,
+          octubre: 9,
+          noviembre: 10,
+          diciembre: 11,
+          ene: 0,
+          feb: 1,
+          mar: 2,
+          abr: 3,
+          may: 4,
+          jun: 5,
+          jul: 6,
+          ago: 7,
+          sep: 8,
+          oct: 9,
+          nov: 10,
+          dic: 11,
+        };
+
+        const monthIndex = monthMap[monthName];
+        if (monthIndex !== undefined) {
+          expiry = new Date(year, monthIndex, day, 23, 59, 59, 999);
+        }
+      }
+    }
+
+    if (!expiry || isNaN(expiry.getTime())) return null;
+
+    const now = new Date();
+    return expiry >= now ? "valid" : "expired";
+  };
+
+  // ============================================================================
+  // FILTRAR RUTAS (excluye rutas con fecha vencida)
   // ============================================================================
 
   const rutasFiltradas = rutas
     .filter((ruta) => {
       if (!polSeleccionado || !podSeleccionado) return false;
+
+      // Excluir rutas cuya validez haya expirado
+      const validityState = getValidityClass(ruta.validUntil);
+      if (validityState === "expired") return false;
 
       const matchPOL = ruta.polNormalized === polSeleccionado.value;
       const matchPOD = ruta.podNormalized === podSeleccionado.value;
@@ -1500,11 +1593,6 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                         {t("Quotelcl.rutasdisponibles")} (
                         {rutasFiltradas.length})
                       </h6>
-                      {rutasFiltradas.length > 0 && (
-                        <small className="text-muted">
-                          {t("Quotelcl.seleccionamejor")}
-                        </small>
-                      )}
                     </div>
 
                     {rutasFiltradas.length === 0 ? (
@@ -1532,6 +1620,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                               <th className="text-center">
                                 {t("Quotelcl.agente")}
                               </th>
+                              <th className="text-center">Validez</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1561,16 +1650,6 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                       ></i>
                                     ) : (
                                       <i className="bi bi-circle text-muted"></i>
-                                    )}
-                                    {index === 0 && (
-                                      <div className="mt-1">
-                                        <span
-                                          className="qa-badge qa-badge-primary"
-                                          title={t("Quotelcl.mejoropcion")}
-                                        >
-                                          <i className="bi bi-star-fill"></i>
-                                        </span>
-                                      </div>
                                     )}
                                   </td>
                                   <td>
@@ -1614,6 +1693,22 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                   </td>
                                   <td className="text-center text-muted small">
                                     {ruta.agente || "—"}
+                                  </td>
+                                  <td className="text-center small">
+                                    {ruta.validUntil ? (
+                                      <span
+                                        style={{
+                                          color: "#198754",
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        {ruta.validUntil}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted">
+                                        Sin validez
+                                      </span>
+                                    )}
                                   </td>
                                 </tr>
                               );

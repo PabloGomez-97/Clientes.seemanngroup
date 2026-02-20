@@ -322,7 +322,7 @@
     "operador": "Operator",
     "seleccionamejor": "Select the best option for your shipment",
     "norutas": " No routes available",
-    "intenta": "Please try again",
+    "intenta": "No routes available for the selected origin and destination.",
     "mejoropcion": "Best Option",
     "seleccionada": "Select",
     "tarifas": "Rates of W/M",

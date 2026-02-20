@@ -38,6 +38,7 @@ export interface RutaLCL {
   ttAprox: string | null;
   operador: string;
   operadorNormalized: string;
+  validUntil: string | null;
   row_number: number;
 }
 
@@ -181,6 +182,7 @@ export const parseLCL = (data: any[]): RutaLCL[] => {
     const agente = row[7];
     const ttAprox = row[8];
     const operador = row[9];
+    const validUntil = row[10];
 
     if (
       pol &&
@@ -210,6 +212,7 @@ export const parseLCL = (data: any[]): RutaLCL[] => {
         ttAprox: ttAprox ? ttAprox.toString().trim() : null,
         operador: operador.toString().trim(),
         operadorNormalized: normalize(operador),
+        validUntil: validUntil ? validUntil.toString().trim() : null,
         row_number: i + 1,
       });
     }

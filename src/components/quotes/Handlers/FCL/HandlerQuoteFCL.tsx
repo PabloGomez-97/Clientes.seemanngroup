@@ -21,6 +21,7 @@ export interface RutaFCL {
   remarks: string;
   company: string;
   companyNormalized: string;
+  validUntil: string | null;
   row_number: number;
   priceForComparison: number;
   currency: Currency;
@@ -156,7 +157,8 @@ export const parseFCL = (data: any[]): RutaFCL[] => {
     const tt = row[7];
     const remarks = row[8];
     const company = row[10];
-    const currency = row[11]; // 🆕 Nueva columna de moneda
+    const currency = row[11];
+    const validUntil = row[12];
 
     if (pol && pod && typeof pol === "string" && typeof pod === "string") {
       // Parsear la moneda desde la columna [11]
@@ -178,6 +180,7 @@ export const parseFCL = (data: any[]): RutaFCL[] => {
         remarks: remarks ? remarks.toString().trim() : "",
         company: company ? company.toString().trim() : "",
         companyNormalized: normalize(company),
+        validUntil: validUntil ? validUntil.toString().trim() : null,
         row_number: i + 1,
         priceForComparison: price,
         currency: parsedCurrency, // 🆕 Usar la moneda parseada desde columna [11]
