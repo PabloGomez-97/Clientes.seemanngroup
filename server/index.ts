@@ -337,6 +337,52 @@ AuditLogSchema.index({ usuario: 1, createdAt: -1 });
 
 const AuditLog = (mongoose.models.AuditLog || mongoose.model<IAuditLogDoc>('AuditLog', AuditLogSchema)) as AuditLogModel;
 
+// ============================================================
+// MODELO ALUMNOS PRÁCTICA
+// ============================================================
+interface IAlumnoPuntaje {
+  puntaje: number;
+  tipoEntrenamiento: string;
+  fecha: Date;
+}
+
+interface IAlumno {
+  nombre: string;
+  tipoEntrenamiento: string;
+  puntajeTotal: number;
+  historial: IAlumnoPuntaje[];
+  activo: boolean;
+}
+
+interface IAlumnoDoc extends IAlumno, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type AlumnoModel = mongoose.Model<IAlumnoDoc>;
+
+const AlumnoPuntajeSchema = new mongoose.Schema({
+  puntaje: { type: Number, required: true },
+  tipoEntrenamiento: { type: String, required: true, trim: true },
+  fecha: { type: Date, default: Date.now },
+}, { _id: true });
+
+const AlumnoSchema = new mongoose.Schema<IAlumnoDoc>(
+  {
+    nombre: { type: String, required: true, trim: true },
+    tipoEntrenamiento: { type: String, required: true, trim: true },
+    puntajeTotal: { type: Number, default: 0 },
+    historial: { type: [AlumnoPuntajeSchema], default: [] },
+    activo: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
+
+AlumnoSchema.index({ puntajeTotal: -1 });
+AlumnoSchema.index({ nombre: 1 });
+
+const Alumno = (mongoose.models.Alumno || mongoose.model<IAlumnoDoc>('Alumno', AlumnoSchema)) as AlumnoModel;
+
 // Conectar a MongoDB
 mongoose
   .connect(MONGODB_URI, { bufferCommands: false })
@@ -2182,6 +2228,161 @@ app.get('/api/audit', auth, async (req, res) => {
   } catch (error: any) {
     console.error('[audit] Error al listar eventos:', error);
     return res.status(500).json({ error: 'Error al obtener auditoría' });
+  }
+});
+
+// ============================================================
+// RUTAS DE ALUMNOS PRÁCTICA
+// ============================================================
+
+// GET /api/alumnos - Obtener todos los alumnos ordenados por puntaje
+app.get('/api/alumnos', auth, async (_req, res) => {
+  try {
+    const alumnos = await Alumno.find({ activo: true }).sort({ puntajeTotal: -1 }).lean();
+    return res.json({ alumnos });
+  } catch (error) {
+    console.error('[alumnos] Error:', error);
+    return res.status(500).json({ error: 'Error al obtener alumnos' });
+  }
+});
+
+// POST /api/alumnos - Crear un nuevo alumno
+app.post('/api/alumnos', auth, async (req, res) => {
+  try {
+    const { nombre, tipoEntrenamiento, puntaje } = req.body || {};
+    if (!nombre || !tipoEntrenamiento || puntaje === undefined) {
+      return res.status(400).json({ error: 'Nombre, tipo de entrenamiento y puntaje son requeridos' });
+    }
+    const puntajeNum = Number(puntaje);
+    if (isNaN(puntajeNum) || puntajeNum < 0) {
+      return res.status(400).json({ error: 'El puntaje debe ser un número válido >= 0' });
+    }
+    const alumno = await Alumno.create({
+      nombre: nombre.trim(),
+      tipoEntrenamiento: tipoEntrenamiento.trim(),
+      puntajeTotal: puntajeNum,
+      historial: [{ puntaje: puntajeNum, tipoEntrenamiento: tipoEntrenamiento.trim(), fecha: new Date() }],
+    });
+    return res.status(201).json({ alumno });
+  } catch (error) {
+    console.error('[alumnos] Error al crear alumno:', error);
+    return res.status(500).json({ error: 'Error al crear alumno' });
+  }
+});
+
+// POST /api/alumnos/puntaje - Agregar puntaje a un alumno existente
+app.post('/api/alumnos/puntaje', auth, async (req, res) => {
+  try {
+    const { alumnoId, tipoEntrenamiento, puntaje } = req.body || {};
+    if (!alumnoId || !tipoEntrenamiento || puntaje === undefined) {
+      return res.status(400).json({ error: 'alumnoId, tipoEntrenamiento y puntaje son requeridos' });
+    }
+    const puntajeNum = Number(puntaje);
+    if (isNaN(puntajeNum) || puntajeNum < 0) {
+      return res.status(400).json({ error: 'El puntaje debe ser un número válido >= 0' });
+    }
+    const alumno = await Alumno.findByIdAndUpdate(
+      alumnoId,
+      {
+        $inc: { puntajeTotal: puntajeNum },
+        $set: { tipoEntrenamiento: tipoEntrenamiento.trim() },
+        $push: { historial: { puntaje: puntajeNum, tipoEntrenamiento: tipoEntrenamiento.trim(), fecha: new Date() } },
+      },
+      { new: true }
+    );
+    if (!alumno) {
+      return res.status(404).json({ error: 'Alumno no encontrado' });
+    }
+    return res.json({ alumno });
+  } catch (error) {
+    console.error('[alumnos] Error al agregar puntaje:', error);
+    return res.status(500).json({ error: 'Error al agregar puntaje' });
+  }
+});
+
+// GET /api/alumnos/ranking - Ranking con filtros por semana/mes
+app.get('/api/alumnos/ranking', auth, async (req, res) => {
+  try {
+    const periodo = (req.query.periodo as string) || 'total';
+    const mes = req.query.mes as string | undefined;
+    const anio = req.query.anio as string | undefined;
+
+    const alumnos = await Alumno.find({ activo: true }).lean();
+
+    if (periodo === 'total') {
+      const ranking = alumnos
+        .map(a => ({ _id: a._id, nombre: a.nombre, tipoEntrenamiento: a.tipoEntrenamiento, puntajeTotal: a.puntajeTotal }))
+        .sort((a, b) => b.puntajeTotal - a.puntajeTotal);
+      return res.json({ ranking, periodo });
+    }
+
+    let fechaInicio: Date;
+    let fechaFin: Date;
+
+    if (periodo === 'semana') {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      fechaInicio = new Date(now);
+      fechaInicio.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+      fechaInicio.setHours(0, 0, 0, 0);
+      fechaFin = new Date(now);
+      fechaFin.setHours(23, 59, 59, 999);
+    } else {
+      const m = mes !== undefined ? parseInt(mes) : new Date().getMonth();
+      const y = anio ? parseInt(anio) : new Date().getFullYear();
+      fechaInicio = new Date(y, m, 1);
+      fechaFin = new Date(y, m + 1, 0, 23, 59, 59, 999);
+    }
+
+    const ranking = alumnos.map(a => {
+      const puntosPeriodo = (a.historial || [])
+        .filter((h: any) => {
+          const f = new Date(h.fecha);
+          return f >= fechaInicio && f <= fechaFin;
+        })
+        .reduce((sum: number, h: any) => sum + h.puntaje, 0);
+      return {
+        _id: a._id,
+        nombre: a.nombre,
+        tipoEntrenamiento: a.tipoEntrenamiento,
+        puntajePeriodo: puntosPeriodo,
+        puntajeTotal: a.puntajeTotal,
+      };
+    })
+    .sort((a, b) => b.puntajePeriodo - a.puntajePeriodo);
+
+    return res.json({ ranking, periodo, fechaInicio, fechaFin });
+  } catch (error) {
+    console.error('[alumnos] Error ranking:', error);
+    return res.status(500).json({ error: 'Error al obtener ranking' });
+  }
+});
+
+// GET /api/alumnos/detalle/:id - Obtener un alumno específico con historial
+app.get('/api/alumnos/detalle/:id', auth, async (req, res) => {
+  try {
+    const alumno = await Alumno.findById(req.params.id).lean();
+    if (!alumno) {
+      return res.status(404).json({ error: 'Alumno no encontrado' });
+    }
+    return res.json({ alumno });
+  } catch (error) {
+    console.error('[alumnos] Error:', error);
+    return res.status(500).json({ error: 'Error al obtener alumno' });
+  }
+});
+
+// DELETE /api/alumnos/:id - Desactivar alumno
+app.delete('/api/alumnos/:id', auth, async (req, res) => {
+  try {
+    const alumno = await Alumno.findByIdAndUpdate(req.params.id, { activo: false }, { new: true });
+    if (!alumno) {
+      return res.status(404).json({ error: 'Alumno no encontrado' });
+    }
+    return res.json({ message: 'Alumno desactivado', alumno });
+  } catch (error) {
+    console.error('[alumnos] Error al eliminar:', error);
+    return res.status(500).json({ error: 'Error al eliminar alumno' });
   }
 });
 

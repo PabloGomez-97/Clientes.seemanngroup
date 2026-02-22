@@ -334,6 +334,52 @@ AuditLogSchema.index({ usuario: 1, createdAt: -1 });
 
 const AuditLog = (mongoose.models.AuditLog || mongoose.model<IAuditLogDoc>('AuditLog', AuditLogSchema)) as AuditLogModel;
 
+// ============================================================
+// MODELO ALUMNOS PRÁCTICA
+// ============================================================
+interface IAlumnoPuntaje {
+  puntaje: number;
+  tipoEntrenamiento: string;
+  fecha: Date;
+}
+
+interface IAlumno {
+  nombre: string;
+  tipoEntrenamiento: string;
+  puntajeTotal: number;
+  historial: IAlumnoPuntaje[];
+  activo: boolean;
+}
+
+interface IAlumnoDoc extends IAlumno, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type AlumnoModel = mongoose.Model<IAlumnoDoc>;
+
+const AlumnoPuntajeSchema = new mongoose.Schema({
+  puntaje: { type: Number, required: true },
+  tipoEntrenamiento: { type: String, required: true, trim: true },
+  fecha: { type: Date, default: Date.now },
+}, { _id: true });
+
+const AlumnoSchema = new mongoose.Schema<IAlumnoDoc>(
+  {
+    nombre: { type: String, required: true, trim: true },
+    tipoEntrenamiento: { type: String, required: true, trim: true },
+    puntajeTotal: { type: Number, default: 0 },
+    historial: { type: [AlumnoPuntajeSchema], default: [] },
+    activo: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
+
+AlumnoSchema.index({ puntajeTotal: -1 });
+AlumnoSchema.index({ nombre: 1 });
+
+const Alumno = (mongoose.models.Alumno || mongoose.model<IAlumnoDoc>('Alumno', AlumnoSchema)) as AlumnoModel;
+
 // Reutilizar la conexión de mongoose en serverless
 let cachedDb: typeof mongoose | null = null;
 
@@ -2253,6 +2299,189 @@ Sistema de Cotizaciones Seemann Group
         }
         console.error('[audit] Error al listar eventos:', error);
         return res.status(500).json({ error: 'Error al obtener auditoría' });
+      }
+    }
+
+    // ============================================================
+    // RUTAS DE ALUMNOS PRÁCTICA
+    // ============================================================
+
+    // GET /api/alumnos - Obtener todos los alumnos ordenados por puntaje
+    if (path === '/api/alumnos' && method === 'GET') {
+      try {
+        requireAuth(req);
+        const alumnos = await Alumno.find({ activo: true }).sort({ puntajeTotal: -1 }).lean();
+        return res.status(200).json({ alumnos });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[alumnos] Error:', error);
+        return res.status(500).json({ error: 'Error al obtener alumnos' });
+      }
+    }
+
+    // POST /api/alumnos - Crear un nuevo alumno
+    if (path === '/api/alumnos' && method === 'POST') {
+      try {
+        requireAuth(req);
+        const { nombre, tipoEntrenamiento, puntaje } = (req.body as any) || {};
+        if (!nombre || !tipoEntrenamiento || puntaje === undefined) {
+          return res.status(400).json({ error: 'Nombre, tipo de entrenamiento y puntaje son requeridos' });
+        }
+        const puntajeNum = Number(puntaje);
+        if (isNaN(puntajeNum) || puntajeNum < 0) {
+          return res.status(400).json({ error: 'El puntaje debe ser un número válido >= 0' });
+        }
+        const alumno = await Alumno.create({
+          nombre: nombre.trim(),
+          tipoEntrenamiento: tipoEntrenamiento.trim(),
+          puntajeTotal: puntajeNum,
+          historial: [{ puntaje: puntajeNum, tipoEntrenamiento: tipoEntrenamiento.trim(), fecha: new Date() }],
+        });
+        return res.status(201).json({ alumno });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[alumnos] Error al crear alumno:', error);
+        return res.status(500).json({ error: 'Error al crear alumno' });
+      }
+    }
+
+    // POST /api/alumnos/puntaje - Agregar puntaje a un alumno existente
+    if (path === '/api/alumnos/puntaje' && method === 'POST') {
+      try {
+        requireAuth(req);
+        const { alumnoId, tipoEntrenamiento, puntaje } = (req.body as any) || {};
+        if (!alumnoId || !tipoEntrenamiento || puntaje === undefined) {
+          return res.status(400).json({ error: 'alumnoId, tipoEntrenamiento y puntaje son requeridos' });
+        }
+        const puntajeNum = Number(puntaje);
+        if (isNaN(puntajeNum) || puntajeNum < 0) {
+          return res.status(400).json({ error: 'El puntaje debe ser un número válido >= 0' });
+        }
+        const alumno = await Alumno.findByIdAndUpdate(
+          alumnoId,
+          {
+            $inc: { puntajeTotal: puntajeNum },
+            $set: { tipoEntrenamiento: tipoEntrenamiento.trim() },
+            $push: { historial: { puntaje: puntajeNum, tipoEntrenamiento: tipoEntrenamiento.trim(), fecha: new Date() } },
+          },
+          { new: true }
+        );
+        if (!alumno) {
+          return res.status(404).json({ error: 'Alumno no encontrado' });
+        }
+        return res.status(200).json({ alumno });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[alumnos] Error al agregar puntaje:', error);
+        return res.status(500).json({ error: 'Error al agregar puntaje' });
+      }
+    }
+
+    // GET /api/alumnos/:id - Obtener un alumno específico con historial
+    if (path.startsWith('/api/alumnos/detalle/') && method === 'GET') {
+      try {
+        requireAuth(req);
+        const alumnoId = path.replace('/api/alumnos/detalle/', '');
+        const alumno = await Alumno.findById(alumnoId).lean();
+        if (!alumno) {
+          return res.status(404).json({ error: 'Alumno no encontrado' });
+        }
+        return res.status(200).json({ alumno });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[alumnos] Error:', error);
+        return res.status(500).json({ error: 'Error al obtener alumno' });
+      }
+    }
+
+    // GET /api/alumnos/ranking - Ranking con filtros por semana/mes
+    if (path === '/api/alumnos/ranking' && method === 'GET') {
+      try {
+        requireAuth(req);
+        const urlObj = new URL(url || '', `http://${req.headers.host}`);
+        const periodo = urlObj.searchParams.get('periodo') || 'total'; // total | semana | mes
+        const mes = urlObj.searchParams.get('mes'); // 0-11
+        const anio = urlObj.searchParams.get('anio'); // e.g. 2026
+
+        const alumnos = await Alumno.find({ activo: true }).lean();
+
+        if (periodo === 'total') {
+          const ranking = alumnos
+            .map(a => ({ _id: a._id, nombre: a.nombre, tipoEntrenamiento: a.tipoEntrenamiento, puntajeTotal: a.puntajeTotal }))
+            .sort((a, b) => b.puntajeTotal - a.puntajeTotal);
+          return res.status(200).json({ ranking, periodo });
+        }
+
+        let fechaInicio: Date;
+        let fechaFin: Date;
+
+        if (periodo === 'semana') {
+          const now = new Date();
+          const dayOfWeek = now.getDay();
+          fechaInicio = new Date(now);
+          fechaInicio.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+          fechaInicio.setHours(0, 0, 0, 0);
+          fechaFin = new Date(now);
+          fechaFin.setHours(23, 59, 59, 999);
+        } else {
+          // mes específico
+          const m = mes !== null ? parseInt(mes) : new Date().getMonth();
+          const y = anio ? parseInt(anio) : new Date().getFullYear();
+          fechaInicio = new Date(y, m, 1);
+          fechaFin = new Date(y, m + 1, 0, 23, 59, 59, 999);
+        }
+
+        const ranking = alumnos.map(a => {
+          const puntosPeriodo = (a.historial || [])
+            .filter((h: any) => {
+              const f = new Date(h.fecha);
+              return f >= fechaInicio && f <= fechaFin;
+            })
+            .reduce((sum: number, h: any) => sum + h.puntaje, 0);
+          return {
+            _id: a._id,
+            nombre: a.nombre,
+            tipoEntrenamiento: a.tipoEntrenamiento,
+            puntajePeriodo: puntosPeriodo,
+            puntajeTotal: a.puntajeTotal,
+          };
+        })
+        .sort((a, b) => b.puntajePeriodo - a.puntajePeriodo);
+
+        return res.status(200).json({ ranking, periodo, fechaInicio, fechaFin });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[alumnos] Error ranking:', error);
+        return res.status(500).json({ error: 'Error al obtener ranking' });
+      }
+    }
+
+    // DELETE /api/alumnos/:id - Desactivar alumno
+    if (path.startsWith('/api/alumnos/') && method === 'DELETE') {
+      try {
+        requireAuth(req);
+        const alumnoId = path.replace('/api/alumnos/', '');
+        const alumno = await Alumno.findByIdAndUpdate(alumnoId, { activo: false }, { new: true });
+        if (!alumno) {
+          return res.status(404).json({ error: 'Alumno no encontrado' });
+        }
+        return res.status(200).json({ message: 'Alumno desactivado', alumno });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[alumnos] Error al eliminar:', error);
+        return res.status(500).json({ error: 'Error al eliminar alumno' });
       }
     }
 
