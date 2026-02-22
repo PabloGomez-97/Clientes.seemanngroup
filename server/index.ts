@@ -2238,7 +2238,11 @@ app.get('/api/audit', auth, async (req, res) => {
 // GET /api/alumnos - Obtener todos los alumnos ordenados por puntaje
 app.get('/api/alumnos', auth, async (_req, res) => {
   try {
-    const alumnos = await Alumno.find({ activo: true }).sort({ puntajeTotal: -1 }).lean();
+    // Incluir documentos legacy sin campo `activo`
+    const filtroActivo = { $or: [{ activo: true }, { activo: { $exists: false } }] };
+    const alumnos = await Alumno.find(filtroActivo).sort({ puntajeTotal: -1 }).lean();
+    // Evitar cache de CDN/edge para respuesta dinámica
+    res.setHeader('Cache-Control', 'no-store');
     return res.json({ alumnos });
   } catch (error) {
     console.error('[alumnos] Error:', error);
@@ -2307,7 +2311,8 @@ app.get('/api/alumnos/ranking', auth, async (req, res) => {
     const mes = req.query.mes as string | undefined;
     const anio = req.query.anio as string | undefined;
 
-    const alumnos = await Alumno.find({ activo: true }).lean();
+    const filtroActivo = { $or: [{ activo: true }, { activo: { $exists: false } }] };
+    const alumnos = await Alumno.find(filtroActivo).lean();
 
     if (periodo === 'total') {
       const ranking = alumnos

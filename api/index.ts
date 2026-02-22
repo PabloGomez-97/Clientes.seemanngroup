@@ -2310,7 +2310,11 @@ Sistema de Cotizaciones Seemann Group
     if (path === '/api/alumnos' && method === 'GET') {
       try {
         requireAuth(req);
-        const alumnos = await Alumno.find({ activo: true }).sort({ puntajeTotal: -1 }).lean();
+        // Mostrar alumnos activos y también documentos legacy que no tienen el campo "activo"
+        const filtroActivo = { $or: [{ activo: true }, { activo: { $exists: false } }] };
+        const alumnos = await Alumno.find(filtroActivo).sort({ puntajeTotal: -1 }).lean();
+        // Evitar que los resultados queden cacheados por CDNs/edge
+        res.setHeader('Cache-Control', 'no-store');
         return res.status(200).json({ alumnos });
       } catch (error: any) {
         if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
@@ -2411,7 +2415,8 @@ Sistema de Cotizaciones Seemann Group
         const mes = urlObj.searchParams.get('mes'); // 0-11
         const anio = urlObj.searchParams.get('anio'); // e.g. 2026
 
-        const alumnos = await Alumno.find({ activo: true }).lean();
+        const filtroActivo = { $or: [{ activo: true }, { activo: { $exists: false } }] };
+        const alumnos = await Alumno.find(filtroActivo).lean();
 
         if (periodo === 'total') {
           const ranking = alumnos
