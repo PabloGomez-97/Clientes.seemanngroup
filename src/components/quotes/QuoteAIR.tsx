@@ -28,6 +28,7 @@ import {
   seleccionarTarifaPorPeso,
   type QuoteAIRProps,
   type PieceData,
+  type ClienteAsignado,
 } from "./Handlers/Air/HandlerQuoteAir";
 import { PieceAccordion } from "./Handlers/Air/PieceAccordion";
 import "./QuoteAIR.css";
@@ -37,9 +38,10 @@ import "./QuoteAIR.css";
 function QuoteAPITester({
   preselectedOrigin,
   preselectedDestination,
+  isEjecutivoMode = false,
 }: QuoteAIRProps = {}) {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, token, activeUsername } = useAuth();
+  const { user, token, activeUsername, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
@@ -92,6 +94,20 @@ function QuoteAPITester({
   const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
     "cotizacion",
   );
+
+  // Estados para selección de cliente (modo ejecutivo)
+  const [clientesAsignados, setClientesAsignados] = useState<ClienteAsignado[]>(
+    [],
+  );
+  const [clienteSeleccionado, setClienteSeleccionado] =
+    useState<ClienteAsignado | null>(null);
+  const [loadingClientes, setLoadingClientes] = useState(isEjecutivoMode);
+  const [errorClientes, setErrorClientes] = useState<string | null>(null);
+
+  // Username efectivo: en modo ejecutivo usa el cliente seleccionado, en modo normal usa activeUsername
+  const effectiveUsername = isEjecutivoMode
+    ? clienteSeleccionado?.username || user?.username || ""
+    : activeUsername || "";
 
   // ============================================================================
   // ESTADOS PARA RUTAS AÉREAS
@@ -199,6 +215,35 @@ function QuoteAPITester({
     };
     cargarRutas();
   }, []);
+
+  // Cargar clientes asignados al ejecutivo (solo en modo ejecutivo)
+  useEffect(() => {
+    if (!isEjecutivoMode) {
+      setLoadingClientes(false);
+      return;
+    }
+
+    const cargarClientes = async () => {
+      try {
+        setLoadingClientes(true);
+        const clientes = await getMisClientes();
+        setClientesAsignados(clientes);
+
+        if (clientes.length === 1) {
+          setClienteSeleccionado(clientes[0]);
+        }
+      } catch (err) {
+        console.error("Error cargando clientes:", err);
+        setErrorClientes(
+          err instanceof Error ? err.message : "Error al cargar clientes",
+        );
+      } finally {
+        setLoadingClientes(false);
+      }
+    };
+
+    cargarClientes();
+  }, [isEjecutivoMode, getMisClientes]);
 
   // Aplicar preselección cuando se cargan las rutas y hay datos pre-seleccionados
   useEffect(() => {
@@ -787,7 +832,7 @@ function QuoteAPITester({
       let previousMaxId = 0;
       try {
         const preRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername)}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -834,9 +879,13 @@ function QuoteAPITester({
 
       // Registrar auditoría
       registrarEvento({
-        accion: "COTIZACION_AIR_CREADA",
+        accion: isEjecutivoMode
+          ? "COTIZACION_AIR_EJECUTIVO"
+          : "COTIZACION_AIR_CREADA",
         categoria: "COTIZACION",
-        descripcion: `Cotización aérea creada: ${originSeleccionado?.label || ""} → ${destinationSeleccionado?.label || ""}`,
+        descripcion: isEjecutivoMode
+          ? `Cotización aérea creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${effectiveUsername}`
+          : `Cotización aérea creada: ${originSeleccionado?.label || ""} → ${destinationSeleccionado?.label || ""}`,
         detalles: {
           tipo: tipoAccion,
           origen: originSeleccionado?.label || "",
@@ -844,6 +893,7 @@ function QuoteAPITester({
           carrier: rutaSeleccionada?.carrier || "",
           incoterm,
         },
+        ...(isEjecutivoMode && { clienteAfectado: effectiveUsername }),
       });
 
       // Generar PDF después de cotización exitosa
@@ -993,7 +1043,7 @@ function QuoteAPITester({
         await new Promise((r) => setTimeout(r, 2000));
 
         const linbisRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername)}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -1048,7 +1098,7 @@ function QuoteAPITester({
         root.render(
           <PDFTemplateAIR
             quoteNumber={quoteNumber}
-            customerName={activeUsername || "Customer"}
+            customerName={effectiveUsername || "Customer"}
             origin={rutaSeleccionada.origin}
             destination={rutaSeleccionada.destination}
             effectiveDate={new Date().toLocaleDateString()}
@@ -1096,7 +1146,7 @@ function QuoteAPITester({
       console.log("[QuoteAIR] pdfElement encontrado:", !!pdfElement);
 
       if (pdfElement) {
-        const customerClean = (activeUsername || "Cliente").replace(
+        const customerClean = (effectiveUsername || "Cliente").replace(
           /[^a-zA-Z0-9]/g,
           "_",
         );
@@ -1112,20 +1162,27 @@ function QuoteAPITester({
         // Subir el PDF a MongoDB
         if (pdfBase64 && quoteNumber) {
           try {
+            const bodyPayload: any = {
+              quoteNumber,
+              nombreArchivo: filename,
+              contenidoBase64: pdfBase64,
+              tipoServicio: "AIR",
+              origen: rutaSeleccionada.origin,
+              destino: rutaSeleccionada.destination,
+            };
+
+            if (isEjecutivoMode && clienteSeleccionado) {
+              bodyPayload.usuarioId = clienteSeleccionado.username;
+              bodyPayload.subidoPor = clienteSeleccionado.email;
+            }
+
             const uploadRes = await fetch("/api/quote-pdf/upload", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({
-                quoteNumber,
-                nombreArchivo: filename,
-                contenidoBase64: pdfBase64,
-                tipoServicio: "AIR",
-                origen: rutaSeleccionada.origin,
-                destino: rutaSeleccionada.destination,
-              }),
+              body: JSON.stringify(bodyPayload),
             });
             const uploadData = await uploadRes.json();
             console.log(
@@ -1206,7 +1263,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1242,7 +1299,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: activeUsername,
+              name: effectiveUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1274,7 +1331,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1306,7 +1363,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1337,7 +1394,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1355,7 +1412,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1383,7 +1440,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: activeUsername,
+              name: effectiveUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1418,7 +1475,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: activeUsername,
+              name: effectiveUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1446,7 +1503,7 @@ function QuoteAPITester({
         },
         customerReference: "Portal Created [AIR]",
         contact: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         origin: {
           name: rutaSeleccionada.origin,
@@ -1470,10 +1527,10 @@ function QuoteAPITester({
           name: rutaSeleccionada.origin,
         },
         shipper: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         consignee: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         issuingCompany: {
           name: rutaSeleccionada?.carrier || "Por Confirmar",
@@ -1532,7 +1589,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1564,7 +1621,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: activeUsername,
+              name: effectiveUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1596,7 +1653,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1633,7 +1690,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1664,7 +1721,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1682,7 +1739,7 @@ function QuoteAPITester({
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1710,7 +1767,7 @@ function QuoteAPITester({
             payment: "Prepaid",
             billApplyTo: "Other",
             billTo: {
-              name: activeUsername,
+              name: effectiveUsername,
             },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
@@ -1735,7 +1792,7 @@ function QuoteAPITester({
         transitDays: 5,
         customerReference: "Portal-Created [AIR-OVERALL]",
         contact: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         origin: {
           name: rutaSeleccionada.origin,
@@ -1759,10 +1816,10 @@ function QuoteAPITester({
           name: rutaSeleccionada.origin,
         },
         shipper: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         consignee: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         issuingCompany: {
           name: rutaSeleccionada?.carrier || "Por Confirmar",
@@ -1850,6 +1907,21 @@ function QuoteAPITester({
     return fastestIndex;
   }, [rutasFiltradas]); // ✅ CORRECTO
 
+  // Función para encontrar el índice de la ruta con menor precio (excluyendo precio 0)
+  const bestPriceRouteIndex = useMemo(() => {
+    let bestIndex = -1;
+    let minPrice = Infinity;
+
+    rutasFiltradas.forEach((ruta, index) => {
+      if (ruta.priceForComparison > 0 && ruta.priceForComparison < minPrice) {
+        minPrice = ruta.priceForComparison;
+        bestIndex = index;
+      }
+    });
+
+    return bestIndex;
+  }, [rutasFiltradas]);
+
   // getValidityClass moved earlier to be usable during filtering
   // ============================================================================
   // RENDER
@@ -1863,6 +1935,146 @@ function QuoteAPITester({
           <p className="qa-subtitle">{t("QuoteAIR.subtitle")}</p>
         </div>
       </div>
+
+      {/* Selector de Cliente (Solo para modo ejecutivo) */}
+      {isEjecutivoMode && (
+        <div
+          className="card shadow-sm mb-4"
+          style={{
+            borderLeft: "4px solid #0d6efd",
+            background: "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
+          }}
+        >
+          <div className="card-body">
+            <h5 className="card-title mb-3">
+              <svg
+                width="20"
+                height="20"
+                fill="currentColor"
+                className="me-2"
+                viewBox="0 0 16 16"
+              >
+                <path d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm.256 7a4.474 4.474 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10c.26 0 .507.009.74.025.226-.341.496-.65.804-.918C9.077 9.038 8.564 9 8 9c-5 0-6 3-6 4s1 1 1 1h5.256Z" />
+              </svg>
+              Seleccionar Cliente
+            </h5>
+
+            {loadingClientes ? (
+              <div className="text-center py-3">
+                <div
+                  className="spinner-border spinner-border-sm text-primary"
+                  role="status"
+                >
+                  <span className="visually-hidden">Cargando clientes...</span>
+                </div>
+                <span className="ms-2 text-muted">
+                  Cargando clientes asignados...
+                </span>
+              </div>
+            ) : errorClientes ? (
+              <div className="alert alert-danger mb-0">
+                <strong>Error:</strong> {errorClientes}
+              </div>
+            ) : clientesAsignados.length === 0 ? (
+              <div className="alert alert-warning mb-0">
+                <strong>⚠️ Sin clientes asignados</strong>
+                <p className="mb-0 mt-2 small">
+                  No tienes clientes asignados. Contacta al administrador.
+                </p>
+              </div>
+            ) : (
+              <div className="row g-3">
+                <div className="col-md-8">
+                  <label className="form-label fw-semibold">
+                    Cliente para esta cotización{" "}
+                    <span className="text-danger">*</span>
+                  </label>
+                  <Select
+                    value={
+                      clienteSeleccionado
+                        ? {
+                            value: clienteSeleccionado.id,
+                            label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
+                          }
+                        : null
+                    }
+                    onChange={(option) => {
+                      const cliente = clientesAsignados.find(
+                        (c) => c.id === option?.value,
+                      );
+                      setClienteSeleccionado(cliente || null);
+                    }}
+                    options={clientesAsignados.map((c) => ({
+                      value: c.id,
+                      label: `${c.username} (${c.email})`,
+                    }))}
+                    placeholder="Selecciona un cliente..."
+                    isClearable={false}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: clienteSeleccionado
+                          ? "#198754"
+                          : state.isFocused
+                            ? "#0d6efd"
+                            : "#dee2e6",
+                        boxShadow: state.isFocused
+                          ? "0 0 0 0.25rem rgba(13, 110, 253, 0.25)"
+                          : "none",
+                        "&:hover": { borderColor: "#0d6efd" },
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? "#0d6efd"
+                          : state.isFocused
+                            ? "#e7f1ff"
+                            : "white",
+                        color: state.isSelected ? "white" : "#212529",
+                      }),
+                    }}
+                  />
+                  {!clienteSeleccionado && (
+                    <small className="text-danger d-block mt-1">
+                      ⚠️ Debes seleccionar un cliente antes de generar la
+                      cotización
+                    </small>
+                  )}
+                </div>
+
+                {clienteSeleccionado && (
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">
+                      Cliente Seleccionado
+                    </label>
+                    <div className="p-3 bg-success bg-opacity-10 border border-success rounded">
+                      <div className="d-flex align-items-center">
+                        <svg
+                          width="24"
+                          height="24"
+                          fill="#198754"
+                          className="me-2"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+                        </svg>
+                        <div>
+                          <div className="fw-semibold text-success">
+                            {clienteSeleccionado.username}
+                          </div>
+                          <small className="text-muted">
+                            {clienteSeleccionado.email}
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ============================================================================ */}
       {/* SECCIÓN 1: SELECCIÓN DE RUTA */}

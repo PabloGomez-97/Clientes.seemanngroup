@@ -237,9 +237,18 @@ export interface PieceData {
   totalWeight: number;
 }
 
+export interface ClienteAsignado {
+  id: string;
+  email: string;
+  username: string;
+  nombreuser: string;
+  createdAt: string;
+}
+
 export interface QuoteAIRProps {
   preselectedOrigin?: { value: string; label: string } | null;
   preselectedDestination?: { value: string; label: string } | null;
+  isEjecutivoMode?: boolean;
 }
 
 // FUNCIÓN PARA SELECCIONAR TARIFA SEGÚN PESO CHARGEABLE
