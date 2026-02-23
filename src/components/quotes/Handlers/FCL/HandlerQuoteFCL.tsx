@@ -191,7 +191,16 @@ export const parseFCL = (data: any[]): RutaFCL[] => {
   return rutas;
 };
 
+export interface ClienteAsignado {
+  id: string;
+  email: string;
+  username: string;
+  nombreuser: string;
+  createdAt: string;
+}
+
 export interface QuoteFCLProps {
   preselectedPOL?: { value: string; label: string } | null;
   preselectedPOD?: { value: string; label: string } | null;
+  isEjecutivoMode?: boolean;
 }
