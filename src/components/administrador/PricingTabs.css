@@ -1,47 +1,28 @@
+/* ===================================================================
+   PricingTabs — Enterprise SaaS Design System
+   Fonts: Inter, system-ui
+   Colors: --primary-color (#ff6200) + neutral palette
+   =================================================================== */
+
+/* ===== CONTAINER ===== */
 .pricing-tabs-container {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f9fafb;
   min-height: 100vh;
-  padding: 20px 0;
-  position: relative;
+  padding: 0;
 }
 
 /* ===== HEADER ===== */
 .pricing-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 40px 20px;
-  margin-bottom: 30px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
-  position: relative;
-  overflow: hidden;
-}
-
-.pricing-header::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -10%;
-  width: 500px;
-  height: 500px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 50%;
-  animation: float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(20px);
-  }
+  background-color: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 24px 32px;
+  margin: 0;
 }
 
 .header-content {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  position: relative;
-  z-index: 1;
 }
 
 .header-left {
@@ -51,231 +32,424 @@
 }
 
 .header-logo {
-  height: 70px;
+  height: 40px;
   object-fit: contain;
-  filter: brightness(1.1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
-.header-text h1 {
+.header-text h1.header-title {
   margin: 0;
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--secondary-color);
+  letter-spacing: -0.3px;
+  line-height: 1.3;
 }
 
-.header-text p {
-  margin: 5px 0 0 0;
-  font-size: 15px;
-  opacity: 0.95;
+.header-text p.header-subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #6b7280;
   font-weight: 400;
+  line-height: 1.4;
 }
 
 /* ===== TABS WRAPPER ===== */
 .tabs-wrapper {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 15px;
-  position: relative;
-  z-index: 2;
+  padding: 0 32px;
 }
 
+/* ===== TAB BAR ===== */
 .custom-tabs {
-  border-bottom: none;
-  background: white;
-  border-radius: 16px 16px 0 0;
-  padding: 15px 20px 0 20px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+  padding: 0 4px;
   display: flex;
-  gap: 10px;
+  gap: 0;
 }
 
 /* ===== TAB BUTTONS ===== */
-.nav-link {
+.custom-tabs .nav-link {
   border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
   background: transparent !important;
   color: #6b7280 !important;
-  padding: 12px 0 !important;
-  margin: 0 8px !important;
+  padding: 12px 20px !important;
+  margin: 0 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  transition: color 0.15s ease, border-color 0.15s ease !important;
+}
+
+.custom-tabs .nav-link:hover {
+  color: var(--primary-color) !important;
+  background: transparent !important;
+  transform: none;
+}
+
+.custom-tabs .nav-link.active {
+  color: var(--primary-color) !important;
+  border-bottom: 2px solid var(--primary-color) !important;
+  background: transparent !important;
   font-weight: 600 !important;
-  font-size: 15px !important;
-  position: relative !important;
-  transition: all 0.3s ease !important;
-  border-bottom: 3px solid transparent !important;
-  display: flex !important;
-  align-items: center !important;
-}
-
-.nav-link:hover {
-  color: #667eea !important;
-  transform: translateY(-2px);
-}
-
-.nav-link.active {
-  color: #667eea !important;
-  border-bottom-color: #667eea !important;
-  background: rgba(102, 126, 234, 0.05) !important;
-  border-radius: 8px 8px 0 0 !important;
-  padding: 12px 16px !important;
 }
 
 /* ===== TAB TITLE ===== */
 .tab-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  gap: 8px;
   font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
-.tab-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-  font-size: 16px;
-}
-
-.airplane-icon {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-}
-
-.fcl-icon {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-}
-
-.lcl-icon {
-  background: rgba(249, 115, 22, 0.1);
-  color: #f97316;
-}
-
-.nav-link.active .airplane-icon {
-  background: #3b82f6;
-  color: white;
-  transform: scale(1.1);
-}
-
-.nav-link.active .fcl-icon {
-  background: #22c55e;
-  color: white;
-  transform: scale(1.1);
-}
-
-.nav-link.active .lcl-icon {
-  background: #f97316;
-  color: white;
-  transform: scale(1.1);
-}
-
-.nav-link:hover .tab-icon {
-  transform: scale(1.05);
+.tab-title .tab-icon {
+  font-size: 15px;
+  line-height: 1;
+  color: inherit;
 }
 
 /* ===== TAB CONTENT ===== */
-.tab-content {
-  background: white;
-  padding: 30px 20px;
-  border-radius: 0 0 16px 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  animation: slideIn 0.4s ease-out;
+.tab-content-panel {
+  background: #fff;
+  padding: 28px 24px;
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ===== PRICING COMPONENTS SECTIONS ===== */
+/* ===== PRICING INNER SECTIONS ===== */
 .pricing-forms-section {
   background: transparent;
   padding: 0;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .pricing-routes-section {
-  background: rgba(255, 255, 255, 0.5);
+  background: #fff;
+  padding: 24px;
+  border-radius: 8px;
+  margin-top: 24px;
+  border: 1px solid #e5e7eb;
+}
+
+/* ===== TABLE STYLING (Enterprise) ===== */
+.pricing-routes-section .table-responsive {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pricing-routes-section table.table {
+  margin-bottom: 0;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.8125rem !important;
+  border-collapse: collapse;
+}
+
+.pricing-routes-section table.table thead {
+  background-color: #f9fafb;
+}
+
+.pricing-routes-section table.table thead th {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 10px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  border-top: none;
+  white-space: nowrap;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.pricing-routes-section table.table tbody tr {
+  transition: background-color 0.1s ease;
+}
+
+.pricing-routes-section table.table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.pricing-routes-section table.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pricing-routes-section table.table tbody td {
+  padding: 10px 12px;
+  color: #1f2937;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+  text-align: left;
+}
+
+/* Stripe alternance very subtle */
+.pricing-routes-section table.table tbody tr:nth-child(even) {
+  background-color: #fdfdfe;
+}
+
+/* Badge override for currency */
+.pricing-routes-section .badge.bg-secondary {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+  font-weight: 500;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* Inline edit inputs inside table */
+.pricing-routes-section table.table td .form-control,
+.pricing-routes-section table.table td .form-select {
+  font-size: 0.8125rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+}
+
+.pricing-routes-section table.table td .form-control:focus,
+.pricing-routes-section table.table td .form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.12);
+}
+
+/* Action buttons inside table */
+.pricing-routes-section table.table td .btn {
+  font-size: 0.75rem;
+  padding: 3px 7px;
+  border-radius: 4px;
+}
+
+/* ===== SEARCH BAR ===== */
+.pricing-routes-section .form-control[type="text"][placeholder*="Buscar"] {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  background-color: #fff;
+}
+
+.pricing-routes-section .form-control[type="text"][placeholder*="Buscar"]:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+/* ===== ACCORDION (Forms Section) ===== */
+.pricing-forms-section .accordion-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.pricing-forms-section .accordion-item + .accordion-item {
+  margin-top: 8px;
+}
+
+.pricing-forms-section .accordion-button {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1f2937;
+  background-color: #fff;
+  padding: 14px 16px;
+  box-shadow: none !important;
+}
+
+.pricing-forms-section .accordion-button:not(.collapsed) {
+  color: var(--primary-color);
+  background-color: #fff;
+  box-shadow: none !important;
+}
+
+.pricing-forms-section .accordion-button::after {
+  width: 14px;
+  height: 14px;
+  background-size: 14px;
+}
+
+.pricing-forms-section .accordion-body {
   padding: 20px;
-  border-radius: 12px;
-  margin-top: 20px;
-  border: 1px solid rgba(229, 231, 235, 0.5);
-  backdrop-filter: blur(10px);
+  background-color: #fff;
+}
+
+/* Form labels inside accordion */
+.pricing-forms-section .form-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.pricing-forms-section .form-control,
+.pricing-forms-section .form-select {
+  font-size: 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.pricing-forms-section .form-control:focus,
+.pricing-forms-section .form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.1);
+}
+
+/* Section headers inside forms */
+.pricing-forms-section h6.text-muted {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280 !important;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 16px !important;
+}
+
+/* ===== BUTTONS (Primary overrides) ===== */
+.pricing-tabs-container .btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: 6px;
+  padding: 8px 20px;
+}
+
+.pricing-tabs-container .btn-primary:hover,
+.pricing-tabs-container .btn-primary:focus {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  box-shadow: 0 0 0 2px rgba(var(--primary-rgb), 0.15);
+}
+
+.pricing-tabs-container .btn-outline-primary {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: 6px;
+}
+
+.pricing-tabs-container .btn-outline-primary:hover {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+
+/* Pagination buttons */
+.pricing-routes-section .btn-outline-secondary {
+  font-size: 0.8125rem;
+  border-radius: 6px;
+  padding: 6px 14px;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.pricing-routes-section .btn-outline-secondary:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  color: #1f2937;
+}
+
+/* ===== ALERTS ===== */
+.pricing-tabs-container .alert {
+  border-radius: 8px;
+  font-size: 0.875rem;
+  border: 1px solid;
+  padding: 12px 16px;
+}
+
+/* ===== PAGINATION TEXT ===== */
+.pricing-routes-section small.text-muted {
+  font-size: 0.8125rem;
+  color: #6b7280 !important;
 }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
   .pricing-header {
-    padding: 30px 15px;
-    margin-bottom: 20px;
+    padding: 20px 16px;
   }
 
   .header-left {
     flex-direction: column;
     text-align: center;
+    gap: 12px;
   }
 
   .header-logo {
-    height: 50px;
+    height: 32px;
   }
 
-  .header-text h1 {
-    font-size: 24px;
+  .header-text h1.header-title {
+    font-size: 17px;
   }
 
-  .header-text p {
-    font-size: 13px;
-  }
-
-  .custom-tabs {
-    flex-direction: column;
-    padding: 10px;
-    gap: 8px;
-  }
-
-  .nav-link {
-    margin: 5px 0 !important;
-    padding: 10px 12px !important;
-  }
-
-  .tab-title {
+  .header-text p.header-subtitle {
     font-size: 12px;
   }
 
-  .tab-content {
-    padding: 20px 15px;
+  .tabs-wrapper {
+    padding: 0 16px;
+  }
+
+  .custom-tabs {
+    gap: 0;
+  }
+
+  .custom-tabs .nav-link {
+    padding: 10px 14px !important;
+  }
+
+  .tab-title {
+    font-size: 13px;
+  }
+
+  .tab-content-panel {
+    padding: 20px 16px;
+  }
+
+  .pricing-routes-section {
+    padding: 16px;
   }
 }
 
 @media (max-width: 480px) {
   .pricing-header {
-    padding: 20px 10px;
+    padding: 16px 12px;
   }
 
-  .header-text h1 {
-    font-size: 20px;
+  .header-text h1.header-title {
+    font-size: 15px;
   }
 
-  .custom-tabs {
-    padding: 8px;
+  .tabs-wrapper {
+    padding: 0 12px;
+  }
+
+  .custom-tabs .nav-link {
+    padding: 8px 10px !important;
   }
 
   .tab-title {
-    font-size: 11px;
+    font-size: 12px;
+    gap: 6px;
   }
 
-  .tab-icon {
-    width: 20px;
-    height: 20px;
-    font-size: 14px;
+  .tab-title .tab-icon {
+    font-size: 13px;
+  }
+
+  .tab-content-panel {
+    padding: 16px 12px;
   }
 }
