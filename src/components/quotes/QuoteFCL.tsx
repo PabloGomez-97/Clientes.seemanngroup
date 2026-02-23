@@ -958,6 +958,42 @@ function QuoteFCL({
 
     const charges = [];
 
+    // Parse transit time from rutaSeleccionada.tt (formats like "X-Y days" or "Y days" or Spanish "días").
+    const parseTransitDays = (transit?: string | number | null): number => {
+      // If missing or empty, return 999 per requirement
+      if (transit === undefined || transit === null) return 999;
+      const raw = String(transit);
+      if (raw.trim() === "") return 999;
+      if (typeof transit === "number") return Math.max(1, Math.floor(transit));
+
+      const txt = raw.trim().toLowerCase();
+
+      // Match range like "2-3 days" or "2 – 3 days" -> take upper value
+      const rangeMatch = txt.match(
+        /(\d+)\s*[-–—]\s*(\d+)\s*(?:days?|d[ií]as?)?/i,
+      );
+      if (rangeMatch) {
+        const hi = parseInt(rangeMatch[2], 10);
+        if (!isNaN(hi)) return Math.max(1, hi);
+      }
+
+      // Match single like "3 days" or "3 días"
+      const singleMatch = txt.match(/(\d{1,4})\s*(?:days?|d[ií]as?)/i);
+      if (singleMatch) {
+        const v = parseInt(singleMatch[1], 10);
+        if (!isNaN(v)) return Math.max(1, v);
+      }
+
+      // Fallback: extract any number
+      const anyNum = txt.match(/(\d{1,4})/);
+      if (anyNum) {
+        const v = parseInt(anyNum[1], 10);
+        if (!isNaN(v)) return Math.max(1, v);
+      }
+
+      return 999;
+    };
+
     // Cobro de BL
     charges.push({
       service: {
@@ -1131,7 +1167,7 @@ function QuoteFCL({
     return {
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      transitDays: 5,
+      transitDays: parseTransitDays(rutaSeleccionada.tt),
       project: {
         name: "FCL",
       },

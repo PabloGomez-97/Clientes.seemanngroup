@@ -1246,6 +1246,43 @@ function QuoteAPITester({
 
     const charges = [];
 
+    // Parse transitTime from rutaSeleccionada (formats like "X-Y DAYS" or "X días").
+    const parseTransitDays = (transit?: string | number | null): number => {
+      // If field is missing or an empty string, return 999 as requested
+      if (transit === undefined || transit === null) return 999;
+      const raw = String(transit);
+      if (raw.trim() === "") return 999;
+      if (typeof transit === "number") return Math.max(1, Math.floor(transit));
+
+      const txt = raw.trim().toLowerCase();
+
+      // Try range like "2-3 days" -> take the upper value (3)
+      const rangeMatch = txt.match(
+        /(\d+)\s*[-–—]\s*(\d+)\s*(?:days?|d[ií]as?)?/i,
+      );
+      if (rangeMatch) {
+        const hi = parseInt(rangeMatch[2], 10);
+        if (!isNaN(hi)) return Math.max(1, hi);
+      }
+
+      // Try single day like "3 days" or "3 días"
+      const singleMatch = txt.match(/(\d{1,4})\s*(?:days?|d[ií]as?)/i);
+      if (singleMatch) {
+        const v = parseInt(singleMatch[1], 10);
+        if (!isNaN(v)) return Math.max(1, v);
+      }
+
+      // Fallback: try to extract any number present
+      const anyNum = txt.match(/(\d{1,4})/);
+      if (anyNum) {
+        const v = parseInt(anyNum[1], 10);
+        if (!isNaN(v)) return Math.max(1, v);
+      }
+
+      // Default to 5 if cannot parse
+      return 5;
+    };
+
     // MODO NORMAL
     if (!overallDimsAndWeight) {
       // Cobro de Handling
@@ -1497,7 +1534,7 @@ function QuoteAPITester({
         validUntil: new Date(
           Date.now() + 7 * 24 * 60 * 60 * 1000,
         ).toISOString(),
-        transitDays: 5,
+        transitDays: parseTransitDays(rutaSeleccionada.transitTime),
         project: {
           name: "AIR",
         },
@@ -1789,7 +1826,7 @@ function QuoteAPITester({
         validUntil: new Date(
           Date.now() + 7 * 24 * 60 * 60 * 1000,
         ).toISOString(),
-        transitDays: 5,
+        transitDays: parseTransitDays(rutaSeleccionada.transitTime),
         customerReference: "Portal-Created [AIR-OVERALL]",
         contact: {
           name: effectiveUsername,
