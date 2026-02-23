@@ -1545,6 +1545,9 @@ function QuoteAPITester({
         origin: {
           name: rutaSeleccionada.origin,
         },
+        carrierBroker: {
+          name: rutaSeleccionada.carrier,
+        },
         destination: {
           name: rutaSeleccionada.destination,
         },
@@ -1833,6 +1836,9 @@ function QuoteAPITester({
         },
         origin: {
           name: rutaSeleccionada.origin,
+        },
+        carrierBroker: {
+          name: rutaSeleccionada.carrier,
         },
         destination: {
           name: rutaSeleccionada.destination,

@@ -747,7 +747,7 @@ function QuoteLCL({
     // Validar que todas las piezas tengan tipo de paquete seleccionado
     const piezasSinTipo = piecesData.filter((piece) => !piece.packageType);
     if (piezasSinTipo.length > 0) {
-      setError(t("QuoteLCL.inforuta3"));
+      setError(t("Pieceaccordionlcl.inforuta3"));
       return;
     }
 
@@ -1432,6 +1432,9 @@ function QuoteLCL({
       },
       origin: {
         name: rutaSeleccionada.pol,
+      },
+      carrierBroker: {
+        name: rutaSeleccionada.agente,
       },
       destination: {
         name: rutaSeleccionada.pod,

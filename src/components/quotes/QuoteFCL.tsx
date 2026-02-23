@@ -1178,6 +1178,9 @@ function QuoteFCL({
       origin: {
         name: rutaSeleccionada.pol,
       },
+      carrierBroker: {
+        name: rutaSeleccionada.carrier,
+      },
       destination: {
         name: rutaSeleccionada.pod,
       },
