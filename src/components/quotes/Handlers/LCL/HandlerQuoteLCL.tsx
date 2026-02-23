@@ -1,6 +1,20 @@
 // HandlerQuoteLCL.tsx
 // Handlers y tipos para cotizaciones LCL
 
+export interface ClienteAsignado {
+  id: string;
+  email: string;
+  username: string;
+  nombreuser: string;
+  createdAt: string;
+}
+
+export interface QuoteLCLProps {
+  preselectedPOL?: { value: string; label: string } | null;
+  preselectedPOD?: { value: string; label: string } | null;
+  isEjecutivoMode?: boolean;
+}
+
 export interface PieceData {
   id: string;
   packageType: string;

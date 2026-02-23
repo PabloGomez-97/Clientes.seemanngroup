@@ -20,6 +20,8 @@ import {
   type OutletContext,
   type RutaLCL,
   type SelectOption,
+  type QuoteLCLProps,
+  type ClienteAsignado,
   GOOGLE_SHEET_CSV_URL,
   type Operador,
   capitalize,
@@ -28,18 +30,31 @@ import {
   parseLCL,
 } from "./Handlers/LCL/HandlerQuoteLCL.tsx";
 
-interface QuoteLCLProps {
-  preselectedPOL?: { value: string; label: string } | null;
-  preselectedPOD?: { value: string; label: string } | null;
-}
-
-function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
+function QuoteLCL({
+  preselectedPOL,
+  preselectedPOD,
+  isEjecutivoMode = false,
+}: QuoteLCLProps = {}) {
   const { accessToken } = useOutletContext<OutletContext>();
   const token = accessToken;
-  const { user, token: jwtToken, activeUsername } = useAuth();
+  const { user, token: jwtToken, activeUsername, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
+
+  // ── Estados para selección de cliente (modo ejecutivo) ──
+  const [clientesAsignados, setClientesAsignados] = useState<ClienteAsignado[]>(
+    [],
+  );
+  const [clienteSeleccionado, setClienteSeleccionado] =
+    useState<ClienteAsignado | null>(null);
+  const [loadingClientes, setLoadingClientes] = useState(true);
+  const [errorClientes, setErrorClientes] = useState<string | null>(null);
+
+  // ── Username efectivo: en modo ejecutivo usa el cliente seleccionado ──
+  const effectiveUsername = isEjecutivoMode
+    ? clienteSeleccionado?.username
+    : activeUsername;
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -119,6 +134,40 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
   const [valorMercaderia, setValorMercaderia] = useState<string>("");
+
+  // ── Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) ──
+  useEffect(() => {
+    if (!isEjecutivoMode) {
+      setLoadingClientes(false);
+      return;
+    }
+
+    const cargarClientes = async () => {
+      if (user?.username !== "Ejecutivo") {
+        setLoadingClientes(false);
+        return;
+      }
+
+      try {
+        setLoadingClientes(true);
+        const clientes = await getMisClientes();
+        setClientesAsignados(clientes);
+
+        if (clientes.length === 1) {
+          setClienteSeleccionado(clientes[0]);
+        }
+      } catch (err) {
+        console.error("Error cargando clientes:", err);
+        setErrorClientes(
+          err instanceof Error ? err.message : "Error al cargar clientes",
+        );
+      } finally {
+        setLoadingClientes(false);
+      }
+    };
+
+    cargarClientes();
+  }, [user, getMisClientes, isEjecutivoMode]);
 
   // ============================================================================
   // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
@@ -711,7 +760,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       let previousMaxId = 0;
       try {
         const preRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername || "")}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -758,9 +807,13 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
       // Registrar auditoría
       registrarEvento({
-        accion: "COTIZACION_LCL_CREADA",
+        accion: isEjecutivoMode
+          ? "COTIZACION_LCL_EJECUTIVO"
+          : "COTIZACION_LCL_CREADA",
         categoria: "COTIZACION",
-        descripcion: `Cotización LCL creada: ${polSeleccionado?.label || ""} → ${podSeleccionado?.label || ""}`,
+        descripcion: isEjecutivoMode
+          ? `Cotización LCL creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${clienteSeleccionado?.username || ""}`
+          : `Cotización LCL creada: ${polSeleccionado?.label || ""} → ${podSeleccionado?.label || ""}`,
         detalles: {
           tipo: tipoAccion,
           pol: polSeleccionado?.label || "",
@@ -768,6 +821,9 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           operador: rutaSeleccionada?.operador || "",
           incoterm,
         },
+        ...(isEjecutivoMode && {
+          clienteAfectado: clienteSeleccionado?.username || "",
+        }),
       });
 
       // Generar PDF después de cotización exitosa
@@ -919,7 +975,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         await new Promise((r) => setTimeout(r, 2000));
 
         const linbisRes = await fetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername || "")}`,
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername || "")}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -968,7 +1024,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         root.render(
           <PDFTemplateLCL
             quoteNumber={quoteNumber}
-            customerName={activeUsername || "Customer"}
+            customerName={effectiveUsername || "Customer"}
             pol={rutaSeleccionada.pol}
             pod={rutaSeleccionada.pod}
             effectiveDate={new Date().toLocaleDateString()}
@@ -1010,7 +1066,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       // ── 3. Generar base64 + subir a MongoDB ANTES de descargar ──
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
       if (pdfElement) {
-        const customerClean = (activeUsername || "Cliente").replace(
+        const customerClean = (effectiveUsername || "Cliente").replace(
           /[^a-zA-Z0-9]/g,
           "_",
         );
@@ -1023,20 +1079,31 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         // Subir el PDF a MongoDB
         if (pdfBase64 && quoteNumber) {
           try {
+            const bodyPayload: any = {
+              quoteNumber,
+              nombreArchivo: filename,
+              contenidoBase64: pdfBase64,
+              tipoServicio: "LCL",
+              origen: rutaSeleccionada.pol,
+              destino: rutaSeleccionada.pod,
+            };
+
+            if (
+              isEjecutivoMode &&
+              user?.username === "Ejecutivo" &&
+              clienteSeleccionado
+            ) {
+              bodyPayload.usuarioId = clienteSeleccionado.username;
+              bodyPayload.subidoPor = clienteSeleccionado.email;
+            }
+
             const uploadRes = await fetch("/api/quote-pdf/upload", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${jwtToken}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({
-                quoteNumber,
-                nombreArchivo: filename,
-                contenidoBase64: pdfBase64,
-                tipoServicio: "LCL",
-                origen: rutaSeleccionada.pol,
-                destino: rutaSeleccionada.pod,
-              }),
+              body: JSON.stringify(bodyPayload),
             });
             const uploadData = await uploadRes.json();
             console.log(
@@ -1069,7 +1136,9 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           body: JSON.stringify({
             ejecutivoEmail: ejecutivo?.email,
             ejecutivoNombre: ejecutivo?.nombre,
-            clienteNombre: user?.nombreuser,
+            clienteNombre: isEjecutivoMode
+              ? clienteSeleccionado?.username
+              : user?.nombreuser,
             tipoServicio: "Marítimo LCL",
             origen: rutaSeleccionada.pol,
             destino: rutaSeleccionada.pod,
@@ -1115,7 +1184,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         currency: {
           abbr: divisa,
@@ -1146,7 +1215,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         currency: {
           abbr: divisa,
@@ -1179,7 +1248,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: divisa,
@@ -1211,7 +1280,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         currency: {
           abbr: divisa,
@@ -1229,7 +1298,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
-          name: activeUsername,
+          name: effectiveUsername,
         },
         currency: {
           abbr: divisa,
@@ -1257,7 +1326,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: divisa,
@@ -1297,7 +1366,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
-            name: activeUsername,
+            name: effectiveUsername,
           },
           currency: {
             abbr: divisa,
@@ -1323,7 +1392,7 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
       },
       customerReference: "Portal Created [LCL]",
       contact: {
-        name: activeUsername,
+        name: effectiveUsername,
       },
       origin: {
         name: rutaSeleccionada.pol,
@@ -1347,10 +1416,10 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
         name: rutaSeleccionada.pol,
       },
       shipper: {
-        name: activeUsername,
+        name: effectiveUsername,
       },
       consignee: {
-        name: activeUsername,
+        name: effectiveUsername,
       },
       issuingCompany: {
         name: rutaSeleccionada?.operador || "Por Confirmar",
@@ -1396,6 +1465,127 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
 
   return (
     <div className="qa-container">
+      {/* ============================================================================ */}
+      {/* SELECTOR DE CLIENTE (Solo para modo ejecutivo) */}
+      {/* ============================================================================ */}
+
+      {isEjecutivoMode && user?.username === "Ejecutivo" && (
+        <div
+          className="card shadow-sm mb-4"
+          style={{
+            borderLeft: "4px solid #0d6efd",
+            background: "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
+          }}
+        >
+          <div className="card-body">
+            <h5 className="card-title mb-3">
+              <svg
+                width="20"
+                height="20"
+                fill="currentColor"
+                className="me-2"
+                viewBox="0 0 16 16"
+              >
+                <path d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm.256 7a4.474 4.474 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10c.26 0 .507.009.74.025.226-.341.496-.65.804-.918C9.077 9.038 8.564 9 8 9c-5 0-6 3-6 4s1 1 1 1h5.256Z" />
+              </svg>
+              Seleccionar Cliente
+            </h5>
+
+            {loadingClientes ? (
+              <div className="text-center py-3">
+                <div
+                  className="spinner-border spinner-border-sm text-primary"
+                  role="status"
+                >
+                  <span className="visually-hidden">Cargando clientes...</span>
+                </div>
+                <span className="ms-2 text-muted">
+                  Cargando clientes asignados...
+                </span>
+              </div>
+            ) : errorClientes ? (
+              <div className="alert alert-danger mb-0">
+                <strong>Error:</strong> {errorClientes}
+              </div>
+            ) : clientesAsignados.length === 0 ? (
+              <div className="alert alert-warning mb-0">
+                <strong>⚠️ Sin clientes asignados</strong>
+                <p className="mb-0 mt-2 small">
+                  No tienes clientes asignados. Contacta al administrador.
+                </p>
+              </div>
+            ) : (
+              <div className="row g-3">
+                <div className="col-md-8">
+                  <label className="form-label fw-semibold">
+                    Cliente para esta cotización{" "}
+                    <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    className="form-select form-select-lg"
+                    value={clienteSeleccionado?.id || ""}
+                    onChange={(e) => {
+                      const cliente = clientesAsignados.find(
+                        (c) => c.id === e.target.value,
+                      );
+                      setClienteSeleccionado(cliente || null);
+                    }}
+                    style={{
+                      borderColor: clienteSeleccionado ? "#198754" : "#dee2e6",
+                      backgroundColor: clienteSeleccionado
+                        ? "#f0f9f4"
+                        : "white",
+                    }}
+                  >
+                    <option value="">Selecciona un cliente...</option>
+                    {clientesAsignados.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.username} ({c.email})
+                      </option>
+                    ))}
+                  </select>
+                  {!clienteSeleccionado && (
+                    <small className="text-danger d-block mt-1">
+                      ⚠️ Debes seleccionar un cliente antes de generar la
+                      cotización
+                    </small>
+                  )}
+                </div>
+
+                {clienteSeleccionado && (
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold">
+                      Cliente Seleccionado
+                    </label>
+                    <div className="p-3 bg-success bg-opacity-10 border border-success rounded">
+                      <div className="d-flex align-items-center">
+                        <svg
+                          width="24"
+                          height="24"
+                          fill="#198754"
+                          className="me-2"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z" />
+                        </svg>
+                        <div>
+                          <div className="fw-semibold text-success">
+                            {clienteSeleccionado.username}
+                          </div>
+                          <small className="text-muted">
+                            {clienteSeleccionado.email}
+                          </small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="qa-section-header">
         <div>
           <h2 className="qa-title">{t("Quotelcl.title")}</h2>
@@ -1593,6 +1783,11 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                         {t("Quotelcl.rutasdisponibles")} (
                         {rutasFiltradas.length})
                       </h6>
+                      {isEjecutivoMode && rutasFiltradas.length > 0 && (
+                        <small className="text-muted">
+                          {t("Quotelcl.seleccionamejor")}
+                        </small>
+                      )}
                     </div>
 
                     {rutasFiltradas.length === 0 ? (
@@ -1650,6 +1845,16 @@ function QuoteLCL({ preselectedPOL, preselectedPOD }: QuoteLCLProps = {}) {
                                       ></i>
                                     ) : (
                                       <i className="bi bi-circle text-muted"></i>
+                                    )}
+                                    {isEjecutivoMode && index === 0 && (
+                                      <div className="mt-1">
+                                        <span
+                                          className="qa-badge qa-badge-primary"
+                                          title={t("Quotelcl.mejoropcion")}
+                                        >
+                                          <i className="bi bi-star-fill"></i>
+                                        </span>
+                                      </div>
                                     )}
                                   </td>
                                   <td>
