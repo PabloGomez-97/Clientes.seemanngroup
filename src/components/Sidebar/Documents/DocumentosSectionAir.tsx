@@ -1,10 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../../../auth/AuthContext'; // ajusta si dejas el archivo en otra carpeta
-import './DocumentosSection.css';
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "../../../auth/AuthContext"; // ajusta si dejas el archivo en otra carpeta
+import "./DocumentosSection.css";
 
 type TipoDocumentoAir =
-  | 'Documento de transporte Internacional (AWB - Aereo y BL - Maritimo)'
-  | 'Facturas asociados al servicio';
+  | "Documento de transporte Internacional (AWB)"
+  | "Facturas asociados al servicio"
+  | "Invoice"
+  | "Packing List"
+  | "Certificado de Origen"
+  | "Póliza de Seguro"
+  | "Declaración de ingreso (DNI)"
+  | "Guía de despacho"
+  | "SDA"
+  | "Papeleta"
+  | "Transporte local"
+  | "Otros Documentos";
 
 interface DocumentoAir {
   id: string;
@@ -28,16 +38,42 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [carpetasAbiertas, setCarpetasAbiertas] = useState<Set<TipoDocumentoAir>>(new Set());
+  const [carpetasAbiertas, setCarpetasAbiertas] = useState<
+    Set<TipoDocumentoAir>
+  >(new Set());
 
-  const fileInputRefs = {
-    'Documento de transporte Internacional (AWB - Aereo y BL - Maritimo)': useRef<HTMLInputElement>(null),
-    'Facturas asociados al servicio': useRef<HTMLInputElement>(null),
+  const fileInputRefs: Record<
+    TipoDocumentoAir,
+    React.RefObject<HTMLInputElement | null>
+  > = {
+    "Documento de transporte Internacional (AWB)":
+      useRef<HTMLInputElement>(null),
+    "Facturas asociados al servicio": useRef<HTMLInputElement>(null),
+    Invoice: useRef<HTMLInputElement>(null),
+    "Packing List": useRef<HTMLInputElement>(null),
+    "Certificado de Origen": useRef<HTMLInputElement>(null),
+    "Póliza de Seguro": useRef<HTMLInputElement>(null),
+    "Declaración de ingreso (DNI)": useRef<HTMLInputElement>(null),
+    "Guía de despacho": useRef<HTMLInputElement>(null),
+    SDA: useRef<HTMLInputElement>(null),
+    Papeleta: useRef<HTMLInputElement>(null),
+    "Transporte local": useRef<HTMLInputElement>(null),
+    "Otros Documentos": useRef<HTMLInputElement>(null),
   };
 
   const tiposDocumento: TipoDocumentoAir[] = [
-    'Documento de transporte Internacional (AWB - Aereo y BL - Maritimo)',
-    'Facturas asociados al servicio',
+    "Documento de transporte Internacional (AWB)",
+    "Facturas asociados al servicio",
+    "Invoice",
+    "Packing List",
+    "Certificado de Origen",
+    "Póliza de Seguro",
+    "Declaración de ingreso (DNI)",
+    "Guía de despacho",
+    "SDA",
+    "Papeleta",
+    "Transporte local",
+    "Otros Documentos",
   ];
 
   useEffect(() => {
@@ -52,20 +88,23 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
     setError(null);
 
     try {
-      const response = await fetch(`/api/air-shipments/documentos/${shipmentId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `/api/air-shipments/documentos/${shipmentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
-      if (!response.ok) throw new Error('Error al cargar documentos');
+      if (!response.ok) throw new Error("Error al cargar documentos");
 
       const data = await response.json();
       setDocumentos(data.documentos || []);
     } catch (err: any) {
-      console.error('Error cargando documentos:', err);
-      setError(err.message || 'Error al cargar documentos');
+      console.error("Error cargando documentos:", err);
+      setError(err.message || "Error al cargar documentos");
     } finally {
       setLoading(false);
     }
@@ -87,27 +126,33 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
       reader.readAsDataURL(file);
     });
 
-  const getDocumentosPorTipo = (tipo: TipoDocumentoAir) => documentos.filter((d) => d.tipo === tipo);
+  const getDocumentosPorTipo = (tipo: TipoDocumentoAir) =>
+    documentos.filter((d) => d.tipo === tipo);
 
   const formatFecha = (fechaISO: string) => {
     const fecha = new Date(fechaISO);
-    return fecha.toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return fecha.toLocaleDateString("es-CL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getIconoPorTipo = (tipoArchivo: string) => {
-    if (tipoArchivo.includes('pdf')) return '📄';
-    if (tipoArchivo.includes('excel') || tipoArchivo.includes('spreadsheet')) return '📊';
-    if (tipoArchivo.includes('word') || tipoArchivo.includes('document')) return '📝';
-    return '📎';
+    if (tipoArchivo.includes("pdf")) return "📄";
+    if (tipoArchivo.includes("excel") || tipoArchivo.includes("spreadsheet"))
+      return "📊";
+    if (tipoArchivo.includes("word") || tipoArchivo.includes("document"))
+      return "📝";
+    return "📎";
   };
 
-  const handleFileSelect = async (tipo: TipoDocumentoAir, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    tipo: TipoDocumentoAir,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -115,21 +160,23 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       setError(`El archivo "${file.name}" excede el tamaño máximo de 5MB`);
-      event.target.value = '';
+      event.target.value = "";
       return;
     }
 
     // tipos permitidos
     const allowedTypes = [
-      'application/pdf',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      "application/pdf",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
     if (!allowedTypes.includes(file.type)) {
-      setError('Solo se permiten archivos PDF, Excel (.xls, .xlsx) y Word (.doc, .docx)');
-      event.target.value = '';
+      setError(
+        "Solo se permiten archivos PDF, Excel (.xls, .xlsx) y Word (.doc, .docx)",
+      );
+      event.target.value = "";
       return;
     }
 
@@ -140,11 +187,11 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
     try {
       const base64 = await fileToBase64(file);
 
-      const response = await fetch('/api/air-shipments/documentos/upload', {
-        method: 'POST',
+      const response = await fetch("/api/air-shipments/documentos/upload", {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           shipmentId: String(shipmentId),
@@ -156,19 +203,19 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al subir documento');
+        throw new Error(errorData.error || "Error al subir documento");
       }
 
       setSuccessMessage(`✅ "${file.name}" subido exitosamente`);
       await loadDocumentos();
-      event.target.value = '';
+      event.target.value = "";
 
       setCarpetasAbiertas((prev) => new Set(prev).add(tipo));
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
-      console.error('Error subiendo documento:', err);
-      setError(err.message || 'Error al subir documento');
-      event.target.value = '';
+      console.error("Error subiendo documento:", err);
+      setError(err.message || "Error al subir documento");
+      event.target.value = "";
     } finally {
       setUploading(false);
     }
@@ -178,52 +225,60 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
     if (!token) return;
 
     try {
-      const response = await fetch(`/api/air-shipments/documentos/download/${documentoId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `/api/air-shipments/documentos/download/${documentoId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
-      if (!response.ok) throw new Error('Error al descargar documento');
+      if (!response.ok) throw new Error("Error al descargar documento");
 
       const data = await response.json();
 
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = data.documento.contenidoBase64;
       link.download = nombreArchivo;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err: any) {
-      console.error('Error descargando documento:', err);
-      setError(err.message || 'Error al descargar documento');
+      console.error("Error descargando documento:", err);
+      setError(err.message || "Error al descargar documento");
     }
   };
 
   const handleDelete = async (documentoId: string, nombreArchivo: string) => {
     if (!token) return;
 
-    const confirmed = window.confirm(`¿Estás seguro de eliminar "${nombreArchivo}"?`);
+    const confirmed = window.confirm(
+      `¿Estás seguro de eliminar "${nombreArchivo}"?`,
+    );
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/air-shipments/documentos/${documentoId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `/api/air-shipments/documentos/${documentoId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
-      if (!response.ok) throw new Error('Error al eliminar documento');
+      if (!response.ok) throw new Error("Error al eliminar documento");
 
       setSuccessMessage(`✅ "${nombreArchivo}" eliminado exitosamente`);
       await loadDocumentos();
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
-      console.error('Error eliminando documento:', err);
-      setError(err.message || 'Error al eliminar documento');
+      console.error("Error eliminando documento:", err);
+      setError(err.message || "Error al eliminar documento");
     }
   };
 
@@ -232,14 +287,22 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
       {error && (
         <div className="alert alert-danger" role="alert">
           ❌ {error}
-          <button type="button" className="btn-close" onClick={() => setError(null)} />
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setError(null)}
+          />
         </div>
       )}
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
           {successMessage}
-          <button type="button" className="btn-close" onClick={() => setSuccessMessage(null)} />
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setSuccessMessage(null)}
+          />
         </div>
       )}
 
@@ -259,14 +322,19 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
 
             return (
               <div key={tipo} className="folder-item">
-                <div className="folder-header" onClick={() => toggleCarpeta(tipo)}>
+                <div
+                  className="folder-header"
+                  onClick={() => toggleCarpeta(tipo)}
+                >
                   <div className="folder-left">
                     <span className="folder-icon">🗀</span>
                     <span className="folder-name">{tipo}</span>
                   </div>
                   <div className="folder-right">
                     <span className="folder-count">({docsDelTipo.length})</span>
-                    <span className={`folder-arrow ${isOpen ? 'open' : ''}`}>▶</span>
+                    <span className={`folder-arrow ${isOpen ? "open" : ""}`}>
+                      ▶
+                    </span>
                   </div>
                 </div>
 
@@ -277,11 +345,16 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
                         {docsDelTipo.map((doc) => (
                           <div key={doc.id} className="file-item">
                             <div className="file-info">
-                              <span className="file-icon">{getIconoPorTipo(doc.tipoArchivo)}</span>
+                              <span className="file-icon">
+                                {getIconoPorTipo(doc.tipoArchivo)}
+                              </span>
                               <div className="file-details">
-                                <div className="file-name">{doc.nombreArchivo}</div>
+                                <div className="file-name">
+                                  {doc.nombreArchivo}
+                                </div>
                                 <div className="file-meta">
-                                  {doc.tamanoMB} MB • {formatFecha(doc.fechaSubida)}
+                                  {doc.tamanoMB} MB •{" "}
+                                  {formatFecha(doc.fechaSubida)}
                                 </div>
                               </div>
                             </div>
@@ -289,14 +362,18 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
                             <div className="file-actions">
                               <button
                                 className="btn-file-action"
-                                onClick={() => handleDownload(doc.id, doc.nombreArchivo)}
+                                onClick={() =>
+                                  handleDownload(doc.id, doc.nombreArchivo)
+                                }
                                 title="Descargar"
                               >
                                 ⬇️
                               </button>
                               <button
                                 className="btn-file-action delete"
-                                onClick={() => handleDelete(doc.id, doc.nombreArchivo)}
+                                onClick={() =>
+                                  handleDelete(doc.id, doc.nombreArchivo)
+                                }
                                 title="Eliminar"
                               >
                                 🗑️
@@ -317,7 +394,7 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
                         type="file"
                         accept=".pdf,xls,xlsx,doc,docx"
                         onChange={(e) => handleFileSelect(tipo, e)}
-                        style={{ display: 'none' }}
+                        style={{ display: "none" }}
                         disabled={uploading}
                       />
 

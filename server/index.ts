@@ -124,8 +124,18 @@ const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchem
 // ============================================================
 
 type TipoDocumentoAirShipment =
-  | 'Documento de transporte Internacional (AWB - Aereo y BL - Maritimo)'
-  | 'Facturas asociados al servicio';
+  | 'Documento de transporte Internacional (AWB)'
+  | 'Facturas asociados al servicio'
+  | 'Invoice'
+  | 'Packing List'
+  | 'Certificado de Origen'
+  | 'Póliza de Seguro'
+  | 'Declaración de ingreso (DNI)'
+  | 'Guía de despacho'
+  | 'SDA'
+  | 'Papeleta'
+  | 'Transporte local'
+  | 'Otros Documentos';
 
 const AirShipmentDocumentoSchema = new mongoose.Schema(
   {
@@ -135,8 +145,18 @@ const AirShipmentDocumentoSchema = new mongoose.Schema(
       type: String,
       required: true,
       enum: [
-        'Documento de transporte Internacional (AWB - Aereo y BL - Maritimo)',
+        'Documento de transporte Internacional (AWB)',
         'Facturas asociados al servicio',
+        'Invoice',
+        'Packing List',
+        'Certificado de Origen',
+        'Póliza de Seguro',
+        'Declaración de ingreso (DNI)',
+        'Guía de despacho',
+        'SDA',
+        'Papeleta',
+        'Transporte local',
+        'Otros Documentos',
       ],
     },
 
@@ -1594,8 +1614,18 @@ app.post('/api/air-shipments/documentos/upload', auth, async (req, res) => {
     }
 
     const tiposPermitidos = [
-      'Documento de transporte Internacional (AWB - Aereo y BL - Maritimo)',
+      'Documento de transporte Internacional (AWB)',
       'Facturas asociados al servicio',
+      'Invoice',
+      'Packing List',
+      'Certificado de Origen',
+      'Póliza de Seguro',
+      'Declaración de ingreso (DNI)',
+      'Guía de despacho',
+      'SDA',
+      'Papeleta',
+      'Transporte local',
+      'Otros Documentos',
     ];
 
     if (!tiposPermitidos.includes(tipo)) {
