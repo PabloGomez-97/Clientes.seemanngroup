@@ -791,7 +791,7 @@ function QuoteAPITester({
       : Math.max(totalRealWeight, calculateTotals().totalVolumetricWeight);
     const exwRate = calculateEXWRate(totalRealWeight, chargeableWeightCalc);
 
-    return exwRate * 0.8;
+    return exwRate * 0.6;
   };
 
   // ============================================================================

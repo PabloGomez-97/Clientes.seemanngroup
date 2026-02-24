@@ -7,6 +7,7 @@ import Select from "react-select";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesLCL";
 import { Modal, Button } from "react-bootstrap";
 import { PDFTemplateLCL } from "./Pdftemplate/Pdftemplatelcl";
+import * as bootstrap from "bootstrap";
 import {
   generatePDF,
   generatePDFBase64,
@@ -552,6 +553,15 @@ function QuoteLCL({
     }
   }, [rutaSeleccionada]);
 
+  useEffect(() => {
+    const tooltipTriggerList = document.querySelectorAll(
+      '[data-bs-toggle="tooltip"]',
+    );
+    tooltipTriggerList.forEach((tooltipTriggerEl) => {
+      new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  }, []);
+
   // ============================================================================
   // CÁLCULOS
   // ============================================================================
@@ -698,6 +708,16 @@ function QuoteLCL({
 
   const calculateEXWRate = (): number => {
     return 170 * piecesData.length;
+  };
+
+  // ============================================================================
+  // FUNCIÓN PARA CALCULAR EL COBRO DE NO APILABLE (80% adicional del EXW, solo si incoterm es EXW)
+  // ============================================================================
+
+  const calculateNoApilable = (): number => {
+    if (!hasNotApilable || incoterm !== "EXW") return 0;
+    const exwRate = calculateEXWRate();
+    return exwRate * 0.8;
   };
 
   // ============================================================================
@@ -858,9 +878,7 @@ function QuoteLCL({
         (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
         tarifaOceanFreight.income + // Ocean Freight
         (seguroActivo ? calculateSeguro() : 0); // Seguro
-      const totalAmount = hasNotApilable
-        ? subtotalAmount * 1.8
-        : subtotalAmount;
+      const totalAmount = subtotalAmount + calculateNoApilable();
       const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
 
       // Obtener el nombre del packageType
@@ -939,22 +957,16 @@ function QuoteLCL({
         });
       }
 
-      // No Apilable (si hay alguna pieza no apilable)
-      if (hasNotApilable) {
-        const subtotal =
-          60 + // BL
-          45 + // Handling
-          (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
-          tarifaOceanFreight.income + // Ocean Freight
-          (seguroActivo ? calculateSeguro() : 0); // Seguro
-        const adicionalAmount = subtotal * 0.8;
+      // No Apilable (solo si incoterm es EXW y hay piezas no apilables)
+      if (hasNotApilable && incoterm === "EXW") {
+        const noApilableAmount = calculateNoApilable();
         pdfCharges.push({
           code: "NA",
           description: "NO APILABLE",
           quantity: 1,
-          unit: "Each",
-          rate: adicionalAmount,
-          amount: adicionalAmount,
+          unit: "Shipment",
+          rate: noApilableAmount,
+          amount: noApilableAmount,
         });
       }
 
@@ -1379,15 +1391,9 @@ function QuoteLCL({
       });
     }
 
-    // Cobro adicional por No Apilable (solo si hay alguna pieza no apilable)
-    if (hasNotApilable) {
-      const subtotal =
-        60 + // BL
-        45 + // Handling
-        (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
-        tarifaOceanFreight.income + // Ocean Freight
-        (seguroActivo ? calculateSeguro() : 0); // Seguro
-      const adicionalAmount = subtotal * 0.8;
+    // Cobro adicional por No Apilable (solo si incoterm es EXW y hay piezas no apilables)
+    if (hasNotApilable && incoterm === "EXW") {
+      const noApilableAmount = calculateNoApilable();
       charges.push({
         service: {
           id: 115954,
@@ -1396,9 +1402,9 @@ function QuoteLCL({
         income: {
           quantity: 1,
           unit: "NO APILABLE",
-          rate: adicionalAmount,
-          amount: adicionalAmount,
-          showamount: adicionalAmount,
+          rate: noApilableAmount,
+          amount: noApilableAmount,
+          showamount: noApilableAmount,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -2299,23 +2305,26 @@ function QuoteLCL({
                       </div>
                     )}
 
-                    {hasNotApilable && (
-                      <div className="d-flex justify-content-between">
-                        <span>{t("Quotelcl.noapilable")}</span>
-                        <strong>
-                          {rutaSeleccionada.currency}{" "}
-                          {(() => {
-                            const subtotal =
-                              60 +
-                              45 +
-                              (incoterm === "EXW" ? calculateEXWRate() : 0) +
-                              tarifaOceanFreight!.income +
-                              (seguroActivo ? calculateSeguro() : 0);
-                            return (subtotal * 0.8).toFixed(2);
-                          })()}
-                        </strong>
-                      </div>
-                    )}
+                    {hasNotApilable &&
+                      incoterm === "EXW" &&
+                      calculateNoApilable() > 0 && (
+                        <div className="d-flex justify-content-between">
+                          <span>
+                            <i
+                              className="bi bi-info-circle small opacity-50"
+                              data-bs-toggle="tooltip"
+                              data-bs-placement="top"
+                              title={t("Quotelcl.tooltipnoapilable")}
+                              style={{ cursor: "pointer" }}
+                            ></i>
+                            {t("Quotelcl.noapilable")}
+                          </span>
+                          <strong>
+                            {rutaSeleccionada.currency}{" "}
+                            {calculateNoApilable().toFixed(2)}
+                          </strong>
+                        </div>
+                      )}
 
                     {seguroActivo && !valorMercaderia && (
                       <div className="qa-alert qa-alert-warning">
@@ -2345,9 +2354,7 @@ function QuoteLCL({
                             (incoterm === "EXW" ? calculateEXWRate() : 0) +
                             tarifaOceanFreight!.income +
                             (seguroActivo ? calculateSeguro() : 0);
-                          const total = hasNotApilable
-                            ? subtotal * 1.8
-                            : subtotal;
+                          const total = subtotal + calculateNoApilable();
                           return total.toFixed(2);
                         })()}
                       </span>
@@ -2502,7 +2509,7 @@ function QuoteLCL({
       {error && (
         <div className="qa-alert qa-alert-danger">
           <div>
-            <strong>Error en la llamada</strong>
+            <strong>{t("QuoteLCL.error")}</strong>
             <pre
               style={{
                 backgroundColor: "transparent",

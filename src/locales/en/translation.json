@@ -335,6 +335,7 @@
     "mejoropcion": "Best Option",
     "seleccionada": "Select",
     "tarifas": "Rates of W/M",
+    "error": "There was an error in the quotation.",
     "servicio": "Services",
     "tt": "Transit Time",
     "frecuencia": "Frequency",
@@ -364,7 +365,8 @@
     "ingresavalor": "Enter the total value of your cargo",
     "seguro": "Insurance:",
     "noapilable": "Non-stackable",
-    "selectpuerto": "Select POL"
+    "selectpuerto": "Select POL",
+    "tooltipnoapilable": "Additional charge for non-stackable cargo."
   },
   "Pieceaccordionlcl": {
     "pieza": "Piece",

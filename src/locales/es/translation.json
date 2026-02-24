@@ -339,6 +339,7 @@
     "tt": "Tiempo en Tránsito",
     "frecuencia": "Frecuencia",
     "agente": "Agente",
+    "error": "Hubo un error en la cotización",
     "clickselect": "Click para seleccionar",
     "tarifasreferenciales": "Las tarifas son referenciales y pueden variar según volumen y servicios adicionales",
     "rutaselect": "Ruta seleccionada:",
@@ -365,7 +366,8 @@
     "seguro": "Seguro:",
     "noapilable": "No Apilable:",
     "segurocargo": "Debes ingresar el valor de la mercadería para calcular el seguro",
-    "selectpuerto": "Selecciona puerto"
+    "selectpuerto": "Selecciona puerto",
+    "tooltipnoapilable": "Cobro adicional por cargamento no apilable."
   },
   "Pieceaccordionlcl": {
     "pieza": "Pieza",
