@@ -14,6 +14,7 @@ import {
 } from "./Pdftemplate/Pdfutils";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
+import * as bootstrap from "bootstrap";
 import {
   GOOGLE_SHEET_CSV_URL,
   type RutaAerea,
@@ -604,6 +605,15 @@ function QuoteAPITester({
     }
   }, [originSeleccionado, rutas]);
 
+  useEffect(() => {
+    const tooltipTriggerList = document.querySelectorAll(
+      '[data-bs-toggle="tooltip"]',
+    );
+    tooltipTriggerList.forEach((tooltipTriggerEl) => {
+      new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  }, []);
+
   // ============================================================================
   // VALIDITY PARSER (moved here): determina si la fecha "Válido Hasta" está vigente
   // ============================================================================
@@ -771,23 +781,17 @@ function QuoteAPITester({
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
   };
 
-  // Función para calcular el cobro de no apilable (TOTAL SIN MARKUP * 0.6)
+  // Función para calcular el cobro de no apilable (80% adicional del EXW, solo si incoterm es EXW)
   const calculateNoApilable = (): number => {
-    if (!noApilableActivo || !tarifaAirFreight) return 0;
+    if (!noApilableActivo || incoterm !== "EXW") return 0;
 
     const { totalRealWeight } = calculateTotals();
+    const chargeableWeightCalc = overallDimsAndWeight
+      ? Math.max(manualWeight, manualVolume * 167)
+      : Math.max(totalRealWeight, calculateTotals().totalVolumetricWeight);
+    const exwRate = calculateEXWRate(totalRealWeight, chargeableWeightCalc);
 
-    const totalSinMarkup =
-      45 + // Handling
-      (incoterm === "EXW"
-        ? calculateEXWRate(totalRealWeight, pesoChargeable)
-        : 0) + // EXW
-      30 + // AWB
-      Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-      tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
-      (seguroActivo ? calculateSeguro() : 0); // Seguro (si está activo)
-
-    return totalSinMarkup * 0.6;
+    return exwRate * 0.8;
   };
 
   // ============================================================================
@@ -1035,8 +1039,8 @@ function QuoteAPITester({
         });
       }
 
-      // No Apilable (solo si está activo)
-      if (noApilableActivo) {
+      // No Apilable (solo si incoterm es EXW y hay piezas no apilables)
+      if (noApilableActivo && incoterm === "EXW") {
         const noApilableAmount = calculateNoApilable();
         pdfCharges.push({
           code: "NA",
@@ -1516,8 +1520,8 @@ function QuoteAPITester({
         });
       }
 
-      // Cobro de NO APILABLE (solo si está activo)
-      if (noApilableActivo) {
+      // Cobro de NO APILABLE (solo si incoterm es EXW y hay piezas no apilables)
+      if (noApilableActivo && incoterm === "EXW") {
         const noApilableAmount = calculateNoApilable();
         charges.push({
           service: {
@@ -2931,15 +2935,27 @@ function QuoteAPITester({
                     )}
                   </div>
 
-                  {noApilableActivo && calculateNoApilable() > 0 && (
-                    <div className="d-flex justify-content-between mt-2 pt-2 border-top text-warning-emphasis">
-                      <span>{t("QuoteAIR.noapilable")}:</span>
-                      <strong>
-                        {rutaSeleccionada.currency}{" "}
-                        {calculateNoApilable().toFixed(2)}
-                      </strong>
-                    </div>
-                  )}
+                  {noApilableActivo &&
+                    incoterm === "EXW" &&
+                    calculateNoApilable() > 0 && (
+                      <div className="d-flex justify-content-between mt-2 pt-2 border-top text-warning-emphasis">
+                        <span className="d-flex align-items-center gap-1">
+                          <i
+                            className="bi bi-info-circle small opacity-50"
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title={t("QuoteAIR.tooltipnoapilable")}
+                            style={{ cursor: "pointer" }}
+                          ></i>
+                          {t("QuoteAIR.noapilable")}:
+                        </span>
+
+                        <strong>
+                          {rutaSeleccionada.currency}{" "}
+                          {calculateNoApilable().toFixed(2)}
+                        </strong>
+                      </div>
+                    )}
 
                   <div className="d-flex justify-content-between mt-3 pt-2 border-top fs-6">
                     <span className="fw-bold">TOTAL:</span>

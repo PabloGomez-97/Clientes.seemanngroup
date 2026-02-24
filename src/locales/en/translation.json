@@ -262,8 +262,9 @@
     "valormercaderia": "Value of the Goods",
     "ingresavalor": "Enter the total value of your cargo",
     "seguro": "Insurance:",
-    "noapilable": "Non-stackable:",
+    "noapilable": "Non-stackable",
     "noapilable1": "Non-stackeable",
+    "tooltipnoapilable": "Additional charge for non-stackable cargo.",
     "segurocargo": "You must enter the value of the goods to calculate the insurance.",
     "generarcotizacion": "Generate Quote",
     "cotizaciongenerada": "This only generates a quotation without creating an operation in the system. You will receive a PDF for your review. Ideal for comparing options!",
@@ -362,7 +363,7 @@
     "valormercaderia": "Value of the Goods",
     "ingresavalor": "Enter the total value of your cargo",
     "seguro": "Insurance:",
-    "noapilable": "Non-stackable:",
+    "noapilable": "Non-stackable",
     "selectpuerto": "Select POL"
   },
   "Pieceaccordionlcl": {
