@@ -251,6 +251,80 @@ export interface QuoteAIRProps {
   isEjecutivoMode?: boolean;
 }
 
+// ============================================================================
+// VALIDACIÓN DE RANGOS DE PESO: detecta si la ruta tiene precio en el rango actual
+// ============================================================================
+
+export interface WeightRangeValidation {
+  rangoActual: string;
+  tienePrecio: boolean;
+  siguienteRangoDisponible: string | null;
+  pesoMinimoRequerido: number | null;
+  rangosDisponibles: {
+    rango: string;
+    limiteInferior: number;
+    disponible: boolean;
+  }[];
+}
+
+/**
+ * Determina si el peso chargeable cae en un rango con precio disponible.
+ * Si no hay precio, indica cuál es el siguiente rango con precio disponible.
+ */
+export const getWeightRangeValidation = (
+  ruta: RutaAerea,
+  pesoChargeable: number,
+): WeightRangeValidation => {
+  const rangos = [
+    { limiteInferior: 0, tarifa: ruta.kg45, nombre: "1-99kg" },
+    { limiteInferior: 100, tarifa: ruta.kg100, nombre: "100-299kg" },
+    { limiteInferior: 300, tarifa: ruta.kg300, nombre: "300-499kg" },
+    { limiteInferior: 500, tarifa: ruta.kg500, nombre: "500-999kg" },
+    { limiteInferior: 1000, tarifa: ruta.kg1000, nombre: "+1000kg" },
+  ];
+
+  // Determinar en qué rango cae el peso chargeable
+  let rangoActualIdx = 0;
+  for (let i = rangos.length - 1; i >= 0; i--) {
+    if (pesoChargeable >= rangos[i].limiteInferior) {
+      rangoActualIdx = i;
+      break;
+    }
+  }
+
+  const rangoActual = rangos[rangoActualIdx];
+  const tienePrecio =
+    rangoActual.tarifa !== null && extractPrice(rangoActual.tarifa) > 0;
+
+  // Si no tiene precio, buscar el siguiente rango con precio
+  let siguienteRangoDisponible: string | null = null;
+  let pesoMinimoRequerido: number | null = null;
+
+  if (!tienePrecio) {
+    for (let i = rangoActualIdx + 1; i < rangos.length; i++) {
+      if (rangos[i].tarifa !== null && extractPrice(rangos[i].tarifa) > 0) {
+        siguienteRangoDisponible = rangos[i].nombre;
+        pesoMinimoRequerido = rangos[i].limiteInferior;
+        break;
+      }
+    }
+  }
+
+  const rangosDisponibles = rangos.map((r) => ({
+    rango: r.nombre,
+    limiteInferior: r.limiteInferior,
+    disponible: r.tarifa !== null && extractPrice(r.tarifa) > 0,
+  }));
+
+  return {
+    rangoActual: rangoActual.nombre,
+    tienePrecio,
+    siguienteRangoDisponible,
+    pesoMinimoRequerido,
+    rangosDisponibles,
+  };
+};
+
 // FUNCIÓN PARA SELECCIONAR TARIFA SEGÚN PESO CHARGEABLE
 export const seleccionarTarifaPorPeso = (
   ruta: RutaAerea,

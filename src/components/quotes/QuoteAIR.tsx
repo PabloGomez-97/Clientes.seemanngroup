@@ -26,11 +26,13 @@ import {
   capitalize,
   parseAEREO,
   seleccionarTarifaPorPeso,
+  getWeightRangeValidation,
   type QuoteAIRProps,
   type PieceData,
   type ClienteAsignado,
 } from "./Handlers/Air/HandlerQuoteAir";
 import { PieceAccordion } from "./Handlers/Air/PieceAccordion";
+import { WeightRangeAlert } from "./Handlers/Air/WeightRangeAlert";
 import "./QuoteAIR.css";
 
 // Props para pre-selección desde ItineraryFinder
@@ -713,6 +715,15 @@ function QuoteAPITester({
     ? seleccionarTarifaPorPeso(rutaSeleccionada, pesoChargeable)
     : null;
 
+  // Validar si el peso chargeable cae en un rango con precio disponible
+  const weightRangeValidation = rutaSeleccionada
+    ? getWeightRangeValidation(rutaSeleccionada, pesoChargeable)
+    : null;
+
+  // Error de rango de peso: true cuando la ruta no tiene precio en el rango actual
+  const weightRangeError =
+    weightRangeValidation !== null && !weightRangeValidation.tienePrecio;
+
   // ============================================================================
   // FUNCIONES DE CÁLCULO EXISTENTES
   // ============================================================================
@@ -788,6 +799,17 @@ function QuoteAPITester({
   ) => {
     if (!rutaSeleccionada) {
       setError("Debes seleccionar una ruta antes de generar la cotización");
+      return;
+    }
+
+    // Validar que el peso chargeable tenga precio en la ruta seleccionada
+    if (weightRangeError) {
+      setError(
+        `Esta ruta no tiene tarifa para el rango ${weightRangeValidation?.rangoActual}. ` +
+          (weightRangeValidation?.pesoMinimoRequerido
+            ? `Necesitas un mínimo de ${weightRangeValidation.pesoMinimoRequerido} kg.`
+            : "No hay rangos disponibles para esta ruta."),
+      );
       return;
     }
 
@@ -2698,6 +2720,16 @@ function QuoteAPITester({
             <h3>{t("QuoteAIR.revision")}</h3>
           </div>
 
+          {/* Alerta de rango de peso sin precio */}
+          {weightRangeValidation &&
+            !weightRangeValidation.tienePrecio &&
+            rutaSeleccionada && (
+              <WeightRangeAlert
+                validation={weightRangeValidation}
+                pesoChargeable={pesoChargeable}
+              />
+            )}
+
           <div className="qa-grid-2 mb-4">
             {/* Resumen de Pesos/Volumen */}
             <div className="p-3 bg-light rounded border">
@@ -2956,7 +2988,7 @@ function QuoteAPITester({
       {rutaSeleccionada && (
         <div className="qa-grid-2 mb-5">
           <div
-            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError ? "opacity-50" : ""}`}
+            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError || weightRangeError ? "opacity-50" : ""}`}
           >
             <div className="mb-3 text-primary">
               <i className="bi bi-file-earmark-pdf fs-1"></i>
@@ -2977,6 +3009,7 @@ function QuoteAPITester({
                 dimensionError !== null ||
                 oversizeError !== null ||
                 heightError !== null ||
+                weightRangeError ||
                 !rutaSeleccionada
               }
               className="qa-btn qa-btn-outline w-100 mt-auto"
@@ -2990,7 +3023,7 @@ function QuoteAPITester({
           </div>
 
           <div
-            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError ? "opacity-50" : ""}`}
+            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError || weightRangeError ? "opacity-50" : ""}`}
           >
             <div className="mb-3 text-dark">
               <i className="bi bi-gear fs-1"></i>
@@ -3011,6 +3044,7 @@ function QuoteAPITester({
                 dimensionError !== null ||
                 oversizeError !== null ||
                 heightError !== null ||
+                weightRangeError ||
                 !rutaSeleccionada
               }
               className="qa-btn qa-btn-primary w-100 mt-auto"

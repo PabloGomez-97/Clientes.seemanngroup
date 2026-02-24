@@ -303,6 +303,14 @@
     "noapilable": "No Apilable",
     "noapilableTooltip": "Nada debe estar encima de la pieza"
   },
+  "WeightRangeAlert": {
+    "sinPrecioEnRango": "Sin tarifa disponible para este rango de peso",
+    "pesoActualEnRango": "Tu peso chargeable actual es {{peso}} kg, que cae en el rango {{rango}}. Esta ruta no tiene precio disponible para ese rango.",
+    "sugerencia": "Necesitas un mínimo de {{pesoMinimo}} kg (rango {{rangoSiguiente}}) para poder cotizar esta ruta.",
+    "ajustarPeso": "Ajusta el peso de tu carga o selecciona otra ruta que tenga tarifa para tu rango actual.",
+    "sinRangoDisponible": "No hay rangos de peso disponibles superiores al tuyo en esta ruta. Contacta a tu ejecutivo comercial.",
+    "rangosDisponibles": "Rangos de esta ruta"
+  },
   "Quotelcl": {
     "title": "Cotizador LCL",
     "subtitle": "Genera cotizaciones para envíos LCL",

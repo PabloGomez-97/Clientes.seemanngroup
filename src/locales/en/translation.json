@@ -303,6 +303,14 @@
     "noapilable": "Non-stackable",
     "noapilableTooltip": "Cargo that cannot have anything stacked on top of it"
   },
+  "WeightRangeAlert": {
+    "sinPrecioEnRango": "No rate available for this weight range",
+    "pesoActualEnRango": "Your current chargeable weight is {{peso}} kg, which falls in the {{rango}} range. This route has no pricing available for that range.",
+    "sugerencia": "You need a minimum of {{pesoMinimo}} kg (range {{rangoSiguiente}}) to quote this route.",
+    "ajustarPeso": "Adjust your cargo weight or select another route that has a rate for your current range.",
+    "sinRangoDisponible": "No higher weight ranges are available for this route. Please contact your account executive.",
+    "rangosDisponibles": "Route ranges"
+  },
   "Quotelcl": {
     "title": "LCL Quote",
     "subtitle": "Generate quotes for LCL shipments",
