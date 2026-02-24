@@ -1107,9 +1107,18 @@ function AirShipmentsView() {
                                                 ¿Quieres trackear tu envío?
                                               </div>
                                               {arrived ? (
-                                                <span className="asv-track-field__unavailable">
-                                                  No disponible
-                                                </span>
+                                                <>
+                                                  <span className="asv-track-field__unavailable">
+                                                    No disponible
+                                                  </span>
+                                                  <p className="asv-track-field__unavailable-text">
+                                                    Este cargamento ha llegado
+                                                    el{" "}
+                                                    {formatDate(
+                                                      shipment.arrival,
+                                                    )}
+                                                  </p>
+                                                </>
                                               ) : (
                                                 <button
                                                   className="asv-btn asv-btn--secondary asv-btn--sm"

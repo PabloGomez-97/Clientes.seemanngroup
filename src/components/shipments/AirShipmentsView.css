@@ -647,6 +647,13 @@
   margin-bottom: 16px;
 }
 
+.asv-track-field__unavailable-text {
+  font-style: italic;
+  font-size: 0.8rem; /* ≈14px — ajusta a 0.75rem o 1rem según prefieras */
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #666; /* opcional: color más tenue */
+}
+
 /*  Responsive  */
 @media (max-width: 768px) {
   .asv-toolbar {
