@@ -62,6 +62,8 @@ function QuoteAPITester({
     null,
   );
   const [lowHeightWarning, setLowHeightWarning] = useState<string | null>(null);
+  // Bloqueo cuando dimensiones requieren atención especial (oversize, altura >240cm, o requiere vuelo carguero)
+  const [blockingDimension, setBlockingDimension] = useState<boolean>(false);
 
   // Estados para el commodity
   const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
@@ -530,13 +532,13 @@ function QuoteAPITester({
       setHeightError(null);
       setCargoFlightWarning(null);
       setLowHeightWarning(null);
+      setBlockingDimension(false);
       return;
     }
 
     let hasOversize = false;
     let hasHeightError = false;
     let hasCargoWarning = false;
-    let hasLowHeight = false;
 
     piecesData.forEach((piece) => {
       // Validar largo o ancho > 300 cm (3m)
@@ -553,29 +555,13 @@ function QuoteAPITester({
       if (piece.height > 160) {
         hasCargoWarning = true;
       }
-
-      // Validar alto < 160 cm para alerta de ejecutivo
-      if (piece.height > 0 && piece.height < 160) {
-        hasLowHeight = true;
-      }
     });
 
     setOversizeError(hasOversize ? t("QuoteAIR.oversize") : null);
-    setHeightError(
-      hasHeightError
-        ? "El alto supera los 240 cm. Esta carga no puede ser manejada vía aérea."
-        : null,
-    );
-    setCargoFlightWarning(
-      hasCargoWarning
-        ? "El alto supera los 160 cm. Esta carga requiere vuelos cargueros. Verifique con su ejecutivo si la tarifa seleccionada corresponde a vuelos cargueros."
-        : null,
-    );
-    setLowHeightWarning(
-      hasLowHeight
-        ? "Para cargas con alto mayor a 160 cm, comuníquese con su ejecutivo para verificar la cotización en vuelo carguero."
-        : null,
-    );
+    setHeightError(hasHeightError ? t("QuoteAIR.altura") : null);
+    setCargoFlightWarning(hasCargoWarning ? t("QuoteAIR.alturasupera") : null);
+    // Si hay oversize, altura fuera de rango, o requiere vuelo carguero, bloquear generación de cotización/operación
+    setBlockingDimension(hasOversize || hasHeightError || hasCargoWarning);
   }, [piecesData, overallDimsAndWeight]);
 
   // ============================================================================
@@ -813,6 +799,15 @@ function QuoteAPITester({
           (weightRangeValidation?.pesoMinimoRequerido
             ? `Necesitas un mínimo de ${weightRangeValidation.pesoMinimoRequerido} kg.`
             : "No hay rangos disponibles para esta ruta."),
+      );
+      return;
+    }
+
+    // Bloquear generación si las dimensiones requieren atención especial (oversize / altura)
+    if (blockingDimension) {
+      setError(
+        t("QuoteAIR.contactSalesForOversize") ||
+          "La carga requiere atención especial (oversize o altura). Por favor contacta a tu ejecutivo de ventas para cotizar caso a caso.",
       );
       return;
     }

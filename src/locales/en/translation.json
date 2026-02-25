@@ -290,7 +290,9 @@
     "cotiperso": "Customized Quote Required",
     "rutaanalisis": "Case-by-case for this lane—please share cargo details for a spot assessment.",
     "comunicacioneje": "Please contact your commercial representative to obtain a personalized quotation according to your cargo specifications.",
-    "oversize": "The length and/or width exceeds 300 cm. This cargo is considered oversize and must be quoted on a case-by-case basis."
+    "oversize": "The length and/or width exceeds 300 cm. This cargo is considered oversize and must be quoted on a case-by-case basis.",
+    "altura": "The height exceeds 240 cm. This cargo cannot be handled via air transport.",
+    "alturasupera": "The height exceeds 160 cm. This cargo requires cargo flights. Please check with your executive if the selected rate corresponds to cargo flights."
   },
   "Pieceaccordionair": {
     "tipopaquete": "Package Type",

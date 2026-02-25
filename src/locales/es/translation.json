@@ -290,7 +290,9 @@
     "cotiperso": "Cotización Personalizada Requerida",
     "rutaanalisis": "Esta ruta requiere análisis caso a caso.",
     "comunicacioneje": "Por favor, contacta a tu ejecutivo comercial para obtener una cotización personalizada que se ajuste a las características específicas de tu envío.",
-    "oversize": "El largo y/o ancho supera los 300 cm. Esta carga se considera oversize y debe cotizarse caso a caso."
+    "oversize": "El largo y/o ancho supera los 300 cm. Esta carga se considera oversize y debe cotizarse caso a caso.",
+    "altura": "El alto supera los 240 cm. Esta carga no puede ser manejada vía aérea.",
+    "alturasupera": "El alto supera los 160 cm. Esta carga requiere vuelos cargueros. Verifique con su ejecutivo si la tarifa seleccionada corresponde a vuelos cargueros."
   },
   "Pieceaccordionair": {
     "tipopaquete": "Tipo de Paquete",
