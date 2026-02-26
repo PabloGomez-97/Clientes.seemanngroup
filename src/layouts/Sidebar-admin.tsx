@@ -114,7 +114,7 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
       items: [
         {
           path: "/admin/reporteria",
-          name: "Reportería Natalia",
+          name: "Reportería LINBIS",
           icon: "fa fa-chart-bar",
         },
         {
