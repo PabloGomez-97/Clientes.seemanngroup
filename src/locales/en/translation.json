@@ -124,6 +124,7 @@
       "quotes": "Quotes",
       "airOperations": "Air Operations",
       "oceanOperations": "Ocean Operations",
+      "groundOperations": "Ground Operations",
       "trackingOperations": "Shipment Tracking",
       "trackNewShipment": "Track New Shipment",
       "myShipments": "My Shipments",

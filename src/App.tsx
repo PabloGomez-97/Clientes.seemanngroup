@@ -47,6 +47,7 @@ import Cotizador from "./components/Sidebar/Cotizador";
 import QuotesView from "./components/Sidebar/QuotesView";
 import AirShipmentsView from "./components/shipments/AirShipmentsView";
 import OceanShipmentsView from "./components/shipments/OceanShipmentsView";
+import GroundShipmentsView from "./components/shipments/GroundShipmentsView";
 import Financiera from "./components/Sidebar/ReporteriaFinanciera";
 import Settings from "./components/settings/Settings";
 import ReporteriaOperacional from "./components/Sidebar/ReporteriaOperacional";
@@ -156,6 +157,7 @@ function App() {
         <Route path="air-shipments" element={<AirShipmentsView />} />
         <Route path="trackings" element={<ShipsGoTracking />} />
         <Route path="ocean-shipments" element={<OceanShipmentsView />} />
+        <Route path="ground-shipments" element={<GroundShipmentsView />} />
         <Route path="operacionales" element={<Operacionales />} />
         <Route path="envios" element={<Envios />} />
         <Route path="enviosmaritimos" element={<EnviosMaritimos />} />

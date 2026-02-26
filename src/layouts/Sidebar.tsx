@@ -84,6 +84,11 @@ function Sidebar({ isOpen }: SidebarProps) {
           name: t("home.sidebar.oceanOperations"),
           icon: "fa fa-ship",
         },
+        {
+          path: "/ground-shipments",
+          name: t("home.sidebar.groundOperations"),
+          icon: "fa fa-truck",
+        },
       ],
     },
     {

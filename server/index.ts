@@ -244,6 +244,50 @@ export const OceanShipmentDocumento =
   mongoose.models.OceanShipmentDocumento ||
   mongoose.model('OceanShipmentDocumento', OceanShipmentDocumentoSchema);
 
+// ============================================================
+// MODELO GROUND-SHIPMENT DOCUMENTOS
+// ============================================================
+
+const GroundShipmentDocumentoSchema = new mongoose.Schema(
+  {
+    shipmentId: { type: String, required: true, index: true },
+
+    tipo: {
+      type: String,
+      required: true,
+      enum: [
+        'Carta de porte / Guía de remisión / CMR',
+        'Prueba de entrega (POD / remito firmado)',
+        'Factura comercial (Invoice)',
+        'Packing List',
+        'Póliza/Certificado de seguro de transporte',
+        'Permisos/autorizaciones (sobredimensionada, especiales)',
+        'Documentación del vehículo y conductor (licencia, tarjeta)',
+        'Documentos aduaneros/transito (T1, TIR, manifiesto)',
+        'Documentos ADR / MSDS (mercancías peligrosas)',
+        'Orden/confirmación y factura del transportista (freight invoice)',
+        'Delivery Order / Warehouse Receipt (si hay almacenaje)',
+        'Certificado de Origen',
+        'Papeleta',
+        'Otros Documentos',
+      ],
+    },
+
+    nombreArchivo: { type: String, required: true },
+    tipoArchivo: { type: String, required: true },
+    tamanoBytes: { type: Number, required: true },
+    contenidoBase64: { type: String, required: true },
+    subidoPor: { type: String, required: true },
+    usuarioId: { type: String, required: true, index: true },
+  },
+  { timestamps: true }
+);
+
+GroundShipmentDocumentoSchema.index({ shipmentId: 1, usuarioId: 1 });
+
+export const GroundShipmentDocumento =
+  mongoose.models.GroundShipmentDocumento ||
+  mongoose.model('GroundShipmentDocumento', GroundShipmentDocumentoSchema);
 
 // ============================================================
 // MODELO DE DOCUMENTOS EN MONGODB
@@ -2000,6 +2044,180 @@ app.delete('/api/ocean-shipments/documentos/:documentoId', auth, async (req, res
     }
 
     await OceanShipmentDocumento.findByIdAndDelete(documentoId);
+    return res.json({ success: true, message: 'Documento eliminado exitosamente' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Error interno al eliminar documento' });
+  }
+});
+
+// ============================================================
+// RUTAS DE DOCUMENTOS (GROUND SHIPMENTS)
+// ============================================================
+
+app.post('/api/ground-shipments/documentos/upload', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    if (!currentUser?.username || !currentUser?.sub) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { shipmentId, tipo, nombreArchivo, contenidoBase64 } = req.body;
+
+    if (!shipmentId || !tipo || !nombreArchivo || !contenidoBase64) {
+      return res.status(400).json({
+        error: 'Faltan campos requeridos: shipmentId, tipo, nombreArchivo, contenidoBase64',
+      });
+    }
+
+    const tiposPermitidos = [
+      'Carta de porte / Guía de remisión / CMR',
+      'Prueba de entrega (POD / remito firmado)',
+      'Factura comercial (Invoice)',
+      'Packing List',
+      'Póliza/Certificado de seguro de transporte',
+      'Permisos/autorizaciones (sobredimensionada, especiales)',
+      'Documentación del vehículo y conductor (licencia, tarjeta)',
+      'Documentos aduaneros/transito (T1, TIR, manifiesto)',
+      'Documentos ADR / MSDS (mercancías peligrosas)',
+      'Orden/confirmación y factura del transportista (freight invoice)',
+      'Delivery Order / Warehouse Receipt (si hay almacenaje)',
+      'Certificado de Origen',
+      'Papeleta',
+      'Otros Documentos',
+    ];
+
+    if (!tiposPermitidos.includes(tipo)) {
+      return res.status(400).json({
+        error: `Tipo de documento inválido. Debe ser uno de: ${tiposPermitidos.join(', ')}`,
+      });
+    }
+
+    if (!validateBase64(contenidoBase64)) {
+      return res.status(400).json({ error: 'El archivo debe estar en formato base64 válido' });
+    }
+
+    const mimeType = getMimeTypeFromBase64(contenidoBase64);
+    if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
+      return res.status(400).json({ error: 'Tipo de archivo no permitido. Solo PDF, Excel y Word' });
+    }
+
+    const fileSize = getBase64Size(contenidoBase64);
+    if (fileSize > MAX_FILE_SIZE) {
+      return res.status(400).json({
+        error: `El archivo excede el tamaño máximo de 5MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB`,
+      });
+    }
+
+    const nuevoDocumento = await GroundShipmentDocumento.create({
+      shipmentId: String(shipmentId),
+      tipo,
+      nombreArchivo: String(nombreArchivo),
+      tipoArchivo: mimeType,
+      tamanoBytes: fileSize,
+      contenidoBase64,
+      subidoPor: currentUser.sub,
+      usuarioId: currentUser.username,
+    });
+
+    return res.status(201).json({
+      success: true,
+      documento: {
+        id: nuevoDocumento._id,
+        shipmentId: nuevoDocumento.shipmentId,
+        tipo: nuevoDocumento.tipo,
+        nombreArchivo: nuevoDocumento.nombreArchivo,
+        tipoArchivo: nuevoDocumento.tipoArchivo,
+        tamanoMB: (nuevoDocumento.tamanoBytes / 1024 / 1024).toFixed(2),
+        fechaSubida: nuevoDocumento.createdAt,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Error interno al subir documento' });
+  }
+});
+
+app.get('/api/ground-shipments/documentos/:shipmentId', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    if (!currentUser?.username) return res.status(401).json({ error: 'Usuario no autenticado' });
+
+    const { shipmentId } = req.params;
+
+    const documentos = await GroundShipmentDocumento.find({
+      shipmentId: String(shipmentId),
+      usuarioId: currentUser.username,
+    })
+      .select('-contenidoBase64')
+      .sort({ createdAt: -1 });
+
+    return res.json({
+      success: true,
+      documentos: documentos.map((doc: any) => ({
+        id: doc._id,
+        shipmentId: doc.shipmentId,
+        tipo: doc.tipo,
+        nombreArchivo: doc.nombreArchivo,
+        tipoArchivo: doc.tipoArchivo,
+        tamanoMB: (doc.tamanoBytes / 1024 / 1024).toFixed(2),
+        fechaSubida: doc.createdAt,
+      })),
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Error interno al obtener documentos' });
+  }
+});
+
+app.get('/api/ground-shipments/documentos/download/:documentoId', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    if (!currentUser?.username) return res.status(401).json({ error: 'Usuario no autenticado' });
+
+    const { documentoId } = req.params;
+
+    const documento = await GroundShipmentDocumento.findById(documentoId);
+    if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
+
+    if (documento.usuarioId !== currentUser.username) {
+      return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
+    }
+
+    return res.json({
+      success: true,
+      documento: {
+        id: documento._id,
+        shipmentId: documento.shipmentId,
+        tipo: documento.tipo,
+        nombreArchivo: documento.nombreArchivo,
+        tipoArchivo: documento.tipoArchivo,
+        tamanoMB: (documento.tamanoBytes / 1024 / 1024).toFixed(2),
+        contenidoBase64: documento.contenidoBase64,
+        fechaSubida: documento.createdAt,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Error interno al descargar documento' });
+  }
+});
+
+app.delete('/api/ground-shipments/documentos/:documentoId', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user;
+    if (!currentUser?.username) return res.status(401).json({ error: 'Usuario no autenticado' });
+
+    const { documentoId } = req.params;
+
+    const documento = await GroundShipmentDocumento.findById(documentoId);
+    if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
+
+    if (documento.usuarioId !== currentUser.username) {
+      return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+    }
+
+    await GroundShipmentDocumento.findByIdAndDelete(documentoId);
     return res.json({ success: true, message: 'Documento eliminado exitosamente' });
   } catch (err) {
     console.error(err);
