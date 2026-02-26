@@ -30,6 +30,10 @@ import {
   getPODDisplayName,
   parseLCL,
 } from "./Handlers/LCL/HandlerQuoteLCL.tsx";
+import {
+  OversizeNotifyExecutive,
+  type OversizeReason,
+} from "./Handlers/Air/OversizeNotifyExecutive";
 
 function QuoteLCL({
   preselectedPOL,
@@ -135,6 +139,9 @@ function QuoteLCL({
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
   const [valorMercaderia, setValorMercaderia] = useState<string>("");
+
+  // Estado para notificación de oversize al ejecutivo
+  const [loadingOversizeNotify, setLoadingOversizeNotify] = useState(false);
 
   // ── Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) ──
   useEffect(() => {
@@ -573,6 +580,16 @@ function QuoteLCL({
 
   // Verificar si hay alguna pieza no apilable
   const hasNotApilable = piecesData.some((piece) => piece.isNotApilable);
+
+  // ============================================================================
+  // VALIDACIÓN OVERSIZE MARÍTIMO (L > 1203cm, W > 234cm, H > 259cm)
+  // ============================================================================
+  const oversizeErrorLCL = piecesData.some(
+    (p) => p.length > 1203 || p.width > 234 || p.height > 259,
+  );
+  const oversizeLargo = piecesData.some((p) => p.length > 1203);
+  const oversizeAncho = piecesData.some((p) => p.width > 234);
+  const oversizeAlto = piecesData.some((p) => p.height > 259);
 
   // ============================================================================
   // VALIDITY PARSER: determina si la fecha "Validez" está vigente
@@ -2191,6 +2208,39 @@ function QuoteLCL({
                   {t("Quotelcl.agregarpieza")}
                 </button>
               </div>
+
+              {/* Alertas de restricciones de dimensiones marítimas */}
+              {oversizeErrorLCL && (
+                <div className="mt-4">
+                  {oversizeLargo && (
+                    <div className="qa-alert qa-alert-warning">
+                      <i className="bi bi-exclamation-triangle-fill"></i>
+                      <div>
+                        <strong>{t("OversizeNotifyLCL.largoExcede")}:</strong>{" "}
+                        {t("OversizeNotifyLCL.largoMsg")}
+                      </div>
+                    </div>
+                  )}
+                  {oversizeAncho && (
+                    <div className="qa-alert qa-alert-warning">
+                      <i className="bi bi-exclamation-triangle-fill"></i>
+                      <div>
+                        <strong>{t("OversizeNotifyLCL.anchoExcede")}:</strong>{" "}
+                        {t("OversizeNotifyLCL.anchoMsg")}
+                      </div>
+                    </div>
+                  )}
+                  {oversizeAlto && (
+                    <div className="qa-alert qa-alert-danger">
+                      <i className="bi bi-x-circle-fill"></i>
+                      <div>
+                        <strong>{t("OversizeNotifyLCL.altoExcede")}:</strong>{" "}
+                        {t("OversizeNotifyLCL.altoMsg")}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Campos condicionales solo para EXW */}
@@ -2461,7 +2511,7 @@ function QuoteLCL({
 
       {rutaSeleccionada && tarifaOceanFreight && (
         <>
-          <div className="qa-card">
+          <div className={`qa-card${oversizeErrorLCL ? " opacity-50" : ""}`}>
             <div className="qa-card-header">
               <div>
                 <h3>{t("QuoteAIR.generador")}</h3>
@@ -2495,6 +2545,7 @@ function QuoteLCL({
                       loading ||
                       !accessToken ||
                       !incoterm ||
+                      oversizeErrorLCL ||
                       (incoterm === "EXW" &&
                         (!pickupFromAddress || !deliveryToAddress))
                     }
@@ -2544,6 +2595,7 @@ function QuoteLCL({
                       loading ||
                       !accessToken ||
                       !incoterm ||
+                      oversizeErrorLCL ||
                       (incoterm === "EXW" &&
                         (!pickupFromAddress || !deliveryToAddress))
                     }
@@ -2589,6 +2641,116 @@ function QuoteLCL({
           )}
         </>
       )}
+
+      {/* ============================================================================ */}
+      {/* SECCIÓN: NOTIFICAR AL EJECUTIVO PARA CARGAS OVERSIZE MARÍTIMAS */}
+      {/* ============================================================================ */}
+      {rutaSeleccionada &&
+        oversizeErrorLCL &&
+        (() => {
+          const reasons: OversizeReason[] = ["oversize-maritimo"];
+
+          const hasMinData =
+            !!polSeleccionado &&
+            !!podSeleccionado &&
+            piecesData.some((p) => p.weight > 0);
+
+          const handleOversizeNotify = async () => {
+            setLoadingOversizeNotify(true);
+            try {
+              const piezasResumen = piecesData.map((p, i) => ({
+                pieza: i + 1,
+                largo: p.length,
+                ancho: p.width,
+                alto: p.height,
+                peso: p.weight,
+                noApilable: p.isNotApilable,
+              }));
+
+              // Build charges summary if available
+              let cargos:
+                | {
+                    currency: string;
+                    items: { label: string; amount: number }[];
+                    total: number;
+                  }
+                | undefined;
+
+              if (tarifaOceanFreight && rutaSeleccionada) {
+                const items: { label: string; amount: number }[] = [];
+                items.push({ label: "BL", amount: 60 });
+                items.push({ label: "Handling", amount: 45 });
+                if (incoterm === "EXW") {
+                  items.push({
+                    label: `EXW Charges (${piecesData.length} piezas)`,
+                    amount: calculateEXWRate(),
+                  });
+                }
+                items.push({
+                  label: `Ocean Freight (${chargeableVolume.toFixed(2)} m\u00B3)`,
+                  amount: tarifaOceanFreight.income,
+                });
+                if (seguroActivo && calculateSeguro() > 0) {
+                  items.push({
+                    label: "Seguro",
+                    amount: calculateSeguro(),
+                  });
+                }
+                if (
+                  hasNotApilable &&
+                  incoterm === "EXW" &&
+                  calculateNoApilable() > 0
+                ) {
+                  items.push({
+                    label: "No Apilable",
+                    amount: calculateNoApilable(),
+                  });
+                }
+                const total = items.reduce((s, i) => s + i.amount, 0);
+                cargos = {
+                  currency: rutaSeleccionada.currency,
+                  items,
+                  total,
+                };
+              }
+
+              const res = await fetch("/api/send-oversize-email-ocean", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${jwtToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  origen: rutaSeleccionada?.pol || polSeleccionado?.label || "",
+                  destino:
+                    rutaSeleccionada?.pod || podSeleccionado?.label || "",
+                  operador: rutaSeleccionada?.operador || "",
+                  motivos: reasons,
+                  descripcion: description,
+                  incoterm: incoterm || "N/A",
+                  validUntil: rutaSeleccionada?.validUntil || "",
+                  piezas: piezasResumen,
+                  clienteNombre: user?.nombreuser || user?.username || "",
+                  clienteEmail: user?.email || "",
+                  cargos,
+                }),
+              });
+
+              if (!res.ok) throw new Error("Error sending notification");
+            } finally {
+              setLoadingOversizeNotify(false);
+            }
+          };
+
+          return (
+            <OversizeNotifyExecutive
+              reasons={reasons}
+              loading={loadingOversizeNotify}
+              onNotify={handleOversizeNotify}
+              hasMinimumData={hasMinData}
+            />
+          );
+        })()}
 
       {/* ============================================================================ */}
       {/* SECCIÓN 4: RESULTADOS */}

@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData } from './emails/oversizeEmailTemplate.ts';
+import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from './emails/oversizeEmailTemplateOcean.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -2245,6 +2246,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(401).json({ error: error.message });
         }
         console.error('Error en /api/send-oversize-email:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+    }
+
+    // POST /api/send-oversize-email-ocean - Notificar al ejecutivo sobre carga oversize marítima LCL
+    if (path === '/api/send-oversize-email-ocean' && method === 'POST') {
+      try {
+        console.log('Endpoint /api/send-oversize-email-ocean hit');
+        const currentUser = await User.findOne({ email: requireAuth(req).sub }).populate('ejecutivoId');
+        if (!currentUser || !currentUser.ejecutivoId) {
+          return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+        }
+
+        const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
+        const { origen, destino, operador, motivos, descripcion, incoterm, validUntil, piezas, clienteNombre, clienteEmail, cargos } = req.body;
+
+        const emailData: OceanOversizeEmailData = {
+          clienteNombre: clienteNombre || currentUser.username,
+          clienteEmail: clienteEmail || currentUser.email,
+          origen: origen || '',
+          destino: destino || '',
+          operador: operador || '',
+          descripcion: descripcion || '',
+          incoterm: incoterm || '',
+          validUntil: validUntil || '',
+          motivos: motivos || [],
+          piezas: piezas || [],
+          cargos: cargos || undefined,
+        };
+
+        const subject = getOceanOversizeEmailSubject(emailData);
+        const htmlContent = buildOceanOversizeEmailHTML(emailData);
+
+        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': process.env.BREVO_API_KEY!,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sender: { name: 'Cotización Marítima Especial', email: 'noreply@sphereglobal.io' },
+            to: [{ email: ejecutivoEmail }],
+            subject,
+            htmlContent,
+          }),
+        });
+
+        if (!brevoResponse.ok) {
+          const errorText = await brevoResponse.text();
+          console.error('Error enviando correo oversize ocean con Brevo:', errorText);
+        }
+
+        return res.status(200).json({ success: true, message: 'Notificación de carga marítima especial enviada al ejecutivo' });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('Error en /api/send-oversize-email-ocean:', error);
         return res.status(500).json({ error: 'Error interno del servidor' });
       }
     }

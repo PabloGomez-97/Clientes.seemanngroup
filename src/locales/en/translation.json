@@ -405,7 +405,16 @@
     "missingData": "Complete at least the origin, destination and piece data to notify your executive.",
     "reason_oversize": "Oversize Cargo (length or width > 300 cm)",
     "reason_no-apta-aereo": "Not suitable for air transport (height > 240 cm)",
-    "reason_vuelo-carguero": "Requires cargo flight (height > 160 cm)"
+    "reason_vuelo-carguero": "Requires cargo flight (height > 160 cm)",
+    "reason_oversize-maritimo": "Maritime Oversize Cargo (exceeds container limits: L 1203 / W 234 / H 259 cm)"
+  },
+  "OversizeNotifyLCL": {
+    "largoExcede": "Length exceeds limit",
+    "largoMsg": "One or more pieces exceed 1203 cm in length. This cargo is considered oversize and requires a special quote.",
+    "anchoExcede": "Width exceeds limit",
+    "anchoMsg": "One or more pieces exceed 234 cm in width. This cargo is considered oversize and requires a special quote.",
+    "altoExcede": "Height exceeds limit",
+    "altoMsg": "One or more pieces exceed 259 cm in height. This cargo is considered oversize and requires a special quote."
   },
   "sidebar": {
     "account": "Active Account"

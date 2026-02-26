@@ -1,19 +1,19 @@
 /**
- * Template HTML para el correo de notificación de carga especial (oversize).
+ * Template HTML para el correo de notificación de carga oversize MARÍTIMA (LCL).
  * Minimalista, compatible con clientes de email, con branding Seemann Group.
  */
 
-export interface OversizeChargeItem {
+export interface OceanChargeItem {
   label: string;
   amount: number;
 }
 
-export interface OversizeEmailData {
+export interface OceanOversizeEmailData {
   clienteNombre: string;
   clienteEmail: string;
-  origen: string;
-  destino: string;
-  carrier: string;
+  origen: string;          // POL
+  destino: string;         // POD
+  operador: string;        // Naviera/Operador
   descripcion: string;
   incoterm: string;
   validUntil?: string;
@@ -29,15 +29,12 @@ export interface OversizeEmailData {
   /** Resumen de cargos (opcional, se muestra si viene con items) */
   cargos?: {
     currency: string;
-    items: OversizeChargeItem[];
+    items: OceanChargeItem[];
     total: number;
   };
 }
 
 const MOTIVO_LABELS: Record<string, string> = {
-  oversize: 'Carga Oversize (largo o ancho > 300 cm)',
-  'no-apta-aereo': 'No apta para transporte aéreo (alto > 240 cm)',
-  'vuelo-carguero': 'Requiere vuelo carguero (alto > 160 cm)',
   'oversize-maritimo': 'Carga Oversize Marítima (excede límites de contenedor: L 1203 / A 234 / H 259 cm)',
 };
 
@@ -50,6 +47,7 @@ const C = {
   border: '#e0e0e0',
   bgLight: '#f8f9fa',
   white: '#ffffff',
+  ocean: '#0d6efd',      // Acento marítimo
 };
 
 const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
@@ -58,14 +56,14 @@ const PORTAL_URL = 'https://portalclientes.seemanngroup.com';
 /**
  * Genera el subject del email.
  */
-export function getOversizeEmailSubject(data: OversizeEmailData): string {
-  return `⚠️ Cotización especial solicitada por ${data.clienteNombre}`;
+export function getOceanOversizeEmailSubject(data: OceanOversizeEmailData): string {
+  return `🚢 Cotización marítima especial solicitada por ${data.clienteNombre}`;
 }
 
 /**
  * Genera el HTML completo del email.
  */
-export function buildOversizeEmailHTML(data: OversizeEmailData): string {
+export function buildOceanOversizeEmailHTML(data: OceanOversizeEmailData): string {
   const fecha = new Date().toLocaleString('es-ES', {
     dateStyle: 'long',
     timeStyle: 'short',
@@ -96,7 +94,7 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cotización Especial - Seemann Group</title>
+  <title>Cotización Marítima Especial - Seemann Group</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 
@@ -117,16 +115,16 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
                     <img src="${LOGO_URL}" alt="Seemann Group" width="140" style="display:block;" />
                   </td>
                   <td align="right" style="vertical-align:middle;">
-                    <span style="color:${C.primary};font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Cotización Especial</span>
+                    <span style="color:${C.ocean};font-size:12px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Cotización Marítima LCL</span>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- Accent line -->
+          <!-- Accent line (blue for ocean) -->
           <tr>
-            <td style="height:3px;background-color:${C.primary};font-size:0;line-height:0;">&nbsp;</td>
+            <td style="height:3px;background-color:${C.ocean};font-size:0;line-height:0;">&nbsp;</td>
           </tr>
 
           <!-- Body -->
@@ -138,14 +136,14 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
                 Estimado ejecutivo,
               </p>
               <p style="margin:0 0 24px;font-size:15px;color:${C.text};line-height:1.6;">
-                El cliente <strong>${data.clienteNombre}</strong> (${data.clienteEmail}) ha solicitado una cotización aérea que requiere análisis especial.
+                El cliente <strong>${data.clienteNombre}</strong> (${data.clienteEmail}) ha solicitado una cotización marítima LCL que requiere análisis especial por carga oversize.
               </p>
 
               <!-- Motivos -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
                 <tr>
-                  <td style="background-color:#fff5f0;border-left:3px solid ${C.primary};padding:16px 20px;border-radius:0 4px 4px 0;">
-                    <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:${C.primary};text-transform:uppercase;letter-spacing:0.5px;">Motivo(s)</p>
+                  <td style="background-color:#e8f0fe;border-left:3px solid ${C.ocean};padding:16px 20px;border-radius:0 4px 4px 0;">
+                    <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:${C.ocean};text-transform:uppercase;letter-spacing:0.5px;">Motivo(s)</p>
                     <ul style="margin:0;padding-left:18px;list-style:disc;">
                       ${motivosHTML}
                     </ul>
@@ -154,19 +152,19 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
               </table>
 
               <!-- Shipment details -->
-              <p style="margin:0 0 12px;font-size:12px;font-weight:600;color:${C.muted};text-transform:uppercase;letter-spacing:0.5px;">Detalles del envío</p>
+              <p style="margin:0 0 12px;font-size:12px;font-weight:600;color:${C.muted};text-transform:uppercase;letter-spacing:0.5px;">Detalles del envío marítimo</p>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${C.border};border-radius:4px;overflow:hidden;margin-bottom:24px;">
                 <tr style="border-bottom:1px solid ${C.border};">
-                  <td style="padding:10px 16px;font-size:13px;color:${C.muted};width:35%;background-color:${C.bgLight};">Origen</td>
+                  <td style="padding:10px 16px;font-size:13px;color:${C.muted};width:35%;background-color:${C.bgLight};">POL (Origen)</td>
                   <td style="padding:10px 16px;font-size:13px;color:${C.text};font-weight:500;">${data.origen || 'No especificado'}</td>
                 </tr>
                 <tr style="border-bottom:1px solid ${C.border};">
-                  <td style="padding:10px 16px;font-size:13px;color:${C.muted};background-color:${C.bgLight};">Destino</td>
+                  <td style="padding:10px 16px;font-size:13px;color:${C.muted};background-color:${C.bgLight};">POD (Destino)</td>
                   <td style="padding:10px 16px;font-size:13px;color:${C.text};font-weight:500;">${data.destino || 'No especificado'}</td>
                 </tr>
                 <tr style="border-bottom:1px solid ${C.border};">
-                  <td style="padding:10px 16px;font-size:13px;color:${C.muted};background-color:${C.bgLight};">Carrier</td>
-                  <td style="padding:10px 16px;font-size:13px;color:${C.text};font-weight:500;">${data.carrier || 'No especificado'}</td>
+                  <td style="padding:10px 16px;font-size:13px;color:${C.muted};background-color:${C.bgLight};">Operador</td>
+                  <td style="padding:10px 16px;font-size:13px;color:${C.text};font-weight:500;">${data.operador || 'No especificado'}</td>
                 </tr>
                 <tr style="border-bottom:1px solid ${C.border};">
                   <td style="padding:10px 16px;font-size:13px;color:${C.muted};background-color:${C.bgLight};">Descripción</td>
@@ -178,7 +176,7 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
                 </tr>
                 <tr>
                   <td style="padding:10px 16px;font-size:13px;color:${C.muted};background-color:${C.bgLight};">Válido Hasta</td>
-                  <td style="padding:10px 16px;font-size:13px;color:${C.primary};font-weight:700;">${data.validUntil || 'No especificado'}</td>
+                  <td style="padding:10px 16px;font-size:13px;color:${C.ocean};font-weight:700;">${data.validUntil || 'No especificado'}</td>
                 </tr>
               </table>
 
@@ -204,6 +202,17 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
                   : ''
               }
 
+              <!-- Dimension limits reminder -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+                <tr>
+                  <td style="background-color:#fff3cd;border-left:3px solid #ffc107;padding:12px 16px;border-radius:0 4px 4px 0;">
+                    <p style="margin:0;font-size:13px;color:#856404;line-height:1.5;">
+                      <strong>Límites estándar de contenedor:</strong> Largo ≤ 1203 cm, Ancho ≤ 234 cm, Alto ≤ 259 cm. Las piezas que excedan estas dimensiones requieren cotización especial.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
               <!-- Charges summary -->
               ${data.cargos && data.cargos.items.length > 0 ? `
               <p style="margin:0 0 12px;font-size:12px;font-weight:600;color:${C.muted};text-transform:uppercase;letter-spacing:0.5px;">Resumen de cargos</p>
@@ -216,7 +225,7 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
                   </tr>`).join('')}
                   <tr style="background-color:${C.dark};">
                     <td style="padding:12px 16px;font-size:14px;font-weight:600;color:${C.white};">TOTAL</td>
-                    <td style="padding:12px 16px;font-size:14px;font-weight:700;color:${C.primary};text-align:right;">${data.cargos.currency} ${data.cargos.total.toFixed(2)}</td>
+                    <td style="padding:12px 16px;font-size:14px;font-weight:700;color:${C.ocean};text-align:right;">${data.cargos.currency} ${data.cargos.total.toFixed(2)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -229,7 +238,7 @@ export function buildOversizeEmailHTML(data: OversizeEmailData): string {
 
               <!-- CTA -->
               <p style="margin:0 0 4px;font-size:15px;color:${C.text};line-height:1.6;">
-                Por favor, contacte al cliente para generar una cotización personalizada.
+                Por favor, contacte al cliente para generar una cotización marítima personalizada.
               </p>
 
             </td>

@@ -406,7 +406,16 @@
     "missingData": "Completa al menos el origen, destino y los datos de las piezas para poder notificar a tu ejecutivo.",
     "reason_oversize": "Carga Oversize (largo o ancho > 300 cm)",
     "reason_no-apta-aereo": "No apta para transporte aéreo (alto > 240 cm)",
-    "reason_vuelo-carguero": "Requiere vuelo carguero (alto > 160 cm)"
+    "reason_vuelo-carguero": "Requiere vuelo carguero (alto > 160 cm)",
+    "reason_oversize-maritimo": "Carga Oversize Marítima (excede límites de contenedor: L 1203 / A 234 / H 259 cm)"
+  },
+  "OversizeNotifyLCL": {
+    "largoExcede": "Largo excede el límite",
+    "largoMsg": "Una o más piezas superan los 1203 cm de largo. Esta carga se considera oversize y requiere cotización especial.",
+    "anchoExcede": "Ancho excede el límite",
+    "anchoMsg": "Una o más piezas superan los 234 cm de ancho. Esta carga se considera oversize y requiere cotización especial.",
+    "altoExcede": "Alto excede el límite",
+    "altoMsg": "Una o más piezas superan los 259 cm de alto. Esta carga se considera oversize y requiere cotización especial."
   },
   "sidebar": {
     "account": "Cuenta Activa"
