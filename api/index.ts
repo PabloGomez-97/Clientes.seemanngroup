@@ -3,8 +3,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData } from './emails/oversizeEmailTemplate';
-import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from './emails/oversizeEmailTemplateOcean';
+import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData } from './emails/oversizeEmailTemplate.js';
+import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from './emails/oversizeEmailTemplateOcean.js';
 
 /** =========================
  *  Entorno + JWT
