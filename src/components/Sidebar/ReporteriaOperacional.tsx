@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useTranslation } from "react-i18next";
 import {
   AreaChart,
   Area,
@@ -124,6 +125,16 @@ const getModeLabel = (mode: "air" | "sea" | "ground" | "other") => {
   return map[mode] || "Otro";
 };
 
+const getModeLabelI18n = (mode: "air" | "sea" | "ground" | "other", t: (key: string) => string) => {
+  const map: Record<string, string> = {
+    air: t("reportOperational.modeAir"),
+    sea: t("reportOperational.modeSea"),
+    ground: t("reportOperational.modeGround"),
+    other: t("reportOperational.modeOther"),
+  };
+  return map[mode] || t("reportOperational.modeOther");
+};
+
 const fmtNumber = (n: number, decimals = 0): string =>
   new Intl.NumberFormat("es-CL", {
     minimumFractionDigits: 0,
@@ -160,6 +171,7 @@ const shortenLocation = (loc: string): string => {
 function ShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { activeUsername } = useAuth();
+  const { t } = useTranslation();
 
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -204,7 +216,7 @@ function ShipmentsView() {
         );
 
         if (!res.ok) {
-          if (res.status === 401) throw new Error("Token invalido o expirado");
+          if (res.status === 401) throw new Error(t("reportOperational.tokenExpired"));
           throw new Error(`Error ${res.status}: ${res.statusText}`);
         }
 
@@ -229,7 +241,7 @@ function ShipmentsView() {
         localStorage.setItem(`${ck}_ts`, Date.now().toString());
         localStorage.setItem(`${ck}_page`, page.toString());
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error desconocido");
+        setError(err instanceof Error ? err.message : t("reportOperational.unknownError"));
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -396,9 +408,9 @@ function ShipmentsView() {
   const pieData = useMemo(
     () =>
       [
-        { name: "Aereo", value: kpis.air, color: PALETTE.air },
-        { name: "Maritimo", value: kpis.sea, color: PALETTE.sea },
-        { name: "Terrestre", value: kpis.ground, color: PALETTE.ground },
+        { name: t("reportOperational.modeAir"), value: kpis.air, color: PALETTE.air },
+        { name: t("reportOperational.modeSea"), value: kpis.sea, color: PALETTE.sea },
+        { name: t("reportOperational.modeGround"), value: kpis.ground, color: PALETTE.ground },
       ].filter((d) => d.value > 0),
     [kpis],
   );
@@ -481,13 +493,13 @@ function ShipmentsView() {
 
   /* -- CSV export ------------------------------------------- */
   const exportCSV = useCallback(() => {
-    const h = ["Numero", "Fecha", "Origen", "Destino", "Modo", "Piezas", "Peso (kg)", "Volumen"];
+    const h = [t("reportOperational.csvNumber"), t("reportOperational.csvDate"), t("reportOperational.csvOrigin"), t("reportOperational.csvDestination"), t("reportOperational.csvMode"), t("reportOperational.csvPieces"), t("reportOperational.csvWeightKg"), t("reportOperational.csvVolume")];
     const rows = filtered.map((s) => [
       s.number || s.id || "",
       fmtDate(s.createdOn),
       s.origin || "",
       s.destination || "",
-      getModeLabel(getTransportMode(s.modeOfTransportation)),
+      getModeLabelI18n(getTransportMode(s.modeOfTransportation), t),
       s.totalCargo_Pieces || 0,
       s.totalCargo_WeightValue || 0,
       s.totalCargo_VolumeWeightValue || 0,
@@ -528,12 +540,12 @@ function ShipmentsView() {
   }, [activeModal, filtered]);
 
   const modalTitles: Record<string, string> = {
-    total: "Todos los envios",
-    air: "Envios Aereos",
-    sea: "Envios Maritimos",
-    ground: "Envios Terrestres",
-    pieces: "Top envios por piezas",
-    weight: "Top envios por peso",
+    total: t("reportOperational.modalAllShipments"),
+    air: t("reportOperational.modalAirShipments"),
+    sea: t("reportOperational.modalSeaShipments"),
+    ground: t("reportOperational.modalGroundShipments"),
+    pieces: t("reportOperational.modalTopByPieces"),
+    weight: t("reportOperational.modalTopByWeight"),
   };
 
   /* -- Custom tooltip for charts ---------------------------- */
@@ -579,9 +591,9 @@ function ShipmentsView() {
       {/* -- Header -- */}
       <div className="rop-header">
         <div>
-          <h1 className="rop-header__title">Reporteria Operacional</h1>
+          <h1 className="rop-header__title">{t("reportOperational.title")}</h1>
           <p className="rop-header__subtitle">
-            Analisis de tus operaciones de envio
+            {t("reportOperational.subtitle")}
           </p>
         </div>
         <div className="rop-header__actions">
@@ -590,7 +602,7 @@ function ShipmentsView() {
             onClick={() => setShowFilters((v) => !v)}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-            {showFilters ? "Ocultar filtros" : "Filtros"}
+            {showFilters ? t("reportOperational.hideFilters") : t("reportOperational.filters")}
           </button>
           <button
             className="rop-btn"
@@ -598,7 +610,7 @@ function ShipmentsView() {
             disabled={filtered.length === 0}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Exportar CSV
+            {t("reportOperational.exportCSV")}
           </button>
           <button
             className="rop-btn rop-btn--primary"
@@ -606,7 +618,7 @@ function ShipmentsView() {
             disabled={loading}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            {loading ? "Cargando\u2026" : "Actualizar"}
+            {loading ? t("reportOperational.loading") : t("reportOperational.refresh")}
           </button>
         </div>
       </div>
@@ -614,7 +626,7 @@ function ShipmentsView() {
       {/* -- Filters -- */}
       {showFilters && (
         <div className="rop-filters">
-          <span className="rop-filters__label">Periodo:</span>
+          <span className="rop-filters__label">{t("reportOperational.period")}</span>
           <input
             className="rop-filters__input"
             type="date"
@@ -637,7 +649,7 @@ function ShipmentsView() {
               }}
               style={{ marginLeft: "auto" }}
             >
-              Limpiar
+              {t("reportOperational.clear")}
             </button>
           )}
         </div>
@@ -646,7 +658,7 @@ function ShipmentsView() {
       {/* -- Error -- */}
       {error && (
         <div className="rop-error">
-          <strong>Error:</strong> {error}
+          <strong>{t("reportOperational.error")}</strong> {error}
         </div>
       )}
 
@@ -654,7 +666,7 @@ function ShipmentsView() {
       {loading && (
         <div className="rop-loading">
           <div className="rop-spinner" />
-          <span className="rop-loading__text">Cargando datos\u2026</span>
+          <span className="rop-loading__text">{t("reportOperational.loadingData")}</span>
         </div>
       )}
 
@@ -664,7 +676,7 @@ function ShipmentsView() {
           {/* -- KPI Cards -- */}
           <div className="rop-kpi-grid">
             <div className="rop-kpi" onClick={() => setActiveModal("total")}>
-              <div className="rop-kpi__label">Envios totales</div>
+              <div className="rop-kpi__label">{t("reportOperational.kpiTotalShipments")}</div>
               <div className="rop-kpi__value">{fmtNumber(kpis.total)}</div>
               {yearComp.growth !== 0 && (
                 <div
@@ -703,15 +715,15 @@ function ShipmentsView() {
                   <div className="rop-legend">
                     <span className="rop-legend__item">
                       <span className="rop-legend__dot" style={{ background: PALETTE.air }} />
-                      Aereo {kpis.air}
+                      {t("reportOperational.modeAir")} {kpis.air}
                     </span>
                     <span className="rop-legend__item">
                       <span className="rop-legend__dot" style={{ background: PALETTE.sea }} />
-                      Maritimo {kpis.sea}
+                      {t("reportOperational.modeSea")} {kpis.sea}
                     </span>
                     <span className="rop-legend__item">
                       <span className="rop-legend__dot" style={{ background: PALETTE.ground }} />
-                      Terrestre {kpis.ground}
+                      {t("reportOperational.modeGround")} {kpis.ground}
                     </span>
                   </div>
                 </>
@@ -719,65 +731,65 @@ function ShipmentsView() {
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("air")}>
-              <div className="rop-kpi__label">Aereos</div>
+              <div className="rop-kpi__label">{t("reportOperational.kpiAir")}</div>
               <div className="rop-kpi__value">{fmtNumber(kpis.air)}</div>
               <div className="rop-kpi__sub">
                 {kpis.total > 0
                   ? ((kpis.air / kpis.total) * 100).toFixed(1)
                   : 0}
-                % del total
+                % {t("reportOperational.ofTotal")}
               </div>
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("sea")}>
-              <div className="rop-kpi__label">Maritimos</div>
+              <div className="rop-kpi__label">{t("reportOperational.kpiSea")}</div>
               <div className="rop-kpi__value">{fmtNumber(kpis.sea)}</div>
               <div className="rop-kpi__sub">
                 {kpis.total > 0
                   ? ((kpis.sea / kpis.total) * 100).toFixed(1)
                   : 0}
-                % del total
+                % {t("reportOperational.ofTotal")}
               </div>
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("ground")}>
-              <div className="rop-kpi__label">Terrestres</div>
+              <div className="rop-kpi__label">{t("reportOperational.kpiGround")}</div>
               <div className="rop-kpi__value">{fmtNumber(kpis.ground)}</div>
               <div className="rop-kpi__sub">
                 {kpis.total > 0
                   ? ((kpis.ground / kpis.total) * 100).toFixed(1)
                   : 0}
-                % del total
+                % {t("reportOperational.ofTotal")}
               </div>
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("pieces")}>
-              <div className="rop-kpi__label">Total piezas</div>
+              <div className="rop-kpi__label">{t("reportOperational.kpiTotalPieces")}</div>
               <div className="rop-kpi__value">{fmtNumber(kpis.pieces)}</div>
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("weight")}>
-              <div className="rop-kpi__label">Peso total</div>
+              <div className="rop-kpi__label">{t("reportOperational.kpiTotalWeight")}</div>
               <div className="rop-kpi__value">
                 {fmtNumber(Math.round(kpis.weight))}
               </div>
-              <div className="rop-kpi__sub">kg</div>
+              <div className="rop-kpi__sub">{t("reportOperational.kg")}</div>
             </div>
 
             <div className="rop-kpi">
-              <div className="rop-kpi__label">Volumen total</div>
+              <div className="rop-kpi__label">{t("reportOperational.kpiTotalVolume")}</div>
               <div className="rop-kpi__value">
                 {fmtNumber(Math.round(kpis.volume))}
               </div>
-              <div className="rop-kpi__sub">m3</div>
+              <div className="rop-kpi__sub">{t("reportOperational.m3")}</div>
             </div>
 
             <div className="rop-kpi">
-              <div className="rop-kpi__label">Transito promedio</div>
+              <div className="rop-kpi__label">{t("reportOperational.kpiAvgTransit")}</div>
               <div className="rop-kpi__value">
                 {kpis.avgTransit > 0 ? fmtNumber(kpis.avgTransit, 1) : "\u2014"}
               </div>
-              <div className="rop-kpi__sub">dias</div>
+              <div className="rop-kpi__sub">{t("reportOperational.days")}</div>
             </div>
           </div>
 
@@ -786,10 +798,10 @@ function ShipmentsView() {
             <div className="rop-tabs__nav">
               {(
                 [
-                  { id: "overview", label: "Resumen" },
-                  { id: "routes", label: "Rutas y destinos" },
-                  { id: "performance", label: "Rendimiento" },
-                  { id: "activity", label: "Actividad reciente" },
+                  { id: "overview", label: t("reportOperational.tabOverview") },
+                  { id: "routes", label: t("reportOperational.tabRoutes") },
+                  { id: "performance", label: t("reportOperational.tabPerformance") },
+                  { id: "activity", label: t("reportOperational.tabActivity") },
                 ] as { id: TabType; label: string }[]
               ).map((tab) => (
                 <button
@@ -808,7 +820,7 @@ function ShipmentsView() {
                 <>
                   <div className="rop-panel">
                     <div className="rop-panel__title">
-                      Tendencia mensual de envios
+                      {t("reportOperational.panelMonthlyTrend")}
                     </div>
                     <ResponsiveContainer width="100%" height={300}>
                       <AreaChart data={monthlyData}>
@@ -835,6 +847,7 @@ function ShipmentsView() {
                         <Area
                           type="monotone"
                           dataKey="Aereo"
+                          name={t("reportOperational.modeAir")}
                           stroke={PALETTE.air}
                           fill={PALETTE.air}
                           fillOpacity={0.08}
@@ -843,6 +856,7 @@ function ShipmentsView() {
                         <Area
                           type="monotone"
                           dataKey="Maritimo"
+                          name={t("reportOperational.modeSea")}
                           stroke={PALETTE.sea}
                           fill={PALETTE.sea}
                           fillOpacity={0.08}
@@ -851,6 +865,7 @@ function ShipmentsView() {
                         <Area
                           type="monotone"
                           dataKey="Terrestre"
+                          name={t("reportOperational.modeGround")}
                           stroke={PALETTE.ground}
                           fill={PALETTE.ground}
                           fillOpacity={0.08}
@@ -861,15 +876,15 @@ function ShipmentsView() {
                     <div className="rop-legend" style={{ justifyContent: "center", marginTop: 12 }}>
                       <span className="rop-legend__item">
                         <span className="rop-legend__dot" style={{ background: PALETTE.air }} />
-                        Aereo
+                        {t("reportOperational.modeAir")}
                       </span>
                       <span className="rop-legend__item">
                         <span className="rop-legend__dot" style={{ background: PALETTE.sea }} />
-                        Maritimo
+                        {t("reportOperational.modeSea")}
                       </span>
                       <span className="rop-legend__item">
                         <span className="rop-legend__dot" style={{ background: PALETTE.ground }} />
-                        Terrestre
+                        {t("reportOperational.modeGround")}
                       </span>
                     </div>
                   </div>
@@ -877,7 +892,7 @@ function ShipmentsView() {
                   <div className="rop-panel__row">
                     <div className="rop-panel">
                       <div className="rop-panel__title">
-                        Distribucion por modo
+                        {t("reportOperational.panelModeDistribution")}
                       </div>
                       <ResponsiveContainer width="100%" height={240}>
                         <PieChart>
@@ -906,7 +921,7 @@ function ShipmentsView() {
 
                     <div className="rop-panel">
                       <div className="rop-panel__title">
-                        Volumen mensual por modo
+                        {t("reportOperational.panelMonthlyVolume")}
                       </div>
                       <ResponsiveContainer width="100%" height={240}>
                         <BarChart data={monthlyData}>
@@ -932,17 +947,20 @@ function ShipmentsView() {
                           <Tooltip content={<ChartTooltip />} />
                           <Bar
                             dataKey="Aereo"
+                            name={t("reportOperational.modeAir")}
                             stackId="a"
                             fill={PALETTE.air}
                             radius={[0, 0, 0, 0]}
                           />
                           <Bar
                             dataKey="Maritimo"
+                            name={t("reportOperational.modeSea")}
                             stackId="a"
                             fill={PALETTE.sea}
                           />
                           <Bar
                             dataKey="Terrestre"
+                            name={t("reportOperational.modeGround")}
                             stackId="a"
                             fill={PALETTE.ground}
                             radius={[3, 3, 0, 0]}
@@ -959,7 +977,7 @@ function ShipmentsView() {
                 <>
                   <div className="rop-panel">
                     <div className="rop-panel__title">
-                      Rutas mas utilizadas
+                      {t("reportOperational.panelTopRoutes")}
                     </div>
                     <ResponsiveContainer width="100%" height={Math.max(280, topRoutes.length * 40)}>
                       <BarChart
@@ -1006,7 +1024,7 @@ function ShipmentsView() {
                                   {payload[0].payload.fullRoute}
                                 </div>
                                 <div style={{ color: "#6b7280" }}>
-                                  Envios: {payload[0].value}
+                                  {t("reportOperational.tooltipShipments")}: {payload[0].value}
                                 </div>
                               </div>
                             );
@@ -1025,7 +1043,7 @@ function ShipmentsView() {
                   <div className="rop-panel__row">
                     <div className="rop-panel">
                       <div className="rop-panel__title">
-                        Top 5 destinos
+                        {t("reportOperational.panelTop5Destinations")}
                       </div>
                       <ul className="rop-rank-list">
                         {topDestinations.map(([dest, count], i) => (
@@ -1042,7 +1060,7 @@ function ShipmentsView() {
 
                     <div className="rop-panel">
                       <div className="rop-panel__title">
-                        Top 5 embarcadores
+                        {t("reportOperational.panelTop5Shippers")}
                       </div>
                       <ul className="rop-rank-list">
                         {topShippers.map(([shipper, count], i) => (
@@ -1066,9 +1084,9 @@ function ShipmentsView() {
                   <div className="rop-perf-grid">
                     {(
                       [
-                        { key: "air", label: "Aereo", color: PALETTE.air, data: perfByMode.air },
-                        { key: "sea", label: "Maritimo", color: PALETTE.sea, data: perfByMode.sea },
-                        { key: "ground", label: "Terrestre", color: PALETTE.ground, data: perfByMode.ground },
+                        { key: "air", label: t("reportOperational.modeAir"), color: PALETTE.air, data: perfByMode.air },
+                        { key: "sea", label: t("reportOperational.modeSea"), color: PALETTE.sea, data: perfByMode.sea },
+                        { key: "ground", label: t("reportOperational.modeGround"), color: PALETTE.ground, data: perfByMode.ground },
                       ] as const
                     ).map((m) => (
                       <div key={m.key} className="rop-perf-card">
@@ -1081,28 +1099,28 @@ function ShipmentsView() {
                         </div>
                         <div className="rop-perf-card__stats">
                           <div>
-                            <div className="rop-stat__label">Envios</div>
+                            <div className="rop-stat__label">{t("reportOperational.perfShipments")}</div>
                             <div className="rop-stat__value">
                               {fmtNumber(m.data.count)}
                             </div>
                           </div>
                           <div>
                             <div className="rop-stat__label">
-                              Transito promedio
+                              {t("reportOperational.perfAvgTransit")}
                             </div>
                             <div className="rop-stat__value">
                               {m.data.avgTransit > 0
-                                ? `${fmtNumber(m.data.avgTransit, 1)} dias`
+                                ? `${fmtNumber(m.data.avgTransit, 1)} ${t("reportOperational.days")}`
                                 : "\u2014"}
                             </div>
                           </div>
                           <div>
                             <div className="rop-stat__label">
-                              Peso promedio
+                              {t("reportOperational.perfAvgWeight")}
                             </div>
                             <div className="rop-stat__value">
                               {m.data.avgWeight > 0
-                                ? `${fmtNumber(m.data.avgWeight, 1)} kg`
+                                ? `${fmtNumber(m.data.avgWeight, 1)} ${t("reportOperational.kg")}`
                                 : "\u2014"}
                             </div>
                           </div>
@@ -1113,7 +1131,7 @@ function ShipmentsView() {
 
                   <div className="rop-panel" style={{ marginTop: 20 }}>
                     <div className="rop-panel__title">
-                      Comparativa ano a ano
+                      {t("reportOperational.panelYearComparison")}
                     </div>
                     <div className="rop-year-grid">
                       <div>
@@ -1133,7 +1151,7 @@ function ShipmentsView() {
                         </div>
                       </div>
                       <div>
-                        <div className="rop-year-cell__label">Crecimiento</div>
+                        <div className="rop-year-cell__label">{t("reportOperational.perfGrowth")}</div>
                         <div
                           className={`rop-year-cell__value ${yearComp.growth >= 0 ? "rop-year-cell__value--up" : "rop-year-cell__value--down"}`}
                         >
@@ -1150,20 +1168,20 @@ function ShipmentsView() {
               {activeTab === "activity" && (
                 <div className="rop-panel">
                   <div className="rop-panel__title">
-                    Ultimas 10 operaciones
+                    {t("reportOperational.panelLast10")}
                   </div>
                   <div style={{ overflowX: "auto" }}>
                     <table className="rop-table">
                       <thead>
                         <tr>
-                          <th>N Operacion</th>
-                          <th>Origen</th>
-                          <th>Destino</th>
-                          <th>Modo</th>
-                          <th>Piezas</th>
-                          <th>Peso (kg)</th>
-                          <th>Fecha</th>
-                          <th>Estado</th>
+                          <th>{t("reportOperational.thOpNumber")}</th>
+                          <th>{t("reportOperational.thOrigin")}</th>
+                          <th>{t("reportOperational.thDestination")}</th>
+                          <th>{t("reportOperational.thMode")}</th>
+                          <th>{t("reportOperational.thPieces")}</th>
+                          <th>{t("reportOperational.thWeightKg")}</th>
+                          <th>{t("reportOperational.thDate")}</th>
+                          <th>{t("reportOperational.thStatus")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1178,7 +1196,7 @@ function ShipmentsView() {
                               <td>{s.destination || "\u2014"}</td>
                               <td>
                                 <span className={getModeBadgeClass(mode)}>
-                                  {getModeLabel(mode)}
+                                  {getModeLabelI18n(mode, t)}
                                 </span>
                               </td>
                               <td>{s.totalCargo_Pieces || "\u2014"}</td>
@@ -1205,7 +1223,7 @@ function ShipmentsView() {
                   </div>
                   {recent.length === 0 && (
                     <div className="rop-empty" style={{ padding: "32px 0" }}>
-                      <p className="rop-empty__subtitle">Sin operaciones recientes</p>
+                      <p className="rop-empty__subtitle">{t("reportOperational.emptyNoRecent")}</p>
                     </div>
                   )}
                 </div>
@@ -1216,16 +1234,16 @@ function ShipmentsView() {
           {/* -- Load more footer -- */}
           <div className="rop-footer">
             <span className="rop-footer__count">
-              <strong>{shipments.length}</strong> operaciones cargadas
-              {!hasMore && " (todas)"}
+              <strong>{shipments.length}</strong> {t("reportOperational.footerOpsLoaded")}
+              {!hasMore && ` ${t("reportOperational.footerAll")}`}
             </span>
             {hasMore && !loadingMore && (
               <button className="rop-btn" onClick={loadMore}>
-                Cargar mas
+                {t("reportOperational.footerLoadMore")}
               </button>
             )}
             {loadingMore && (
-              <span className="rop-loading__text">Cargando mas\u2026</span>
+              <span className="rop-loading__text">{t("reportOperational.loadingMore")}</span>
             )}
           </div>
         </>
@@ -1234,9 +1252,9 @@ function ShipmentsView() {
       {/* -- Empty -- */}
       {!loading && shipments.length === 0 && !error && (
         <div className="rop-empty">
-          <p className="rop-empty__title">No hay operaciones disponibles</p>
+          <p className="rop-empty__title">{t("reportOperational.emptyTitle")}</p>
           <p className="rop-empty__subtitle">
-            Aun no tienes operaciones registradas
+            {t("reportOperational.emptySubtitle")}
           </p>
         </div>
       )}
@@ -1247,7 +1265,7 @@ function ShipmentsView() {
           <div className="rop-modal" onClick={(e) => e.stopPropagation()}>
             <div className="rop-modal__header">
               <h3 className="rop-modal__title">
-                {modalTitles[activeModal] || "Detalle"}
+                {modalTitles[activeModal] || t("reportOperational.modalDetail")}
               </h3>
               <button
                 className="rop-modal__close"
@@ -1261,13 +1279,13 @@ function ShipmentsView() {
                 <table className="rop-table">
                   <thead>
                     <tr>
-                      <th>N Operacion</th>
-                      <th>Origen</th>
-                      <th>Destino</th>
-                      <th>Modo</th>
-                      <th>Piezas</th>
-                      <th>Peso (kg)</th>
-                      <th>Fecha</th>
+                      <th>{t("reportOperational.thOpNumber")}</th>
+                      <th>{t("reportOperational.thOrigin")}</th>
+                      <th>{t("reportOperational.thDestination")}</th>
+                      <th>{t("reportOperational.thMode")}</th>
+                      <th>{t("reportOperational.thPieces")}</th>
+                      <th>{t("reportOperational.thWeightKg")}</th>
+                      <th>{t("reportOperational.thDate")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1282,7 +1300,7 @@ function ShipmentsView() {
                           <td>{s.destination || "\u2014"}</td>
                           <td>
                             <span className={getModeBadgeClass(mode)}>
-                              {getModeLabel(mode)}
+                              {getModeLabelI18n(mode, t)}
                             </span>
                           </td>
                           <td>{s.totalCargo_Pieces || "\u2014"}</td>
@@ -1300,7 +1318,7 @@ function ShipmentsView() {
               </div>
               {modalData.length === 0 && (
                 <div className="rop-empty" style={{ padding: "32px 0" }}>
-                  <p className="rop-empty__subtitle">No hay datos</p>
+                  <p className="rop-empty__subtitle">{t("reportOperational.modalNoData")}</p>
                 </div>
               )}
               {modalData.length === 25 && (
@@ -1312,7 +1330,7 @@ function ShipmentsView() {
                     marginTop: 12,
                   }}
                 >
-                  Mostrando los primeros 25 resultados
+                  {t("reportOperational.modalShowing25")}
                 </p>
               )}
             </div>
