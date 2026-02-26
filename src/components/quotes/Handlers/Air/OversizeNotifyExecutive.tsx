@@ -1,7 +1,11 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-export type OversizeReason = "oversize" | "no-apta-aereo" | "vuelo-carguero" | "oversize-maritimo";
+export type OversizeReason =
+  | "oversize"
+  | "no-apta-aereo"
+  | "vuelo-carguero"
+  | "oversize-maritimo";
 
 interface OversizeNotifyExecutiveProps {
   /** Active reasons for the alert */
