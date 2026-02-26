@@ -461,7 +461,7 @@ export function InfoField({
           fontSize: "0.7rem",
           fontWeight: "600",
           color: "#6b7280",
-          textTransform: "uppercase",
+          textTransform: "uppercase" as const,
           letterSpacing: "0.5px",
           marginBottom: "4px",
         }}
@@ -472,7 +472,7 @@ export function InfoField({
         style={{
           fontSize: "0.875rem",
           color: "#1f2937",
-          wordBreak: "break-word",
+          wordBreak: "break-word" as const,
         }}
       >
         {String(value)}

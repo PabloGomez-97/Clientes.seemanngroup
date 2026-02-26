@@ -308,25 +308,26 @@
 /*  Cards grid  */
 .gsv-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 .gsv-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
   padding: 16px;
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
 }
 .gsv-card h4 {
-  font-size: 0.8125rem;
+  font-size: 1rem;
   font-weight: 600;
+  margin-bottom: 12px;
   color: var(--secondary-color);
-  margin: 0 0 12px;
 }
 
 /*  Info grid / fields  */
 .gsv-info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
