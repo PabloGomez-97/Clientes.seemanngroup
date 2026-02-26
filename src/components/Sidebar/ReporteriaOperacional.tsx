@@ -125,7 +125,10 @@ const getModeLabel = (mode: "air" | "sea" | "ground" | "other") => {
   return map[mode] || "Otro";
 };
 
-const getModeLabelI18n = (mode: "air" | "sea" | "ground" | "other", t: (key: string) => string) => {
+const getModeLabelI18n = (
+  mode: "air" | "sea" | "ground" | "other",
+  t: (key: string) => string,
+) => {
   const map: Record<string, string> = {
     air: t("reportOperational.modeAir"),
     sea: t("reportOperational.modeSea"),
@@ -216,7 +219,8 @@ function ShipmentsView() {
         );
 
         if (!res.ok) {
-          if (res.status === 401) throw new Error(t("reportOperational.tokenExpired"));
+          if (res.status === 401)
+            throw new Error(t("reportOperational.tokenExpired"));
           throw new Error(`Error ${res.status}: ${res.statusText}`);
         }
 
@@ -241,7 +245,11 @@ function ShipmentsView() {
         localStorage.setItem(`${ck}_ts`, Date.now().toString());
         localStorage.setItem(`${ck}_page`, page.toString());
       } catch (err) {
-        setError(err instanceof Error ? err.message : t("reportOperational.unknownError"));
+        setError(
+          err instanceof Error
+            ? err.message
+            : t("reportOperational.unknownError"),
+        );
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -376,10 +384,7 @@ function ShipmentsView() {
 
   /* -- Monthly data ----------------------------------------- */
   const monthlyData = useMemo(() => {
-    const map = new Map<
-      string,
-      { air: number; sea: number; ground: number }
-    >();
+    const map = new Map<string, { air: number; sea: number; ground: number }>();
     for (const s of filtered) {
       const d = new Date(s.createdOn || 0);
       const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -408,9 +413,21 @@ function ShipmentsView() {
   const pieData = useMemo(
     () =>
       [
-        { name: t("reportOperational.modeAir"), value: kpis.air, color: PALETTE.air },
-        { name: t("reportOperational.modeSea"), value: kpis.sea, color: PALETTE.sea },
-        { name: t("reportOperational.modeGround"), value: kpis.ground, color: PALETTE.ground },
+        {
+          name: t("reportOperational.modeAir"),
+          value: kpis.air,
+          color: PALETTE.air,
+        },
+        {
+          name: t("reportOperational.modeSea"),
+          value: kpis.sea,
+          color: PALETTE.sea,
+        },
+        {
+          name: t("reportOperational.modeGround"),
+          value: kpis.ground,
+          color: PALETTE.ground,
+        },
       ].filter((d) => d.value > 0),
     [kpis],
   );
@@ -438,7 +455,8 @@ function ShipmentsView() {
   const topDestinations = useMemo(() => {
     const map = new Map<string, number>();
     for (const s of filtered)
-      if (s.destination) map.set(s.destination, (map.get(s.destination) || 0) + 1);
+      if (s.destination)
+        map.set(s.destination, (map.get(s.destination) || 0) + 1);
     return Array.from(map.entries())
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5);
@@ -466,8 +484,7 @@ function ShipmentsView() {
         weightSum += s.totalCargo_WeightValue || 0;
         if (s.departure && s.arrival) {
           const days =
-            (new Date(s.arrival).getTime() -
-              new Date(s.departure).getTime()) /
+            (new Date(s.arrival).getTime() - new Date(s.departure).getTime()) /
             86400000;
           if (days > 0) {
             transitSum += days;
@@ -493,7 +510,16 @@ function ShipmentsView() {
 
   /* -- CSV export ------------------------------------------- */
   const exportCSV = useCallback(() => {
-    const h = [t("reportOperational.csvNumber"), t("reportOperational.csvDate"), t("reportOperational.csvOrigin"), t("reportOperational.csvDestination"), t("reportOperational.csvMode"), t("reportOperational.csvPieces"), t("reportOperational.csvWeightKg"), t("reportOperational.csvVolume")];
+    const h = [
+      t("reportOperational.csvNumber"),
+      t("reportOperational.csvDate"),
+      t("reportOperational.csvOrigin"),
+      t("reportOperational.csvDestination"),
+      t("reportOperational.csvMode"),
+      t("reportOperational.csvPieces"),
+      t("reportOperational.csvWeightKg"),
+      t("reportOperational.csvVolume"),
+    ];
     const rows = filtered.map((s) => [
       s.number || s.id || "",
       fmtDate(s.createdOn),
@@ -504,7 +530,10 @@ function ShipmentsView() {
       s.totalCargo_WeightValue || 0,
       s.totalCargo_VolumeWeightValue || 0,
     ]);
-    const csv = [h.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+    const csv = [
+      h.join(","),
+      ...rows.map((r) => r.map((c) => `"${c}"`).join(",")),
+    ].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -519,20 +548,31 @@ function ShipmentsView() {
       case "total":
         return filtered.slice(0, 25);
       case "air":
-        return filtered.filter((s) => isAirShipment(s.modeOfTransportation)).slice(0, 25);
+        return filtered
+          .filter((s) => isAirShipment(s.modeOfTransportation))
+          .slice(0, 25);
       case "sea":
-        return filtered.filter((s) => isSeaShipment(s.modeOfTransportation)).slice(0, 25);
+        return filtered
+          .filter((s) => isSeaShipment(s.modeOfTransportation))
+          .slice(0, 25);
       case "ground":
-        return filtered.filter((s) => isGroundShipment(s.modeOfTransportation)).slice(0, 25);
+        return filtered
+          .filter((s) => isGroundShipment(s.modeOfTransportation))
+          .slice(0, 25);
       case "pieces":
         return [...filtered]
           .filter((s) => (s.totalCargo_Pieces || 0) > 0)
-          .sort((a, b) => (b.totalCargo_Pieces || 0) - (a.totalCargo_Pieces || 0))
+          .sort(
+            (a, b) => (b.totalCargo_Pieces || 0) - (a.totalCargo_Pieces || 0),
+          )
           .slice(0, 25);
       case "weight":
         return [...filtered]
           .filter((s) => (s.totalCargo_WeightValue || 0) > 0)
-          .sort((a, b) => (b.totalCargo_WeightValue || 0) - (a.totalCargo_WeightValue || 0))
+          .sort(
+            (a, b) =>
+              (b.totalCargo_WeightValue || 0) - (a.totalCargo_WeightValue || 0),
+          )
           .slice(0, 25);
       default:
         return [];
@@ -566,7 +606,16 @@ function ShipmentsView() {
           {label}
         </div>
         {payload.map((p: any, i: number) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, color: "#374151" }}>
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 2,
+              color: "#374151",
+            }}
+          >
             <span
               style={{
                 width: 8,
@@ -597,19 +646,38 @@ function ShipmentsView() {
           </p>
         </div>
         <div className="rop-header__actions">
-          <button
-            className="rop-btn"
-            onClick={() => setShowFilters((v) => !v)}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-            {showFilters ? t("reportOperational.hideFilters") : t("reportOperational.filters")}
+          <button className="rop-btn" onClick={() => setShowFilters((v) => !v)}>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            {showFilters
+              ? t("reportOperational.hideFilters")
+              : t("reportOperational.filters")}
           </button>
           <button
             className="rop-btn"
             onClick={exportCSV}
             disabled={filtered.length === 0}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
             {t("reportOperational.exportCSV")}
           </button>
           <button
@@ -617,8 +685,20 @@ function ShipmentsView() {
             onClick={refresh}
             disabled={loading}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            {loading ? t("reportOperational.loading") : t("reportOperational.refresh")}
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            {loading
+              ? t("reportOperational.loading")
+              : t("reportOperational.refresh")}
           </button>
         </div>
       </div>
@@ -626,14 +706,18 @@ function ShipmentsView() {
       {/* -- Filters -- */}
       {showFilters && (
         <div className="rop-filters">
-          <span className="rop-filters__label">{t("reportOperational.period")}</span>
+          <span className="rop-filters__label">
+            {t("reportOperational.period")}
+          </span>
           <input
             className="rop-filters__input"
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
-          <span style={{ color: "#9ca3af", fontSize: "0.8125rem" }}>{"\u2014"}</span>
+          <span style={{ color: "#9ca3af", fontSize: "0.8125rem" }}>
+            {"\u2014"}
+          </span>
           <input
             className="rop-filters__input"
             type="date"
@@ -666,7 +750,9 @@ function ShipmentsView() {
       {loading && (
         <div className="rop-loading">
           <div className="rop-spinner" />
-          <span className="rop-loading__text">{t("reportOperational.loadingData")}</span>
+          <span className="rop-loading__text">
+            {t("reportOperational.loadingData")}
+          </span>
         </div>
       )}
 
@@ -676,7 +762,9 @@ function ShipmentsView() {
           {/* -- KPI Cards -- */}
           <div className="rop-kpi-grid">
             <div className="rop-kpi" onClick={() => setActiveModal("total")}>
-              <div className="rop-kpi__label">{t("reportOperational.kpiTotalShipments")}</div>
+              <div className="rop-kpi__label">
+                {t("reportOperational.kpiTotalShipments")}
+              </div>
               <div className="rop-kpi__value">{fmtNumber(kpis.total)}</div>
               {yearComp.growth !== 0 && (
                 <div
@@ -714,15 +802,24 @@ function ShipmentsView() {
                   </div>
                   <div className="rop-legend">
                     <span className="rop-legend__item">
-                      <span className="rop-legend__dot" style={{ background: PALETTE.air }} />
+                      <span
+                        className="rop-legend__dot"
+                        style={{ background: PALETTE.air }}
+                      />
                       {t("reportOperational.modeAir")} {kpis.air}
                     </span>
                     <span className="rop-legend__item">
-                      <span className="rop-legend__dot" style={{ background: PALETTE.sea }} />
+                      <span
+                        className="rop-legend__dot"
+                        style={{ background: PALETTE.sea }}
+                      />
                       {t("reportOperational.modeSea")} {kpis.sea}
                     </span>
                     <span className="rop-legend__item">
-                      <span className="rop-legend__dot" style={{ background: PALETTE.ground }} />
+                      <span
+                        className="rop-legend__dot"
+                        style={{ background: PALETTE.ground }}
+                      />
                       {t("reportOperational.modeGround")} {kpis.ground}
                     </span>
                   </div>
@@ -731,7 +828,9 @@ function ShipmentsView() {
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("air")}>
-              <div className="rop-kpi__label">{t("reportOperational.kpiAir")}</div>
+              <div className="rop-kpi__label">
+                {t("reportOperational.kpiAir")}
+              </div>
               <div className="rop-kpi__value">{fmtNumber(kpis.air)}</div>
               <div className="rop-kpi__sub">
                 {kpis.total > 0
@@ -742,7 +841,9 @@ function ShipmentsView() {
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("sea")}>
-              <div className="rop-kpi__label">{t("reportOperational.kpiSea")}</div>
+              <div className="rop-kpi__label">
+                {t("reportOperational.kpiSea")}
+              </div>
               <div className="rop-kpi__value">{fmtNumber(kpis.sea)}</div>
               <div className="rop-kpi__sub">
                 {kpis.total > 0
@@ -753,7 +854,9 @@ function ShipmentsView() {
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("ground")}>
-              <div className="rop-kpi__label">{t("reportOperational.kpiGround")}</div>
+              <div className="rop-kpi__label">
+                {t("reportOperational.kpiGround")}
+              </div>
               <div className="rop-kpi__value">{fmtNumber(kpis.ground)}</div>
               <div className="rop-kpi__sub">
                 {kpis.total > 0
@@ -764,12 +867,16 @@ function ShipmentsView() {
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("pieces")}>
-              <div className="rop-kpi__label">{t("reportOperational.kpiTotalPieces")}</div>
+              <div className="rop-kpi__label">
+                {t("reportOperational.kpiTotalPieces")}
+              </div>
               <div className="rop-kpi__value">{fmtNumber(kpis.pieces)}</div>
             </div>
 
             <div className="rop-kpi" onClick={() => setActiveModal("weight")}>
-              <div className="rop-kpi__label">{t("reportOperational.kpiTotalWeight")}</div>
+              <div className="rop-kpi__label">
+                {t("reportOperational.kpiTotalWeight")}
+              </div>
               <div className="rop-kpi__value">
                 {fmtNumber(Math.round(kpis.weight))}
               </div>
@@ -777,7 +884,9 @@ function ShipmentsView() {
             </div>
 
             <div className="rop-kpi">
-              <div className="rop-kpi__label">{t("reportOperational.kpiTotalVolume")}</div>
+              <div className="rop-kpi__label">
+                {t("reportOperational.kpiTotalVolume")}
+              </div>
               <div className="rop-kpi__value">
                 {fmtNumber(Math.round(kpis.volume))}
               </div>
@@ -785,7 +894,9 @@ function ShipmentsView() {
             </div>
 
             <div className="rop-kpi">
-              <div className="rop-kpi__label">{t("reportOperational.kpiAvgTransit")}</div>
+              <div className="rop-kpi__label">
+                {t("reportOperational.kpiAvgTransit")}
+              </div>
               <div className="rop-kpi__value">
                 {kpis.avgTransit > 0 ? fmtNumber(kpis.avgTransit, 1) : "\u2014"}
               </div>
@@ -800,7 +911,10 @@ function ShipmentsView() {
                 [
                   { id: "overview", label: t("reportOperational.tabOverview") },
                   { id: "routes", label: t("reportOperational.tabRoutes") },
-                  { id: "performance", label: t("reportOperational.tabPerformance") },
+                  {
+                    id: "performance",
+                    label: t("reportOperational.tabPerformance"),
+                  },
                   { id: "activity", label: t("reportOperational.tabActivity") },
                 ] as { id: TabType; label: string }[]
               ).map((tab) => (
@@ -873,17 +987,29 @@ function ShipmentsView() {
                         />
                       </AreaChart>
                     </ResponsiveContainer>
-                    <div className="rop-legend" style={{ justifyContent: "center", marginTop: 12 }}>
+                    <div
+                      className="rop-legend"
+                      style={{ justifyContent: "center", marginTop: 12 }}
+                    >
                       <span className="rop-legend__item">
-                        <span className="rop-legend__dot" style={{ background: PALETTE.air }} />
+                        <span
+                          className="rop-legend__dot"
+                          style={{ background: PALETTE.air }}
+                        />
                         {t("reportOperational.modeAir")}
                       </span>
                       <span className="rop-legend__item">
-                        <span className="rop-legend__dot" style={{ background: PALETTE.sea }} />
+                        <span
+                          className="rop-legend__dot"
+                          style={{ background: PALETTE.sea }}
+                        />
                         {t("reportOperational.modeSea")}
                       </span>
                       <span className="rop-legend__item">
-                        <span className="rop-legend__dot" style={{ background: PALETTE.ground }} />
+                        <span
+                          className="rop-legend__dot"
+                          style={{ background: PALETTE.ground }}
+                        />
                         {t("reportOperational.modeGround")}
                       </span>
                     </div>
@@ -979,7 +1105,10 @@ function ShipmentsView() {
                     <div className="rop-panel__title">
                       {t("reportOperational.panelTopRoutes")}
                     </div>
-                    <ResponsiveContainer width="100%" height={Math.max(280, topRoutes.length * 40)}>
+                    <ResponsiveContainer
+                      width="100%"
+                      height={Math.max(280, topRoutes.length * 40)}
+                    >
                       <BarChart
                         data={topRoutes}
                         layout="vertical"
@@ -1020,11 +1149,18 @@ function ShipmentsView() {
                                   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                                 }}
                               >
-                                <div style={{ fontWeight: 600, color: PALETTE.text, marginBottom: 2 }}>
+                                <div
+                                  style={{
+                                    fontWeight: 600,
+                                    color: PALETTE.text,
+                                    marginBottom: 2,
+                                  }}
+                                >
                                   {payload[0].payload.fullRoute}
                                 </div>
                                 <div style={{ color: "#6b7280" }}>
-                                  {t("reportOperational.tooltipShipments")}: {payload[0].value}
+                                  {t("reportOperational.tooltipShipments")}:{" "}
+                                  {payload[0].value}
                                 </div>
                               </div>
                             );
@@ -1049,10 +1185,16 @@ function ShipmentsView() {
                         {topDestinations.map(([dest, count], i) => (
                           <li key={dest} className="rop-rank-item">
                             <div className="rop-rank-item__left">
-                              <span className="rop-rank-item__pos">{i + 1}</span>
-                              <span className="rop-rank-item__name">{dest}</span>
+                              <span className="rop-rank-item__pos">
+                                {i + 1}
+                              </span>
+                              <span className="rop-rank-item__name">
+                                {dest}
+                              </span>
                             </div>
-                            <span className="rop-rank-item__count">{count}</span>
+                            <span className="rop-rank-item__count">
+                              {count}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -1066,10 +1208,16 @@ function ShipmentsView() {
                         {topShippers.map(([shipper, count], i) => (
                           <li key={shipper} className="rop-rank-item">
                             <div className="rop-rank-item__left">
-                              <span className="rop-rank-item__pos">{i + 1}</span>
-                              <span className="rop-rank-item__name">{shipper}</span>
+                              <span className="rop-rank-item__pos">
+                                {i + 1}
+                              </span>
+                              <span className="rop-rank-item__name">
+                                {shipper}
+                              </span>
                             </div>
-                            <span className="rop-rank-item__count">{count}</span>
+                            <span className="rop-rank-item__count">
+                              {count}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -1084,9 +1232,24 @@ function ShipmentsView() {
                   <div className="rop-perf-grid">
                     {(
                       [
-                        { key: "air", label: t("reportOperational.modeAir"), color: PALETTE.air, data: perfByMode.air },
-                        { key: "sea", label: t("reportOperational.modeSea"), color: PALETTE.sea, data: perfByMode.sea },
-                        { key: "ground", label: t("reportOperational.modeGround"), color: PALETTE.ground, data: perfByMode.ground },
+                        {
+                          key: "air",
+                          label: t("reportOperational.modeAir"),
+                          color: PALETTE.air,
+                          data: perfByMode.air,
+                        },
+                        {
+                          key: "sea",
+                          label: t("reportOperational.modeSea"),
+                          color: PALETTE.sea,
+                          data: perfByMode.sea,
+                        },
+                        {
+                          key: "ground",
+                          label: t("reportOperational.modeGround"),
+                          color: PALETTE.ground,
+                          data: perfByMode.ground,
+                        },
                       ] as const
                     ).map((m) => (
                       <div key={m.key} className="rop-perf-card">
@@ -1099,7 +1262,9 @@ function ShipmentsView() {
                         </div>
                         <div className="rop-perf-card__stats">
                           <div>
-                            <div className="rop-stat__label">{t("reportOperational.perfShipments")}</div>
+                            <div className="rop-stat__label">
+                              {t("reportOperational.perfShipments")}
+                            </div>
                             <div className="rop-stat__value">
                               {fmtNumber(m.data.count)}
                             </div>
@@ -1151,7 +1316,9 @@ function ShipmentsView() {
                         </div>
                       </div>
                       <div>
-                        <div className="rop-year-cell__label">{t("reportOperational.perfGrowth")}</div>
+                        <div className="rop-year-cell__label">
+                          {t("reportOperational.perfGrowth")}
+                        </div>
                         <div
                           className={`rop-year-cell__value ${yearComp.growth >= 0 ? "rop-year-cell__value--up" : "rop-year-cell__value--down"}`}
                         >
@@ -1223,7 +1390,9 @@ function ShipmentsView() {
                   </div>
                   {recent.length === 0 && (
                     <div className="rop-empty" style={{ padding: "32px 0" }}>
-                      <p className="rop-empty__subtitle">{t("reportOperational.emptyNoRecent")}</p>
+                      <p className="rop-empty__subtitle">
+                        {t("reportOperational.emptyNoRecent")}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1234,7 +1403,8 @@ function ShipmentsView() {
           {/* -- Load more footer -- */}
           <div className="rop-footer">
             <span className="rop-footer__count">
-              <strong>{shipments.length}</strong> {t("reportOperational.footerOpsLoaded")}
+              <strong>{shipments.length}</strong>{" "}
+              {t("reportOperational.footerOpsLoaded")}
               {!hasMore && ` ${t("reportOperational.footerAll")}`}
             </span>
             {hasMore && !loadingMore && (
@@ -1243,7 +1413,9 @@ function ShipmentsView() {
               </button>
             )}
             {loadingMore && (
-              <span className="rop-loading__text">{t("reportOperational.loadingMore")}</span>
+              <span className="rop-loading__text">
+                {t("reportOperational.loadingMore")}
+              </span>
             )}
           </div>
         </>
@@ -1252,7 +1424,9 @@ function ShipmentsView() {
       {/* -- Empty -- */}
       {!loading && shipments.length === 0 && !error && (
         <div className="rop-empty">
-          <p className="rop-empty__title">{t("reportOperational.emptyTitle")}</p>
+          <p className="rop-empty__title">
+            {t("reportOperational.emptyTitle")}
+          </p>
           <p className="rop-empty__subtitle">
             {t("reportOperational.emptySubtitle")}
           </p>
@@ -1318,7 +1492,9 @@ function ShipmentsView() {
               </div>
               {modalData.length === 0 && (
                 <div className="rop-empty" style={{ padding: "32px 0" }}>
-                  <p className="rop-empty__subtitle">{t("reportOperational.modalNoData")}</p>
+                  <p className="rop-empty__subtitle">
+                    {t("reportOperational.modalNoData")}
+                  </p>
                 </div>
               )}
               {modalData.length === 25 && (

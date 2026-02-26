@@ -150,8 +150,14 @@ function StatusBadge({ status }: { status: "paid" | "pending" | "overdue" }) {
   const { t } = useTranslation();
   const config = {
     paid: { label: t("reportFinancial.statusPaid"), cls: "rf-badge--paid" },
-    pending: { label: t("reportFinancial.statusPending"), cls: "rf-badge--pending" },
-    overdue: { label: t("reportFinancial.statusOverdue"), cls: "rf-badge--overdue" },
+    pending: {
+      label: t("reportFinancial.statusPending"),
+      cls: "rf-badge--pending",
+    },
+    overdue: {
+      label: t("reportFinancial.statusOverdue"),
+      cls: "rf-badge--overdue",
+    },
   };
   const c = config[status];
   return <span className={`rf-badge ${c.cls}`}>{c.label}</span>;
@@ -181,9 +187,9 @@ function ReporteriaFinanciera() {
   const [tablePage, setTablePage] = useState(1);
 
   // Dashboard tab
-  const [dashTab, setDashTab] = useState<
-    "summary" | "expenses" | "invoices"
-  >("summary");
+  const [dashTab, setDashTab] = useState<"summary" | "expenses" | "invoices">(
+    "summary",
+  );
 
   // Filters
   const [periodFilter, setPeriodFilter] = useState<
@@ -357,9 +363,7 @@ function ReporteriaFinanciera() {
 
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error(
-            t("reportFinancial.tokenError"),
-          );
+          throw new Error(t("reportFinancial.tokenError"));
         }
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
@@ -402,7 +406,9 @@ function ReporteriaFinanciera() {
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("reportFinancial.unknownError"));
+      setError(
+        err instanceof Error ? err.message : t("reportFinancial.unknownError"),
+      );
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -548,8 +554,7 @@ function ReporteriaFinanciera() {
       if (!inv.date) return;
       const d = new Date(inv.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      if (!months[key])
-        months[key] = { billed: 0, paid: 0, pending: 0 };
+      if (!months[key]) months[key] = { billed: 0, paid: 0, pending: 0 };
 
       const total = inv.totalAmount?.value || 0;
       const balance = inv.balanceDue?.value || 0;
@@ -583,9 +588,21 @@ function ReporteriaFinanciera() {
       else overdue++;
     });
     return [
-      { name: t("reportFinancial.chartPaidPlural"), value: paid, color: "#047857" },
-      { name: t("reportFinancial.chartPending"), value: pending, color: "#d97706" },
-      { name: t("reportFinancial.chartOverdue"), value: overdue, color: "#b91c1c" },
+      {
+        name: t("reportFinancial.chartPaidPlural"),
+        value: paid,
+        color: "#047857",
+      },
+      {
+        name: t("reportFinancial.chartPending"),
+        value: pending,
+        color: "#d97706",
+      },
+      {
+        name: t("reportFinancial.chartOverdue"),
+        value: overdue,
+        color: "#b91c1c",
+      },
     ].filter((d) => d.value > 0);
   }, [filteredByPeriod]);
 
@@ -658,8 +675,12 @@ function ReporteriaFinanciera() {
       );
       result.push({
         type: "danger",
-        title: t("reportFinancial.alertOverdueTitle", { count: overdueInvoices.length }),
-        text: t("reportFinancial.alertOverdueText", { amount: formatCompact(totalOverdue) }),
+        title: t("reportFinancial.alertOverdueTitle", {
+          count: overdueInvoices.length,
+        }),
+        text: t("reportFinancial.alertOverdueText", {
+          amount: formatCompact(totalOverdue),
+        }),
       });
     }
 
@@ -669,15 +690,16 @@ function ReporteriaFinanciera() {
     const soonDue = pendingInvoices.filter((inv) => {
       if (!inv.dueDate) return false;
       const days =
-        (new Date(inv.dueDate).getTime() - Date.now()) /
-        (1000 * 60 * 60 * 24);
+        (new Date(inv.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
       return days >= 0 && days <= 7;
     });
 
     if (soonDue.length > 0) {
       result.push({
         type: "warning",
-        title: t("reportFinancial.alertDueSoonTitle", { count: soonDue.length }),
+        title: t("reportFinancial.alertDueSoonTitle", {
+          count: soonDue.length,
+        }),
         text: t("reportFinancial.alertDueSoonText"),
       });
     }
@@ -697,7 +719,10 @@ function ReporteriaFinanciera() {
         result.push({
           type: "info",
           title: t("reportFinancial.alertConcentrationTitle"),
-          text: t("reportFinancial.alertConcentrationText", { name: topExpense.name, pct: topPct }),
+          text: t("reportFinancial.alertConcentrationText", {
+            name: topExpense.name,
+            pct: topPct,
+          }),
         });
       }
     }
@@ -710,8 +735,7 @@ function ReporteriaFinanciera() {
   const forecast = useMemo(() => {
     if (monthlyTrendData.length < 2) return null;
     const last3 = monthlyTrendData.slice(-3);
-    const avgBilled =
-      last3.reduce((s, m) => s + m.billed, 0) / last3.length;
+    const avgBilled = last3.reduce((s, m) => s + m.billed, 0) / last3.length;
     const avgPaid = last3.reduce((s, m) => s + m.paid, 0) / last3.length;
     return {
       projectedBilling: avgBilled,
@@ -1004,9 +1028,7 @@ function ReporteriaFinanciera() {
             style={{ color: p.color, display: "flex", gap: 8, marginTop: 2 }}
           >
             <span>{p.name}:</span>
-            <span style={{ fontWeight: 600 }}>
-              ${formatCompact(p.value)}
-            </span>
+            <span style={{ fontWeight: 600 }}>${formatCompact(p.value)}</span>
           </div>
         ))}
       </div>
@@ -1038,19 +1060,38 @@ function ReporteriaFinanciera() {
         <div>
           <h1 className="rf-header__title">{t("reportFinancial.title")}</h1>
           <p className="rf-header__subtitle">
-            {activeUsername} &middot; {totalInvoices} {t("reportFinancial.invoicesInPeriod")}
+            {activeUsername} &middot; {totalInvoices}{" "}
+            {t("reportFinancial.invoicesInPeriod")}
           </p>
         </div>
         <div className="rf-header__actions">
-          <button className="rf-btn" onClick={refreshInvoices} disabled={loading}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <button
+            className="rf-btn"
+            onClick={refreshInvoices}
+            disabled={loading}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
             </svg>
             {t("reportFinancial.refresh")}
           </button>
           <button className="rf-btn rf-btn--primary" onClick={generatePDF}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
               <line x1="16" y1="13" x2="8" y2="13" />
@@ -1065,7 +1106,9 @@ function ReporteriaFinanciera() {
       <div className="rf-toolbar">
         <div className="rf-toolbar__filters">
           <div className="rf-filter-group">
-            <span className="rf-filter-group__label">{t("reportFinancial.periodLabel")}</span>
+            <span className="rf-filter-group__label">
+              {t("reportFinancial.periodLabel")}
+            </span>
             {(
               [
                 { key: "month", label: t("reportFinancial.filter1M") },
@@ -1086,7 +1129,9 @@ function ReporteriaFinanciera() {
           </div>
 
           <div className="rf-filter-group">
-            <span className="rf-filter-group__label">{t("reportFinancial.statusLabel")}</span>
+            <span className="rf-filter-group__label">
+              {t("reportFinancial.statusLabel")}
+            </span>
             {(
               [
                 { key: "all", label: t("reportFinancial.filterAllStatus") },
@@ -1111,7 +1156,9 @@ function ReporteriaFinanciera() {
       {loading && (
         <div className="rf-loading">
           <div className="rf-spinner" />
-          <p className="rf-loading__text">{t("reportFinancial.loadingInvoices")}</p>
+          <p className="rf-loading__text">
+            {t("reportFinancial.loadingInvoices")}
+          </p>
         </div>
       )}
 
@@ -1128,14 +1175,20 @@ function ReporteriaFinanciera() {
           {/* -- KPI grid ------------------------------------ */}
           <div className="rf-kpi-grid">
             <div className="rf-kpi">
-              <div className="rf-kpi__label">{t("reportFinancial.kpiTotalBilled")}</div>
+              <div className="rf-kpi__label">
+                {t("reportFinancial.kpiTotalBilled")}
+              </div>
               <div className="rf-kpi__value">
                 CLP ${formatCompact(totalBilledAll)}
               </div>
-              <div className="rf-kpi__sub">{totalInvoices} {t("reportFinancial.invoices")}</div>
+              <div className="rf-kpi__sub">
+                {totalInvoices} {t("reportFinancial.invoices")}
+              </div>
             </div>
             <div className="rf-kpi">
-              <div className="rf-kpi__label">{t("reportFinancial.kpiTotalPaid")}</div>
+              <div className="rf-kpi__label">
+                {t("reportFinancial.kpiTotalPaid")}
+              </div>
               <div className="rf-kpi__value rf-kpi__value--success">
                 CLP ${formatCompact(totalPaidAll)}
               </div>
@@ -1147,19 +1200,25 @@ function ReporteriaFinanciera() {
               </div>
             </div>
             <div className="rf-kpi">
-              <div className="rf-kpi__label">{t("reportFinancial.kpiPendingCollection")}</div>
+              <div className="rf-kpi__label">
+                {t("reportFinancial.kpiPendingCollection")}
+              </div>
               <div className="rf-kpi__value rf-kpi__value--warning">
                 CLP ${formatCompact(totalPendingAll)}
               </div>
               <div className="rf-kpi__sub">
-                {filteredByPeriod.filter(
-                  (inv) => getInvoiceStatus(inv) === "pending",
-                ).length}{" "}
+                {
+                  filteredByPeriod.filter(
+                    (inv) => getInvoiceStatus(inv) === "pending",
+                  ).length
+                }{" "}
                 {t("reportFinancial.pendingInvoices")}
               </div>
             </div>
             <div className="rf-kpi">
-              <div className="rf-kpi__label">{t("reportFinancial.kpiOverdueInvoices")}</div>
+              <div className="rf-kpi__label">
+                {t("reportFinancial.kpiOverdueInvoices")}
+              </div>
               <div
                 className={`rf-kpi__value ${overdueCount > 0 ? "rf-kpi__value--danger" : ""}`}
               >
@@ -1169,7 +1228,8 @@ function ReporteriaFinanciera() {
                 <div
                   className={`rf-kpi__change ${forecast.trend === "up" ? "rf-kpi__change--up" : "rf-kpi__change--down"}`}
                 >
-                  {forecast.trend === "up" ? "+" : "-"} {t("reportFinancial.projMonth")} CLP $
+                  {forecast.trend === "up" ? "+" : "-"}{" "}
+                  {t("reportFinancial.projMonth")} CLP $
                   {formatCompact(forecast.projectedBilling)}
                 </div>
               )}
@@ -1183,19 +1243,40 @@ function ReporteriaFinanciera() {
                 <div key={i} className={`rf-alert rf-alert--${alert.type}`}>
                   <span className="rf-alert__icon">
                     {alert.type === "danger" ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="8" x2="12" y2="12" />
                         <line x1="12" y1="16" x2="12.01" y2="16" />
                       </svg>
                     ) : alert.type === "warning" ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                         <line x1="12" y1="9" x2="12" y2="13" />
                         <line x1="12" y1="17" x2="12.01" y2="17" />
                       </svg>
                     ) : (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="16" x2="12" y2="12" />
                         <line x1="12" y1="8" x2="12.01" y2="8" />
@@ -1235,16 +1316,27 @@ function ReporteriaFinanciera() {
                 TAB: Resumen Ejecutivo
                 ============================ */}
             {dashTab === "summary" && (
-              <div className="rf-tabs__panel" style={{ animation: "rf-tabFadeIn 0.2s ease" }}>
+              <div
+                className="rf-tabs__panel"
+                style={{ animation: "rf-tabFadeIn 0.2s ease" }}
+              >
                 {/* Monthly billing trend */}
                 <div className="rf-panel__row">
                   <div className="rf-panel">
-                    <h3 className="rf-panel__title">{t("reportFinancial.panelBillingTrend")}</h3>
+                    <h3 className="rf-panel__title">
+                      {t("reportFinancial.panelBillingTrend")}
+                    </h3>
                     {monthlyTrendData.length > 0 ? (
                       <ResponsiveContainer width="100%" height={260}>
                         <AreaChart data={monthlyTrendData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                          <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#6b7280" }} />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#f3f4f6"
+                          />
+                          <XAxis
+                            dataKey="name"
+                            tick={{ fontSize: 11, fill: "#6b7280" }}
+                          />
                           <YAxis
                             tick={{ fontSize: 11, fill: "#6b7280" }}
                             tickFormatter={(v) => formatCompact(v)}
@@ -1276,7 +1368,9 @@ function ReporteriaFinanciera() {
                   </div>
 
                   <div className="rf-panel">
-                    <h3 className="rf-panel__title">{t("reportFinancial.panelStatusDistribution")}</h3>
+                    <h3 className="rf-panel__title">
+                      {t("reportFinancial.panelStatusDistribution")}
+                    </h3>
                     {statusDistribution.length > 0 ? (
                       <>
                         <ResponsiveContainer width="100%" height={200}>
@@ -1295,7 +1389,10 @@ function ReporteriaFinanciera() {
                               ))}
                             </Pie>
                             <Tooltip
-                              formatter={(value: number) => [`${value} ${t("reportFinancial.invoices")}`, ""]}
+                              formatter={(value: number) => [
+                                `${value} ${t("reportFinancial.invoices")}`,
+                                "",
+                              ]}
                               contentStyle={{
                                 fontSize: "0.75rem",
                                 borderRadius: 4,
@@ -1304,7 +1401,10 @@ function ReporteriaFinanciera() {
                             />
                           </PieChart>
                         </ResponsiveContainer>
-                        <div className="rf-legend" style={{ justifyContent: "center" }}>
+                        <div
+                          className="rf-legend"
+                          style={{ justifyContent: "center" }}
+                        >
                           {statusDistribution.map((d, i) => (
                             <span key={i} className="rf-legend__item">
                               <span
@@ -1327,23 +1427,46 @@ function ReporteriaFinanciera() {
                 {/* Forecast + currency breakdown */}
                 <div className="rf-panel__row">
                   <div className="rf-panel">
-                    <h3 className="rf-panel__title">{t("reportFinancial.panelForecast")}</h3>
+                    <h3 className="rf-panel__title">
+                      {t("reportFinancial.panelForecast")}
+                    </h3>
                     {forecast ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 12,
+                        }}
+                      >
                         <div className="rf-totals-row">
-                          <span className="rf-totals-row__label">{t("reportFinancial.forecastBilling")}</span>
+                          <span className="rf-totals-row__label">
+                            {t("reportFinancial.forecastBilling")}
+                          </span>
                           <span className="rf-totals-row__value">
                             CLP ${formatCompact(forecast.projectedBilling)}
                           </span>
                         </div>
                         <div className="rf-totals-row">
-                          <span className="rf-totals-row__label">{t("reportFinancial.forecastCollection")}</span>
-                          <span className="rf-totals-row__value" style={{ color: "#047857" }}>
+                          <span className="rf-totals-row__label">
+                            {t("reportFinancial.forecastCollection")}
+                          </span>
+                          <span
+                            className="rf-totals-row__value"
+                            style={{ color: "#047857" }}
+                          >
                             CLP ${formatCompact(forecast.projectedCollection)}
                           </span>
                         </div>
-                        <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: 4 }}>
-                          {t("reportFinancial.forecastBasis", { count: Math.min(3, monthlyTrendData.length) })}
+                        <div
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "#9ca3af",
+                            marginTop: 4,
+                          }}
+                        >
+                          {t("reportFinancial.forecastBasis", {
+                            count: Math.min(3, monthlyTrendData.length),
+                          })}
                         </div>
                       </div>
                     ) : (
@@ -1354,10 +1477,16 @@ function ReporteriaFinanciera() {
                   </div>
 
                   <div className="rf-panel">
-                    <h3 className="rf-panel__title">{t("reportFinancial.panelCurrencySummary")}</h3>
+                    <h3 className="rf-panel__title">
+                      {t("reportFinancial.panelCurrencySummary")}
+                    </h3>
                     {Object.entries(metricsByCurrency).length > 0 ? (
                       <div
-                        style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 8,
+                        }}
                       >
                         {Object.entries(metricsByCurrency).map(
                           ([currency, m]) => (
@@ -1370,7 +1499,9 @@ function ReporteriaFinanciera() {
                                   marginBottom: 4,
                                 }}
                               >
-                                <span style={{ fontWeight: 600 }}>{currency}</span>
+                                <span style={{ fontWeight: 600 }}>
+                                  {currency}
+                                </span>
                                 <span style={{ color: "#6b7280" }}>
                                   {m.count} {t("reportFinancial.invoices")}
                                 </span>
@@ -1400,8 +1531,14 @@ function ReporteriaFinanciera() {
                                   marginTop: 2,
                                 }}
                               >
-                                <span>{t("reportFinancial.currencyPaid")} {formatCurrency(m.totalPaid, currency)}</span>
-                                <span>{t("reportFinancial.currencyPending")} {formatCurrency(m.totalPending, currency)}</span>
+                                <span>
+                                  {t("reportFinancial.currencyPaid")}{" "}
+                                  {formatCurrency(m.totalPaid, currency)}
+                                </span>
+                                <span>
+                                  {t("reportFinancial.currencyPending")}{" "}
+                                  {formatCurrency(m.totalPending, currency)}
+                                </span>
                               </div>
                             </div>
                           ),
@@ -1421,10 +1558,15 @@ function ReporteriaFinanciera() {
                 TAB: Analisis de Gastos
                 ============================ */}
             {dashTab === "expenses" && (
-              <div className="rf-tabs__panel" style={{ animation: "rf-tabFadeIn 0.2s ease" }}>
+              <div
+                className="rf-tabs__panel"
+                style={{ animation: "rf-tabFadeIn 0.2s ease" }}
+              >
                 <div className="rf-panel__row">
                   <div className="rf-panel">
-                    <h3 className="rf-panel__title">{t("reportFinancial.panelExpenseConcentration")}</h3>
+                    <h3 className="rf-panel__title">
+                      {t("reportFinancial.panelExpenseConcentration")}
+                    </h3>
                     {expenseConcentration.length > 0 ? (
                       <ResponsiveContainer width="100%" height={280}>
                         <BarChart
@@ -1432,7 +1574,10 @@ function ReporteriaFinanciera() {
                           layout="vertical"
                           margin={{ left: 20 }}
                         >
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#f3f4f6"
+                          />
                           <XAxis
                             type="number"
                             tick={{ fontSize: 11, fill: "#6b7280" }}
@@ -1473,7 +1618,9 @@ function ReporteriaFinanciera() {
                   </div>
 
                   <div className="rf-panel">
-                    <h3 className="rf-panel__title">{t("reportFinancial.panelTopCategories")}</h3>
+                    <h3 className="rf-panel__title">
+                      {t("reportFinancial.panelTopCategories")}
+                    </h3>
                     {expenseConcentration.length > 0 ? (
                       <ul className="rf-rank-list">
                         {expenseConcentration.map((item, i) => {
@@ -1488,7 +1635,9 @@ function ReporteriaFinanciera() {
                           return (
                             <li key={i} className="rf-rank-item">
                               <div className="rf-rank-item__left">
-                                <span className="rf-rank-item__pos">{i + 1}</span>
+                                <span className="rf-rank-item__pos">
+                                  {i + 1}
+                                </span>
                                 <span className="rf-rank-item__name">
                                   {item.name}
                                 </span>
@@ -1511,7 +1660,9 @@ function ReporteriaFinanciera() {
                 {/* Service type + payment term */}
                 <div className="rf-panel__row">
                   <div className="rf-panel">
-                    <h3 className="rf-panel__title">{t("reportFinancial.panelServiceType")}</h3>
+                    <h3 className="rf-panel__title">
+                      {t("reportFinancial.panelServiceType")}
+                    </h3>
                     {serviceTypeBreakdown.length > 0 ? (
                       <>
                         <ResponsiveContainer width="100%" height={200}>
@@ -1545,7 +1696,10 @@ function ReporteriaFinanciera() {
                             />
                           </PieChart>
                         </ResponsiveContainer>
-                        <div className="rf-legend" style={{ justifyContent: "center" }}>
+                        <div
+                          className="rf-legend"
+                          style={{ justifyContent: "center" }}
+                        >
                           {serviceTypeBreakdown.map((d, i) => (
                             <span key={i} className="rf-legend__item">
                               <span
@@ -1568,7 +1722,9 @@ function ReporteriaFinanciera() {
                   </div>
 
                   <div className="rf-panel">
-                    <h3 className="rf-panel__title">{t("reportFinancial.panelPaymentTerm")}</h3>
+                    <h3 className="rf-panel__title">
+                      {t("reportFinancial.panelPaymentTerm")}
+                    </h3>
                     {paymentTermBreakdown.length > 0 ? (
                       <ul className="rf-rank-list">
                         {paymentTermBreakdown.map((item, i) => (
@@ -1599,7 +1755,10 @@ function ReporteriaFinanciera() {
                 TAB: Detalle Facturas
                 ============================ */}
             {dashTab === "invoices" && (
-              <div className="rf-tabs__panel" style={{ animation: "rf-tabFadeIn 0.2s ease" }}>
+              <div
+                className="rf-tabs__panel"
+                style={{ animation: "rf-tabFadeIn 0.2s ease" }}
+              >
                 <div className="rf-table-wrapper">
                   <div className="rf-table-scroll">
                     <table className="rf-table">
@@ -1721,18 +1880,28 @@ function ReporteriaFinanciera() {
                                         tabs={[
                                           {
                                             key: "info",
-                                            label: t("reportFinancial.tabGeneral"),
+                                            label: t(
+                                              "reportFinancial.tabGeneral",
+                                            ),
                                             content: (
                                               <div className="rf-cards-grid">
                                                 <div className="rf-card">
-                                                  <h4>{t("reportFinancial.cardInvoiceData")}</h4>
+                                                  <h4>
+                                                    {t(
+                                                      "reportFinancial.cardInvoiceData",
+                                                    )}
+                                                  </h4>
                                                   <div className="rf-info-grid">
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldInvoiceInternal")}
+                                                      label={t(
+                                                        "reportFinancial.fieldInvoiceInternal",
+                                                      )}
                                                       value={invoice.number}
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldInvoiceNumber")}
+                                                      label={t(
+                                                        "reportFinancial.fieldInvoiceNumber",
+                                                      )}
                                                       value={
                                                         invoice.notes
                                                           ? invoice.notes.split(
@@ -1742,19 +1911,25 @@ function ReporteriaFinanciera() {
                                                       }
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldIssueDate")}
+                                                      label={t(
+                                                        "reportFinancial.fieldIssueDate",
+                                                      )}
                                                       value={formatDate(
                                                         invoice.date,
                                                       )}
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldDueDate")}
+                                                      label={t(
+                                                        "reportFinancial.fieldDueDate",
+                                                      )}
                                                       value={formatDate(
                                                         invoice.dueDate,
                                                       )}
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldCurrency")}
+                                                      label={t(
+                                                        "reportFinancial.fieldCurrency",
+                                                      )}
                                                       value={
                                                         invoice.currency?.name
                                                           ? `${invoice.currency.name} (${invoice.currency.abbr})`
@@ -1763,48 +1938,71 @@ function ReporteriaFinanciera() {
                                                       }
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldStatus")}
+                                                      label={t(
+                                                        "reportFinancial.fieldStatus",
+                                                      )}
                                                       value={
                                                         {
-                                                          paid: t("reportFinancial.statusPaid"),
-                                                          pending: t("reportFinancial.statusPending"),
-                                                          overdue: t("reportFinancial.statusOverdue"),
+                                                          paid: t(
+                                                            "reportFinancial.statusPaid",
+                                                          ),
+                                                          pending: t(
+                                                            "reportFinancial.statusPending",
+                                                          ),
+                                                          overdue: t(
+                                                            "reportFinancial.statusOverdue",
+                                                          ),
                                                         }[status]
                                                       }
                                                     />
                                                   </div>
                                                 </div>
                                                 <div className="rf-card">
-                                                  <h4>{t("reportFinancial.cardShipment")}</h4>
+                                                  <h4>
+                                                    {t(
+                                                      "reportFinancial.cardShipment",
+                                                    )}
+                                                  </h4>
                                                   <div className="rf-info-grid">
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldShipmentNumber")}
+                                                      label={t(
+                                                        "reportFinancial.fieldShipmentNumber",
+                                                      )}
                                                       value={
                                                         invoice.shipment?.number
                                                       }
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldServiceType")}
+                                                      label={t(
+                                                        "reportFinancial.fieldServiceType",
+                                                      )}
                                                       value={getServiceType(
-                                                        invoice.shipment?.number,
+                                                        invoice.shipment
+                                                          ?.number,
                                                       )}
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldWaybill")}
+                                                      label={t(
+                                                        "reportFinancial.fieldWaybill",
+                                                      )}
                                                       value={
                                                         invoice.shipment
                                                           ?.waybillNumber
                                                       }
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldCustomerRef")}
+                                                      label={t(
+                                                        "reportFinancial.fieldCustomerRef",
+                                                      )}
                                                       value={
                                                         invoice.shipment
                                                           ?.customerReference
                                                       }
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldConsignee")}
+                                                      label={t(
+                                                        "reportFinancial.fieldConsignee",
+                                                      )}
                                                       value={
                                                         invoice.shipment
                                                           ?.consignee?.name
@@ -1813,23 +2011,33 @@ function ReporteriaFinanciera() {
                                                   </div>
                                                 </div>
                                                 <div className="rf-card">
-                                                  <h4>{t("reportFinancial.cardBilledTo")}</h4>
+                                                  <h4>
+                                                    {t(
+                                                      "reportFinancial.cardBilledTo",
+                                                    )}
+                                                  </h4>
                                                   <div className="rf-info-grid">
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldName")}
+                                                      label={t(
+                                                        "reportFinancial.fieldName",
+                                                      )}
                                                       value={
                                                         invoice.billTo?.name
                                                       }
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldRutId")}
+                                                      label={t(
+                                                        "reportFinancial.fieldRutId",
+                                                      )}
                                                       value={
                                                         invoice.billTo
                                                           ?.identificationNumber
                                                       }
                                                     />
                                                     <InfoField
-                                                      label={t("reportFinancial.fieldAddress")}
+                                                      label={t(
+                                                        "reportFinancial.fieldAddress",
+                                                      )}
                                                       value={
                                                         invoice.billToAddress
                                                       }
@@ -1842,7 +2050,9 @@ function ReporteriaFinanciera() {
                                           },
                                           {
                                             key: "charges",
-                                            label: t("reportFinancial.tabCharges"),
+                                            label: t(
+                                              "reportFinancial.tabCharges",
+                                            ),
                                             hidden:
                                               !invoice.charges ||
                                               invoice.charges.length === 0,
@@ -1853,18 +2063,30 @@ function ReporteriaFinanciera() {
                                                 <table className="rf-charges-table">
                                                   <thead>
                                                     <tr>
-                                                      <th>{t("reportFinancial.chargesDescription")}</th>
-                                                      <th className="rf-charges-table--right">
-                                                        {t("reportFinancial.chargesQuantity")}
+                                                      <th>
+                                                        {t(
+                                                          "reportFinancial.chargesDescription",
+                                                        )}
                                                       </th>
                                                       <th className="rf-charges-table--right">
-                                                        {t("reportFinancial.chargesRate")} (
+                                                        {t(
+                                                          "reportFinancial.chargesQuantity",
+                                                        )}
+                                                      </th>
+                                                      <th className="rf-charges-table--right">
+                                                        {t(
+                                                          "reportFinancial.chargesRate",
+                                                        )}{" "}
+                                                        (
                                                         {invoice.currency
                                                           ?.abbr || "USD"}
                                                         )
                                                       </th>
                                                       <th className="rf-charges-table--right">
-                                                        {t("reportFinancial.chargesAmount")} (
+                                                        {t(
+                                                          "reportFinancial.chargesAmount",
+                                                        )}{" "}
+                                                        (
                                                         {invoice.currency
                                                           ?.abbr || "USD"}
                                                         )
@@ -1907,7 +2129,9 @@ function ReporteriaFinanciera() {
                                                           textAlign: "right",
                                                         }}
                                                       >
-                                                        {t("reportFinancial.chargesTotal")}
+                                                        {t(
+                                                          "reportFinancial.chargesTotal",
+                                                        )}
                                                       </td>
                                                       <td
                                                         style={{
@@ -1939,7 +2163,9 @@ function ReporteriaFinanciera() {
                                                             textAlign: "right",
                                                           }}
                                                         >
-                                                          {t("reportFinancial.chargesExchangeRate")}
+                                                          {t(
+                                                            "reportFinancial.chargesExchangeRate",
+                                                          )}
                                                         </td>
                                                         <td
                                                           style={{
@@ -1959,12 +2185,16 @@ function ReporteriaFinanciera() {
                                           },
                                           {
                                             key: "totals",
-                                            label: t("reportFinancial.tabTotals"),
+                                            label: t(
+                                              "reportFinancial.tabTotals",
+                                            ),
                                             content: (
                                               <div className="rf-totals-list">
                                                 <div className="rf-totals-row">
                                                   <span className="rf-totals-row__label">
-                                                    {t("reportFinancial.totalsSubtotal")}
+                                                    {t(
+                                                      "reportFinancial.totalsSubtotal",
+                                                    )}
                                                   </span>
                                                   <span className="rf-totals-row__value">
                                                     {formatCurrency(
@@ -1976,7 +2206,9 @@ function ReporteriaFinanciera() {
                                                 </div>
                                                 <div className="rf-totals-row">
                                                   <span className="rf-totals-row__label">
-                                                    {t("reportFinancial.totalsIVA")}
+                                                    {t(
+                                                      "reportFinancial.totalsIVA",
+                                                    )}
                                                   </span>
                                                   <span className="rf-totals-row__value">
                                                     {formatCurrency(
@@ -1988,7 +2220,9 @@ function ReporteriaFinanciera() {
                                                 </div>
                                                 <div className="rf-totals-row rf-totals-row--total">
                                                   <span className="rf-totals-row__label">
-                                                    {t("reportFinancial.totalsTotal")}
+                                                    {t(
+                                                      "reportFinancial.totalsTotal",
+                                                    )}
                                                   </span>
                                                   <span className="rf-totals-row__value">
                                                     {formatCurrency(
@@ -2002,7 +2236,9 @@ function ReporteriaFinanciera() {
                                                   className={`rf-totals-row rf-totals-row--balance rf-totals-row--balance-${status}`}
                                                 >
                                                   <span className="rf-totals-row__label">
-                                                    {t("reportFinancial.totalsBalance")}
+                                                    {t(
+                                                      "reportFinancial.totalsBalance",
+                                                    )}
                                                   </span>
                                                   <span className="rf-totals-row__value">
                                                     {getConvertedBalance(
@@ -2030,15 +2266,14 @@ function ReporteriaFinanciera() {
                   <div className="rf-table-footer">
                     <div className="rf-table-footer__left">
                       {hasMoreInvoices && !loadingMore && (
-                        <button
-                          className="rf-btn"
-                          onClick={loadMoreInvoices}
-                        >
+                        <button className="rf-btn" onClick={loadMoreInvoices}>
                           {t("reportFinancial.loadMoreInvoices")}
                         </button>
                       )}
                       {loadingMore && (
-                        <span style={{ fontSize: "0.8125rem", color: "#9ca3af" }}>
+                        <span
+                          style={{ fontSize: "0.8125rem", color: "#9ca3af" }}
+                        >
                           {t("reportFinancial.loadingEllipsis")}
                         </span>
                       )}
@@ -2102,7 +2337,9 @@ function ReporteriaFinanciera() {
                 {/* -- Footer -------------------------------- */}
                 <div className="rf-footer">
                   <span className="rf-footer__count">
-                    {t("reportFinancial.footerTotal")} <strong>{sortedInvoices.length}</strong> {t("reportFinancial.invoices")}
+                    {t("reportFinancial.footerTotal")}{" "}
+                    <strong>{sortedInvoices.length}</strong>{" "}
+                    {t("reportFinancial.invoices")}
                   </span>
                   {hasMoreInvoices && (
                     <button
@@ -2110,7 +2347,9 @@ function ReporteriaFinanciera() {
                       onClick={loadMoreInvoices}
                       disabled={loadingMore}
                     >
-                      {loadingMore ? t("reportFinancial.loadingEllipsis") : t("reportFinancial.loadMoreInvoices")}
+                      {loadingMore
+                        ? t("reportFinancial.loadingEllipsis")
+                        : t("reportFinancial.loadMoreInvoices")}
                     </button>
                   )}
                 </div>
