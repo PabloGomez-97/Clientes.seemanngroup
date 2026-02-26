@@ -36,6 +36,7 @@ interface PDFTemplateLCLProps {
   transitTime?: string;
   frequency?: string;
   service?: string;
+  validUntil?: string;
 }
 
 const fmt = (num: number): string => {
@@ -75,6 +76,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
   transitTime,
   frequency,
   service,
+  validUntil,
 }) => {
   const C = {
     text: "#111",
@@ -260,6 +262,25 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
           >
             <div style={label}>Carrier / Operator</div>
             <div style={val}>{carrier}</div>
+          </div>
+        )}
+        {validUntil && (
+          <div
+            style={{
+              borderLeft: `1px solid ${C.line}`,
+              paddingLeft: "12px",
+            }}
+          >
+            <div style={label}>Valid Until</div>
+            <div
+              style={{
+                ...val,
+                color: C.accent,
+                fontWeight: 700,
+              }}
+            >
+              {validUntil}
+            </div>
           </div>
         )}
         {transitTime && (

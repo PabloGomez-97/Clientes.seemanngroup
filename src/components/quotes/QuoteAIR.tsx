@@ -34,6 +34,10 @@ import {
 } from "./Handlers/Air/HandlerQuoteAir";
 import { PieceAccordion } from "./Handlers/Air/PieceAccordion";
 import { WeightRangeAlert } from "./Handlers/Air/WeightRangeAlert";
+import {
+  OversizeNotifyExecutive,
+  type OversizeReason,
+} from "./Handlers/Air/OversizeNotifyExecutive";
 import "./QuoteAIR.css";
 
 // Props para pre-selección desde ItineraryFinder
@@ -62,8 +66,6 @@ function QuoteAPITester({
     null,
   );
   const [lowHeightWarning, setLowHeightWarning] = useState<string | null>(null);
-  // Bloqueo cuando dimensiones requieren atención especial (oversize, altura >240cm, o requiere vuelo carguero)
-  const [blockingDimension, setBlockingDimension] = useState<boolean>(false);
 
   // Estados para el commodity
   const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
@@ -146,6 +148,9 @@ function QuoteAPITester({
 
   // Estado para modal de precio 0
   const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
+
+  // Estado para notificación oversize al ejecutivo
+  const [loadingOversizeNotify, setLoadingOversizeNotify] = useState(false);
 
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
@@ -532,7 +537,6 @@ function QuoteAPITester({
       setHeightError(null);
       setCargoFlightWarning(null);
       setLowHeightWarning(null);
-      setBlockingDimension(false);
       return;
     }
 
@@ -560,8 +564,6 @@ function QuoteAPITester({
     setOversizeError(hasOversize ? t("QuoteAIR.oversize") : null);
     setHeightError(hasHeightError ? t("QuoteAIR.altura") : null);
     setCargoFlightWarning(hasCargoWarning ? t("QuoteAIR.alturasupera") : null);
-    // Si hay oversize, altura fuera de rango, o requiere vuelo carguero, bloquear generación de cotización/operación
-    setBlockingDimension(hasOversize || hasHeightError || hasCargoWarning);
   }, [piecesData, overallDimsAndWeight]);
 
   // ============================================================================
@@ -654,6 +656,65 @@ function QuoteAPITester({
     const now = new Date();
 
     return expiry >= now ? "valid" : "expired";
+  };
+
+  // ============================================================================
+  // CONVERTIR validUntil ("28 marzo" o "28 febrero 2026") A ISO 8601
+  // ============================================================================
+  const parseValidUntilToISO = (validUntil?: string | null): string => {
+    // Fallback: 7 días desde hoy si no se puede parsear
+    const fallback = new Date(
+      Date.now() + 7 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    if (!validUntil) return fallback;
+
+    const txt = String(validUntil).trim().toLowerCase();
+
+    const match = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
+    if (!match) return fallback;
+
+    const day = parseInt(match[1], 10);
+    const monthName = match[2];
+    const year = match[3] ? parseInt(match[3], 10) : new Date().getFullYear();
+
+    const monthMap: Record<string, number> = {
+      enero: 0,
+      febrero: 1,
+      marzo: 2,
+      abril: 3,
+      mayo: 4,
+      junio: 5,
+      julio: 6,
+      agosto: 7,
+      septiembre: 8,
+      octubre: 9,
+      noviembre: 10,
+      diciembre: 11,
+      ene: 0,
+      feb: 1,
+      mar: 2,
+      abr: 3,
+      may: 4,
+      jun: 5,
+      jul: 6,
+      ago: 7,
+      sep: 8,
+      oct: 9,
+      nov: 10,
+      dic: 11,
+    };
+
+    const monthIndex = monthMap[monthName.toLowerCase()];
+    if (monthIndex === undefined) return fallback;
+
+    // Construir fecha en UTC para evitar desfase de zona horaria
+    const expiry = new Date(Date.UTC(year, monthIndex, day, 23, 59, 59, 999));
+
+    // Validar que la fecha resultante sea real (no NaN)
+    if (isNaN(expiry.getTime())) return fallback;
+
+    return expiry.toISOString();
   };
 
   // ============================================================================
@@ -799,15 +860,6 @@ function QuoteAPITester({
           (weightRangeValidation?.pesoMinimoRequerido
             ? `Necesitas un mínimo de ${weightRangeValidation.pesoMinimoRequerido} kg.`
             : "No hay rangos disponibles para esta ruta."),
-      );
-      return;
-    }
-
-    // Bloquear generación si las dimensiones requieren atención especial (oversize / altura)
-    if (blockingDimension) {
-      setError(
-        t("QuoteAIR.contactSalesForOversize") ||
-          "La carga requiere atención especial (oversize o altura). Por favor contacta a tu ejecutivo de ventas para cotizar caso a caso.",
       );
       return;
     }
@@ -1123,9 +1175,12 @@ function QuoteAPITester({
             origin={rutaSeleccionada.origin}
             destination={rutaSeleccionada.destination}
             effectiveDate={new Date().toLocaleDateString()}
-            expirationDate={new Date(
-              Date.now() + 7 * 24 * 60 * 60 * 1000,
-            ).toLocaleDateString()}
+            expirationDate={
+              rutaSeleccionada.validUntil ||
+              new Date(
+                Date.now() + 7 * 24 * 60 * 60 * 1000,
+              ).toLocaleDateString()
+            }
             incoterm={incoterm}
             pickupFromAddress={
               incoterm === "EXW" ? pickupFromAddress : undefined
@@ -1156,6 +1211,7 @@ function QuoteAPITester({
             transitTime={rutaSeleccionada.transitTime || undefined}
             frequency={rutaSeleccionada.frequency || undefined}
             routing={rutaSeleccionada.routing || undefined}
+            validUntil={rutaSeleccionada.validUntil || undefined}
           />,
         );
 
@@ -1552,9 +1608,7 @@ function QuoteAPITester({
 
       return {
         date: new Date().toISOString(),
-        validUntil: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000,
-        ).toISOString(),
+        validUntil: parseValidUntilToISO(rutaSeleccionada.validUntil),
         transitDays: parseTransitDays(rutaSeleccionada.transitTime),
         project: {
           name: "AIR",
@@ -1847,9 +1901,7 @@ function QuoteAPITester({
 
       return {
         date: new Date().toISOString(),
-        validUntil: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000,
-        ).toISOString(),
+        validUntil: parseValidUntilToISO(rutaSeleccionada.validUntil),
         transitDays: parseTransitDays(rutaSeleccionada.transitTime),
         customerReference: "Portal-Created [AIR-OVERALL]",
         contact: {
@@ -3069,6 +3121,131 @@ function QuoteAPITester({
           </div>
         </div>
       )}
+
+      {/* ============================================================================ */}
+      {/* SECCIÓN: NOTIFICAR AL EJECUTIVO PARA CARGAS ESPECIALES */}
+      {/* ============================================================================ */}
+      {rutaSeleccionada &&
+        (oversizeError || heightError || cargoFlightWarning) &&
+        (() => {
+          const reasons: OversizeReason[] = [];
+          if (oversizeError) reasons.push("oversize");
+          if (heightError) reasons.push("no-apta-aereo");
+          if (cargoFlightWarning && !heightError)
+            reasons.push("vuelo-carguero");
+
+          const hasMinData =
+            !!originSeleccionado &&
+            !!destinationSeleccionado &&
+            piecesData.some((p) => p.weight > 0);
+
+          const handleOversizeNotify = async () => {
+            setLoadingOversizeNotify(true);
+            try {
+              // Build pieces summary
+              const piezasResumen = piecesData.map((p, i) => ({
+                pieza: i + 1,
+                largo: p.length,
+                ancho: p.width,
+                alto: p.height,
+                peso: p.weight,
+                noApilable: p.noApilable,
+              }));
+
+              // Build charges summary if tarifa is available
+              let cargos:
+                | {
+                    currency: string;
+                    items: { label: string; amount: number }[];
+                    total: number;
+                  }
+                | undefined;
+
+              if (tarifaAirFreight && rutaSeleccionada) {
+                const { totalRealWeight: tw } = calculateTotals();
+                const items: { label: string; amount: number }[] = [];
+
+                items.push({ label: "Handling", amount: 45 });
+                if (incoterm === "EXW") {
+                  items.push({
+                    label: "EXW Charges",
+                    amount: calculateEXWRate(tw, pesoChargeable),
+                  });
+                }
+                items.push({ label: "AWB", amount: 30 });
+                items.push({
+                  label: "Airport Transfer",
+                  amount: Math.max(pesoChargeable * 0.15, 50),
+                });
+                items.push({
+                  label: "Air Freight",
+                  amount: tarifaAirFreight.precioConMarkup * pesoChargeable,
+                });
+                if (seguroActivo && calculateSeguro() > 0) {
+                  items.push({
+                    label: "Seguro",
+                    amount: calculateSeguro(),
+                  });
+                }
+                if (
+                  noApilableActivo &&
+                  incoterm === "EXW" &&
+                  calculateNoApilable() > 0
+                ) {
+                  items.push({
+                    label: "No Apilable",
+                    amount: calculateNoApilable(),
+                  });
+                }
+
+                const total = items.reduce((s, i) => s + i.amount, 0);
+                cargos = {
+                  currency: rutaSeleccionada.currency,
+                  items,
+                  total,
+                };
+              }
+
+              const res = await fetch("/api/send-oversize-email", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  origen:
+                    rutaSeleccionada?.origin || originSeleccionado?.label || "",
+                  destino:
+                    rutaSeleccionada?.destination ||
+                    destinationSeleccionado?.label ||
+                    "",
+                  carrier: rutaSeleccionada?.carrier || "",
+                  validUntil: rutaSeleccionada?.validUntil || "",
+                  motivos: reasons,
+                  descripcion: description,
+                  incoterm: incoterm || "N/A",
+                  piezas: piezasResumen,
+                  clienteNombre: user?.nombreuser || user?.username || "",
+                  clienteEmail: user?.email || "",
+                  cargos,
+                }),
+              });
+
+              if (!res.ok) throw new Error("Error sending notification");
+            } finally {
+              setLoadingOversizeNotify(false);
+            }
+          };
+
+          return (
+            <OversizeNotifyExecutive
+              reasons={reasons}
+              loading={loadingOversizeNotify}
+              onNotify={handleOversizeNotify}
+              hasMinimumData={hasMinData}
+            />
+          );
+        })()}
 
       {/* Error / Success Display (Simplified) */}
       {error && (

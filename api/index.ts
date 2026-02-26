@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData } from './emails/oversizeEmailTemplate.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -2186,6 +2187,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           error: 'Internal server error',
           details: error.message 
         });
+      }
+    }
+
+    // POST /api/send-oversize-email - Notificar al ejecutivo sobre carga especial
+    if (path === '/api/send-oversize-email' && method === 'POST') {
+      try {
+        console.log('Endpoint /api/send-oversize-email hit');
+        const currentUser = await User.findOne({ email: requireAuth(req).sub }).populate('ejecutivoId');
+        if (!currentUser || !currentUser.ejecutivoId) {
+          return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+        }
+
+        const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
+        const { origen, destino, carrier, validUntil, motivos, descripcion, incoterm, piezas, clienteNombre, clienteEmail, cargos } = req.body;
+
+        const emailData: OversizeEmailData = {
+          clienteNombre: clienteNombre || currentUser.username,
+          clienteEmail: clienteEmail || currentUser.email,
+          origen: origen || '',
+          destino: destino || '',
+          carrier: carrier || '',
+          descripcion: descripcion || '',
+          incoterm: incoterm || '',
+          validUntil: validUntil || '',
+          motivos: motivos || [],
+          piezas: piezas || [],
+          cargos: cargos || undefined,
+        };
+
+        const subject = getOversizeEmailSubject(emailData);
+        const htmlContent = buildOversizeEmailHTML(emailData);
+
+        // Enviar correo usando Brevo API
+        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': process.env.BREVO_API_KEY!,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sender: { name: 'Cotización Especial', email: 'noreply@sphereglobal.io' },
+            to: [{ email: ejecutivoEmail }],
+            subject,
+            htmlContent,
+          }),
+        });
+
+        if (!brevoResponse.ok) {
+          const errorText = await brevoResponse.text();
+          console.error('Error enviando correo oversize con Brevo:', errorText);
+        }
+
+        return res.status(200).json({ success: true, message: 'Notificación de carga especial enviada al ejecutivo' });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('Error en /api/send-oversize-email:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
       }
     }
 

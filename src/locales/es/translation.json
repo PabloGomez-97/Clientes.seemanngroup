@@ -394,6 +394,20 @@
     "ingresoinco": "Debes seleccionar un Incoterm antes de generar la cotización",
     "debescompl": "Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW"
   },
+  "OversizeNotify": {
+    "title": "Cotización requiere análisis especial",
+    "explanation": "Tu carga presenta características especiales que no pueden cotizarse de forma automática. Un ejecutivo de Seemann Group debe analizar tu solicitud caso a caso para entregarte la mejor tarifa disponible.",
+    "fillFieldsReminder": "Por favor, completa todos los datos de tu envío (origen, destino, dimensiones y peso de las piezas) antes de notificar a tu ejecutivo. Toda la información que ingreses será enviada directamente a tu ejecutivo comercial.",
+    "notifyButton": "Avísale a mi ejecutivo",
+    "sending": "Enviando notificación...",
+    "sentButton": "Notificación enviada",
+    "sent": "¡Tu ejecutivo ha sido notificado exitosamente! Se pondrá en contacto contigo a la brevedad.",
+    "error": "Ocurrió un error al enviar la notificación. Por favor, intenta nuevamente.",
+    "missingData": "Completa al menos el origen, destino y los datos de las piezas para poder notificar a tu ejecutivo.",
+    "reason_oversize": "Carga Oversize (largo o ancho > 300 cm)",
+    "reason_no-apta-aereo": "No apta para transporte aéreo (alto > 240 cm)",
+    "reason_vuelo-carguero": "Requiere vuelo carguero (alto > 160 cm)"
+  },
   "sidebar": {
     "account": "Cuenta Activa"
   },
