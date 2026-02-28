@@ -17,6 +17,7 @@ type Roles = {
   administrador: boolean;
   pricing: boolean;
   ejecutivo: boolean;
+  proveedor: boolean;
 } | null;
 
 type User = {

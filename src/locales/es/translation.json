@@ -155,9 +155,12 @@
       "loginButton": "Ingresar",
       "loggingIn": "Ingresando...",
       "executiveMessage": "Detectamos que eres ejecutivo. Por favor, usa el portal administrativo para ingresar.",
+      "proveedorMessage": "Detectamos que eres proveedor. Por favor, usa el portal de proveedores para ingresar.",
       "loginError": "No se pudo iniciar sesión",
       "executiveLink": "¿Eres ejecutivo?",
       "executiveLinkText": "Ingresa aquí →",
+      "proveedorLink": "¿Eres proveedor?",
+      "proveedorLinkText": "Ingresa aquí →",
       "helpText": "¿No tienes acceso?",
       "helpLink": "Contacta al administrador",
       "footer": "© 2026 Seemann Group. Todos los derechos reservados.",
@@ -640,5 +643,36 @@
     "periodAll": "Todo el Periodo",
     "noPaymentTerm": "Sin termino",
     "loadingMoreInvoices": "Cargando mas facturas..."
+  },
+  "proveedor": {
+    "login": {
+      "title": "Portal de Proveedores",
+      "subtitle": "Ingresa tus credenciales para continuar",
+      "badge": "PROVEEDORES",
+      "emailLabel": "Correo electrónico",
+      "emailPlaceholder": "tu@email.com",
+      "passwordLabel": "Contraseña",
+      "loginButton": "Ingresar",
+      "verifying": "Verificando acceso...",
+      "accessDenied": "Acceso denegado. Esta área es exclusiva para proveedores.",
+      "loginError": "No se pudo iniciar sesión",
+      "clientLink": "¿Eres cliente?",
+      "clientLinkText": "Ingresa aquí →",
+      "executiveLink": "¿Eres ejecutivo?",
+      "executiveLinkText": "Ingresa aquí →",
+      "footer": "© 2026 Seemann Group. Todos los derechos reservados."
+    },
+    "home": {
+      "greeting": "Hola, {{name}} 👋",
+      "welcomeMessage": "Bienvenido al portal de proveedores de Seemann Group. Aquí podrás gestionar tus operaciones de forma rápida y eficiente.",
+      "infoTitle": "Panel del Proveedor",
+      "infoMessage": "Próximamente tendrás acceso a herramientas para gestionar cotizaciones, documentos y seguimiento de operaciones."
+    },
+    "sidebar": {
+      "home": "Inicio",
+      "settings": "Configuración",
+      "portalLabel": "Portal de Proveedores",
+      "badge": "PROVEEDOR"
+    }
   }
 }

@@ -3,11 +3,13 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import Login from "./auth/Login";
 import LoginAdmin from "./auth/LoginAdmin";
+import LoginProveedor from "./auth/LoginProveedor";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Layouts
 import AdminLayout from "./layouts/AdminLayout";
 import UserLayout from "./layouts/UserLayout";
+import ProveedorLayout from "./layouts/ProveedorLayout";
 
 // Home Page
 import Home from "./components/Home";
@@ -61,38 +63,43 @@ import Operacionales from "./components/Sidebar/RO2";
 import Envios from "./components/deprecated/EnviosAereos OFF";
 import EnviosMaritimos from "./components/deprecated/EnviosMaritimos OFF";
 
+// Proveedor Views
+import HomeProveedores from "./components/Proveedores/Homeproveedores";
+
 function App() {
   const { user } = useAuth();
+
+  // Helper para determinar la ruta de inicio según el tipo de usuario
+  const getHomeRoute = () => {
+    if (!user) return "/login";
+    if (user.username === "Ejecutivo") {
+      if (user.roles?.proveedor) return "/proveedor/home";
+      return "/admin/home";
+    }
+    return "/";
+  };
 
   return (
     <Routes>
       {/* Ruta de Login */}
       <Route
         path="/login"
-        element={
-          user ? (
-            <Navigate
-              to={user.username === "Ejecutivo" ? "/admin/home" : "/"}
-              replace
-            />
-          ) : (
-            <Login />
-          )
-        }
+        element={user ? <Navigate to={getHomeRoute()} replace /> : <Login />}
       />
 
       {/* Ruta de Login Administrativo */}
       <Route
         path="/login-admin"
         element={
-          user ? (
-            <Navigate
-              to={user.username === "Ejecutivo" ? "/admin/home" : "/login"}
-              replace
-            />
-          ) : (
-            <LoginAdmin />
-          )
+          user ? <Navigate to={getHomeRoute()} replace /> : <LoginAdmin />
+        }
+      />
+
+      {/* Ruta de Login Proveedor */}
+      <Route
+        path="/login-proveedor"
+        element={
+          user ? <Navigate to={getHomeRoute()} replace /> : <LoginProveedor />
         }
       />
 
@@ -139,6 +146,19 @@ function App() {
         <Route path="settings" element={<SettingsAdmin />} />
       </Route>
 
+      {/* Rutas de Proveedor */}
+      <Route
+        path="/proveedor"
+        element={
+          <ProtectedRoute requireProveedor={true}>
+            <ProveedorLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/proveedor/home" replace />} />
+        <Route path="home" element={<HomeProveedores />} />
+      </Route>
+
       {/* Rutas de Usuario Regular */}
       <Route
         path="/"
@@ -170,21 +190,7 @@ function App() {
       </Route>
 
       {/* Ruta por defecto */}
-      <Route
-        path="*"
-        element={
-          <Navigate
-            to={
-              user
-                ? user.username === "Ejecutivo"
-                  ? "/admin/home"
-                  : "/"
-                : "/login"
-            }
-            replace
-          />
-        }
-      />
+      <Route path="*" element={<Navigate to={getHomeRoute()} replace />} />
     </Routes>
   );
 }

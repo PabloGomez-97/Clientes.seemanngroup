@@ -63,6 +63,7 @@ interface IEjecutivo {
     administrador: boolean;
     pricing: boolean;
     ejecutivo: boolean;
+    proveedor: boolean;
   };
 }
 
@@ -83,6 +84,7 @@ const EjecutivoSchema = new mongoose.Schema<IEjecutivoDoc>(
       administrador: { type: Boolean, default: false },
       pricing: { type: Boolean, default: false },
       ejecutivo: { type: Boolean, default: true },
+      proveedor: { type: Boolean, default: false },
     },
   },
   { timestamps: true }
@@ -596,6 +598,7 @@ app.post('/api/login', async (req, res) => {
           administrador: ejDoc.roles?.administrador || false,
           pricing: ejDoc.roles?.pricing || false,
           ejecutivo: ejDoc.roles?.ejecutivo !== false, // default true
+          proveedor: ejDoc.roles?.proveedor || false,
         };
       }
     }
@@ -652,6 +655,7 @@ app.get('/api/me', auth, async (req, res) => {
           administrador: ejDoc.roles?.administrador || false,
           pricing: ejDoc.roles?.pricing || false,
           ejecutivo: ejDoc.roles?.ejecutivo !== false,
+          proveedor: ejDoc.roles?.proveedor || false,
         };
       }
     }
@@ -870,11 +874,14 @@ app.put('/api/admin/ejecutivos/:id', auth, async (req, res) => {
 
     // Validar roles si se envían
     if (roles) {
-      const { administrador, pricing, ejecutivo: rolEjecutivo } = roles;
-      if (administrador && (pricing || rolEjecutivo)) {
+      const { administrador, pricing, ejecutivo: rolEjecutivo, proveedor: rolProveedor } = roles;
+      if (administrador && (pricing || rolEjecutivo || rolProveedor)) {
         return res.status(400).json({ error: 'El rol Administrador no se puede combinar con otros roles' });
       }
-      if (!administrador && !pricing && !rolEjecutivo) {
+      if (rolProveedor && (administrador || pricing || rolEjecutivo)) {
+        return res.status(400).json({ error: 'El rol Proveedor no se puede combinar con otros roles' });
+      }
+      if (!administrador && !pricing && !rolEjecutivo && !rolProveedor) {
         return res.status(400).json({ error: 'Debe tener al menos un rol asignado' });
       }
     }
@@ -910,6 +917,7 @@ app.put('/api/admin/ejecutivos/:id', auth, async (req, res) => {
           administrador: ejecutivo.roles?.administrador || false,
           pricing: ejecutivo.roles?.pricing || false,
           ejecutivo: ejecutivo.roles?.ejecutivo !== false,
+          proveedor: ejecutivo.roles?.proveedor || false,
         }
       }
     });
@@ -1071,11 +1079,14 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
 
       // Actualizar roles en el documento Ejecutivo vinculado
       if (roles) {
-        const { administrador, pricing, ejecutivo: rolEjecutivo } = roles;
-        if (administrador && (pricing || rolEjecutivo)) {
+        const { administrador, pricing, ejecutivo: rolEjecutivo, proveedor: rolProveedor } = roles;
+        if (administrador && (pricing || rolEjecutivo || rolProveedor)) {
           return res.status(400).json({ error: 'El rol Administrador no se puede combinar con otros roles' });
         }
-        if (!administrador && !pricing && !rolEjecutivo) {
+        if (rolProveedor && (administrador || pricing || rolEjecutivo)) {
+          return res.status(400).json({ error: 'El rol Proveedor no se puede combinar con otros roles' });
+        }
+        if (!administrador && !pricing && !rolEjecutivo && !rolProveedor) {
           return res.status(400).json({ error: 'Debe tener al menos un rol asignado' });
         }
 

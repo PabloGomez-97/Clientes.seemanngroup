@@ -32,6 +32,13 @@ export default function Login() {
       const loggedUser = await login(email, password);
 
       if (loggedUser.username === "Ejecutivo") {
+        // Detectar si es un proveedor
+        if (loggedUser.roles?.proveedor) {
+          logout();
+          setErr(t("home.login.proveedorMessage"));
+          setLoading(false);
+          return;
+        }
         logout();
         setErr(t("home.login.executiveMessage"));
         setLoading(false);
@@ -427,6 +434,26 @@ export default function Login() {
                 }}
               >
                 {t("home.login.executiveLinkText")}
+              </Link>
+            </p>
+            <p
+              style={{
+                margin: "0 0 12px 0",
+                fontSize: "13px",
+                color: "#888",
+                textAlign: "center",
+              }}
+            >
+              {t("home.login.proveedorLink")}{" "}
+              <Link
+                to="/login-proveedor"
+                style={{
+                  color: PRIMARY,
+                  fontWeight: "500",
+                  textDecoration: "none",
+                }}
+              >
+                {t("home.login.proveedorLinkText")}
               </Link>
             </p>
             <p

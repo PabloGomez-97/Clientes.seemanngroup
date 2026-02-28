@@ -1,22 +1,28 @@
-// src/auth/LoginAdmin.tsx
+// src/auth/LoginProveedor.tsx
 import { useState } from "react";
 import { useAuth } from "./AuthContext";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-const PRIMARY = "#ff6200";
-const DARK = "#1a1a1a";
+const PRIMARY_RAW = "#ff6200";
+const DARK_RAW = "#1a1a1a";
 
-export default function LoginAdmin() {
+export default function LoginProveedor() {
   const { login, logout } = useAuth();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+
+  const changeLanguage = (language: string) => {
+    i18n.changeLanguage(language);
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,27 +32,18 @@ export default function LoginAdmin() {
     try {
       const loggedUser = await login(email, password);
 
-      if (loggedUser.username !== "Ejecutivo") {
+      // Verificar que el usuario sea un ejecutivo con rol proveedor
+      if (loggedUser.username !== "Ejecutivo" || !loggedUser.roles?.proveedor) {
         logout();
-        setErr(
-          "Acceso denegado. Esta área es exclusiva para ejecutivos. Por favor, ingresa como cliente usando el enlace de abajo.",
-        );
+        setErr(t("proveedor.login.accessDenied"));
         setLoading(false);
         return;
       }
 
-      if (loggedUser.roles?.proveedor) {
-        logout();
-        setErr(
-          "Acceso denegado. Tu cuenta es de proveedor. Por favor, ingresa a través del portal de proveedores.",
-        );
-        setLoading(false);
-        return;
-      }
-
-      navigate("/admin/dashboard", { replace: true });
-    } catch (e: any) {
-      setErr(e.message || "No se pudo iniciar sesión");
+      navigate("/proveedor/home", { replace: true });
+    } catch (e: unknown) {
+      const error = e as { message?: string };
+      setErr(error.message || t("proveedor.login.loginError"));
       setLoading(false);
     }
   };
@@ -58,7 +55,7 @@ export default function LoginAdmin() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: DARK,
+        backgroundColor: DARK_RAW,
         fontFamily: FONT,
         position: "relative",
       }}
@@ -74,16 +71,101 @@ export default function LoginAdmin() {
         }}
       />
 
+      {/* Accent circle decorations */}
+      <div
+        style={{
+          position: "absolute",
+          top: "-100px",
+          right: "-100px",
+          width: "350px",
+          height: "350px",
+          borderRadius: "50%",
+          border: "1px solid rgba(255, 98, 0, 0.06)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          bottom: "-80px",
+          left: "-80px",
+          width: "280px",
+          height: "280px",
+          borderRadius: "50%",
+          border: "1px solid rgba(255, 98, 0, 0.04)",
+        }}
+      />
+
       {/* Content */}
       <div
         style={{
           width: "100%",
-          maxWidth: "400px",
+          maxWidth: "420px",
           position: "relative",
           zIndex: 1,
           margin: "0 24px",
         }}
       >
+        {/* Language switcher */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginBottom: "16px",
+            gap: "4px",
+          }}
+        >
+          <button
+            onClick={() => changeLanguage("es")}
+            style={{
+              padding: "6px 12px",
+              fontSize: "12px",
+              fontWeight: i18n.language === "es" ? "600" : "400",
+              fontFamily: FONT,
+              color:
+                i18n.language === "es" ? PRIMARY_RAW : "rgba(255,255,255,0.4)",
+              backgroundColor:
+                i18n.language === "es"
+                  ? "rgba(255, 98, 0, 0.15)"
+                  : "transparent",
+              border: "1px solid",
+              borderColor:
+                i18n.language === "es"
+                  ? "rgba(255, 98, 0, 0.3)"
+                  : "rgba(255,255,255,0.1)",
+              borderRadius: "4px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            ES
+          </button>
+          <button
+            onClick={() => changeLanguage("en")}
+            style={{
+              padding: "6px 12px",
+              fontSize: "12px",
+              fontWeight: i18n.language === "en" ? "600" : "400",
+              fontFamily: FONT,
+              color:
+                i18n.language === "en" ? PRIMARY_RAW : "rgba(255,255,255,0.4)",
+              backgroundColor:
+                i18n.language === "en"
+                  ? "rgba(255, 98, 0, 0.15)"
+                  : "transparent",
+              border: "1px solid",
+              borderColor:
+                i18n.language === "en"
+                  ? "rgba(255, 98, 0, 0.3)"
+                  : "rgba(255,255,255,0.1)",
+              borderRadius: "4px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            EN
+          </button>
+        </div>
+
         {/* Card */}
         <div
           style={{
@@ -97,7 +179,7 @@ export default function LoginAdmin() {
           <div
             style={{
               height: "3px",
-              backgroundColor: PRIMARY,
+              backgroundColor: PRIMARY_RAW,
             }}
           />
 
@@ -116,17 +198,40 @@ export default function LoginAdmin() {
             </div>
 
             {/* Heading */}
-            <h1
+            <div
               style={{
-                fontSize: "20px",
-                fontWeight: "600",
-                color: DARK,
-                margin: "0 0 4px 0",
-                letterSpacing: "-0.3px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                marginBottom: "4px",
               }}
             >
-              Portal Ejecutivo
-            </h1>
+              <h1
+                style={{
+                  fontSize: "20px",
+                  fontWeight: "600",
+                  color: DARK_RAW,
+                  margin: 0,
+                  letterSpacing: "-0.3px",
+                }}
+              >
+                {t("proveedor.login.title")}
+              </h1>
+              <span
+                style={{
+                  padding: "2px 8px",
+                  borderRadius: "4px",
+                  fontSize: "10px",
+                  fontWeight: "700",
+                  backgroundColor: "rgba(255, 98, 0, 0.1)",
+                  color: PRIMARY_RAW,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                {t("proveedor.login.badge")}
+              </span>
+            </div>
             <p
               style={{
                 fontSize: "13px",
@@ -135,7 +240,7 @@ export default function LoginAdmin() {
                 fontWeight: "400",
               }}
             >
-              Ingresa tus credenciales para continuar
+              {t("proveedor.login.subtitle")}
             </p>
 
             {/* Error */}
@@ -143,7 +248,7 @@ export default function LoginAdmin() {
               <div
                 style={{
                   backgroundColor: "#fef2f2",
-                  borderLeft: `3px solid #dc2626`,
+                  borderLeft: "3px solid #dc2626",
                   padding: "12px 16px",
                   marginBottom: "24px",
                   borderRadius: "2px",
@@ -167,7 +272,7 @@ export default function LoginAdmin() {
               {/* Email */}
               <div style={{ marginBottom: "20px" }}>
                 <label
-                  htmlFor="email"
+                  htmlFor="email-proveedor"
                   style={{
                     display: "block",
                     fontSize: "13px",
@@ -176,15 +281,15 @@ export default function LoginAdmin() {
                     marginBottom: "6px",
                   }}
                 >
-                  Correo corporativo
+                  {t("proveedor.login.emailLabel")}
                 </label>
                 <input
-                  id="email"
+                  id="email-proveedor"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="ejecutivo@seemann.com"
+                  placeholder={t("proveedor.login.emailPlaceholder")}
                   onFocus={() => setFocusedField("email")}
                   onBlur={() => setFocusedField(null)}
                   style={{
@@ -192,9 +297,9 @@ export default function LoginAdmin() {
                     padding: "10px 12px",
                     fontSize: "14px",
                     fontFamily: FONT,
-                    color: DARK,
+                    color: DARK_RAW,
                     backgroundColor: "#fff",
-                    border: `1px solid ${focusedField === "email" ? DARK : "#d4d4d4"}`,
+                    border: `1px solid ${focusedField === "email" ? DARK_RAW : "#d4d4d4"}`,
                     borderRadius: "4px",
                     outline: "none",
                     transition: "border-color 0.15s ease",
@@ -206,7 +311,7 @@ export default function LoginAdmin() {
               {/* Password */}
               <div style={{ marginBottom: "28px" }}>
                 <label
-                  htmlFor="password"
+                  htmlFor="password-proveedor"
                   style={{
                     display: "block",
                     fontSize: "13px",
@@ -215,10 +320,10 @@ export default function LoginAdmin() {
                     marginBottom: "6px",
                   }}
                 >
-                  Contraseña
+                  {t("proveedor.login.passwordLabel")}
                 </label>
                 <input
-                  id="password"
+                  id="password-proveedor"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -231,9 +336,9 @@ export default function LoginAdmin() {
                     padding: "10px 12px",
                     fontSize: "14px",
                     fontFamily: FONT,
-                    color: DARK,
+                    color: DARK_RAW,
                     backgroundColor: "#fff",
-                    border: `1px solid ${focusedField === "password" ? DARK : "#d4d4d4"}`,
+                    border: `1px solid ${focusedField === "password" ? DARK_RAW : "#d4d4d4"}`,
                     borderRadius: "4px",
                     outline: "none",
                     transition: "border-color 0.15s ease",
@@ -253,7 +358,7 @@ export default function LoginAdmin() {
                   fontWeight: "500",
                   fontFamily: FONT,
                   color: "#fff",
-                  backgroundColor: loading ? "#999" : DARK,
+                  backgroundColor: loading ? "#999" : DARK_RAW,
                   border: "none",
                   borderRadius: "4px",
                   cursor: loading ? "not-allowed" : "pointer",
@@ -264,7 +369,8 @@ export default function LoginAdmin() {
                   if (!loading) e.currentTarget.style.backgroundColor = "#333";
                 }}
                 onMouseLeave={(e) => {
-                  if (!loading) e.currentTarget.style.backgroundColor = DARK;
+                  if (!loading)
+                    e.currentTarget.style.backgroundColor = DARK_RAW;
                 }}
               >
                 {loading ? (
@@ -287,15 +393,15 @@ export default function LoginAdmin() {
                         display: "inline-block",
                       }}
                     />
-                    Verificando acceso...
+                    {t("proveedor.login.verifying")}
                   </span>
                 ) : (
-                  "Ingresar al Panel"
+                  t("proveedor.login.loginButton")
                 )}
               </button>
             </form>
 
-            {/* Divider + link */}
+            {/* Divider + links */}
             <div
               style={{
                 marginTop: "28px",
@@ -306,21 +412,21 @@ export default function LoginAdmin() {
             >
               <p
                 style={{
-                  margin: "0 0 10px 0",
+                  margin: "0 0 8px 0",
                   fontSize: "13px",
                   color: "#888",
                 }}
               >
-                ¿Eres cliente?{" "}
+                {t("proveedor.login.clientLink")}{" "}
                 <Link
                   to="/login"
                   style={{
-                    color: PRIMARY,
+                    color: PRIMARY_RAW,
                     fontWeight: "500",
                     textDecoration: "none",
                   }}
                 >
-                  Ingresa aquí
+                  {t("proveedor.login.clientLinkText")}
                 </Link>
               </p>
               <p
@@ -330,16 +436,16 @@ export default function LoginAdmin() {
                   color: "#888",
                 }}
               >
-                ¿Eres proveedor?{" "}
+                {t("proveedor.login.executiveLink")}{" "}
                 <Link
-                  to="/login-proveedor"
+                  to="/login-admin"
                   style={{
-                    color: PRIMARY,
+                    color: PRIMARY_RAW,
                     fontWeight: "500",
                     textDecoration: "none",
                   }}
                 >
-                  Ingresa aquí
+                  {t("proveedor.login.executiveLinkText")}
                 </Link>
               </p>
             </div>
@@ -355,8 +461,8 @@ export default function LoginAdmin() {
             color: "rgba(255, 255, 255, 0.3)",
           }}
         >
-          © {new Date().getFullYear()} Seemann Group. Todos los derechos
-          reservados.
+          © {new Date().getFullYear()} Seemann Group.{" "}
+          {t("proveedor.login.footer")}
         </p>
       </div>
 

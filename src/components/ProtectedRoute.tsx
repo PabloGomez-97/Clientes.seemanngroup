@@ -4,12 +4,14 @@ import { useAuth } from "../auth/AuthContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requireAdmin: boolean;
+  requireAdmin?: boolean;
+  requireProveedor?: boolean;
 }
 
 export default function ProtectedRoute({
   children,
-  requireAdmin,
+  requireAdmin = false,
+  requireProveedor = false,
 }: ProtectedRouteProps) {
   const { user, token } = useAuth();
 
@@ -18,13 +20,37 @@ export default function ProtectedRoute({
     return <Navigate to="/login" replace />;
   }
 
-  // Si requiere admin pero no lo es, redirigir
-  if (requireAdmin && user.username !== "Ejecutivo") {
-    return <Navigate to="/" replace />;
+  const isEjecutivo = user.username === "Ejecutivo";
+  const isProveedor = isEjecutivo && user.roles?.proveedor === true;
+  const isAdmin = isEjecutivo && !isProveedor;
+
+  // Ruta de proveedor
+  if (requireProveedor) {
+    if (!isProveedor) {
+      // Si es ejecutivo/admin, ir a admin
+      if (isAdmin) return <Navigate to="/admin/home" replace />;
+      // Si es cliente, ir a home
+      return <Navigate to="/" replace />;
+    }
+    return <>{children}</>;
   }
 
-  // Si NO requiere admin pero ES ejecutivo, redirigir al dashboard admin
-  if (!requireAdmin && user.username === "Ejecutivo") {
+  // Ruta de admin/ejecutivo
+  if (requireAdmin) {
+    if (!isAdmin) {
+      // Si es proveedor, ir a portal proveedor
+      if (isProveedor) return <Navigate to="/proveedor/home" replace />;
+      // Si es cliente, ir a home
+      return <Navigate to="/" replace />;
+    }
+    return <>{children}</>;
+  }
+
+  // Ruta de cliente (usuario regular)
+  if (isProveedor) {
+    return <Navigate to="/proveedor/home" replace />;
+  }
+  if (isAdmin) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
