@@ -155,11 +155,11 @@
       "loginButton": "Sign In",
       "loggingIn": "Signing in...",
       "executiveMessage": "We detected you are an executive. Please use the administrative portal to sign in.",
-      "proveedorMessage": "We detected you are a supplier. Please use the supplier portal to sign in.",
+      "proveedorMessage": "We detected you are a carrier. Please use the carrier portal to sign in.",
       "loginError": "Could not sign in",
       "executiveLink": "Are you an executive?",
       "executiveLinkText": "Sign in here →",
-      "proveedorLink": "Are you a supplier?",
+      "proveedorLink": "Are you a carrier?",
       "proveedorLinkText": "Sign in here →",
       "helpText": "Don't have access?",
       "helpLink": "Contact administrator",
@@ -662,7 +662,7 @@
       "footer": "© 2026 Seemann Group. All rights reserved."
     },
     "home": {
-      "greeting": "Hello, {{name}} 👋",
+      "greeting": "Hello,",
       "welcomeMessage": "Welcome to the Seemann Group supplier portal. Here you can manage your operations quickly and efficiently.",
       "infoTitle": "Supplier Dashboard",
       "infoMessage": "Soon you will have access to tools for managing quotes, documents, and operation tracking."

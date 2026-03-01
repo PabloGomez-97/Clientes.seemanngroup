@@ -10,6 +10,9 @@ export default function HomeProveedores() {
   const { t } = useTranslation();
 
   const nombreUsuario = user?.nombreuser || user?.email || "Proveedor";
+  // user?.username = ejecutivo
+  // user?.email = email del proveedor
+  // user?.nombreuser = nombre completo del proveedor (si está disponible)
 
   return (
     <div

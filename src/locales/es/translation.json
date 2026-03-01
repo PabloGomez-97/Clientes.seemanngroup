@@ -663,7 +663,7 @@
       "footer": "© 2026 Seemann Group. Todos los derechos reservados."
     },
     "home": {
-      "greeting": "Hola, {{name}} 👋",
+      "greeting": "Hola,",
       "welcomeMessage": "Bienvenido al portal de proveedores de Seemann Group. Aquí podrás gestionar tus operaciones de forma rápida y eficiente.",
       "infoTitle": "Panel del Proveedor",
       "infoMessage": "Próximamente tendrás acceso a herramientas para gestionar cotizaciones, documentos y seguimiento de operaciones."
