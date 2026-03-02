@@ -645,15 +645,15 @@
   },
   "proveedor": {
     "login": {
-      "title": "Supplier Portal",
+      "title": "Carrier Portal",
       "subtitle": "Enter your credentials to continue",
-      "badge": "SUPPLIERS",
+      "badge": "CARRIER",
       "emailLabel": "Email",
       "emailPlaceholder": "you@email.com",
       "passwordLabel": "Password",
       "loginButton": "Sign In",
       "verifying": "Verifying access...",
-      "accessDenied": "Access denied. This area is exclusive for suppliers.",
+      "accessDenied": "Access denied. This area is exclusive for carriers.",
       "loginError": "Could not sign in",
       "clientLink": "Are you a client?",
       "clientLinkText": "Sign in here →",
@@ -663,15 +663,15 @@
     },
     "home": {
       "greeting": "Hello,",
-      "welcomeMessage": "Welcome to the Seemann Group supplier portal. Here you can manage your operations quickly and efficiently.",
-      "infoTitle": "Supplier Dashboard",
+      "welcomeMessage": "Welcome to the Seemann Group carrier portal. Here you can manage your operations quickly and efficiently.",
+      "infoTitle": "Carrier Dashboard",
       "infoMessage": "Soon you will have access to tools for managing quotes, documents, and operation tracking."
     },
     "sidebar": {
       "home": "Home",
       "settings": "Settings",
-      "portalLabel": "Supplier Portal",
-      "badge": "SUPPLIER"
+      "portalLabel": "Carrier Portal",
+      "badge": "CARRIER"
     }
   }
 }
