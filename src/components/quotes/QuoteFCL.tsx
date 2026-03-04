@@ -1994,6 +1994,10 @@ function QuoteFCL({
         )}
       </div>
 
+      {/* ============================================================================ */}
+      {/* SECCIÓN 2: DETALLES DE LA RUTA */}
+      {/* ============================================================================ */}
+
       {/* Detalles de la ruta seleccionada */}
       {rutaSeleccionada && containerSeleccionado && (
         <>
@@ -2031,56 +2035,58 @@ function QuoteFCL({
                   <option value="FOB">FOB</option>
                 </select>
               </div>
-              {/* Cantidad de Contenedores */}
-              <div className="col-md-4">
-                <label className="qf-label">Cantidad de Contenedores</label>
-                <input
-                  type="number"
-                  className="qf-input"
-                  value={cantidadContenedores}
-                  onChange={(e) =>
-                    setCantidadContenedores(
-                      Math.max(1, Math.floor(Number(e.target.value) || 1)),
-                    )
-                  }
-                  min="1"
-                  step="1"
-                />
-                <small className="text-muted">
-                  Ingrese la cantidad de contenedores que desea cotizar
-                </small>
-              </div>
 
               {/* Campos condicionales solo para EXW */}
               {incoterm === "EXW" && (
-                <>
-                  <div className="col-md-4">
-                    <label className="qf-label">
-                      Pickup From Address <span className="text-danger">*</span>
+                <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
+                  <div>
+                    <label className="qa-label">
+                      <i className="bi bi-geo-alt me-1"></i>
+                      {t("QuoteAIR.pickup")}
                     </label>
                     <textarea
-                      className="qf-textarea"
+                      className="qa-input"
                       value={pickupFromAddress}
                       onChange={(e) => setPickupFromAddress(e.target.value)}
                       placeholder="Ingrese dirección de recogida"
-                      rows={3}
+                      rows={2}
                     />
                   </div>
-
-                  <div className="col-md-4">
-                    <label className="qf-label">
-                      Delivery To Address <span className="text-danger">*</span>
+                  <div>
+                    <label className="qa-label">
+                      <i className="bi bi-geo-alt me-1"></i>
+                      {t("QuoteAIR.delivery")}
                     </label>
                     <textarea
-                      className="qf-textarea"
+                      className="qa-input"
                       value={deliveryToAddress}
                       onChange={(e) => setDeliveryToAddress(e.target.value)}
                       placeholder="Ingrese dirección de entrega"
-                      rows={3}
+                      rows={2}
                     />
                   </div>
-                </>
+                </div>
               )}
+            </div>
+
+            {/* Cantidad de Contenedores */}
+            <div className="col-md-4">
+              <label className="qf-label">Cantidad de Contenedores</label>
+              <input
+                type="number"
+                className="qf-input"
+                value={cantidadContenedores}
+                onChange={(e) =>
+                  setCantidadContenedores(
+                    Math.max(1, Math.floor(Number(e.target.value) || 1)),
+                  )
+                }
+                min="1"
+                step="1"
+              />
+              <small className="text-muted">
+                Ingrese la cantidad de contenedores que desea cotizar
+              </small>
             </div>
           </div>
 

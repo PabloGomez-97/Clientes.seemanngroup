@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -2160,6 +2160,38 @@ function QuoteLCL({
               </select>
             </div>
 
+            {/* Campos condicionales solo para EXW */}
+            {incoterm === "EXW" && (
+              <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
+                <div>
+                  <label className="qa-label">
+                    <i className="bi bi-geo-alt me-1"></i>
+                    {t("Quotelcl.pickup")}
+                  </label>
+                  <textarea
+                    className="qa-input"
+                    value={pickupFromAddress}
+                    onChange={(e) => setPickupFromAddress(e.target.value)}
+                    placeholder="Ingrese dirección de recogida"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <label className="qa-label">
+                    <i className="bi bi-geo-alt me-1"></i>
+                    {t("Quotelcl.delivery")}
+                  </label>
+                  <textarea
+                    className="qa-input"
+                    value={deliveryToAddress}
+                    onChange={(e) => setDeliveryToAddress(e.target.value)}
+                    placeholder="Ingrese dirección de entrega"
+                    rows={3}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="col-12">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h4 className="fs-6 fw-bold mb-0">{t("Quotelcl.detalles")}</h4>
@@ -2242,33 +2274,6 @@ function QuoteLCL({
                 </div>
               )}
             </div>
-
-            {/* Campos condicionales solo para EXW */}
-            {incoterm === "EXW" && (
-              <>
-                <div className="col-md-6">
-                  <label className="qa-label">{t("Quotelcl.pickup")}</label>
-                  <textarea
-                    className="qa-textarea"
-                    value={pickupFromAddress}
-                    onChange={(e) => setPickupFromAddress(e.target.value)}
-                    placeholder="Ingrese dirección de recogida"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="col-md-6">
-                  <label className="qa-label">{t("Quotelcl.delivery")}</label>
-                  <textarea
-                    className="qa-textarea"
-                    value={deliveryToAddress}
-                    onChange={(e) => setDeliveryToAddress(e.target.value)}
-                    placeholder="Ingrese dirección de entrega"
-                    rows={3}
-                  />
-                </div>
-              </>
-            )}
           </div>
 
           {/* Cálculos */}
