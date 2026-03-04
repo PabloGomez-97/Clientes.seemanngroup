@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
 import { getBlogPosts, getBlogPostBySlug } from "../../services/contentful";
 import type { BlogPost } from "../../services/contentful";
-import "./Novedades.css";
+import "./styles/Novedades.css";
 
 const richTextOptions = {
   renderNode: {

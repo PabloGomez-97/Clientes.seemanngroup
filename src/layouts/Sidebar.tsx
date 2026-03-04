@@ -110,6 +110,11 @@ function Sidebar({ isOpen }: SidebarProps) {
           icon: "fa fa-route",
         },
         {
+          path: "/new-ocean-tracking",
+          name: t("home.sidebar.trackNewOceanShipment"),
+          icon: "fa fa-ship",
+        },
+        {
           path: "/trackings",
           name: t("home.sidebar.myShipments"),
           icon: "fa fa-route",

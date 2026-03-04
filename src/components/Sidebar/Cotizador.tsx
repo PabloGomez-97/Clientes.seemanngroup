@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import CotizadorAereo from "../quotes/QuoteAIR";
 import CotizadorFCL from "../quotes/QuoteFCL";
 import CotizadorLCL from "../quotes/QuoteLCL";
-import "./Cotizador.css";
+import "./styles/Cotizador.css";
 
 type TipoCotizacion = "AEREO" | "FCL" | "LCL" | null;
 

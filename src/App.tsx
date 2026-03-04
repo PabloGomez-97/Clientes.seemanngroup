@@ -58,6 +58,7 @@ import ReporteriaOperacional from "./components/Sidebar/ReporteriaOperacional";
 import Changelog from "./components/Sidebar/Changelog";
 import ShipsGoTracking from "./components/Sidebar/Shipsgotracking";
 import CreateShipmentForm from "./components/Sidebar/CreateShipmentForm";
+import CreateOceanShipmentForm from "./components/Sidebar/CreateOceanShipmentForm";
 import Novedades from "./components/Sidebar/Novedades";
 
 // OFF
@@ -203,6 +204,10 @@ function App() {
           <Route path="changelog" element={<Changelog />} />
           <Route path="operacional" element={<ReporteriaOperacional />} />
           <Route path="new-tracking" element={<CreateShipmentForm />} />
+          <Route
+            path="new-ocean-tracking"
+            element={<CreateOceanShipmentForm />}
+          />
           <Route path="novedades" element={<Novedades />} />
         </Route>
 

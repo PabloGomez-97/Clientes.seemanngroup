@@ -16,7 +16,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import "./ReporteriaOperacional.css";
+import "./styles/ReporteriaOperacional.css";
 
 /* ============================================================
    TYPES

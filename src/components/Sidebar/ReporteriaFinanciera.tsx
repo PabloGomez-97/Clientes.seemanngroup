@@ -17,7 +17,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import "./ReporteriaFinanciera.css";
+import "./styles/ReporteriaFinanciera.css";
 
 interface OutletContext {
   accessToken: string;

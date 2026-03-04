@@ -4,7 +4,7 @@ import CotizadorFCL from "./QuoteFCL-ejecutivo";
 import CotizadorLCL from "./QuoteLCL-ejecutivo";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import "../Sidebar/Cotizador.css";
+import "../Sidebar/styles/Cotizador.css";
 
 type TipoCotizacion = "AEREO" | "FCL" | "LCL" | null;
 

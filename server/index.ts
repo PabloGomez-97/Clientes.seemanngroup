@@ -1497,6 +1497,194 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
   }
 });
 
+/** =========================
+ *  ShipsGo Ocean API (Marítimo)
+ *  ========================= */
+
+// GET /api/shipsgo/ocean/carriers - Obtener lista de carriers marítimos
+app.get('/api/shipsgo/ocean/carriers', async (req, res) => {
+  console.log('🚢 [shipsgo-ocean] Fetching carriers...');
+  try {
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ error: 'Missing ShipsGo API token' });
+    }
+
+    const response = await fetch('https://api.shipsgo.com/v2/ocean/carriers', {
+      method: 'GET',
+      headers: { 'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[shipsgo-ocean] Carriers API Error:', errorText);
+      return res.status(response.status).json({ error: 'Failed to fetch ocean carriers' });
+    }
+
+    const data = await response.json();
+    return res.json(data);
+  } catch (error) {
+    console.error('[shipsgo-ocean] Carriers Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/shipsgo/ocean/shipments - Obtener todos los shipments marítimos
+app.get('/api/shipsgo/ocean/shipments', async (req, res) => {
+  console.log('🚢 [shipsgo-ocean] Fetching ocean shipments...');
+  try {
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    const SHIPSGO_OCEAN_URL = 'https://api.shipsgo.com/v2/ocean/shipments';
+
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ error: 'Missing ShipsGo API token' });
+    }
+
+    const response = await fetch(`${SHIPSGO_OCEAN_URL}?order_by=created_at,desc&skip=0&take=100`, {
+      method: 'GET',
+      headers: { 'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[shipsgo-ocean] API Error:', errorText);
+      return res.status(response.status).json({ error: 'Failed to fetch ocean shipments' });
+    }
+
+    const data = await response.json() as { shipments?: Array<any> };
+    console.log(`[shipsgo-ocean] Successfully fetched ${data.shipments?.length || 0} ocean shipments`);
+    return res.json(data);
+  } catch (error) {
+    console.error('[shipsgo-ocean] Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/shipsgo/ocean/shipments - Crear un nuevo shipment marítimo
+app.post('/api/shipsgo/ocean/shipments', auth, async (req, res) => {
+  console.log('🚢 [shipsgo-ocean] Creating new ocean shipment...');
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    const SHIPSGO_OCEAN_URL = 'https://api.shipsgo.com/v2/ocean/shipments';
+
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ error: 'Missing ShipsGo API token' });
+    }
+
+    const { reference, container_number, booking_number, carrier, followers, tags } = req.body || {};
+
+    // Validar referencia
+    if (!reference) {
+      return res.status(400).json({ error: 'reference es un campo requerido' });
+    }
+
+    // Seguridad: referencia debe coincidir con el username
+    if (reference !== currentUser.username) {
+      console.error(`[shipsgo-ocean] Security violation: User ${currentUser.username} tried to create shipment with reference ${reference}`);
+      return res.status(403).json({ error: 'No puedes crear trackeos para otros usuarios' });
+    }
+
+    // Validar que al menos container_number o booking_number esté presente
+    if (!container_number && !booking_number) {
+      return res.status(400).json({ error: 'Debes proporcionar container_number o booking_number' });
+    }
+
+    // Validar formato de container_number si se proporcionó
+    if (container_number && !/^[A-Z]{4}[0-9]{7}$/.test(container_number)) {
+      return res.status(400).json({ error: 'El container number debe tener formato XXXX0000000 (4 letras + 7 dígitos)' });
+    }
+
+    // Validar formato de booking_number si se proporcionó
+    if (booking_number && !/^[a-zA-Z0-9/\-]+$/.test(booking_number)) {
+      return res.status(400).json({ error: 'El booking number solo puede contener letras, números, / y -' });
+    }
+
+    // Validar carrier si se proporcionó
+    if (carrier && !/^(SG_)?[A-Z0-9]{4}$/.test(carrier)) {
+      return res.status(400).json({ error: 'El código de carrier (SCAC) no tiene un formato válido' });
+    }
+
+    // Validar followers
+    if (followers && !Array.isArray(followers)) {
+      return res.status(400).json({ error: 'followers debe ser un array de emails' });
+    }
+    if (followers && followers.length > 10) {
+      return res.status(400).json({ error: 'Máximo 10 emails permitidos en followers' });
+    }
+
+    // Validar tags
+    if (tags && !Array.isArray(tags)) {
+      return res.status(400).json({ error: 'tags debe ser un array' });
+    }
+    if (tags && tags.length > 10) {
+      return res.status(400).json({ error: 'Máximo 10 tags permitidos' });
+    }
+
+    // Preparar body para ShipsGo
+    const shipmentData: Record<string, any> = {
+      reference,
+      followers: followers || [],
+      tags: tags || []
+    };
+    if (container_number) shipmentData.container_number = container_number;
+    if (booking_number) shipmentData.booking_number = booking_number;
+    if (carrier) shipmentData.carrier = carrier;
+
+    console.log('[shipsgo-ocean] Creating ocean shipment:', shipmentData);
+
+    const response = await fetch(SHIPSGO_OCEAN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN
+      },
+      body: JSON.stringify(shipmentData)
+    });
+
+    const data = await response.json() as { shipment?: any; [key: string]: any };
+
+    if (response.status === 409) {
+      console.log('[shipsgo-ocean] Shipment already exists:', data);
+      return res.status(409).json({
+        error: 'Ya existe un trackeo con estos datos para tu cuenta',
+        code: 'ALREADY_EXISTS',
+        existingShipment: data.shipment || null
+      });
+    }
+
+    if (response.status === 402) {
+      console.error('[shipsgo-ocean] Insufficient credits');
+      return res.status(402).json({
+        error: 'No hay créditos disponibles. Por favor contacta a tu ejecutivo de cuenta.',
+        code: 'INSUFFICIENT_CREDITS'
+      });
+    }
+
+    if (!response.ok) {
+      const errorText = JSON.stringify(data);
+      console.error('[shipsgo-ocean] API Error:', response.status, errorText);
+      return res.status(response.status).json({
+        error: 'Error al crear el shipment marítimo en ShipsGo',
+        details: errorText
+      });
+    }
+
+    console.log(`[shipsgo-ocean] Ocean shipment created successfully:`, data.shipment);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Trackeo marítimo creado exitosamente',
+      shipment: data.shipment
+    });
+
+  } catch (error: any) {
+    console.error('[shipsgo-ocean] Error:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // ============================================================
 // RUTAS DE DOCUMENTOS
 // ============================================================

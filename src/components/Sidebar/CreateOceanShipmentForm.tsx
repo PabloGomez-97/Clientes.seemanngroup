@@ -1,8 +1,8 @@
-// src/components/Sidebar/CreateShipmentForm.tsx
-import { useState, useEffect, type FormEvent } from "react";
+// src/components/Sidebar/CreateOceanShipmentForm.tsx
+import { useState, type FormEvent } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "./styles/CreateShipmentForm.css";
 
 const API_BASE_URL =
@@ -10,20 +10,16 @@ const API_BASE_URL =
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
-function CreateShipmentForm() {
-  const { user, token, activeUsername } = useAuth();
+function CreateOceanShipmentForm() {
+  const { token, activeUsername } = useAuth();
   const { registrarEvento } = useAuditLog();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
-  useEffect(() => {
-    const awb = searchParams.get("awb");
-    if (awb) {
-      setAwbNumber(awb);
-    }
-  }, [searchParams]);
-
-  const [awbNumber, setAwbNumber] = useState("");
+  // Form state
+  const [identifierType, setIdentifierType] = useState<
+    "container_number" | "booking_number"
+  >("container_number");
+  const [identifierValue, setIdentifierValue] = useState("");
   const [followers, setFollowers] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [newFollower, setNewFollower] = useState("");
@@ -32,23 +28,42 @@ function CreateShipmentForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [createdShipment, setCreatedShipment] = useState<any>(null);
+  const [createdShipment, setCreatedShipment] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
 
-  // Validación de AWB
-  const validateAwb = (value: string): { valid: boolean; message: string } => {
-    const clean = value.replace(/[\s-]/g, "");
-    if (clean.length === 0) return { valid: false, message: "" };
-    if (!/^\d+$/.test(clean))
-      return { valid: false, message: "Solo números permitidos" };
-    if (clean.length !== 11)
-      return {
-        valid: false,
-        message: `${clean.length}/11 dígitos`,
-      };
-    return { valid: true, message: "Formato válido" };
+  // Validation
+  const validateIdentifier = (
+    type: string,
+    value: string,
+  ): { valid: boolean; message: string } => {
+    if (!value) return { valid: false, message: "" };
+    if (type === "container_number") {
+      const regex = /^[A-Z]{4}[0-9]{7}$/;
+      if (!regex.test(value.toUpperCase())) {
+        return {
+          valid: false,
+          message: "Formato: 4 letras + 7 números (ej: MSCU1234567)",
+        };
+      }
+      return { valid: true, message: "Formato válido" };
+    } else {
+      const regex = /^[a-zA-Z0-9/-]+$/;
+      if (!regex.test(value)) {
+        return {
+          valid: false,
+          message: "Solo letras, números, / y -",
+        };
+      }
+      return { valid: true, message: "Formato válido" };
+    }
   };
 
-  const awbValidation = validateAwb(awbNumber);
+  const identifierValidation = validateIdentifier(
+    identifierType,
+    identifierValue,
+  );
 
   const isValidEmail = (email: string): boolean =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -90,35 +105,48 @@ function CreateShipmentForm() {
     e.preventDefault();
     setError(null);
 
-    if (!awbValidation.valid) {
-      setError("El AWB debe tener exactamente 11 dígitos numéricos.");
+    if (!identifierValidation.valid) {
+      setError(
+        identifierType === "container_number"
+          ? "El número de contenedor debe tener formato XXXX1234567 (4 letras + 7 números)."
+          : "El número de booking tiene un formato inválido.",
+      );
       return;
     }
 
     setLoading(true);
 
     try {
-      const cleanAwb = awbNumber.replace(/[\s-]/g, "");
+      const body: Record<string, unknown> = {
+        reference: activeUsername,
+        carrier: "OTHERS",
+        followers,
+        tags,
+      };
 
-      const response = await fetch(`${API_BASE_URL}/api/shipsgo/shipments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      if (identifierType === "container_number") {
+        body.container_number = identifierValue.toUpperCase();
+      } else {
+        body.booking_number = identifierValue;
+      }
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/shipsgo/ocean/shipments`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify({
-          reference: activeUsername,
-          awb_number: cleanAwb,
-          followers,
-          tags,
-        }),
-      });
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
         const errorMessages: Record<number, string> = {
-          409: "Ya existe un trackeo con este AWB en tu cuenta.",
+          409: "Ya existe un trackeo con este contenedor/booking en tu cuenta.",
           402: "Sin créditos disponibles. Contacta a tu ejecutivo de cuenta.",
         };
         setError(
@@ -132,13 +160,14 @@ function CreateShipmentForm() {
       setCreatedShipment(data.shipment);
       setShowSuccessModal(true);
 
-      // Registrar auditoría
       registrarEvento({
         accion: "TRACKING_CREADO",
         categoria: "TRACKING",
-        descripcion: `Tracking creado con AWB: ${cleanAwb}`,
+        descripcion: `Tracking marítimo creado: ${identifierType === "container_number" ? identifierValue.toUpperCase() : identifierValue}`,
         detalles: {
-          awb: cleanAwb,
+          type: identifierType,
+          value: identifierValue,
+          carrier: "OTHERS",
           followers: followers.length,
           tags,
         },
@@ -155,9 +184,10 @@ function CreateShipmentForm() {
       <div className="csf-container">
         {/* Page Header */}
         <div className="csf-page-header">
-          <h1>Nuevo seguimiento</h1>
+          <h1>Nuevo seguimiento marítimo</h1>
           <p>
-            Crea un seguimiento de envío aéreo proporcionando el número AWB.
+            Crea un seguimiento de envío marítimo proporcionando el número de
+            contenedor o booking.
           </p>
         </div>
 
@@ -166,20 +196,20 @@ function CreateShipmentForm() {
             {/* Info Banner */}
             <div className="csf-info-banner">
               <p>
-                Ingrese{" "}
-                <strong>exactamente el AWB entregado por su aerolínea</strong>.
-                Un número incorrecto consumirá créditos innecesariamente.
+                Ingrese el <strong>número de contenedor o booking</strong>{" "}
+                proporcionado por su naviera. El sistema detectará
+                automáticamente la naviera correspondiente.
               </p>
               <p>
-                ¿No conoce su AWB? Revíselo en{" "}
-                <strong>Operaciones Aéreas</strong>.
+                ¿No conoce su contenedor? Revíselo en{" "}
+                <strong>Operaciones Marítimas</strong>.
               </p>
               <button
                 type="button"
                 className="csf-info-banner-link"
-                onClick={() => navigate("/air-shipments")}
+                onClick={() => navigate("/ocean-shipments")}
               >
-                Ver mis AWB disponibles →
+                Ver mis operaciones marítimas →
               </button>
             </div>
 
@@ -198,39 +228,126 @@ function CreateShipmentForm() {
                 />
               </div>
 
-              {/* AWB Number */}
+              {/* Identifier Type */}
               <div className="csf-form-group">
-                <label className="csf-label" htmlFor="csf-awb">
-                  AWB Number<span className="csf-label-required">*</span>
+                <label className="csf-label">
+                  Tipo de identificador
+                  <span className="csf-label-required">*</span>
+                </label>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.75rem",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.375rem",
+                      cursor: "pointer",
+                      fontSize: "0.875rem",
+                      fontWeight:
+                        identifierType === "container_number" ? 600 : 400,
+                      color:
+                        identifierType === "container_number"
+                          ? "#1a1a1a"
+                          : "#6b7280",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="identifierType"
+                      value="container_number"
+                      checked={identifierType === "container_number"}
+                      onChange={() => {
+                        setIdentifierType("container_number");
+                        setIdentifierValue("");
+                      }}
+                    />
+                    Número de contenedor
+                  </label>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.375rem",
+                      cursor: "pointer",
+                      fontSize: "0.875rem",
+                      fontWeight:
+                        identifierType === "booking_number" ? 600 : 400,
+                      color:
+                        identifierType === "booking_number"
+                          ? "#1a1a1a"
+                          : "#6b7280",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="identifierType"
+                      value="booking_number"
+                      checked={identifierType === "booking_number"}
+                      onChange={() => {
+                        setIdentifierType("booking_number");
+                        setIdentifierValue("");
+                      }}
+                    />
+                    Número de booking
+                  </label>
+                </div>
+              </div>
+
+              {/* Identifier Value */}
+              <div className="csf-form-group">
+                <label className="csf-label" htmlFor="csf-identifier">
+                  {identifierType === "container_number"
+                    ? "Container Number"
+                    : "Booking Number"}
+                  <span className="csf-label-required">*</span>
                 </label>
                 <input
                   type="text"
-                  id="csf-awb"
+                  id="csf-identifier"
                   className={`csf-input csf-input--mono ${
-                    awbNumber
-                      ? awbValidation.valid
+                    identifierValue
+                      ? identifierValidation.valid
                         ? "csf-input--valid"
                         : "csf-input--invalid"
                       : ""
                   }`}
-                  placeholder="00000000000"
-                  value={awbNumber}
-                  onChange={(e) => setAwbNumber(e.target.value)}
-                  maxLength={12}
+                  placeholder={
+                    identifierType === "container_number"
+                      ? "MSCU1234567"
+                      : "ABC123456"
+                  }
+                  value={identifierValue}
+                  onChange={(e) =>
+                    setIdentifierValue(
+                      identifierType === "container_number"
+                        ? e.target.value.toUpperCase()
+                        : e.target.value,
+                    )
+                  }
+                  maxLength={identifierType === "container_number" ? 11 : 128}
                   required
                 />
-                {awbNumber && !awbValidation.valid && awbValidation.message && (
-                  <div className="csf-field-msg csf-field-msg--error">
-                    {awbValidation.message}
-                  </div>
-                )}
-                {awbNumber && awbValidation.valid && (
+                {identifierValue &&
+                  !identifierValidation.valid &&
+                  identifierValidation.message && (
+                    <div className="csf-field-msg csf-field-msg--error">
+                      {identifierValidation.message}
+                    </div>
+                  )}
+                {identifierValue && identifierValidation.valid && (
                   <div className="csf-field-msg csf-field-msg--success">
-                    {awbValidation.message}
+                    {identifierValidation.message}
                   </div>
                 )}
                 <div className="csf-field-msg csf-field-msg--hint">
-                  Guía aérea de 11 dígitos proporcionada por la aerolínea
+                  {identifierType === "container_number"
+                    ? "4 letras mayúsculas + 7 dígitos (ej: MSCU1234567)"
+                    : "Código alfanumérico proporcionado por la naviera"}
                 </div>
               </div>
 
@@ -351,7 +468,7 @@ function CreateShipmentForm() {
                 <button
                   type="submit"
                   className="csf-btn csf-btn--primary"
-                  disabled={loading || !awbValidation.valid}
+                  disabled={loading || !identifierValidation.valid}
                 >
                   {loading ? (
                     <>
@@ -373,7 +490,7 @@ function CreateShipmentForm() {
         <div className="csf-modal-overlay">
           <div className="csf-modal">
             <div className="csf-modal-header">
-              <h3>Seguimiento creado</h3>
+              <h3>Seguimiento marítimo creado</h3>
               <button
                 type="button"
                 className="csf-modal-close"
@@ -384,9 +501,16 @@ function CreateShipmentForm() {
             </div>
             <div className="csf-modal-body">
               <p>
-                Tu envío aéreo ha sido registrado y el seguimiento ha comenzado.
+                Tu envío marítimo ha sido registrado y el seguimiento ha
+                comenzado.
               </p>
-              <div className="csf-modal-awb">{createdShipment?.awb_number}</div>
+              <div className="csf-modal-awb">
+                {String(
+                  createdShipment?.container_number ||
+                    createdShipment?.booking_number ||
+                    "—",
+                )}
+              </div>
               <p>
                 Puedes monitorear tu envío en tiempo real desde la sección de
                 tracking.
@@ -403,7 +527,7 @@ function CreateShipmentForm() {
               <button
                 type="button"
                 className="csf-btn csf-btn--primary"
-                onClick={() => navigate("/shipsgo")}
+                onClick={() => navigate("/trackings")}
               >
                 Ver tracking
               </button>
@@ -415,4 +539,4 @@ function CreateShipmentForm() {
   );
 }
 
-export default CreateShipmentForm;
+export default CreateOceanShipmentForm;

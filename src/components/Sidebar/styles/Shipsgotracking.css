@@ -226,6 +226,66 @@
   color: #991b1b;
 }
 
+/* Ocean-specific statuses */
+.sg-status--new {
+  background: #f0f9ff;
+  color: #075985;
+}
+
+.sg-status--sailing {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.sg-status--arrived {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.sg-status--discharged {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.sg-status--loaded {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* ====================================
+   TABS
+   ==================================== */
+.sg-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sg-tab {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sg-tab:hover {
+  color: #1a1a1a;
+  background: #f9fafb;
+}
+
+.sg-tab--active {
+  color: var(--primary-color, #ff6200);
+  border-bottom-color: var(--primary-color, #ff6200);
+  font-weight: 600;
+}
+
 /* ====================================
    AWB NUMBER
    ==================================== */

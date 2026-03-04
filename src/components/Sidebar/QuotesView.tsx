@@ -10,7 +10,7 @@ import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import { DocumentosSection } from "./Documents/DocumentosSection";
-import "./QuotesView.css";
+import "./styles/QuotesView.css";
 
 // Lazy load heavy map component as a single chunk
 const QuotesMap = lazy(() => import("./QuotesMap"));
