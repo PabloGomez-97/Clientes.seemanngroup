@@ -1,5 +1,6 @@
 // src/App.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { useAuth } from "./auth/AuthContext";
 import Login from "./auth/Login";
 import LoginAdmin from "./auth/LoginAdmin";
@@ -80,118 +81,121 @@ function App() {
   };
 
   return (
-    <Routes>
-      {/* Ruta de Login */}
-      <Route
-        path="/login"
-        element={user ? <Navigate to={getHomeRoute()} replace /> : <Login />}
-      />
-
-      {/* Ruta de Login Administrativo */}
-      <Route
-        path="/login-admin"
-        element={
-          user ? <Navigate to={getHomeRoute()} replace /> : <LoginAdmin />
-        }
-      />
-
-      {/* Ruta de Login Proveedor */}
-      <Route
-        path="/login-proveedor"
-        element={
-          user ? <Navigate to={getHomeRoute()} replace /> : <LoginProveedor />
-        }
-      />
-
-      {/* Rutas de Ejecutivo */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute requireAdmin={true}>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
+    <>
+      <Routes>
+        {/* Ruta de Login */}
         <Route
-          path="cotizador-administrador"
-          element={<Cotizadoradministrador />}
+          path="/login"
+          element={user ? <Navigate to={getHomeRoute()} replace /> : <Login />}
         />
-        <Route path="tusclientes" element={<Clientesejecutivos />} />
-        <Route index element={<Navigate to="/admin/home" replace />} />
-        <Route path="home" element={<HomeAdmin />} />
-        <Route path="reporteriaclientes" element={<ReporteriaClientes />} />
-        <Route path="dashboard" element={<DashboardAdmin />} />
-        <Route path="users" element={<UsersManagement />} />
-        <Route path="ejecutivos" element={<EjecutivosManagement />} />
-        <Route path="reportexecutive" element={<ReportExecutive />} />
-        <Route path="reportoperational" element={<Invoicesxejecutivo />} />
-        <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
-        <Route path="pricing" element={<Pricing />} />
-        <Route path="pricingFCL" element={<PricingFCL />} />
-        <Route path="pricingLCL" element={<PricingLCL />} />
 
-        {/* Rutas de Reportería con subrutas */}
-        <Route path="reporteria" element={<ReporteriaLayout />}>
+        {/* Ruta de Login Administrativo */}
+        <Route
+          path="/login-admin"
+          element={
+            user ? <Navigate to={getHomeRoute()} replace /> : <LoginAdmin />
+          }
+        />
+
+        {/* Ruta de Login Proveedor */}
+        <Route
+          path="/login-proveedor"
+          element={
+            user ? <Navigate to={getHomeRoute()} replace /> : <LoginProveedor />
+          }
+        />
+
+        {/* Rutas de Ejecutivo */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route
-            index
-            element={<Navigate to="/admin/reporteria/dashboard" replace />}
+            path="cotizador-administrador"
+            element={<Cotizadoradministrador />}
           />
-          <Route path="dashboard" element={<ReporteriaDashboard />} />
-          <Route path="kpis" element={<ReporteriaKPIs />} />
-          <Route path="ejecutivos" element={<ReporteriaExecutives />} />
-          <Route path="tendencias" element={<ReporteriaTrends />} />
+          <Route path="tusclientes" element={<Clientesejecutivos />} />
+          <Route index element={<Navigate to="/admin/home" replace />} />
+          <Route path="home" element={<HomeAdmin />} />
+          <Route path="reporteriaclientes" element={<ReporteriaClientes />} />
+          <Route path="dashboard" element={<DashboardAdmin />} />
+          <Route path="users" element={<UsersManagement />} />
+          <Route path="ejecutivos" element={<EjecutivosManagement />} />
+          <Route path="reportexecutive" element={<ReportExecutive />} />
+          <Route path="reportoperational" element={<Invoicesxejecutivo />} />
+          <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
+          <Route path="pricing" element={<Pricing />} />
+          <Route path="pricingFCL" element={<PricingFCL />} />
+          <Route path="pricingLCL" element={<PricingLCL />} />
+
+          {/* Rutas de Reportería con subrutas */}
+          <Route path="reporteria" element={<ReporteriaLayout />}>
+            <Route
+              index
+              element={<Navigate to="/admin/reporteria/dashboard" replace />}
+            />
+            <Route path="dashboard" element={<ReporteriaDashboard />} />
+            <Route path="kpis" element={<ReporteriaKPIs />} />
+            <Route path="ejecutivos" element={<ReporteriaExecutives />} />
+            <Route path="tendencias" element={<ReporteriaTrends />} />
+          </Route>
+          <Route path="auditoria" element={<Auditoria />} />
+          <Route path="alumnos" element={<AlumnosPractica />} />
+          <Route path="settings" element={<SettingsAdmin />} />
         </Route>
-        <Route path="auditoria" element={<Auditoria />} />
-        <Route path="alumnos" element={<AlumnosPractica />} />
-        <Route path="settings" element={<SettingsAdmin />} />
-      </Route>
 
-      {/* Rutas de Proveedor */}
-      <Route
-        path="/proveedor"
-        element={
-          <ProtectedRoute requireProveedor={true}>
-            <ProveedorLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/proveedor/home" replace />} />
-        <Route path="home" element={<HomeProveedores />} />
-      </Route>
+        {/* Rutas de Proveedor */}
+        <Route
+          path="/proveedor"
+          element={
+            <ProtectedRoute requireProveedor={true}>
+              <ProveedorLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/proveedor/home" replace />} />
+          <Route path="home" element={<HomeProveedores />} />
+        </Route>
 
-      {/* Rutas de Usuario Regular */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute requireAdmin={false}>
-            <UserLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Home />} />
-        <Route path="quotes" element={<QuotesView />} />
-        <Route path="newquotes" element={<Cotizador />} />
-        <Route path="QuoteAIR" element={<QuoteAIR />} />
-        <Route path="QuoteLCL" element={<QuoteLCL />} />
-        <Route path="QuoteFCL" element={<QuoteFCL />} />
-        <Route path="air-shipments" element={<AirShipmentsView />} />
-        <Route path="trackings" element={<ShipsGoTracking />} />
-        <Route path="ocean-shipments" element={<OceanShipmentsView />} />
-        <Route path="ground-shipments" element={<GroundShipmentsView />} />
-        <Route path="operacionales" element={<Operacionales />} />
-        <Route path="envios" element={<Envios />} />
-        <Route path="enviosmaritimos" element={<EnviosMaritimos />} />
-        <Route path="financiera" element={<Financiera />} />
-        <Route path="settings" element={<Settings />} />
-        <Route path="changelog" element={<Changelog />} />
-        <Route path="operacional" element={<ReporteriaOperacional />} />
-        <Route path="new-tracking" element={<CreateShipmentForm />} />
-        <Route path="novedades" element={<Novedades />} />
-      </Route>
+        {/* Rutas de Usuario Regular */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute requireAdmin={false}>
+              <UserLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Home />} />
+          <Route path="quotes" element={<QuotesView />} />
+          <Route path="newquotes" element={<Cotizador />} />
+          <Route path="QuoteAIR" element={<QuoteAIR />} />
+          <Route path="QuoteLCL" element={<QuoteLCL />} />
+          <Route path="QuoteFCL" element={<QuoteFCL />} />
+          <Route path="air-shipments" element={<AirShipmentsView />} />
+          <Route path="trackings" element={<ShipsGoTracking />} />
+          <Route path="ocean-shipments" element={<OceanShipmentsView />} />
+          <Route path="ground-shipments" element={<GroundShipmentsView />} />
+          <Route path="operacionales" element={<Operacionales />} />
+          <Route path="envios" element={<Envios />} />
+          <Route path="enviosmaritimos" element={<EnviosMaritimos />} />
+          <Route path="financiera" element={<Financiera />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="changelog" element={<Changelog />} />
+          <Route path="operacional" element={<ReporteriaOperacional />} />
+          <Route path="new-tracking" element={<CreateShipmentForm />} />
+          <Route path="novedades" element={<Novedades />} />
+        </Route>
 
-      {/* Ruta por defecto */}
-      <Route path="*" element={<Navigate to={getHomeRoute()} replace />} />
-    </Routes>
+        {/* Ruta por defecto */}
+        <Route path="*" element={<Navigate to={getHomeRoute()} replace />} />
+      </Routes>
+      <SpeedInsights />
+    </>
   );
 }
 
