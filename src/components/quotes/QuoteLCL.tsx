@@ -2322,7 +2322,8 @@ function QuoteLCL({
                   style={{ backgroundColor: "var(--qa-bg-light)" }}
                 >
                   <h4 className="fs-6 fw-bold mb-3">
-                    {t("Quotelcl.resumencargos")}
+                    <i className="bi bi-shield-check me-2"></i>
+                    {t("Quotelcl.opcional")}
                   </h4>
 
                   <div
@@ -2333,52 +2334,8 @@ function QuoteLCL({
                       flex: 1,
                     }}
                   >
-                    <div className="d-flex justify-content-between">
-                      <span>BL:</span>
-                      <strong>{rutaSeleccionada.currency} 60.00</strong>
-                    </div>
-
-                    <div className="d-flex justify-content-between">
-                      <span>Handling:</span>
-                      <strong>{rutaSeleccionada.currency} 45.00</strong>
-                    </div>
-
-                    {incoterm === "EXW" && (
-                      <div className="d-flex justify-content-between">
-                        <span>EXW Charges ({piecesData.length} piezas):</span>
-                        <strong>
-                          {rutaSeleccionada.currency}{" "}
-                          {calculateEXWRate().toFixed(2)}
-                        </strong>
-                      </div>
-                    )}
-
-                    <div
-                      className="d-flex justify-content-between"
-                      style={{
-                        borderBottom: "1px solid var(--qa-border-color)",
-                        paddingBottom: "0.5rem",
-                      }}
-                    >
-                      <span>
-                        Ocean Freight ({chargeableVolume.toFixed(2)} m³):
-                      </span>
-                      <strong>
-                        {rutaSeleccionada.currency}{" "}
-                        {tarifaOceanFreight.income.toFixed(2)}
-                      </strong>
-                    </div>
-
-                    {/* Sección de Opcionales */}
-                    <div
-                      style={{
-                        borderBottom: "1px solid var(--qa-border-color)",
-                        paddingBottom: "0.75rem",
-                      }}
-                    >
-                      <h6 className="qa-text-muted mb-2 mt-2">
-                        {t("Quotelcl.opcional")}
-                      </h6>
+                    {/* Seguro opcional */}
+                    <div>
                       <div
                         className="qa-switch-container"
                         style={{
@@ -2426,41 +2383,30 @@ function QuoteLCL({
                             }}
                             style={{ maxWidth: "300px" }}
                           />
-                          <small className="qa-text-muted">
-                            {t("Quotelcl.ingresavalor")}
-                          </small>
                         </div>
                       )}
                     </div>
 
-                    {seguroActivo && calculateSeguro() > 0 && (
-                      <div className="d-flex justify-content-between">
-                        <span>{t("Quotelcl.seguro")}</span>
-                        <strong>
-                          {rutaSeleccionada.currency}{" "}
-                          {calculateSeguro().toFixed(2)}
-                        </strong>
-                      </div>
-                    )}
-
                     {hasNotApilable &&
                       incoterm === "EXW" &&
                       calculateNoApilable() > 0 && (
-                        <div className="d-flex justify-content-between">
-                          <span>
-                            <i
-                              className="bi bi-info-circle small opacity-50"
-                              data-bs-toggle="tooltip"
-                              data-bs-placement="top"
-                              title={t("Quotelcl.tooltipnoapilable")}
-                              style={{ cursor: "pointer" }}
-                            ></i>
-                            {t("Quotelcl.noapilable")}
-                          </span>
-                          <strong>
-                            {rutaSeleccionada.currency}{" "}
-                            {calculateNoApilable().toFixed(2)}
-                          </strong>
+                        <div
+                          className="d-flex align-items-center gap-1 mt-2 pt-2"
+                          style={{
+                            borderTop: "1px solid var(--qa-border-color)",
+                          }}
+                        >
+                          <i
+                            className="bi bi-info-circle small opacity-50"
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title={t("Quotelcl.tooltipnoapilable")}
+                            style={{ cursor: "pointer" }}
+                          ></i>
+                          <p className="mb-0 small">
+                            Existirá un recargo adicional por piezas no
+                            apilables.
+                          </p>
                         </div>
                       )}
 
@@ -2470,32 +2416,19 @@ function QuoteLCL({
                       </div>
                     )}
 
-                    {/* Total */}
+                    {/* Nota informativa */}
                     <div
-                      className="d-flex justify-content-between"
+                      className="mt-auto p-2 rounded"
                       style={{
-                        borderTop: "1px solid var(--qa-border-color)",
-                        paddingTop: "0.75rem",
-                        marginTop: "0.5rem",
+                        backgroundColor: "rgba(255, 98, 0, 0.05)",
+                        border: "1px solid rgba(255, 98, 0, 0.15)",
                       }}
                     >
-                      <span className="fs-5 fw-bold">TOTAL:</span>
-                      <span
-                        className="fs-5 fw-bold"
-                        style={{ color: "var(--qa-primary)" }}
-                      >
-                        {rutaSeleccionada.currency}{" "}
-                        {(() => {
-                          const subtotal =
-                            60 +
-                            45 +
-                            (incoterm === "EXW" ? calculateEXWRate() : 0) +
-                            tarifaOceanFreight!.income +
-                            (seguroActivo ? calculateSeguro() : 0);
-                          const total = subtotal + calculateNoApilable();
-                          return total.toFixed(2);
-                        })()}
-                      </span>
+                      <small className="text-muted">
+                        <i className="bi bi-info-circle me-1"></i>
+                        El desglose de costos estará disponible en el PDF al
+                        generar la cotización u operación.
+                      </small>
                     </div>
                   </div>
                 </div>

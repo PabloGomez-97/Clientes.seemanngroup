@@ -2143,61 +2143,17 @@ function QuoteFCL({
                 </div>
               </div>
 
-              {/* COLUMNA 2: Resumen de Cargos */}
+              {/* COLUMNA 2: Opciones Adicionales */}
               <div
                 className="p-3 rounded border"
                 style={{ backgroundColor: "var(--qf-bg-light)" }}
               >
                 <h6 className="fw-bold mb-3">
-                  <i className="bi bi-cash-coin me-2"></i>Resumen de Cargos
+                  <i className="bi bi-shield-check me-2"></i>Opciones
+                  Adicionales
                 </h6>
 
                 <div className="d-flex flex-column gap-2 small">
-                  {/* BL */}
-                  <div className="d-flex justify-content-between">
-                    <span>BL:</span>
-                    <strong>{rutaSeleccionada.currency} 60.00</strong>
-                  </div>
-
-                  {/* Handling */}
-                  <div className="d-flex justify-content-between">
-                    <span>Handling:</span>
-                    <strong>{rutaSeleccionada.currency} 45.00</strong>
-                  </div>
-
-                  {/* EXW - Solo si aplica */}
-                  {incoterm === "EXW" && (
-                    <div className="d-flex justify-content-between">
-                      <span>
-                        EXW Charges ({cantidadContenedores} ×{" "}
-                        {containerSeleccionado.type}):
-                      </span>
-                      <strong>
-                        {rutaSeleccionada.currency}{" "}
-                        {calculateEXWRate(
-                          containerSeleccionado.type,
-                          cantidadContenedores,
-                        ).toLocaleString()}
-                      </strong>
-                    </div>
-                  )}
-
-                  {/* Ocean Freight */}
-                  <div className="d-flex justify-content-between pb-2 border-bottom">
-                    <span>
-                      Ocean Freight ({cantidadContenedores} ×{" "}
-                      {containerSeleccionado.type}):
-                    </span>
-                    <strong className="text-success">
-                      {rutaSeleccionada.currency}{" "}
-                      {(
-                        containerSeleccionado.price *
-                        1.15 *
-                        cantidadContenedores
-                      ).toFixed(2)}
-                    </strong>
-                  </div>
-
                   {/* Seguro opcional */}
                   <div className="mt-2">
                     <div className="qf-switch-container p-2 mb-2">
@@ -2240,48 +2196,27 @@ function QuoteFCL({
                             }
                           }}
                         />
-                      </div>
-                    )}
-
-                    {/* Mostrar el cargo del seguro si está activo */}
-                    {seguroActivo && calculateSeguro() > 0 && (
-                      <div className="d-flex justify-content-between text-info small">
-                        <span>Seguro:</span>
-                        <strong>
-                          {rutaSeleccionada.currency}{" "}
-                          {calculateSeguro().toFixed(2)}
-                        </strong>
+                        <p className="qa-text-muted mt-1 mb-0">
+                          Existirá un recargo adicional en base al valor de la
+                          mercadería
+                        </p>
                       </div>
                     )}
                   </div>
 
-                  {/* Total */}
-                  <div className="d-flex justify-content-between mt-3 pt-2 border-top">
-                    <span className="fs-6 fw-bold">TOTAL:</span>
-                    <span
-                      className="fs-6 fw-bold"
-                      style={{ color: "var(--qf-primary)" }}
-                    >
-                      {rutaSeleccionada.currency}{" "}
-                      {(
-                        60 + // BL
-                        45 + // Handling
-                        (incoterm === "EXW"
-                          ? calculateEXWRate(
-                              containerSeleccionado.type,
-                              cantidadContenedores,
-                            )
-                          : 0) + // EXW
-                        containerSeleccionado.price *
-                          1.15 *
-                          cantidadContenedores + // Ocean Freight
-                        (seguroActivo ? calculateSeguro() : 0)
-                      ) // Seguro (si está activo)
-                        .toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                    </span>
+                  {/* Nota informativa */}
+                  <div
+                    className="mt-2 p-2 rounded"
+                    style={{
+                      backgroundColor: "rgba(255, 98, 0, 0.05)",
+                      border: "1px solid rgba(255, 98, 0, 0.15)",
+                    }}
+                  >
+                    <small className="text-muted">
+                      <i className="bi bi-info-circle me-1"></i>
+                      El desglose de costos estará disponible en el PDF al
+                      generar la cotización u operación.
+                    </small>
                   </div>
                 </div>
               </div>

@@ -2882,63 +2882,17 @@ function QuoteAPITester({
               )}
             </div>
 
-            {/* Resumen de Cargos */}
+            {/* Opciones Adicionales */}
             {tarifaAirFreight && (
               <div className="p-3 bg-light rounded border">
                 <h6 className="fw-bold mb-3">
-                  <i className="bi bi-cash-coin me-2"></i>
+                  <i className="bi bi-shield-check me-2"></i>
                   {t("QuoteAIR.resumencargos")}
                 </h6>
 
                 <div className="d-flex flex-column gap-2 small">
-                  <div className="d-flex justify-content-between">
-                    <span>Handling:</span>
-                    <strong>{rutaSeleccionada.currency} 45.00</strong>
-                  </div>
-
-                  {incoterm === "EXW" &&
-                    (() => {
-                      const { totalRealWeight: totalWeight } =
-                        calculateTotals();
-                      return (
-                        <div className="d-flex justify-content-between">
-                          <span>EXW Charges:</span>
-                          <strong>
-                            {rutaSeleccionada.currency}{" "}
-                            {calculateEXWRate(
-                              totalWeight,
-                              pesoChargeable,
-                            ).toFixed(2)}
-                          </strong>
-                        </div>
-                      );
-                    })()}
-
-                  <div className="d-flex justify-content-between">
-                    <span>AWB:</span>
-                    <strong>{rutaSeleccionada.currency} 30.00</strong>
-                  </div>
-
-                  <div className="d-flex justify-content-between">
-                    <span>Airport Transfer:</span>
-                    <strong>
-                      {rutaSeleccionada.currency}{" "}
-                      {Math.max(pesoChargeable * 0.15, 50).toFixed(2)}
-                    </strong>
-                  </div>
-
-                  <div className="d-flex justify-content-between pb-2 border-bottom">
-                    <span>Air Freight:</span>
-                    <strong>
-                      {rutaSeleccionada.currency}{" "}
-                      {(
-                        tarifaAirFreight.precioConMarkup * pesoChargeable
-                      ).toFixed(2)}
-                    </strong>
-                  </div>
-
                   {/* Seguro opcional */}
-                  <div className="mt-2">
+                  <div>
                     <div className="form-check">
                       <input
                         className="form-check-input"
@@ -2969,15 +2923,10 @@ function QuoteAPITester({
                             }
                           }}
                         />
-                        {calculateSeguro() > 0 && (
-                          <div className="d-flex justify-content-between mt-1 text-primary">
-                            <span>{t("QuoteAIR.seguro")}:</span>
-                            <strong>
-                              {rutaSeleccionada.currency}{" "}
-                              {calculateSeguro().toFixed(2)}
-                            </strong>
-                          </div>
-                        )}
+                        <p className="qa-text-muted mt-1 mb-0">
+                          Existirá un recargo adicional en base al valor de la
+                          mercadería
+                        </p>
                       </div>
                     )}
                   </div>
@@ -2985,50 +2934,26 @@ function QuoteAPITester({
                   {noApilableActivo &&
                     incoterm === "EXW" &&
                     calculateNoApilable() > 0 && (
-                      <div className="d-flex justify-content-between mt-2 pt-2 border-top text-warning-emphasis">
-                        <span className="d-flex align-items-center gap-1">
-                          <i
-                            className="bi bi-info-circle small opacity-50"
-                            data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title={t("QuoteAIR.tooltipnoapilable")}
-                            style={{ cursor: "pointer" }}
-                          ></i>
-                          {t("QuoteAIR.noapilable")}:
-                        </span>
-
-                        <strong>
-                          {rutaSeleccionada.currency}{" "}
-                          {calculateNoApilable().toFixed(2)}
-                        </strong>
+                      <div className="d-flex align-items-center gap-1 mt-2 pt-2 border-top">
+                        <p className="mb-0 small">
+                          Existirá un recargo adicional por piezas no apilables.
+                        </p>
                       </div>
                     )}
 
-                  <div className="d-flex justify-content-between mt-3 pt-2 border-top fs-6">
-                    <span className="fw-bold">TOTAL:</span>
-                    <span className="fw-bold text-primary">
-                      {(() => {
-                        const { totalRealWeight: totalWeight } =
-                          calculateTotals();
-                        const totalBase =
-                          45 +
-                          (incoterm === "EXW"
-                            ? calculateEXWRate(totalWeight, pesoChargeable)
-                            : 0) +
-                          30 +
-                          Math.max(pesoChargeable * 0.15, 50) +
-                          tarifaAirFreight.precioConMarkup * pesoChargeable +
-                          (seguroActivo ? calculateSeguro() : 0);
-                        const totalFinal =
-                          totalBase +
-                          (noApilableActivo ? calculateNoApilable() : 0);
-                        return (
-                          rutaSeleccionada.currency +
-                          " " +
-                          totalFinal.toFixed(2)
-                        );
-                      })()}
-                    </span>
+                  {/* Nota informativa */}
+                  <div
+                    className="mt-2 p-2 rounded"
+                    style={{
+                      backgroundColor: "rgba(255, 98, 0, 0.05)",
+                      border: "1px solid rgba(255, 98, 0, 0.15)",
+                    }}
+                  >
+                    <small className="text-muted">
+                      <i className="bi bi-info-circle me-1"></i>
+                      El desglose de costos estará disponible en el PDF al
+                      generar la cotización u operación.
+                    </small>
                   </div>
                 </div>
               </div>
