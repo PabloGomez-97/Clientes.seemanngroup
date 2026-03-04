@@ -1,6 +1,7 @@
 // src/App.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 import { useAuth } from "./auth/AuthContext";
 import Login from "./auth/Login";
 import LoginAdmin from "./auth/LoginAdmin";
@@ -195,6 +196,7 @@ function App() {
         <Route path="*" element={<Navigate to={getHomeRoute()} replace />} />
       </Routes>
       <SpeedInsights />
+      <Analytics />
     </>
   );
 }
