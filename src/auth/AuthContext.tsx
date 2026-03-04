@@ -41,6 +41,7 @@ type Cliente = {
 type AuthCtx = {
   user: User;
   token: string | null;
+  loading: boolean; // true while verifying token on mount
   activeUsername: string; // Empresa activa seleccionada
   setActiveUsername: (username: string) => void; // Cambiar empresa activa
   login: (
@@ -56,7 +57,7 @@ type AuthCtx = {
   }>;
   logout: () => void;
   getEjecutivos: () => Promise<Ejecutivo[]>;
-  getMisClientes: () => Promise<Cliente[]>; // ✅ NUEVA FUNCIÓN
+  getMisClientes: () => Promise<Cliente[]>;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -66,6 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.getItem("auth_token"),
   );
   const [user, setUser] = useState<User>(null);
+  const [loading, setLoading] = useState<boolean>(
+    !!localStorage.getItem("auth_token"),
+  );
   const [activeUsername, setActiveUsernameState] = useState<string>(
     () => localStorage.getItem("active_username") || "",
   );
@@ -77,7 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     fetch("/api/me", { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d) => {
@@ -105,6 +113,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(null);
         localStorage.removeItem("auth_token");
         localStorage.removeItem("active_username");
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, [token]);
 
@@ -193,6 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         token,
+        loading,
         activeUsername,
         setActiveUsername,
         login,

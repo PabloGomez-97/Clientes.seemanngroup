@@ -13,7 +13,25 @@ export default function ProtectedRoute({
   requireAdmin = false,
   requireProveedor = false,
 }: ProtectedRouteProps) {
-  const { user, token } = useAuth();
+  const { user, token, loading } = useAuth();
+
+  // Wait while verifying session on page refresh
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   // Si no hay token, redirigir al login
   if (!token || !user) {

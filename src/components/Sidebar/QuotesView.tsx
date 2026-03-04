@@ -1,10 +1,19 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
-import { useOutletContext } from "react-router-dom";
+﻿import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useTranslation } from "react-i18next";
 import { DocumentosSection } from "./Documents/DocumentosSection";
 import "./QuotesView.css";
-import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer } from "react-leaflet";
+
+// Lazy load heavy map component as a single chunk
+const QuotesMap = lazy(() => import("./QuotesMap"));
 
 interface OutletContext {
   accessToken: string;
@@ -68,14 +77,41 @@ function isQuoteValid(validUntilDate?: string): boolean | null {
   return until >= today;
 }
 
+/**
+ * Detect if a quote was created from the portal and return the quote type.
+ * Returns "AIR" | "FCL" | "LCL" | null
+ */
+function getPortalQuoteType(quote: Quote): "AIR" | "FCL" | "LCL" | null {
+  const ref = (quote.customerReference || "").toLowerCase();
+  if (ref.includes("portal") && ref.includes("[air")) return "AIR";
+  if (ref.includes("portal") && ref.includes("[fcl")) return "FCL";
+  if (ref.includes("portal") && ref.includes("[lcl")) return "LCL";
+  return null;
+}
+
+/**
+ * Map the quote type to the navigation tipoEnvio for Cotizador
+ */
+function mapQuoteTypeToTipoEnvio(
+  type: "AIR" | "FCL" | "LCL",
+): "AEREO" | "FCL" | "LCL" {
+  if (type === "AIR") return "AEREO";
+  return type;
+}
+
 function StatusBadge({ validUntilDate }: { validUntilDate?: string }) {
+  const { t } = useTranslation();
   const valid = isQuoteValid(validUntilDate);
   if (valid === null)
     return <span className="qv-badge qv-badge--neutral">---</span>;
   return valid ? (
-    <span className="qv-badge qv-badge--valid">Valida</span>
+    <span className="qv-badge qv-badge--valid">
+      {t("quotesView.statusValid")}
+    </span>
   ) : (
-    <span className="qv-badge qv-badge--expired">Vencida</span>
+    <span className="qv-badge qv-badge--expired">
+      {t("quotesView.statusExpired")}
+    </span>
   );
 }
 
@@ -178,6 +214,8 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
 function QuotesView() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { user, token, activeUsername } = useAuth();
+  const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
@@ -230,34 +268,26 @@ function QuotesView() {
   const [filterValidUntil, setFilterValidUntil] = useState("");
   const [filterTransit, setFilterTransit] = useState("");
 
-  // Focus states (optional for floating labels)
-  const [isFilterNumberFocused, setIsFilterNumberFocused] = useState(false);
-  const [isFilterOriginFocused, setIsFilterOriginFocused] = useState(false);
-  const [isFilterDestinationFocused, setIsFilterDestinationFocused] =
-    useState(false);
-  const [isFilterTransportFocused, setIsFilterTransportFocused] =
-    useState(false);
-
   /* -- Format helpers --------------------------------------- */
-  const formatDateShort = (dateString?: string) => {
+  const formatDateShort = useCallback((dateString?: string) => {
     if (!dateString) return "---";
     return new Date(dateString).toLocaleDateString("es-CL", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     });
-  };
+  }, []);
 
-  const formatDateLong = (dateString?: string) => {
+  const formatDateLong = useCallback((dateString?: string) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("es-CL", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
-  };
+  }, []);
 
-  const formatCLP = (priceString?: string) => {
+  const formatCLP = useCallback((priceString?: string) => {
     if (!priceString) return null;
     const numberMatch = priceString.match(/[\d.,]+/);
     if (!numberMatch) return priceString;
@@ -265,17 +295,19 @@ function QuotesView() {
     const num = parseFloat(cleanNumber);
     if (isNaN(num)) return priceString;
     return `$${new Intl.NumberFormat("es-CL").format(num)} CLP`;
-  };
+  }, []);
 
   /* -- Sorting ---------------------------------------------- */
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-    } else {
-      setSortColumn(column);
+  const handleSort = useCallback((column: string) => {
+    setSortColumn((prev) => {
+      if (prev === column) {
+        setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+        return prev;
+      }
       setSortDirection("desc");
-    }
-  };
+      return column;
+    });
+  }, []);
 
   const sortedQuotes = useMemo(() => {
     const sorted = [...displayedQuotes].sort((a, b) => {
@@ -413,7 +445,9 @@ function QuotesView() {
         localStorage.setItem(`${cacheKey}_page`, page.toString());
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido");
+      setError(
+        err instanceof Error ? err.message : t("quotesView.unknownError"),
+      );
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -659,7 +693,7 @@ function QuotesView() {
     setTablePage(1);
   };
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     setQuickSearch("");
     setSearchNumber("");
     setSearchDate("");
@@ -681,9 +715,9 @@ function QuotesView() {
     setShowingAll(false);
     setShowAllQuotes(false);
     setTablePage(1);
-  };
+  }, [quotes]);
 
-  const refreshQuotes = () => {
+  const refreshQuotes = useCallback(() => {
     if (!activeUsername) return;
     const k = `quotesCache_${activeUsername}`;
     localStorage.removeItem(k);
@@ -693,54 +727,61 @@ function QuotesView() {
     setQuotes([]);
     setDisplayedQuotes([]);
     fetchQuotes(1, false);
-  };
+  }, [activeUsername]);
 
-  const toggleAccordion = (quote: Quote) => {
+  const toggleAccordion = useCallback((quote: Quote) => {
     const quoteKey = quote.id || quote.number || "";
     setExpandedQuoteId((prev) => (prev === quoteKey ? null : quoteKey));
-  };
+  }, []);
+
+  /* -- Repeat quote handler --------------------------------- */
+  const handleRepeatQuote = useCallback(
+    (quote: Quote) => {
+      const portalType = getPortalQuoteType(quote);
+      if (!portalType) {
+        alert(t("quotesView.repeatNotPortal"));
+        return;
+      }
+
+      const tipoEnvio = mapQuoteTypeToTipoEnvio(portalType);
+      const origin = quote.origin || "";
+      const destination = quote.destination || "";
+
+      if (!origin || !destination) {
+        alert(t("quotesView.repeatNoRoutes"));
+        return;
+      }
+
+      navigate("/newquotes", {
+        state: {
+          tipoEnvio,
+          origin: { value: origin.toLowerCase().trim(), label: origin },
+          destination: {
+            value: destination.toLowerCase().trim(),
+            label: destination,
+          },
+        },
+      });
+    },
+    [navigate, t],
+  );
 
   /* -- Fetch available PDFs --------------------------------- */
   useEffect(() => {
-    console.log(
-      "[QuotesView] fetchPDFs effect triggered, token present:",
-      !!token,
-    );
     if (!token) return;
     const fetchPDFs = async () => {
       try {
         const res = await fetch("/api/quote-pdf/list", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log("[QuotesView] PDF list response status:", res.status);
         if (res.ok) {
           const data = await res.json();
-          console.log("[QuotesView] PDF list data:", data);
           if (data.success && Array.isArray(data.pdfs)) {
             const pdfNumbers = new Set<string>(
               data.pdfs.map((pdf: { quoteNumber: string }) => pdf.quoteNumber),
             );
-            console.log("[QuotesView] Available PDF quoteNumbers:", [
-              ...pdfNumbers,
-            ]);
-            console.log(
-              "[QuotesView] Raw PDF data:",
-              JSON.stringify(
-                data.pdfs.map((p: any) => ({
-                  qn: p.quoteNumber,
-                  name: p.nombreArchivo,
-                })),
-              ),
-            );
             setAvailablePDFs(pdfNumbers);
           }
-        } else {
-          const errText = await res.text();
-          console.error(
-            "[QuotesView] Error fetching PDF list:",
-            res.status,
-            errText,
-          );
         }
       } catch (err) {
         console.error("[QuotesView] Error fetching PDF list:", err);
@@ -749,51 +790,36 @@ function QuotesView() {
     fetchPDFs();
   }, [token]);
 
-  // Debug: compare availablePDFs vs displayed quotes
-  useEffect(() => {
-    if (availablePDFs.size > 0 && displayedQuotes.length > 0) {
-      const pdfArr = [...availablePDFs];
-      const quoteNums = displayedQuotes.slice(0, 15).map((q) => q.number);
-      console.log("[QuotesView] === PDF MATCH DEBUG ===");
-      console.log("[QuotesView] PDFs in DB:", pdfArr);
-      console.log("[QuotesView] Quote numbers (first 15):", quoteNums);
-      const matches = quoteNums.filter((n) => n && availablePDFs.has(n));
-      console.log("[QuotesView] Matches found:", matches.length, matches);
-      if (matches.length === 0) {
-        console.warn(
-          "[QuotesView] ⚠️ NO MATCHES! quoteNumbers in DB don't match any quote.number in the list",
+  const handleDownloadPDF = useCallback(
+    async (quoteNumber: string) => {
+      if (!token || !quoteNumber) return;
+      setDownloadingPDF(quoteNumber);
+      try {
+        const res = await fetch(
+          `/api/quote-pdf/download/${encodeURIComponent(quoteNumber)}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
         );
+        if (!res.ok) throw new Error("PDF no encontrado");
+        const data = await res.json();
+        if (data.success && data.quotePdf?.contenidoBase64) {
+          const link = document.createElement("a");
+          link.href = data.quotePdf.contenidoBase64;
+          link.download =
+            data.quotePdf.nombreArchivo || `Cotizacion_${quoteNumber}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } catch (err) {
+        console.error("Error descargando PDF:", err);
+      } finally {
+        setDownloadingPDF(null);
       }
-    }
-  }, [availablePDFs, displayedQuotes]);
-
-  const handleDownloadPDF = async (quoteNumber: string) => {
-    if (!token || !quoteNumber) return;
-    setDownloadingPDF(quoteNumber);
-    try {
-      const res = await fetch(
-        `/api/quote-pdf/download/${encodeURIComponent(quoteNumber)}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-      if (!res.ok) throw new Error("PDF no encontrado");
-      const data = await res.json();
-      if (data.success && data.quotePdf?.contenidoBase64) {
-        const link = document.createElement("a");
-        link.href = data.quotePdf.contenidoBase64;
-        link.download =
-          data.quotePdf.nombreArchivo || `Cotizacion_${quoteNumber}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    } catch (err) {
-      console.error("Error descargando PDF:", err);
-    } finally {
-      setDownloadingPDF(null);
-    }
-  };
+    },
+    [token],
+  );
 
   /* -- Sort icon -------------------------------------------- */
   const SortIcon = ({ column }: { column: string }) => {
@@ -816,7 +842,7 @@ function QuotesView() {
      ========================================================= */
   return (
     <div className="qv-container">
-      <h2 className="hal-app-name">Mis Cotizaciones</h2>
+      <h2 className="hal-app-name">{t("quotesView.title")}</h2>
       {/* -- Map --------------------------------------------- */}
       <div
         style={{
@@ -830,17 +856,23 @@ function QuotesView() {
           position: "relative",
         }}
       >
-        <MapContainer
-          center={[-33.4489, -70.6693]} // Coordenadas de Santiago, Chile
-          zoom={3}
-          style={{ height: "100%", width: "100%" }}
-          scrollWheelZoom={true}
+        <Suspense
+          fallback={
+            <div
+              style={{
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#f3f4f6",
+              }}
+            >
+              {t("quotesView.loading")}
+            </div>
+          }
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-        </MapContainer>
+          <QuotesMap />
+        </Suspense>
       </div>
 
       {/* -- Toolbar (advanced search) ------------------------- */}
@@ -861,7 +893,7 @@ function QuotesView() {
           <input
             className="qv-input"
             type="text"
-            placeholder="N Cotizacion"
+            placeholder={t("quotesView.filterNumber")}
             value={filterNumber}
             onChange={(e) => setFilterNumber(e.target.value)}
             style={{ width: 120, height: 32 }}
@@ -869,7 +901,7 @@ function QuotesView() {
           <input
             className="qv-input"
             type="text"
-            placeholder="Estado (valida/vencida)"
+            placeholder={t("quotesView.filterStatus")}
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             style={{ width: 160, height: 32 }}
@@ -877,7 +909,7 @@ function QuotesView() {
           <input
             className="qv-input"
             type="text"
-            placeholder="Origen"
+            placeholder={t("quotesView.filterOrigin")}
             value={filterOrigin}
             onChange={(e) => setFilterOrigin(e.target.value)}
             style={{ width: 140, height: 32 }}
@@ -885,7 +917,7 @@ function QuotesView() {
           <input
             className="qv-input"
             type="text"
-            placeholder="Destino"
+            placeholder={t("quotesView.filterDestination")}
             value={filterDestination}
             onChange={(e) => setFilterDestination(e.target.value)}
             style={{ width: 140, height: 32 }}
@@ -893,7 +925,7 @@ function QuotesView() {
           <input
             className="qv-input"
             type="text"
-            placeholder="Transporte"
+            placeholder={t("quotesView.filterTransport")}
             value={filterTransport}
             onChange={(e) => setFilterTransport(e.target.value)}
             style={{ width: 120, height: 32 }}
@@ -901,7 +933,7 @@ function QuotesView() {
           <input
             className="qv-input"
             type="text"
-            placeholder="Piezas"
+            placeholder={t("quotesView.filterPieces")}
             value={filterPieces}
             onChange={(e) => setFilterPieces(e.target.value)}
             style={{ width: 80, height: 32 }}
@@ -909,7 +941,7 @@ function QuotesView() {
           <input
             className="qv-input"
             type="date"
-            placeholder="Fecha Emision"
+            placeholder={t("quotesView.filterDate")}
             value={filterDate}
             onChange={(e) => setFilterDate(e.target.value)}
             style={{ width: 140, height: 32 }}
@@ -917,7 +949,7 @@ function QuotesView() {
           <input
             className="qv-input"
             type="date"
-            placeholder="Valida Hasta"
+            placeholder={t("quotesView.filterValidUntil")}
             value={filterValidUntil}
             onChange={(e) => setFilterValidUntil(e.target.value)}
             style={{ width: 140, height: 32 }}
@@ -925,7 +957,7 @@ function QuotesView() {
           <input
             className="qv-input"
             type="text"
-            placeholder="Transito (d)"
+            placeholder={t("quotesView.filterTransit")}
             value={filterTransit}
             onChange={(e) => setFilterTransit(e.target.value)}
             style={{ width: 80, height: 32 }}
@@ -936,7 +968,7 @@ function QuotesView() {
             type="submit"
             style={{ height: 32 }}
           >
-            Aplicar
+            {t("quotesView.apply")}
           </button>
           <button
             className="qv-btn qv-btn--ghost"
@@ -944,7 +976,7 @@ function QuotesView() {
             onClick={clearSearch}
             style={{ height: 32 }}
           >
-            Limpiar
+            {t("quotesView.clear")}
           </button>
         </form>
 
@@ -974,9 +1006,11 @@ function QuotesView() {
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
             </svg>
-            Actualizar
+            {t("quotesView.refresh")}
           </button>
-          {loadingMore && <span className="qv-loading-text">Cargando...</span>}
+          {loadingMore && (
+            <span className="qv-loading-text">{t("quotesView.loading")}</span>
+          )}
         </div>
       </div>
 
@@ -987,31 +1021,35 @@ function QuotesView() {
             className="qv-modal qv-modal--search"
             onClick={(e) => e.stopPropagation()}
           >
-            <h5 className="qv-modal__title">Buscar Cotizaciones</h5>
+            <h5 className="qv-modal__title">{t("quotesView.searchTitle")}</h5>
             <div className="qv-search-section">
-              <label className="qv-label">Por Numero</label>
+              <label className="qv-label">
+                {t("quotesView.searchByNumber")}
+              </label>
               <input
                 className="qv-input"
                 value={searchNumber}
                 onChange={(e) => setSearchNumber(e.target.value)}
-                placeholder="Numero de cotizacion"
+                placeholder={t("quotesView.searchPlaceholderNumber")}
               />
               <button
                 className="qv-btn qv-btn--primary qv-btn--full"
                 onClick={handleSearchByNumber}
               >
-                Buscar
+                {t("quotesView.search")}
               </button>
             </div>
             <div className="qv-search-section">
-              <label className="qv-label">Por Ruta</label>
+              <label className="qv-label">
+                {t("quotesView.searchByRoute")}
+              </label>
               <div className="qv-search-row">
                 <select
                   className="qv-input"
                   value={searchOrigin}
                   onChange={(e) => setSearchOrigin(e.target.value)}
                 >
-                  <option value="">Origen</option>
+                  <option value="">{t("quotesView.filterOrigin")}</option>
                   {uniqueOrigins.map((o) => (
                     <option key={o} value={o}>
                       {o}
@@ -1023,7 +1061,7 @@ function QuotesView() {
                   value={searchDestination}
                   onChange={(e) => setSearchDestination(e.target.value)}
                 >
-                  <option value="">Destino</option>
+                  <option value="">{t("quotesView.filterDestination")}</option>
                   {uniqueDestinations.map((d) => (
                     <option key={d} value={d}>
                       {d}
@@ -1035,11 +1073,13 @@ function QuotesView() {
                 className="qv-btn qv-btn--primary qv-btn--full"
                 onClick={handleSearchByRoute}
               >
-                Buscar
+                {t("quotesView.search")}
               </button>
             </div>
             <div className="qv-search-section">
-              <label className="qv-label">Por Fecha Exacta</label>
+              <label className="qv-label">
+                {t("quotesView.searchByExactDate")}
+              </label>
               <input
                 className="qv-input"
                 type="date"
@@ -1050,14 +1090,18 @@ function QuotesView() {
                 className="qv-btn qv-btn--primary qv-btn--full"
                 onClick={handleSearchByDate}
               >
-                Buscar
+                {t("quotesView.search")}
               </button>
             </div>
             <div className="qv-search-section">
-              <label className="qv-label">Por Rango de Fechas</label>
+              <label className="qv-label">
+                {t("quotesView.searchByDateRange")}
+              </label>
               <div className="qv-search-row">
                 <div style={{ flex: 1 }}>
-                  <span className="qv-label qv-label--small">Desde</span>
+                  <span className="qv-label qv-label--small">
+                    {t("quotesView.from")}
+                  </span>
                   <input
                     className="qv-input"
                     type="date"
@@ -1066,7 +1110,9 @@ function QuotesView() {
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <span className="qv-label qv-label--small">Hasta</span>
+                  <span className="qv-label qv-label--small">
+                    {t("quotesView.to")}
+                  </span>
                   <input
                     className="qv-input"
                     type="date"
@@ -1079,14 +1125,14 @@ function QuotesView() {
                 className="qv-btn qv-btn--primary qv-btn--full"
                 onClick={handleSearchByDateRange}
               >
-                Buscar
+                {t("quotesView.search")}
               </button>
             </div>
             <button
               className="qv-btn qv-btn--ghost qv-btn--full"
               onClick={() => setShowSearchModal(false)}
             >
-              Cerrar
+              {t("quotesView.close")}
             </button>
           </div>
         </div>
@@ -1096,14 +1142,14 @@ function QuotesView() {
       {loading && (
         <div className="qv-empty">
           <div className="qv-spinner" />
-          <p>Cargando cotizaciones...</p>
+          <p>{t("quotesView.loadingQuotes")}</p>
         </div>
       )}
 
       {/* -- Error ------------------------------------------- */}
       {error && (
         <div className="qv-error">
-          <strong>Error:</strong> {error}
+          <strong>{t("quotesView.error")}</strong> {error}
         </div>
       )}
       {/* =====================================================
@@ -1119,55 +1165,58 @@ function QuotesView() {
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("number")}
                   >
-                    <span>N Cotizacion</span>
+                    <span>{t("quotesView.thNumber")}</span>
                     <SortIcon column="number" />
                   </th>
                   <th className="qv-th qv-th--center">
-                    <span>Estado</span>
+                    <span>{t("quotesView.thRepeat")}</span>
+                  </th>
+                  <th className="qv-th qv-th--center">
+                    <span>{t("quotesView.thStatus")}</span>
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("origin")}
                   >
-                    <span>Origen</span>
+                    <span>{t("quotesView.thOrigin")}</span>
                     <SortIcon column="origin" />
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("destination")}
                   >
-                    <span>Destino</span>
+                    <span>{t("quotesView.thDestination")}</span>
                     <SortIcon column="destination" />
                   </th>
                   <th className="qv-th">
-                    <span>Transporte</span>
+                    <span>{t("quotesView.thTransport")}</span>
                   </th>
                   <th className="qv-th qv-th--center">
-                    <span>Piezas</span>
+                    <span>{t("quotesView.thPieces")}</span>
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("date")}
                   >
-                    <span>Fecha Emision</span>
+                    <span>{t("quotesView.thIssueDate")}</span>
                     <SortIcon column="date" />
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("validUntil")}
                   >
-                    <span>Valida Hasta</span>
+                    <span>{t("quotesView.thValidUntil")}</span>
                     <SortIcon column="validUntil" />
                   </th>
                   <th
                     className="qv-th qv-th--center qv-th--sortable"
                     onClick={() => handleSort("transit")}
                   >
-                    <span>Transito</span>
+                    <span>{t("quotesView.thTransit")}</span>
                     <SortIcon column="transit" />
                   </th>
                   <th className="qv-th qv-th--center">
-                    <span>PDF</span>
+                    <span>{t("quotesView.thPDF")}</span>
                   </th>
                 </tr>
               </thead>
@@ -1195,6 +1244,52 @@ function QuotesView() {
                             <polyline points="9 18 15 12 9 6" />
                           </svg>
                           {quote.number || "---"}
+                        </td>
+                        <td
+                          className="qv-td qv-td--center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {getPortalQuoteType(quote) ? (
+                            <button
+                              className="qv-btn qv-btn--repeat"
+                              title={t("quotesView.repeatTooltip")}
+                              onClick={() => handleRepeatQuote(quote)}
+                              style={{
+                                fontSize: "11px",
+                                padding: "4px 10px",
+                                whiteSpace: "nowrap",
+                                background: "var(--primary-color)",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <polyline points="17 1 21 5 17 9" />
+                                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                                <polyline points="7 23 3 19 7 15" />
+                                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                              </svg>
+                              {t("quotesView.repeatQuote")}
+                            </button>
+                          ) : (
+                            <span style={{ color: "#ccc", fontSize: "11px" }}>
+                              ---
+                            </span>
+                          )}
                         </td>
                         <td className="qv-td qv-td--center">
                           <StatusBadge validUntilDate={quote.validUntil_Date} />
@@ -1255,7 +1350,7 @@ function QuotesView() {
                                     <polyline points="7 10 12 15 17 10" />
                                     <line x1="12" y1="15" x2="12" y2="3" />
                                   </svg>
-                                  Descargar
+                                  {t("quotesView.download")}
                                 </>
                               )}
                             </button>
@@ -1268,13 +1363,13 @@ function QuotesView() {
                       </tr>
                       {isExpanded && (
                         <tr className="qv-accordion-row">
-                          <td colSpan={10} className="qv-accordion-cell">
+                          <td colSpan={11} className="qv-accordion-cell">
                             <div className="qv-accordion-content">
                               {/* Route summary */}
                               <div className="qv-route-card">
                                 <div className="qv-route-card__point">
                                   <span className="qv-route-card__label">
-                                    Origen
+                                    {t("quotesView.origin")}
                                   </span>
                                   <span className="qv-route-card__value">
                                     {quote.origin || "N/A"}
@@ -1299,13 +1394,14 @@ function QuotesView() {
                                   </svg>
                                   {quote.transitDays != null && (
                                     <span className="qv-route-card__transit">
-                                      {quote.transitDays} dias
+                                      {quote.transitDays}{" "}
+                                      {t("quotesView.transitDays")}
                                     </span>
                                   )}
                                 </div>
                                 <div className="qv-route-card__point qv-route-card__point--end">
                                   <span className="qv-route-card__label">
-                                    Destino
+                                    {t("quotesView.destination")}
                                   </span>
                                   <span className="qv-route-card__value">
                                     {quote.destination || "N/A"}
@@ -1323,7 +1419,7 @@ function QuotesView() {
                                 tabs={[
                                   {
                                     key: "general",
-                                    label: "Información General",
+                                    label: t("quotesView.tabGeneral"),
                                     icon: (
                                       <svg
                                         width="14"
@@ -1346,14 +1442,18 @@ function QuotesView() {
                                     content: (
                                       <div className="qv-cards-grid">
                                         <div className="qv-card">
-                                          <h4>Detalles de Cotización</h4>
+                                          <h4>
+                                            {t("quotesView.quoteDetails")}
+                                          </h4>
                                           <div className="qv-info-grid">
                                             <InfoField
-                                              label="Numero de Cotizacion"
+                                              label={t(
+                                                "quotesView.quoteNumber",
+                                              )}
                                               value={quote.number}
                                             />
                                             <InfoField
-                                              label="Fecha de Emision"
+                                              label={t("quotesView.issueDate")}
                                               value={
                                                 quote.date
                                                   ? formatDateLong(quote.date)
@@ -1361,7 +1461,7 @@ function QuotesView() {
                                               }
                                             />
                                             <InfoField
-                                              label="Valida Hasta"
+                                              label={t("quotesView.validUntil")}
                                               value={
                                                 quote.validUntil_Date
                                                   ? formatDateLong(
@@ -1373,32 +1473,42 @@ function QuotesView() {
                                           </div>
                                         </div>
                                         <div className="qv-card">
-                                          <h4>Logística</h4>
+                                          <h4>{t("quotesView.logistics")}</h4>
                                           <div className="qv-info-grid">
                                             <InfoField
-                                              label="Dias de Transito"
+                                              label={t(
+                                                "quotesView.transitDaysLabel",
+                                              )}
                                               value={quote.transitDays}
                                             />
                                             <InfoField
-                                              label="Modo de Transporte"
+                                              label={t(
+                                                "quotesView.transportMode",
+                                              )}
                                               value={quote.modeOfTransportation}
                                             />
                                             <InfoField
-                                              label="Tipo de Pago"
+                                              label={t(
+                                                "quotesView.paymentType",
+                                              )}
                                               value={quote.paymentType}
                                             />
                                           </div>
                                         </div>
                                         <div className="qv-card">
-                                          <h4>Información del cliente</h4>
+                                          <h4>{t("quotesView.clientInfo")}</h4>
                                           <div className="qv-info-grid">
                                             <InfoField
-                                              label="Carrier/Broker"
+                                              label={t(
+                                                "quotesView.carrierBroker",
+                                              )}
                                               value={quote.carrierBroker}
                                               fullWidth
                                             />
                                             <InfoField
-                                              label="Referencia Cliente"
+                                              label={t(
+                                                "quotesView.customerRef",
+                                              )}
                                               value={quote.customerReference}
                                               fullWidth
                                             />
@@ -1409,7 +1519,7 @@ function QuotesView() {
                                   },
                                   {
                                     key: "carga",
-                                    label: "Carga",
+                                    label: t("quotesView.tabCargo"),
                                     icon: (
                                       <svg
                                         width="14"
@@ -1433,35 +1543,45 @@ function QuotesView() {
                                     content: (
                                       <div className="qv-cards-grid">
                                         <div className="qv-card">
-                                          <h4>Cantidades</h4>
+                                          <h4>{t("quotesView.quantities")}</h4>
                                           <div className="qv-info-grid">
                                             <InfoField
-                                              label="Total de Piezas"
+                                              label={t(
+                                                "quotesView.totalPieces",
+                                              )}
                                               value={quote.totalCargo_Pieces}
                                             />
                                             <InfoField
-                                              label="Contenedores"
+                                              label={t("quotesView.containers")}
                                               value={quote.totalCargo_Container}
                                             />
                                           </div>
                                         </div>
                                         <div className="qv-card">
-                                          <h4>Pesos y Volúmenes</h4>
+                                          <h4>
+                                            {t("quotesView.weightsVolumes")}
+                                          </h4>
                                           <div className="qv-info-grid">
                                             <InfoField
-                                              label="Peso Total"
+                                              label={t(
+                                                "quotesView.totalWeight",
+                                              )}
                                               value={
                                                 quote.totalCargo_WeightDisplayValue
                                               }
                                             />
                                             <InfoField
-                                              label="Volumen Total"
+                                              label={t(
+                                                "quotesView.totalVolume",
+                                              )}
                                               value={
                                                 quote.totalCargo_VolumeDisplayValue
                                               }
                                             />
                                             <InfoField
-                                              label="Peso Volumetrico"
+                                              label={t(
+                                                "quotesView.volumeWeight",
+                                              )}
                                               value={
                                                 quote.totalCargo_VolumeWeightDisplayValue
                                               }
@@ -1469,14 +1589,18 @@ function QuotesView() {
                                           </div>
                                         </div>
                                         <div className="qv-card">
-                                          <h4>Estado y Seguridad</h4>
+                                          <h4>
+                                            {t("quotesView.statusSecurity")}
+                                          </h4>
                                           <div className="qv-info-grid">
                                             <InfoField
-                                              label="Carga Peligrosa"
+                                              label={t("quotesView.hazardous")}
                                               value={quote.hazardous}
                                             />
                                             <InfoField
-                                              label="Estado de Carga"
+                                              label={t(
+                                                "quotesView.cargoStatus",
+                                              )}
                                               value={quote.cargoStatus}
                                             />
                                           </div>
@@ -1486,7 +1610,7 @@ function QuotesView() {
                                   },
                                   {
                                     key: "documentos",
-                                    label: "Documentos",
+                                    label: t("quotesView.tabDocuments"),
                                     icon: (
                                       <svg
                                         width="14"
@@ -1521,7 +1645,7 @@ function QuotesView() {
                                   },
                                   {
                                     key: "financiero",
-                                    label: "Financiero",
+                                    label: t("quotesView.tabFinancial"),
                                     icon: (
                                       <svg
                                         width="14"
@@ -1538,7 +1662,7 @@ function QuotesView() {
                                     content: (
                                       <div className="qv-finance-card">
                                         <span className="qv-finance-card__label">
-                                          Gasto Total (No incluye impuestos)
+                                          {t("quotesView.totalExpense")}
                                         </span>
                                         <span className="qv-finance-card__amount">
                                           {formatCLP(
@@ -1546,14 +1670,14 @@ function QuotesView() {
                                           ) || "$0 CLP"}
                                         </span>
                                         <span className="qv-finance-card__note">
-                                          Monto estimado para esta cotizacion
+                                          {t("quotesView.estimatedAmount")}
                                         </span>
                                       </div>
                                     ),
                                   },
                                   {
                                     key: "notas",
-                                    label: "Notas",
+                                    label: t("quotesView.tabNotes"),
                                     icon: (
                                       <svg
                                         width="14"
@@ -1592,11 +1716,15 @@ function QuotesView() {
           <div className="qv-table-footer">
             <div className="qv-table-footer__left">
               {loadingMore && (
-                <span className="qv-loading-text">Cargando...</span>
+                <span className="qv-loading-text">
+                  {t("quotesView.loading")}
+                </span>
               )}
             </div>
             <div className="qv-table-footer__right">
-              <span className="qv-pagination-label">Filas por pagina:</span>
+              <span className="qv-pagination-label">
+                {t("quotesView.rowsPerPage")}
+              </span>
               <select
                 className="qv-pagination-select"
                 value={rowsPerPage}
@@ -1654,22 +1782,22 @@ function QuotesView() {
         quotes.length > 0 &&
         showingAll && (
           <div className="qv-empty">
-            <p className="qv-empty__title">No se encontraron cotizaciones</p>
+            <p className="qv-empty__title">
+              {t("quotesView.emptySearchTitle")}
+            </p>
             <p className="qv-empty__subtitle">
-              No hay cotizaciones que coincidan con tu busqueda
+              {t("quotesView.emptySearchSubtitle")}
             </p>
             <button className="qv-btn qv-btn--primary" onClick={clearSearch}>
-              Ver todas las cotizaciones
+              {t("quotesView.viewAll")}
             </button>
           </div>
         )}
 
       {quotes.length === 0 && !loading && (
         <div className="qv-empty">
-          <p className="qv-empty__title">No hay cotizaciones disponibles</p>
-          <p className="qv-empty__subtitle">
-            No se encontraron cotizaciones para tu cuenta
-          </p>
+          <p className="qv-empty__title">{t("quotesView.emptyTitle")}</p>
+          <p className="qv-empty__subtitle">{t("quotesView.emptySubtitle")}</p>
         </div>
       )}
     </div>

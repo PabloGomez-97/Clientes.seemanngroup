@@ -69,7 +69,7 @@ import EnviosMaritimos from "./components/deprecated/EnviosMaritimos OFF";
 import HomeProveedores from "./components/Proveedores/Homeproveedores";
 
 function App() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   // Helper para determinar la ruta de inicio según el tipo de usuario
   const getHomeRoute = () => {
@@ -87,14 +87,24 @@ function App() {
         {/* Ruta de Login */}
         <Route
           path="/login"
-          element={user ? <Navigate to={getHomeRoute()} replace /> : <Login />}
+          element={
+            loading ? null : user ? (
+              <Navigate to={getHomeRoute()} replace />
+            ) : (
+              <Login />
+            )
+          }
         />
 
         {/* Ruta de Login Administrativo */}
         <Route
           path="/login-admin"
           element={
-            user ? <Navigate to={getHomeRoute()} replace /> : <LoginAdmin />
+            loading ? null : user ? (
+              <Navigate to={getHomeRoute()} replace />
+            ) : (
+              <LoginAdmin />
+            )
           }
         />
 
@@ -102,7 +112,11 @@ function App() {
         <Route
           path="/login-proveedor"
           element={
-            user ? <Navigate to={getHomeRoute()} replace /> : <LoginProveedor />
+            loading ? null : user ? (
+              <Navigate to={getHomeRoute()} replace />
+            ) : (
+              <LoginProveedor />
+            )
           }
         />
 
