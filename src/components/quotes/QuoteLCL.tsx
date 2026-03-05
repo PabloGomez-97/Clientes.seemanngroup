@@ -2133,314 +2133,315 @@ function QuoteLCL({
       {/* ============================================================================ */}
 
       {rutaSeleccionada && (
-        <div className="qa-card">
-          <div className="qa-card-header">
-            <div>
-              <h3>{t("Quotelcl.datoscommodity")}</h3>
-              <p className="qa-subtitle">{t("Quotelcl.subtitle")}</p>
-            </div>
-          </div>
-
-          <div className="row g-3">
-            <div className="col-12 mb-3">
-              <label className="qa-label">
-                Incoterm <span className="text-danger">*</span>
-              </label>
-              <select
-                className="qa-select"
-                value={incoterm}
-                onChange={(e) =>
-                  setIncoterm(e.target.value as "EXW" | "FOB" | "")
-                }
-                style={{ maxWidth: "300px" }}
-              >
-                <option value="">{t("Quotelcl.selectincoterm")}</option>
-                <option value="EXW">Ex Works [EXW]</option>
-                <option value="FOB">FOB</option>
-              </select>
+        <>
+          <div className="qa-card">
+            <div className="qa-card-header">
+              <div>
+                <h3>{t("Quotelcl.datoscommodity")}</h3>
+                <p className="qa-subtitle">{t("Quotelcl.subtitle")}</p>
+              </div>
             </div>
 
-            {/* Campos condicionales solo para EXW */}
-            {incoterm === "EXW" && (
-              <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
-                <div>
-                  <label className="qa-label">
-                    <i className="bi bi-geo-alt me-1"></i>
-                    {t("Quotelcl.pickup")}
-                  </label>
-                  <textarea
-                    className="qa-input"
-                    value={pickupFromAddress}
-                    onChange={(e) => setPickupFromAddress(e.target.value)}
-                    placeholder="Ingrese dirección de recogida"
-                    rows={2}
-                  />
-                </div>
-                <div>
-                  <label className="qa-label">
-                    <i className="bi bi-geo-alt me-1"></i>
-                    {t("Quotelcl.delivery")}
-                  </label>
-                  <textarea
-                    className="qa-input"
-                    value={deliveryToAddress}
-                    onChange={(e) => setDeliveryToAddress(e.target.value)}
-                    placeholder="Ingrese dirección de entrega"
-                    rows={3}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="col-12">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <h4 className="fs-6 fw-bold mb-0">{t("Quotelcl.detalles")}</h4>
-                <span className="qa-badge">
-                  {piecesData.length}{" "}
-                  {piecesData.length === 1 ? "pieza" : "piezas"}
-                </span>
-              </div>
-
-              <div className="mb-3">
-                {piecesData.map((piece, index) => (
-                  <PieceAccordionLCL
-                    key={piece.id}
-                    piece={piece}
-                    index={index}
-                    isOpen={openAccordions.includes(piece.id)}
-                    onToggle={() => handleToggleAccordion(piece.id)}
-                    onRemove={() => handleRemovePiece(piece.id)}
-                    onUpdate={(field, value) =>
-                      handleUpdatePiece(piece.id, field, value)
-                    }
-                    packageTypes={packageTypeOptions.map((opt) => ({
-                      id: String(opt.id),
-                      name: opt.name,
-                    }))}
-                    canRemove={piecesData.length > 1}
-                  />
-                ))}
-              </div>
-
-              <div className="d-flex justify-content-end">
-                <button
-                  type="button"
-                  className="qa-btn qa-btn-outline qa-btn-sm me-2"
-                  onClick={() => handleDuplicatePiece()}
+            <div className="row g-3">
+              <div className="col-12 mb-3">
+                <label className="qa-label">
+                  Incoterm <span className="text-danger">*</span>
+                </label>
+                <select
+                  className="qa-select"
+                  value={incoterm}
+                  onChange={(e) =>
+                    setIncoterm(e.target.value as "EXW" | "FOB" | "")
+                  }
+                  style={{ maxWidth: "300px" }}
                 >
-                  <i className="bi bi-files"></i>
-                  Duplicar pieza
-                </button>
-                <button
-                  type="button"
-                  className="qa-btn qa-btn-primary"
-                  onClick={handleAddPiece}
-                >
-                  <i className="bi bi-plus-lg"></i>
-                  {t("Quotelcl.agregarpieza")}
-                </button>
+                  <option value="">{t("Quotelcl.selectincoterm")}</option>
+                  <option value="EXW">Ex Works [EXW]</option>
+                  <option value="FOB">FOB</option>
+                </select>
               </div>
 
-              {/* Alertas de restricciones de dimensiones marítimas */}
-              {oversizeErrorLCL && (
-                <div className="mt-4">
-                  {oversizeLargo && (
-                    <div className="qa-alert qa-alert-warning">
-                      <i className="bi bi-exclamation-triangle-fill"></i>
-                      <div>
-                        <strong>{t("OversizeNotifyLCL.largoExcede")}:</strong>{" "}
-                        {t("OversizeNotifyLCL.largoMsg")}
-                      </div>
-                    </div>
-                  )}
-                  {oversizeAncho && (
-                    <div className="qa-alert qa-alert-warning">
-                      <i className="bi bi-exclamation-triangle-fill"></i>
-                      <div>
-                        <strong>{t("OversizeNotifyLCL.anchoExcede")}:</strong>{" "}
-                        {t("OversizeNotifyLCL.anchoMsg")}
-                      </div>
-                    </div>
-                  )}
-                  {oversizeAlto && (
-                    <div className="qa-alert qa-alert-danger">
-                      <i className="bi bi-x-circle-fill"></i>
-                      <div>
-                        <strong>{t("OversizeNotifyLCL.altoExcede")}:</strong>{" "}
-                        {t("OversizeNotifyLCL.altoMsg")}
-                      </div>
-                    </div>
-                  )}
+              {/* Campos condicionales solo para EXW */}
+              {incoterm === "EXW" && (
+                <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
+                  <div>
+                    <label className="qa-label">
+                      <i className="bi bi-geo-alt me-1"></i>
+                      {t("Quotelcl.pickup")}
+                    </label>
+                    <textarea
+                      className="qa-input"
+                      value={pickupFromAddress}
+                      onChange={(e) => setPickupFromAddress(e.target.value)}
+                      placeholder="Ingrese dirección de recogida"
+                      rows={2}
+                    />
+                  </div>
+                  <div>
+                    <label className="qa-label">
+                      <i className="bi bi-geo-alt me-1"></i>
+                      {t("Quotelcl.delivery")}
+                    </label>
+                    <textarea
+                      className="qa-input"
+                      value={deliveryToAddress}
+                      onChange={(e) => setDeliveryToAddress(e.target.value)}
+                      placeholder="Ingrese dirección de entrega"
+                      rows={3}
+                    />
+                  </div>
                 </div>
               )}
+
+              <div className="col-12">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h4 className="fs-6 fw-bold mb-0">
+                    {t("Quotelcl.detalles")}
+                  </h4>
+                  <span className="qa-badge">
+                    {piecesData.length}{" "}
+                    {piecesData.length === 1 ? "pieza" : "piezas"}
+                  </span>
+                </div>
+
+                <div className="mb-3">
+                  {piecesData.map((piece, index) => (
+                    <PieceAccordionLCL
+                      key={piece.id}
+                      piece={piece}
+                      index={index}
+                      isOpen={openAccordions.includes(piece.id)}
+                      onToggle={() => handleToggleAccordion(piece.id)}
+                      onRemove={() => handleRemovePiece(piece.id)}
+                      onUpdate={(field, value) =>
+                        handleUpdatePiece(piece.id, field, value)
+                      }
+                      packageTypes={packageTypeOptions.map((opt) => ({
+                        id: String(opt.id),
+                        name: opt.name,
+                      }))}
+                      canRemove={piecesData.length > 1}
+                    />
+                  ))}
+                </div>
+
+                <div className="d-flex justify-content-end">
+                  <button
+                    type="button"
+                    className="qa-btn qa-btn-outline qa-btn-sm me-2"
+                    onClick={() => handleDuplicatePiece()}
+                  >
+                    <i className="bi bi-files"></i>
+                    Duplicar pieza
+                  </button>
+                  <button
+                    type="button"
+                    className="qa-btn qa-btn-primary"
+                    onClick={handleAddPiece}
+                  >
+                    <i className="bi bi-plus-lg"></i>
+                    {t("Quotelcl.agregarpieza")}
+                  </button>
+                </div>
+
+                {/* Alertas de restricciones de dimensiones marítimas */}
+                {oversizeErrorLCL && (
+                  <div className="mt-4">
+                    {oversizeLargo && (
+                      <div className="qa-alert qa-alert-warning">
+                        <i className="bi bi-exclamation-triangle-fill"></i>
+                        <div>
+                          <strong>{t("OversizeNotifyLCL.largoExcede")}:</strong>{" "}
+                          {t("OversizeNotifyLCL.largoMsg")}
+                        </div>
+                      </div>
+                    )}
+                    {oversizeAncho && (
+                      <div className="qa-alert qa-alert-warning">
+                        <i className="bi bi-exclamation-triangle-fill"></i>
+                        <div>
+                          <strong>{t("OversizeNotifyLCL.anchoExcede")}:</strong>{" "}
+                          {t("OversizeNotifyLCL.anchoMsg")}
+                        </div>
+                      </div>
+                    )}
+                    {oversizeAlto && (
+                      <div className="qa-alert qa-alert-danger">
+                        <i className="bi bi-x-circle-fill"></i>
+                        <div>
+                          <strong>{t("OversizeNotifyLCL.altoExcede")}:</strong>{" "}
+                          {t("OversizeNotifyLCL.altoMsg")}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Cálculos */}
-          <div className="row g-3">
-            <div className="col-md-6">
-              <div
-                className="p-3 rounded border d-flex flex-column h-100"
-                style={{ backgroundColor: "var(--qa-bg-light)" }}
-              >
-                <h4 className="fs-6 fw-bold mb-3">{t("Quotelcl.resumen")}</h4>
-                <div className="qa-grid-4" style={{ fontSize: "0.9rem" }}>
-                  <div>
-                    <span className="qa-text-muted d-block">
-                      {t("Quotelcl.pesototal1")}
-                    </span>
-                    <strong>
-                      {totalWeightKg.toFixed(2)} kg (
-                      {totalWeightTons.toFixed(4)} t)
-                    </strong>
-                  </div>
-                  <div>
-                    <span className="qa-text-muted d-block">
-                      {t("Quotelcl.volumentotal1")}
-                    </span>
-                    <strong>{totalVolume.toFixed(4)} m³</strong>
-                  </div>
-                  <div>
-                    <span className="qa-text-muted d-block">
-                      {t("Quotelcl.chargeable")}
-                    </span>
-                    <strong>{chargeableVolume.toFixed(4)}</strong>
-                  </div>
-                  <div>
-                    <span className="qa-text-muted d-block">
-                      {t("Quotelcl.cobropor")}
-                    </span>
-                    <strong>
-                      {totalWeightTons > totalVolume
-                        ? t("Quotelcl.peso")
-                        : t("Quotelcl.volumen")}
-                    </strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {tarifaOceanFreight && (
+          <div className="qa-card">
+            {/* Cálculos */}
+            <div className="row g-3">
               <div className="col-md-6">
                 <div
                   className="p-3 rounded border d-flex flex-column h-100"
                   style={{ backgroundColor: "var(--qa-bg-light)" }}
                 >
-                  <h4 className="fs-6 fw-bold mb-3">
-                    <i className="bi bi-shield-check me-2"></i>
-                    {t("Quotelcl.opcional")}
-                  </h4>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.5rem",
-                      flex: 1,
-                    }}
-                  >
-                    {/* Seguro opcional */}
+                  <h4 className="fs-6 fw-bold mb-3">{t("Quotelcl.resumen")}</h4>
+                  <div className="qa-grid-4" style={{ fontSize: "0.9rem" }}>
                     <div>
-                      <div
-                        className="qa-switch-container"
-                        style={{
-                          width: "fit-content",
-                          padding: "0.4rem 0.8rem",
-                        }}
-                      >
-                        <input
-                          className="qa-switch-input"
-                          type="checkbox"
-                          id="seguroCheckbox"
-                          checked={seguroActivo}
-                          onChange={(e) => setSeguroActivo(e.target.checked)}
-                        />
-                        <label
-                          className="qa-label mb-0 ms-2"
-                          htmlFor="seguroCheckbox"
-                          style={{ cursor: "pointer" }}
-                        >
-                          {t("Quotelcl.agregar")}
-                        </label>
-                      </div>
-                      <small className="qa-text-muted d-block mt-1 ms-1">
-                        {t("Quotelcl.protection")}
-                      </small>
-
-                      {seguroActivo && (
-                        <div className="mt-3 ms-1">
-                          <label htmlFor="valorMercaderia" className="qa-label">
-                            {t("Quotelcl.valormercaderia")} (
-                            {rutaSeleccionada.currency}){" "}
-                            <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="qa-input"
-                            id="valorMercaderia"
-                            placeholder="Ej: 10000 o 10000,50"
-                            value={valorMercaderia}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              if (value === "" || /^[\d,\.]+$/.test(value)) {
-                                setValorMercaderia(value);
-                              }
-                            }}
-                            style={{ maxWidth: "300px" }}
-                          />
-                        </div>
-                      )}
+                      <span className="qa-text-muted d-block">
+                        {t("Quotelcl.pesototal1")}
+                      </span>
+                      <strong>
+                        {totalWeightKg.toFixed(2)} kg (
+                        {totalWeightTons.toFixed(4)} t)
+                      </strong>
                     </div>
-
-                    {hasNotApilable &&
-                      incoterm === "EXW" &&
-                      calculateNoApilable() > 0 && (
-                        <div
-                          className="d-flex align-items-center gap-1 mt-2 pt-2"
-                          style={{
-                            borderTop: "1px solid var(--qa-border-color)",
-                          }}
-                        >
-                          <i
-                            className="bi bi-info-circle small opacity-50"
-                            data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title={t("Quotelcl.tooltipnoapilable")}
-                            style={{ cursor: "pointer" }}
-                          ></i>
-                          <p className="mb-0 small">
-                            Existirá un recargo adicional por piezas no
-                            apilables.
-                          </p>
-                        </div>
-                      )}
-
-                    {seguroActivo && !valorMercaderia && (
-                      <div className="qa-alert qa-alert-warning">
-                        <small>{t("Pieceaccordionlcl.segurocargo")}</small>
-                      </div>
-                    )}
-
-                    {/* Nota informativa */}
-                    <div
-                      className="mt-auto p-2 rounded"
-                      style={{
-                        backgroundColor: "rgba(255, 98, 0, 0.05)",
-                        border: "1px solid rgba(255, 98, 0, 0.15)",
-                      }}
-                    >
-                      <small className="text-muted">
-                        <i className="bi bi-info-circle me-1"></i>
-                        El desglose de costos estará disponible en el PDF al
-                        generar la cotización u operación.
-                      </small>
+                    <div>
+                      <span className="qa-text-muted d-block">
+                        {t("Quotelcl.volumentotal1")}
+                      </span>
+                      <strong>{totalVolume.toFixed(4)} m³</strong>
+                    </div>
+                    <div>
+                      <span className="qa-text-muted d-block">
+                        {t("Quotelcl.chargeable")}
+                      </span>
+                      <strong>{chargeableVolume.toFixed(4)}</strong>
+                    </div>
+                    <div>
+                      <span className="qa-text-muted d-block">
+                        {t("Quotelcl.cobropor")}
+                      </span>
+                      <strong>
+                        {totalWeightTons > totalVolume
+                          ? t("Quotelcl.peso")
+                          : t("Quotelcl.volumen")}
+                      </strong>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+
+              {tarifaOceanFreight && (
+                <div className="col-md-6">
+                  <div
+                    className="p-3 rounded border"
+                    style={{ backgroundColor: "var(--qa-bg-light)" }}
+                  >
+                    <h4 className="fs-6 fw-bold mb-3">
+                      <i className="bi bi-shield-check me-2"></i>
+                      {t("Quotelcl.opcional")}
+                    </h4>
+
+                    <div className="d-flex flex-column gap-2 small">
+                      {/* Seguro opcional */}
+                      <div className="d-flex flex-column gap-2 small">
+                        <div
+                          className="qa-switch-container"
+                          style={{
+                            width: "fit-content",
+                            padding: "0.4rem 0.8rem",
+                          }}
+                        >
+                          <input
+                            className="qa-switch-input"
+                            type="checkbox"
+                            id="seguroCheckbox"
+                            checked={seguroActivo}
+                            onChange={(e) => setSeguroActivo(e.target.checked)}
+                          />
+                          <label
+                            className="qa-label mb-0 ms-2"
+                            htmlFor="seguroCheckbox"
+                            style={{ cursor: "pointer" }}
+                          >
+                            {t("Quotelcl.agregar")}
+                          </label>
+                        </div>
+                        <small className="qa-text-muted d-block mt-1 ms-1">
+                          {t("Quotelcl.protection")}
+                        </small>
+
+                        {seguroActivo && (
+                          <div className="mt-3 ms-1">
+                            <label
+                              htmlFor="valorMercaderia"
+                              className="qa-label"
+                            >
+                              {t("Quotelcl.valormercaderia")} (
+                              {rutaSeleccionada.currency}){" "}
+                              <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="qa-input"
+                              id="valorMercaderia"
+                              placeholder="Ej: 10000 o 10000,50"
+                              value={valorMercaderia}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === "" || /^[\d,\.]+$/.test(value)) {
+                                  setValorMercaderia(value);
+                                }
+                              }}
+                              style={{ maxWidth: "300px" }}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {hasNotApilable &&
+                        incoterm === "EXW" &&
+                        calculateNoApilable() > 0 && (
+                          <div
+                            className="d-flex align-items-center gap-1 mt-2 pt-2"
+                            style={{
+                              borderTop: "1px solid var(--qa-border-color)",
+                            }}
+                          >
+                            <i
+                              className="bi bi-info-circle small opacity-50"
+                              data-bs-toggle="tooltip"
+                              data-bs-placement="top"
+                              title={t("Quotelcl.tooltipnoapilable")}
+                              style={{ cursor: "pointer" }}
+                            ></i>
+                            <p className="mb-0 small">
+                              Existirá un recargo adicional por piezas no
+                              apilables.
+                            </p>
+                          </div>
+                        )}
+
+                      {seguroActivo && !valorMercaderia && (
+                        <div className="qa-alert qa-alert-warning">
+                          <small>{t("Pieceaccordionlcl.segurocargo")}</small>
+                        </div>
+                      )}
+
+                      {/* Nota informativa */}
+                      <div
+                        className="mt-2 p-2 rounded"
+                        style={{
+                          backgroundColor: "rgba(255, 98, 0, 0.05)",
+                          border: "1px solid rgba(255, 98, 0, 0.15)",
+                        }}
+                      >
+                        <small className="text-muted">
+                          <i className="bi bi-info-circle me-1"></i>
+                          {t("QuoteAIR.desglose")}
+                        </small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* ============================================================================ */}
@@ -2449,64 +2450,61 @@ function QuoteLCL({
 
       {rutaSeleccionada && tarifaOceanFreight && (
         <>
-          <div className={`qa-card${oversizeErrorLCL ? " opacity-50" : ""}`}>
-            <div className="qa-card-header">
-              <div>
-                <h3>{t("QuoteAIR.generador")}</h3>
-              </div>
-            </div>
-            <div className="qa-grid-2" style={{ marginTop: "1rem" }}>
-              {/* Generar Cotización */}
+          <div className="row g-3">
+            <div className="col-md-12">
               <div
+                className="h-100 p-4 rounded border"
                 style={{
-                  border: "1px solid var(--qa-border-color)",
-                  borderRadius: "var(--qa-radius)",
-                  padding: "1.5rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.5rem",
+                  backgroundColor: "transparent",
+                  borderColor: "var(--qf-border-color)",
+                  transition: "all 0.2s",
                 }}
               >
-                <h4 className="fs-6 fw-bold mb-1">
+                <div className="mb-3">
+                  <i
+                    className="bi bi-file-earmark-pdf"
+                    style={{ fontSize: "2rem", color: "var(--qf-primary)" }}
+                  ></i>
+                </div>
+                <h5 className="mb-2" style={{ fontWeight: 600 }}>
                   {t("QuoteAIR.generarcotizacion")}
-                </h4>
-                <p className="qa-text-muted small mb-3">
+                </h5>
+                <p className="text-muted small mb-4">
                   {t("QuoteAIR.cotizaciongenerada")}
                 </p>
-                <div style={{ marginTop: "auto" }}>
-                  <button
-                    onClick={() => {
-                      setTipoAccion("cotizacion");
-                      testAPI("cotizacion");
-                    }}
-                    disabled={
-                      loading ||
-                      !accessToken ||
-                      !incoterm ||
-                      oversizeErrorLCL ||
-                      (incoterm === "EXW" &&
-                        (!pickupFromAddress || !deliveryToAddress))
-                    }
-                    className="qa-btn qa-btn-outline w-100"
-                  >
-                    {loading ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        ></span>
-                        {t("QuoteAIR.generando")}
-                      </>
-                    ) : (
-                      <>{t("QuoteAIR.generarcotizacion")}</>
-                    )}
-                  </button>
-                </div>
+                <button
+                  onClick={() => {
+                    setTipoAccion("cotizacion");
+                    testAPI("cotizacion");
+                  }}
+                  disabled={
+                    loading ||
+                    !accessToken ||
+                    !incoterm ||
+                    oversizeErrorLCL ||
+                    (incoterm === "EXW" &&
+                      (!pickupFromAddress || !deliveryToAddress))
+                  }
+                  className="qa-btn qa-btn-primary w-100"
+                >
+                  {loading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      {t("QuoteAIR.generando")}
+                    </>
+                  ) : (
+                    <>{t("QuoteAIR.generarcotizacion")}</>
+                  )}
+                </button>
               </div>
+            </div>
 
-              {/* Generar Operación */}
-              <div
+            {/* Generar Operación */}
+            {/*<div
                 style={{
                   border: "1px solid var(--qa-border-color)",
                   borderRadius: "var(--qa-radius)",
@@ -2553,8 +2551,7 @@ function QuoteLCL({
                     )}
                   </button>
                 </div>
-              </div>
-            </div>
+              </div>*/}
           </div>
 
           {!accessToken && (

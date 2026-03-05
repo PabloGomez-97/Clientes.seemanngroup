@@ -865,7 +865,7 @@ function QuoteAPITester({
     }
 
     if (!incoterm) {
-      setError("Debes seleccionar un Incoterm antes de generar la cotización");
+      setError(t("QuoteAIR.seleccionarincoterm"));
       return;
     }
 
@@ -2892,8 +2892,14 @@ function QuoteAPITester({
 
                 <div className="d-flex flex-column gap-2 small">
                   {/* Seguro opcional */}
-                  <div>
-                    <div className="form-check">
+                  <div className="mt-2">
+                    <div
+                      className="qa-switch-container"
+                      style={{
+                        width: "fit-content",
+                        padding: "0.4rem 0.8rem",
+                      }}
+                    >
                       <input
                         className="form-check-input"
                         type="checkbox"
@@ -2905,7 +2911,7 @@ function QuoteAPITester({
                         className="form-check-label small"
                         htmlFor="seguroCheckbox"
                       >
-                        {t("QuoteAIR.agregar")} ({t("QuoteAIR.protection")})
+                        {t("QuoteAIR.agregar")}
                       </label>
                     </div>
                     {seguroActivo && (
@@ -2951,8 +2957,7 @@ function QuoteAPITester({
                   >
                     <small className="text-muted">
                       <i className="bi bi-info-circle me-1"></i>
-                      El desglose de costos estará disponible en el PDF al
-                      generar la cotización u operación.
+                      {t("QuoteAIR.desglose")}
                     </small>
                   </div>
                 </div>
@@ -2974,12 +2979,15 @@ function QuoteAPITester({
 
       {/* Sección de acciones */}
       {rutaSeleccionada && (
-        <div className="qa-grid-2 mb-5">
+        <div className="qa-grid-1 mb-5">
           <div
             className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError || weightRangeError ? "opacity-50" : ""}`}
           >
-            <div className="mb-3 text-primary">
-              <i className="bi bi-file-earmark-pdf fs-1"></i>
+            <div className="mb-3 text-dark">
+              <i
+                className="bi bi-file-earmark-pdf fs-1"
+                style={{ fontSize: "2rem", color: "var(--qf-primary)" }}
+              ></i>
             </div>
             <h5 className="fw-bold">{t("QuoteAIR.generarcotizacion")}</h5>
             <p className="text-muted small mb-4">
@@ -3000,7 +3008,7 @@ function QuoteAPITester({
                 weightRangeError ||
                 !rutaSeleccionada
               }
-              className="qa-btn qa-btn-outline w-100 mt-auto"
+              className="qa-btn qa-btn-primary w-100 mt-auto"
             >
               {loading ? (
                 <span className="spinner-border spinner-border-sm"></span>
@@ -3010,7 +3018,7 @@ function QuoteAPITester({
             </button>
           </div>
 
-          <div
+          {/* <div
             className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError || weightRangeError ? "opacity-50" : ""}`}
           >
             <div className="mb-3 text-dark">
@@ -3043,7 +3051,7 @@ function QuoteAPITester({
                 t("QuoteAIR.generaroperacion")
               )}
             </button>
-          </div>
+          </div> */}
         </div>
       )}
 

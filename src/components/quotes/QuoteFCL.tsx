@@ -2162,7 +2162,13 @@ function QuoteFCL({
                 <div className="d-flex flex-column gap-2 small">
                   {/* Seguro opcional */}
                   <div className="mt-2">
-                    <div className="qf-switch-container p-2 mb-2">
+                    <div
+                      className="qa-switch-container"
+                      style={{
+                        width: "fit-content",
+                        padding: "0.4rem 0.8rem",
+                      }}
+                    >
                       <input
                         className="qf-switch-input"
                         type="checkbox"
@@ -2220,8 +2226,7 @@ function QuoteFCL({
                   >
                     <small className="text-muted">
                       <i className="bi bi-info-circle me-1"></i>
-                      El desglose de costos estará disponible en el PDF al
-                      generar la cotización u operación.
+                      {t("QuoteAIR.desglose")}
                     </small>
                   </div>
                 </div>
@@ -2229,70 +2234,62 @@ function QuoteFCL({
             </div>
           </div>
           {/* SECCIÓN 2: GENERAR COTIZACIÓN */}
-          <div className="qf-card mb-4">
-            <div className="qf-card-header">
-              <h3>{t("QuoteAIR.generador")}</h3>
-            </div>
-            <div className="row g-3">
-              <div className="col-md-6">
-                <div
-                  className="h-100 p-4 rounded border text-center"
-                  style={{
-                    backgroundColor: "transparent",
-                    borderColor: "var(--qf-border-color)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <div className="mb-3">
-                    <i
-                      className="bi bi-file-earmark-pdf"
-                      style={{ fontSize: "2rem", color: "var(--qf-primary)" }}
-                    ></i>
-                  </div>
-                  <h5 className="mb-2" style={{ fontWeight: 600 }}>
-                    {t("QuoteAIR.generarcotizacion")}
-                  </h5>
-                  <p className="text-muted small mb-4">
-                    {t("QuoteAIR.cotizaciongenerada")}
-                  </p>
-
-                  <button
-                    onClick={() => {
-                      setTipoAccion("cotizacion");
-                      testAPI("cotizacion");
-                    }}
-                    disabled={
-                      loading ||
-                      !accessToken ||
-                      !rutaSeleccionada ||
-                      !containerSeleccionado ||
-                      !incoterm ||
-                      (incoterm === "EXW" &&
-                        (!pickupFromAddress || !deliveryToAddress))
-                    }
-                    className="qf-btn qf-btn-outline w-100"
-                    style={{
-                      color: "var(--qf-primary)",
-                      borderColor: "var(--qf-primary)",
-                    }}
-                  >
-                    {loading ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        ></span>
-                        {t("QuoteAIR.generando")}
-                      </>
-                    ) : (
-                      <>{t("QuoteAIR.generarcotizacion")}</>
-                    )}
-                  </button>
+          <div className="row g-3">
+            <div className="col-md-12">
+              <div
+                className="h-100 p-4 rounded border"
+                style={{
+                  backgroundColor: "transparent",
+                  borderColor: "var(--qf-border-color)",
+                  transition: "all 0.2s",
+                }}
+              >
+                <div className="mb-3">
+                  <i
+                    className="bi bi-file-earmark-pdf"
+                    style={{ fontSize: "2rem", color: "var(--qf-primary)" }}
+                  ></i>
                 </div>
-              </div>
+                <h5 className="mb-2" style={{ fontWeight: 600 }}>
+                  {t("QuoteAIR.generarcotizacion")}
+                </h5>
+                <p className="text-muted small mb-4">
+                  {t("QuoteAIR.cotizaciongenerada")}
+                </p>
 
-              <div className="col-md-6">
+                <button
+                  onClick={() => {
+                    setTipoAccion("cotizacion");
+                    testAPI("cotizacion");
+                  }}
+                  disabled={
+                    loading ||
+                    !accessToken ||
+                    !rutaSeleccionada ||
+                    !containerSeleccionado ||
+                    !incoterm ||
+                    (incoterm === "EXW" &&
+                      (!pickupFromAddress || !deliveryToAddress))
+                  }
+                  className="qa-btn qa-btn-primary w-100 mt-auto"
+                >
+                  {loading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      {t("QuoteAIR.generando")}
+                    </>
+                  ) : (
+                    <>{t("QuoteAIR.generarcotizacion")}</>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/*<div className="col-md-6">
                 <div
                   className="h-100 p-4 rounded border text-center"
                   style={{
@@ -2351,8 +2348,7 @@ function QuoteFCL({
                     )}
                   </button>
                 </div>
-              </div>
-            </div>
+              </div>*/}
           </div>
         </>
       )}
