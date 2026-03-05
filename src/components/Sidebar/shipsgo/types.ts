@@ -126,13 +126,16 @@ export interface GeoJSONFeatureCollection {
 export interface OceanPortLocation {
   code: string;
   name: string;
+  timezone?: string;
   country: { code: string; name: string };
 }
 
 export interface OceanPortPoint {
   location: OceanPortLocation;
   date_of_loading?: string;
+  date_of_loading_initial?: string;
   date_of_discharge?: string;
+  date_of_discharge_initial?: string;
 }
 
 export interface OceanRoute {
@@ -141,11 +144,34 @@ export interface OceanRoute {
   ts_count: number;
   transit_time: number;
   transit_percentage: number;
+  co2_emission?: unknown;
 }
 
 export interface OceanCarrier {
   scac: string;
   name: string;
+}
+
+export interface OceanVessel {
+  name: string;
+  imo: number;
+}
+
+export interface OceanMovement {
+  event: string;
+  status: string;
+  location: OceanPortLocation;
+  vessel: OceanVessel | null;
+  voyage: string | null;
+  timestamp: string;
+}
+
+export interface OceanContainer {
+  number: string;
+  status: string;
+  size: number;
+  type: string;
+  movements: OceanMovement[];
 }
 
 export interface OceanShipment {
@@ -166,10 +192,50 @@ export interface OceanShipment {
   discarded_at: string | null;
 }
 
+// Detail from /ocean/shipments/:id
+export interface OceanShipmentDetail extends OceanShipment {
+  containers: OceanContainer[];
+  tokens?: { map?: string };
+  followers: { id: number; email: string }[];
+}
+
 export interface OceanResponse {
   message: string;
   shipments: OceanShipment[];
   meta: { more: boolean; total: number };
+}
+
+// Ocean GeoJSON types (from /ocean/shipments/:id/geojson)
+export interface OceanGeoJSONPointProperties {
+  status: "PAST" | "CURRENT" | "FUTURE";
+  location: OceanPortLocation;
+}
+
+export interface OceanGeoJSONLineStringProperties {
+  status: "PAST" | "CURRENT" | "FUTURE";
+  vessel?: OceanVessel;
+  voyage?: string;
+  events?: {
+    DEPA?: { location: OceanPortLocation; timestamp: string };
+    ARRV?: { location: OceanPortLocation; timestamp: string };
+  };
+  current?: {
+    index: number;
+    coordinates: [number, number];
+  } | null;
+}
+
+export interface OceanGeoJSONFeature {
+  type: "Feature";
+  geometry:
+    | { type: "Point"; coordinates: [number, number] }
+    | { type: "LineString"; coordinates: [number, number][] };
+  properties: OceanGeoJSONPointProperties | OceanGeoJSONLineStringProperties;
+}
+
+export interface OceanGeoJSONFeatureCollection {
+  type: "FeatureCollection";
+  features: OceanGeoJSONFeature[];
 }
 
 // Status labels
@@ -211,6 +277,28 @@ export const MOVEMENT_EVENT_LABELS: Record<string, string> = {
   TFD: "Transferencia completada",
   PRE: "Pre-alerta",
   FOH: "Carga en espera",
+};
+
+// Ocean container movement event labels
+export const OCEAN_MOVEMENT_EVENT_LABELS: Record<string, string> = {
+  EMSH: "Contenedor vacío enviado",
+  GTIN: "Gate In",
+  LOAD: "Cargado",
+  DEPA: "Zarpe",
+  ARRV: "Arribo",
+  DISC: "Descargado",
+  GTOT: "Gate Out",
+  EMRT: "Contenedor vacío devuelto",
+  TRSH: "Transbordo",
+};
+
+// Ocean container status labels
+export const OCEAN_CONTAINER_STATUS_LABELS: Record<string, string> = {
+  IN_TRANSIT: "En tránsito",
+  ARRIVED: "Atracado",
+  DISCHARGED: "Descargado",
+  EMPTY_RETURN: "Vacío devuelto",
+  GATE_OUT: "Gate Out",
 };
 
 // Helpers
