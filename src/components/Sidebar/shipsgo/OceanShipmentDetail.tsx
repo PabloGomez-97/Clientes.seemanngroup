@@ -243,8 +243,7 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
                     {s.route.port_of_loading.date_of_loading && (
                       <div className="sg-timeline-item sg-timeline-item--done">
                         <div className="sg-timeline-label">
-                          Carga —{" "}
-                          {s.route.port_of_loading.location.name}
+                          Carga — {s.route.port_of_loading.location.name}
                         </div>
                         <div className="sg-timeline-date">
                           {formatDateTime(

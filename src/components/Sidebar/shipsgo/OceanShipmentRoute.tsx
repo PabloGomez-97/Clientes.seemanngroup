@@ -17,8 +17,9 @@ interface OceanShipmentRouteProps {
 }
 
 function OceanShipmentRoute({ shipmentId }: OceanShipmentRouteProps) {
-  const [geojson, setGeojson] =
-    useState<OceanGeoJSONFeatureCollection | null>(null);
+  const [geojson, setGeojson] = useState<OceanGeoJSONFeatureCollection | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -122,9 +123,7 @@ function OceanShipmentRoute({ shipmentId }: OceanShipmentRouteProps) {
                       className="sg-location-flag"
                     />
                   </div>
-                  <div className="sg-route-map-name">
-                    {props.location.name}
-                  </div>
+                  <div className="sg-route-map-name">{props.location.name}</div>
                   <div className="sg-route-map-country">
                     {props.location.country.name}
                   </div>
@@ -159,9 +158,7 @@ function OceanShipmentRoute({ shipmentId }: OceanShipmentRouteProps) {
                     : "Pendiente"}
               </span>
               {props.vessel && (
-                <span className="sg-route-leg-flight">
-                  {props.vessel.name}
-                </span>
+                <span className="sg-route-leg-flight">{props.vessel.name}</span>
               )}
               {props.voyage && (
                 <span className="sg-route-leg-flight">
