@@ -3001,11 +3001,16 @@ function QuoteAPITester({
                     </div>
                     {seguroActivo && (
                       <div className="mt-2 ps-4">
+                        <label htmlFor="valorMercaderia" className="qa-label">
+                          {t("Quotelcl.valormercaderia")} (
+                          {rutaSeleccionada.currency}){" "}
+                          <span className="text-danger">*</span>
+                        </label>
                         <input
                           type="text"
-                          className="qa-input py-1"
-                          style={{ fontSize: "0.85rem" }}
-                          placeholder="Valor Mercadería"
+                          className="qa-input"
+                          id="valorMercaderia"
+                          placeholder="Ej: 10000 o 10000,50"
                           value={valorMercaderia}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -3013,6 +3018,7 @@ function QuoteAPITester({
                               setValorMercaderia(value);
                             }
                           }}
+                          style={{ maxWidth: "300px" }}
                         />
                       </div>
                     )}

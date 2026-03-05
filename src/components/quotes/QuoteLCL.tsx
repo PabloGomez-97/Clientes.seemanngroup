@@ -139,6 +139,8 @@ function QuoteLCL({
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
   const [valorMercaderia, setValorMercaderia] = useState<string>("");
+  // Estado para Gastos Locales + Apertura
+  const [gastolocal, setGastolocal] = useState(false);
 
   // Estado para notificación de oversize al ejecutivo
   const [loadingOversizeNotify, setLoadingOversizeNotify] = useState(false);
@@ -822,7 +824,7 @@ function QuoteLCL({
   };
 
   // ============================================================================
-  // FUNCIÓN PARA CALCULAR EL SEGURO (TOTAL * 1.1 * 0.002) CON MÍNIMO DE 25
+  // FUNCIÓN PARA CALCULAR EL SEGURO (TOTAL * 1.1 * 0.0025) CON MÍNIMO DE 25
   // ============================================================================
 
   const calculateSeguro = (): number => {
@@ -1055,6 +1057,35 @@ function QuoteLCL({
           unit: "Each",
           rate: seguroAmount,
           amount: seguroAmount,
+        });
+      }
+
+      // Gastos Locales + Apertura (si está activo)
+      if (gastolocal) {
+        const rate = 11.9;
+        const aperturaAmount = 53.55;
+        // Determinar si el cargo se calcula por Weight (tons) o por Volume (m3)
+        const isWeight = totalWeightTons > totalVolume;
+        const quantity = isWeight ? chargeableVolume : totalVolume;
+        const unit = isWeight ? "W/M" : "m³";
+        const gastoLocalAmount = rate * quantity;
+
+        pdfCharges.push({
+          code: "D",
+          description: "Desconsolidación",
+          quantity: quantity,
+          unit: unit,
+          rate: rate,
+          amount: gastoLocalAmount,
+        });
+
+        pdfCharges.push({
+          code: "A",
+          description: "APERTURA",
+          quantity: 1,
+          unit: "Each",
+          rate: aperturaAmount,
+          amount: aperturaAmount,
         });
       }
 
@@ -1487,6 +1518,76 @@ function QuoteLCL({
           reference: "LCL-SEGURO",
           showOnDocument: true,
           notes: "Seguro charge created via API",
+        },
+        expense: {
+          currency: {
+            abbr: divisa,
+          },
+        },
+      });
+    }
+
+    // Cobro de Gastos Locales + Apertura (si está activo)
+    if (gastolocal) {
+      const rate = 11.9;
+      const aperturaAmount = 53.55;
+      const isWeight = totalWeightTons > totalVolume;
+      const quantity = isWeight ? chargeableVolume : totalVolume;
+      const unit = isWeight ? "W/M" : "m3";
+      const gastoLocalAmount = rate * quantity;
+
+      charges.push({
+        service: {
+          id: 121127,
+          code: "D",
+        },
+        income: {
+          quantity: quantity,
+          unit: unit,
+          rate: rate,
+          amount: gastoLocalAmount,
+          showamount: gastoLocalAmount,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: divisa,
+          },
+          reference: "LCL-GASTOSLOCALES",
+          showOnDocument: true,
+          notes: "Gastos Locales (Desconsolidación) - 11.9 × Chargeable",
+        },
+        expense: {
+          currency: {
+            abbr: divisa,
+          },
+        },
+      });
+
+      charges.push({
+        service: {
+          id: 121133,
+          code: "A",
+        },
+        income: {
+          quantity: 1,
+          unit: "APERTURA",
+          rate: aperturaAmount,
+          amount: aperturaAmount,
+          showamount: aperturaAmount,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: divisa,
+          },
+          reference: "LCL-APERTURA",
+          showOnDocument: true,
+          notes: "Apertura - cargo fijo",
         },
         expense: {
           currency: {
@@ -2354,19 +2455,16 @@ function QuoteLCL({
                             onChange={(e) => setSeguroActivo(e.target.checked)}
                           />
                           <label
-                            className="qa-label mb-0 ms-2"
+                            className="form-check-label small"
                             htmlFor="seguroCheckbox"
                             style={{ cursor: "pointer" }}
                           >
                             {t("Quotelcl.agregar")}
                           </label>
                         </div>
-                        <small className="qa-text-muted d-block mt-1 ms-1">
-                          {t("Quotelcl.protection")}
-                        </small>
 
                         {seguroActivo && (
-                          <div className="mt-3 ms-1">
+                          <div className="mt-2 ps-4">
                             <label
                               htmlFor="valorMercaderia"
                               className="qa-label"
@@ -2391,6 +2489,31 @@ function QuoteLCL({
                             />
                           </div>
                         )}
+                        {/* Gastos Locales + Apertura */}
+                        <div className="mt-3">
+                          <div
+                            className="qa-switch-container"
+                            style={{
+                              width: "fit-content",
+                              padding: "0.4rem 0.8rem",
+                            }}
+                          >
+                            <input
+                              className="qa-switch-input"
+                              type="checkbox"
+                              id="gastolocalCheckbox"
+                              checked={gastolocal}
+                              onChange={(e) => setGastolocal(e.target.checked)}
+                            />
+                            <label
+                              className="form-check-label small"
+                              htmlFor="gastolocalCheckbox"
+                              style={{ cursor: "pointer" }}
+                            >
+                              Gastos Locales (Desconsolidación + Apertura)
+                            </label>
+                          </div>
+                        </div>
                       </div>
 
                       {hasNotApilable &&
