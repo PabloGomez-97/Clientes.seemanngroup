@@ -211,6 +211,7 @@
   },
   "QuoteAIR": {
     "title": "Air Quote",
+    "desconsolidacion": "Local Charges (Deconsolidation)",
     "subtitle": "Generate quotes for air shipments",
     "ruta": "Select Route",
     "actualizacion": "Last update:",

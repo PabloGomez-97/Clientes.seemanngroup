@@ -155,6 +155,8 @@ function QuoteAPITester({
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
   const [valorMercaderia, setValorMercaderia] = useState<string>("");
+  // Estado para Gastos Locales (Desconsolidación)
+  const [gastolocal, setGastolocal] = useState(false);
 
   // Calcular si hay alguna pieza no apilable
   const noApilableActivo = useMemo(
@@ -1086,6 +1088,19 @@ function QuoteAPITester({
         });
       }
 
+      // Gastos Locales (Desconsolidación) - cargo fijo
+      if (gastolocal) {
+        const gastoLocalAmount = 194.4;
+        pdfCharges.push({
+          code: "D",
+          description: "GASTOS LOCALES (Desconsolidación)",
+          quantity: 1,
+          unit: "Shipment",
+          rate: gastoLocalAmount,
+          amount: gastoLocalAmount,
+        });
+      }
+
       // No Apilable (solo si incoterm es EXW y hay piezas no apilables)
       if (noApilableActivo && incoterm === "EXW") {
         const noApilableAmount = calculateNoApilable();
@@ -1571,6 +1586,41 @@ function QuoteAPITester({
         });
       }
 
+      // Cobro de GASTOS LOCALES / Desconsolidación (cargo fijo)
+      if (gastolocal) {
+        const gastoLocalAmount = 194.4;
+        charges.push({
+          service: {
+            id: 121127,
+            code: "D",
+          },
+          income: {
+            quantity: 1,
+            unit: "DESCONSOLIDACIÓN",
+            rate: gastoLocalAmount,
+            amount: gastoLocalAmount,
+            showamount: gastoLocalAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Gastos Locales - Desconsolidación",
+            showOnDocument: true,
+            notes:
+              "Cargo por Gastos Locales (Desconsolidación) agregado desde portal",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
+
       // Cobro de NO APILABLE (solo si incoterm es EXW y hay piezas no apilables)
       if (noApilableActivo && incoterm === "EXW") {
         const noApilableAmount = calculateNoApilable();
@@ -1890,6 +1940,41 @@ function QuoteAPITester({
             reference: "Amount to Insurrance to OVERALL",
             showOnDocument: true,
             notes: "Seguro opcional - Protección adicional para la carga",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
+
+      // Cobro de GASTOS LOCALES / Desconsolidación (cargo fijo) - Overall mode
+      if (gastolocal) {
+        const gastoLocalAmount = 194.4;
+        charges.push({
+          service: {
+            id: 121127,
+            code: "D",
+          },
+          income: {
+            quantity: 1,
+            unit: "DESCONSOLIDACIÓN",
+            rate: gastoLocalAmount,
+            amount: gastoLocalAmount,
+            showamount: gastoLocalAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Gastos Locales - Desconsolidación to OVERALL",
+            showOnDocument: true,
+            notes:
+              "Cargo por Gastos Locales (Desconsolidación) agregado desde portal (Overall)",
           },
           expense: {
             currency: {
@@ -2929,23 +3014,34 @@ function QuoteAPITester({
                             }
                           }}
                         />
-                        <p className="qa-text-muted mt-1 mb-0">
-                          Existirá un recargo adicional en base al valor de la
-                          mercadería
-                        </p>
                       </div>
                     )}
                   </div>
 
-                  {noApilableActivo &&
-                    incoterm === "EXW" &&
-                    calculateNoApilable() > 0 && (
-                      <div className="d-flex align-items-center gap-1 mt-2 pt-2 border-top">
-                        <p className="mb-0 small">
-                          Existirá un recargo adicional por piezas no apilables.
-                        </p>
-                      </div>
-                    )}
+                  {/* Gastos Locales - Desconsolidación (cargo fijo) */}
+                  <div className="mt-2">
+                    <div
+                      className="qa-switch-container"
+                      style={{
+                        width: "fit-content",
+                        padding: "0.4rem 0.8rem",
+                      }}
+                    >
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="gastolocalCheckbox"
+                        checked={gastolocal}
+                        onChange={(e) => setGastolocal(e.target.checked)}
+                      />
+                      <label
+                        className="form-check-label small"
+                        htmlFor="gastolocalCheckbox"
+                      >
+                        {t("QuoteAIR.desconsolidacion")}
+                      </label>
+                    </div>
+                  </div>
 
                   {/* Nota informativa */}
                   <div

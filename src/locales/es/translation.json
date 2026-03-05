@@ -210,6 +210,7 @@
   },
   "QuoteAIR": {
     "title": "Cotizador Aéreo",
+    "desconsolidacion": "Gastos Locales (Desconsolidación)",
     "subtitle": "Genera cotizaciones para envíos aéreos",
     "ruta": "Selecciona Ruta",
     "actualizacion": "Última actualización:",
