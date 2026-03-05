@@ -99,6 +99,8 @@ function QuoteFCL({
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
   const [valorMercaderia, setValorMercaderia] = useState<string>("");
+  // Estado para Gastos Locales (THC + Apertura)
+  const [gastolocal, setGastolocal] = useState(false);
 
   // Estado para controlar el accordion del Paso 1
   const [openSection, setOpenSection] = useState<number>(1);
@@ -758,6 +760,10 @@ function QuoteFCL({
       if (!rutaSeleccionada || !containerSeleccionado) return;
 
       // Calcular total para el email
+      const thcRate = containerSeleccionado.type === "20GP" ? 184.45 : 208.25;
+      const thcAmount = gastolocal ? thcRate * cantidadContenedores : 0;
+      const aperturaAmount = gastolocal ? 53.55 : 0;
+
       const totalAmount =
         60 + // BL
         45 + // Handling
@@ -765,7 +771,10 @@ function QuoteFCL({
           ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores)
           : 0) + // EXW
         containerSeleccionado.price * 1.15 * cantidadContenedores + // Ocean Freight
-        (seguroActivo ? calculateSeguro() : 0); // Seguro
+        (seguroActivo ? calculateSeguro() : 0) + // Seguro
+        thcAmount +
+        aperturaAmount; // Gastos Locales
+
       const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
 
       // Obtener el nombre completo del contenedor
@@ -840,6 +849,27 @@ function QuoteFCL({
           unit: "Each",
           rate: seguroAmount,
           amount: seguroAmount,
+        });
+      }
+
+      // Gastos Locales (THC) + Apertura (si está activo)
+      if (gastolocal) {
+        pdfCharges.push({
+          code: "T(A)",
+          description: "THC",
+          quantity: cantidadContenedores,
+          unit: "Container",
+          rate: thcRate,
+          amount: thcAmount,
+        });
+
+        pdfCharges.push({
+          code: "A",
+          description: "APERTURA",
+          quantity: 1,
+          unit: "Each",
+          rate: aperturaAmount,
+          amount: aperturaAmount,
         });
       }
 
@@ -1243,6 +1273,73 @@ function QuoteFCL({
           reference: "SEGURO",
           showOnDocument: true,
           notes: "Seguro opcional - Protección adicional para la carga",
+        },
+        expense: {
+          currency: {
+            abbr: rutaSeleccionada.currency,
+          },
+        },
+      });
+    }
+
+    // Cobro de Gastos Locales + Apertura (si está activo)
+    if (gastolocal) {
+      const thcRate = containerSeleccionado.type === "20GP" ? 184.45 : 208.25;
+      const thcAmount = thcRate * cantidadContenedores;
+      const aperturaAmount = 53.55;
+
+      charges.push({
+        service: {
+          id: 121235,
+          code: "T(A)",
+        },
+        income: {
+          quantity: cantidadContenedores,
+          unit: "THC",
+          rate: thcRate,
+          amount: thcAmount,
+          showamount: thcAmount,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: rutaSeleccionada.currency,
+          },
+          reference: "FCL-THC",
+          showOnDocument: true,
+          notes: `THC charge - ${containerSeleccionado.type} - ${cantidadContenedores} × ${thcRate}`,
+        },
+        expense: {
+          currency: {
+            abbr: rutaSeleccionada.currency,
+          },
+        },
+      });
+
+      charges.push({
+        service: {
+          id: 121133,
+          code: "A",
+        },
+        income: {
+          quantity: 1,
+          unit: "APERTURA",
+          rate: aperturaAmount,
+          amount: aperturaAmount,
+          showamount: aperturaAmount,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: rutaSeleccionada.currency,
+          },
+          reference: "FCL-APERTURA",
+          showOnDocument: true,
+          notes: "Apertura - cargo fijo",
         },
         expense: {
           currency: {
@@ -2214,6 +2311,32 @@ function QuoteFCL({
                         </p>
                       </div>
                     )}
+                  </div>
+
+                  {/* Gastos Locales (THC + Apertura) */}
+                  <div className="mt-2">
+                    <div
+                      className="qa-switch-container"
+                      style={{
+                        width: "fit-content",
+                        padding: "0.4rem 0.8rem",
+                      }}
+                    >
+                      <input
+                        className="qf-switch-input"
+                        type="checkbox"
+                        id="gastolocalCheckbox"
+                        checked={gastolocal}
+                        onChange={(e) => setGastolocal(e.target.checked)}
+                      />
+                      <label
+                        className="qf-label mb-0 ms-2 small"
+                        htmlFor="gastolocalCheckbox"
+                        style={{ cursor: "pointer" }}
+                      >
+                        Agregar Gastos Locales (THC + Apertura)
+                      </label>
+                    </div>
                   </div>
 
                   {/* Nota informativa */}

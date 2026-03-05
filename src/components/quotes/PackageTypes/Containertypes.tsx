@@ -6,5 +6,5 @@ export interface ContainerType {
 export const packageTypeOptions: ContainerType[] = [
   { id: 25, name: "40 FT. REFRIGERATED (ALUMINIUM)" },
   { id: 27, name: "40 FT. HIGH CUBE" },
-  { id: 40, name: "20 FT. STANDARD CONTAINER" }
+  { id: 40, name: "20 FT. STANDARD CONTAINER" },
 ];

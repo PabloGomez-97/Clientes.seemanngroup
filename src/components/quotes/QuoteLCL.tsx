@@ -2510,7 +2510,8 @@ function QuoteLCL({
                               htmlFor="gastolocalCheckbox"
                               style={{ cursor: "pointer" }}
                             >
-                              Gastos Locales (Desconsolidación + Apertura)
+                              Agregar Gastos Locales (Desconsolidación +
+                              Apertura)
                             </label>
                           </div>
                         </div>
