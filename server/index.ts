@@ -1497,6 +1497,103 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
   }
 });
 
+// GET /api/shipsgo/shipments/:id - Obtener detalles de un shipment aéreo
+app.get('/api/shipsgo/shipments/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log(`✈️ [shipsgo] Fetching air shipment detail for id=${id}...`);
+  try {
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ error: 'Missing ShipsGo API token' });
+    }
+
+    const response = await fetch(`https://api.shipsgo.com/v2/air/shipments/${encodeURIComponent(id)}`, {
+      method: 'GET',
+      headers: { 'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[shipsgo] Detail API Error:', errorText);
+      return res.status(response.status).json({ error: 'Failed to fetch shipment detail' });
+    }
+
+    const data = await response.json();
+    return res.json(data);
+  } catch (error) {
+    console.error('[shipsgo] Detail Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/shipsgo/shipments/:id/geojson - Obtener ruta GeoJSON de un shipment aéreo (experimental)
+app.get('/api/shipsgo/shipments/:id/geojson', async (req, res) => {
+  const { id } = req.params;
+  console.log(`✈️ [shipsgo] Fetching air shipment geojson for id=${id}...`);
+  try {
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ error: 'Missing ShipsGo API token' });
+    }
+
+    const response = await fetch(`https://api.shipsgo.com/v2/air/shipments/${encodeURIComponent(id)}/geojson`, {
+      method: 'GET',
+      headers: { 'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[shipsgo] GeoJSON API Error:', errorText);
+      return res.status(response.status).json({ error: 'Failed to fetch shipment route' });
+    }
+
+    const data = await response.json();
+    return res.json(data);
+  } catch (error) {
+    console.error('[shipsgo] GeoJSON Error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/shipsgo/webhooks/air - Webhook endpoint para eventos de ShipsGo Air
+app.post('/api/shipsgo/webhooks/air', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('🔔 [shipsgo-webhook] Received air webhook event');
+  try {
+    const SHIPSGO_WEBHOOK_SECRET = process.env.SHIPSGO_WEBHOOK_SECRET;
+    const signature = req.headers['x-shipsgo-webhook-signature'] as string | undefined;
+    const webhookId = req.headers['x-shipsgo-webhook-id'] as string | undefined;
+    const webhookName = req.headers['x-shipsgo-webhook-name'] as string | undefined;
+
+    // Validate signature if secret is configured
+    if (SHIPSGO_WEBHOOK_SECRET && signature) {
+      const crypto = await import('crypto');
+      const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      const expectedSignature = crypto
+        .createHmac('sha256', SHIPSGO_WEBHOOK_SECRET)
+        .update(rawBody)
+        .digest('hex');
+
+      if (signature !== expectedSignature) {
+        console.error('[shipsgo-webhook] Invalid signature');
+        return res.status(401).json({ error: 'Invalid webhook signature' });
+      }
+    }
+
+    const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    const eventName = payload?.event?.name || 'UNKNOWN';
+    const shipmentId = payload?.shipment?.id;
+
+    console.log(`[shipsgo-webhook] Event: ${eventName}, Webhook-Id: ${webhookId}, Webhook-Name: ${webhookName}, Shipment: ${shipmentId}`);
+    console.log('[shipsgo-webhook] Payload:', JSON.stringify(payload, null, 2));
+
+    // Respond immediately with 200 to acknowledge receipt
+    res.status(200).json({ received: true, event: eventName });
+  } catch (error) {
+    console.error('[shipsgo-webhook] Error processing webhook:', error);
+    res.status(200).json({ received: true, error: 'Processing error' });
+  }
+});
+
 /** =========================
  *  ShipsGo Ocean API (Marítimo)
  *  ========================= */

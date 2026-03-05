@@ -3,113 +3,21 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
 import "./styles/Shipsgotracking.css";
-
-// ─── Air Types ───
-interface AirLocation {
-  iata: string;
-  name: string;
-  timezone: string;
-  country: { code: string; name: string };
-}
-interface AirRoutePoint {
-  location: AirLocation;
-  date_of_dep?: string;
-  date_of_dep_initial?: string;
-  date_of_rcf?: string;
-  date_of_rcf_initial?: string;
-}
-interface AirRoute {
-  origin: AirRoutePoint;
-  destination: AirRoutePoint;
-  ts_count: number;
-  transit_time: number;
-  transit_percentage: number;
-}
-interface Airline {
-  iata: string;
-  name: string;
-}
-interface Cargo {
-  pieces: number | null;
-  weight: number | null;
-  volume: number | null;
-}
-interface Tag {
-  id: number;
-  name: string;
-}
-interface Creator {
-  name: string;
-  email: string;
-}
-
-interface AirShipment {
-  id: number;
-  reference: string | null;
-  awb_number: string;
-  airline: Airline | null;
-  cargo: Cargo;
-  status: string;
-  status_split: boolean;
-  route: AirRoute | null;
-  creator: Creator;
-  tags: Tag[];
-  created_at: string;
-  updated_at: string;
-  checked_at: string;
-  discarded_at: string | null;
-}
-interface AirResponse {
-  message: string;
-  shipments: AirShipment[];
-  meta: { more: boolean; total: number };
-}
-
-// ─── Ocean Types ───
-interface OceanPortLocation {
-  code: string;
-  name: string;
-  country: { code: string; name: string };
-}
-interface OceanPortPoint {
-  location: OceanPortLocation;
-  date_of_loading?: string;
-  date_of_discharge?: string;
-}
-interface OceanRoute {
-  port_of_loading: OceanPortPoint;
-  port_of_discharge: OceanPortPoint;
-  ts_count: number;
-  transit_time: number;
-  transit_percentage: number;
-}
-interface OceanCarrier {
-  scac: string;
-  name: string;
-}
-
-interface OceanShipment {
-  id: number;
-  reference: string | null;
-  container_number: string | null;
-  booking_number: string | null;
-  container_count: number;
-  carrier: OceanCarrier | null;
-  status: string;
-  route: OceanRoute | null;
-  creator: Creator;
-  tags: Tag[];
-  co2_emission: any;
-  created_at: string;
-  updated_at: string;
-  checked_at: string;
-  discarded_at: string | null;
-}
-interface OceanResponse {
-  message: string;
-  shipments: OceanShipment[];
-  meta: { more: boolean; total: number };
-}
+import AirShipmentDetail from "./shipsgo/AirShipmentDetail";
+import type {
+  AirShipment,
+  AirResponse,
+  OceanShipment,
+  OceanResponse,
+} from "./shipsgo/types";
+import {
+  AIR_STATUS_LABELS,
+  OCEAN_STATUS_LABELS,
+  getStatusClass,
+  formatDate,
+  formatDateTime,
+  getFlagUrl,
+} from "./shipsgo/types";
 
 type TabType = "air" | "ocean";
 
@@ -244,58 +152,6 @@ function ShipsGoTracking() {
     if (!eta || transit_percentage >= 100) return false;
     return new Date(s.updated_at) >= new Date(eta) && transit_percentage < 100;
   }
-
-  const formatDate = (d: string | null | undefined) => {
-    if (!d) return "—";
-    try {
-      return new Date(d).toLocaleDateString("es-CL", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-    } catch {
-      return "—";
-    }
-  };
-  const formatDateTime = (d: string | null | undefined) => {
-    if (!d) return "—";
-    try {
-      return new Date(d).toLocaleString("es-CL", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return "—";
-    }
-  };
-
-  const getStatusClass = (status: string) =>
-    "sg-status sg-status--" + status.toLowerCase().replace("_", "-");
-
-  const airStatusLabels: Record<string, string> = {
-    BOOKED: "Reservado",
-    EN_ROUTE: "En Tránsito",
-    LANDED: "Aterrizado",
-    DELIVERED: "Entregado",
-    UNTRACKED: "Sin Rastreo",
-    DISCARDED: "Descartado",
-  };
-  const oceanStatusLabels: Record<string, string> = {
-    NEW: "Nuevo",
-    INPROGRESS: "En proceso",
-    BOOKED: "Reservado",
-    LOADED: "Cargado",
-    SAILING: "Navegando",
-    ARRIVED: "Llegó",
-    DISCHARGED: "Descargado",
-    UNTRACKED: "Sin Rastreo",
-  };
-
-  const getFlagUrl = (code: string) =>
-    `https://flagcdn.com/w20/${code.toLowerCase()}.png`;
 
   const closeModal = () => {
     setShowModal(false);
@@ -524,7 +380,7 @@ function ShipsGoTracking() {
                     <tr key={s.id}>
                       <td>
                         <span className={getStatusClass(s.status)}>
-                          {airStatusLabels[s.status] || s.status}
+                          {AIR_STATUS_LABELS[s.status] || s.status}
                         </span>
                       </td>
                       <td>
@@ -690,7 +546,7 @@ function ShipsGoTracking() {
                     <tr key={s.id}>
                       <td>
                         <span className={getStatusClass(s.status)}>
-                          {oceanStatusLabels[s.status] || s.status}
+                          {OCEAN_STATUS_LABELS[s.status] || s.status}
                         </span>
                       </td>
                       <td>
@@ -817,220 +673,9 @@ function ShipsGoTracking() {
         )}
       </div>
 
-      {/* ═══ Air Detail Modal ═══ */}
+      {/* ═══ Air Detail Panel ═══ */}
       {showModal && selectedAir && (
-        <div className="sg-modal-overlay" onClick={closeModal}>
-          <div className="sg-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="sg-modal-header">
-              <h3>✈️ AWB {selectedAir.awb_number}</h3>
-              <button className="sg-modal-close" onClick={closeModal}>
-                ×
-              </button>
-            </div>
-            <div className="sg-modal-body">
-              <div className="sg-detail-section">
-                <div className="sg-detail-title">Información general</div>
-                <div className="sg-detail-grid">
-                  <div className="sg-detail-item">
-                    <label>Referencia</label>
-                    <span>{selectedAir.reference || "—"}</span>
-                  </div>
-                  <div className="sg-detail-item">
-                    <label>Estado</label>
-                    <span>
-                      <span className={getStatusClass(selectedAir.status)}>
-                        {airStatusLabels[selectedAir.status] ||
-                          selectedAir.status}
-                      </span>
-                      {selectedAir.status_split && (
-                        <span
-                          className="sg-status"
-                          style={{
-                            marginLeft: "0.5rem",
-                            background: "#fef3c7",
-                            color: "#92400e",
-                          }}
-                        >
-                          Split
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="sg-detail-item">
-                    <label>Aerolínea</label>
-                    <span>
-                      {selectedAir.airline
-                        ? `${selectedAir.airline.iata} — ${selectedAir.airline.name}`
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="sg-detail-item">
-                    <label>Creado</label>
-                    <span>{formatDateTime(selectedAir.created_at)}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="sg-detail-section">
-                <div className="sg-detail-title">Carga</div>
-                <div className="sg-cargo-grid">
-                  <div className="sg-cargo-item">
-                    <div className="sg-cargo-value">
-                      {selectedAir.cargo.pieces ?? "—"}
-                    </div>
-                    <div className="sg-cargo-label">Piezas</div>
-                  </div>
-                  <div className="sg-cargo-item">
-                    <div className="sg-cargo-value">
-                      {selectedAir.cargo.weight
-                        ? `${selectedAir.cargo.weight} kg`
-                        : "—"}
-                    </div>
-                    <div className="sg-cargo-label">Peso</div>
-                  </div>
-                  <div className="sg-cargo-item">
-                    <div className="sg-cargo-value">
-                      {selectedAir.cargo.volume
-                        ? `${selectedAir.cargo.volume} m³`
-                        : "—"}
-                    </div>
-                    <div className="sg-cargo-label">Volumen</div>
-                  </div>
-                </div>
-              </div>
-              {selectedAir.route && (
-                <div className="sg-detail-section">
-                  <div className="sg-detail-title">Ruta</div>
-                  <div className="sg-route">
-                    <div className="sg-route-point">
-                      <div className="sg-route-point-label">Origen</div>
-                      <div className="sg-route-point-iata">
-                        {selectedAir.route.origin.location.iata}
-                      </div>
-                      <div className="sg-route-point-name">
-                        {selectedAir.route.origin.location.name}
-                      </div>
-                    </div>
-                    <div className="sg-route-arrow">→</div>
-                    <div className="sg-route-point sg-route-point--end">
-                      <div className="sg-route-point-label">Destino</div>
-                      <div className="sg-route-point-iata">
-                        {selectedAir.route.destination.location.iata}
-                      </div>
-                      <div className="sg-route-point-name">
-                        {selectedAir.route.destination.location.name}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="sg-detail-progress">
-                    <div
-                      className={`sg-detail-progress-fill ${selectedAir.route.transit_percentage === 100 ? "sg-detail-progress-fill--done" : ""}`}
-                      style={{
-                        width: `${selectedAir.route.transit_percentage}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="sg-detail-grid" style={{ marginBottom: 0 }}>
-                    <div className="sg-detail-item">
-                      <label>Progreso</label>
-                      <span>{selectedAir.route.transit_percentage}%</span>
-                    </div>
-                    <div className="sg-detail-item">
-                      <label>Tiempo de tránsito</label>
-                      <span>{selectedAir.route.transit_time}h</span>
-                    </div>
-                    <div className="sg-detail-item">
-                      <label>Escalas</label>
-                      <span>{selectedAir.route.ts_count}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {selectedAir.route && (
-                <div className="sg-detail-section">
-                  <div className="sg-detail-title">Línea de tiempo</div>
-                  <div className="sg-timeline">
-                    {selectedAir.route.origin.date_of_dep && (
-                      <div className="sg-timeline-item sg-timeline-item--done">
-                        <div className="sg-timeline-label">
-                          Salida — {selectedAir.route.origin.location.iata}
-                        </div>
-                        <div className="sg-timeline-date">
-                          {formatDateTime(selectedAir.route.origin.date_of_dep)}
-                        </div>
-                      </div>
-                    )}
-                    {selectedAir.route.transit_percentage > 0 &&
-                      selectedAir.route.transit_percentage < 100 && (
-                        <div className="sg-timeline-item sg-timeline-item--active">
-                          <div className="sg-timeline-label">
-                            En tránsito — {selectedAir.route.transit_percentage}
-                            %
-                          </div>
-                          <div className="sg-timeline-date">
-                            Actualizado:{" "}
-                            {formatDateTime(selectedAir.updated_at)}
-                          </div>
-                        </div>
-                      )}
-                    {selectedAir.route.destination.date_of_rcf && (
-                      <div
-                        className={`sg-timeline-item ${selectedAir.route.transit_percentage === 100 ? "sg-timeline-item--done" : ""}`}
-                      >
-                        <div className="sg-timeline-label">
-                          {selectedAir.route.transit_percentage === 100
-                            ? "Llegada"
-                            : "ETA"}{" "}
-                          — {selectedAir.route.destination.location.iata}
-                        </div>
-                        <div className="sg-timeline-date">
-                          {formatDateTime(
-                            selectedAir.route.destination.date_of_rcf,
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {selectedAir.tags.length > 0 && (
-                <div className="sg-detail-section">
-                  <div className="sg-detail-title">Etiquetas</div>
-                  <div className="sg-tags">
-                    {selectedAir.tags.map((t) => (
-                      <span key={t.id} className="sg-tag">
-                        {t.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="sg-detail-section">
-                <div className="sg-detail-title">Fechas</div>
-                <div className="sg-detail-grid">
-                  <div className="sg-detail-item">
-                    <label>Actualizado</label>
-                    <span>{formatDateTime(selectedAir.updated_at)}</span>
-                  </div>
-                  <div className="sg-detail-item">
-                    <label>Verificado</label>
-                    <span>{formatDateTime(selectedAir.checked_at)}</span>
-                  </div>
-                  {selectedAir.discarded_at && (
-                    <div className="sg-detail-item">
-                      <label>Descartado</label>
-                      <span>{formatDateTime(selectedAir.discarded_at)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="sg-modal-footer">
-              <button className="sg-btn-close" onClick={closeModal}>
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+        <AirShipmentDetail shipment={selectedAir} onClose={closeModal} />
       )}
 
       {/* ═══ Ocean Detail Modal ═══ */}
@@ -1060,7 +705,7 @@ function ShipsGoTracking() {
                     <label>Estado</label>
                     <span>
                       <span className={getStatusClass(selectedOcean.status)}>
-                        {oceanStatusLabels[selectedOcean.status] ||
+                        {OCEAN_STATUS_LABELS[selectedOcean.status] ||
                           selectedOcean.status}
                       </span>
                     </span>
