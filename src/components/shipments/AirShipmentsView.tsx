@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import "./AirShipmentsView.css";
@@ -22,6 +22,12 @@ interface TabDef {
   icon?: React.ReactNode;
   content: React.ReactNode;
   hidden?: boolean;
+}
+
+interface AirShipmentDetailsResponse {
+  parentShipment?: {
+    number?: string | null;
+  };
 }
 
 function DetailTabs({ tabs }: { tabs: TabDef[] }) {
@@ -84,6 +90,12 @@ function AirShipmentsView() {
   const [trackEmail, setTrackEmail] = useState("");
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
+
+  // parentShipment.number by shipment.id (from air-shipments/details/{id})
+  const [parentShipmentNumbers, setParentShipmentNumbers] = useState<
+    Record<string | number, string>
+  >({});
+  const parentShipmentLoadingIds = useRef<Set<string | number>>(new Set());
 
   // Embed
   const [embedQuery, setEmbedQuery] = useState<string | null>(null);
@@ -341,6 +353,50 @@ function AirShipmentsView() {
     fetchAirShipments(next, true);
   };
 
+  const fetchParentShipmentNumber = async (
+    shipmentId: string | number | undefined,
+  ) => {
+    if (shipmentId === undefined || shipmentId === null || !accessToken) return;
+    if (parentShipmentNumbers[shipmentId]) return;
+    if (parentShipmentLoadingIds.current.has(shipmentId)) return;
+
+    parentShipmentLoadingIds.current.add(shipmentId);
+
+    try {
+      const response = await fetch(
+        `https://api.linbis.com/air-shipments/details/${shipmentId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Error al obtener parentShipment.number (${response.status})`,
+        );
+      }
+
+      const details: AirShipmentDetailsResponse = await response.json();
+      const parentNumber = details.parentShipment?.number?.trim();
+
+      setParentShipmentNumbers((prev) => ({
+        ...prev,
+        [shipmentId]:
+          parentNumber && parentNumber.length > 0 ? parentNumber : "-",
+      }));
+    } catch (err) {
+      console.error("No se pudo obtener parentShipment.number:", err);
+      setParentShipmentNumbers((prev) => ({ ...prev, [shipmentId]: "-" }));
+    } finally {
+      parentShipmentLoadingIds.current.delete(shipmentId);
+    }
+  };
+
   /*  Accordion  */
   const toggleAccordion = (shipmentId: string | number) => {
     if (expandedShipmentId === shipmentId) {
@@ -353,8 +409,14 @@ function AirShipmentsView() {
         return id === shipmentId;
       });
       setEmbedQuery(s?.number || null);
+      fetchParentShipmentNumber(s?.id);
     }
   };
+
+  useEffect(() => {
+    setParentShipmentNumbers({});
+    parentShipmentLoadingIds.current.clear();
+  }, [activeUsername]);
 
   /*  Cache  */
   useEffect(() => {
@@ -513,7 +575,26 @@ function AirShipmentsView() {
   };
 
   /*  Track Modal  */
+  const getTrackAwbNumber = (shipment: AirShipment | null) => {
+    if (!shipment) return "";
+
+    const shipmentId = shipment.id;
+    if (shipmentId !== undefined && shipmentId !== null) {
+      const parentNumber = parentShipmentNumbers[shipmentId];
+      if (
+        parentNumber &&
+        parentNumber !== "-" &&
+        parentNumber !== "Cargando..."
+      ) {
+        return parentNumber;
+      }
+    }
+
+    return shipment.number || "";
+  };
+
   const openTrackModal = (shipment: AirShipment) => {
+    fetchParentShipmentNumber(shipment.id);
     setTrackShipment(shipment);
     setTrackEmail("");
     setTrackError(null);
@@ -538,8 +619,13 @@ function AirShipmentsView() {
     setTrackError(null);
 
     try {
-      const cleanAwb =
-        trackShipment.number?.toString().replace(/[\s-]/g, "") || "";
+      const awbNumber = getTrackAwbNumber(trackShipment).trim();
+      if (!awbNumber) {
+        setTrackError("No se pudo obtener el AWB para este envío.");
+        return;
+      }
+
+      const cleanAwb = awbNumber.toString().replace(/[\s-]/g, "");
       const API_BASE_URL =
         import.meta.env.MODE === "development"
           ? "http://localhost:4000"
@@ -1169,6 +1255,17 @@ function AirShipmentsView() {
                                                   : null
                                               }
                                             />
+                                            <InfoField
+                                              label="ID"
+                                              value={
+                                                shipment.id === undefined ||
+                                                shipment.id === null
+                                                  ? "-"
+                                                  : (parentShipmentNumbers[
+                                                      shipment.id
+                                                    ] ?? "Cargando...")
+                                              }
+                                            />
                                           </div>
                                         </div>
                                       </div>
@@ -1574,7 +1671,7 @@ function AirShipmentsView() {
               <input
                 className="asv-input"
                 type="text"
-                value={trackShipment.number || ""}
+                value={getTrackAwbNumber(trackShipment)}
                 disabled
               />
             </div>
