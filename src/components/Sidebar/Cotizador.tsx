@@ -113,14 +113,6 @@ const Cotizador: React.FC = () => {
     );
   }
 
-  // ── Quote Form View ──
-  const activeLabel =
-    tipoCotizacion === "AEREO"
-      ? t("home.cotizador.aereo.title")
-      : tipoCotizacion === "FCL"
-        ? t("home.cotizador.fcl.title")
-        : t("home.cotizador.lcl.title");
-
   return (
     <div className="cotizador-page cotizador-page--form">
       <div className="cotizador-container cotizador-container--form">

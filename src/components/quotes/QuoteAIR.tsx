@@ -39,6 +39,8 @@ import {
   type OversizeReason,
 } from "./Handlers/Air/OversizeNotifyExecutive";
 import "./QuoteAIR.css";
+import CotizadorAddressMap from "../Map/CotizadorAddressMap";
+import { getAirportByOrigin } from "../../config/airportCoordinates";
 
 // Props para pre-selección desde ItineraryFinder
 
@@ -2670,23 +2672,27 @@ function QuoteAPITester({
                   <i className="bi bi-geo-alt me-1"></i>
                   {t("QuoteAIR.pickup")}
                 </label>
-                <textarea
-                  className="qa-input"
+                <CotizadorAddressMap
                   value={pickupFromAddress}
-                  onChange={(e) => setPickupFromAddress(e.target.value)}
+                  onChange={setPickupFromAddress}
                   placeholder="Ingrese dirección de recogida"
                   rows={2}
+                  airportCoords={
+                    originSeleccionado
+                      ? getAirportByOrigin(originSeleccionado.value)
+                      : null
+                  }
                 />
               </div>
+
               <div>
                 <label className="qa-label">
                   <i className="bi bi-geo-alt me-1"></i>
                   {t("QuoteAIR.delivery")}
                 </label>
-                <textarea
-                  className="qa-input"
+                <CotizadorAddressMap
                   value={deliveryToAddress}
-                  onChange={(e) => setDeliveryToAddress(e.target.value)}
+                  onChange={setDeliveryToAddress}
                   placeholder="Ingrese dirección de entrega"
                   rows={2}
                 />

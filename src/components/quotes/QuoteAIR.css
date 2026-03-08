@@ -141,6 +141,133 @@
   box-shadow: 0 0 0 2px rgba(255, 98, 0, 0.1); /* Primary color shadow */
 }
 
+/* Pickup address map overlay */
+.qa-address-map {
+  position: relative;
+}
+
+.qa-address-map__overlay {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(720px, 92vw);
+  background: #ffffff;
+  border: 1px solid var(--qa-border-color);
+  border-radius: 10px;
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.18);
+  padding: 10px;
+  z-index: 2500;
+}
+
+.qa-address-map__toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--qa-text-secondary);
+  font-size: 12px;
+}
+
+.qa-address-map__close {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.qa-address-map__suggestions {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.qa-address-map__suggestions li + li {
+  margin-top: 4px;
+}
+
+.qa-address-map__suggestion-btn {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #1f2937;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.qa-address-map__suggestion-btn:hover {
+  background: #f3f4f6;
+}
+
+.qa-address-map__hint {
+  color: #4b5563;
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+
+.qa-address-map__error {
+  margin: 0 0 8px;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.qa-address-map__canvas {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  height: 280px;
+  overflow: hidden;
+}
+
+.qa-address-map__coords {
+  margin: 0;
+  font-size: 12px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.qa-address-map__footer {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qa-address-map__route-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #1e40af;
+  line-height: 1.4;
+}
+
+.qa-address-map__route-info i {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .qa-address-map__overlay {
+    width: 92vw;
+    max-width: 92vw;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
 /* Custom Checkbox/Switch */
 .qa-switch-container {
   display: flex;
