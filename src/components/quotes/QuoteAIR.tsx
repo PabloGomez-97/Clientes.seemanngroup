@@ -74,7 +74,6 @@ function QuoteAPITester({
   const [description, setDescription] = useState("Cargamento Aéreo");
   const [incoterm, setIncoterm] = useState<"EXW" | "FCA" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
-  const [deliveryToAddress, setDeliveryToAddress] = useState("");
   const [manualVolume, setManualVolume] = useState(0.48);
   const [manualWeight, setManualWeight] = useState(100);
   const [selectedPackageType, setSelectedPackageType] = useState(97);
@@ -134,6 +133,11 @@ function QuoteAPITester({
   const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaAerea | null>(
     null,
   );
+
+  // Delivery is derived from the selected Destination and is not editable by the user
+  const deliveryToAddressDerived = destinationSeleccionado
+    ? destinationSeleccionado.label
+    : "";
 
   const [opcionesOrigin, setOpcionesOrigin] = useState<SelectOption[]>([]);
   const [opcionesDestination, setOpcionesDestination] = useState<
@@ -893,9 +897,12 @@ function QuoteAPITester({
       }
     }
 
-    if (incoterm === "EXW" && (!pickupFromAddress || !deliveryToAddress)) {
+    if (
+      incoterm === "EXW" &&
+      (!pickupFromAddress || !destinationSeleccionado)
+    ) {
       setError(
-        "Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW",
+        "Debes completar la dirección de Pickup y seleccionar Destination para el Incoterm EXW",
       );
       return;
     }
@@ -1203,7 +1210,7 @@ function QuoteAPITester({
               incoterm === "EXW" ? pickupFromAddress : undefined
             }
             deliveryToAddress={
-              incoterm === "EXW" ? deliveryToAddress : undefined
+              incoterm === "EXW" ? deliveryToAddressDerived : undefined
             }
             salesRep={ejecutivo?.nombre || "Ignacio Maldonado"}
             pieces={piecesData.length}
@@ -1688,7 +1695,7 @@ function QuoteAPITester({
         },
         ...(incoterm === "EXW" && {
           pickupFromAddress: pickupFromAddress,
-          deliveryToAddress: deliveryToAddress,
+          deliveryToAddress: deliveryToAddressDerived,
         }),
         portOfReceipt: {
           name: rutaSeleccionada.origin,
@@ -2013,7 +2020,7 @@ function QuoteAPITester({
         },
         ...(incoterm === "EXW" && {
           pickupFromAddress: pickupFromAddress,
-          deliveryToAddress: deliveryToAddress,
+          deliveryToAddress: deliveryToAddressDerived,
         }),
         portOfReceipt: {
           name: rutaSeleccionada.origin,
@@ -2690,10 +2697,11 @@ function QuoteAPITester({
                   <i className="bi bi-geo-alt me-1"></i>
                   {t("QuoteAIR.delivery")}
                 </label>
-                <CotizadorAddressMap
-                  value={deliveryToAddress}
-                  onChange={setDeliveryToAddress}
-                  placeholder="Ingrese dirección de entrega"
+                <textarea
+                  className="qa-input"
+                  value={deliveryToAddressDerived}
+                  readOnly
+                  disabled
                   rows={2}
                 />
               </div>
