@@ -39,6 +39,21 @@ const mapContainerStyle: React.CSSProperties = {
 
 const libraries: "places"[] = ["places"];
 
+function formatDistanceToKm(
+  distance: google.maps.Distance | null | undefined,
+): string | null {
+  if (!distance) return null;
+
+  // Google devuelve `value` en metros; usamos ese valor para evitar millas.
+  if (typeof distance.value === "number") {
+    const km = distance.value / 1000;
+    return `${km.toFixed(1)} km`;
+  }
+
+  // Fallback por si el valor no viene disponible.
+  return distance.text ?? null;
+}
+
 interface CotizadorAddressMapProps {
   value: string;
   onChange: (value: string) => void;
@@ -195,7 +210,7 @@ const CotizadorAddressMap = ({
           setDirections(result);
           const leg = result.routes[0]?.legs[0];
           if (leg) {
-            setRouteDistance(leg.distance?.text ?? null);
+            setRouteDistance(formatDistanceToKm(leg.distance));
             setRouteDuration(leg.duration?.text ?? null);
           }
         } else {

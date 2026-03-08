@@ -1218,8 +1218,15 @@ function AirShipmentsView() {
                                               )}
                                             </div>
                                             <InfoField
-                                              label="Remitente (Shipper)"
-                                              value={shipment.shipper?.name}
+                                              label="AWB / Número de Seguimiento"
+                                              value={
+                                                shipment.id === undefined ||
+                                                shipment.id === null
+                                                  ? "-"
+                                                  : (parentShipmentNumbers[
+                                                      shipment.id
+                                                    ] ?? "Cargando...")
+                                              }
                                               fullWidth
                                             />
                                             <InfoField
@@ -1256,15 +1263,8 @@ function AirShipmentsView() {
                                               }
                                             />
                                             <InfoField
-                                              label="ID"
-                                              value={
-                                                shipment.id === undefined ||
-                                                shipment.id === null
-                                                  ? "-"
-                                                  : (parentShipmentNumbers[
-                                                      shipment.id
-                                                    ] ?? "Cargando...")
-                                              }
+                                              label="Remitente (Shipper)"
+                                              value={shipment.shipper?.name}
                                             />
                                           </div>
                                         </div>

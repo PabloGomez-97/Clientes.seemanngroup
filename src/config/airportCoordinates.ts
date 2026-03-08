@@ -14,7 +14,7 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     lat: 29.9902,
     lng: -95.3368,
     name: "George Bush Intercontinental Airport",
-    iata: "HOUSTON",
+    iata: "IAH",
   },
   madrid: {
     lat: 40.4983,
@@ -22,31 +22,30 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     name: "Aeropuerto Adolfo Suárez Madrid-Barajas",
     iata: "MAD",
   },
-  shanghái: {
+  shanghai: {
     lat: 31.1443,
     lng: 121.8083,
     name: "Shanghai Pudong International Airport",
-    iata: "SHANGHÁI",
+    iata: "PVG",
   },
-  sudáfrica: {
-    lat: -26.1392,
-    lng: 28.246,
+  sudafrica: {
+    lat: -26.1311,
+    lng: 28.2316,
     name: "O.R. Tambo International Airport",
-    iata: "SUDÁFRICA (JOHANNESBURGO)",
-  },
-  johannesburg: {
-    lat: -26.1392,
-    lng: 28.246,
-    name: "O.R. Tambo International Airport",
-    iata: "SUDÁFRICA (JOHANNESBURGO)",
-  },
-  "sudafrica (johannesburgo)": {
-    lat: -26.1392,
-    lng: 28.246,
-    name: "O.R. Tambo International Airport",
-    iata: "SUDÁFRICA (JOHANNESBURGO)",
+    iata: "JNB",
   },
 };
+
+function normalizeText(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 /**
  * Busca las coordenadas del aeropuerto por el nombre normalizado del origen.
@@ -57,7 +56,17 @@ export function getAirportByOrigin(
 ): AirportCoords | null {
   if (!originNormalized) return null;
 
-  const key = originNormalized.toLowerCase().trim();
+  const key = normalizeText(originNormalized);
+  const aliases: Record<string, string> = {
+    "sudafrica johannesburgo": "sudafrica",
+    "south africa johannesburg": "sudafrica",
+    johannesburgo: "johannesburgo",
+    johannesburg: "johannesburg",
+  };
+
+  if (aliases[key] && airportCoordinates[aliases[key]]) {
+    return airportCoordinates[aliases[key]];
+  }
 
   // Coincidencia exacta
   if (airportCoordinates[key]) {
@@ -66,7 +75,11 @@ export function getAirportByOrigin(
 
   // Coincidencia parcial: si el origin contiene el nombre del aeropuerto o viceversa
   for (const [airportKey, coords] of Object.entries(airportCoordinates)) {
-    if (key.includes(airportKey) || airportKey.includes(key)) {
+    const normalizedAirportKey = normalizeText(airportKey);
+    if (
+      key.includes(normalizedAirportKey) ||
+      normalizedAirportKey.includes(key)
+    ) {
       return coords;
     }
   }
