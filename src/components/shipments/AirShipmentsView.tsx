@@ -1227,22 +1227,9 @@ function AirShipmentsView() {
                                               <div className="asv-track-field__label">
                                                 ¿Quieres trackear tu envío?
                                               </div>
-                                              {arrived ? (
-                                                <>
-                                                  <span className="asv-track-field__unavailable">
-                                                    No disponible
-                                                  </span>
-                                                  <p className="asv-track-field__unavailable-text">
-                                                    Este cargamento ha llegado
-                                                    el{" "}
-                                                    {formatDate(
-                                                      shipment.arrival,
-                                                    )}
-                                                  </p>
-                                                </>
-                                              ) : isShipmentAlreadyTracked(
-                                                  shipment,
-                                                ) ? (
+                                              {isShipmentAlreadyTracked(
+                                                shipment,
+                                              ) ? (
                                                 <button
                                                   className="asv-btn asv-btn--ghost asv-btn--sm"
                                                   onClick={(e) => {
@@ -1254,21 +1241,34 @@ function AirShipmentsView() {
                                                   Ver seguimiento
                                                 </button>
                                               ) : (
-                                                <button
-                                                  className="asv-btn asv-btn--secondary asv-btn--sm"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openTrackModal(shipment);
-                                                  }}
-                                                >
-                                                  Trackea tu envío
-                                                </button>
+                                                <>
+                                                  <button
+                                                    className="asv-btn asv-btn--secondary asv-btn--sm"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      openTrackModal(shipment);
+                                                    }}
+                                                  >
+                                                    Trackea tu envío
+                                                  </button>
+                                                </>
                                               )}
                                             </div>
                                             <InfoField
-                                              label="Remitente (Shipper)"
-                                              value={shipment.shipper?.name}
+                                              label="Número de Seguimiento"
+                                              value={
+                                                shipment.id === undefined ||
+                                                shipment.id === null
+                                                  ? "-"
+                                                  : (parentShipmentNumbers[
+                                                      shipment.id
+                                                    ] ?? "Cargando...")
+                                              }
                                               fullWidth
+                                            />
+                                            <InfoField
+                                              label="ID Interno"
+                                              value={shipment.id}
                                             />
                                             <InfoField
                                               label="Agente Forwarding"
@@ -1301,17 +1301,6 @@ function AirShipmentsView() {
                                                 shipment.arrival
                                                   ? formatDate(shipment.arrival)
                                                   : null
-                                              }
-                                            />
-                                            <InfoField
-                                              label="ID"
-                                              value={
-                                                shipment.id === undefined ||
-                                                shipment.id === null
-                                                  ? "-"
-                                                  : (parentShipmentNumbers[
-                                                      shipment.id
-                                                    ] ?? "Cargando...")
                                               }
                                             />
                                           </div>

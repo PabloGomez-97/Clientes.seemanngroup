@@ -1332,22 +1332,9 @@ function OceanShipmentsView() {
                                               <div className="asv-track-field__label">
                                                 ¿Quieres trackear tu envío?
                                               </div>
-                                              {arrived ? (
-                                                <>
-                                                  <span className="asv-track-field__unavailable">
-                                                    No disponible
-                                                  </span>
-                                                  <p className="asv-track-field__unavailable-text">
-                                                    Este cargamento ha llegado
-                                                    el{" "}
-                                                    {formatDate(
-                                                      shipment.arrival,
-                                                    )}
-                                                  </p>
-                                                </>
-                                              ) : isOceanShipmentAlreadyTracked(
-                                                  shipment,
-                                                ) ? (
+                                              {isOceanShipmentAlreadyTracked(
+                                                shipment,
+                                              ) ? (
                                                 <button
                                                   className="asv-btn asv-btn--ghost asv-btn--sm"
                                                   onClick={(e) => {
@@ -1359,15 +1346,17 @@ function OceanShipmentsView() {
                                                   Ver seguimiento
                                                 </button>
                                               ) : (
-                                                <button
-                                                  className="asv-btn asv-btn--secondary asv-btn--sm"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openTrackModal(shipment);
-                                                  }}
-                                                >
-                                                  Trackea tu envío
-                                                </button>
+                                                <>
+                                                  <button
+                                                    className="asv-btn asv-btn--secondary asv-btn--sm"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      openTrackModal(shipment);
+                                                    }}
+                                                  >
+                                                    Trackea tu envío
+                                                  </button>
+                                                </>
                                               )}
                                             </div>
                                             <InfoField
