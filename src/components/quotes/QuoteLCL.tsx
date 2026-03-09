@@ -794,7 +794,7 @@ function QuoteLCL({
     if (!rutaSeleccionada) return null;
 
     const expense = rutaSeleccionada.ofWM * chargeableVolume;
-    const income = expense * 1.15;
+    const income = expense * 1.35;
 
     return {
       expense,
@@ -1042,7 +1042,7 @@ function QuoteLCL({
           description: "OCEAN FREIGHT",
           quantity: chargeableVolume,
           unit: "W/M",
-          rate: rutaSeleccionada.ofWM * 1.15,
+          rate: rutaSeleccionada.ofWM * 1.35,
           amount: tarifaOceanFreight.income,
         });
       }
@@ -1458,7 +1458,7 @@ function QuoteLCL({
       income: {
         quantity: chargeableVolume,
         unit: "OCEAN FREIGHT",
-        rate: (rutaSeleccionada?.ofWM ?? 0) * 1.15,
+        rate: (rutaSeleccionada?.ofWM ?? 0) * 1.35,
         amount: tarifaOceanFreight.income,
         showamount: tarifaOceanFreight.income,
         payment: "Prepaid",
@@ -2132,7 +2132,7 @@ function QuoteLCL({
                                     {ruta.ofWM > 0 ? (
                                       <div className="fw-bold">
                                         {ruta.currency}{" "}
-                                        {(ruta.ofWM * 1.15).toFixed(2)}
+                                        {(ruta.ofWM * 1.35).toFixed(2)}
                                       </div>
                                     ) : (
                                       <span className="text-muted">—</span>
@@ -2221,7 +2221,7 @@ function QuoteLCL({
                   }}
                 >
                   {rutaSeleccionada.currency}{" "}
-                  {(rutaSeleccionada.ofWM * 1.15).toFixed(2)}/W/M
+                  {(rutaSeleccionada.ofWM * 1.35).toFixed(2)}/W/M
                 </span>
               </div>
             </div>

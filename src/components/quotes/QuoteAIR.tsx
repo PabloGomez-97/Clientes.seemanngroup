@@ -798,14 +798,12 @@ function QuoteAPITester({
 
     let ratePerKg = 0;
 
-    if (chargeableWeight >= 1000) {
-      ratePerKg = 0.6;
-    } else if (chargeableWeight >= 500) {
-      ratePerKg = 0.65;
-    } else if (chargeableWeight >= 250) {
-      ratePerKg = 0.75;
-    } else {
+    if (chargeableWeight >= 500) {
       ratePerKg = 0.8;
+    } else if (chargeableWeight >= 300) {
+      ratePerKg = 1.0;
+    } else {
+      ratePerKg = 1.2;
     }
 
     const calculatedRate = chargeableWeight * ratePerKg;
