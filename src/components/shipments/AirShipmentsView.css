@@ -284,6 +284,56 @@
   margin-bottom: 16px;
 }
 
+/* Route card (inside accordion) */
+.asv-route-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #fff;
+  margin-bottom: 16px;
+}
+.asv-route-card__point {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+}
+.asv-route-card__point--end {
+  text-align: right;
+}
+.asv-route-card__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.asv-route-card__value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--secondary-color);
+}
+.asv-route-card__date {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+.asv-route-card__arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+.asv-route-card__transit {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+  text-align: center;
+}
+
 /* Cells */
 .asv-td {
   padding: 11px 16px;
@@ -673,6 +723,16 @@
 
   .asv-accordion-content {
     padding: 16px;
+  }
+
+  .asv-route-card {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+  .asv-route-card__point,
+  .asv-route-card__point--end {
+    text-align: center;
   }
 
   .asv-tabs__btn {

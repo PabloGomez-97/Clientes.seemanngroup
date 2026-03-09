@@ -6,7 +6,6 @@ import { DocumentosSectionAir } from "../Sidebar/Documents/DocumentosSectionAir"
 import {
   type OutletContext,
   type AirShipment,
-  ShipmentTimeline,
   InfoField,
   CommoditiesSection,
   SubShipmentsList,
@@ -27,6 +26,14 @@ interface TabDef {
 interface AirShipmentDetailsResponse {
   parentShipment?: {
     number?: string | null;
+  };
+  airportOfDeparture?: {
+    code?: string;
+    name?: string;
+  };
+  airportOfArrival?: {
+    code?: string;
+    name?: string;
   };
 }
 
@@ -96,6 +103,11 @@ function AirShipmentsView() {
     Record<string | number, string>
   >({});
   const parentShipmentLoadingIds = useRef<Set<string | number>>(new Set());
+
+  // Airport names by shipment id (from air-shipments/details/{id})
+  const [airportNames, setAirportNames] = useState<
+    Record<string | number, { departure: string; arrival: string }>
+  >({});
 
   // Already-tracked AWBs (from ShipsGo)
   const [trackedAwbs, setTrackedAwbs] = useState<Set<string>>(new Set());
@@ -392,6 +404,19 @@ function AirShipmentsView() {
         [shipmentId]:
           parentNumber && parentNumber.length > 0 ? parentNumber : "-",
       }));
+
+      const depName = details.airportOfDeparture?.name || "";
+      const depCode = details.airportOfDeparture?.code || "";
+      const arrName = details.airportOfArrival?.name || "";
+      const arrCode = details.airportOfArrival?.code || "";
+
+      setAirportNames((prev) => ({
+        ...prev,
+        [shipmentId]: {
+          departure: depName ? `${depName} (${depCode})` : "-",
+          arrival: arrName ? `${arrName} (${arrCode})` : "-",
+        },
+      }));
     } catch (err) {
       console.error("No se pudo obtener parentShipment.number:", err);
       setParentShipmentNumbers((prev) => ({ ...prev, [shipmentId]: "-" }));
@@ -418,6 +443,7 @@ function AirShipmentsView() {
 
   useEffect(() => {
     setParentShipmentNumbers({});
+    setAirportNames({});
     parentShipmentLoadingIds.current.clear();
     setTrackedAwbs(new Set());
   }, [activeUsername]);
@@ -1166,9 +1192,62 @@ function AirShipmentsView() {
                         <tr className="asv-accordion-row">
                           <td colSpan={6} className="asv-accordion-cell">
                             <div className="asv-accordion-content">
-                              {/* ShipmentTimeline  preserved exactly */}
-                              <div className="asv-timeline-section">
-                                <ShipmentTimeline shipment={shipment} />
+                              {/* Route summary card */}
+                              <div className="asv-route-card">
+                                <div className="asv-route-card__point">
+                                  <span className="asv-route-card__label">
+                                    Aeropuerto de Carga
+                                  </span>
+                                  <span className="asv-route-card__value">
+                                    {shipment.id != null &&
+                                    airportNames[shipment.id]
+                                      ? airportNames[shipment.id].departure
+                                      : "Cargando..."}
+                                  </span>
+                                  {shipment.departure?.displayDate && (
+                                    <span className="asv-route-card__date">
+                                      {formatDateInline(
+                                        shipment.departure.displayDate,
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="asv-route-card__arrow">
+                                  <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="var(--primary-color)"
+                                    strokeWidth="2"
+                                  >
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                    <polyline points="12 5 19 12 12 19" />
+                                  </svg>
+                                  {shipment.carrier?.name && (
+                                    <span className="asv-route-card__transit">
+                                      {shipment.carrier.name}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="asv-route-card__point asv-route-card__point--end">
+                                  <span className="asv-route-card__label">
+                                    Aeropuerto de Descarga
+                                  </span>
+                                  <span className="asv-route-card__value">
+                                    {shipment.id != null &&
+                                    airportNames[shipment.id]
+                                      ? airportNames[shipment.id].arrival
+                                      : "Cargando..."}
+                                  </span>
+                                  {shipment.arrival?.displayDate && (
+                                    <span className="asv-route-card__date">
+                                      {formatDateInline(
+                                        shipment.arrival.displayDate,
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
                               {/* Tabs */}
