@@ -29,6 +29,7 @@ interface TabDef {
 
 interface OceanDetailsCommodityNode {
   trackingNumber?: string | null;
+  description?: string | null;
   repackItems?: OceanDetailsCommodityNode[];
   containedItems?: OceanDetailsCommodityNode[];
 }
@@ -245,6 +246,19 @@ function OceanShipmentsView() {
     return null;
   };
 
+  const findDescriptionFallback = (
+    nodes: OceanDetailsCommodityNode[] | undefined,
+  ): string | null => {
+    if (!nodes || !Array.isArray(nodes)) return null;
+    for (const node of nodes) {
+      const desc = node.description?.trim();
+      if (desc && desc.length >= 11) {
+        return desc.substring(0, 11);
+      }
+    }
+    return null;
+  };
+
   const fetchOceanTrackingNumber = async (
     shipmentId: string | number | undefined,
   ) => {
@@ -272,9 +286,13 @@ function OceanShipmentsView() {
       }
 
       const details: OceanShipmentDetailsResponse = await response.json();
-      const trackingNumber =
+      let trackingNumber =
         findTrackingNumberRecursive(details.commodities) ||
         findTrackingNumberRecursive(details.repackItems);
+
+      if (!trackingNumber) {
+        trackingNumber = findDescriptionFallback(details.commodities);
+      }
 
       setOceanTrackingNumbers((prev) => ({
         ...prev,
