@@ -119,7 +119,7 @@ function CreateOceanShipmentForm() {
     try {
       const body: Record<string, unknown> = {
         reference: activeUsername,
-        carrier: "OTHERS",
+        carrier: "SG_XXXX",
         followers,
         tags,
       };
@@ -167,7 +167,7 @@ function CreateOceanShipmentForm() {
         detalles: {
           type: identifierType,
           value: identifierValue,
-          carrier: "OTHERS",
+          carrier: "SG_XXXX",
           followers: followers.length,
           tags,
         },

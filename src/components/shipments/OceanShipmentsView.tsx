@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
-import { useOutletContext } from "react-router-dom";
+﻿import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import {
   type OceanShipment,
@@ -13,6 +13,10 @@ import { DocumentosSectionOcean } from "../Sidebar/Documents/DocumentosSectionOc
 import "./OceanShipmentsView.css";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
+const API_BASE_URL =
+  import.meta.env.MODE === "development"
+    ? "http://localhost:4000"
+    : "https://portalclientes.seemanngroup.com";
 
 /* -- DetailTabs (accordion inline tabs) --------------------- */
 interface TabDef {
@@ -21,6 +25,17 @@ interface TabDef {
   icon?: React.ReactNode;
   content: React.ReactNode;
   hidden?: boolean;
+}
+
+interface OceanDetailsCommodityNode {
+  trackingNumber?: string | null;
+  repackItems?: OceanDetailsCommodityNode[];
+  containedItems?: OceanDetailsCommodityNode[];
+}
+
+interface OceanShipmentDetailsResponse {
+  commodities?: OceanDetailsCommodityNode[];
+  repackItems?: OceanDetailsCommodityNode[];
 }
 
 function DetailTabs({ tabs }: { tabs: TabDef[] }) {
@@ -55,7 +70,8 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    =========================================================== */
 function OceanShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, activeUsername } = useAuth();
+  const { user, token, activeUsername } = useAuth();
+  const navigate = useNavigate();
   const filterConsignee = activeUsername || "";
 
   const [oceanShipments, setOceanShipments] = useState<OceanShipment[]>([]);
@@ -77,6 +93,21 @@ function OceanShipmentsView() {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [loadingQuote, setLoadingQuote] = useState(false);
+
+  // Track modal
+  const [showTrackModal, setShowTrackModal] = useState(false);
+  const [trackShipment, setTrackShipment] = useState<OceanShipment | null>(
+    null,
+  );
+  const [trackEmail, setTrackEmail] = useState("");
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackError, setTrackError] = useState<string | null>(null);
+
+  // trackingNumber by shipment.id (from ocean-shipments/details/{id})
+  const [oceanTrackingNumbers, setOceanTrackingNumbers] = useState<
+    Record<string | number, string>
+  >({});
+  const oceanTrackingLoadingIds = useRef<Set<string | number>>(new Set());
 
   // Embed
   const [embedQuery, setEmbedQuery] = useState<string | null>(null);
@@ -187,6 +218,69 @@ function OceanShipmentsView() {
       alert("Error al cargar la cotizacion");
     } finally {
       setLoadingQuote(false);
+    }
+  };
+
+  const findTrackingNumberRecursive = (
+    nodes: OceanDetailsCommodityNode[] | undefined,
+  ): string | null => {
+    if (!nodes || !Array.isArray(nodes)) return null;
+
+    for (const node of nodes) {
+      const current = node.trackingNumber?.trim();
+      if (current) return current;
+
+      const inRepack = findTrackingNumberRecursive(node.repackItems);
+      if (inRepack) return inRepack;
+
+      const inContained = findTrackingNumberRecursive(node.containedItems);
+      if (inContained) return inContained;
+    }
+
+    return null;
+  };
+
+  const fetchOceanTrackingNumber = async (
+    shipmentId: string | number | undefined,
+  ) => {
+    if (shipmentId === undefined || shipmentId === null || !accessToken) return;
+    if (oceanTrackingNumbers[shipmentId]) return;
+    if (oceanTrackingLoadingIds.current.has(shipmentId)) return;
+
+    oceanTrackingLoadingIds.current.add(shipmentId);
+
+    try {
+      const response = await fetch(
+        `https://api.linbis.com/ocean-shipments/details/${shipmentId}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error al obtener trackingNumber (${response.status})`);
+      }
+
+      const details: OceanShipmentDetailsResponse = await response.json();
+      const trackingNumber =
+        findTrackingNumberRecursive(details.commodities) ||
+        findTrackingNumberRecursive(details.repackItems);
+
+      setOceanTrackingNumbers((prev) => ({
+        ...prev,
+        [shipmentId]:
+          trackingNumber && trackingNumber.length > 0 ? trackingNumber : "-",
+      }));
+    } catch (err) {
+      console.error("No se pudo obtener trackingNumber ocean:", err);
+      setOceanTrackingNumbers((prev) => ({ ...prev, [shipmentId]: "-" }));
+    } finally {
+      oceanTrackingLoadingIds.current.delete(shipmentId);
     }
   };
 
@@ -304,6 +398,11 @@ function OceanShipmentsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
 
+  useEffect(() => {
+    setOceanTrackingNumbers({});
+    oceanTrackingLoadingIds.current.clear();
+  }, [activeUsername]);
+
   /* -- Accordion --------------------------------------------- */
   const toggleAccordion = (shipmentId: string | number) => {
     if (expandedShipmentId === shipmentId) {
@@ -316,6 +415,110 @@ function OceanShipmentsView() {
         return id === shipmentId;
       });
       setEmbedQuery(s?.number || null);
+      fetchOceanTrackingNumber(s?.id);
+    }
+  };
+
+  const getTrackoceanNumber = (shipment: OceanShipment | null) => {
+    if (!shipment) return "";
+
+    const shipmentId = shipment.id;
+    if (shipmentId !== undefined && shipmentId !== null) {
+      const tracked = oceanTrackingNumbers[shipmentId];
+      if (tracked && tracked !== "-" && tracked !== "Cargando...") {
+        return tracked;
+      }
+    }
+
+    return shipment.containerNumber || shipment.number || "";
+  };
+
+  const openTrackModal = (shipment: OceanShipment) => {
+    fetchOceanTrackingNumber(shipment.id);
+    setTrackShipment(shipment);
+    setTrackEmail("");
+    setTrackError(null);
+    setShowTrackModal(true);
+  };
+
+  const closeTrackModal = () => {
+    setShowTrackModal(false);
+    setTrackShipment(null);
+    setTrackEmail("");
+    setTrackError(null);
+  };
+
+  const handleTrackSubmit = async () => {
+    if (!trackShipment || !trackEmail.trim()) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trackEmail.trim())) {
+      setTrackError("Por favor ingresa un correo electrónico válido.");
+      return;
+    }
+
+    const oceanNumber = getTrackoceanNumber(trackShipment).trim();
+    if (!oceanNumber) {
+      setTrackError("No se pudo obtener el número de tracking.");
+      return;
+    }
+
+    setTrackLoading(true);
+    setTrackError(null);
+
+    try {
+      const isContainerNumber = /^[A-Z]{4}[0-9]{7}$/.test(
+        oceanNumber.toUpperCase(),
+      );
+
+      const payload: Record<string, unknown> = {
+        reference: activeUsername,
+        carrier: "SG_XXXX",
+        followers: [trackEmail.trim()],
+        tags: [],
+      };
+
+      if (isContainerNumber) {
+        payload.container_number = oceanNumber.toUpperCase();
+      } else {
+        payload.booking_number = oceanNumber;
+      }
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/shipsgo/ocean/shipments`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          setTrackError(
+            "Ya existe un trackeo con este contenedor/booking en tu cuenta.",
+          );
+        } else if (response.status === 402) {
+          setTrackError(
+            "No hay créditos disponibles. Contacta a tu ejecutivo de cuenta.",
+          );
+        } else {
+          setTrackError(data.error || "Error al crear el trackeo.");
+        }
+        return;
+      }
+
+      closeTrackModal();
+      navigate("/trackings");
+    } catch {
+      setTrackError(
+        "Error de conexión. Verifica tu internet e intenta nuevamente.",
+      );
+    } finally {
+      setTrackLoading(false);
     }
   };
 
@@ -1056,6 +1259,36 @@ function OceanShipmentsView() {
                                           </div>
                                         </div>
                                         <div className="asv-card">
+                                          <h4>Seguimiento del Envío</h4>
+                                          <div className="asv-info-grid">
+                                            <div className="asv-track-field">
+                                              <div className="asv-track-field__label">
+                                                ¿Quieres trackear tu envío?
+                                              </div>
+                                              <button
+                                                className="asv-btn asv-btn--secondary asv-btn--sm"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  openTrackModal(shipment);
+                                                }}
+                                              >
+                                                Trackea tu envío
+                                              </button>
+                                            </div>
+                                            <InfoField
+                                              label="Número de Seguimiento"
+                                              value={
+                                                shipment.id === undefined ||
+                                                shipment.id === null
+                                                  ? "-"
+                                                  : (oceanTrackingNumbers[
+                                                      shipment.id
+                                                    ] ?? "Cargando...")
+                                              }
+                                            />
+                                          </div>
+                                        </div>
+                                        <div className="asv-card">
                                           <h4>Logistica Maritima</h4>
                                           <div className="asv-info-grid">
                                             <InfoField
@@ -1114,10 +1347,6 @@ function OceanShipmentsView() {
                                             <InfoField
                                               label="Representante de Ventas"
                                               value={shipment.salesRep}
-                                            />
-                                            <InfoField
-                                              label="ID"
-                                              value={shipment.id}
                                             />
                                           </div>
                                         </div>
@@ -1468,6 +1697,67 @@ function OceanShipmentsView() {
             setSelectedQuote(null);
           }}
         />
+      )}
+
+      {/* Track Modal */}
+      {showTrackModal && trackShipment && (
+        <div className="osv-overlay" onClick={closeTrackModal}>
+          <div
+            className="osv-modal osv-modal--search"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="osv-modal__title">Trackea tu envío</h3>
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="osv-label">Tracking Number</label>
+              <input
+                className="osv-input"
+                type="text"
+                value={getTrackoceanNumber(trackShipment)}
+                disabled
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="osv-label">
+                Correo electrónico para seguimiento
+              </label>
+              <input
+                className="osv-input"
+                type="email"
+                value={trackEmail}
+                onChange={(e) => setTrackEmail(e.target.value)}
+                placeholder="Ingresa tu correo electrónico"
+              />
+            </div>
+
+            {trackError && <div className="osv-error">{trackError}</div>}
+
+            <p className="osv-modal__question">
+              ¿Deseas generar el nuevo rastreo de tu envío?
+            </p>
+
+            <div className="osv-modal__actions">
+              <button
+                className="osv-btn osv-btn--ghost"
+                onClick={closeTrackModal}
+              >
+                No
+              </button>
+              <button
+                className="osv-btn"
+                style={{
+                  color: "white",
+                  backgroundColor: "var(--primary-color)",
+                }}
+                onClick={handleTrackSubmit}
+                disabled={trackLoading}
+              >
+                {trackLoading ? "Creando..." : "Sí"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Empty - no search results */}
