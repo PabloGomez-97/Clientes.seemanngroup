@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../../auth/AuthContext";
 import type {
   OceanShipment,
   OceanShipmentDetail as OceanShipmentDetailType,
@@ -27,8 +28,15 @@ interface OceanShipmentDetailProps {
 }
 
 function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
+  const { token } = useAuth();
   const [detail, setDetail] = useState<OceanShipmentDetailType | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
+  const [newFollowerEmail, setNewFollowerEmail] = useState("");
+  const [followerError, setFollowerError] = useState<string | null>(null);
+  const [followerLoading, setFollowerLoading] = useState(false);
+  const [removingFollowerId, setRemovingFollowerId] = useState<number | null>(
+    null,
+  );
   const [activeSection, setActiveSection] = useState<
     "overview" | "containers" | "route"
   >("overview");
@@ -59,6 +67,126 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
 
   const s = detail || shipment;
   const containers: OceanContainer[] = detail?.containers || [];
+  const followers = detail?.followers || [];
+
+  const handleAddFollower = async () => {
+    const follower = newFollowerEmail.trim();
+
+    if (!token) {
+      setFollowerError("Tu sesión expiró. Vuelve a iniciar sesión.");
+      return;
+    }
+
+    if (!follower) {
+      setFollowerError("Ingresa un correo electrónico para agregar.");
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(follower)) {
+      setFollowerError("Ingresa un correo electrónico válido.");
+      return;
+    }
+
+    if (
+      followers.some(
+        (item) => item.email.toLowerCase() === follower.toLowerCase(),
+      )
+    ) {
+      setFollowerError("Ese correo ya está agregado a este tracking.");
+      return;
+    }
+
+    if (followers.length >= 10) {
+      setFollowerError("Máximo 10 correos por tracking.");
+      return;
+    }
+
+    setFollowerLoading(true);
+    setFollowerError(null);
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/shipsgo/ocean/shipments/${shipment.id}/followers`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ follower }),
+        },
+      );
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        if (res.status === 409) {
+          setFollowerError("Ese correo ya está agregado a este tracking.");
+        } else {
+          setFollowerError(data.error || "No se pudo agregar el correo.");
+        }
+        return;
+      }
+
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              followers: [...prev.followers, data.follower].filter(Boolean),
+            }
+          : prev,
+      );
+      setNewFollowerEmail("");
+    } catch {
+      setFollowerError("No se pudo agregar el correo.");
+    } finally {
+      setFollowerLoading(false);
+    }
+  };
+
+  const handleRemoveFollower = async (followerId: number) => {
+    if (!token) {
+      setFollowerError("Tu sesión expiró. Vuelve a iniciar sesión.");
+      return;
+    }
+
+    setRemovingFollowerId(followerId);
+    setFollowerError(null);
+
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/shipsgo/ocean/shipments/${shipment.id}/followers/${followerId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setFollowerError(data.error || "No se pudo eliminar el correo.");
+        return;
+      }
+
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              followers: prev.followers.filter(
+                (item) => item.id !== followerId,
+              ),
+            }
+          : prev,
+      );
+    } catch {
+      setFollowerError("No se pudo eliminar el correo.");
+    } finally {
+      setRemovingFollowerId(null);
+    }
+  };
 
   return (
     <div className="sg-modal-overlay" onClick={onClose}>
@@ -323,6 +451,57 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
                   </div>
                 </div>
               )}
+
+              <div className="sg-detail-section">
+                <div className="sg-detail-title">Correos de seguimiento</div>
+                {followers.length > 0 ? (
+                  <div className="sg-followers-list">
+                    {followers.map((follower) => (
+                      <div key={follower.id} className="sg-follower-item">
+                        <span className="sg-follower-email">
+                          {follower.email}
+                        </span>
+                        <button
+                          className="sg-follower-remove"
+                          onClick={() => handleRemoveFollower(follower.id)}
+                          disabled={removingFollowerId === follower.id}
+                        >
+                          {removingFollowerId === follower.id
+                            ? "Eliminando..."
+                            : "Eliminar"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="sg-followers-empty">
+                    No hay correos de seguimiento registrados.
+                  </div>
+                )}
+                <div className="sg-followers-form">
+                  <input
+                    className="sg-followers-input"
+                    type="email"
+                    value={newFollowerEmail}
+                    onChange={(e) => setNewFollowerEmail(e.target.value)}
+                    placeholder="Agregar nuevo correo"
+                    disabled={followerLoading || followers.length >= 10}
+                  />
+                  <button
+                    className="sg-followers-add"
+                    onClick={handleAddFollower}
+                    disabled={followerLoading || followers.length >= 10}
+                  >
+                    {followerLoading ? "Agregando..." : "+"}
+                  </button>
+                </div>
+                <div className="sg-followers-hint">
+                  Puedes mantener hasta 10 correos por tracking.
+                </div>
+                {followerError && (
+                  <div className="sg-followers-error">{followerError}</div>
+                )}
+              </div>
 
               {/* Dates */}
               <div className="sg-detail-section">

@@ -13,6 +13,8 @@ import { DocumentosSectionOcean } from "../Sidebar/Documents/DocumentosSectionOc
 import "./OceanShipmentsView.css";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_TRACK_FOLLOWERS = 10;
 const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
@@ -100,7 +102,7 @@ function OceanShipmentsView() {
   const [trackShipment, setTrackShipment] = useState<OceanShipment | null>(
     null,
   );
-  const [trackEmail, setTrackEmail] = useState("");
+  const [trackEmails, setTrackEmails] = useState<string[]>([""]);
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
@@ -498,7 +500,7 @@ function OceanShipmentsView() {
   const openTrackModal = (shipment: OceanShipment) => {
     fetchOceanTrackingNumber(shipment.id);
     setTrackShipment(shipment);
-    setTrackEmail("");
+    setTrackEmails([""]);
     setTrackError(null);
     setShowTrackModal(true);
   };
@@ -506,14 +508,73 @@ function OceanShipmentsView() {
   const closeTrackModal = () => {
     setShowTrackModal(false);
     setTrackShipment(null);
-    setTrackEmail("");
+    setTrackEmails([""]);
     setTrackError(null);
   };
 
+  const updateTrackEmail = (index: number, value: string) => {
+    setTrackEmails((prev) =>
+      prev.map((email, currentIndex) =>
+        currentIndex === index ? value : email,
+      ),
+    );
+  };
+
+  const addTrackEmailField = () => {
+    setTrackError(null);
+    setTrackEmails((prev) => {
+      if (prev.length >= MAX_TRACK_FOLLOWERS) return prev;
+      return [...prev, ""];
+    });
+  };
+
+  const removeTrackEmailField = (index: number) => {
+    setTrackError(null);
+    setTrackEmails((prev) => {
+      if (prev.length === 1) return [""];
+      return prev.filter((_, currentIndex) => currentIndex !== index);
+    });
+  };
+
   const handleTrackSubmit = async () => {
-    if (!trackShipment || !trackEmail.trim()) return;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trackEmail.trim())) {
-      setTrackError("Por favor ingresa un correo electrónico válido.");
+    if (!trackShipment) return;
+
+    const normalizedEmails = trackEmails
+      .map((email) => email.trim())
+      .filter(Boolean);
+
+    if (normalizedEmails.length === 0) {
+      setTrackError("Debes ingresar al menos un correo electrónico.");
+      return;
+    }
+
+    if (normalizedEmails.length > MAX_TRACK_FOLLOWERS) {
+      setTrackError("Máximo 10 correos electrónicos para seguimiento.");
+      return;
+    }
+
+    const invalidEmail = normalizedEmails.find(
+      (email) => !EMAIL_REGEX.test(email),
+    );
+    if (invalidEmail) {
+      setTrackError(`El correo ${invalidEmail} no es válido.`);
+      return;
+    }
+
+    const uniqueEmails = new Map<string, string>();
+    for (const email of normalizedEmails) {
+      const key = email.toLowerCase();
+      if (uniqueEmails.has(key)) {
+        setTrackError("No repitas correos electrónicos en el seguimiento.");
+        return;
+      }
+      uniqueEmails.set(key, email);
+    }
+
+    const followers = Array.from(uniqueEmails.values());
+
+    if (!token) {
+      setTrackError("Tu sesión expiró. Vuelve a iniciar sesión.");
       return;
     }
 
@@ -534,7 +595,7 @@ function OceanShipmentsView() {
       const payload: Record<string, unknown> = {
         reference: activeUsername,
         carrier: "SG_XXXX",
-        followers: [trackEmail.trim()],
+        followers,
         tags: [],
       };
 
@@ -1807,16 +1868,56 @@ function OceanShipmentsView() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label className="osv-label">
-                Correo electrónico para seguimiento
-              </label>
-              <input
-                className="osv-input"
-                type="email"
-                value={trackEmail}
-                onChange={(e) => setTrackEmail(e.target.value)}
-                placeholder="Ingresa tu correo electrónico"
-              />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                  gap: 12,
+                }}
+              >
+                <label className="osv-label" style={{ marginBottom: 0 }}>
+                  Correo electrónico para seguimiento
+                </label>
+                <button
+                  type="button"
+                  className="osv-btn osv-btn--ghost"
+                  onClick={addTrackEmailField}
+                  disabled={trackEmails.length >= MAX_TRACK_FOLLOWERS}
+                  style={{ height: 32, minWidth: 32, padding: 0 }}
+                >
+                  +
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {trackEmails.map((email, index) => (
+                  <div
+                    key={`ocean-track-email-${index}`}
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <input
+                      className="osv-input"
+                      type="email"
+                      value={email}
+                      onChange={(e) => updateTrackEmail(index, e.target.value)}
+                      placeholder={`Correo ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className="osv-btn osv-btn--ghost"
+                      onClick={() => removeTrackEmailField(index)}
+                      disabled={trackEmails.length === 1}
+                      style={{ height: 32, minWidth: 32, padding: 0 }}
+                    >
+                      -
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <small className="osv-label osv-label--small">
+                Puedes agregar hasta 10 correos para recibir el seguimiento.
+              </small>
             </div>
 
             {trackError && <div className="osv-error">{trackError}</div>}

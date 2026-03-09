@@ -1497,6 +1497,114 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
   }
 });
 
+// POST /api/shipsgo/shipments/:id/followers - Agregar follower a shipment aéreo existente
+app.post('/api/shipsgo/shipments/:id/followers', auth, async (req, res) => {
+  const { id } = req.params;
+  console.log(`✈️ [shipsgo] Adding follower to air shipment id=${id}...`);
+  try {
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ error: 'Missing ShipsGo API token' });
+    }
+
+    if (!/^\d+$/.test(String(id || ''))) {
+      return res.status(400).json({ error: 'shipment_id inválido' });
+    }
+
+    const follower = String(req.body?.follower || '').trim();
+    if (!follower) {
+      return res.status(400).json({ error: 'follower es un campo requerido' });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(follower)) {
+      return res.status(400).json({ error: 'Debes ingresar un correo electrónico válido' });
+    }
+
+    const response = await fetch(
+      `https://api.shipsgo.com/v2/air/shipments/${encodeURIComponent(id)}/followers`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN,
+        },
+        body: JSON.stringify({ follower }),
+      },
+    );
+
+    const data = await response.json().catch(() => ({} as Record<string, unknown>));
+
+    if (response.status === 409) {
+      return res.status(409).json({ error: 'Ese correo ya está agregado a este tracking' });
+    }
+
+    if (response.status === 403) {
+      return res.status(403).json({ error: 'No tienes permisos para modificar este tracking' });
+    }
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: (data as any).error || (data as any).message || 'No se pudo agregar el correo al tracking',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Correo agregado correctamente',
+      follower: (data as any).follower || null,
+    });
+  } catch (error) {
+    console.error('[shipsgo] Add follower error:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/shipsgo/shipments/:id/followers/:followerId - Eliminar follower de shipment aéreo existente
+app.delete('/api/shipsgo/shipments/:id/followers/:followerId', auth, async (req, res) => {
+  const { id, followerId } = req.params;
+  console.log(`✈️ [shipsgo] Removing follower ${followerId} from air shipment id=${id}...`);
+  try {
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ error: 'Missing ShipsGo API token' });
+    }
+
+    if (!/^\d+$/.test(String(id || '')) || !/^\d+$/.test(String(followerId || ''))) {
+      return res.status(400).json({ error: 'shipment_id o follower_id inválido' });
+    }
+
+    const response = await fetch(
+      `https://api.shipsgo.com/v2/air/shipments/${encodeURIComponent(id)}/followers/${encodeURIComponent(followerId)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN,
+        },
+      },
+    );
+
+    const data = await response.json().catch(() => ({} as Record<string, unknown>));
+
+    if (response.status === 403) {
+      return res.status(403).json({ error: 'No tienes permisos para modificar este tracking' });
+    }
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: (data as any).error || (data as any).message || 'No se pudo eliminar el correo del tracking',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Correo eliminado correctamente',
+    });
+  } catch (error) {
+    console.error('[shipsgo] Remove follower error:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // GET /api/shipsgo/shipments/:id - Obtener detalles de un shipment aéreo
 app.get('/api/shipsgo/shipments/:id', async (req, res) => {
   const { id } = req.params;
@@ -1778,6 +1886,114 @@ app.post('/api/shipsgo/ocean/shipments', auth, async (req, res) => {
 
   } catch (error: any) {
     console.error('[shipsgo-ocean] Error:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// POST /api/shipsgo/ocean/shipments/:id/followers - Agregar follower a shipment marítimo existente
+app.post('/api/shipsgo/ocean/shipments/:id/followers', auth, async (req, res) => {
+  const { id } = req.params;
+  console.log(`🚢 [shipsgo-ocean] Adding follower to ocean shipment id=${id}...`);
+  try {
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ error: 'Missing ShipsGo API token' });
+    }
+
+    if (!/^\d+$/.test(String(id || ''))) {
+      return res.status(400).json({ error: 'shipment_id inválido' });
+    }
+
+    const follower = String(req.body?.follower || '').trim();
+    if (!follower) {
+      return res.status(400).json({ error: 'follower es un campo requerido' });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(follower)) {
+      return res.status(400).json({ error: 'Debes ingresar un correo electrónico válido' });
+    }
+
+    const response = await fetch(
+      `https://api.shipsgo.com/v2/ocean/shipments/${encodeURIComponent(id)}/followers`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN,
+        },
+        body: JSON.stringify({ follower }),
+      },
+    );
+
+    const data = await response.json().catch(() => ({} as Record<string, unknown>));
+
+    if (response.status === 409) {
+      return res.status(409).json({ error: 'Ese correo ya está agregado a este tracking' });
+    }
+
+    if (response.status === 403) {
+      return res.status(403).json({ error: 'No tienes permisos para modificar este tracking' });
+    }
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: (data as any).error || (data as any).message || 'No se pudo agregar el correo al tracking',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Correo agregado correctamente',
+      follower: (data as any).follower || null,
+    });
+  } catch (error) {
+    console.error('[shipsgo-ocean] Add follower error:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/shipsgo/ocean/shipments/:id/followers/:followerId - Eliminar follower de shipment marítimo existente
+app.delete('/api/shipsgo/ocean/shipments/:id/followers/:followerId', auth, async (req, res) => {
+  const { id, followerId } = req.params;
+  console.log(`🚢 [shipsgo-ocean] Removing follower ${followerId} from ocean shipment id=${id}...`);
+  try {
+    const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+    if (!SHIPSGO_API_TOKEN) {
+      return res.status(500).json({ error: 'Missing ShipsGo API token' });
+    }
+
+    if (!/^\d+$/.test(String(id || '')) || !/^\d+$/.test(String(followerId || ''))) {
+      return res.status(400).json({ error: 'shipment_id o follower_id inválido' });
+    }
+
+    const response = await fetch(
+      `https://api.shipsgo.com/v2/ocean/shipments/${encodeURIComponent(id)}/followers/${encodeURIComponent(followerId)}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN,
+        },
+      },
+    );
+
+    const data = await response.json().catch(() => ({} as Record<string, unknown>));
+
+    if (response.status === 403) {
+      return res.status(403).json({ error: 'No tienes permisos para modificar este tracking' });
+    }
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: (data as any).error || (data as any).message || 'No se pudo eliminar el correo del tracking',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Correo eliminado correctamente',
+    });
+  } catch (error) {
+    console.error('[shipsgo-ocean] Remove follower error:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

@@ -13,6 +13,8 @@ import {
 import { MUNDOGAMING_DUMMY_SHIPMENTS } from "./Handlers/mundogamingDummyData";
 
 const ITEMS_PER_PAGE = 10;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_TRACK_FOLLOWERS = 10;
 
 /*  DetailTabs  */
 interface TabDef {
@@ -69,7 +71,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
     */
 function AirShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, token, activeUsername } = useAuth();
+  const { token, activeUsername } = useAuth();
   const navigate = useNavigate();
 
   const [shipments, setShipments] = useState<AirShipment[]>([]);
@@ -94,7 +96,7 @@ function AirShipmentsView() {
   // Search modal
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [trackShipment, setTrackShipment] = useState<AirShipment | null>(null);
-  const [trackEmail, setTrackEmail] = useState("");
+  const [trackEmails, setTrackEmails] = useState<string[]>([""]);
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
@@ -184,16 +186,6 @@ function AirShipmentsView() {
     }
   };
 
-  const isShipmentArrived = (shipment: AirShipment) => {
-    if (!shipment.arrival?.displayDate) return false;
-    try {
-      const [m, d, y] = shipment.arrival.displayDate.split("/");
-      return new Date(+y, +m - 1, +d) <= new Date();
-    } catch {
-      return false;
-    }
-  };
-
   const filterShipments = (shipments: AirShipment[]): AirShipment[] => {
     const groups = new Map<string, AirShipment[]>();
     for (const s of shipments) {
@@ -203,7 +195,7 @@ function AirShipmentsView() {
     }
 
     const result: AirShipment[] = [];
-    for (const [key, group] of groups) {
+    for (const group of groups.values()) {
       if (group.length > 1) {
         // Excluir los que empiezan con SOG
         result.push(
@@ -657,7 +649,7 @@ function AirShipmentsView() {
   const openTrackModal = (shipment: AirShipment) => {
     fetchParentShipmentNumber(shipment.id);
     setTrackShipment(shipment);
-    setTrackEmail("");
+    setTrackEmails([""]);
     setTrackError(null);
     setShowTrackModal(true);
   };
@@ -665,14 +657,73 @@ function AirShipmentsView() {
   const closeTrackModal = () => {
     setShowTrackModal(false);
     setTrackShipment(null);
-    setTrackEmail("");
+    setTrackEmails([""]);
     setTrackError(null);
   };
 
+  const updateTrackEmail = (index: number, value: string) => {
+    setTrackEmails((prev) =>
+      prev.map((email, currentIndex) =>
+        currentIndex === index ? value : email,
+      ),
+    );
+  };
+
+  const addTrackEmailField = () => {
+    setTrackError(null);
+    setTrackEmails((prev) => {
+      if (prev.length >= MAX_TRACK_FOLLOWERS) return prev;
+      return [...prev, ""];
+    });
+  };
+
+  const removeTrackEmailField = (index: number) => {
+    setTrackError(null);
+    setTrackEmails((prev) => {
+      if (prev.length === 1) return [""];
+      return prev.filter((_, currentIndex) => currentIndex !== index);
+    });
+  };
+
   const handleTrackSubmit = async () => {
-    if (!trackShipment || !trackEmail.trim()) return;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trackEmail.trim())) {
-      setTrackError("Por favor ingresa un correo electrónico válido.");
+    if (!trackShipment) return;
+
+    const normalizedEmails = trackEmails
+      .map((email) => email.trim())
+      .filter(Boolean);
+
+    if (normalizedEmails.length === 0) {
+      setTrackError("Debes ingresar al menos un correo electrónico.");
+      return;
+    }
+
+    if (normalizedEmails.length > MAX_TRACK_FOLLOWERS) {
+      setTrackError("Máximo 10 correos electrónicos para seguimiento.");
+      return;
+    }
+
+    const invalidEmail = normalizedEmails.find(
+      (email) => !EMAIL_REGEX.test(email),
+    );
+    if (invalidEmail) {
+      setTrackError(`El correo ${invalidEmail} no es válido.`);
+      return;
+    }
+
+    const uniqueEmails = new Map<string, string>();
+    for (const email of normalizedEmails) {
+      const key = email.toLowerCase();
+      if (uniqueEmails.has(key)) {
+        setTrackError("No repitas correos electrónicos en el seguimiento.");
+        return;
+      }
+      uniqueEmails.set(key, email);
+    }
+
+    const followers = Array.from(uniqueEmails.values());
+
+    if (!token) {
+      setTrackError("Tu sesión expiró. Vuelve a iniciar sesión.");
       return;
     }
 
@@ -701,7 +752,7 @@ function AirShipmentsView() {
         body: JSON.stringify({
           reference: activeUsername,
           awb_number: cleanAwb,
-          followers: [trackEmail.trim()],
+          followers,
           tags: [],
         }),
       });
@@ -1148,7 +1199,6 @@ function AirShipmentsView() {
                 {paginatedShipments.map((shipment, index) => {
                   const shipmentId = shipment.id || shipment.number || index;
                   const isExpanded = expandedShipmentId === shipmentId;
-                  const arrived = isShipmentArrived(shipment);
 
                   return (
                     <React.Fragment key={shipmentId}>
@@ -1443,7 +1493,11 @@ function AirShipmentsView() {
                                                         )
                                                       ) {
                                                         sub.commodities.forEach(
-                                                          (c: any) => {
+                                                          (c: {
+                                                            packageType?: {
+                                                              description?: string;
+                                                            };
+                                                          }) => {
                                                             if (
                                                               c.packageType
                                                                 ?.description
@@ -1793,18 +1847,53 @@ function AirShipmentsView() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label className="asv-label">
-                Correo electrónico para seguimiento
-              </label>
-              <input
-                className="asv-input"
-                type="email"
-                value={trackEmail}
-                onChange={(e) => setTrackEmail(e.target.value)}
-                placeholder="Ingresa tu correo electrónico"
-              />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                  gap: 12,
+                }}
+              >
+                <label className="asv-label" style={{ marginBottom: 0 }}>
+                  Correo electrónico para seguimiento
+                </label>
+                <button
+                  type="button"
+                  className="asv-btn asv-btn--ghost asv-btn--sm"
+                  onClick={addTrackEmailField}
+                  disabled={trackEmails.length >= MAX_TRACK_FOLLOWERS}
+                >
+                  +
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {trackEmails.map((email, index) => (
+                  <div
+                    key={`air-track-email-${index}`}
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <input
+                      className="asv-input"
+                      type="email"
+                      value={email}
+                      onChange={(e) => updateTrackEmail(index, e.target.value)}
+                      placeholder={`Correo ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className="asv-btn asv-btn--ghost asv-btn--sm"
+                      onClick={() => removeTrackEmailField(index)}
+                      disabled={trackEmails.length === 1}
+                    >
+                      -
+                    </button>
+                  </div>
+                ))}
+              </div>
               <small className="asv-hint">
-                Si deseas agregar más correos, dirígete a Mis Envíos.
+                Puedes agregar hasta 10 correos para recibir el seguimiento.
               </small>
             </div>
 

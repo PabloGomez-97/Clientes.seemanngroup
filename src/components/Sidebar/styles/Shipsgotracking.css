@@ -396,6 +396,116 @@
   white-space: nowrap;
 }
 
+.sg-followers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sg-follower-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.sg-follower-email {
+  font-size: 0.8125rem;
+  color: #1f2937;
+  word-break: break-word;
+}
+
+.sg-follower-remove {
+  padding: 0.3125rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: #b91c1c;
+  background: #fff;
+  border: 1px solid #fecaca;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.sg-follower-remove:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.sg-follower-remove:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sg-followers-empty {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+.sg-followers-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.sg-followers-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: #1f2937;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  outline: none;
+}
+
+.sg-followers-input:focus {
+  border-color: var(--primary-color, #ff6200);
+  box-shadow: 0 0 0 3px rgba(255, 98, 0, 0.12);
+}
+
+.sg-followers-add {
+  min-width: 44px;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #fff;
+  background: var(--primary-color, #ff6200);
+  border: 1px solid var(--primary-color, #ff6200);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.sg-followers-add:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sg-followers-hint {
+  font-size: 0.6875rem;
+  color: #6b7280;
+}
+
+.sg-followers-error {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #b91c1c;
+}
+
 /* ====================================
    DATE CELL
    ==================================== */
