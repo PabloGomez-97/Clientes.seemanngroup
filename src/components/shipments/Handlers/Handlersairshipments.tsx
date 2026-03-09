@@ -636,6 +636,8 @@ export function InfoField({
         marginBottom: "12px",
         flex: fullWidth ? "1 1 100%" : "1 1 48%",
         minWidth: fullWidth ? "100%" : "200px",
+        boxSizing: "border-box",
+        overflow: "hidden",
       }}
     >
       <div
@@ -655,6 +657,9 @@ export function InfoField({
           fontSize: "0.875rem",
           color: "#1f2937",
           wordBreak: "break-word",
+          overflowWrap: "anywhere",
+          whiteSpace: "normal",
+          textAlign: "justify",
         }}
       >
         {displayValue}
