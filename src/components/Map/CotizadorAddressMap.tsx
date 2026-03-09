@@ -13,7 +13,17 @@ import {
   DirectionsRenderer,
   useJsApiLoader,
 } from "@react-google-maps/api";
-import type { AirportCoords } from "../../config/airportCoordinates";
+/**
+ * Coordenadas genéricas de destino (aeropuerto o puerto).
+ * Compatible con AirportCoords e PortCoords.
+ */
+export interface DestinationCoords {
+  lat: number;
+  lng: number;
+  name: string;
+  /** Código identificador: IATA para aeropuertos, UN/LOCODE para puertos */
+  code: string;
+}
 
 type Coordinates = {
   lat: number;
@@ -59,8 +69,8 @@ interface CotizadorAddressMapProps {
   onChange: (value: string) => void;
   placeholder?: string;
   rows?: number;
-  /** Coordenadas del aeropuerto destino para trazar la ruta con Directions API */
-  airportCoords?: AirportCoords | null;
+  /** Coordenadas del destino (aeropuerto o puerto) para trazar la ruta con Directions API */
+  destinationCoords?: DestinationCoords | null;
 }
 
 const CotizadorAddressMap = ({
@@ -68,7 +78,7 @@ const CotizadorAddressMap = ({
   onChange,
   placeholder = "Ingrese direccion de recogida",
   rows = 2,
-  airportCoords,
+  destinationCoords,
 }: CotizadorAddressMapProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
@@ -191,7 +201,7 @@ const CotizadorAddressMap = ({
 
   // Calculate route when we have both a selected position and airport coords
   useEffect(() => {
-    if (!isLoaded || !hasSelection || !airportCoords) {
+    if (!isLoaded || !hasSelection || !destinationCoords) {
       setDirections(null);
       setRouteDistance(null);
       setRouteDuration(null);
@@ -202,7 +212,7 @@ const CotizadorAddressMap = ({
     directionsService.route(
       {
         origin: selectedPosition,
-        destination: { lat: airportCoords.lat, lng: airportCoords.lng },
+        destination: { lat: destinationCoords.lat, lng: destinationCoords.lng },
         travelMode: google.maps.TravelMode.DRIVING,
       },
       (result, status) => {
@@ -221,7 +231,7 @@ const CotizadorAddressMap = ({
         }
       },
     );
-  }, [isLoaded, hasSelection, selectedPosition, airportCoords]);
+  }, [isLoaded, hasSelection, selectedPosition, destinationCoords]);
 
   const handleSuggestionClick = useCallback(
     async (suggestion: SuggestionItem) => {
@@ -445,13 +455,13 @@ const CotizadorAddressMap = ({
                 Coordenadas: {selectedPosition.lat.toFixed(6)},{" "}
                 {selectedPosition.lng.toFixed(6)}
               </p>
-              {showRoute && airportCoords && (
+              {showRoute && destinationCoords && (
                 <div className="qa-address-map__route-info">
                   <i className="bi bi-signpost-2" />
                   <span>
-                    Distancia hasta <strong>{airportCoords.name}</strong>
+                    Distancia hasta <strong>{destinationCoords.name}</strong>
                     {" ("}
-                    {airportCoords.iata}
+                    {destinationCoords.code}
                     {"): "}
                     <strong>{routeDistance}</strong>
                     {routeDuration && <> &middot; {routeDuration}</>}

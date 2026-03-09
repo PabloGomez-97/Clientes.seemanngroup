@@ -12,6 +12,9 @@ import {
 } from "./Pdftemplate/Pdfutils";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
+import CotizadorAddressMap from "../Map/CotizadorAddressMap";
+import type { DestinationCoords } from "../Map/CotizadorAddressMap";
+import { getPortByPOL } from "../../config/portCoordinates";
 import {
   GOOGLE_SHEET_CSV_URL,
   type OutletContext,
@@ -86,7 +89,9 @@ function QuoteFCL({
   const [cantidadContenedores, setCantidadContenedores] = useState(1);
   const [incoterm, setIncoterm] = useState<"EXW" | "FOB" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
-  const [deliveryToAddress, setDeliveryToAddress] = useState("");
+
+  // Delivery is derived from the selected POD and is not editable by the user
+  const deliveryToAddressDerived = podSeleccionado ? podSeleccionado.label : "";
 
   const [opcionesPOL, setOpcionesPOL] = useState<SelectOption[]>([]);
   const [opcionesPOD, setOpcionesPOD] = useState<SelectOption[]>([]);
@@ -658,10 +663,8 @@ function QuoteFCL({
       return;
     }
 
-    if (incoterm === "EXW" && (!pickupFromAddress || !deliveryToAddress)) {
-      setError(
-        "Debes completar las direcciones de Pickup y Delivery para el Incoterm EXW",
-      );
+    if (incoterm === "EXW" && !pickupFromAddress) {
+      setError("Debes completar la dirección de Pickup para el Incoterm EXW");
       return;
     }
 
@@ -954,7 +957,9 @@ function QuoteFCL({
               incoterm === "EXW" ? (pickupFromAddress ?? undefined) : undefined
             }
             deliveryToAddress={
-              incoterm === "EXW" ? (deliveryToAddress ?? undefined) : undefined
+              incoterm === "EXW"
+                ? (deliveryToAddressDerived ?? undefined)
+                : undefined
             }
             salesRep={ejecutivo?.nombre ?? "Ignacio Maldonado"}
             containerType={containerName}
@@ -1379,7 +1384,7 @@ function QuoteFCL({
       },
       ...(incoterm === "EXW" && {
         pickupFromAddress: pickupFromAddress,
-        deliveryToAddress: deliveryToAddress,
+        deliveryToAddress: deliveryToAddressDerived,
       }),
       portOfReceipt: {
         name: rutaSeleccionada.pol,
@@ -2141,12 +2146,25 @@ function QuoteFCL({
                       <i className="bi bi-geo-alt me-1"></i>
                       {t("QuoteAIR.pickup")}
                     </label>
-                    <textarea
-                      className="qa-input"
+                    <CotizadorAddressMap
                       value={pickupFromAddress}
-                      onChange={(e) => setPickupFromAddress(e.target.value)}
+                      onChange={setPickupFromAddress}
                       placeholder="Ingrese dirección de recogida"
                       rows={2}
+                      destinationCoords={
+                        polSeleccionado
+                          ? (() => {
+                              const port = getPortByPOL(polSeleccionado.value);
+                              if (!port) return null;
+                              return {
+                                lat: port.lat,
+                                lng: port.lng,
+                                name: port.name,
+                                code: port.unlocode,
+                              } as DestinationCoords;
+                            })()
+                          : null
+                      }
                     />
                   </div>
                   <div>
@@ -2156,9 +2174,9 @@ function QuoteFCL({
                     </label>
                     <textarea
                       className="qa-input"
-                      value={deliveryToAddress}
-                      onChange={(e) => setDeliveryToAddress(e.target.value)}
-                      placeholder="Ingrese dirección de entrega"
+                      value={deliveryToAddressDerived}
+                      readOnly
+                      disabled
                       rows={2}
                     />
                   </div>
@@ -2391,8 +2409,7 @@ function QuoteFCL({
                     !rutaSeleccionada ||
                     !containerSeleccionado ||
                     !incoterm ||
-                    (incoterm === "EXW" &&
-                      (!pickupFromAddress || !deliveryToAddress))
+                    (incoterm === "EXW" && !pickupFromAddress)
                   }
                   className="qa-btn qa-btn-primary w-100 mt-auto"
                 >
@@ -2448,8 +2465,7 @@ function QuoteFCL({
                       !rutaSeleccionada ||
                       !containerSeleccionado ||
                       !incoterm ||
-                      (incoterm === "EXW" &&
-                        (!pickupFromAddress || !deliveryToAddress))
+                      (incoterm === "EXW" && !pickupFromAddress)
                     }
                     className="qf-btn qf-btn-outline w-100"
                     style={{

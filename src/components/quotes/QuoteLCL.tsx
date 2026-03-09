@@ -16,6 +16,9 @@ import {
 import ReactDOM from "react-dom/client";
 import { PieceAccordionLCL } from "./Handlers/LCL/PieceAccordionLCL.tsx";
 import { useTranslation } from "react-i18next";
+import CotizadorAddressMap from "../Map/CotizadorAddressMap";
+import type { DestinationCoords } from "../Map/CotizadorAddressMap";
+import { getPortByPOL } from "../../config/portCoordinates";
 import {
   type PieceData,
   type OutletContext,
@@ -107,7 +110,9 @@ function QuoteLCL({
   // Estados para incoterm y direcciones
   const [incoterm, setIncoterm] = useState<"EXW" | "FOB" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
-  const [deliveryToAddress, setDeliveryToAddress] = useState("");
+
+  // Delivery is derived from the selected POD and is not editable by the user
+  const deliveryToAddressDerived = podSeleccionado ? podSeleccionado.label : "";
 
   // Estado para tipo de acción (cotización u operación)
   const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
@@ -862,7 +867,7 @@ function QuoteLCL({
       return;
     }
 
-    if (incoterm === "EXW" && (!pickupFromAddress || !deliveryToAddress)) {
+    if (incoterm === "EXW" && !pickupFromAddress) {
       setError(t("QuoteLCL.inforuta2"));
       return;
     }
@@ -1183,7 +1188,9 @@ function QuoteLCL({
               incoterm === "EXW" ? (pickupFromAddress ?? undefined) : undefined
             }
             deliveryToAddress={
-              incoterm === "EXW" ? (deliveryToAddress ?? undefined) : undefined
+              incoterm === "EXW"
+                ? (deliveryToAddressDerived ?? undefined)
+                : undefined
             }
             salesRep={ejecutivo?.nombre ?? "Ignacio Maldonado"}
             pieces={piecesData.length}
@@ -1661,7 +1668,7 @@ function QuoteLCL({
       },
       ...(incoterm === "EXW" && {
         pickupFromAddress: pickupFromAddress,
-        deliveryToAddress: deliveryToAddress,
+        deliveryToAddress: deliveryToAddressDerived,
       }),
       portOfReceipt: {
         name: rutaSeleccionada.pol,
@@ -2270,12 +2277,25 @@ function QuoteLCL({
                       <i className="bi bi-geo-alt me-1"></i>
                       {t("Quotelcl.pickup")}
                     </label>
-                    <textarea
-                      className="qa-input"
+                    <CotizadorAddressMap
                       value={pickupFromAddress}
-                      onChange={(e) => setPickupFromAddress(e.target.value)}
+                      onChange={setPickupFromAddress}
                       placeholder="Ingrese dirección de recogida"
                       rows={2}
+                      destinationCoords={
+                        polSeleccionado
+                          ? (() => {
+                              const port = getPortByPOL(polSeleccionado.value);
+                              if (!port) return null;
+                              return {
+                                lat: port.lat,
+                                lng: port.lng,
+                                name: port.name,
+                                code: port.unlocode,
+                              } as DestinationCoords;
+                            })()
+                          : null
+                      }
                     />
                   </div>
                   <div>
@@ -2285,10 +2305,10 @@ function QuoteLCL({
                     </label>
                     <textarea
                       className="qa-input"
-                      value={deliveryToAddress}
-                      onChange={(e) => setDeliveryToAddress(e.target.value)}
-                      placeholder="Ingrese dirección de entrega"
-                      rows={3}
+                      value={deliveryToAddressDerived}
+                      readOnly
+                      disabled
+                      rows={2}
                     />
                   </div>
                 </div>
@@ -2606,8 +2626,7 @@ function QuoteLCL({
                     !accessToken ||
                     !incoterm ||
                     oversizeErrorLCL ||
-                    (incoterm === "EXW" &&
-                      (!pickupFromAddress || !deliveryToAddress))
+                    (incoterm === "EXW" && !pickupFromAddress)
                   }
                   className="qa-btn qa-btn-primary w-100"
                 >
@@ -2656,8 +2675,7 @@ function QuoteLCL({
                       !accessToken ||
                       !incoterm ||
                       oversizeErrorLCL ||
-                      (incoterm === "EXW" &&
-                        (!pickupFromAddress || !deliveryToAddress))
+                      (incoterm === "EXW" && !pickupFromAddress)
                     }
                     className="qa-btn qa-btn-outline w-100"
                   >
@@ -2692,7 +2710,7 @@ function QuoteLCL({
             </div>
           )}
 
-          {incoterm === "EXW" && (!pickupFromAddress || !deliveryToAddress) && (
+          {incoterm === "EXW" && !pickupFromAddress && (
             <div className="qa-alert qa-alert-warning">
               <i className="bi bi-exclamation-triangle mt-1"></i>
               {t("Pieceaccordionlcl.debescompl")}

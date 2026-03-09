@@ -46,6 +46,12 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     name: "Barcelona-El Prat Airport",
     iata: "BCN",
   },
+  londres: {
+    lat: 51.4694,
+    lng: -0.4535,
+    name: "London Heathrow Airport",
+    iata: "LHR",
+  },
 };
 
 function normalizeText(value: string): string {

@@ -40,6 +40,7 @@ import {
 } from "./Handlers/Air/OversizeNotifyExecutive";
 import "./QuoteAIR.css";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
+import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getAirportByOrigin } from "../../config/airportCoordinates";
 
 // Props para pre-selección desde ItineraryFinder
@@ -2682,9 +2683,20 @@ function QuoteAPITester({
                   onChange={setPickupFromAddress}
                   placeholder="Ingrese dirección de recogida"
                   rows={2}
-                  airportCoords={
+                  destinationCoords={
                     originSeleccionado
-                      ? getAirportByOrigin(originSeleccionado.value)
+                      ? (() => {
+                          const ap = getAirportByOrigin(
+                            originSeleccionado.value,
+                          );
+                          if (!ap) return null;
+                          return {
+                            lat: ap.lat,
+                            lng: ap.lng,
+                            name: ap.name,
+                            code: ap.iata,
+                          } as DestinationCoords;
+                        })()
                       : null
                   }
                 />
