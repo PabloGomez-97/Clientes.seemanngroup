@@ -1112,8 +1112,12 @@ function OceanShipmentsView() {
                                               value={shipment.customerReference}
                                             />
                                             <InfoField
-                                              label="Representante Ventas"
+                                              label="Representante de Ventas"
                                               value={shipment.salesRep}
+                                            />
+                                            <InfoField
+                                              label="ID"
+                                              value={shipment.id}
                                             />
                                           </div>
                                         </div>

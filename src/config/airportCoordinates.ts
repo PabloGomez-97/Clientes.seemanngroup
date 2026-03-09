@@ -34,6 +34,18 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     name: "O.R. Tambo International Airport",
     iata: "JNB",
   },
+  miami: {
+    lat: 25.7952,
+    lng: -80.2784,
+    name: "Miami International Airport",
+    iata: "MIA",
+  },
+  barcelona: {
+    lat: 41.3040,
+    lng: 2.0789,
+    name: "Barcelona-El Prat Airport",
+    iata: "BCN",
+  },
 };
 
 function normalizeText(value: string): string {

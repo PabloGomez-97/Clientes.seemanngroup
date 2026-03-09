@@ -1218,15 +1218,8 @@ function AirShipmentsView() {
                                               )}
                                             </div>
                                             <InfoField
-                                              label="AWB / Número de Seguimiento"
-                                              value={
-                                                shipment.id === undefined ||
-                                                shipment.id === null
-                                                  ? "-"
-                                                  : (parentShipmentNumbers[
-                                                      shipment.id
-                                                    ] ?? "Cargando...")
-                                              }
+                                              label="Remitente (Shipper)"
+                                              value={shipment.shipper?.name}
                                               fullWidth
                                             />
                                             <InfoField
@@ -1263,8 +1256,15 @@ function AirShipmentsView() {
                                               }
                                             />
                                             <InfoField
-                                              label="Remitente (Shipper)"
-                                              value={shipment.shipper?.name}
+                                              label="ID"
+                                              value={
+                                                shipment.id === undefined ||
+                                                shipment.id === null
+                                                  ? "-"
+                                                  : (parentShipmentNumbers[
+                                                      shipment.id
+                                                    ] ?? "Cargando...")
+                                              }
                                             />
                                           </div>
                                         </div>
