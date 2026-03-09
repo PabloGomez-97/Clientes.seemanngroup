@@ -150,7 +150,8 @@
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  width: min(720px, 92vw);
+  /* Más ancho para expandir hacia la derecha; sigue respetando viewport en móvil */
+  width: min(980px, 92vw);
   background: #ffffff;
   border: 1px solid var(--qa-border-color);
   border-radius: 10px;
@@ -223,7 +224,8 @@
 .qa-address-map__canvas {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  height: 280px;
+  /* Aumentado para mostrar el mapa más grande dentro del overlay */
+  height: 420px;
   overflow: hidden;
 }
 
