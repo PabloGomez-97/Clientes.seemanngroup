@@ -21,6 +21,8 @@ const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
+const OPERATIONS_FOLLOWER_EMAIL = "operaciones@seemanngroup.com";
+const MAX_VISIBLE_FOLLOWERS = 9;
 
 interface OceanShipmentDetailProps {
   shipment: OceanShipment;
@@ -38,7 +40,7 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
     null,
   );
   const [activeSection, setActiveSection] = useState<
-    "overview" | "containers" | "route"
+    "overview" | "containers" | "route" | "followers"
   >("overview");
 
   useEffect(() => {
@@ -68,6 +70,11 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
   const s = detail || shipment;
   const containers: OceanContainer[] = detail?.containers || [];
   const followers = detail?.followers || [];
+  const visibleFollowers = followers.filter(
+    (item) =>
+      item.email.trim().toLowerCase() !==
+      OPERATIONS_FOLLOWER_EMAIL.toLowerCase(),
+  );
 
   const handleAddFollower = async () => {
     const follower = newFollowerEmail.trim();
@@ -88,7 +95,7 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
     }
 
     if (
-      followers.some(
+      visibleFollowers.some(
         (item) => item.email.toLowerCase() === follower.toLowerCase(),
       )
     ) {
@@ -96,8 +103,15 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
       return;
     }
 
-    if (followers.length >= 10) {
-      setFollowerError("Máximo 10 correos por tracking.");
+    if (follower.toLowerCase() === OPERATIONS_FOLLOWER_EMAIL.toLowerCase()) {
+      setFollowerError(
+        "El correo de operaciones se agrega automáticamente en todos los trackings.",
+      );
+      return;
+    }
+
+    if (visibleFollowers.length >= MAX_VISIBLE_FOLLOWERS) {
+      setFollowerError("Máximo 9 correos visibles por tracking.");
       return;
     }
 
@@ -239,6 +253,13 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
             onClick={() => setActiveSection("route")}
           >
             Ruta
+          </button>
+          <button
+            className={`sg-detail-tab ${activeSection === "followers" ? "sg-detail-tab--active" : ""}`}
+            onClick={() => setActiveSection("followers")}
+          >
+            Email
+            {visibleFollowers.length > 0 ? ` (${visibleFollowers.length})` : ""}
           </button>
         </div>
 
@@ -452,57 +473,6 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
                 </div>
               )}
 
-              <div className="sg-detail-section">
-                <div className="sg-detail-title">Correos de seguimiento</div>
-                {followers.length > 0 ? (
-                  <div className="sg-followers-list">
-                    {followers.map((follower) => (
-                      <div key={follower.id} className="sg-follower-item">
-                        <span className="sg-follower-email">
-                          {follower.email}
-                        </span>
-                        <button
-                          className="sg-follower-remove"
-                          onClick={() => handleRemoveFollower(follower.id)}
-                          disabled={removingFollowerId === follower.id}
-                        >
-                          {removingFollowerId === follower.id
-                            ? "Eliminando..."
-                            : "Eliminar"}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="sg-followers-empty">
-                    No hay correos de seguimiento registrados.
-                  </div>
-                )}
-                <div className="sg-followers-form">
-                  <input
-                    className="sg-followers-input"
-                    type="email"
-                    value={newFollowerEmail}
-                    onChange={(e) => setNewFollowerEmail(e.target.value)}
-                    placeholder="Agregar nuevo correo"
-                    disabled={followerLoading || followers.length >= 10}
-                  />
-                  <button
-                    className="sg-followers-add"
-                    onClick={handleAddFollower}
-                    disabled={followerLoading || followers.length >= 10}
-                  >
-                    {followerLoading ? "Agregando..." : "+"}
-                  </button>
-                </div>
-                <div className="sg-followers-hint">
-                  Puedes mantener hasta 10 correos por tracking.
-                </div>
-                {followerError && (
-                  <div className="sg-followers-error">{followerError}</div>
-                )}
-              </div>
-
               {/* Dates */}
               <div className="sg-detail-section">
                 <div className="sg-detail-title">Información adicional</div>
@@ -613,6 +583,94 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
           {/* ── ROUTE TAB ── */}
           {activeSection === "route" && (
             <OceanShipmentRoute shipmentId={shipment.id} />
+          )}
+
+          {activeSection === "followers" && (
+            <div className="sg-followers-panel">
+              <div className="sg-followers-hero">
+                <div>
+                  <div className="sg-followers-eyebrow">Notificaciones</div>
+                  <h3 className="sg-followers-heading">
+                    Correos de seguimiento
+                  </h3>
+                  <p className="sg-followers-copy">
+                    Administra quién recibe actualizaciones de este tracking.
+                  </p>
+                </div>
+                <div className="sg-followers-count-card">
+                  <span className="sg-followers-count-value">
+                    {visibleFollowers.length}
+                  </span>
+                  <span className="sg-followers-count-label">activos</span>
+                </div>
+              </div>
+
+              <div className="sg-followers-compose">
+                <input
+                  className="sg-followers-input"
+                  type="email"
+                  value={newFollowerEmail}
+                  onChange={(e) => setNewFollowerEmail(e.target.value)}
+                  placeholder="Agregar nuevo correo"
+                  disabled={
+                    followerLoading ||
+                    visibleFollowers.length >= MAX_VISIBLE_FOLLOWERS
+                  }
+                />
+                <button
+                  className="sg-followers-add"
+                  onClick={handleAddFollower}
+                  disabled={
+                    followerLoading ||
+                    visibleFollowers.length >= MAX_VISIBLE_FOLLOWERS
+                  }
+                >
+                  {followerLoading ? "Agregando..." : "Agregar"}
+                </button>
+              </div>
+
+              <div className="sg-followers-hint">
+                Puedes mantener hasta 9 correos visibles por tracking. El correo
+                de operaciones se administra automáticamente.
+              </div>
+
+              {followerError && (
+                <div className="sg-followers-error">{followerError}</div>
+              )}
+
+              {visibleFollowers.length > 0 ? (
+                <div className="sg-followers-list sg-followers-list--cards">
+                  {visibleFollowers.map((follower) => (
+                    <div key={follower.id} className="sg-follower-card">
+                      <div className="sg-follower-avatar">
+                        {follower.email.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="sg-follower-meta">
+                        <span className="sg-follower-email">
+                          {follower.email}
+                        </span>
+                        <span className="sg-follower-status">
+                          Notificación activa
+                        </span>
+                      </div>
+                      <button
+                        className="sg-follower-remove"
+                        onClick={() => handleRemoveFollower(follower.id)}
+                        disabled={removingFollowerId === follower.id}
+                      >
+                        {removingFollowerId === follower.id
+                          ? "Eliminando..."
+                          : "Quitar"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="sg-followers-empty sg-followers-empty--panel">
+                  Aún no agregas correos visibles para este tracking.
+                </div>
+              )}
+            </div>
           )}
         </div>
 

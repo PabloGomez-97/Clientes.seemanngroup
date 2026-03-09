@@ -403,6 +403,76 @@
   margin-bottom: 0.75rem;
 }
 
+.sg-followers-list--cards {
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.sg-followers-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sg-followers-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.125rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.sg-followers-eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 0.375rem;
+}
+
+.sg-followers-heading {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.sg-followers-copy {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.sg-followers-count-card {
+  min-width: 88px;
+  padding: 0.875rem 1rem;
+  border-radius: 10px;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.sg-followers-count-value {
+  font-size: 1.5rem;
+  line-height: 1;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sg-followers-count-label {
+  margin-top: 0.25rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.75);
+}
+
 .sg-follower-item {
   display: flex;
   align-items: center;
@@ -414,10 +484,47 @@
   border-radius: 4px;
 }
 
+.sg-follower-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.sg-follower-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff3eb;
+  color: var(--primary-color, #ff6200);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.sg-follower-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
 .sg-follower-email {
   font-size: 0.8125rem;
   color: #1f2937;
   word-break: break-word;
+}
+
+.sg-follower-status {
+  font-size: 0.75rem;
+  color: #64748b;
 }
 
 .sg-follower-remove {
@@ -459,6 +566,15 @@
   margin-bottom: 0.5rem;
 }
 
+.sg-followers-compose {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
 .sg-followers-input {
   flex: 1;
   min-width: 0;
@@ -478,16 +594,21 @@
 }
 
 .sg-followers-add {
-  min-width: 44px;
+  min-width: 96px;
   padding: 0.625rem 0.75rem;
-  font-size: 0.9375rem;
-  font-weight: 700;
+  font-size: 0.8125rem;
+  font-weight: 600;
   font-family: inherit;
   color: #fff;
   background: var(--primary-color, #ff6200);
   border: 1px solid var(--primary-color, #ff6200);
   border-radius: 4px;
   cursor: pointer;
+}
+
+.sg-followers-add:hover:not(:disabled) {
+  background: #e55700;
+  border-color: #e55700;
 }
 
 .sg-followers-add:disabled {
@@ -504,6 +625,12 @@
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: #b91c1c;
+}
+
+.sg-followers-empty--panel {
+  margin-bottom: 0;
+  padding: 1rem;
+  border-radius: 10px;
 }
 
 /* ====================================

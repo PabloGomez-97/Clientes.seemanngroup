@@ -14,7 +14,8 @@ import "./OceanShipmentsView.css";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_TRACK_FOLLOWERS = 10;
+const MAX_TRACK_FOLLOWERS = 9;
+const OPERATIONS_FOLLOWER_EMAIL = "operaciones@seemanngroup.com";
 const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
@@ -73,7 +74,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    =========================================================== */
 function OceanShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, token, activeUsername } = useAuth();
+  const { token, activeUsername } = useAuth();
   const navigate = useNavigate();
   const filterConsignee = activeUsername || "";
 
@@ -451,16 +452,6 @@ function OceanShipmentsView() {
     })();
   }, [activeUsername, token]);
 
-  /* -- Helpers: arrival check ------------------------------- */
-  const isOceanShipmentArrived = (shipment: OceanShipment): boolean => {
-    if (!shipment.arrival) return false;
-    try {
-      return new Date(shipment.arrival) <= new Date();
-    } catch {
-      return false;
-    }
-  };
-
   /* -- Accordion --------------------------------------------- */
   const toggleAccordion = (shipmentId: string | number) => {
     if (expandedShipmentId === shipmentId) {
@@ -541,7 +532,11 @@ function OceanShipmentsView() {
 
     const normalizedEmails = trackEmails
       .map((email) => email.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter(
+        (email) =>
+          email.toLowerCase() !== OPERATIONS_FOLLOWER_EMAIL.toLowerCase(),
+      );
 
     if (normalizedEmails.length === 0) {
       setTrackError("Debes ingresar al menos un correo electrónico.");
@@ -549,7 +544,7 @@ function OceanShipmentsView() {
     }
 
     if (normalizedEmails.length > MAX_TRACK_FOLLOWERS) {
-      setTrackError("Máximo 10 correos electrónicos para seguimiento.");
+      setTrackError("Máximo 9 correos electrónicos visibles para seguimiento.");
       return;
     }
 
@@ -1224,7 +1219,6 @@ function OceanShipmentsView() {
                 {paginatedShipments.map((shipment, index) => {
                   const shipmentId = shipment.id || shipment.number || index;
                   const isExpanded = expandedShipmentId === shipmentId;
-                  const arrived = isOceanShipmentArrived(shipment);
 
                   return (
                     <React.Fragment key={shipmentId}>
@@ -1916,7 +1910,8 @@ function OceanShipmentsView() {
                 ))}
               </div>
               <small className="osv-label osv-label--small">
-                Puedes agregar hasta 10 correos para recibir el seguimiento.
+                Puedes agregar hasta 9 correos visibles. El correo de
+                operaciones se agrega automáticamente.
               </small>
             </div>
 

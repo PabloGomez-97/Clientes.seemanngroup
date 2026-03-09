@@ -39,6 +39,58 @@ function verifyToken(token: string): AuthPayload {
   return decoded as AuthPayload;
 }
 
+const OPERATIONS_FOLLOWER_EMAIL = 'operaciones@seemanngroup.com';
+const MAX_VISIBLE_TRACK_FOLLOWERS = 9;
+
+function normalizeTrackingFollowers(rawFollowers: unknown): string[] {
+  const uniqueFollowers = new Map<string, string>();
+  const inputFollowers = Array.isArray(rawFollowers) ? rawFollowers : [];
+
+  for (const value of inputFollowers) {
+    const email = String(value || '').trim();
+    if (!email) continue;
+
+    const key = email.toLowerCase();
+    if (key === OPERATIONS_FOLLOWER_EMAIL) continue;
+    if (!uniqueFollowers.has(key)) {
+      uniqueFollowers.set(key, email);
+    }
+  }
+
+  return [...uniqueFollowers.values(), OPERATIONS_FOLLOWER_EMAIL];
+}
+
+async function getShipsgoShipmentFollowerEmail(
+  shipmentType: 'air' | 'ocean',
+  shipmentId: string,
+  followerId: string,
+  token: string,
+): Promise<string | null> {
+  const response = await fetch(
+    `https://api.shipsgo.com/v2/${shipmentType}/shipments/${encodeURIComponent(shipmentId)}`,
+    {
+      method: 'GET',
+      headers: {
+        'X-Shipsgo-User-Token': token,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = (await response.json().catch(() => ({}))) as {
+    shipment?: { followers?: Array<{ id?: number | string; email?: string }> };
+  };
+
+  const follower = data.shipment?.followers?.find(
+    (item) => String(item.id) === String(followerId),
+  );
+
+  return follower?.email?.trim().toLowerCase() || null;
+}
+
 /** =========================
  *  Express app
  *  ========================= */
@@ -1411,10 +1463,10 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
       });
     }
 
-    // Validar máximo 10 followers
-    if (followers && followers.length > 10) {
+    // Validar máximo 9 followers visibles + 1 correo interno de operaciones
+    if (followers && followers.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
       return res.status(400).json({ 
-        error: 'Máximo 10 emails permitidos en followers' 
+        error: 'Máximo 9 emails visibles permitidos en followers' 
       });
     }
 
@@ -1436,7 +1488,7 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
     const shipmentData = {
       reference,
       awb_number: awbFormatted,
-      followers: followers || [],
+      followers: normalizeTrackingFollowers(followers),
       tags: tags || []
     };
 
@@ -1520,6 +1572,12 @@ app.post('/api/shipsgo/shipments/:id/followers', auth, async (req, res) => {
       return res.status(400).json({ error: 'Debes ingresar un correo electrónico válido' });
     }
 
+    if (follower.toLowerCase() === OPERATIONS_FOLLOWER_EMAIL) {
+      return res.status(400).json({
+        error: 'El correo de operaciones se agrega automáticamente en todos los trackings',
+      });
+    }
+
     const response = await fetch(
       `https://api.shipsgo.com/v2/air/shipments/${encodeURIComponent(id)}/followers`,
       {
@@ -1571,6 +1629,13 @@ app.delete('/api/shipsgo/shipments/:id/followers/:followerId', auth, async (req,
 
     if (!/^\d+$/.test(String(id || '')) || !/^\d+$/.test(String(followerId || ''))) {
       return res.status(400).json({ error: 'shipment_id o follower_id inválido' });
+    }
+
+    const followerEmail = await getShipsgoShipmentFollowerEmail('air', id, followerId, SHIPSGO_API_TOKEN);
+    if (followerEmail === OPERATIONS_FOLLOWER_EMAIL) {
+      return res.status(400).json({
+        error: 'El correo de operaciones es obligatorio y no puede eliminarse',
+      });
     }
 
     const response = await fetch(
@@ -1815,8 +1880,8 @@ app.post('/api/shipsgo/ocean/shipments', auth, async (req, res) => {
     if (followers && !Array.isArray(followers)) {
       return res.status(400).json({ error: 'followers debe ser un array de emails' });
     }
-    if (followers && followers.length > 10) {
-      return res.status(400).json({ error: 'Máximo 10 emails permitidos en followers' });
+    if (followers && followers.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
+      return res.status(400).json({ error: 'Máximo 9 emails visibles permitidos en followers' });
     }
 
     // Validar tags
@@ -1830,7 +1895,7 @@ app.post('/api/shipsgo/ocean/shipments', auth, async (req, res) => {
     // Preparar body para ShipsGo
     const shipmentData: Record<string, any> = {
       reference,
-      followers: followers || [],
+      followers: normalizeTrackingFollowers(followers),
       tags: tags || []
     };
     if (container_number) shipmentData.container_number = container_number;
@@ -1913,6 +1978,12 @@ app.post('/api/shipsgo/ocean/shipments/:id/followers', auth, async (req, res) =>
       return res.status(400).json({ error: 'Debes ingresar un correo electrónico válido' });
     }
 
+    if (follower.toLowerCase() === OPERATIONS_FOLLOWER_EMAIL) {
+      return res.status(400).json({
+        error: 'El correo de operaciones se agrega automáticamente en todos los trackings',
+      });
+    }
+
     const response = await fetch(
       `https://api.shipsgo.com/v2/ocean/shipments/${encodeURIComponent(id)}/followers`,
       {
@@ -1964,6 +2035,13 @@ app.delete('/api/shipsgo/ocean/shipments/:id/followers/:followerId', auth, async
 
     if (!/^\d+$/.test(String(id || '')) || !/^\d+$/.test(String(followerId || ''))) {
       return res.status(400).json({ error: 'shipment_id o follower_id inválido' });
+    }
+
+    const followerEmail = await getShipsgoShipmentFollowerEmail('ocean', id, followerId, SHIPSGO_API_TOKEN);
+    if (followerEmail === OPERATIONS_FOLLOWER_EMAIL) {
+      return res.status(400).json({
+        error: 'El correo de operaciones es obligatorio y no puede eliminarse',
+      });
     }
 
     const response = await fetch(

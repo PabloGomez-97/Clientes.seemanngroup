@@ -14,7 +14,8 @@ import { MUNDOGAMING_DUMMY_SHIPMENTS } from "./Handlers/mundogamingDummyData";
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_TRACK_FOLLOWERS = 10;
+const MAX_TRACK_FOLLOWERS = 9;
+const OPERATIONS_FOLLOWER_EMAIL = "operaciones@seemanngroup.com";
 
 /*  DetailTabs  */
 interface TabDef {
@@ -690,7 +691,11 @@ function AirShipmentsView() {
 
     const normalizedEmails = trackEmails
       .map((email) => email.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter(
+        (email) =>
+          email.toLowerCase() !== OPERATIONS_FOLLOWER_EMAIL.toLowerCase(),
+      );
 
     if (normalizedEmails.length === 0) {
       setTrackError("Debes ingresar al menos un correo electrónico.");
@@ -698,7 +703,7 @@ function AirShipmentsView() {
     }
 
     if (normalizedEmails.length > MAX_TRACK_FOLLOWERS) {
-      setTrackError("Máximo 10 correos electrónicos para seguimiento.");
+      setTrackError("Máximo 9 correos electrónicos visibles para seguimiento.");
       return;
     }
 
@@ -1893,7 +1898,8 @@ function AirShipmentsView() {
                 ))}
               </div>
               <small className="asv-hint">
-                Puedes agregar hasta 10 correos para recibir el seguimiento.
+                Puedes agregar hasta 9 correos visibles. El correo de
+                operaciones se agrega automáticamente.
               </small>
             </div>
 

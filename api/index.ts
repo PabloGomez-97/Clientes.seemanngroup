@@ -36,6 +36,58 @@ function verifyToken(token: string): AuthPayload {
   return decoded as AuthPayload;
 }
 
+const OPERATIONS_FOLLOWER_EMAIL = 'operaciones@seemanngroup.com';
+const MAX_VISIBLE_TRACK_FOLLOWERS = 9;
+
+function normalizeTrackingFollowers(rawFollowers: unknown): string[] {
+  const uniqueFollowers = new Map<string, string>();
+  const inputFollowers = Array.isArray(rawFollowers) ? rawFollowers : [];
+
+  for (const value of inputFollowers) {
+    const email = String(value || '').trim();
+    if (!email) continue;
+
+    const key = email.toLowerCase();
+    if (key === OPERATIONS_FOLLOWER_EMAIL) continue;
+    if (!uniqueFollowers.has(key)) {
+      uniqueFollowers.set(key, email);
+    }
+  }
+
+  return [...uniqueFollowers.values(), OPERATIONS_FOLLOWER_EMAIL];
+}
+
+async function getShipsgoShipmentFollowerEmail(
+  shipmentType: 'air' | 'ocean',
+  shipmentId: string,
+  followerId: string,
+  token: string,
+): Promise<string | null> {
+  const response = await fetch(
+    `https://api.shipsgo.com/v2/${shipmentType}/shipments/${encodeURIComponent(shipmentId)}`,
+    {
+      method: 'GET',
+      headers: {
+        'X-Shipsgo-User-Token': token,
+      },
+    },
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = (await response.json().catch(() => ({}))) as {
+    shipment?: { followers?: Array<{ id?: number | string; email?: string }> };
+  };
+
+  const follower = data.shipment?.followers?.find(
+    (item) => String(item.id) === String(followerId),
+  );
+
+  return follower?.email?.trim().toLowerCase() || null;
+}
+
 /** =========================
  *  Mongoose / Modelos tipados
  *  ========================= */
@@ -1476,10 +1528,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        // Validar máximo 10 followers
-        if (followers && followers.length > 10) {
+        // Validar máximo 9 followers visibles + 1 correo interno de operaciones
+        if (followers && followers.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
           return res.status(400).json({ 
-            error: 'Máximo 10 emails permitidos en followers' 
+            error: 'Máximo 9 emails visibles permitidos en followers' 
           });
         }
 
@@ -1501,7 +1553,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const shipmentData = {
           reference,
           awb_number: awbFormatted,
-          followers: followers || [],
+          followers: normalizeTrackingFollowers(followers),
           tags: tags || []
         };
 
@@ -1587,6 +1639,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'Debes ingresar un correo electrónico válido' });
         }
 
+        if (follower.toLowerCase() === OPERATIONS_FOLLOWER_EMAIL) {
+          return res.status(400).json({
+            error: 'El correo de operaciones se agrega automáticamente en todos los trackings',
+          });
+        }
+
         const response = await fetch(
           `https://api.shipsgo.com/v2/air/shipments/${encodeURIComponent(shipmentId)}/followers`,
           {
@@ -1641,6 +1699,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
         if (!SHIPSGO_API_TOKEN) {
           return res.status(500).json({ error: 'Missing ShipsGo API token' });
+        }
+
+        const followerEmail = await getShipsgoShipmentFollowerEmail('air', shipmentId, followerId, SHIPSGO_API_TOKEN);
+        if (followerEmail === OPERATIONS_FOLLOWER_EMAIL) {
+          return res.status(400).json({
+            error: 'El correo de operaciones es obligatorio y no puede eliminarse',
+          });
         }
 
         const response = await fetch(
@@ -1888,8 +1953,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (followers && !Array.isArray(followers)) {
           return res.status(400).json({ error: 'followers debe ser un array de emails' });
         }
-        if (followers && followers.length > 10) {
-          return res.status(400).json({ error: 'Máximo 10 emails permitidos en followers' });
+        if (followers && followers.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
+          return res.status(400).json({ error: 'Máximo 9 emails visibles permitidos en followers' });
         }
 
         // Validar tags
@@ -1903,7 +1968,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Preparar body para ShipsGo
         const shipmentData: Record<string, any> = {
           reference,
-          followers: followers || [],
+          followers: normalizeTrackingFollowers(followers),
           tags: tags || []
         };
         if (container_number) shipmentData.container_number = container_number;
@@ -1988,6 +2053,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'Debes ingresar un correo electrónico válido' });
         }
 
+        if (follower.toLowerCase() === OPERATIONS_FOLLOWER_EMAIL) {
+          return res.status(400).json({
+            error: 'El correo de operaciones se agrega automáticamente en todos los trackings',
+          });
+        }
+
         const response = await fetch(
           `https://api.shipsgo.com/v2/ocean/shipments/${encodeURIComponent(shipmentId)}/followers`,
           {
@@ -2042,6 +2113,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
         if (!SHIPSGO_API_TOKEN) {
           return res.status(500).json({ error: 'Missing ShipsGo API token' });
+        }
+
+        const followerEmail = await getShipsgoShipmentFollowerEmail('ocean', shipmentId, followerId, SHIPSGO_API_TOKEN);
+        if (followerEmail === OPERATIONS_FOLLOWER_EMAIL) {
+          return res.status(400).json({
+            error: 'El correo de operaciones es obligatorio y no puede eliminarse',
+          });
         }
 
         const response = await fetch(
