@@ -109,6 +109,11 @@ function OceanShipmentsView() {
   >({});
   const oceanTrackingLoadingIds = useRef<Set<string | number>>(new Set());
 
+  // Already-tracked ocean numbers (from ShipsGo)
+  const [trackedOceanNumbers, setTrackedOceanNumbers] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Embed
   const [embedQuery, setEmbedQuery] = useState<string | null>(null);
 
@@ -401,7 +406,40 @@ function OceanShipmentsView() {
   useEffect(() => {
     setOceanTrackingNumbers({});
     oceanTrackingLoadingIds.current.clear();
+    setTrackedOceanNumbers(new Set());
   }, [activeUsername]);
+
+  // Fetch tracked ocean shipments from ShipsGo
+  useEffect(() => {
+    if (!activeUsername || !token) return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/shipsgo/ocean/shipments`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const nums = new Set<string>();
+        for (const s of data.shipments ?? []) {
+          if (s.reference === activeUsername) {
+            if (s.container_number) nums.add(s.container_number.toUpperCase());
+            if (s.booking_number) nums.add(s.booking_number.toUpperCase());
+          }
+        }
+        setTrackedOceanNumbers(nums);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [activeUsername, token]);
+
+  /* -- Helpers: arrival check ------------------------------- */
+  const isOceanShipmentArrived = (shipment: OceanShipment): boolean => {
+    if (!shipment.arrival) return false;
+    try {
+      return new Date(shipment.arrival) <= new Date();
+    } catch {
+      return false;
+    }
+  };
 
   /* -- Accordion --------------------------------------------- */
   const toggleAccordion = (shipmentId: string | number) => {
@@ -431,6 +469,12 @@ function OceanShipmentsView() {
     }
 
     return shipment.containerNumber || shipment.number || "";
+  };
+
+  const isOceanShipmentAlreadyTracked = (shipment: OceanShipment): boolean => {
+    if (trackedOceanNumbers.size === 0) return false;
+    const num = getTrackoceanNumber(shipment).trim().toUpperCase();
+    return !!num && trackedOceanNumbers.has(num);
   };
 
   const openTrackModal = (shipment: OceanShipment) => {
@@ -1091,6 +1135,7 @@ function OceanShipmentsView() {
                   <th className="osv-th">Origen</th>
                   <th className="osv-th">Destino</th>
                   <th className="osv-th">Fecha Salida</th>
+                  <th className="osv-th">Fecha Llegada</th>
                   <th className="osv-th">Vessel</th>
                   <th className="osv-th osv-th--center">Tipo</th>
                   <th className="osv-th osv-th--center">Piezas</th>
@@ -1100,6 +1145,7 @@ function OceanShipmentsView() {
                 {paginatedShipments.map((shipment, index) => {
                   const shipmentId = shipment.id || shipment.number || index;
                   const isExpanded = expandedShipmentId === shipmentId;
+                  const arrived = isOceanShipmentArrived(shipment);
 
                   return (
                     <React.Fragment key={shipmentId}>
@@ -1141,6 +1187,9 @@ function OceanShipmentsView() {
                         <td className="osv-td">
                           {formatDateShort(shipment.departure)}
                         </td>
+                        <td className="osv-td">
+                          {formatDateShort(shipment.arrival)}
+                        </td>
                         <td className="osv-td">{shipment.vessel || "-"}</td>
                         <td className="osv-td osv-td--center">
                           {shipment.typeOfMove ? (
@@ -1160,7 +1209,7 @@ function OceanShipmentsView() {
 
                       {isExpanded && (
                         <tr className="osv-accordion-row">
-                          <td colSpan={6} className="osv-accordion-cell">
+                          <td colSpan={8} className="osv-accordion-cell">
                             <div className="osv-accordion-content">
                               {/* Route summary card */}
                               <div className="osv-route-card">
@@ -1265,15 +1314,43 @@ function OceanShipmentsView() {
                                               <div className="asv-track-field__label">
                                                 ¿Quieres trackear tu envío?
                                               </div>
-                                              <button
-                                                className="asv-btn asv-btn--secondary asv-btn--sm"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  openTrackModal(shipment);
-                                                }}
-                                              >
-                                                Trackea tu envío
-                                              </button>
+                                              {arrived ? (
+                                                <>
+                                                  <span className="asv-track-field__unavailable">
+                                                    No disponible
+                                                  </span>
+                                                  <p className="asv-track-field__unavailable-text">
+                                                    Este cargamento ha llegado
+                                                    el{" "}
+                                                    {formatDate(
+                                                      shipment.arrival,
+                                                    )}
+                                                  </p>
+                                                </>
+                                              ) : isOceanShipmentAlreadyTracked(
+                                                  shipment,
+                                                ) ? (
+                                                <button
+                                                  className="asv-btn asv-btn--ghost asv-btn--sm"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate("/trackings");
+                                                  }}
+                                                >
+                                                  ✓ Ya está siendo trackeado —
+                                                  Ver seguimiento
+                                                </button>
+                                              ) : (
+                                                <button
+                                                  className="asv-btn asv-btn--secondary asv-btn--sm"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openTrackModal(shipment);
+                                                  }}
+                                                >
+                                                  Trackea tu envío
+                                                </button>
+                                              )}
                                             </div>
                                             <InfoField
                                               label="Número de Seguimiento"
@@ -1285,6 +1362,10 @@ function OceanShipmentsView() {
                                                       shipment.id
                                                     ] ?? "Cargando...")
                                               }
+                                            />
+                                            <InfoField
+                                              label="ID interno"
+                                              value={shipment.id}
                                             />
                                           </div>
                                         </div>

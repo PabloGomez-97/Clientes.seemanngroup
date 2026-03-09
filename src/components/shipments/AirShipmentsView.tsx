@@ -97,6 +97,9 @@ function AirShipmentsView() {
   >({});
   const parentShipmentLoadingIds = useRef<Set<string | number>>(new Set());
 
+  // Already-tracked AWBs (from ShipsGo)
+  const [trackedAwbs, setTrackedAwbs] = useState<Set<string>>(new Set());
+
   // Embed
   const [embedQuery, setEmbedQuery] = useState<string | null>(null);
 
@@ -416,7 +419,33 @@ function AirShipmentsView() {
   useEffect(() => {
     setParentShipmentNumbers({});
     parentShipmentLoadingIds.current.clear();
+    setTrackedAwbs(new Set());
   }, [activeUsername]);
+
+  // Fetch tracked air shipments from ShipsGo
+  useEffect(() => {
+    if (!activeUsername || !token) return;
+    const API =
+      import.meta.env.MODE === "development"
+        ? "http://localhost:4000"
+        : "https://portalclientes.seemanngroup.com";
+    (async () => {
+      try {
+        const res = await fetch(`${API}/api/shipsgo/shipments`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const awbs = new Set<string>();
+        for (const s of data.shipments ?? []) {
+          if (s.reference === activeUsername && s.awb_number) {
+            awbs.add(s.awb_number.replace(/[\s-]/g, ""));
+          }
+        }
+        setTrackedAwbs(awbs);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [activeUsername, token]);
 
   /*  Cache  */
   useEffect(() => {
@@ -575,6 +604,12 @@ function AirShipmentsView() {
   };
 
   /*  Track Modal  */
+  const isShipmentAlreadyTracked = (shipment: AirShipment): boolean => {
+    if (trackedAwbs.size === 0) return false;
+    const awb = getTrackAwbNumber(shipment).replace(/[\s-]/g, "");
+    return !!awb && trackedAwbs.has(awb);
+  };
+
   const getTrackAwbNumber = (shipment: AirShipment | null) => {
     if (!shipment) return "";
 
@@ -1205,6 +1240,19 @@ function AirShipmentsView() {
                                                     )}
                                                   </p>
                                                 </>
+                                              ) : isShipmentAlreadyTracked(
+                                                  shipment,
+                                                ) ? (
+                                                <button
+                                                  className="asv-btn asv-btn--ghost asv-btn--sm"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    navigate("/trackings");
+                                                  }}
+                                                >
+                                                  ✓ Ya está siendo trackeado —
+                                                  Ver seguimiento
+                                                </button>
                                               ) : (
                                                 <button
                                                   className="asv-btn asv-btn--secondary asv-btn--sm"
