@@ -69,7 +69,7 @@ export default function ProtectedRoute({
     return <Navigate to="/proveedor/home" replace />;
   }
   if (isAdmin) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to="/admin/home" replace />;
   }
 
   return <>{children}</>;

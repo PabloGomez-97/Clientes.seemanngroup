@@ -43,8 +43,6 @@ import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getAirportByOrigin } from "../../config/airportCoordinates";
 
-// Props para pre-selección desde ItineraryFinder
-
 function QuoteAPITester({
   preselectedOrigin,
   preselectedDestination,
@@ -749,10 +747,6 @@ function QuoteAPITester({
     })
     .sort((a, b) => a.priceForComparison - b.priceForComparison);
 
-  // ============================================================================
-  // CÁLCULOS AUTOMÁTICOS
-  // ============================================================================
-
   // Cálculo del peso chargeable (para ambos modos)
   const getPesoChargeable = () => {
     if (overallDimsAndWeight) {
@@ -790,10 +784,7 @@ function QuoteAPITester({
   const weightRangeError =
     weightRangeValidation !== null && !weightRangeValidation.tienePrecio;
 
-  // ============================================================================
-  // FUNCIONES DE CÁLCULO EXISTENTES
-  // ============================================================================
-
+  //calculo de exw
   const calculateEXWRate = (weightKg: number, volumeWeightKg: number) => {
     const chargeableWeight = Math.max(weightKg, volumeWeightKg);
 

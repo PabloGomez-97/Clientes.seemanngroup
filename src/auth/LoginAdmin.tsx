@@ -44,7 +44,7 @@ export default function LoginAdmin() {
         return;
       }
 
-      navigate("/admin/dashboard", { replace: true });
+      navigate("/admin/home", { replace: true });
     } catch (e: any) {
       setErr(e.message || "No se pudo iniciar sesión");
       setLoading(false);
