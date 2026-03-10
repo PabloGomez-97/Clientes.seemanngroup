@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import {
   type GroundShipment,
   InfoField,
@@ -53,7 +54,9 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    =========================================================== */
 function GroundShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { activeUsername } = useAuth();
+  const clientOverride = useClientOverride();
+  const { activeUsername: authUsername } = useAuth();
+  const activeUsername = clientOverride || authUsername;
   const filterConsignee = activeUsername || "";
 
   const [groundShipments, setGroundShipments] = useState<GroundShipment[]>([]);

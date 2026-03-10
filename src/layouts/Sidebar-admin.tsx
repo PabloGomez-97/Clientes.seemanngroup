@@ -54,23 +54,32 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
   const menuSections: MenuSection[] = [
     {
       title: "Principal",
+      items: [{ path: "/admin/home", name: "Inicio", icon: "fa fa-home" }],
+    },
+
+    {
+      title: "Operaciones",
       items: [
-        { path: "/admin/home", name: "Inicio", icon: "fa fa-home" },
         {
           path: "/admin/cotizador-administrador",
           name: "Cotizador",
           icon: "fa fa-calculator",
         },
         {
-          path: "/admin/tusclientes",
+          path: "/admin/trackeos",
+          name: "Trackeos",
+          icon: "fa fa-route",
+        },
+        {
+          path: "/admin/reporteriaclientes",
           name: "Mis Clientes",
           icon: "fa fa-users",
         },
-        { path: "/admin/trackeos", name: "Trackeos", icon: "fa fa-route" },
       ],
     },
+
     {
-      title: "Tarifario",
+      title: "Tarifas",
       items: [
         {
           path: "/admin/pricing",
@@ -80,20 +89,14 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
         },
       ],
     },
+
     {
-      title: "Gerencia",
+      title: "Reportes",
       items: [
         {
-          path: "/admin/users",
-          name: "Gestión Usuarios",
-          icon: "fa fa-shield-alt",
-          badge: { text: "CHIEF", type: "admin" as const },
-        },
-        {
-          path: "/admin/ejecutivos",
-          name: "Gestión Ejecutivos",
-          icon: "fa fa-briefcase",
-          badge: { text: "CHIEF", type: "admin" as const },
+          path: "/admin/reporteria",
+          name: "Reportería LINBIS",
+          icon: "fa fa-chart-bar",
         },
         {
           path: "/admin/reportexecutive",
@@ -109,24 +112,27 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
         },
       ],
     },
+
     {
-      title: "Reportes",
+      title: "Administración",
       items: [
         {
-          path: "/admin/reporteria",
-          name: "Reportería LINBIS",
-          icon: "fa fa-chart-bar",
+          path: "/admin/users",
+          name: "Gestión Usuarios",
+          icon: "fa fa-shield-alt",
+          badge: { text: "CHIEF", type: "admin" as const },
         },
         {
-          path: "/admin/reporteriaclientes",
-          name: "Reportería Clientes",
-          icon: "fa fa-chart-line",
-          badge: { text: "NEW", type: "new" as const },
+          path: "/admin/ejecutivos",
+          name: "Gestión Ejecutivos",
+          icon: "fa fa-briefcase",
+          badge: { text: "CHIEF", type: "admin" as const },
         },
       ],
     },
+
     {
-      title: "AUDITORIA",
+      title: "Auditoría",
       items: [
         {
           path: "/admin/auditoria",
@@ -136,6 +142,7 @@ function SidebarAdmin({ isOpen }: SidebarAdminProps) {
         },
       ],
     },
+
     {
       title: "Entrenamiento",
       items: [

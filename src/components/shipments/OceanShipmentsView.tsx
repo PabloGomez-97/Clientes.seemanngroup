@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import {
   type OceanShipment,
   type OutletContext,
@@ -74,7 +75,9 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    =========================================================== */
 function OceanShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { token, activeUsername } = useAuth();
+  const clientOverride = useClientOverride();
+  const { token, activeUsername: authUsername } = useAuth();
+  const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
   const filterConsignee = activeUsername || "";
 

@@ -8,6 +8,7 @@
 } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { useTranslation } from "react-i18next";
 import { DocumentosSection } from "./Documents/DocumentosSection";
 import "./styles/QuotesView.css";
@@ -213,7 +214,9 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
 
 function QuotesView() {
   const { accessToken } = useOutletContext<OutletContext>();
-  const { user, token, activeUsername } = useAuth();
+  const clientOverride = useClientOverride();
+  const { user, token, activeUsername: authUsername } = useAuth();
+  const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
   const { t } = useTranslation();
 

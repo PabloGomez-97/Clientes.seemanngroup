@@ -1,7 +1,12 @@
-// src/components/administrador/ReporteriaClientes.tsx — Selective Client Reporting with 1h localStorage cache
+// src/components/administrador/ReporteriaClientes.tsx — Client portal view for ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { ClientOverrideProvider } from "../../contexts/ClientOverrideContext";
+import AirShipmentsView from "../shipments/AirShipmentsView";
+import OceanShipmentsView from "../shipments/OceanShipmentsView";
+import GroundShipmentsView from "../shipments/GroundShipmentsView";
+import QuotesView from "../Sidebar/QuotesView";
 
 interface OutletContext {
   accessToken: string;
@@ -16,20 +21,10 @@ interface Cliente {
   createdAt: string;
 }
 
-interface ClienteStats {
-  airShipments: number;
-  oceanShipments: number;
-  quotesTotal: number;
-  quotesThisMonth: number;
-  invoicesTotal: number;
-  fetchedAt: number; // timestamp for cache expiry
-}
-
 // ── Cache helpers (1 hour TTL) ──
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in ms
 
 const CLIENTS_CACHE_KEY = "rc_clients_list";
-const STATS_CACHE_PREFIX = "rc_stats_";
 
 function getCachedClients(): Cliente[] | null {
   try {
@@ -57,34 +52,11 @@ function setCachedClients(data: Cliente[]) {
   }
 }
 
-function getCachedStats(username: string): ClienteStats | null {
-  try {
-    const raw = localStorage.getItem(STATS_CACHE_PREFIX + username);
-    if (!raw) return null;
-    const stats: ClienteStats = JSON.parse(raw);
-    if (Date.now() - stats.fetchedAt > CACHE_TTL) {
-      localStorage.removeItem(STATS_CACHE_PREFIX + username);
-      return null;
-    }
-    return stats;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedStats(username: string, stats: ClienteStats) {
-  try {
-    localStorage.setItem(STATS_CACHE_PREFIX + username, JSON.stringify(stats));
-  } catch {
-    /* ignore */
-  }
-}
-
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 function ReporteriaClientes() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  useOutletContext<OutletContext>(); // validate outlet context exists
   const { token } = useAuth();
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -92,10 +64,11 @@ function ReporteriaClientes() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Selected client and its stats
+  // Selected client
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
-  const [selectedStats, setSelectedStats] = useState<ClienteStats | null>(null);
-  const [loadingStats, setLoadingStats] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "air" | "ocean" | "ground" | "quotes"
+  >("air");
 
   // ── Fetch clients list (with cache) ──
   useEffect(() => {
@@ -132,129 +105,15 @@ function ReporteriaClientes() {
     fetchClientes();
   }, [token]);
 
-  // ── Fetch stats for ONE selected client ──
-  const fetchStatsForClient = useCallback(
-    async (cliente: Cliente) => {
-      if (!accessToken) return;
-
-      // Check cache first
-      const cached = getCachedStats(cliente.username);
-      if (cached) {
-        setSelectedStats(cached);
-        return;
-      }
-
-      setLoadingStats(true);
-      setSelectedStats(null);
-
-      const stats: ClienteStats = {
-        airShipments: 0,
-        oceanShipments: 0,
-        quotesTotal: 0,
-        quotesThisMonth: 0,
-        invoicesTotal: 0,
-        fetchedAt: Date.now(),
-      };
-
-      const now = new Date();
-      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-      // Fetch all 4 APIs in parallel for this single client
-      const [quotesResult, airResult, oceanResult, invoicesResult] =
-        await Promise.allSettled([
-          fetch(
-            `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(cliente.username)}&SortBy=newest&ItemsPerPage=200`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json",
-              },
-            },
-          ).then((r) => (r.ok ? r.json() : [])),
-
-          fetch(
-            `https://api.linbis.com/air-shipments?ConsigneeName=${encodeURIComponent(cliente.username)}&SortBy=newest&ItemsPerPage=200`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json",
-              },
-            },
-          ).then((r) => (r.ok ? r.json() : [])),
-
-          fetch(`https://api.linbis.com/ocean-shipments/all`, {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json",
-            },
-          }).then((r) => (r.ok ? r.json() : [])),
-
-          fetch(
-            `https://api.linbis.com/invoices?ConsigneeName=${encodeURIComponent(cliente.username)}&SortBy=newest&ItemsPerPage=200`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json",
-              },
-            },
-          ).then((r) => (r.ok ? r.json() : [])),
-        ]);
-
-      // Quotes
-      if (
-        quotesResult.status === "fulfilled" &&
-        Array.isArray(quotesResult.value)
-      ) {
-        stats.quotesTotal = quotesResult.value.length;
-        stats.quotesThisMonth = quotesResult.value.filter((q: any) => {
-          const d = new Date(q.date);
-          return d >= firstDayOfMonth;
-        }).length;
-      }
-
-      // Air
-      if (airResult.status === "fulfilled" && Array.isArray(airResult.value)) {
-        stats.airShipments = airResult.value.length;
-      }
-
-      // Ocean (filter client-side)
-      if (
-        oceanResult.status === "fulfilled" &&
-        Array.isArray(oceanResult.value)
-      ) {
-        stats.oceanShipments = oceanResult.value.filter(
-          (os: any) => os.consignee === cliente.username,
-        ).length;
-      }
-
-      // Invoices
-      if (
-        invoicesResult.status === "fulfilled" &&
-        Array.isArray(invoicesResult.value)
-      ) {
-        stats.invoicesTotal = invoicesResult.value.length;
-      }
-
-      setCachedStats(cliente.username, stats);
-      setSelectedStats(stats);
-      setLoadingStats(false);
-    },
-    [accessToken],
-  );
-
-  // When a client is selected, fetch stats
-  const handleSelectClient = useCallback(
-    (cliente: Cliente) => {
-      setSelectedClient(cliente);
-      fetchStatsForClient(cliente);
-    },
-    [fetchStatsForClient],
-  );
+  // When a client is selected, show their portal view
+  const handleSelectClient = useCallback((cliente: Cliente) => {
+    setSelectedClient(cliente);
+    setActiveTab("air");
+  }, []);
 
   // Go back to list
   const handleBack = () => {
     setSelectedClient(null);
-    setSelectedStats(null);
   };
 
   // Filtered client list
@@ -331,22 +190,17 @@ function ReporteriaClientes() {
     );
   }
 
-  // ── Client Detail View ──
+  // ── Client Detail View (same portal views the client sees) ──
   if (selectedClient) {
-    const totalShipments = selectedStats
-      ? selectedStats.airShipments + selectedStats.oceanShipments
-      : 0;
-    const score = selectedStats
-      ? selectedStats.quotesThisMonth * 3 +
-        totalShipments * 2 +
-        selectedStats.invoicesTotal
-      : 0;
-    const level = score > 20 ? "Alto" : score > 5 ? "Medio" : "Bajo";
-    const levelColor =
-      score > 20 ? "#059669" : score > 5 ? "#d97706" : "#dc2626";
+    const tabs = [
+      { key: "air" as const, label: "Envíos Aéreos", icon: "✈️" },
+      { key: "ocean" as const, label: "Envíos Marítimos", icon: "🚢" },
+      { key: "ground" as const, label: "Envíos Terrestres", icon: "🚛" },
+      { key: "quotes" as const, label: "Cotizaciones", icon: "📋" },
+    ];
 
     return (
-      <div style={{ fontFamily: FONT, maxWidth: 1200 }}>
+      <div style={{ fontFamily: FONT }}>
         {/* Back button */}
         <button
           onClick={handleBack}
@@ -364,6 +218,7 @@ function ReporteriaClientes() {
             color: "#374151",
             marginBottom: 20,
             transition: "all 0.15s",
+            fontFamily: FONT,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = "#f9fafb";
@@ -393,7 +248,7 @@ function ReporteriaClientes() {
             display: "flex",
             alignItems: "center",
             gap: 16,
-            marginBottom: 28,
+            marginBottom: 20,
           }}
         >
           <div
@@ -435,331 +290,55 @@ function ReporteriaClientes() {
           </div>
         </div>
 
-        {/* Loading Stats */}
-        {loadingStats && (
-          <div style={{ textAlign: "center", padding: 60 }}>
-            <div
+        {/* Tabs Navigation */}
+        <div
+          style={{
+            display: "flex",
+            gap: 4,
+            marginBottom: 24,
+            borderBottom: "2px solid #e5e7eb",
+            paddingBottom: 0,
+            overflowX: "auto",
+          }}
+        >
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               style={{
-                width: 32,
-                height: 32,
-                border: "3px solid #f0f0f0",
-                borderTop: "3px solid #ff9900",
-                borderRadius: "50%",
-                animation: "rc-spin 0.8s linear infinite",
-                margin: "0 auto 16px",
-              }}
-            />
-            <div style={{ color: "#8d99a8", fontSize: 13 }}>
-              Consultando datos de {selectedClient.username}... Esto puede
-              tardar unos segundos la primera vez
-            </div>
-            <style>{`@keyframes rc-spin { to { transform: rotate(360deg); } }`}</style>
-          </div>
-        )}
-
-        {/* Stats loaded */}
-        {selectedStats && !loadingStats && (
-          <>
-            {/* Stat Cards */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                gap: 14,
-                marginBottom: 24,
-              }}
-            >
-              {[
-                {
-                  label: "Cotizaciones (total)",
-                  value: selectedStats.quotesTotal,
-                  color: "#7c3aed",
-                  bg: "#f5f3ff",
-                },
-                {
-                  label: "Cotizaciones (mes)",
-                  value: selectedStats.quotesThisMonth,
-                  color: "#2563eb",
-                  bg: "#eff6ff",
-                },
-                {
-                  label: "Embarques Aéreos",
-                  value: selectedStats.airShipments,
-                  color: "#0891b2",
-                  bg: "#ecfeff",
-                },
-                {
-                  label: "Embarques Marítimos",
-                  value: selectedStats.oceanShipments,
-                  color: "#059669",
-                  bg: "#ecfdf5",
-                },
-                {
-                  label: "Facturas",
-                  value: selectedStats.invoicesTotal,
-                  color: "#d97706",
-                  bg: "#fffbeb",
-                },
-              ].map((card) => (
-                <div
-                  key={card.label}
-                  style={{
-                    background: "#fff",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 12,
-                    padding: "16px 18px",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: "#9ca3af",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      marginBottom: 8,
-                    }}
-                  >
-                    {card.label}
-                  </div>
-                  <div
-                    style={{ fontSize: 28, fontWeight: 700, color: card.color }}
-                  >
-                    {card.value}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Detail panels */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                gap: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "10px 20px",
+                background: "none",
+                border: "none",
+                borderBottom:
+                  activeTab === tab.key
+                    ? "2px solid #ff6200"
+                    : "2px solid transparent",
+                marginBottom: -2,
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: activeTab === tab.key ? 600 : 500,
+                color: activeTab === tab.key ? "#ff6200" : "#6b7280",
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+                fontFamily: FONT,
               }}
             >
-              {/* Activity Breakdown */}
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 12,
-                  padding: 20,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#6b7280",
-                    marginBottom: 16,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Desglose de Actividad
-                </div>
-                {[
-                  {
-                    label: "Cotizaciones totales",
-                    value: selectedStats.quotesTotal,
-                    color: "#7c3aed",
-                  },
-                  {
-                    label: "Cotizaciones este mes",
-                    value: selectedStats.quotesThisMonth,
-                    color: "#2563eb",
-                  },
-                  {
-                    label: "Embarques aéreos",
-                    value: selectedStats.airShipments,
-                    color: "#0891b2",
-                  },
-                  {
-                    label: "Embarques marítimos",
-                    value: selectedStats.oceanShipments,
-                    color: "#059669",
-                  },
-                  {
-                    label: "Facturas",
-                    value: selectedStats.invoicesTotal,
-                    color: "#d97706",
-                  },
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "8px 0",
-                      borderBottom: "1px solid #f9fafb",
-                    }}
-                  >
-                    <span style={{ fontSize: 13, color: "#374151" }}>
-                      {row.label}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 700,
-                        color: row.color,
-                      }}
-                    >
-                      {row.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <span style={{ fontSize: 15 }}>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-              {/* Client Info */}
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 12,
-                  padding: 20,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#6b7280",
-                    marginBottom: 16,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Información del Cliente
-                </div>
-                {[
-                  { label: "Empresa", value: selectedClient.username },
-                  { label: "Email", value: selectedClient.email },
-                  {
-                    label: "Registrado",
-                    value: new Date(
-                      selectedClient.createdAt,
-                    ).toLocaleDateString("es-CL", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    }),
-                  },
-                  { label: "Total operaciones", value: String(totalShipments) },
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: "8px 0",
-                      borderBottom: "1px solid #f9fafb",
-                    }}
-                  >
-                    <span style={{ fontSize: 13, color: "#374151" }}>
-                      {row.label}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#1f2937",
-                        textAlign: "right",
-                        maxWidth: "60%",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {row.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Activity Score */}
-              <div
-                style={{
-                  background: "#fff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 12,
-                  padding: 20,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#6b7280",
-                    marginBottom: 16,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  Score de Actividad
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "baseline",
-                    gap: 8,
-                    marginBottom: 12,
-                  }}
-                >
-                  <span
-                    style={{ fontSize: 40, fontWeight: 700, color: levelColor }}
-                  >
-                    {score}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: levelColor,
-                      background:
-                        levelColor === "#059669"
-                          ? "#ecfdf5"
-                          : levelColor === "#d97706"
-                            ? "#fffbeb"
-                            : "#fef2f2",
-                      padding: "2px 8px",
-                      borderRadius: 4,
-                    }}
-                  >
-                    {level}
-                  </span>
-                </div>
-                <div
-                  style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}
-                >
-                  Basado en cotizaciones mensuales (×3), embarques activos (×2)
-                  y facturación (×1).
-                </div>
-                {/* Cache indicator */}
-                <div
-                  style={{
-                    marginTop: 16,
-                    padding: "8px 12px",
-                    background: "#f9fafb",
-                    borderRadius: 6,
-                    fontSize: 11,
-                    color: "#9ca3af",
-                  }}
-                >
-                  Datos en caché hasta{" "}
-                  {new Date(
-                    selectedStats.fetchedAt + CACHE_TTL,
-                  ).toLocaleTimeString("es-CL", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+        {/* Tab Content — wraps views with the client's username override */}
+        <ClientOverrideProvider value={selectedClient.username}>
+          {activeTab === "air" && <AirShipmentsView />}
+          {activeTab === "ocean" && <OceanShipmentsView />}
+          {activeTab === "ground" && <GroundShipmentsView />}
+          {activeTab === "quotes" && <QuotesView />}
+        </ClientOverrideProvider>
       </div>
     );
   }
@@ -772,10 +351,10 @@ function ReporteriaClientes() {
         <h1
           style={{ fontSize: 22, fontWeight: 700, color: "#1f2937", margin: 0 }}
         >
-          Reportería Clientes
+          Mis Clientes
         </h1>
         <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
-          Selecciona un cliente para ver sus métricas y actividad
+          Selecciona un cliente para ver sus cotizaciones y operaciones.
         </p>
       </div>
 
@@ -869,7 +448,6 @@ function ReporteriaClientes() {
       {/* Client List */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {filteredClients.map((client) => {
-          const hasCachedStats = !!getCachedStats(client.username);
           return (
             <div
               key={client.id}
@@ -940,22 +518,6 @@ function ReporteriaClientes() {
                   year: "numeric",
                 })}
               </div>
-
-              {/* Cache indicator */}
-              {hasCachedStats && (
-                <div
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: 4,
-                    fontSize: 10,
-                    fontWeight: 600,
-                    background: "#ecfdf5",
-                    color: "#059669",
-                  }}
-                >
-                  EN CACHÉ
-                </div>
-              )}
 
               {/* Arrow */}
               <svg
