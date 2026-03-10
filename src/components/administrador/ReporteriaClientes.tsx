@@ -6,6 +6,7 @@ import { ClientOverrideProvider } from "../../contexts/ClientOverrideContext";
 import AirShipmentsView from "../shipments/AirShipmentsView";
 import OceanShipmentsView from "../shipments/OceanShipmentsView";
 import GroundShipmentsView from "../shipments/GroundShipmentsView";
+import EXWChargesView from "./Cobros-EXW/EXWChargesView";
 import QuotesView from "../Sidebar/QuotesView";
 
 interface OutletContext {
@@ -67,7 +68,7 @@ function ReporteriaClientes() {
   // Selected client
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "air" | "ocean" | "ground" | "quotes"
+    "air" | "ocean" | "ground" | "quotes" | "exw"
   >("air");
 
   // ── Fetch clients list (with cache) ──
@@ -193,10 +194,11 @@ function ReporteriaClientes() {
   // ── Client Detail View (same portal views the client sees) ──
   if (selectedClient) {
     const tabs = [
-      { key: "air" as const, label: "Envíos Aéreos", icon: "✈️" },
-      { key: "ocean" as const, label: "Envíos Marítimos", icon: "🚢" },
-      { key: "ground" as const, label: "Envíos Terrestres", icon: "🚛" },
-      { key: "quotes" as const, label: "Cotizaciones", icon: "📋" },
+      { key: "air" as const, label: "Envíos Aéreos", icon: "" },
+      { key: "ocean" as const, label: "Envíos Marítimos", icon: "" },
+      { key: "ground" as const, label: "Envíos Terrestres", icon: "" },
+      { key: "exw" as const, label: "Cobros EXW", icon: "" },
+      { key: "quotes" as const, label: "Cotizaciones", icon: "" },
     ];
 
     return (
@@ -337,6 +339,7 @@ function ReporteriaClientes() {
           {activeTab === "air" && <AirShipmentsView />}
           {activeTab === "ocean" && <OceanShipmentsView />}
           {activeTab === "ground" && <GroundShipmentsView />}
+          {activeTab === "exw" && <EXWChargesView />}
           {activeTab === "quotes" && <QuotesView />}
         </ClientOverrideProvider>
       </div>
