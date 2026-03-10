@@ -14,7 +14,23 @@ const isMobileViewport = () =>
 function ProveedorLayout() {
   const { user } = useAuth();
   const [isMobile, setIsMobile] = useState(isMobileViewport);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobileViewport);
+  const [hasUserPref, setHasUserPref] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("sidebarCollapsed") !== null;
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("sidebarCollapsed");
+      if (stored !== null) return stored === "true";
+    } catch (e) {
+      /* ignore */
+    }
+    return isMobileViewport();
+  });
   const location = useLocation();
 
   // Verificar acceso por rol a la ruta actual
@@ -28,7 +44,7 @@ function ProveedorLayout() {
 
       setIsMobile((previousMobile) => {
         if (previousMobile !== mobile) {
-          setSidebarCollapsed(mobile);
+          if (!hasUserPref) setSidebarCollapsed(mobile);
         }
 
         return mobile;
@@ -37,10 +53,19 @@ function ProveedorLayout() {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [hasUserPref]);
 
   const toggleSidebar = () => {
-    setSidebarCollapsed((previous) => !previous);
+    setHasUserPref(true);
+    setSidebarCollapsed((previous) => {
+      const next = !previous;
+      try {
+        localStorage.setItem("sidebarCollapsed", String(next));
+      } catch (e) {
+        /* ignore */
+      }
+      return next;
+    });
   };
 
   return (

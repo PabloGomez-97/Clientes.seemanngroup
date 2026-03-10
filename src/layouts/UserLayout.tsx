@@ -17,7 +17,23 @@ function UserLayout() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(isMobileViewport);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobileViewport);
+  const [hasUserPref, setHasUserPref] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("sidebarCollapsed") !== null;
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("sidebarCollapsed");
+      if (stored !== null) return stored === "true";
+    } catch (e) {
+      /* ignore */
+    }
+    return isMobileViewport();
+  });
 
   // Obtener token de Linbis automáticamente al cargar
   useEffect(() => {
@@ -55,7 +71,7 @@ function UserLayout() {
 
       setIsMobile((previousMobile) => {
         if (previousMobile !== mobile) {
-          setSidebarCollapsed(mobile);
+          if (!hasUserPref) setSidebarCollapsed(mobile);
         }
 
         return mobile;
@@ -64,7 +80,7 @@ function UserLayout() {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [hasUserPref]);
 
   const handleLogout = () => {
     setAccessToken("");
@@ -72,7 +88,16 @@ function UserLayout() {
   };
 
   const toggleSidebar = () => {
-    setSidebarCollapsed((previous) => !previous);
+    setHasUserPref(true);
+    setSidebarCollapsed((previous) => {
+      const next = !previous;
+      try {
+        localStorage.setItem("sidebarCollapsed", String(next));
+      } catch (e) {
+        /* ignore */
+      }
+      return next;
+    });
   };
 
   {

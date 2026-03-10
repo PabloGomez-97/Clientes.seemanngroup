@@ -197,18 +197,22 @@ function SidebarProveedor({
                     />
                   )}
 
-                  <div
+                  <a
+                    href={item.path}
                     title={isCollapsed ? item.name : undefined}
-                    onClick={() => {
+                    onClick={(e) => {
+                      if (e.button === 1 || e.ctrlKey || e.metaKey) return;
+                      e.preventDefault();
                       navigate(item.path);
                       if (isMobile) onCloseMobile();
                     }}
                     onMouseEnter={() => setHoveredItem(item.path)}
                     onMouseLeave={() => setHoveredItem(null)}
                     style={{
+                      display: "flex",
+                      textDecoration: "none",
                       padding:
                         isCollapsed && !isMobile ? "14px 0" : "15px 20px",
-                      display: "flex",
                       alignItems: "center",
                       justifyContent:
                         isCollapsed && !isMobile ? "center" : "flex-start",
@@ -249,7 +253,7 @@ function SidebarProveedor({
                         {item.name}
                       </span>
                     )}
-                  </div>
+                  </a>
                 </li>
               );
             })}

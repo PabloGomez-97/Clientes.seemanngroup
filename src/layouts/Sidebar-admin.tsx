@@ -338,9 +338,18 @@ function SidebarAdmin({
 
                   return (
                     <li key={itemIdx}>
-                      <div
+                      <a
+                        href={
+                          item.path
+                            ? item.path
+                            : hasSubItems && visibleSubItems.length > 0
+                            ? visibleSubItems[0].path
+                            : "#"
+                        }
                         title={isCollapsed ? item.name : undefined}
-                        onClick={() => {
+                        onClick={(e) => {
+                          if (e.button === 1 || e.ctrlKey || e.metaKey) return;
+                          e.preventDefault();
                           if (hasSubItems) {
                             if (isCollapsed && visibleSubItems.length > 0) {
                               navigate(visibleSubItems[0].path);
@@ -358,9 +367,10 @@ function SidebarAdmin({
                         }
                         onMouseLeave={() => setHoveredItem(null)}
                         style={{
+                          display: "flex",
+                          textDecoration: "none",
                           padding:
                             isCollapsed && !isMobile ? "14px 0" : "15px 20px",
-                          display: "flex",
                           alignItems: "center",
                           justifyContent:
                             isCollapsed && !isMobile ? "center" : "flex-start",
@@ -440,7 +450,7 @@ function SidebarAdmin({
                             )}
                           </>
                         )}
-                      </div>
+                      </a>
 
                       {!isCollapsed &&
                         hasSubItems &&
@@ -465,53 +475,60 @@ function SidebarAdmin({
                                   hoveredItem === `sub-${subItem.path}`;
 
                                 return (
-                                  <li
-                                    key={subIdx}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      navigate(subItem.path);
-                                      if (isMobile) onCloseMobile();
-                                    }}
-                                    onMouseEnter={() =>
-                                      setHoveredItem(`sub-${subItem.path}`)
-                                    }
-                                    onMouseLeave={() => setHoveredItem(null)}
-                                    style={{
-                                      padding: "10px 20px 10px 56px",
-                                      cursor: "pointer",
-                                      transition: "all 0.12s ease",
-                                      backgroundColor: isSubActive
-                                        ? colors.bgActive
-                                        : isSubHovered
-                                          ? colors.bgHover
-                                          : "transparent",
-                                      color: isSubActive
-                                        ? colors.text
-                                        : colors.textMuted,
-                                      fontSize: "14px",
-                                      fontWeight: isSubActive ? "500" : "400",
-                                      position: "relative",
-                                      marginLeft: "0",
-                                      marginRight: "0",
-                                      borderRadius: "0",
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        position: "absolute",
-                                        left: "40px",
-                                        top: "50%",
-                                        transform: "translateY(-50%)",
-                                        width: "5px",
-                                        height: "5px",
-                                        borderRadius: "50%",
-                                        backgroundColor: isSubActive
-                                          ? colors.accent
-                                          : colors.textMuted,
-                                        opacity: isSubActive ? 1 : 0.5,
+                                  <li key={subIdx}>
+                                    <a
+                                      href={subItem.path}
+                                      onClick={(e) => {
+                                        if (e.button === 1 || e.ctrlKey || e.metaKey)
+                                          return;
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        navigate(subItem.path);
+                                        if (isMobile) onCloseMobile();
                                       }}
-                                    />
-                                    {subItem.name}
+                                      onMouseEnter={() =>
+                                        setHoveredItem(`sub-${subItem.path}`)
+                                      }
+                                      onMouseLeave={() => setHoveredItem(null)}
+                                      style={{
+                                        display: "block",
+                                        padding: "10px 20px 10px 56px",
+                                        cursor: "pointer",
+                                        transition: "all 0.12s ease",
+                                        backgroundColor: isSubActive
+                                          ? colors.bgActive
+                                          : isSubHovered
+                                            ? colors.bgHover
+                                            : "transparent",
+                                        color: isSubActive
+                                          ? colors.text
+                                          : colors.textMuted,
+                                        fontSize: "14px",
+                                        fontWeight: isSubActive ? "500" : "400",
+                                        position: "relative",
+                                        marginLeft: "0",
+                                        marginRight: "0",
+                                        borderRadius: "0",
+                                        textDecoration: "none",
+                                      }}
+                                    >
+                                      <span
+                                        style={{
+                                          position: "absolute",
+                                          left: "40px",
+                                          top: "50%",
+                                          transform: "translateY(-50%)",
+                                          width: "5px",
+                                          height: "5px",
+                                          borderRadius: "50%",
+                                          backgroundColor: isSubActive
+                                            ? colors.accent
+                                            : colors.textMuted,
+                                          opacity: isSubActive ? 1 : 0.5,
+                                        }}
+                                      />
+                                      {subItem.name}
+                                    </a>
                                   </li>
                                 );
                               })}
