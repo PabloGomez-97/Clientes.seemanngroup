@@ -12,11 +12,16 @@ interface OutletContext {
 interface EXWRow {
   id: number | string;
   operationNumber: string;
+  clientName: string;
   consignee: string;
   origen: string;
   direccion: string;
   kgCargamento: number;
   exwValue: number;
+}
+
+interface EXWChargesViewProps {
+  clientUsernames?: string[];
 }
 
 const FONT =
@@ -76,21 +81,38 @@ function cleanAddress(addr: string | null | undefined): string {
 function formatKg(value: number | string | null | undefined) {
   const n = Number(value) || 0;
   // Always show two decimals, decimal separator as comma, no thousand separators
-  return n.toFixed(2).replace('.', ',');
+  return n.toFixed(2).replace(".", ",");
 }
 
 function formatExw(value: number | string | null | undefined) {
   const n = Number(value) || 0;
   // If integer (no cents), show without decimals; otherwise show two decimals with comma
   if (Number.isInteger(n)) return String(n);
-  return n.toFixed(2).replace('.', ',');
+  return n.toFixed(2).replace(".", ",");
 }
 
-function EXWChargesView() {
+function EXWChargesView({ clientUsernames }: EXWChargesViewProps) {
   const { accessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const { activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
+  const usernames = useMemo(() => {
+    const source =
+      clientUsernames && clientUsernames.length > 0
+        ? clientUsernames
+        : activeUsername
+          ? [activeUsername]
+          : [];
+
+    return Array.from(
+      new Set(source.map((username) => username.trim()).filter(Boolean)),
+    );
+  }, [activeUsername, clientUsernames]);
+  const isAllClientsView = usernames.length > 1;
+  const cacheKey = useMemo(
+    () => usernames.slice().sort().join("|"),
+    [usernames],
+  );
 
   const [rows, setRows] = useState<EXWRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -100,10 +122,10 @@ function EXWChargesView() {
 
   const fetchData = useCallback(
     async (forceRefresh = false) => {
-      if (!accessToken || !activeUsername) return;
+      if (!accessToken || usernames.length === 0 || !cacheKey) return;
 
       if (!forceRefresh) {
-        const cachedRows = getCachedRows(activeUsername);
+        const cachedRows = getCachedRows(cacheKey);
         if (cachedRows) {
           setRows(cachedRows);
           setError(null);
@@ -112,7 +134,7 @@ function EXWChargesView() {
           return;
         }
       } else {
-        clearCachedRows(activeUsername);
+        clearCachedRows(cacheKey);
       }
 
       setLoading(true);
@@ -121,69 +143,79 @@ function EXWChargesView() {
       setProgress({ current: 0, total: 0 });
 
       try {
-        // 1. Fetch all air-shipment IDs for this client
-        const allIds: (string | number)[] = [];
+        // 1. Fetch all air-shipment IDs for the selected client scope
+        const allShipments: Array<{ id: string | number; clientName: string }> =
+          [];
         const seenIds = new Set<string | number>();
-        let page = 1;
         const itemsPerPage = 50;
 
-        while (true) {
-          const params = new URLSearchParams({
-            ConsigneeName: activeUsername,
-            Page: page.toString(),
-            ItemsPerPage: itemsPerPage.toString(),
-            SortBy: "newest",
-          });
+        for (const username of usernames) {
+          let page = 1;
 
-          const res = await fetch(
-            `https://api.linbis.com/air-shipments?${params}`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                Accept: "application/json",
-                "Content-Type": "application/json",
+          while (true) {
+            const params = new URLSearchParams({
+              ConsigneeName: username,
+              Page: page.toString(),
+              ItemsPerPage: itemsPerPage.toString(),
+              SortBy: "newest",
+            });
+
+            const res = await fetch(
+              `https://api.linbis.com/air-shipments?${params}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  Accept: "application/json",
+                  "Content-Type": "application/json",
+                },
               },
-            },
-          );
+            );
 
-          if (!res.ok) {
-            if (res.status === 401)
-              throw new Error("Token inválido o expirado.");
-            throw new Error(`Error ${res.status}: ${res.statusText}`);
-          }
-
-          const shipments: Record<string, unknown>[] = await res.json();
-          if (!shipments.length) break;
-
-          for (const s of shipments) {
-            if (s.id && !seenIds.has(s.id as string | number)) {
-              allIds.push(s.id as string | number);
-              seenIds.add(s.id as string | number);
+            if (!res.ok) {
+              if (res.status === 401)
+                throw new Error("Token inválido o expirado.");
+              throw new Error(`Error ${res.status}: ${res.statusText}`);
             }
-            if (Array.isArray(s.subShipments)) {
-              for (const sub of s.subShipments as Record<string, unknown>[]) {
-                if (sub.id && !seenIds.has(sub.id as string | number)) {
-                  allIds.push(sub.id as string | number);
-                  seenIds.add(sub.id as string | number);
+
+            const shipments: Record<string, unknown>[] = await res.json();
+            if (!shipments.length) break;
+
+            for (const s of shipments) {
+              if (s.id && !seenIds.has(s.id as string | number)) {
+                allShipments.push({
+                  id: s.id as string | number,
+                  clientName: username,
+                });
+                seenIds.add(s.id as string | number);
+              }
+              if (Array.isArray(s.subShipments)) {
+                for (const sub of s.subShipments as Record<string, unknown>[]) {
+                  if (sub.id && !seenIds.has(sub.id as string | number)) {
+                    allShipments.push({
+                      id: sub.id as string | number,
+                      clientName: username,
+                    });
+                    seenIds.add(sub.id as string | number);
+                  }
                 }
               }
             }
-          }
 
-          if (shipments.length < itemsPerPage) break;
-          page++;
+            if (shipments.length < itemsPerPage) break;
+            page++;
+          }
         }
 
-        setProgress({ current: 0, total: allIds.length });
+        setProgress({ current: 0, total: allShipments.length });
 
         // 2. Fetch details in batches; keep only those with EXW CHARGES
         const results: EXWRow[] = [];
         const batchSize = 5;
 
-        for (let i = 0; i < allIds.length; i += batchSize) {
-          const batch = allIds.slice(i, i + batchSize);
+        for (let i = 0; i < allShipments.length; i += batchSize) {
+          const batch = allShipments.slice(i, i + batchSize);
 
-          const promises = batch.map(async (id) => {
+          const promises = batch.map(async ({ id, clientName }) => {
             try {
               const res = await fetch(
                 `https://api.linbis.com/air-shipments/details/${id}`,
@@ -225,6 +257,7 @@ function EXWChargesView() {
               return {
                 id,
                 operationNumber,
+                clientName,
                 consignee,
                 origen,
                 direccion,
@@ -242,12 +275,12 @@ function EXWChargesView() {
           }
 
           setProgress({
-            current: Math.min(i + batchSize, allIds.length),
-            total: allIds.length,
+            current: Math.min(i + batchSize, allShipments.length),
+            total: allShipments.length,
           });
         }
 
-        setCachedRows(activeUsername, results);
+        setCachedRows(cacheKey, results);
         setRows(results);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al cargar datos");
@@ -255,7 +288,7 @@ function EXWChargesView() {
         setLoading(false);
       }
     },
-    [accessToken, activeUsername],
+    [accessToken, cacheKey, usernames],
   );
 
   useEffect(() => {
@@ -298,7 +331,9 @@ function EXWChargesView() {
             Cobros EXW
           </h2>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>
-            Operaciones aéreas con cargos EXW
+            {isAllClientsView
+              ? `Operaciones aéreas con cargos EXW de ${usernames.length} clientes`
+              : "Operaciones aéreas con cargos EXW"}
           </p>
         </div>
         <div
@@ -442,6 +477,24 @@ function EXWChargesView() {
             >
               <thead>
                 <tr style={{ background: "#f8fafc" }}>
+                  {isAllClientsView && (
+                    <th
+                      style={{
+                        padding: "12px 16px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#64748b",
+                        textAlign: "left",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        borderBottom: "2px solid #e2e8f0",
+                        whiteSpace: "nowrap",
+                        width: 160,
+                      }}
+                    >
+                      Cliente
+                    </th>
+                  )}
                   <th
                     style={{
                       padding: "12px 16px",
@@ -528,7 +581,7 @@ function EXWChargesView() {
                 {filteredRows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={isAllClientsView ? 6 : 5}
                       style={{
                         padding: 40,
                         textAlign: "center",
@@ -548,6 +601,19 @@ function EXWChargesView() {
                         borderBottom: "1px solid #f1f5f9",
                       }}
                     >
+                      {isAllClientsView && (
+                        <td
+                          style={{
+                            padding: "10px 16px",
+                            fontSize: 13,
+                            color: "#334155",
+                            fontWeight: 500,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {row.clientName}
+                        </td>
+                      )}
                       <td
                         style={{
                           padding: "10px 16px",

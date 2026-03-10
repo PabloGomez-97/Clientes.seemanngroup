@@ -802,13 +802,13 @@ function QuoteAPITester({
     if (chargeableWeight >= 500) {
       ratePerKg = 0.8;
     } else if (chargeableWeight >= 300) {
-      ratePerKg = 1.0;
-    } else {
       ratePerKg = 1.2;
+    } else {
+      ratePerKg = 1.6;
     }
 
     const calculatedRate = chargeableWeight * ratePerKg;
-    return Math.max(calculatedRate, 190);
+    return Math.max(calculatedRate, 250);
   };
 
   // Función para calcular el seguro (TOTAL * 1.1 * 0.002)

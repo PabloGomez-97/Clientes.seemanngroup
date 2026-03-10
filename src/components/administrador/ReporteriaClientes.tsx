@@ -67,6 +67,7 @@ function ReporteriaClientes() {
 
   // Selected client
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
+  const [showAllExw, setShowAllExw] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "air" | "ocean" | "ground" | "quotes" | "exw"
   >("air");
@@ -108,13 +109,20 @@ function ReporteriaClientes() {
 
   // When a client is selected, show their portal view
   const handleSelectClient = useCallback((cliente: Cliente) => {
+    setShowAllExw(false);
     setSelectedClient(cliente);
     setActiveTab("air");
+  }, []);
+
+  const handleSelectAllExw = useCallback(() => {
+    setSelectedClient(null);
+    setShowAllExw(true);
   }, []);
 
   // Go back to list
   const handleBack = () => {
     setSelectedClient(null);
+    setShowAllExw(false);
   };
 
   // Filtered client list
@@ -187,6 +195,99 @@ function ReporteriaClientes() {
           </div>
           <div style={{ fontSize: 13, color: "#6b7280" }}>{error}</div>
         </div>
+      </div>
+    );
+  }
+
+  if (showAllExw) {
+    return (
+      <div style={{ fontFamily: FONT }}>
+        <button
+          onClick={handleBack}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 16px",
+            background: "none",
+            border: "1px solid #e5e7eb",
+            borderRadius: 8,
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 500,
+            color: "#374151",
+            marginBottom: 20,
+            transition: "all 0.15s",
+            fontFamily: FONT,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#f9fafb";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "none";
+          }}
+        >
+          <svg
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            viewBox="0 0 24 24"
+          >
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Volver a la lista
+        </button>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            marginBottom: 20,
+          }}
+        >
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 12,
+              background: "#232f3e",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 18,
+              fontWeight: 700,
+              color: "#fff",
+              flexShrink: 0,
+            }}
+          >
+            EXW
+          </div>
+          <div>
+            <h1
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: "#1f2937",
+                margin: 0,
+              }}
+            >
+              All EXW Charges
+            </h1>
+            <p style={{ fontSize: 14, color: "#6b7280", margin: "2px 0 0" }}>
+              Consolidado de cobros EXW para los {clientes.length} clientes del
+              ejecutivo.
+            </p>
+          </div>
+        </div>
+
+        <EXWChargesView
+          clientUsernames={clientes.map((client) => client.username)}
+        />
       </div>
     );
   }
@@ -538,6 +639,82 @@ function ReporteriaClientes() {
             </div>
           );
         })}
+
+        {clientes.length > 0 && (
+          <button
+            type="button"
+            onClick={handleSelectAllExw}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 14,
+              padding: "16px 18px",
+              background: "#fff7ed",
+              border: "1px dashed #fb923c",
+              borderRadius: 10,
+              cursor: "pointer",
+              transition: "all 0.15s",
+              textAlign: "left",
+              fontFamily: FONT,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#ffedd5";
+              e.currentTarget.style.borderColor = "#f97316";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "#fff7ed";
+              e.currentTarget.style.borderColor = "#fb923c";
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: "#ff6200",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#fff",
+                  flexShrink: 0,
+                }}
+              >
+                EXW
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "#9a3412",
+                  }}
+                >
+                  All EXW Charges
+                </div>
+                <div style={{ fontSize: 12, color: "#c2410c" }}>
+                  Ver cobros EXW consolidados de todos los clientes asignados.
+                </div>
+              </div>
+            </div>
+
+            <svg
+              width="16"
+              height="16"
+              fill="none"
+              stroke="#c2410c"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 24 24"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {filteredClients.length === 0 && (
