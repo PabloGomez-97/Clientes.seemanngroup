@@ -11,6 +11,7 @@ interface OutletContext {
 
 interface EXWRow {
   id: number | string;
+  operationNumber: string;
   consignee: string;
   origen: string;
   direccion: string;
@@ -20,6 +21,48 @@ interface EXWRow {
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const CACHE_TTL = 24 * 60 * 60 * 1000;
+const CACHE_KEY_PREFIX = "exw_charges_client_cache";
+
+function getCacheKey(username: string) {
+  return `${CACHE_KEY_PREFIX}_${username}`;
+}
+
+function getCachedRows(username: string): EXWRow[] | null {
+  try {
+    const raw = localStorage.getItem(getCacheKey(username));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as { data?: EXWRow[]; ts?: number };
+    if (!parsed.ts || Date.now() - parsed.ts > CACHE_TTL) {
+      localStorage.removeItem(getCacheKey(username));
+      return null;
+    }
+
+    return Array.isArray(parsed.data) ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedRows(username: string, rows: EXWRow[]) {
+  try {
+    localStorage.setItem(
+      getCacheKey(username),
+      JSON.stringify({ data: rows, ts: Date.now() }),
+    );
+  } catch {
+    // Ignore quota/storage failures.
+  }
+}
+
+function clearCachedRows(username: string) {
+  try {
+    localStorage.removeItem(getCacheKey(username));
+  } catch {
+    // Ignore storage failures.
+  }
+}
 
 function cleanAddress(addr: string | null | undefined): string {
   if (!addr) return "—";
@@ -42,144 +85,165 @@ function EXWChargesView() {
   const [filterOrigen, setFilterOrigen] = useState("");
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
-  const fetchData = useCallback(async () => {
-    if (!accessToken || !activeUsername) return;
-    setLoading(true);
-    setError(null);
-    setRows([]);
-    setProgress({ current: 0, total: 0 });
+  const fetchData = useCallback(
+    async (forceRefresh = false) => {
+      if (!accessToken || !activeUsername) return;
 
-    try {
-      // 1. Fetch all air-shipment IDs for this client
-      const allIds: (string | number)[] = [];
-      const seenIds = new Set<string | number>();
-      let page = 1;
-      const itemsPerPage = 50;
-
-      while (true) {
-        const params = new URLSearchParams({
-          ConsigneeName: activeUsername,
-          Page: page.toString(),
-          ItemsPerPage: itemsPerPage.toString(),
-          SortBy: "newest",
-        });
-
-        const res = await fetch(
-          `https://api.linbis.com/air-shipments?${params}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
-        );
-
-        if (!res.ok) {
-          if (res.status === 401) throw new Error("Token inválido o expirado.");
-          throw new Error(`Error ${res.status}: ${res.statusText}`);
+      if (!forceRefresh) {
+        const cachedRows = getCachedRows(activeUsername);
+        if (cachedRows) {
+          setRows(cachedRows);
+          setError(null);
+          setLoading(false);
+          setProgress({ current: 0, total: 0 });
+          return;
         }
+      } else {
+        clearCachedRows(activeUsername);
+      }
 
-        const shipments: Record<string, unknown>[] = await res.json();
-        if (!shipments.length) break;
+      setLoading(true);
+      setError(null);
+      setRows([]);
+      setProgress({ current: 0, total: 0 });
 
-        for (const s of shipments) {
-          if (s.id && !seenIds.has(s.id as string | number)) {
-            allIds.push(s.id as string | number);
-            seenIds.add(s.id as string | number);
+      try {
+        // 1. Fetch all air-shipment IDs for this client
+        const allIds: (string | number)[] = [];
+        const seenIds = new Set<string | number>();
+        let page = 1;
+        const itemsPerPage = 50;
+
+        while (true) {
+          const params = new URLSearchParams({
+            ConsigneeName: activeUsername,
+            Page: page.toString(),
+            ItemsPerPage: itemsPerPage.toString(),
+            SortBy: "newest",
+          });
+
+          const res = await fetch(
+            `https://api.linbis.com/air-shipments?${params}`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                Accept: "application/json",
+                "Content-Type": "application/json",
+              },
+            },
+          );
+
+          if (!res.ok) {
+            if (res.status === 401)
+              throw new Error("Token inválido o expirado.");
+            throw new Error(`Error ${res.status}: ${res.statusText}`);
           }
-          if (Array.isArray(s.subShipments)) {
-            for (const sub of s.subShipments as Record<string, unknown>[]) {
-              if (sub.id && !seenIds.has(sub.id as string | number)) {
-                allIds.push(sub.id as string | number);
-                seenIds.add(sub.id as string | number);
+
+          const shipments: Record<string, unknown>[] = await res.json();
+          if (!shipments.length) break;
+
+          for (const s of shipments) {
+            if (s.id && !seenIds.has(s.id as string | number)) {
+              allIds.push(s.id as string | number);
+              seenIds.add(s.id as string | number);
+            }
+            if (Array.isArray(s.subShipments)) {
+              for (const sub of s.subShipments as Record<string, unknown>[]) {
+                if (sub.id && !seenIds.has(sub.id as string | number)) {
+                  allIds.push(sub.id as string | number);
+                  seenIds.add(sub.id as string | number);
+                }
               }
             }
           }
+
+          if (shipments.length < itemsPerPage) break;
+          page++;
         }
 
-        if (shipments.length < itemsPerPage) break;
-        page++;
-      }
+        setProgress({ current: 0, total: allIds.length });
 
-      setProgress({ current: 0, total: allIds.length });
+        // 2. Fetch details in batches; keep only those with EXW CHARGES
+        const results: EXWRow[] = [];
+        const batchSize = 5;
 
-      // 2. Fetch details in batches; keep only those with EXW CHARGES
-      const results: EXWRow[] = [];
-      const batchSize = 5;
+        for (let i = 0; i < allIds.length; i += batchSize) {
+          const batch = allIds.slice(i, i + batchSize);
 
-      for (let i = 0; i < allIds.length; i += batchSize) {
-        const batch = allIds.slice(i, i + batchSize);
-
-        const promises = batch.map(async (id) => {
-          try {
-            const res = await fetch(
-              `https://api.linbis.com/air-shipments/details/${id}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  Accept: "application/json",
-                  "Content-Type": "application/json",
+          const promises = batch.map(async (id) => {
+            try {
+              const res = await fetch(
+                `https://api.linbis.com/air-shipments/details/${id}`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    Accept: "application/json",
+                    "Content-Type": "application/json",
+                  },
                 },
-              },
-            );
-            if (!res.ok) return null;
+              );
+              if (!res.ok) return null;
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const detail: any = await res.json();
-
-            // Only keep shipments that have an EXW CHARGES charge
-            const exwCharge = (detail.charges ?? []).find(
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (c: any) =>
-                typeof c.description === "string" &&
-                c.description.toUpperCase().trim() === "EXW CHARGES",
-            );
-            if (!exwCharge) return null;
+              const detail: any = await res.json();
 
-            const consignee =
-              detail.consignee?.name ||
-              detail.commodities?.[0]?.consignee ||
-              "—";
-            const origen = detail.from?.code || "—";
-            const direccion = cleanAddress(detail.shipperAddress);
-            const kgCargamento =
-              detail.commodities?.[0]?.volWeight ??
-              detail.totalCargoDetails?.volumeWeight?.value ??
-              0;
-            const exwValue = exwCharge.rateMoney?.value ?? 0;
+              // Only keep shipments that have an EXW CHARGES charge
+              const exwCharge = (detail.charges ?? []).find(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (c: any) =>
+                  typeof c.description === "string" &&
+                  c.description.toUpperCase().trim() === "EXW CHARGES",
+              );
+              if (!exwCharge) return null;
 
-            return {
-              id,
-              consignee,
-              origen,
-              direccion,
-              kgCargamento,
-              exwValue,
-            } as EXWRow;
-          } catch {
-            return null;
+              const consignee =
+                detail.consignee?.name ||
+                detail.commodities?.[0]?.consignee ||
+                "—";
+              const operationNumber = detail.number || "—";
+              const origen = detail.from?.code || "—";
+              const direccion = cleanAddress(detail.shipperAddress);
+              const kgCargamento =
+                detail.commodities?.[0]?.volWeight ??
+                detail.totalCargoDetails?.volumeWeight?.value ??
+                0;
+              const exwValue = exwCharge.rateMoney?.value ?? 0;
+
+              return {
+                id,
+                operationNumber,
+                consignee,
+                origen,
+                direccion,
+                kgCargamento,
+                exwValue,
+              } as EXWRow;
+            } catch {
+              return null;
+            }
+          });
+
+          const batchResults = await Promise.all(promises);
+          for (const r of batchResults) {
+            if (r) results.push(r);
           }
-        });
 
-        const batchResults = await Promise.all(promises);
-        for (const r of batchResults) {
-          if (r) results.push(r);
+          setProgress({
+            current: Math.min(i + batchSize, allIds.length),
+            total: allIds.length,
+          });
         }
 
-        setProgress({
-          current: Math.min(i + batchSize, allIds.length),
-          total: allIds.length,
-        });
+        setCachedRows(activeUsername, results);
+        setRows(results);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al cargar datos");
+      } finally {
+        setLoading(false);
       }
-
-      setRows(results);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al cargar datos");
-    } finally {
-      setLoading(false);
-    }
-  }, [accessToken, activeUsername]);
+    },
+    [accessToken, activeUsername],
+  );
 
   useEffect(() => {
     fetchData();
@@ -198,6 +262,8 @@ function EXWChargesView() {
 
   return (
     <div style={{ fontFamily: FONT }}>
+      <style>{`.exw-addr-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+.exw-addr-scroll::-webkit-scrollbar { display: none; }`}</style>
       {/* Header */}
       <div
         style={{
@@ -222,8 +288,20 @@ function EXWChargesView() {
             Operaciones aéreas con cargos EXW
           </p>
         </div>
+        <div
+          style={{
+            marginTop: 8,
+            color: "#b91c1c",
+            fontSize: 13,
+            textAlign: "center",
+            width: "100%",
+          }}
+        >
+          Los cobros EXW tienen una estadía de 24hrs, si crees que hay nuevos
+          cobros, presiona el botón <strong>Actualizar</strong>
+        </div>
         <button
-          onClick={fetchData}
+          onClick={() => void fetchData(true)}
           disabled={loading}
           style={{
             padding: "8px 16px",
@@ -342,33 +420,95 @@ function EXWChargesView() {
           }}
         >
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                tableLayout: "fixed",
+              }}
+            >
               <thead>
                 <tr style={{ background: "#f8fafc" }}>
-                  {[
-                    "Consignatario",
-                    "Origen",
-                    "Dirección",
-                    "KG Cargamento",
-                    "EXW Charges (USD)",
-                  ].map((col) => (
-                    <th
-                      key={col}
-                      style={{
-                        padding: "12px 16px",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "#64748b",
-                        textAlign: "left",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                        borderBottom: "2px solid #e2e8f0",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {col}
-                    </th>
-                  ))}
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textAlign: "left",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      borderBottom: "2px solid #e2e8f0",
+                      whiteSpace: "nowrap",
+                      width: 120,
+                    }}
+                  >
+                    N° Operación
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textAlign: "left",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      borderBottom: "2px solid #e2e8f0",
+                      whiteSpace: "nowrap",
+                      width: 100,
+                    }}
+                  >
+                    Origen
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textAlign: "left",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      borderBottom: "2px solid #e2e8f0",
+                      whiteSpace: "nowrap",
+                      width: "45%",
+                    }}
+                  >
+                    Dirección
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textAlign: "left",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      borderBottom: "2px solid #e2e8f0",
+                      whiteSpace: "nowrap",
+                      width: 140,
+                    }}
+                  >
+                    KG Cargamento
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textAlign: "left",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      borderBottom: "2px solid #e2e8f0",
+                      whiteSpace: "nowrap",
+                      width: 140,
+                    }}
+                  >
+                    EXW Charges (USD)
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -399,11 +539,12 @@ function EXWChargesView() {
                         style={{
                           padding: "10px 16px",
                           fontSize: 13,
-                          color: "#1e293b",
+                          color: "#334155",
                           fontWeight: 500,
+                          whiteSpace: "nowrap",
                         }}
                       >
-                        {row.consignee}
+                        {row.operationNumber}
                       </td>
                       <td
                         style={{
@@ -431,14 +572,15 @@ function EXWChargesView() {
                           padding: "10px 16px",
                           fontSize: 13,
                           color: "#475569",
-                          maxWidth: 300,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
                         }}
                         title={row.direccion}
                       >
-                        {row.direccion}
+                        <div
+                          className="exw-addr-scroll"
+                          style={{ overflowX: "auto", whiteSpace: "nowrap" }}
+                        >
+                          {row.direccion}
+                        </div>
                       </td>
                       <td
                         style={{

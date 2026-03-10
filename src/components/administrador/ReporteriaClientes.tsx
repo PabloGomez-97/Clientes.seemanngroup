@@ -197,8 +197,8 @@ function ReporteriaClientes() {
       { key: "air" as const, label: "Envíos Aéreos", icon: "" },
       { key: "ocean" as const, label: "Envíos Marítimos", icon: "" },
       { key: "ground" as const, label: "Envíos Terrestres", icon: "" },
-      { key: "exw" as const, label: "Cobros EXW", icon: "" },
       { key: "quotes" as const, label: "Cotizaciones", icon: "" },
+      { key: "exw" as const, label: "Cobros EXW", icon: "" },
     ];
 
     return (
