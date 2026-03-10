@@ -343,8 +343,8 @@ function SidebarAdmin({
                           item.path
                             ? item.path
                             : hasSubItems && visibleSubItems.length > 0
-                            ? visibleSubItems[0].path
-                            : "#"
+                              ? visibleSubItems[0].path
+                              : "#"
                         }
                         title={isCollapsed ? item.name : undefined}
                         onClick={(e) => {
@@ -479,7 +479,11 @@ function SidebarAdmin({
                                     <a
                                       href={subItem.path}
                                       onClick={(e) => {
-                                        if (e.button === 1 || e.ctrlKey || e.metaKey)
+                                        if (
+                                          e.button === 1 ||
+                                          e.ctrlKey ||
+                                          e.metaKey
+                                        )
                                           return;
                                         e.preventDefault();
                                         e.stopPropagation();

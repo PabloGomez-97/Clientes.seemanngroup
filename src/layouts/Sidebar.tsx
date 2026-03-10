@@ -484,7 +484,11 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                                   <a
                                     href={subItem.path}
                                     onClick={(e) => {
-                                      if ((e as any).button === 1 || e.ctrlKey || e.metaKey)
+                                      if (
+                                        (e as any).button === 1 ||
+                                        e.ctrlKey ||
+                                        e.metaKey
+                                      )
                                         return;
                                       e.preventDefault();
                                       navigate(subItem.path);
