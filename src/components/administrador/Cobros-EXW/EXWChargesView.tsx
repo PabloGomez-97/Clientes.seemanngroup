@@ -73,6 +73,19 @@ function cleanAddress(addr: string | null | undefined): string {
     .trim();
 }
 
+function formatKg(value: number | string | null | undefined) {
+  const n = Number(value) || 0;
+  // Always show two decimals, decimal separator as comma, no thousand separators
+  return n.toFixed(2).replace('.', ',');
+}
+
+function formatExw(value: number | string | null | undefined) {
+  const n = Number(value) || 0;
+  // If integer (no cents), show without decimals; otherwise show two decimals with comma
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2).replace('.', ',');
+}
+
 function EXWChargesView() {
   const { accessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
@@ -590,10 +603,7 @@ function EXWChargesView() {
                           fontWeight: 500,
                         }}
                       >
-                        {row.kgCargamento.toLocaleString("es-CL", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {formatKg(row.kgCargamento)}
                       </td>
                       <td
                         style={{
@@ -603,11 +613,7 @@ function EXWChargesView() {
                           fontWeight: 600,
                         }}
                       >
-                        ${" "}
-                        {row.exwValue.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {"$ " + formatExw(row.exwValue)}
                       </td>
                     </tr>
                   ))
