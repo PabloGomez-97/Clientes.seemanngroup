@@ -6,8 +6,9 @@ import { useAuth } from "../auth/AuthContext";
 import logoSeemann from "./logoseemann.png";
 
 interface SidebarProps {
-  isOpen: boolean;
-  onToggle?: () => void;
+  isCollapsed: boolean;
+  isMobile: boolean;
+  onCloseMobile: () => void;
 }
 
 interface SubMenuItem {
@@ -42,7 +43,7 @@ const colors = {
   accent: "#ff9900",
 };
 
-function Sidebar({ isOpen }: SidebarProps) {
+function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -136,9 +137,9 @@ function Sidebar({ isOpen }: SidebarProps) {
     },
   ];
 
-  if (!isOpen) return null;
-
   const isActive = (path: string) => location.pathname === path;
+
+  const sidebarWidth = isMobile ? "280px" : isCollapsed ? "84px" : "260px";
 
   const toggleMenu = (menuName: string) => {
     setExpandedMenus((prev) =>
@@ -149,370 +150,406 @@ function Sidebar({ isOpen }: SidebarProps) {
   };
 
   return (
-    <div
-      style={{
-        width: "260px",
-        minWidth: "260px",
-        height: "100vh",
-        backgroundColor: colors.bg,
-        display: "flex",
-        flexDirection: "column",
-        position: "sticky",
-        top: 0,
-        left: 0,
-        borderRight: `1px solid ${colors.border}`,
-        overflowY: "auto",
-        overflowX: "hidden",
-        fontFamily:
-          "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-      }}
-      className="sidebar-scroll"
-    >
-      {/* Header con Logo */}
-      <div
-        className="sidebar-header"
-        style={{
-          height: "70px",
-          padding: "0 20px",
-          display: "flex",
-          alignItems: "center",
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        {/* Logo - Cambiar tamaño aquí: width controla el tamaño */}
-        <img
-          src={logoSeemann}
-          alt="Seemann Group"
-          className="sidebar-logo"
+    <>
+      {isMobile && !isCollapsed && (
+        <div
+          onClick={onCloseMobile}
           style={{
-            width: "180px", // <-- CAMBIAR AQUÍ EL TAMAÑO DEL LOGO
-            height: "auto",
-            objectFit: "contain",
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            zIndex: 1090,
           }}
         />
-      </div>
-
-      {/* Account Selector - solo si el usuario tiene más de una empresa */}
-      {showAccountSelector && (
-        <div
-          style={{
-            padding: "12px 16px",
-            borderBottom: `1px solid ${colors.border}`,
-          }}
-        >
-          <label
-            style={{
-              display: "block",
-              fontSize: "10px",
-              fontWeight: "600",
-              color: colors.textMuted,
-              textTransform: "uppercase",
-              letterSpacing: "0.8px",
-              marginBottom: "6px",
-            }}
-          >
-            {t("sidebar.account")}
-          </label>
-          <select
-            value={activeUsername}
-            onChange={(e) => {
-              setActiveUsername(e.target.value);
-              // Limpiar cachés al cambiar de cuenta
-              const keysToRemove: string[] = [];
-              for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (
-                  key &&
-                  (key.startsWith("quotesCache_") ||
-                    key.startsWith("airShipmentsCache_") ||
-                    key.startsWith("oceanShipmentsCache_") ||
-                    key.startsWith("invoicesCache_") ||
-                    key.startsWith("shipmentsCache_"))
-                ) {
-                  keysToRemove.push(key);
-                }
-              }
-              keysToRemove.forEach((k) => localStorage.removeItem(k));
-              // Recargar la página para refrescar datos
-              window.location.reload();
-            }}
-            style={{
-              width: "100%",
-              padding: "8px 10px",
-              fontSize: "13px",
-              fontWeight: "500",
-              backgroundColor: colors.bgHover,
-              color: colors.text,
-              border: `1px solid ${colors.border}`,
-              borderRadius: "6px",
-              outline: "none",
-              cursor: "pointer",
-              appearance: "none",
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238d99a8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E")`,
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 10px center",
-              paddingRight: "30px",
-            }}
-          >
-            {usernames.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
       )}
 
-      {/* Navigation Menu */}
-      <nav style={{ flex: 1, padding: "12px 0" }}>
-        {menuSections.map((section, sectionIdx) => (
-          <div key={sectionIdx} style={{ marginBottom: "4px" }}>
-            {/* Section Title */}
-            <div
+      <div
+        style={{
+          width: sidebarWidth,
+          minWidth: sidebarWidth,
+          height: "100vh",
+          backgroundColor: colors.bg,
+          display: "flex",
+          flexDirection: "column",
+          position: isMobile ? "fixed" : "sticky",
+          top: 0,
+          left: 0,
+          borderRight: `1px solid ${colors.border}`,
+          overflowY: "auto",
+          overflowX: "hidden",
+          fontFamily:
+            "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+          transition:
+            "width 0.22s ease, min-width 0.22s ease, transform 0.22s ease",
+          transform: isMobile
+            ? isCollapsed
+              ? "translateX(-100%)"
+              : "translateX(0)"
+            : "translateX(0)",
+          boxShadow:
+            isMobile && !isCollapsed ? "4px 0 20px rgba(0, 0, 0, 0.3)" : "none",
+          zIndex: isMobile ? 1100 : 20,
+          pointerEvents: isMobile && isCollapsed ? "none" : "auto",
+        }}
+        className="sidebar-scroll"
+      >
+        <div
+          className="sidebar-header"
+          style={{
+            height: isMobile ? "65px" : "70px",
+            padding: isCollapsed && !isMobile ? "0 12px" : "0 20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: isCollapsed && !isMobile ? "center" : "flex-start",
+            borderBottom: `1px solid ${colors.border}`,
+            flexShrink: 0,
+          }}
+        >
+          {isCollapsed && !isMobile ? (
+            <img
+              src="/logo.png"
+              alt="Seemann"
               style={{
-                padding: "20px 20px 8px",
-                fontSize: "11px",
+                width: "40px",
+                height: "40px",
+                objectFit: "contain",
+                borderRadius: "8px",
+                backgroundColor: colors.bgActive,
+                padding: "4px",
+              }}
+            />
+          ) : (
+            <img
+              src={logoSeemann}
+              alt="Seemann Group"
+              className="sidebar-logo"
+              style={{
+                width: isMobile ? "160px" : "180px",
+                height: "auto",
+                objectFit: "contain",
+              }}
+            />
+          )}
+        </div>
+
+        {showAccountSelector && !isCollapsed && (
+          <div
+            style={{
+              padding: "12px 16px",
+              borderBottom: `1px solid ${colors.border}`,
+            }}
+          >
+            <label
+              style={{
+                display: "block",
+                fontSize: "10px",
                 fontWeight: "600",
                 color: colors.textMuted,
                 textTransform: "uppercase",
                 letterSpacing: "0.8px",
-                marginTop: sectionIdx > 0 ? "8px" : "0",
+                marginBottom: "6px",
               }}
             >
-              {section.title}
-            </div>
+              {t("sidebar.account")}
+            </label>
+            <select
+              value={activeUsername}
+              onChange={(e) => {
+                setActiveUsername(e.target.value);
+                const keysToRemove: string[] = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                  const key = localStorage.key(i);
+                  if (
+                    key &&
+                    (key.startsWith("quotesCache_") ||
+                      key.startsWith("airShipmentsCache_") ||
+                      key.startsWith("oceanShipmentsCache_") ||
+                      key.startsWith("invoicesCache_") ||
+                      key.startsWith("shipmentsCache_"))
+                  ) {
+                    keysToRemove.push(key);
+                  }
+                }
+                keysToRemove.forEach((key) => localStorage.removeItem(key));
+                window.location.reload();
+              }}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                fontSize: "13px",
+                fontWeight: "500",
+                backgroundColor: colors.bgHover,
+                color: colors.text,
+                border: `1px solid ${colors.border}`,
+                borderRadius: "6px",
+                outline: "none",
+                cursor: "pointer",
+                appearance: "none",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%238d99a8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 10px center",
+                paddingRight: "30px",
+              }}
+            >
+              {usernames.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
-            {/* Menu Items */}
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {section.items.map((item, itemIdx) => {
-                const hasSubItems = item.subItems && item.subItems.length > 0;
-                const isExpanded = expandedMenus.includes(item.name);
-                const isItemActive = item.path ? isActive(item.path) : false;
-                const isHovered =
-                  hoveredItem === `${section.title}-${item.name}`;
+        <nav
+          style={{
+            flex: 1,
+            padding: isCollapsed && !isMobile ? "12px 10px" : "12px 0",
+          }}
+        >
+          {menuSections.map((section, sectionIdx) => (
+            <div
+              key={sectionIdx}
+              style={{
+                marginBottom: isCollapsed && !isMobile ? "10px" : "4px",
+              }}
+            >
+              {!isCollapsed ? (
+                <div
+                  style={{
+                    padding: "20px 20px 8px",
+                    fontSize: "11px",
+                    fontWeight: "600",
+                    color: colors.textMuted,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                    marginTop: sectionIdx > 0 ? "8px" : "0",
+                  }}
+                >
+                  {section.title}
+                </div>
+              ) : sectionIdx > 0 ? (
+                <div
+                  style={{
+                    margin: "8px 14px",
+                    height: "1px",
+                    backgroundColor: colors.border,
+                    opacity: 0.7,
+                  }}
+                />
+              ) : null}
 
-                return (
-                  <li key={itemIdx}>
-                    {/* Main Menu Item */}
-                    <div
-                      onClick={() => {
-                        if (hasSubItems) {
-                          toggleMenu(item.name);
-                        } else if (item.path) {
-                          navigate(item.path);
-                        }
-                      }}
-                      onMouseEnter={() =>
-                        setHoveredItem(`${section.title}-${item.name}`)
-                      }
-                      onMouseLeave={() => setHoveredItem(null)}
-                      style={{
-                        padding: "15px 20px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "14px",
-                        cursor: "pointer",
-                        transition: "all 0.12s ease",
-                        backgroundColor: isItemActive
-                          ? colors.bgActive
-                          : isHovered
-                            ? colors.bgHover
-                            : "transparent",
-                        borderLeft: isItemActive
-                          ? `3px solid ${colors.accent}`
-                          : "3px solid transparent",
-                        color: isItemActive ? colors.text : colors.textMuted,
-                        fontSize: "14px",
-                        fontWeight: isItemActive ? "500" : "400",
-                        marginLeft: "0",
-                        marginRight: "0",
-                        borderRadius: "0",
-                      }}
-                    >
-                      {/* Icon */}
-                      <i
-                        className={item.icon}
-                        style={{
-                          fontSize: "18px",
-                          width: "22px",
-                          textAlign: "center",
-                          opacity: isItemActive ? 1 : 0.75,
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {section.items.map((item, itemIdx) => {
+                  const hasSubItems = item.subItems && item.subItems.length > 0;
+                  const isExpanded = expandedMenus.includes(item.name);
+                  const isItemActive = item.path
+                    ? isActive(item.path)
+                    : item.subItems?.some((subItem) =>
+                        isActive(subItem.path),
+                      ) || false;
+                  const isHovered =
+                    hoveredItem === `${section.title}-${item.name}`;
+
+                  return (
+                    <li key={itemIdx}>
+                      <div
+                        title={isCollapsed ? item.name : undefined}
+                        onClick={() => {
+                          if (hasSubItems) {
+                            if (isCollapsed) {
+                              navigate(item.subItems![0].path);
+                              if (isMobile) onCloseMobile();
+                            } else {
+                              toggleMenu(item.name);
+                            }
+                          } else if (item.path) {
+                            navigate(item.path);
+                            if (isMobile) onCloseMobile();
+                          }
                         }}
-                      />
-
-                      {/* Name */}
-                      <span
+                        onMouseEnter={() =>
+                          setHoveredItem(`${section.title}-${item.name}`)
+                        }
+                        onMouseLeave={() => setHoveredItem(null)}
                         style={{
-                          flex: 1,
+                          padding:
+                            isCollapsed && !isMobile ? "14px 0" : "15px 20px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent:
+                            isCollapsed && !isMobile ? "center" : "flex-start",
+                          gap: isCollapsed && !isMobile ? "0" : "14px",
+                          cursor: "pointer",
+                          transition: "all 0.12s ease",
+                          backgroundColor: isItemActive
+                            ? colors.bgActive
+                            : isHovered
+                              ? colors.bgHover
+                              : "transparent",
+                          borderLeft: isItemActive
+                            ? `3px solid ${colors.accent}`
+                            : "3px solid transparent",
+                          color: isItemActive ? colors.text : colors.textMuted,
                           fontSize: "14px",
                           fontWeight: isItemActive ? "500" : "400",
+                          marginLeft: "0",
+                          marginRight: "0",
+                          borderRadius: "0",
                         }}
                       >
-                        {item.name}
-                      </span>
-
-                      {/* Badge (if exists) */}
-                      {item.badge && (
-                        <span
-                          style={{
-                            padding: "2px 6px",
-                            borderRadius: "3px",
-                            fontSize: "9px",
-                            fontWeight: "600",
-                            backgroundColor: "rgba(255, 255, 255, 0.15)",
-                            color: colors.text,
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {item.badge.text}
-                        </span>
-                      )}
-
-                      {/* Arrow for submenus */}
-                      {hasSubItems && (
                         <i
-                          className="fa fa-chevron-right"
+                          className={item.icon}
                           style={{
-                            fontSize: "10px",
-                            transition: "transform 0.2s ease",
-                            transform: isExpanded
-                              ? "rotate(90deg)"
-                              : "rotate(0deg)",
-                            opacity: 0.5,
+                            fontSize: "18px",
+                            width: "22px",
+                            textAlign: "center",
+                            opacity: isItemActive ? 1 : 0.75,
+                            flexShrink: 0,
                           }}
                         />
-                      )}
-                    </div>
 
-                    {/* Submenu Items */}
-                    {hasSubItems && (
-                      <div
-                        style={{
-                          maxHeight: isExpanded ? "300px" : "0",
-                          overflow: "hidden",
-                          transition: "max-height 0.2s ease",
-                        }}
-                      >
-                        <ul
-                          style={{
-                            listStyle: "none",
-                            padding: "4px 0",
-                            margin: 0,
-                          }}
-                        >
-                          {item.subItems!.map((subItem, subIdx) => {
-                            const isSubActive = isActive(subItem.path);
-                            const isSubHovered =
-                              hoveredItem === `sub-${subItem.path}`;
+                        {!isCollapsed && (
+                          <>
+                            <span
+                              style={{
+                                flex: 1,
+                                fontSize: "14px",
+                                fontWeight: isItemActive ? "500" : "400",
+                              }}
+                            >
+                              {item.name}
+                            </span>
 
-                            return (
-                              <li
-                                key={subIdx}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(subItem.path);
-                                }}
-                                onMouseEnter={() =>
-                                  setHoveredItem(`sub-${subItem.path}`)
-                                }
-                                onMouseLeave={() => setHoveredItem(null)}
+                            {item.badge && (
+                              <span
                                 style={{
-                                  padding: "10px 20px 10px 56px",
-                                  cursor: "pointer",
-                                  transition: "all 0.12s ease",
-                                  backgroundColor: isSubActive
-                                    ? colors.bgActive
-                                    : isSubHovered
-                                      ? colors.bgHover
-                                      : "transparent",
-                                  color: isSubActive
-                                    ? colors.text
-                                    : colors.textMuted,
-                                  fontSize: "14px",
-                                  fontWeight: isSubActive ? "500" : "400",
-                                  position: "relative",
-                                  marginLeft: "0",
-                                  marginRight: "0",
-                                  borderRadius: "0",
+                                  padding: "2px 6px",
+                                  borderRadius: "3px",
+                                  fontSize: "9px",
+                                  fontWeight: "600",
+                                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+                                  color: colors.text,
+                                  textTransform: "uppercase",
                                 }}
                               >
-                                {/* Bullet point */}
-                                <span
-                                  style={{
-                                    position: "absolute",
-                                    left: "40px",
-                                    top: "50%",
-                                    transform: "translateY(-50%)",
-                                    width: "5px",
-                                    height: "5px",
-                                    borderRadius: "50%",
-                                    backgroundColor: isSubActive
-                                      ? colors.accent
-                                      : colors.textMuted,
-                                    opacity: isSubActive ? 1 : 0.5,
-                                  }}
-                                />
-                                {subItem.name}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </nav>
+                                {item.badge.text}
+                              </span>
+                            )}
 
-      <style>{`
-        .sidebar-scroll::-webkit-scrollbar {
-          width: 0;
-        }
-        
-        .sidebar-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        
-        .sidebar-scroll::-webkit-scrollbar-thumb {
-          background: transparent;
-        }
-        
-        /* Responsive: Tablets */
-        @media (max-width: 1024px) {
-          .sidebar-scroll {
-            width: 240px !important;
-            min-width: 240px !important;
+                            {hasSubItems && (
+                              <i
+                                className="fa fa-chevron-right"
+                                style={{
+                                  fontSize: "10px",
+                                  transition: "transform 0.2s ease",
+                                  transform: isExpanded
+                                    ? "rotate(90deg)"
+                                    : "rotate(0deg)",
+                                  opacity: 0.5,
+                                }}
+                              />
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {!isCollapsed && hasSubItems && (
+                        <div
+                          style={{
+                            maxHeight: isExpanded ? "300px" : "0",
+                            overflow: "hidden",
+                            transition: "max-height 0.2s ease",
+                          }}
+                        >
+                          <ul
+                            style={{
+                              listStyle: "none",
+                              padding: "4px 0",
+                              margin: 0,
+                            }}
+                          >
+                            {item.subItems!.map((subItem, subIdx) => {
+                              const isSubActive = isActive(subItem.path);
+                              const isSubHovered =
+                                hoveredItem === `sub-${subItem.path}`;
+
+                              return (
+                                <li
+                                  key={subIdx}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(subItem.path);
+                                    if (isMobile) onCloseMobile();
+                                  }}
+                                  onMouseEnter={() =>
+                                    setHoveredItem(`sub-${subItem.path}`)
+                                  }
+                                  onMouseLeave={() => setHoveredItem(null)}
+                                  style={{
+                                    padding: "10px 20px 10px 56px",
+                                    cursor: "pointer",
+                                    transition: "all 0.12s ease",
+                                    backgroundColor: isSubActive
+                                      ? colors.bgActive
+                                      : isSubHovered
+                                        ? colors.bgHover
+                                        : "transparent",
+                                    color: isSubActive
+                                      ? colors.text
+                                      : colors.textMuted,
+                                    fontSize: "14px",
+                                    fontWeight: isSubActive ? "500" : "400",
+                                    position: "relative",
+                                    marginLeft: "0",
+                                    marginRight: "0",
+                                    borderRadius: "0",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      position: "absolute",
+                                      left: "40px",
+                                      top: "50%",
+                                      transform: "translateY(-50%)",
+                                      width: "5px",
+                                      height: "5px",
+                                      borderRadius: "50%",
+                                      backgroundColor: isSubActive
+                                        ? colors.accent
+                                        : colors.textMuted,
+                                      opacity: isSubActive ? 1 : 0.5,
+                                    }}
+                                  />
+                                  {subItem.name}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        <style>{`
+          .sidebar-scroll::-webkit-scrollbar {
+            width: 0;
           }
-          .sidebar-logo {
-            width: 150px !important;
+
+          .sidebar-scroll::-webkit-scrollbar-track {
+            background: transparent;
           }
-          .sidebar-header {
-            height: 60px !important;
+
+          .sidebar-scroll::-webkit-scrollbar-thumb {
+            background: transparent;
           }
-        }
-        
-        /* Responsive: Mobile */
-        @media (max-width: 768px) {
-          .sidebar-scroll {
-            position: fixed !important;
-            z-index: 1000 !important;
-            width: 280px !important;
-            min-width: 280px !important;
-            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3) !important;
-          }
-          .sidebar-logo {
-            width: 160px !important;
-          }
-          .sidebar-header {
-            height: 65px !important;
-            padding: 0 16px !important;
-          }
-        }
-      `}</style>
-    </div>
+        `}</style>
+      </div>
+    </>
   );
 }
 

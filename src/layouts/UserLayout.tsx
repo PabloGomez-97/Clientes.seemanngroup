@@ -6,12 +6,18 @@ import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import ChatWidget from "../components/ChatWidget";
 
+const MOBILE_BREAKPOINT = 768;
+
+const isMobileViewport = () =>
+  typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT;
+
 function UserLayout() {
   const { t } = useTranslation();
   const [accessToken, setAccessToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(isMobileViewport);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobileViewport);
 
   // Obtener token de Linbis automáticamente al cargar
   useEffect(() => {
@@ -43,13 +49,30 @@ function UserLayout() {
     fetchLinbisToken();
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = isMobileViewport();
+
+      setIsMobile((previousMobile) => {
+        if (previousMobile !== mobile) {
+          setSidebarCollapsed(mobile);
+        }
+
+        return mobile;
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const handleLogout = () => {
     setAccessToken("");
     setError(null);
   };
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    setSidebarCollapsed((previous) => !previous);
   };
 
   {
@@ -185,8 +208,12 @@ function UserLayout() {
   }
 
   return (
-    <div className="d-flex" style={{ height: "100vh" }}>
-      <Sidebar isOpen={sidebarOpen} />
+    <div className="d-flex" style={{ height: "100vh", position: "relative" }}>
+      <Sidebar
+        isCollapsed={sidebarCollapsed}
+        isMobile={isMobile}
+        onCloseMobile={() => setSidebarCollapsed(true)}
+      />
 
       <div
         className="flex-fill d-flex flex-column"
@@ -196,6 +223,7 @@ function UserLayout() {
           accessToken={accessToken}
           onLogout={handleLogout}
           toggleSidebar={toggleSidebar}
+          isSidebarCollapsed={sidebarCollapsed}
         />
 
         <div

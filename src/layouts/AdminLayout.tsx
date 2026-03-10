@@ -7,12 +7,18 @@ import ChatWidget from "../components/ChatWidget";
 import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";
 
+const MOBILE_BREAKPOINT = 768;
+
+const isMobileViewport = () =>
+  typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT;
+
 function AdminLayout() {
   const { user } = useAuth();
   const [accessToken, setAccessToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(isMobileViewport);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isMobileViewport);
   const location = useLocation();
 
   // Verificar acceso por rol a la ruta actual
@@ -52,13 +58,30 @@ function AdminLayout() {
     fetchLinbisToken();
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = isMobileViewport();
+
+      setIsMobile((previousMobile) => {
+        if (previousMobile !== mobile) {
+          setSidebarCollapsed(mobile);
+        }
+
+        return mobile;
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const handleLogout = () => {
     setAccessToken("");
     setError(null);
   };
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    setSidebarCollapsed((previous) => !previous);
   };
 
   // Mostrar error si falla
@@ -111,8 +134,12 @@ function AdminLayout() {
   }
 
   return (
-    <div className="d-flex" style={{ height: "100vh" }}>
-      <SidebarAdmin isOpen={sidebarOpen} />
+    <div className="d-flex" style={{ height: "100vh", position: "relative" }}>
+      <SidebarAdmin
+        isCollapsed={sidebarCollapsed}
+        isMobile={isMobile}
+        onCloseMobile={() => setSidebarCollapsed(true)}
+      />
 
       <div
         className="flex-fill d-flex flex-column"
@@ -122,6 +149,7 @@ function AdminLayout() {
           accessToken={accessToken}
           onLogout={handleLogout}
           toggleSidebar={toggleSidebar}
+          isSidebarCollapsed={sidebarCollapsed}
         />
 
         <div

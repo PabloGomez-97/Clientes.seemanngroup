@@ -6,7 +6,9 @@ import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
 
 interface SidebarProveedorProps {
-  isOpen: boolean;
+  isCollapsed: boolean;
+  isMobile: boolean;
+  onCloseMobile: () => void;
 }
 
 interface MenuItem {
@@ -26,7 +28,11 @@ const colors = {
   accent: "#ff9900",
 };
 
-function SidebarProveedor({ isOpen }: SidebarProveedorProps) {
+function SidebarProveedor({
+  isCollapsed,
+  isMobile,
+  onCloseMobile,
+}: SidebarProveedorProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -45,174 +51,224 @@ function SidebarProveedor({ isOpen }: SidebarProveedorProps) {
     },
   ];
 
-  if (!isOpen) return null;
-
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
 
+  const sidebarWidth = isMobile ? "280px" : isCollapsed ? "84px" : "260px";
+
   return (
-    <div
-      style={{
-        width: "260px",
-        minWidth: "260px",
-        height: "100vh",
-        backgroundColor: colors.bg,
-        display: "flex",
-        flexDirection: "column",
-        position: "sticky",
-        top: 0,
-        left: 0,
-        borderRight: `1px solid ${colors.border}`,
-        overflowY: "auto",
-        overflowX: "hidden",
-        fontFamily:
-          "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-      }}
-      className="sidebar-proveedor-scroll"
-    >
-      {/* Header con Logo */}
-      <div
-        style={{
-          height: "70px",
-          padding: "0 20px",
-          display: "flex",
-          alignItems: "center",
-          borderBottom: `1px solid ${colors.border}`,
-        }}
-      >
-        <img
-          src={logoSeemann}
-          alt="Seemann Group"
+    <>
+      {isMobile && !isCollapsed && (
+        <div
+          onClick={onCloseMobile}
           style={{
-            width: "180px",
-            height: "auto",
-            objectFit: "contain",
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.45)",
+            zIndex: 1090,
           }}
         />
-      </div>
+      )}
 
-      {/* Portal label */}
       <div
         style={{
-          padding: "16px 20px 8px",
+          width: sidebarWidth,
+          minWidth: sidebarWidth,
+          height: "100vh",
+          backgroundColor: colors.bg,
           display: "flex",
-          alignItems: "center",
-          gap: "8px",
+          flexDirection: "column",
+          position: isMobile ? "fixed" : "sticky",
+          top: 0,
+          left: 0,
+          borderRight: `1px solid ${colors.border}`,
+          overflowY: "auto",
+          overflowX: "hidden",
+          fontFamily:
+            "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+          transition:
+            "width 0.22s ease, min-width 0.22s ease, transform 0.22s ease",
+          transform: isMobile
+            ? isCollapsed
+              ? "translateX(-100%)"
+              : "translateX(0)"
+            : "translateX(0)",
+          boxShadow:
+            isMobile && !isCollapsed ? "4px 0 20px rgba(0, 0, 0, 0.3)" : "none",
+          zIndex: isMobile ? 1100 : 20,
+          pointerEvents: isMobile && isCollapsed ? "none" : "auto",
         }}
+        className="sidebar-proveedor-scroll"
       >
-        <span
+        <div
           style={{
-            fontSize: "11px",
-            fontWeight: "600",
-            color: colors.textMuted,
-            textTransform: "uppercase",
-            letterSpacing: "0.8px",
+            height: isMobile ? "65px" : "70px",
+            padding: isCollapsed && !isMobile ? "0 12px" : "0 20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: isCollapsed && !isMobile ? "center" : "flex-start",
+            borderBottom: `1px solid ${colors.border}`,
+            flexShrink: 0,
           }}
         >
-          {t("proveedor.sidebar.portalLabel")}
-        </span>
-        <span
+          {isCollapsed && !isMobile ? (
+            <img
+              src="/logo.png"
+              alt="Seemann"
+              style={{
+                width: "40px",
+                height: "40px",
+                objectFit: "contain",
+                borderRadius: "8px",
+                backgroundColor: colors.bgActive,
+                padding: "4px",
+              }}
+            />
+          ) : (
+            <img
+              src={logoSeemann}
+              alt="Seemann Group"
+              style={{
+                width: isMobile ? "160px" : "180px",
+                height: "auto",
+                objectFit: "contain",
+              }}
+            />
+          )}
+        </div>
+
+        {!isCollapsed && (
+          <div
+            style={{
+              padding: "16px 20px 8px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: "600",
+                color: colors.textMuted,
+                textTransform: "uppercase",
+                letterSpacing: "0.8px",
+              }}
+            >
+              {t("proveedor.sidebar.portalLabel")}
+            </span>
+            <span
+              style={{
+                padding: "2px 6px",
+                borderRadius: "3px",
+                fontSize: "9px",
+                fontWeight: "600",
+                backgroundColor: colors.accent,
+                color: colors.text,
+                textTransform: "uppercase",
+              }}
+            >
+              {t("proveedor.sidebar.badge")}
+            </span>
+          </div>
+        )}
+
+        <nav
           style={{
-            padding: "2px 6px",
-            borderRadius: "3px",
-            fontSize: "9px",
-            fontWeight: "600",
-            backgroundColor: colors.accent,
-            color: colors.text,
-            textTransform: "uppercase",
+            flex: 1,
+            padding: isCollapsed && !isMobile ? "12px 10px" : "8px 0",
           }}
         >
-          {t("proveedor.sidebar.badge")}
-        </span>
-      </div>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {menuItems.map((item, index) => {
+              const isItemActive = isActive(item.path);
+              const isHovered = hoveredItem === item.path;
 
-      {/* Navigation Menu */}
-      <nav style={{ flex: 1, padding: "8px 0" }}>
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-          {menuItems.map((item) => {
-            const isItemActive = isActive(item.path);
-            const isHovered = hoveredItem === item.path;
+              return (
+                <li key={item.path}>
+                  {isCollapsed && !isMobile && index > 0 && (
+                    <div
+                      style={{
+                        margin: "8px 14px",
+                        height: "1px",
+                        backgroundColor: colors.border,
+                        opacity: 0.7,
+                      }}
+                    />
+                  )}
 
-            return (
-              <li key={item.path}>
-                <div
-                  onClick={() => navigate(item.path)}
-                  onMouseEnter={() => setHoveredItem(item.path)}
-                  onMouseLeave={() => setHoveredItem(null)}
-                  style={{
-                    padding: "15px 20px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "14px",
-                    cursor: "pointer",
-                    transition: "all 0.12s ease",
-                    backgroundColor: isItemActive
-                      ? colors.bgActive
-                      : isHovered
-                        ? colors.bgHover
-                        : "transparent",
-                    borderLeft: isItemActive
-                      ? `3px solid ${colors.accent}`
-                      : "3px solid transparent",
-                    color: isItemActive ? colors.text : colors.textMuted,
-                    fontSize: "14px",
-                    fontWeight: isItemActive ? "500" : "400",
-                  }}
-                >
-                  <i
-                    className={item.icon}
-                    style={{
-                      fontSize: "18px",
-                      width: "22px",
-                      textAlign: "center",
-                      opacity: isItemActive ? 1 : 0.75,
+                  <div
+                    title={isCollapsed ? item.name : undefined}
+                    onClick={() => {
+                      navigate(item.path);
+                      if (isMobile) onCloseMobile();
                     }}
-                  />
-                  <span
+                    onMouseEnter={() => setHoveredItem(item.path)}
+                    onMouseLeave={() => setHoveredItem(null)}
                     style={{
-                      flex: 1,
+                      padding:
+                        isCollapsed && !isMobile ? "14px 0" : "15px 20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent:
+                        isCollapsed && !isMobile ? "center" : "flex-start",
+                      gap: isCollapsed && !isMobile ? "0" : "14px",
+                      cursor: "pointer",
+                      transition: "all 0.12s ease",
+                      backgroundColor: isItemActive
+                        ? colors.bgActive
+                        : isHovered
+                          ? colors.bgHover
+                          : "transparent",
+                      borderLeft: isItemActive
+                        ? `3px solid ${colors.accent}`
+                        : "3px solid transparent",
+                      color: isItemActive ? colors.text : colors.textMuted,
                       fontSize: "14px",
                       fontWeight: isItemActive ? "500" : "400",
                     }}
                   >
-                    {item.name}
-                  </span>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+                    <i
+                      className={item.icon}
+                      style={{
+                        fontSize: "18px",
+                        width: "22px",
+                        textAlign: "center",
+                        opacity: isItemActive ? 1 : 0.75,
+                        flexShrink: 0,
+                      }}
+                    />
+                    {!isCollapsed && (
+                      <span
+                        style={{
+                          flex: 1,
+                          fontSize: "14px",
+                          fontWeight: isItemActive ? "500" : "400",
+                        }}
+                      >
+                        {item.name}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-      <style>{`
-        .sidebar-proveedor-scroll::-webkit-scrollbar {
-          width: 0;
-        }
-        .sidebar-proveedor-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .sidebar-proveedor-scroll::-webkit-scrollbar-thumb {
-          background: transparent;
-        }
-
-        @media (max-width: 1024px) {
-          .sidebar-proveedor-scroll {
-            width: 240px !important;
-            min-width: 240px !important;
+        <style>{`
+          .sidebar-proveedor-scroll::-webkit-scrollbar {
+            width: 0;
           }
-        }
-
-        @media (max-width: 768px) {
-          .sidebar-proveedor-scroll {
-            position: fixed !important;
-            z-index: 1000 !important;
-            width: 280px !important;
-            min-width: 280px !important;
-            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3) !important;
+          .sidebar-proveedor-scroll::-webkit-scrollbar-track {
+            background: transparent;
           }
-        }
-      `}</style>
-    </div>
+          .sidebar-proveedor-scroll::-webkit-scrollbar-thumb {
+            background: transparent;
+          }
+        `}</style>
+      </div>
+    </>
   );
 }
 

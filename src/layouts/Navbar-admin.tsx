@@ -1,5 +1,5 @@
 // src/layouts/Navbar-admin.tsx - AWS/Azure Minimalist Design (same as client)
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
@@ -18,12 +18,13 @@ interface NavbarAdminProps {
   accessToken: string;
   onLogout: () => void;
   toggleSidebar: () => void;
+  isSidebarCollapsed: boolean;
 }
 
 function NavbarAdmin({
-  accessToken,
   onLogout,
   toggleSidebar,
+  isSidebarCollapsed,
 }: NavbarAdminProps) {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
@@ -103,7 +104,7 @@ function NavbarAdmin({
         borderBottom: `1px solid ${colors.border}`,
         display: "flex",
         alignItems: "center",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
         padding: "0 20px",
         gap: "12px",
         position: "sticky",
@@ -113,6 +114,60 @@ function NavbarAdmin({
           '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={
+            i18n.language === "es" ? "Alternar barra lateral" : "Toggle sidebar"
+          }
+          title={
+            i18n.language === "es" ? "Alternar barra lateral" : "Toggle sidebar"
+          }
+          style={{
+            width: "38px",
+            height: "38px",
+            borderRadius: "6px",
+            border: `1px solid ${colors.border}`,
+            backgroundColor: "transparent",
+            color: colors.text,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            transition: "all 0.15s ease",
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = colors.bgHover;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
+            <path
+              d={
+                isSidebarCollapsed
+                  ? "M5.5 3.5 9 8l-3.5 4.5"
+                  : "M10.5 3.5 7 8l3.5 4.5"
+              }
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M3 2.5v11"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              opacity="0.65"
+            />
+          </svg>
+        </button>
+      </div>
+
       {/* Right Section - Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         {/* Language Selector */}
