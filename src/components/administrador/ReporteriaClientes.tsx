@@ -498,8 +498,36 @@ function ReporteriaClientes() {
           </span>
         </div>
         <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 12, color: "#9ca3af" }}>
-          Caché: {getCachedClients() ? "activo" : "sin caché"}
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.removeItem(CLIENTS_CACHE_KEY);
+              } catch {
+                // ignore quota or access errors
+              }
+              // Reload the page so the component refetches without cache
+              window.location.reload();
+            }}
+            style={{
+              padding: "8px 12px",
+              background: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 13,
+              color: "#374151",
+            }}
+            title="Limpiar caché de clientes y recargar la página"
+          >
+            Actualizar página
+          </button>
+
+          <div style={{ fontSize: 12, color: "#9ca3af" }}>
+            Caché: {getCachedClients() ? "activo" : "sin caché"}
+          </div>
         </div>
       </div>
 
