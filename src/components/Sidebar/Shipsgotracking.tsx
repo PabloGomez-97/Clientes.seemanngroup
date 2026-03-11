@@ -675,16 +675,44 @@ function ShipsGoTracking({
                         </span>
                       </td>
                       <td>
-                        <button
-                          className="sg-btn-view"
-                          onClick={() => {
-                            setSelectedOcean(s);
-                            setSelectedAir(null);
-                            setShowModal(true);
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "0.5rem",
+                            alignItems: "center",
                           }}
                         >
-                          Ver
-                        </button>
+                          <button
+                            className="sg-btn-view"
+                            onClick={() => {
+                              setSelectedOcean(s);
+                              setSelectedAir(null);
+                              setShowModal(true);
+                            }}
+                          >
+                            Ver
+                          </button>
+
+                          {(s.container_number || s.booking_number) && (
+                            <a
+                              href={`https://shipsgo.com/live-map-container-tracking?query=${encodeURIComponent(
+                                s.container_number || s.booking_number || "",
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                backgroundColor: "#ff6200",
+                                color: "#fff",
+                                padding: "0.375rem 0.75rem",
+                                borderRadius: "0.375rem",
+                                textDecoration: "none",
+                                display: "inline-block",
+                              }}
+                            >
+                              Ver en vivo
+                            </a>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
