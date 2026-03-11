@@ -2,6 +2,7 @@
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
+import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesContext";
 import "./AirShipmentsView.css";
 import { DocumentosSectionAir } from "../Sidebar/Documents/DocumentosSectionAir";
 import {
@@ -74,6 +75,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
 function AirShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
+  const reporteriaClientesContext = useReporteriaClientesContext();
   const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
@@ -787,7 +789,11 @@ function AirShipmentsView() {
       }
 
       closeTrackModal();
-      navigate("/trackings");
+      if (reporteriaClientesContext) {
+        reporteriaClientesContext.openTrackingTab();
+      } else {
+        navigate("/trackings");
+      }
     } catch {
       setTrackError(
         "Error de conexión. Verifica tu internet e intenta nuevamente.",

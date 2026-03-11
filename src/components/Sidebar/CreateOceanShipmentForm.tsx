@@ -10,10 +10,24 @@ const API_BASE_URL =
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
-function CreateOceanShipmentForm() {
+export interface CreateOceanShipmentFormProps {
+  /** Override the reference username (default: activeUsername from auth) */
+  referenceUsername?: string;
+  /** Callback when tracking is created successfully */
+  onSuccess?: () => void;
+  /** Callback for cancel action */
+  onCancel?: () => void;
+}
+
+function CreateOceanShipmentForm({
+  referenceUsername,
+  onSuccess,
+  onCancel,
+}: CreateOceanShipmentFormProps = {}) {
   const { token, activeUsername } = useAuth();
   const { registrarEvento } = useAuditLog();
   const navigate = useNavigate();
+  const effectiveReference = referenceUsername || activeUsername;
 
   // Form state
   const [identifierType, setIdentifierType] = useState<
@@ -118,7 +132,7 @@ function CreateOceanShipmentForm() {
 
     try {
       const body: Record<string, unknown> = {
-        reference: activeUsername,
+        reference: effectiveReference,
         carrier: "SG_XXXX",
         followers,
         tags,
@@ -223,7 +237,7 @@ function CreateOceanShipmentForm() {
                   type="text"
                   id="csf-reference"
                   className="csf-input"
-                  value={activeUsername || ""}
+                  value={effectiveReference || ""}
                   disabled
                 />
               </div>
@@ -460,7 +474,13 @@ function CreateOceanShipmentForm() {
                 <button
                   type="button"
                   className="csf-btn csf-btn--secondary"
-                  onClick={() => navigate(-1)}
+                  onClick={() => {
+                    if (onCancel) {
+                      onCancel();
+                    } else {
+                      navigate(-1);
+                    }
+                  }}
                   disabled={loading}
                 >
                   Cancelar
@@ -520,14 +540,23 @@ function CreateOceanShipmentForm() {
               <button
                 type="button"
                 className="csf-btn csf-btn--secondary"
-                onClick={() => setShowSuccessModal(false)}
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  if (onSuccess) onSuccess();
+                }}
               >
                 Cerrar
               </button>
               <button
                 type="button"
                 className="csf-btn csf-btn--primary"
-                onClick={() => navigate("/trackings")}
+                onClick={() => {
+                  if (onSuccess) {
+                    onSuccess();
+                  } else {
+                    navigate("/trackings");
+                  }
+                }}
               >
                 Ver tracking
               </button>

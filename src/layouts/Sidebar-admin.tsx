@@ -72,7 +72,7 @@ function SidebarAdmin({
         },
         {
           path: "/admin/trackeos",
-          name: "Trackeos",
+          name: "Seguimiento de Operaciones",
           icon: "fa fa-route",
         },
         {

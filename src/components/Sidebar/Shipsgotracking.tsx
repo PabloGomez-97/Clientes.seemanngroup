@@ -27,9 +27,20 @@ const API_BASE_URL =
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
-function ShipsGoTracking() {
+export interface ShipsGoTrackingProps {
+  /** Override the username used to filter shipments */
+  filterUsername?: string;
+  /** Custom callback for "new tracking" button (replaces default navigate) */
+  onNewTracking?: (type: TabType) => void;
+}
+
+function ShipsGoTracking({
+  filterUsername,
+  onNewTracking,
+}: ShipsGoTrackingProps = {}) {
   const { user, activeUsername } = useAuth();
   const navigate = useNavigate();
+  const effectiveUsername = filterUsername || activeUsername;
 
   const [activeTab, setActiveTab] = useState<TabType>("air");
 
@@ -54,18 +65,18 @@ function ShipsGoTracking() {
 
   // Filtered by active user
   const userAir = useMemo(() => {
-    if (!activeUsername) return [];
+    if (!effectiveUsername) return [];
     return allAirShipments.filter(
-      (s) => s.reference !== null && s.reference === activeUsername,
+      (s) => s.reference !== null && s.reference === effectiveUsername,
     );
-  }, [allAirShipments, activeUsername]);
+  }, [allAirShipments, effectiveUsername]);
 
   const userOcean = useMemo(() => {
-    if (!activeUsername) return [];
+    if (!effectiveUsername) return [];
     return allOceanShipments.filter(
-      (s) => s.reference !== null && s.reference === activeUsername,
+      (s) => s.reference !== null && s.reference === effectiveUsername,
     );
-  }, [allOceanShipments, activeUsername]);
+  }, [allOceanShipments, effectiveUsername]);
 
   // Stats
   const airStats = useMemo(
@@ -175,7 +186,7 @@ function ShipsGoTracking() {
           <div className="sg-page-header">
             <div className="sg-page-header-left">
               <h1>Rastreo de envíos</h1>
-              <p>{activeUsername}</p>
+              <p>{effectiveUsername}</p>
             </div>
           </div>
           <div className="sg-tabs">
@@ -211,7 +222,7 @@ function ShipsGoTracking() {
           <div className="sg-page-header">
             <div className="sg-page-header-left">
               <h1>Rastreo de envíos</h1>
-              <p>{activeUsername}</p>
+              <p>{effectiveUsername}</p>
             </div>
           </div>
           <div className="sg-tabs">
@@ -248,7 +259,7 @@ function ShipsGoTracking() {
           <div className="sg-page-header">
             <div className="sg-page-header-left">
               <h1>Rastreo de envíos</h1>
-              <p>{activeUsername}</p>
+              <p>{effectiveUsername}</p>
             </div>
           </div>
           <div className="sg-tabs">
@@ -276,11 +287,17 @@ function ShipsGoTracking() {
             </p>
             <button
               className="sg-empty-btn"
-              onClick={() =>
-                navigate(
-                  activeTab === "air" ? "/new-tracking" : "/new-ocean-tracking",
-                )
-              }
+              onClick={() => {
+                if (onNewTracking) {
+                  onNewTracking(activeTab);
+                } else {
+                  navigate(
+                    activeTab === "air"
+                      ? "/new-tracking"
+                      : "/new-ocean-tracking",
+                  );
+                }
+              }}
             >
               <span>+</span> Nuevo seguimiento
             </button>
@@ -298,15 +315,19 @@ function ShipsGoTracking() {
         <div className="sg-page-header">
           <div className="sg-page-header-left">
             <h1>Rastreo de envíos</h1>
-            <p>{activeUsername}</p>
+            <p>{effectiveUsername}</p>
           </div>
           <button
             className="sg-btn-new"
-            onClick={() =>
-              navigate(
-                activeTab === "air" ? "/new-tracking" : "/new-ocean-tracking",
-              )
-            }
+            onClick={() => {
+              if (onNewTracking) {
+                onNewTracking(activeTab);
+              } else {
+                navigate(
+                  activeTab === "air" ? "/new-tracking" : "/new-ocean-tracking",
+                );
+              }
+            }}
           >
             <span>+</span> Nuevo seguimiento
           </button>

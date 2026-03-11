@@ -8,6 +8,8 @@ import OceanShipmentsView from "../shipments/OceanShipmentsView";
 import GroundShipmentsView from "../shipments/GroundShipmentsView";
 import EXWChargesView from "./Cobros-EXW/EXWChargesView";
 import QuotesView from "../Sidebar/QuotesView";
+import ClientTrackingView from "./ClientTrackingView";
+import { ReporteriaClientesProvider } from "../../contexts/ReporteriaClientesContext";
 
 interface OutletContext {
   accessToken: string;
@@ -69,7 +71,7 @@ function ReporteriaClientes() {
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [showAllExw, setShowAllExw] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "air" | "ocean" | "ground" | "quotes" | "exw"
+    "air" | "ocean" | "ground" | "quotes" | "exw" | "tracking"
   >("air");
 
   // ── Fetch clients list (with cache) ──
@@ -294,12 +296,15 @@ function ReporteriaClientes() {
 
   // ── Client Detail View (same portal views the client sees) ──
   if (selectedClient) {
+    const openTrackingTab = () => setActiveTab("tracking");
+
     const tabs = [
       { key: "air" as const, label: "Envíos Aéreos", icon: "" },
       { key: "ocean" as const, label: "Envíos Marítimos", icon: "" },
       { key: "ground" as const, label: "Envíos Terrestres", icon: "" },
       { key: "quotes" as const, label: "Cotizaciones", icon: "" },
       { key: "exw" as const, label: "Cobros EXW", icon: "" },
+      { key: "tracking" as const, label: "Seguimiento", icon: "" },
     ];
 
     return (
@@ -436,13 +441,18 @@ function ReporteriaClientes() {
         </div>
 
         {/* Tab Content — wraps views with the client's username override */}
-        <ClientOverrideProvider value={selectedClient.username}>
-          {activeTab === "air" && <AirShipmentsView />}
-          {activeTab === "ocean" && <OceanShipmentsView />}
-          {activeTab === "ground" && <GroundShipmentsView />}
-          {activeTab === "exw" && <EXWChargesView />}
-          {activeTab === "quotes" && <QuotesView />}
-        </ClientOverrideProvider>
+        <ReporteriaClientesProvider value={{ openTrackingTab }}>
+          <ClientOverrideProvider value={selectedClient.username}>
+            {activeTab === "air" && <AirShipmentsView />}
+            {activeTab === "ocean" && <OceanShipmentsView />}
+            {activeTab === "ground" && <GroundShipmentsView />}
+            {activeTab === "exw" && <EXWChargesView />}
+            {activeTab === "quotes" && <QuotesView />}
+            {activeTab === "tracking" && (
+              <ClientTrackingView clientUsername={selectedClient.username} />
+            )}
+          </ClientOverrideProvider>
+        </ReporteriaClientesProvider>
       </div>
     );
   }

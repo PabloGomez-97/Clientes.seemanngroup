@@ -2,6 +2,7 @@
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
+import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesContext";
 import {
   type OceanShipment,
   type OutletContext,
@@ -76,6 +77,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
 function OceanShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
+  const reporteriaClientesContext = useReporteriaClientesContext();
   const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
@@ -641,7 +643,11 @@ function OceanShipmentsView() {
       }
 
       closeTrackModal();
-      navigate("/trackings");
+      if (reporteriaClientesContext) {
+        reporteriaClientesContext.openTrackingTab();
+      } else {
+        navigate("/trackings");
+      }
     } catch {
       setTrackError(
         "Error de conexión. Verifica tu internet e intenta nuevamente.",

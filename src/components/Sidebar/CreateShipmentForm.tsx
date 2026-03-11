@@ -10,11 +10,25 @@ const API_BASE_URL =
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
-function CreateShipmentForm() {
+export interface CreateShipmentFormProps {
+  /** Override the reference username (default: activeUsername from auth) */
+  referenceUsername?: string;
+  /** Callback when tracking is created successfully */
+  onSuccess?: () => void;
+  /** Callback for cancel action */
+  onCancel?: () => void;
+}
+
+function CreateShipmentForm({
+  referenceUsername,
+  onSuccess,
+  onCancel,
+}: CreateShipmentFormProps = {}) {
   const { user, token, activeUsername } = useAuth();
   const { registrarEvento } = useAuditLog();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const effectiveReference = referenceUsername || activeUsername;
 
   useEffect(() => {
     const awb = searchParams.get("awb");
@@ -107,7 +121,7 @@ function CreateShipmentForm() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          reference: activeUsername,
+          reference: effectiveReference,
           awb_number: cleanAwb,
           followers,
           tags,
@@ -193,7 +207,7 @@ function CreateShipmentForm() {
                   type="text"
                   id="csf-reference"
                   className="csf-input"
-                  value={activeUsername || ""}
+                  value={effectiveReference || ""}
                   disabled
                 />
               </div>
@@ -343,7 +357,13 @@ function CreateShipmentForm() {
                 <button
                   type="button"
                   className="csf-btn csf-btn--secondary"
-                  onClick={() => navigate(-1)}
+                  onClick={() => {
+                    if (onCancel) {
+                      onCancel();
+                    } else {
+                      navigate(-1);
+                    }
+                  }}
                   disabled={loading}
                 >
                   Cancelar
@@ -396,14 +416,23 @@ function CreateShipmentForm() {
               <button
                 type="button"
                 className="csf-btn csf-btn--secondary"
-                onClick={() => setShowSuccessModal(false)}
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  if (onSuccess) onSuccess();
+                }}
               >
                 Cerrar
               </button>
               <button
                 type="button"
                 className="csf-btn csf-btn--primary"
-                onClick={() => navigate("/shipsgo")}
+                onClick={() => {
+                  if (onSuccess) {
+                    onSuccess();
+                  } else {
+                    navigate("/shipsgo");
+                  }
+                }}
               >
                 Ver tracking
               </button>

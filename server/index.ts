@@ -175,6 +175,49 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
 
 const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchema)) as UserModel;
 
+async function canManageShipsgoReference(
+  currentUser: AuthPayload,
+  reference: string,
+): Promise<boolean> {
+  const normalizedReference = String(reference || '').trim();
+
+  if (!normalizedReference) {
+    return false;
+  }
+
+  if (normalizedReference === currentUser.username) {
+    return true;
+  }
+
+  const me = await User.findOne({ email: currentUser.sub }).populate('ejecutivoId');
+
+  if (!me || me.username !== 'Ejecutivo') {
+    return false;
+  }
+
+  let ejecutivoObjectId: any = null;
+
+  if (me.ejecutivoId) {
+    ejecutivoObjectId = (me.ejecutivoId as any)._id ?? me.ejecutivoId;
+  } else {
+    const lookupEmail = String(me.email).toLowerCase().trim();
+    const ejecutivo = await Ejecutivo.findOne({ email: lookupEmail });
+    if (ejecutivo) ejecutivoObjectId = ejecutivo._id;
+  }
+
+  if (!ejecutivoObjectId) {
+    return false;
+  }
+
+  const assignedClient = await User.exists({
+    ejecutivoId: ejecutivoObjectId,
+    username: { $ne: 'Ejecutivo' },
+    $or: [{ username: normalizedReference }, { usernames: normalizedReference }],
+  });
+
+  return !!assignedClient;
+}
+
 // ============================================================
 // MODELO DE DOCUMENTOS (AIR SHIPMENTS)
 // ============================================================
@@ -1437,8 +1480,12 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
       });
     }
 
-    // ✅ SEGURIDAD: Validar que la referencia coincida con el username del usuario
-    if (reference !== currentUser.username) {
+    const canManageReference = await canManageShipsgoReference(
+      currentUser,
+      reference,
+    );
+
+    if (!canManageReference) {
       console.error(`[shipsgo] Security violation: User ${currentUser.username} tried to create shipment with reference ${reference}`);
       return res.status(403).json({ 
         error: 'No puedes crear trackeos para otros usuarios' 
@@ -1850,8 +1897,12 @@ app.post('/api/shipsgo/ocean/shipments', auth, async (req, res) => {
       return res.status(400).json({ error: 'reference es un campo requerido' });
     }
 
-    // Seguridad: referencia debe coincidir con el username
-    if (reference !== currentUser.username) {
+    const canManageReference = await canManageShipsgoReference(
+      currentUser,
+      reference,
+    );
+
+    if (!canManageReference) {
       console.error(`[shipsgo-ocean] Security violation: User ${currentUser.username} tried to create shipment with reference ${reference}`);
       return res.status(403).json({ error: 'No puedes crear trackeos para otros usuarios' });
     }
