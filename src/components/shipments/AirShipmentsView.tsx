@@ -650,6 +650,14 @@ function AirShipmentsView() {
     return shipment.number || "";
   };
 
+  const getDisplayedTrackAwbNumber = (shipment: AirShipment) => {
+    if (shipment.id === undefined || shipment.id === null) return "-";
+    return parentShipmentNumbers[shipment.id] ?? "Cargando...";
+  };
+
+  const isTrackAwbReady = (shipment: AirShipment) =>
+    getDisplayedTrackAwbNumber(shipment) !== "Cargando...";
+
   const openTrackModal = (shipment: AirShipment) => {
     fetchParentShipmentNumber(shipment.id);
     setTrackShipment(shipment);
@@ -1364,43 +1372,50 @@ function AirShipmentsView() {
                                               <div className="asv-track-field__label">
                                                 ¿Quieres trackear tu envío?
                                               </div>
-                                              {isShipmentAlreadyTracked(
-                                                shipment,
-                                              ) ? (
-                                                <button
-                                                  className="asv-btn asv-btn--ghost asv-btn--sm"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    navigate("/trackings");
-                                                  }}
-                                                >
-                                                  ✓ Ya está siendo trackeado —
-                                                  Ver seguimiento
-                                                </button>
-                                              ) : (
-                                                <>
+                                              {(() => {
+                                                const isTrackReady =
+                                                  isTrackAwbReady(shipment);
+
+                                                return isShipmentAlreadyTracked(
+                                                  shipment,
+                                                ) ? (
+                                                  <button
+                                                    className="asv-btn asv-btn--ghost asv-btn--sm"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      navigate("/trackings");
+                                                    }}
+                                                  >
+                                                    ✓ Ya está siendo trackeado —
+                                                    Ver seguimiento
+                                                  </button>
+                                                ) : (
                                                   <button
                                                     className="asv-btn asv-btn--secondary asv-btn--sm"
                                                     onClick={(e) => {
                                                       e.stopPropagation();
+                                                      if (!isTrackReady) return;
                                                       openTrackModal(shipment);
                                                     }}
+                                                    disabled={!isTrackReady}
+                                                    title={
+                                                      isTrackReady
+                                                        ? undefined
+                                                        : "Espera a que se cargue el Número de Seguimiento."
+                                                    }
                                                   >
-                                                    Trackea tu envío
+                                                    {isTrackReady
+                                                      ? "Trackea tu envío"
+                                                      : "Cargando número de seg..."}
                                                   </button>
-                                                </>
-                                              )}
+                                                );
+                                              })()}
                                             </div>
                                             <InfoField
                                               label="Número de Seguimiento"
-                                              value={
-                                                shipment.id === undefined ||
-                                                shipment.id === null
-                                                  ? "-"
-                                                  : (parentShipmentNumbers[
-                                                      shipment.id
-                                                    ] ?? "Cargando...")
-                                              }
+                                              value={getDisplayedTrackAwbNumber(
+                                                shipment,
+                                              )}
                                               fullWidth
                                             />
                                             <InfoField

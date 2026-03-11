@@ -485,6 +485,14 @@ function OceanShipmentsView() {
     return shipment.containerNumber || shipment.number || "";
   };
 
+  const getDisplayedOceanTrackingNumber = (shipment: OceanShipment) => {
+    if (shipment.id === undefined || shipment.id === null) return "-";
+    return oceanTrackingNumbers[shipment.id] ?? "Cargando...";
+  };
+
+  const isOceanTrackingReady = (shipment: OceanShipment) =>
+    getDisplayedOceanTrackingNumber(shipment) !== "Cargando...";
+
   const isOceanShipmentAlreadyTracked = (shipment: OceanShipment): boolean => {
     if (trackedOceanNumbers.size === 0) return false;
     const num = getTrackoceanNumber(shipment).trim().toUpperCase();
@@ -1390,43 +1398,52 @@ function OceanShipmentsView() {
                                               <div className="asv-track-field__label">
                                                 ¿Quieres trackear tu envío?
                                               </div>
-                                              {isOceanShipmentAlreadyTracked(
-                                                shipment,
-                                              ) ? (
-                                                <button
-                                                  className="asv-btn asv-btn--ghost asv-btn--sm"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    navigate("/trackings");
-                                                  }}
-                                                >
-                                                  ✓ Ya está siendo trackeado —
-                                                  Ver seguimiento
-                                                </button>
-                                              ) : (
-                                                <>
+                                              {(() => {
+                                                const isTrackReady =
+                                                  isOceanTrackingReady(
+                                                    shipment,
+                                                  );
+
+                                                return isOceanShipmentAlreadyTracked(
+                                                  shipment,
+                                                ) ? (
+                                                  <button
+                                                    className="asv-btn asv-btn--ghost asv-btn--sm"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      navigate("/trackings");
+                                                    }}
+                                                  >
+                                                    ✓ Ya está siendo trackeado —
+                                                    Ver seguimiento
+                                                  </button>
+                                                ) : (
                                                   <button
                                                     className="asv-btn asv-btn--secondary asv-btn--sm"
                                                     onClick={(e) => {
                                                       e.stopPropagation();
+                                                      if (!isTrackReady) return;
                                                       openTrackModal(shipment);
                                                     }}
+                                                    disabled={!isTrackReady}
+                                                    title={
+                                                      isTrackReady
+                                                        ? undefined
+                                                        : "Espera a que se cargue el Número de Seguimiento."
+                                                    }
                                                   >
-                                                    Trackea tu envío
+                                                    {isTrackReady
+                                                      ? "Trackea tu envío"
+                                                      : "Cargando número de seg..."}
                                                   </button>
-                                                </>
-                                              )}
+                                                );
+                                              })()}
                                             </div>
                                             <InfoField
                                               label="Número de Seguimiento"
-                                              value={
-                                                shipment.id === undefined ||
-                                                shipment.id === null
-                                                  ? "-"
-                                                  : (oceanTrackingNumbers[
-                                                      shipment.id
-                                                    ] ?? "Cargando...")
-                                              }
+                                              value={getDisplayedOceanTrackingNumber(
+                                                shipment,
+                                              )}
                                             />
                                             <InfoField
                                               label="ID interno"

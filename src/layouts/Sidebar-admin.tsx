@@ -147,19 +147,6 @@ function SidebarAdmin({
         },
       ],
     },
-
-    {
-      title: "Entrenamiento",
-      items: [
-        {
-          path: "/admin/alumnos",
-          name: "Ranking Alumnos",
-          icon: "fa fa-trophy",
-          badge: { text: "NEW", type: "new" as const },
-          restrictedTo: "mreyes@seemanngroup.com",
-        },
-      ],
-    },
   ];
 
   // Filter by permission (restrictedTo + roles)
