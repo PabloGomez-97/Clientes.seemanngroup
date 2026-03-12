@@ -127,12 +127,16 @@ function ShipsGoTrackingAdmin() {
   // Total shipments (only for this ejecutivo's clients)
   const totalAir = useMemo(() => {
     const names = new Set(clientes.map((c) => c.username));
-    return airShipments.filter((s) => s.reference != null && names.has(s.reference)).length;
+    return airShipments.filter(
+      (s) => s.reference != null && names.has(s.reference),
+    ).length;
   }, [clientes, airShipments]);
 
   const totalOcean = useMemo(() => {
     const names = new Set(clientes.map((c) => c.username));
-    return oceanShipments.filter((s) => s.reference != null && names.has(s.reference)).length;
+    return oceanShipments.filter(
+      (s) => s.reference != null && names.has(s.reference),
+    ).length;
   }, [clientes, oceanShipments]);
 
   // ── Filtered clients ──

@@ -146,7 +146,10 @@ function App() {
           <Route path="reportoperational" element={<Invoicesxejecutivo />} />
           <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
           <Route path="op-trackeos" element={<ShipsGoTrackingAdminOP />} />
-          <Route path="op-reporteriaclientes" element={<OPReporteriaClientes />} />
+          <Route
+            path="op-reporteriaclientes"
+            element={<OPReporteriaClientes />}
+          />
           <Route path="pricing" element={<Pricing />} />
           <Route path="pricingFCL" element={<PricingFCL />} />
           <Route path="pricingLCL" element={<PricingLCL />} />

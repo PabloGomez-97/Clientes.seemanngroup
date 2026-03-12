@@ -160,7 +160,10 @@ function UsersManagement() {
       setIsEditingEjecutivo(true);
       const matchingEj = ejecutivos.find((e) => e.email === user.email);
       if (matchingEj?.roles) {
-        setEditRoles({ ...matchingEj.roles, operaciones: matchingEj.roles.operaciones ?? false });
+        setEditRoles({
+          ...matchingEj.roles,
+          operaciones: matchingEj.roles.operaciones ?? false,
+        });
       } else {
         setEditRoles({
           administrador: false,
@@ -1174,20 +1177,26 @@ function UsersManagement() {
                           border: editRoles.administrador
                             ? "2px solid #7e22ce"
                             : "1px solid #d1d5db",
-                          cursor: editRoles.proveedor || editRoles.operaciones
-                            ? "not-allowed"
-                            : "pointer",
+                          cursor:
+                            editRoles.proveedor || editRoles.operaciones
+                              ? "not-allowed"
+                              : "pointer",
                           backgroundColor: editRoles.administrador
                             ? "#faf5ff"
                             : "white",
-                          opacity: editRoles.proveedor || editRoles.operaciones ? 0.5 : 1,
+                          opacity:
+                            editRoles.proveedor || editRoles.operaciones
+                              ? 0.5
+                              : 1,
                           transition: "all 0.2s",
                         }}
                       >
                         <input
                           type="checkbox"
                           checked={editRoles.administrador}
-                          disabled={editRoles.proveedor || editRoles.operaciones}
+                          disabled={
+                            editRoles.proveedor || editRoles.operaciones
+                          }
                           onChange={(e) => {
                             if (e.target.checked) {
                               setEditRoles({
@@ -1255,14 +1264,18 @@ function UsersManagement() {
                             ? "2px solid #2563eb"
                             : "1px solid #d1d5db",
                           cursor:
-                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
+                            editRoles.administrador ||
+                            editRoles.proveedor ||
+                            editRoles.operaciones
                               ? "not-allowed"
                               : "pointer",
                           backgroundColor: editRoles.pricing
                             ? "#eff6ff"
                             : "white",
                           opacity:
-                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
+                            editRoles.administrador ||
+                            editRoles.proveedor ||
+                            editRoles.operaciones
                               ? 0.5
                               : 1,
                           transition: "all 0.2s",
@@ -1272,7 +1285,9 @@ function UsersManagement() {
                           type="checkbox"
                           checked={editRoles.pricing}
                           disabled={
-                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
+                            editRoles.administrador ||
+                            editRoles.proveedor ||
+                            editRoles.operaciones
                           }
                           onChange={(e) =>
                             setEditRoles({
@@ -1314,14 +1329,18 @@ function UsersManagement() {
                             ? "2px solid #16a34a"
                             : "1px solid #d1d5db",
                           cursor:
-                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
+                            editRoles.administrador ||
+                            editRoles.proveedor ||
+                            editRoles.operaciones
                               ? "not-allowed"
                               : "pointer",
                           backgroundColor: editRoles.ejecutivo
                             ? "#f0fdf4"
                             : "white",
                           opacity:
-                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
+                            editRoles.administrador ||
+                            editRoles.proveedor ||
+                            editRoles.operaciones
                               ? 0.5
                               : 1,
                           transition: "all 0.2s",
@@ -1331,7 +1350,9 @@ function UsersManagement() {
                           type="checkbox"
                           checked={editRoles.ejecutivo}
                           disabled={
-                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
+                            editRoles.administrador ||
+                            editRoles.proveedor ||
+                            editRoles.operaciones
                           }
                           onChange={(e) =>
                             setEditRoles({
@@ -1372,20 +1393,26 @@ function UsersManagement() {
                           border: editRoles.proveedor
                             ? "2px solid #ea580c"
                             : "1px solid #d1d5db",
-                          cursor: editRoles.administrador || editRoles.operaciones
-                            ? "not-allowed"
-                            : "pointer",
+                          cursor:
+                            editRoles.administrador || editRoles.operaciones
+                              ? "not-allowed"
+                              : "pointer",
                           backgroundColor: editRoles.proveedor
                             ? "#fff7ed"
                             : "white",
-                          opacity: editRoles.administrador || editRoles.operaciones ? 0.5 : 1,
+                          opacity:
+                            editRoles.administrador || editRoles.operaciones
+                              ? 0.5
+                              : 1,
                           transition: "all 0.2s",
                         }}
                       >
                         <input
                           type="checkbox"
                           checked={editRoles.proveedor}
-                          disabled={editRoles.administrador || editRoles.operaciones}
+                          disabled={
+                            editRoles.administrador || editRoles.operaciones
+                          }
                           onChange={(e) => {
                             if (e.target.checked) {
                               setEditRoles({
@@ -1452,20 +1479,26 @@ function UsersManagement() {
                           border: editRoles.operaciones
                             ? "2px solid #0891b2"
                             : "1px solid #d1d5db",
-                          cursor: editRoles.administrador || editRoles.proveedor
-                            ? "not-allowed"
-                            : "pointer",
+                          cursor:
+                            editRoles.administrador || editRoles.proveedor
+                              ? "not-allowed"
+                              : "pointer",
                           backgroundColor: editRoles.operaciones
                             ? "#ecfeff"
                             : "white",
-                          opacity: editRoles.administrador || editRoles.proveedor ? 0.5 : 1,
+                          opacity:
+                            editRoles.administrador || editRoles.proveedor
+                              ? 0.5
+                              : 1,
                           transition: "all 0.2s",
                         }}
                       >
                         <input
                           type="checkbox"
                           checked={editRoles.operaciones}
-                          disabled={editRoles.administrador || editRoles.proveedor}
+                          disabled={
+                            editRoles.administrador || editRoles.proveedor
+                          }
                           onChange={(e) => {
                             if (e.target.checked) {
                               setEditRoles({
