@@ -6,7 +6,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, SystemMessage, AIMessage, BaseMessage } from '@langchain/core/messages';
 import { StateGraph, MessagesAnnotation, END } from '@langchain/langgraph';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
-import { ALL_TOOLS, setToolContext, type ToolContext } from './tools.ts';
+import { ALL_TOOLS, setToolContext, type ToolContext } from './tools.js';
 
 // ============================================================================
 // SYSTEM PROMPT — conciso y con reglas claras

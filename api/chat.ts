@@ -3,8 +3,8 @@
 // Autentica via JWT, resuelve contexto (ejecutivo, Linbis token) y ejecuta el agente.
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import jwt from 'jsonwebtoken';
-import { runAgent } from './agent/graph.ts';
-import type { ToolContext } from './agent/tools.ts';
+import { runAgent } from './agent/graph.js';
+import type { ToolContext } from './agent/tools.js';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 

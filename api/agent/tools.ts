@@ -4,7 +4,7 @@
 
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { CLIENT_NAVIGATION, COMPANY_INFO, findPortalSection, findGlossaryTerm } from './knowledgeBase.ts';
+import { CLIENT_NAVIGATION, COMPANY_INFO, findPortalSection, findGlossaryTerm } from './knowledgeBase.js';
 
 // ============================================================================
 // CONTEXT — información inyectada en runtime

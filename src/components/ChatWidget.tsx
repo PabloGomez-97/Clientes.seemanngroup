@@ -269,6 +269,17 @@ export default function ChatWidget() {
               >
                 <p
                   style={{
+                    fontSize: "15px",
+                    color: "red",
+                    textAlign: "center",
+                    marginBottom: "12px",
+                    fontWeight: "800",
+                  }}
+                >
+                  Nuestro bot se encuentra en estado BETA.
+                </p>
+                <p
+                  style={{
                     fontSize: "14px",
                     color: "#6b7280",
                     textAlign: "center",
@@ -277,19 +288,6 @@ export default function ChatWidget() {
                   }}
                 >
                   Bienvenido {activeUsername ?? ""}
-                </p>
-                <p
-                  style={{
-                    fontSize: "14px",
-                    color: "red",
-                    textAlign: "center",
-                    marginBottom: "12px",
-                    fontWeight: "700",
-                  }}
-                >
-                  Nuestro bot se encuentra en estado beta. No toda la
-                  información es veridica, pero estamos mejorando cada día.
-                  ¡Gracias por tu comprensión!
                 </p>
                 <p
                   style={{
