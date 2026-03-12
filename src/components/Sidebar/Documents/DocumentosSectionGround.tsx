@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../../auth/AuthContext";
+import { useClientOverride } from "../../../contexts/ClientOverrideContext";
 import "./DocumentosSection.css";
 
 type TipoDocumentoGround =
@@ -33,7 +34,9 @@ interface Props {
 }
 
 export const DocumentosSectionGround: React.FC<Props> = ({ shipmentId }) => {
-  const { token } = useAuth();
+  const { token, activeUsername } = useAuth();
+  const clientOverride = useClientOverride();
+  const ownerUsername = clientOverride || activeUsername;
 
   const [documentos, setDocumentos] = useState<DocumentoGround[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,10 +94,10 @@ export const DocumentosSectionGround: React.FC<Props> = ({ shipmentId }) => {
   useEffect(() => {
     loadDocumentos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shipmentId]);
+  }, [shipmentId, ownerUsername]);
 
   const loadDocumentos = async () => {
-    if (!token || !shipmentId) return;
+    if (!token || !shipmentId || !ownerUsername) return;
 
     setLoading(true);
     setError(null);
@@ -106,6 +109,7 @@ export const DocumentosSectionGround: React.FC<Props> = ({ shipmentId }) => {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            "X-Owner-Username": ownerUsername,
           },
         },
       );
@@ -211,6 +215,7 @@ export const DocumentosSectionGround: React.FC<Props> = ({ shipmentId }) => {
         },
         body: JSON.stringify({
           shipmentId: String(shipmentId),
+          ownerUsername,
           tipo,
           nombreArchivo: file.name,
           contenidoBase64: base64,
@@ -247,6 +252,7 @@ export const DocumentosSectionGround: React.FC<Props> = ({ shipmentId }) => {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            "X-Owner-Username": ownerUsername,
           },
         },
       );
@@ -285,6 +291,7 @@ export const DocumentosSectionGround: React.FC<Props> = ({ shipmentId }) => {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            "X-Owner-Username": ownerUsername,
           },
         },
       );

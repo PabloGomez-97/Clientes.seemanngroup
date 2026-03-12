@@ -1,18 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../../../auth/AuthContext';
-import './DocumentosSection.css';
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "../../../auth/AuthContext";
+import { useClientOverride } from "../../../contexts/ClientOverrideContext";
+import "./DocumentosSection.css";
 
 // ============================================================
 // TIPOS
 // ============================================================
 
-type TipoDocumento = 
-  | 'Invoice' 
-  | 'Packing List'
-  | 'Certificado de Origen'
-  | 'Póliza de seguro'
-  | 'Guía de Despacho'
-  | 'Declaración de Ingreso';
+type TipoDocumento =
+  | "Invoice"
+  | "Packing List"
+  | "Certificado de Origen"
+  | "Póliza de seguro"
+  | "Guía de Despacho"
+  | "Declaración de Ingreso";
 
 interface Documento {
   id: string;
@@ -33,23 +34,30 @@ interface DocumentosSectionProps {
 // COMPONENTE PRINCIPAL
 // ============================================================
 
-export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, onCountChange }) => {
-  const { token } = useAuth();
+export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
+  quoteId,
+  onCountChange,
+}) => {
+  const { token, activeUsername } = useAuth();
+  const clientOverride = useClientOverride();
+  const ownerUsername = clientOverride || activeUsername;
   const [documentos, setDocumentos] = useState<Documento[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [carpetasAbiertas, setCarpetasAbiertas] = useState<Set<TipoDocumento>>(new Set());
-  
+  const [carpetasAbiertas, setCarpetasAbiertas] = useState<Set<TipoDocumento>>(
+    new Set(),
+  );
+
   // Referencias para los inputs de archivo
   const fileInputRefs = {
-    'Invoice': useRef<HTMLInputElement>(null),
-    'Packing List': useRef<HTMLInputElement>(null),
-    'Certificado de Origen': useRef<HTMLInputElement>(null),
-    'Póliza de seguro': useRef<HTMLInputElement>(null),
-    'Guía de Despacho': useRef<HTMLInputElement>(null),
-    'Declaración de Ingreso': useRef<HTMLInputElement>(null),
+    Invoice: useRef<HTMLInputElement>(null),
+    "Packing List": useRef<HTMLInputElement>(null),
+    "Certificado de Origen": useRef<HTMLInputElement>(null),
+    "Póliza de seguro": useRef<HTMLInputElement>(null),
+    "Guía de Despacho": useRef<HTMLInputElement>(null),
+    "Declaración de Ingreso": useRef<HTMLInputElement>(null),
   };
 
   // ============================================================
@@ -58,7 +66,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
 
   useEffect(() => {
     loadDocumentos();
-  }, [quoteId]);
+  }, [quoteId, ownerUsername]);
 
   useEffect(() => {
     if (onCountChange) {
@@ -67,28 +75,29 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
   }, [documentos.length, onCountChange]);
 
   const loadDocumentos = async () => {
-    if (!token || !quoteId) return;
-    
+    if (!token || !quoteId || !ownerUsername) return;
+
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetch(`/api/documentos/${quoteId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "X-Owner-Username": ownerUsername,
+        },
       });
 
       if (!response.ok) {
-        throw new Error('Error al cargar documentos');
+        throw new Error("Error al cargar documentos");
       }
 
       const data = await response.json();
       setDocumentos(data.documentos || []);
     } catch (err: any) {
-      console.error('Error cargando documentos:', err);
-      setError(err.message || 'Error al cargar documentos');
+      console.error("Error cargando documentos:", err);
+      setError(err.message || "Error al cargar documentos");
     } finally {
       setLoading(false);
     }
@@ -99,7 +108,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
   // ============================================================
 
   const toggleCarpeta = (tipo: TipoDocumento) => {
-    setCarpetasAbiertas(prev => {
+    setCarpetasAbiertas((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(tipo)) {
         newSet.delete(tipo);
@@ -114,31 +123,36 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
   // SUBIR DOCUMENTO
   // ============================================================
 
-  const handleFileSelect = async (tipo: TipoDocumento, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    tipo: TipoDocumento,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
-    
+
     if (!file) return;
 
     // Validar tamaño (5MB)
     const MAX_SIZE = 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       setError(`El archivo "${file.name}" excede el tamaño máximo de 5MB`);
-      event.target.value = '';
+      event.target.value = "";
       return;
     }
 
     // Validar tipo de archivo
     const allowedTypes = [
-      'application/pdf',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      "application/pdf",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      setError('Solo se permiten archivos PDF, Excel (.xls, .xlsx) y Word (.doc, .docx)');
-      event.target.value = '';
+      setError(
+        "Solo se permiten archivos PDF, Excel (.xls, .xlsx) y Word (.doc, .docx)",
+      );
+      event.target.value = "";
       return;
     }
 
@@ -148,39 +162,39 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
 
     try {
       const base64 = await fileToBase64(file);
-      
-      const response = await fetch('/api/documentos/upload', {
-        method: 'POST',
+
+      const response = await fetch("/api/documentos/upload", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           quoteId: String(quoteId),
+          ownerUsername,
           tipo,
           nombreArchivo: file.name,
-          contenidoBase64: base64
-        })
+          contenidoBase64: base64,
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al subir documento');
+        throw new Error(errorData.error || "Error al subir documento");
       }
 
       setSuccessMessage(`✅ "${file.name}" subido exitosamente`);
       await loadDocumentos();
-      event.target.value = '';
-      
-      // Abrir la carpeta automáticamente
-      setCarpetasAbiertas(prev => new Set(prev).add(tipo));
-      
-      setTimeout(() => setSuccessMessage(null), 5000);
+      event.target.value = "";
 
+      // Abrir la carpeta automáticamente
+      setCarpetasAbiertas((prev) => new Set(prev).add(tipo));
+
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
-      console.error('Error subiendo documento:', err);
-      setError(err.message || 'Error al subir documento');
-      event.target.value = '';
+      console.error("Error subiendo documento:", err);
+      setError(err.message || "Error al subir documento");
+      event.target.value = "";
     } finally {
       setUploading(false);
     }
@@ -196,27 +210,27 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
     try {
       const response = await fetch(`/api/documentos/download/${documentoId}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "X-Owner-Username": ownerUsername,
+        },
       });
 
       if (!response.ok) {
-        throw new Error('Error al descargar documento');
+        throw new Error("Error al descargar documento");
       }
 
       const data = await response.json();
-      
-      const link = document.createElement('a');
+
+      const link = document.createElement("a");
       link.href = data.documento.contenidoBase64;
       link.download = nombreArchivo;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
     } catch (err: any) {
-      console.error('Error descargando documento:', err);
-      setError(err.message || 'Error al descargar documento');
+      console.error("Error descargando documento:", err);
+      setError(err.message || "Error al descargar documento");
     }
   };
 
@@ -227,30 +241,32 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
   const handleDelete = async (documentoId: string, nombreArchivo: string) => {
     if (!token) return;
 
-    const confirmed = window.confirm(`¿Estás seguro de eliminar "${nombreArchivo}"?`);
+    const confirmed = window.confirm(
+      `¿Estás seguro de eliminar "${nombreArchivo}"?`,
+    );
     if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/documentos/${documentoId}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "X-Owner-Username": ownerUsername,
+        },
       });
 
       if (!response.ok) {
-        throw new Error('Error al eliminar documento');
+        throw new Error("Error al eliminar documento");
       }
 
       setSuccessMessage(`✅ "${nombreArchivo}" eliminado exitosamente`);
       await loadDocumentos();
-      
-      setTimeout(() => setSuccessMessage(null), 5000);
 
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err: any) {
-      console.error('Error eliminando documento:', err);
-      setError(err.message || 'Error al eliminar documento');
+      console.error("Error eliminando documento:", err);
+      setError(err.message || "Error al eliminar documento");
     }
   };
 
@@ -268,25 +284,27 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
   };
 
   const getDocumentosPorTipo = (tipo: TipoDocumento): Documento[] => {
-    return documentos.filter(doc => doc.tipo === tipo);
+    return documentos.filter((doc) => doc.tipo === tipo);
   };
 
   const formatFecha = (fechaISO: string): string => {
     const fecha = new Date(fechaISO);
-    return fecha.toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return fecha.toLocaleDateString("es-CL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getIconoPorTipo = (tipoArchivo: string): string => {
-    if (tipoArchivo.includes('pdf')) return '📄';
-    if (tipoArchivo.includes('excel') || tipoArchivo.includes('spreadsheet')) return '📊';
-    if (tipoArchivo.includes('word') || tipoArchivo.includes('document')) return '📝';
-    return '📎';
+    if (tipoArchivo.includes("pdf")) return "📄";
+    if (tipoArchivo.includes("excel") || tipoArchivo.includes("spreadsheet"))
+      return "📊";
+    if (tipoArchivo.includes("word") || tipoArchivo.includes("document"))
+      return "📝";
+    return "📎";
   };
 
   // ============================================================
@@ -294,12 +312,12 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
   // ============================================================
 
   const tiposDocumento: TipoDocumento[] = [
-    'Invoice',
-    'Packing List',
-    'Certificado de Origen',
-    'Póliza de seguro',
-    'Guía de Despacho',
-    'Declaración de Ingreso'
+    "Invoice",
+    "Packing List",
+    "Certificado de Origen",
+    "Póliza de seguro",
+    "Guía de Despacho",
+    "Declaración de Ingreso",
   ];
 
   return (
@@ -308,9 +326,9 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
       {error && (
         <div className="alert alert-danger" role="alert">
           ❌ {error}
-          <button 
-            type="button" 
-            className="btn-close" 
+          <button
+            type="button"
+            className="btn-close"
             onClick={() => setError(null)}
           />
         </div>
@@ -319,9 +337,9 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
       {successMessage && (
         <div className="alert alert-success" role="alert">
           {successMessage}
-          <button 
-            type="button" 
-            className="btn-close" 
+          <button
+            type="button"
+            className="btn-close"
             onClick={() => setSuccessMessage(null)}
           />
         </div>
@@ -342,11 +360,11 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
           {tiposDocumento.map((tipo) => {
             const docsDelTipo = getDocumentosPorTipo(tipo);
             const isOpen = carpetasAbiertas.has(tipo);
-            
+
             return (
               <div key={tipo} className="folder-item">
                 {/* Header de la carpeta */}
-                <div 
+                <div
                   className="folder-header"
                   onClick={() => toggleCarpeta(tipo)}
                 >
@@ -356,7 +374,9 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
                   </div>
                   <div className="folder-right">
                     <span className="folder-count">({docsDelTipo.length})</span>
-                    <span className={`folder-arrow ${isOpen ? 'open' : ''}`}>▶</span>
+                    <span className={`folder-arrow ${isOpen ? "open" : ""}`}>
+                      ▶
+                    </span>
                   </div>
                 </div>
 
@@ -373,24 +393,31 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
                                 {getIconoPorTipo(doc.tipoArchivo)}
                               </span>
                               <div className="file-details">
-                                <div className="file-name">{doc.nombreArchivo}</div>
+                                <div className="file-name">
+                                  {doc.nombreArchivo}
+                                </div>
                                 <div className="file-meta">
-                                  {doc.tamanoMB} MB • {formatFecha(doc.fechaSubida)}
+                                  {doc.tamanoMB} MB •{" "}
+                                  {formatFecha(doc.fechaSubida)}
                                 </div>
                               </div>
                             </div>
-                            
+
                             <div className="file-actions">
                               <button
                                 className="btn-file-action"
-                                onClick={() => handleDownload(doc.id, doc.nombreArchivo)}
+                                onClick={() =>
+                                  handleDownload(doc.id, doc.nombreArchivo)
+                                }
                                 title="Descargar"
                               >
                                 ⬇️
                               </button>
                               <button
                                 className="btn-file-action delete"
-                                onClick={() => handleDelete(doc.id, doc.nombreArchivo)}
+                                onClick={() =>
+                                  handleDelete(doc.id, doc.nombreArchivo)
+                                }
                                 title="Eliminar"
                               >
                                 🗑️
@@ -412,10 +439,10 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
                         type="file"
                         accept=".pdf,.xls,.xlsx,.doc,.docx"
                         onChange={(e) => handleFileSelect(tipo, e)}
-                        style={{ display: 'none' }}
+                        style={{ display: "none" }}
                         disabled={uploading}
                       />
-                      
+
                       <button
                         className="btn-upload-folder"
                         onClick={() => fileInputRefs[tipo].current?.click()}
@@ -427,9 +454,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({ quoteId, o
                             Subiendo...
                           </>
                         ) : (
-                          <>
-                            📤 Subir archivo
-                          </>
+                          <>📤 Subir archivo</>
                         )}
                       </button>
                     </div>

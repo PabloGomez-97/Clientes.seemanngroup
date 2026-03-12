@@ -212,6 +212,120 @@ async function canManageShipsgoReference(
   return !!targetClient;
 }
 
+function getRequestedDocumentOwnerUsername(req: express.Request): string | undefined {
+  const headerValue = req.headers['x-owner-username'];
+  const headerOwner = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+  const queryOwner = Array.isArray(req.query.ownerUsername)
+    ? req.query.ownerUsername[0]
+    : req.query.ownerUsername;
+  const bodyOwner = req.body?.ownerUsername;
+
+  for (const candidate of [headerOwner, queryOwner, bodyOwner]) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return undefined;
+}
+
+type DocumentExecutiveAccess = {
+  _id?: mongoose.Types.ObjectId | null;
+  roles?: IEjecutivo['roles'];
+} | null;
+
+async function resolveDocumentOwnerUsername(
+  currentUser: AuthPayload,
+  requestedOwnerUsername?: unknown,
+): Promise<string> {
+  const me = await User.findOne({ email: currentUser.sub }).populate('ejecutivoId');
+
+  if (!me) {
+    throw new Error('Usuario no encontrado');
+  }
+
+  const ownUsernames = (Array.isArray(me.usernames) && me.usernames.length > 0
+    ? me.usernames
+    : [me.username]
+  )
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  const requested = String(requestedOwnerUsername || '').trim();
+
+  if (!requested) {
+    return ownUsernames[0] || me.username;
+  }
+
+  if (ownUsernames.includes(requested)) {
+    return requested;
+  }
+
+  if (me.username !== 'Ejecutivo') {
+    throw new Error('No tienes permiso para acceder a esta cuenta');
+  }
+
+  let ejecutivoDoc = me.ejecutivoId as unknown as DocumentExecutiveAccess;
+  if (!ejecutivoDoc || !ejecutivoDoc._id) {
+    const lookupEmail = String(me.email || '').toLowerCase().trim();
+    ejecutivoDoc = await Ejecutivo.findOne({ email: lookupEmail });
+  }
+
+  const targetClientQuery = {
+    username: { $ne: 'Ejecutivo' },
+    $or: [{ username: requested }, { usernames: requested }],
+  };
+
+  const hasGlobalExecutiveAccess = !!(
+    ejecutivoDoc?.roles?.administrador || ejecutivoDoc?.roles?.operaciones
+  );
+
+  if (hasGlobalExecutiveAccess) {
+    const targetClient = await User.exists(targetClientQuery);
+    if (targetClient) {
+      return requested;
+    }
+    throw new Error('Cliente no encontrado');
+  }
+
+  const ejecutivoObjectId = ejecutivoDoc?._id ?? null;
+  if (!ejecutivoObjectId) {
+    throw new Error('No tienes permiso para acceder a esta cuenta');
+  }
+
+  const targetClient = await User.exists({
+    ...targetClientQuery,
+    ejecutivoId: ejecutivoObjectId,
+  });
+
+  if (!targetClient) {
+    throw new Error('No tienes permiso para acceder a esta cuenta');
+  }
+
+  return requested;
+}
+
+function buildDocumentOwnerScopeQuery(ownerUsername: string) {
+  if (ownerUsername === 'Ejecutivo') {
+    return { usuarioId: ownerUsername };
+  }
+
+  return {
+    $or: [{ usuarioId: ownerUsername }, { usuarioId: 'Ejecutivo' }],
+  };
+}
+
+function documentBelongsToOwnerScope(
+  documento: { usuarioId?: string | null },
+  ownerUsername: string,
+): boolean {
+  if (documento.usuarioId === ownerUsername) {
+    return true;
+  }
+
+  return ownerUsername !== 'Ejecutivo' && documento.usuarioId === 'Ejecutivo';
+}
+
 // ============================================================
 // MODELO DE DOCUMENTOS (AIR SHIPMENTS)
 // ============================================================
@@ -2275,6 +2389,11 @@ app.post('/api/documentos/upload', auth, async (req, res) => {
       });
     }
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const nuevoDocumento = await Documento.create({
       quoteId: String(quoteId),
       tipo,
@@ -2283,7 +2402,7 @@ app.post('/api/documentos/upload', auth, async (req, res) => {
       tamanoBytes: fileSize,
       contenidoBase64,
       subidoPor: currentUser.sub,
-      usuarioId: currentUser.username
+      usuarioId: ownerUsername
     });
 
     console.log(`[documentos] Documento subido: ${nuevoDocumento._id}`);
@@ -2326,9 +2445,14 @@ app.get('/api/documentos/:quoteId', auth, async (req, res) => {
       return res.status(400).json({ error: 'quoteId es requerido' });
     }
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documentos = await Documento.find({ 
       quoteId: String(quoteId),
-      usuarioId: currentUser.username 
+      ...buildDocumentOwnerScopeQuery(ownerUsername)
     })
     .select('-contenidoBase64')
     .sort({ createdAt: -1 });
@@ -2371,13 +2495,18 @@ app.get('/api/documentos/download/:documentoId', auth, async (req, res) => {
       return res.status(400).json({ error: 'documentoId es requerido' });
     }
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documento = await Documento.findById(documentoId);
 
     if (!documento) {
       return res.status(404).json({ error: 'Documento no encontrado' });
     }
 
-    if (documento.usuarioId !== currentUser.username) {
+    if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
     }
 
@@ -2420,13 +2549,18 @@ app.delete('/api/documentos/:documentoId', auth, async (req, res) => {
       return res.status(400).json({ error: 'documentoId es requerido' });
     }
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documento = await Documento.findById(documentoId);
 
     if (!documento) {
       return res.status(404).json({ error: 'Documento no encontrado' });
     }
 
-    if (documento.usuarioId !== currentUser.username) {
+    if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
     }
 
@@ -2501,6 +2635,11 @@ app.post('/api/air-shipments/documentos/upload', auth, async (req, res) => {
       });
     }
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const nuevoDocumento = await AirShipmentDocumento.create({
       shipmentId: String(shipmentId),
       tipo,
@@ -2509,7 +2648,7 @@ app.post('/api/air-shipments/documentos/upload', auth, async (req, res) => {
       tamanoBytes: fileSize,
       contenidoBase64,
       subidoPor: currentUser.sub,
-      usuarioId: currentUser.username,
+      usuarioId: ownerUsername,
     });
 
     return res.status(201).json({
@@ -2537,9 +2676,14 @@ app.get('/api/air-shipments/documentos/:shipmentId', auth, async (req, res) => {
 
     const { shipmentId } = req.params;
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documentos = await AirShipmentDocumento.find({
       shipmentId: String(shipmentId),
-      usuarioId: currentUser.username,
+      ...buildDocumentOwnerScopeQuery(ownerUsername),
     })
       .select('-contenidoBase64')
       .sort({ createdAt: -1 });
@@ -2569,10 +2713,15 @@ app.get('/api/air-shipments/documentos/download/:documentoId', auth, async (req,
 
     const { documentoId } = req.params;
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documento = await AirShipmentDocumento.findById(documentoId);
     if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
 
-    if (documento.usuarioId !== currentUser.username) {
+    if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
     }
 
@@ -2602,10 +2751,15 @@ app.delete('/api/air-shipments/documentos/:documentoId', auth, async (req, res) 
 
     const { documentoId } = req.params;
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documento = await AirShipmentDocumento.findById(documentoId);
     if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
 
-    if (documento.usuarioId !== currentUser.username) {
+    if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
     }
 
@@ -2676,6 +2830,11 @@ app.post('/api/ocean-shipments/documentos/upload', auth, async (req, res) => {
       });
     }
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const nuevoDocumento = await OceanShipmentDocumento.create({
       shipmentId: String(shipmentId),
       tipo,
@@ -2684,7 +2843,7 @@ app.post('/api/ocean-shipments/documentos/upload', auth, async (req, res) => {
       tamanoBytes: fileSize,
       contenidoBase64,
       subidoPor: currentUser.sub,
-      usuarioId: currentUser.username,
+      usuarioId: ownerUsername,
     });
 
     return res.status(201).json({
@@ -2712,9 +2871,14 @@ app.get('/api/ocean-shipments/documentos/:shipmentId', auth, async (req, res) =>
 
     const { shipmentId } = req.params;
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documentos = await OceanShipmentDocumento.find({
       shipmentId: String(shipmentId),
-      usuarioId: currentUser.username,
+      ...buildDocumentOwnerScopeQuery(ownerUsername),
     })
       .select('-contenidoBase64')
       .sort({ createdAt: -1 });
@@ -2744,10 +2908,15 @@ app.get('/api/ocean-shipments/documentos/download/:documentoId', auth, async (re
 
     const { documentoId } = req.params;
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documento = await OceanShipmentDocumento.findById(documentoId);
     if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
 
-    if (documento.usuarioId !== currentUser.username) {
+    if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
     }
 
@@ -2777,10 +2946,15 @@ app.delete('/api/ocean-shipments/documentos/:documentoId', auth, async (req, res
 
     const { documentoId } = req.params;
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documento = await OceanShipmentDocumento.findById(documentoId);
     if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
 
-    if (documento.usuarioId !== currentUser.username) {
+    if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
     }
 
@@ -2850,6 +3024,11 @@ app.post('/api/ground-shipments/documentos/upload', auth, async (req, res) => {
       });
     }
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const nuevoDocumento = await GroundShipmentDocumento.create({
       shipmentId: String(shipmentId),
       tipo,
@@ -2858,7 +3037,7 @@ app.post('/api/ground-shipments/documentos/upload', auth, async (req, res) => {
       tamanoBytes: fileSize,
       contenidoBase64,
       subidoPor: currentUser.sub,
-      usuarioId: currentUser.username,
+      usuarioId: ownerUsername,
     });
 
     return res.status(201).json({
@@ -2886,9 +3065,14 @@ app.get('/api/ground-shipments/documentos/:shipmentId', auth, async (req, res) =
 
     const { shipmentId } = req.params;
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documentos = await GroundShipmentDocumento.find({
       shipmentId: String(shipmentId),
-      usuarioId: currentUser.username,
+      ...buildDocumentOwnerScopeQuery(ownerUsername),
     })
       .select('-contenidoBase64')
       .sort({ createdAt: -1 });
@@ -2918,10 +3102,15 @@ app.get('/api/ground-shipments/documentos/download/:documentoId', auth, async (r
 
     const { documentoId } = req.params;
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documento = await GroundShipmentDocumento.findById(documentoId);
     if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
 
-    if (documento.usuarioId !== currentUser.username) {
+    if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
     }
 
@@ -2951,10 +3140,15 @@ app.delete('/api/ground-shipments/documentos/:documentoId', auth, async (req, re
 
     const { documentoId } = req.params;
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const documento = await GroundShipmentDocumento.findById(documentoId);
     if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
 
-    if (documento.usuarioId !== currentUser.username) {
+    if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
     }
 
