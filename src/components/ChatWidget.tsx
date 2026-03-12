@@ -53,15 +53,31 @@ export default function ChatWidget() {
     return `${hours}:${minutes}`;
   };
 
-  // Función para renderizar texto con markdown (negrita)
+  // Función para renderizar texto con markdown básico (negrita, listas, saltos de línea)
   const renderMessageContent = (content: string) => {
-    const parts = content.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, index) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        const boldText = part.slice(2, -2);
-        return <strong key={index}>{boldText}</strong>;
+    // Dividir por saltos de línea para manejar párrafos
+    const lines = content.split("\n");
+    return lines.map((line, lineIdx) => {
+      // Renderizar negrita dentro de cada línea
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+      const rendered = parts.map((part, partIdx) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          const boldText = part.slice(2, -2);
+          return <strong key={`${lineIdx}-${partIdx}`}>{boldText}</strong>;
+        }
+        return <span key={`${lineIdx}-${partIdx}`}>{part}</span>;
+      });
+
+      // Si es la última línea, no agregar <br>
+      if (lineIdx === lines.length - 1) {
+        return <span key={lineIdx}>{rendered}</span>;
       }
-      return <span key={index}>{part}</span>;
+      return (
+        <span key={lineIdx}>
+          {rendered}
+          <br />
+        </span>
+      );
     });
   };
 
@@ -273,46 +289,49 @@ export default function ChatWidget() {
                 >
                   Selecciona una opción para comenzar:
                 </p>
-                {["¿Qué es FCL?", "¿Qué es EXW?", "¿Qué es AWB?"].map(
-                  (option, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleQuickOption(option)}
-                      disabled={isLoading}
-                      style={{
-                        padding: "14px 18px",
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "10px",
-                        fontSize: "14px",
-                        color: "#374151",
-                        cursor: isLoading ? "not-allowed" : "pointer",
-                        textAlign: "left",
-                        transition: "all 0.2s ease",
-                        fontWeight: "500",
-                        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.backgroundColor = "#f9fafb";
-                          e.currentTarget.style.borderColor = "#425b76";
-                          e.currentTarget.style.transform = "translateY(-1px)";
-                          e.currentTarget.style.boxShadow =
-                            "0 4px 6px rgba(0, 0, 0, 0.1)";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "#ffffff";
-                        e.currentTarget.style.borderColor = "#e5e7eb";
-                        e.currentTarget.style.transform = "translateY(0)";
+                {[
+                  "¿Quién es mi ejecutivo comercial?",
+                  "¿Cómo creo un seguimiento de contenedor?",
+                  "¿Qué servicios ofrece Seemann Group?",
+                  "¿Dónde puedo cotizar un envío?",
+                ].map((option, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleQuickOption(option)}
+                    disabled={isLoading}
+                    style={{
+                      padding: "14px 18px",
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "10px",
+                      fontSize: "14px",
+                      color: "#374151",
+                      cursor: isLoading ? "not-allowed" : "pointer",
+                      textAlign: "left",
+                      transition: "all 0.2s ease",
+                      fontWeight: "500",
+                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isLoading) {
+                        e.currentTarget.style.backgroundColor = "#f9fafb";
+                        e.currentTarget.style.borderColor = "#425b76";
+                        e.currentTarget.style.transform = "translateY(-1px)";
                         e.currentTarget.style.boxShadow =
-                          "0 1px 2px rgba(0, 0, 0, 0.05)";
-                      }}
-                    >
-                      {option}
-                    </button>
-                  ),
-                )}
+                          "0 4px 6px rgba(0, 0, 0, 0.1)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "#ffffff";
+                      e.currentTarget.style.borderColor = "#e5e7eb";
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow =
+                        "0 1px 2px rgba(0, 0, 0, 0.05)";
+                    }}
+                  >
+                    {option}
+                  </button>
+                ))}
               </div>
             )}
 
@@ -618,41 +637,44 @@ export default function ChatWidget() {
         </div>
       )}
 
-      {/* Floating Button
       {!isOpen && (
         <button
           onClick={toggleChat}
           style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            width: '60px',
-            height: '60px',
-            borderRadius: '50%',
-            backgroundColor: '#425b76',
-            border: 'none',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(66, 91, 118, 0.3)',
+            position: "fixed",
+            bottom: "24px",
+            right: "24px",
+            width: "60px",
+            height: "60px",
+            borderRadius: "50%",
+            backgroundColor: "#425b76",
+            border: "none",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 4px 16px rgba(66, 91, 118, 0.3)",
             zIndex: 9999,
-            transition: 'all 0.3s ease',
+            transition: "all 0.3s ease",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'scale(1.08)';
-            e.currentTarget.style.boxShadow = '0 6px 20px rgba(66, 91, 118, 0.4)';
+            e.currentTarget.style.transform = "scale(1.08)";
+            e.currentTarget.style.boxShadow =
+              "0 6px 20px rgba(66, 91, 118, 0.4)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(66, 91, 118, 0.3)';
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow =
+              "0 4px 16px rgba(66, 91, 118, 0.3)";
           }}
+          aria-label="Abrir asistente"
+          title="Abrir asistente"
         >
           <svg width="28" height="28" fill="white" viewBox="0 0 16 16">
-            <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"/>
+            <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z" />
           </svg>
         </button>
-      )}*/}
+      )}
 
       {/* CSS Animations */}
       <style>{`

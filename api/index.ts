@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData } from './emails/oversizeEmailTemplate.js';
 import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from './emails/oversizeEmailTemplateOcean.js';
+import chatHandler from './chat.js';
 
 /** =========================
  *  Entorno + JWT
@@ -3978,6 +3979,13 @@ Sistema de Cotizaciones Seemann Group
         console.error('[alumnos] Error al eliminar:', error);
         return res.status(500).json({ error: 'Error al eliminar alumno' });
       }
+    }
+
+    // ============================================================
+    // CHAT AI AGENT
+    // ============================================================
+    if (path === '/api/chat' && (method === 'POST' || method === 'OPTIONS')) {
+      return chatHandler(req, res);
     }
 
     // Ruta no encontrada

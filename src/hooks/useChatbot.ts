@@ -1,5 +1,5 @@
 // src/hooks/useChatbot.ts
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '../auth/AuthContext';
 
 interface Message {
@@ -21,11 +21,12 @@ interface UseChatbotReturn {
 const STORAGE_KEY = 'chatbot_history';
 
 export function useChatbot(): UseChatbotReturn {
-  const { token } = useAuth();
+  const { token, activeUsername, user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const typingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Cargar historial desde localStorage al montar
   useEffect(() => {
@@ -51,15 +52,27 @@ export function useChatbot(): UseChatbotReturn {
     }
   }, [messages]);
 
+  // Limpiar interval al desmontar
+  useEffect(() => {
+    return () => {
+      if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+    };
+  }, []);
+
   const toggleChat = useCallback(() => {
     setIsOpen(prev => !prev);
     setError(null);
   }, []);
 
   const clearChat = useCallback(() => {
+    if (typingIntervalRef.current) {
+      clearInterval(typingIntervalRef.current);
+      typingIntervalRef.current = null;
+    }
     setMessages([]);
     localStorage.removeItem(STORAGE_KEY);
     setError(null);
+    setIsLoading(false);
   }, []);
 
   const sendMessage = useCallback(async (message: string) => {
@@ -86,6 +99,8 @@ export function useChatbot(): UseChatbotReturn {
         body: JSON.stringify({
           message: userMessage.content,
           conversationHistory: messages,
+          activeUsername: activeUsername || '',
+          ejecutivo: user?.ejecutivo || null,
         }),
       });
 
@@ -109,13 +124,14 @@ export function useChatbot(): UseChatbotReturn {
 
       // Simular escritura carácter por carácter
       let currentIndex = 0;
-      const typingSpeed = 30; // milisegundos entre cada carácter (ajustable)
+      const typingSpeed = 15; // ms entre caracteres
 
-      const typingInterval = setInterval(() => {
+      if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+
+      typingIntervalRef.current = setInterval(() => {
         currentIndex++;
         
         if (currentIndex <= fullMessage.length) {
-          // Actualizar el último mensaje con más caracteres
           setMessages(prev => {
             const newMessages = [...prev];
             newMessages[newMessages.length - 1] = {
@@ -125,14 +141,13 @@ export function useChatbot(): UseChatbotReturn {
             return newMessages;
           });
         } else {
-          // Terminar la animación
-          clearInterval(typingInterval);
+          if (typingIntervalRef.current) clearInterval(typingIntervalRef.current);
+          typingIntervalRef.current = null;
           setIsLoading(false);
         }
       }, typingSpeed);
 
-      // No poner setIsLoading(false) aquí, se hace cuando termina la animación
-      return; // Salir temprano
+      return;
 
     } catch (err: any) {
       console.error('Error sending message:', err);
@@ -141,10 +156,8 @@ export function useChatbot(): UseChatbotReturn {
       
       // Remover el último mensaje del usuario en caso de error
       setMessages(prev => prev.slice(0, -1));
-    } finally {
-      // No hacer nada aquí, el setIsLoading(false) se maneja en la animación
     }
-  }, [token, messages]);
+  }, [token, messages, activeUsername]);
 
   return {
     messages,
