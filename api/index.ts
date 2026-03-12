@@ -103,6 +103,7 @@ interface IEjecutivo {
     pricing: boolean;
     ejecutivo: boolean;
     proveedor: boolean;
+    operaciones: boolean;
   };
 }
 
@@ -124,6 +125,7 @@ const EjecutivoSchema = new mongoose.Schema<IEjecutivoDoc>(
       pricing: { type: Boolean, default: false },
       ejecutivo: { type: Boolean, default: true },
       proveedor: { type: Boolean, default: false },
+      operaciones: { type: Boolean, default: false },
     },
   },
   { timestamps: true }
@@ -176,33 +178,25 @@ async function canManageShipsgoReference(
     return true;
   }
 
-  const me = await User.findOne({ email: currentUser.sub }).populate('ejecutivoId');
+  const me = await User.findOne({ email: currentUser.sub });
 
-  if (!me || me.username !== 'Ejecutivo') {
+  if (!me) {
     return false;
   }
 
-  let ejecutivoObjectId: any = null;
+  const lookupEmail = String(me.email || '').toLowerCase().trim();
+  const myExecutiveProfile = await Ejecutivo.findOne({ email: lookupEmail });
 
-  if (me.ejecutivoId) {
-    ejecutivoObjectId = (me.ejecutivoId as any)._id ?? me.ejecutivoId;
-  } else {
-    const lookupEmail = String(me.email).toLowerCase().trim();
-    const ejecutivo = await Ejecutivo.findOne({ email: lookupEmail });
-    if (ejecutivo) ejecutivoObjectId = ejecutivo._id;
-  }
-
-  if (!ejecutivoObjectId) {
+  if (!myExecutiveProfile) {
     return false;
   }
 
-  const assignedClient = await User.exists({
-    ejecutivoId: ejecutivoObjectId,
+  const targetClient = await User.exists({
     username: { $ne: 'Ejecutivo' },
     $or: [{ username: normalizedReference }, { usernames: normalizedReference }],
   });
 
-  return !!assignedClient;
+  return !!targetClient;
 }
 
 // ============================================================
@@ -771,6 +765,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             pricing: ejDoc.roles?.pricing || false,
             ejecutivo: ejDoc.roles?.ejecutivo !== false,
             proveedor: ejDoc.roles?.proveedor || false,
+            operaciones: ejDoc.roles?.operaciones || false,
           };
         }
       }
@@ -828,6 +823,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               pricing: ejDoc.roles?.pricing || false,
               ejecutivo: ejDoc.roles?.ejecutivo !== false,
               proveedor: ejDoc.roles?.proveedor || false,
+              operaciones: ejDoc.roles?.operaciones || false,
             };
           }
         }
@@ -1043,14 +1039,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Validar roles si se envían
         if (roles) {
-          const { administrador, pricing, ejecutivo: rolEjecutivo, proveedor: rolProveedor } = roles;
-          if (administrador && (pricing || rolEjecutivo || rolProveedor)) {
+          const { administrador, pricing, ejecutivo: rolEjecutivo, proveedor: rolProveedor, operaciones: rolOperaciones } = roles;
+          if (administrador && (pricing || rolEjecutivo || rolProveedor || rolOperaciones)) {
             return res.status(400).json({ error: 'El rol Administrador no se puede combinar con otros roles' });
           }
-          if (rolProveedor && (administrador || pricing || rolEjecutivo)) {
+          if (rolProveedor && (administrador || pricing || rolEjecutivo || rolOperaciones)) {
             return res.status(400).json({ error: 'El rol Proveedor no se puede combinar con otros roles' });
           }
-          if (!administrador && !pricing && !rolEjecutivo && !rolProveedor) {
+          if (rolOperaciones && (administrador || pricing || rolEjecutivo || rolProveedor)) {
+            return res.status(400).json({ error: 'El rol Operaciones no se puede combinar con otros roles' });
+          }
+          if (!administrador && !pricing && !rolEjecutivo && !rolProveedor && !rolOperaciones) {
             return res.status(400).json({ error: 'Debe tener al menos un rol asignado' });
           }
           ejecutivo.roles = roles;
@@ -1077,6 +1076,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               pricing: ejecutivo.roles?.pricing || false,
               ejecutivo: ejecutivo.roles?.ejecutivo !== false,
               proveedor: ejecutivo.roles?.proveedor || false,
+              operaciones: ejecutivo.roles?.operaciones || false,
             }
           }
         });
@@ -1244,14 +1244,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           // Actualizar roles en el documento Ejecutivo vinculado
           if (roles) {
-            const { administrador, pricing, ejecutivo: rolEjecutivo, proveedor: rolProveedor } = roles;
-            if (administrador && (pricing || rolEjecutivo || rolProveedor)) {
+            const { administrador, pricing, ejecutivo: rolEjecutivo, proveedor: rolProveedor, operaciones: rolOperaciones } = roles;
+            if (administrador && (pricing || rolEjecutivo || rolProveedor || rolOperaciones)) {
               return res.status(400).json({ error: 'El rol Administrador no se puede combinar con otros roles' });
             }
-            if (rolProveedor && (administrador || pricing || rolEjecutivo)) {
+            if (rolProveedor && (administrador || pricing || rolEjecutivo || rolOperaciones)) {
               return res.status(400).json({ error: 'El rol Proveedor no se puede combinar con otros roles' });
             }
-            if (!administrador && !pricing && !rolEjecutivo && !rolProveedor) {
+            if (rolOperaciones && (administrador || pricing || rolEjecutivo || rolProveedor)) {
+              return res.status(400).json({ error: 'El rol Operaciones no se puede combinar con otros roles' });
+            }
+            if (!administrador && !pricing && !rolEjecutivo && !rolProveedor && !rolOperaciones) {
               return res.status(400).json({ error: 'Debe tener al menos un rol asignado' });
             }
 

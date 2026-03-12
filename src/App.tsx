@@ -26,12 +26,14 @@ import ReportExecutive from "./components/administrador/Facturaciones-Ejecutivos
 import Cotizadoradministrador from "./components/administrador/Cotizador-administrador";
 import Clientesejecutivos from "./components/administrador/Administracion-Cuentas/clientes-ejecutivos";
 import ShipsGoTrackingAdmin from "./components/administrador/Shipsgo/gettrackingshipsgo-admin";
+import ShipsGoTrackingAdminOP from "./components/administrador/Shipsgo/OP-gettrackingshipsgo-admin";
 import Invoicesxejecutivo from "./components/administrador/Facturaciones-Ejecutivos/Facturaciones";
 import Pricing from "./components/administrador/PricingTabs";
 import PricingFCL from "./components/administrador/Pricing/PricingFCL";
 import PricingLCL from "./components/administrador/Pricing/PricingLCL";
 import HomeAdmin from "./components/administrador/HomeAdmin";
 import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
+import OPReporteriaClientes from "./components/administrador/OP-reporteriaclientes";
 import Auditoria from "./components/administrador/Auditoria";
 
 // Reportería Pages
@@ -143,6 +145,8 @@ function App() {
           <Route path="reportexecutive" element={<ReportExecutive />} />
           <Route path="reportoperational" element={<Invoicesxejecutivo />} />
           <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
+          <Route path="op-trackeos" element={<ShipsGoTrackingAdminOP />} />
+          <Route path="op-reporteriaclientes" element={<OPReporteriaClientes />} />
           <Route path="pricing" element={<Pricing />} />
           <Route path="pricingFCL" element={<PricingFCL />} />
           <Route path="pricingLCL" element={<PricingLCL />} />

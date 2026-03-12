@@ -16,6 +16,7 @@ interface Ejecutivo {
     pricing: boolean;
     ejecutivo: boolean;
     proveedor: boolean;
+    operaciones: boolean;
   };
 }
 
@@ -64,6 +65,7 @@ function UsersManagement() {
     pricing: false,
     ejecutivo: true,
     proveedor: false,
+    operaciones: false,
   });
 
   // Cargar ejecutivos
@@ -137,6 +139,7 @@ function UsersManagement() {
       pricing: false,
       ejecutivo: true,
       proveedor: false,
+      operaciones: false,
     });
   };
 
@@ -157,13 +160,14 @@ function UsersManagement() {
       setIsEditingEjecutivo(true);
       const matchingEj = ejecutivos.find((e) => e.email === user.email);
       if (matchingEj?.roles) {
-        setEditRoles({ ...matchingEj.roles });
+        setEditRoles({ ...matchingEj.roles, operaciones: matchingEj.roles.operaciones ?? false });
       } else {
         setEditRoles({
           administrador: false,
           pricing: false,
           ejecutivo: true,
           proveedor: false,
+          operaciones: false,
         });
       }
     } else {
@@ -1170,20 +1174,20 @@ function UsersManagement() {
                           border: editRoles.administrador
                             ? "2px solid #7e22ce"
                             : "1px solid #d1d5db",
-                          cursor: editRoles.proveedor
+                          cursor: editRoles.proveedor || editRoles.operaciones
                             ? "not-allowed"
                             : "pointer",
                           backgroundColor: editRoles.administrador
                             ? "#faf5ff"
                             : "white",
-                          opacity: editRoles.proveedor ? 0.5 : 1,
+                          opacity: editRoles.proveedor || editRoles.operaciones ? 0.5 : 1,
                           transition: "all 0.2s",
                         }}
                       >
                         <input
                           type="checkbox"
                           checked={editRoles.administrador}
-                          disabled={editRoles.proveedor}
+                          disabled={editRoles.proveedor || editRoles.operaciones}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setEditRoles({
@@ -1191,6 +1195,7 @@ function UsersManagement() {
                                 pricing: false,
                                 ejecutivo: false,
                                 proveedor: false,
+                                operaciones: false,
                               });
                             } else {
                               setEditRoles({
@@ -1198,6 +1203,7 @@ function UsersManagement() {
                                 pricing: false,
                                 ejecutivo: true,
                                 proveedor: false,
+                                operaciones: false,
                               });
                             }
                           }}
@@ -1249,14 +1255,14 @@ function UsersManagement() {
                             ? "2px solid #2563eb"
                             : "1px solid #d1d5db",
                           cursor:
-                            editRoles.administrador || editRoles.proveedor
+                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
                               ? "not-allowed"
                               : "pointer",
                           backgroundColor: editRoles.pricing
                             ? "#eff6ff"
                             : "white",
                           opacity:
-                            editRoles.administrador || editRoles.proveedor
+                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
                               ? 0.5
                               : 1,
                           transition: "all 0.2s",
@@ -1266,7 +1272,7 @@ function UsersManagement() {
                           type="checkbox"
                           checked={editRoles.pricing}
                           disabled={
-                            editRoles.administrador || editRoles.proveedor
+                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
                           }
                           onChange={(e) =>
                             setEditRoles({
@@ -1308,14 +1314,14 @@ function UsersManagement() {
                             ? "2px solid #16a34a"
                             : "1px solid #d1d5db",
                           cursor:
-                            editRoles.administrador || editRoles.proveedor
+                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
                               ? "not-allowed"
                               : "pointer",
                           backgroundColor: editRoles.ejecutivo
                             ? "#f0fdf4"
                             : "white",
                           opacity:
-                            editRoles.administrador || editRoles.proveedor
+                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
                               ? 0.5
                               : 1,
                           transition: "all 0.2s",
@@ -1325,7 +1331,7 @@ function UsersManagement() {
                           type="checkbox"
                           checked={editRoles.ejecutivo}
                           disabled={
-                            editRoles.administrador || editRoles.proveedor
+                            editRoles.administrador || editRoles.proveedor || editRoles.operaciones
                           }
                           onChange={(e) =>
                             setEditRoles({
@@ -1366,20 +1372,20 @@ function UsersManagement() {
                           border: editRoles.proveedor
                             ? "2px solid #ea580c"
                             : "1px solid #d1d5db",
-                          cursor: editRoles.administrador
+                          cursor: editRoles.administrador || editRoles.operaciones
                             ? "not-allowed"
                             : "pointer",
                           backgroundColor: editRoles.proveedor
                             ? "#fff7ed"
                             : "white",
-                          opacity: editRoles.administrador ? 0.5 : 1,
+                          opacity: editRoles.administrador || editRoles.operaciones ? 0.5 : 1,
                           transition: "all 0.2s",
                         }}
                       >
                         <input
                           type="checkbox"
                           checked={editRoles.proveedor}
-                          disabled={editRoles.administrador}
+                          disabled={editRoles.administrador || editRoles.operaciones}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setEditRoles({
@@ -1387,6 +1393,7 @@ function UsersManagement() {
                                 pricing: false,
                                 ejecutivo: false,
                                 proveedor: true,
+                                operaciones: false,
                               });
                             } else {
                               setEditRoles({
@@ -1394,6 +1401,7 @@ function UsersManagement() {
                                 pricing: false,
                                 ejecutivo: true,
                                 proveedor: false,
+                                operaciones: false,
                               });
                             }
                           }}
@@ -1432,6 +1440,86 @@ function UsersManagement() {
                           </span>
                         )}
                       </label>
+
+                      {/* Operaciones */}
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          padding: "12px 16px",
+                          borderRadius: "8px",
+                          border: editRoles.operaciones
+                            ? "2px solid #0891b2"
+                            : "1px solid #d1d5db",
+                          cursor: editRoles.administrador || editRoles.proveedor
+                            ? "not-allowed"
+                            : "pointer",
+                          backgroundColor: editRoles.operaciones
+                            ? "#ecfeff"
+                            : "white",
+                          opacity: editRoles.administrador || editRoles.proveedor ? 0.5 : 1,
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={editRoles.operaciones}
+                          disabled={editRoles.administrador || editRoles.proveedor}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEditRoles({
+                                administrador: false,
+                                pricing: false,
+                                ejecutivo: false,
+                                proveedor: false,
+                                operaciones: true,
+                              });
+                            } else {
+                              setEditRoles({
+                                administrador: false,
+                                pricing: false,
+                                ejecutivo: true,
+                                proveedor: false,
+                                operaciones: false,
+                              });
+                            }
+                          }}
+                          style={{
+                            width: "18px",
+                            height: "18px",
+                            accentColor: "#0891b2",
+                          }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div
+                            style={{
+                              fontWeight: "600",
+                              fontSize: "14px",
+                              color: "#1f2937",
+                            }}
+                          >
+                            Operaciones
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                            Acceso a todos los clientes y trackeos del portal
+                          </div>
+                        </div>
+                        {editRoles.operaciones && (
+                          <span
+                            style={{
+                              padding: "2px 8px",
+                              backgroundColor: "#0891b2",
+                              color: "white",
+                              fontSize: "11px",
+                              fontWeight: "600",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            EXCLUSIVO
+                          </span>
+                        )}
+                      </label>
                     </div>
                     <p
                       style={{
@@ -1441,8 +1529,8 @@ function UsersManagement() {
                         marginBottom: 0,
                       }}
                     >
-                      Administrador y Proveedor son exclusivos — no pueden
-                      combinarse con otros roles
+                      Administrador, Proveedor y Operaciones son exclusivos — no
+                      pueden combinarse con otros roles
                     </p>
                   </div>
                 )}

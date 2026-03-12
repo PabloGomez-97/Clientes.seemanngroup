@@ -509,6 +509,21 @@ function ShipsGoTracking({
                 </tbody>
               </table>
             </div>
+            <div
+              className="sg-new-tracking-warning"
+              style={{
+                marginTop: "1rem",
+                padding: "0.6rem 0.75rem",
+                backgroundColor: "#fff8e1",
+                borderLeft: "4px solid #f59e0b",
+                color: "#92400e",
+                borderRadius: "0.25rem",
+                fontSize: "0.875rem",
+              }}
+            >
+              ⚠️ Los seguimientos recién creados pueden tardar unos minutos en
+              cargarse. Por favor, no volver a crear el mismo seguimiento.
+            </div>
           </>
         )}
 
@@ -718,6 +733,21 @@ function ShipsGoTracking({
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div
+              className="sg-new-tracking-warning"
+              style={{
+                marginTop: "1rem",
+                padding: "0.6rem 0.75rem",
+                backgroundColor: "#fff8e1",
+                borderLeft: "4px solid #f59e0b",
+                color: "#92400e",
+                borderRadius: "0.25rem",
+                fontSize: "0.875rem",
+              }}
+            >
+              ⚠️ Los seguimientos recién creados pueden tardar unos minutos en
+              cargarse. Por favor, no volver a crear el mismo seguimiento.
             </div>
           </>
         )}

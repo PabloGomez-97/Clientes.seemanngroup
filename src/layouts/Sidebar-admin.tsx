@@ -76,9 +76,19 @@ function SidebarAdmin({
           icon: "fa fa-route",
         },
         {
+          path: "/admin/op-trackeos",
+          name: "Seguimiento (Todos)",
+          icon: "fa fa-globe",
+        },
+        {
           path: "/admin/reporteriaclientes",
           name: "Mis Clientes",
           icon: "fa fa-users",
+        },
+        {
+          path: "/admin/op-reporteriaclientes",
+          name: "Clientes (Todos)",
+          icon: "fa fa-address-book",
         },
       ],
     },

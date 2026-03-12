@@ -1,4 +1,4 @@
-// Ejecutivo Tracking (own clients only) — Reuses ShipsGoTracking + CreateShipmentForm / CreateOceanShipmentForm
+// OP Tracking (ALL clients) — Reuses ShipsGoTracking + CreateShipmentForm / CreateOceanShipmentForm
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../../../auth/AuthContext";
 import ShipsGoTracking from "../../Sidebar/Shipsgotracking";
@@ -23,7 +23,8 @@ interface Cliente {
   id: string;
   email: string;
   username: string;
-  nombreuser?: string;
+  usernames: string[];
+  nombreuser: string;
   createdAt: string;
 }
 
@@ -34,7 +35,7 @@ interface CreateFormState {
   referenceUsername: string;
 }
 
-function ShipsGoTrackingAdmin() {
+function ShipsGoTrackingAdminOP() {
   const { token } = useAuth();
 
   // Client list
@@ -59,21 +60,22 @@ function ShipsGoTrackingAdmin() {
   // Key to force remount ShipsGoTracking after creating a new tracking
   const [trackingKey, setTrackingKey] = useState(0);
 
-  // ── Fetch ejecutivo's own clients via /api/ejecutivo/clientes ──
+  // ── Fetch clients ──
   useEffect(() => {
     const fetchClientes = async () => {
       if (!token) return;
       setClientsLoading(true);
       try {
-        const resp = await fetch("/api/ejecutivo/clientes", {
+        const resp = await fetch("/api/admin/users", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!resp.ok) throw new Error("Error al cargar clientes");
+        if (!resp.ok) throw new Error("Error al cargar usuarios");
         const data = await resp.json();
-        const users: Cliente[] = (data.clientes || []).sort(
-          (a: Cliente, b: Cliente) =>
+        const users: Cliente[] = (data.users || [])
+          .filter((u: Cliente) => u.username !== "Ejecutivo")
+          .sort((a: Cliente, b: Cliente) =>
             a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
-        );
+          );
         setClientes(users);
       } catch (e) {
         setClientsError(e instanceof Error ? e.message : "Error desconocido");
@@ -109,31 +111,26 @@ function ShipsGoTrackingAdmin() {
     fetchAll();
   }, []);
 
-  // ── Count shipments per client (using username only — no usernames array from this endpoint) ──
+  // ── Count shipments per client (using all usernames) ──
   const clientShipmentCounts = useMemo(() => {
     const map = new Map<string, { air: number; ocean: number }>();
     for (const client of clientes) {
-      const air = airShipments.filter(
-        (s) => s.reference === client.username,
-      ).length;
-      const ocean = oceanShipments.filter(
-        (s) => s.reference === client.username,
-      ).length;
+      const names =
+        client.usernames?.length > 0 ? client.usernames : [client.username];
+      let air = 0;
+      let ocean = 0;
+      for (const name of names) {
+        air += airShipments.filter((s) => s.reference === name).length;
+        ocean += oceanShipments.filter((s) => s.reference === name).length;
+      }
       map.set(client.id, { air, ocean });
     }
     return map;
   }, [clientes, airShipments, oceanShipments]);
 
-  // Total shipments (only for this ejecutivo's clients)
-  const totalAir = useMemo(() => {
-    const names = new Set(clientes.map((c) => c.username));
-    return airShipments.filter((s) => s.reference != null && names.has(s.reference)).length;
-  }, [clientes, airShipments]);
-
-  const totalOcean = useMemo(() => {
-    const names = new Set(clientes.map((c) => c.username));
-    return oceanShipments.filter((s) => s.reference != null && names.has(s.reference)).length;
-  }, [clientes, oceanShipments]);
+  // Total shipments
+  const totalAir = airShipments.length;
+  const totalOcean = oceanShipments.length;
 
   // ── Filtered clients ──
   const filteredClients = useMemo(() => {
@@ -143,7 +140,8 @@ function ShipsGoTrackingAdmin() {
       (c) =>
         c.username.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
-        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)),
+        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)) ||
+        (c.usernames && c.usernames.some((u) => u.toLowerCase().includes(q))),
     );
   }, [clientes, searchQuery]);
 
@@ -238,6 +236,11 @@ function ShipsGoTrackingAdmin() {
 
   // ── Client Detail View (reuses ShipsGoTracking) ──
   if (selectedClient) {
+    const clientUsernames =
+      selectedClient.usernames?.length > 0
+        ? selectedClient.usernames
+        : [selectedClient.username];
+
     return (
       <div style={{ fontFamily: FONT }}>
         {/* Back button */}
@@ -320,9 +323,53 @@ function ShipsGoTrackingAdmin() {
             </h1>
             <p style={{ fontSize: 14, color: "#6b7280", margin: "2px 0 0" }}>
               {selectedClient.email}
+              {clientUsernames.length > 1 && (
+                <span style={{ marginLeft: 8, color: "#9ca3af" }}>
+                  · {clientUsernames.length} cuentas
+                </span>
+              )}
             </p>
           </div>
         </div>
+
+        {/* Account selector for clients with multiple usernames */}
+        {clientUsernames.length > 1 && (
+          <div
+            style={{
+              marginBottom: 16,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                color: "#6b7280",
+                alignSelf: "center",
+                marginRight: 4,
+              }}
+            >
+              Cuentas:
+            </span>
+            {clientUsernames.map((name) => (
+              <span
+                key={name}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 500,
+                  padding: "4px 10px",
+                  borderRadius: 6,
+                  background: "#f3f4f6",
+                  color: "#374151",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                {name}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Create form modal overlay */}
         {showCreateForm && (
@@ -419,15 +466,18 @@ function ShipsGoTrackingAdmin() {
           </div>
         )}
 
-        {/* Reuse ShipsGoTracking for the client */}
-        <div key={`${selectedClient.username}-${trackingKey}`}>
-          <ShipsGoTracking
-            filterUsername={selectedClient.username}
-            onNewTracking={(type) =>
-              handleNewTracking(type, selectedClient.username)
-            }
-          />
-        </div>
+        {/* Reuse ShipsGoTracking for each username */}
+        {clientUsernames.map((name) => (
+          <div
+            key={`${name}-${trackingKey}`}
+            style={{ marginBottom: clientUsernames.length > 1 ? 32 : 0 }}
+          >
+            <ShipsGoTracking
+              filterUsername={name}
+              onNewTracking={(type) => handleNewTracking(type, name)}
+            />
+          </div>
+        ))}
       </div>
     );
   }
@@ -679,11 +729,11 @@ function ShipsGoTrackingAdmin() {
         >
           {searchQuery
             ? `No se encontraron clientes para "${searchQuery}"`
-            : "No hay clientes asignados."}
+            : "No hay clientes registrados."}
         </div>
       )}
     </div>
   );
 }
 
-export default ShipsGoTrackingAdmin;
+export default ShipsGoTrackingAdminOP;
