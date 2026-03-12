@@ -281,6 +281,19 @@ export default function ChatWidget() {
                 <p
                   style={{
                     fontSize: "14px",
+                    color: "red",
+                    textAlign: "center",
+                    marginBottom: "12px",
+                    fontWeight: "700",
+                  }}
+                >
+                  Nuestro bot se encuentra en estado beta. No toda la
+                  información es veridica, pero estamos mejorando cada día.
+                  ¡Gracias por tu comprensión!
+                </p>
+                <p
+                  style={{
+                    fontSize: "14px",
                     color: "#6b7280",
                     textAlign: "center",
                     marginBottom: "12px",
@@ -289,6 +302,7 @@ export default function ChatWidget() {
                 >
                   Selecciona una opción para comenzar:
                 </p>
+
                 {[
                   "¿Quién es mi ejecutivo comercial?",
                   "¿Cómo creo un seguimiento de contenedor?",
