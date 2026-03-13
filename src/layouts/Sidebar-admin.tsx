@@ -137,12 +137,6 @@ function SidebarAdmin({
           icon: "fa fa-shield-alt",
           badge: { text: "CHIEF", type: "admin" as const },
         },
-        {
-          path: "/admin/ejecutivos",
-          name: "Gestión Ejecutivos",
-          icon: "fa fa-briefcase",
-          badge: { text: "CHIEF", type: "admin" as const },
-        },
       ],
     },
 

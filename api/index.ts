@@ -1397,6 +1397,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               pricing: e.roles?.pricing || false,
               ejecutivo: e.roles?.ejecutivo !== false,
               proveedor: e.roles?.proveedor || false,
+              operaciones: e.roles?.operaciones || false,
             },
             createdAt: e.createdAt
           }))
@@ -1719,6 +1720,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (ejDoc) {
               ejDoc.roles = roles;
               await ejDoc.save();
+            }
+          }
+
+          // Actualizar teléfono en el documento Ejecutivo
+          const { telefono } = (req.body as any) || {};
+          if (telefono !== undefined) {
+            let ejDocTel = userToUpdate.ejecutivoId
+              ? await Ejecutivo.findById(userToUpdate.ejecutivoId)
+              : await Ejecutivo.findOne({ email: userToUpdate.email });
+            if (ejDocTel) {
+              ejDocTel.telefono = String(telefono).trim();
+              await ejDocTel.save();
             }
           }
 

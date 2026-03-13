@@ -167,10 +167,12 @@ function UsersManagement() {
     if (user.username === "Ejecutivo") {
       setIsEditingEjecutivo(true);
       const matchingEj = ejecutivos.find((e) => e.email === user.email);
+      setTelefono(matchingEj?.telefono || "");
       if (matchingEj?.roles) {
         setEditRoles({
           ...matchingEj.roles,
           operaciones: matchingEj.roles.operaciones ?? false,
+          proveedor: matchingEj.roles.proveedor ?? false,
         });
       } else {
         setEditRoles({
@@ -352,6 +354,7 @@ function UsersManagement() {
         ? {
             nombreuser,
             roles: editRoles,
+            telefono: telefono.trim(),
           }
         : {
             username: cleanUsernames[0] || "",
@@ -1800,8 +1803,9 @@ function UsersManagement() {
                   </div>
                 )}
 
-                {/* Teléfono (solo al crear ejecutivo) */}
-                {!editingUserId && accountType === "ejecutivo" && (
+                {/* Teléfono (crear o editar ejecutivo) */}
+                {(isEditingEjecutivo ||
+                  (!editingUserId && accountType === "ejecutivo")) && (
                   <div style={{ marginBottom: "16px" }}>
                     <label
                       style={{
@@ -2355,6 +2359,34 @@ function UsersManagement() {
                                       }}
                                     >
                                       Ejecutivo
+                                    </span>
+                                  )}
+                                  {ej.roles.operaciones && (
+                                    <span
+                                      style={{
+                                        padding: "2px 8px",
+                                        backgroundColor: "#0891b2",
+                                        color: "white",
+                                        fontSize: "11px",
+                                        fontWeight: "600",
+                                        borderRadius: "4px",
+                                      }}
+                                    >
+                                      Operaciones
+                                    </span>
+                                  )}
+                                  {ej.roles.proveedor && (
+                                    <span
+                                      style={{
+                                        padding: "2px 8px",
+                                        backgroundColor: "#ea580c",
+                                        color: "white",
+                                        fontSize: "11px",
+                                        fontWeight: "600",
+                                        borderRadius: "4px",
+                                      }}
+                                    >
+                                      Proveedor
                                     </span>
                                   )}
                                 </div>

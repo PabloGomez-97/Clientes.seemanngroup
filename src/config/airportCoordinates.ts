@@ -52,6 +52,54 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     name: "London Heathrow Airport",
     iata: "LHR",
   },
+  alemania: {
+    lat: 50.0485,
+    lng: 8.5586,
+    name: "Frankfurt am Main Airport",
+    iata: "FRA",
+  },
+  brasil: {
+    lat: -23.0100,
+    lng: -47.1449,
+    name: "Campinas Viracopos International Airport",
+    iata: "VCP",
+  },
+  brazil: {
+    lat: -23.4241,
+    lng: -46.4784,
+    name: "São Paulo-Guarulhos International Airport",
+    iata: "GRU",
+  },
+  hong: {
+    lat: 22.3132,
+    lng: 113.9371,
+    name: "Hong Kong International Airport",
+    iata: "HKG",
+  },
+  italia: {
+    lat: 45.6272,
+    lng: 8.7125,
+    name: "Milan Malpensa Airport",
+    iata: "MXP",
+  },
+  lisboa: {
+    lat: 38.7729,
+    lng: -9.1278,
+    name: "Lisbon Humberto Delgado Airport",
+    iata: "LIS",
+  },
+  nanjin: {
+    lat: 31.7342,
+    lng: 118.8714,
+    name: "Nanjing Lukou International Airport",
+    iata: "NKG",
+  },
+  santiago: {
+    lat: -33.3972,
+    lng: -70.7931,
+    name: "Comodoro Arturo Merino Benítez International Airport",
+    iata: "SCL",
+  },
 };
 
 function normalizeText(value: string): string {

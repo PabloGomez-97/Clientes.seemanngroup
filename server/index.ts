@@ -1312,6 +1312,8 @@ app.get('/api/admin/ejecutivos', auth, async (req, res) => {
             administrador: ej.roles?.administrador || false,
             pricing: ej.roles?.pricing || false,
             ejecutivo: ej.roles?.ejecutivo !== false,
+            proveedor: ej.roles?.proveedor || false,
+            operaciones: ej.roles?.operaciones || false,
           },
           clientesAsignados: count,
           createdAt: ej.createdAt
@@ -1636,6 +1638,18 @@ app.put('/api/admin/users/:id', auth, async (req, res) => {
         if (ejDoc) {
           ejDoc.roles = roles;
           await ejDoc.save();
+        }
+      }
+
+      // Actualizar teléfono en el documento Ejecutivo
+      const { telefono } = (req.body as any) || {};
+      if (telefono !== undefined) {
+        let ejDocTel = userToUpdate.ejecutivoId
+          ? await Ejecutivo.findById(userToUpdate.ejecutivoId)
+          : await Ejecutivo.findOne({ email: userToUpdate.email });
+        if (ejDocTel) {
+          ejDocTel.telefono = String(telefono).trim();
+          await ejDocTel.save();
         }
       }
 

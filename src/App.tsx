@@ -21,7 +21,6 @@ import DashboardAdmin from "./components/administrador/dashboard-admin";
 import UsersManagement from "./components/administrador/Administracion-Cuentas/users-management";
 import SettingsAdmin from "./components/administrador/Administracion-Cuentas/clientes-ejecutivos";
 import ReporteriaLayout from "./components/administrador/reporteria/ReporteriaLayout";
-import EjecutivosManagement from "./components/administrador/Administracion-Cuentas/ejecutivos-management";
 import ReportExecutive from "./components/administrador/Facturaciones-Ejecutivos/Reporteriaexecutivo";
 import Cotizadoradministrador from "./components/administrador/Cotizador-administrador";
 import Clientesejecutivos from "./components/administrador/Administracion-Cuentas/clientes-ejecutivos";
@@ -141,7 +140,6 @@ function App() {
           <Route path="reporteriaclientes" element={<ReporteriaClientes />} />
           <Route path="dashboard" element={<DashboardAdmin />} />
           <Route path="users" element={<UsersManagement />} />
-          <Route path="ejecutivos" element={<EjecutivosManagement />} />
           <Route path="reportexecutive" element={<ReportExecutive />} />
           <Route path="reportoperational" element={<Invoicesxejecutivo />} />
           <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
