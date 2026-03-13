@@ -2,7 +2,13 @@
 import { useState, useEffect, type FormEvent } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
+import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
+import {
+  addUniqueEmail,
+  hasEmail,
+} from "../../services/trackingEmailPreferences";
 import "./styles/CreateShipmentForm.css";
 
 const API_BASE_URL =
@@ -24,11 +30,13 @@ function CreateShipmentForm({
   onSuccess,
   onCancel,
 }: CreateShipmentFormProps = {}) {
-  const { user, token, activeUsername } = useAuth();
+  const { token, activeUsername } = useAuth();
   const { registrarEvento } = useAuditLog();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const effectiveReference = referenceUsername || activeUsername;
+  const { emails: savedTrackingEmails } =
+    useTrackingEmailPreferences(effectiveReference);
 
   useEffect(() => {
     const awb = searchParams.get("awb");
@@ -72,7 +80,7 @@ function CreateShipmentForm({
     if (
       email &&
       isValidEmail(email) &&
-      !followers.includes(email) &&
+      !hasEmail(followers, email) &&
       followers.length < 10
     ) {
       setFollowers([...followers, email]);
@@ -82,6 +90,19 @@ function CreateShipmentForm({
 
   const removeFollower = (email: string) =>
     setFollowers(followers.filter((f) => f !== email));
+
+  const handleSelectSuggestedFollower = (email: string) => {
+    setFollowers((prev) => addUniqueEmail(prev, email, 10));
+  };
+
+  const handleAddAllSuggestedFollowers = () => {
+    setFollowers((prev) =>
+      savedTrackingEmails.reduce(
+        (currentEmails, email) => addUniqueEmail(currentEmails, email, 10),
+        prev,
+      ),
+    );
+  };
 
   const addTag = () => {
     const tagValue = newTag.trim();
@@ -308,6 +329,12 @@ function CreateShipmentForm({
                     ({followers.length}/10)
                   </span>
                 </label>
+                <TrackingEmailSuggestions
+                  savedEmails={savedTrackingEmails}
+                  selectedEmails={followers}
+                  onSelectEmail={handleSelectSuggestedFollower}
+                  onAddAll={handleAddAllSuggestedFollowers}
+                />
                 <div className="csf-input-row">
                   <input
                     type="email"

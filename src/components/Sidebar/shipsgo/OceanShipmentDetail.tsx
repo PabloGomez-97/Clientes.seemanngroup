@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../auth/AuthContext";
+import { useTrackingEmailPreferences } from "../../../hooks/useTrackingEmailPreferences";
 import type {
   OceanShipment,
   OceanShipmentDetail as OceanShipmentDetailType,
@@ -16,6 +17,7 @@ import {
   getFlagUrl,
 } from "./types";
 import OceanShipmentRoute from "./OceanShipmentRoute";
+import TrackingEmailSuggestions from "../../tracking/TrackingEmailSuggestions";
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"
@@ -70,14 +72,18 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
   const s = detail || shipment;
   const containers: OceanContainer[] = detail?.containers || [];
   const followers = detail?.followers || [];
+  const preferenceReference =
+    detail?.reference || shipment.reference || undefined;
+  const { emails: savedTrackingEmails } =
+    useTrackingEmailPreferences(preferenceReference);
   const visibleFollowers = followers.filter(
     (item) =>
       item.email.trim().toLowerCase() !==
       OPERATIONS_FOLLOWER_EMAIL.toLowerCase(),
   );
 
-  const handleAddFollower = async () => {
-    const follower = newFollowerEmail.trim();
+  const handleAddFollower = async (emailOverride?: string) => {
+    const follower = (emailOverride ?? newFollowerEmail).trim();
 
     if (!token) {
       setFollowerError("Tu sesión expiró. Vuelve a iniciar sesión.");
@@ -606,6 +612,17 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
               </div>
 
               <div className="sg-followers-compose">
+                <TrackingEmailSuggestions
+                  savedEmails={savedTrackingEmails}
+                  selectedEmails={visibleFollowers.map((item) => item.email)}
+                  onSelectEmail={(email) => {
+                    void handleAddFollower(email);
+                  }}
+                  disabled={
+                    followerLoading ||
+                    visibleFollowers.length >= MAX_VISIBLE_FOLLOWERS
+                  }
+                />
                 <input
                   className="sg-followers-input"
                   type="email"
@@ -619,7 +636,9 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
                 />
                 <button
                   className="sg-followers-add"
-                  onClick={handleAddFollower}
+                  onClick={() => {
+                    void handleAddFollower();
+                  }}
                   disabled={
                     followerLoading ||
                     visibleFollowers.length >= MAX_VISIBLE_FOLLOWERS

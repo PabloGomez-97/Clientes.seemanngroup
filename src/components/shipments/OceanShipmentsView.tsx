@@ -3,6 +3,7 @@ import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesContext";
+import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
 import {
   type OceanShipment,
   type OutletContext,
@@ -12,6 +13,8 @@ import {
 } from "../shipments/Handlers/Handleroceanshipments";
 import { MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS } from "./Handlers/mundogamingDummyOceanData";
 import { DocumentosSectionOcean } from "../Sidebar/Documents/DocumentosSectionOcean";
+import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
+import { addUniqueEmail } from "../../services/trackingEmailPreferences";
 import "./OceanShipmentsView.css";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
@@ -82,6 +85,8 @@ function OceanShipmentsView() {
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
   const filterConsignee = activeUsername || "";
+  const { emails: savedTrackingEmails } =
+    useTrackingEmailPreferences(activeUsername);
 
   const [oceanShipments, setOceanShipments] = useState<OceanShipment[]>([]);
   const [displayedOceanShipments, setDisplayedOceanShipments] = useState<
@@ -538,6 +543,22 @@ function OceanShipmentsView() {
       if (prev.length === 1) return [""];
       return prev.filter((_, currentIndex) => currentIndex !== index);
     });
+  };
+
+  const handleSelectSuggestedTrackEmail = (email: string) => {
+    setTrackError(null);
+    setTrackEmails((prev) => addUniqueEmail(prev, email, MAX_TRACK_FOLLOWERS));
+  };
+
+  const handleAddAllSuggestedTrackEmails = () => {
+    setTrackError(null);
+    setTrackEmails((prev) =>
+      savedTrackingEmails.reduce(
+        (currentEmails, email) =>
+          addUniqueEmail(currentEmails, email, MAX_TRACK_FOLLOWERS),
+        prev,
+      ),
+    );
   };
 
   const handleTrackSubmit = async () => {
@@ -1910,6 +1931,12 @@ function OceanShipmentsView() {
                   +
                 </button>
               </div>
+              <TrackingEmailSuggestions
+                savedEmails={savedTrackingEmails}
+                selectedEmails={trackEmails.filter((email) => email.trim())}
+                onSelectEmail={handleSelectSuggestedTrackEmail}
+                onAddAll={handleAddAllSuggestedTrackEmails}
+              />
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {trackEmails.map((email, index) => (
                   <div

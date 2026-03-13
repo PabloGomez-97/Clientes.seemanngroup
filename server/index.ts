@@ -41,6 +41,8 @@ function verifyToken(token: string): AuthPayload {
 
 const OPERATIONS_FOLLOWER_EMAIL = 'operaciones@seemanngroup.com';
 const MAX_VISIBLE_TRACK_FOLLOWERS = 9;
+const MAX_SAVED_TRACKING_EMAILS = 5;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizeTrackingFollowers(rawFollowers: unknown): string[] {
   const uniqueFollowers = new Map<string, string>();
@@ -58,6 +60,54 @@ function normalizeTrackingFollowers(rawFollowers: unknown): string[] {
   }
 
   return [...uniqueFollowers.values(), OPERATIONS_FOLLOWER_EMAIL];
+}
+
+function validateTrackingPreferenceEmails(rawEmails: unknown): {
+  emails?: string[];
+  error?: string;
+} {
+  if (!Array.isArray(rawEmails)) {
+    return { error: 'emails debe ser un array de correos electrónicos' };
+  }
+
+  if (rawEmails.length > MAX_SAVED_TRACKING_EMAILS) {
+    return {
+      error: `Máximo ${MAX_SAVED_TRACKING_EMAILS} correos permitidos por cuenta`,
+    };
+  }
+
+  const uniqueEmails = new Map<string, string>();
+
+  for (const rawEmail of rawEmails) {
+    if (typeof rawEmail !== 'string') {
+      return { error: 'Cada correo debe ser un texto válido' };
+    }
+
+    const email = rawEmail.trim().toLowerCase();
+
+    if (!email) {
+      return { error: 'No se permiten correos vacíos' };
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return { error: `El correo ${rawEmail} no es válido` };
+    }
+
+    if (email === OPERATIONS_FOLLOWER_EMAIL.toLowerCase()) {
+      return {
+        error:
+          'El correo de operaciones se agrega automáticamente y no debe configurarse manualmente',
+      };
+    }
+
+    if (uniqueEmails.has(email)) {
+      return { error: 'No se permiten correos duplicados' };
+    }
+
+    uniqueEmails.set(email, email);
+  }
+
+  return { emails: Array.from(uniqueEmails.values()) };
 }
 
 async function getShipsgoShipmentFollowerEmail(
@@ -176,6 +226,37 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
 );
 
 const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchema)) as UserModel;
+
+interface ITrackingEmailPreference {
+  reference: string;
+  emails: string[];
+  updatedBy: string;
+}
+
+interface ITrackingEmailPreferenceDoc
+  extends ITrackingEmailPreference,
+    mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type TrackingEmailPreferenceModel = mongoose.Model<ITrackingEmailPreferenceDoc>;
+
+const TrackingEmailPreferenceSchema = new mongoose.Schema<ITrackingEmailPreferenceDoc>(
+  {
+    reference: { type: String, required: true, unique: true, trim: true, index: true },
+    emails: { type: [String], default: [] },
+    updatedBy: { type: String, required: true, trim: true },
+  },
+  { timestamps: true }
+);
+
+const TrackingEmailPreference =
+  (mongoose.models.TrackingEmailPreference ||
+    mongoose.model<ITrackingEmailPreferenceDoc>(
+      'TrackingEmailPreference',
+      TrackingEmailPreferenceSchema,
+    )) as TrackingEmailPreferenceModel;
 
 async function canManageShipsgoReference(
   currentUser: AuthPayload,
@@ -887,6 +968,109 @@ app.get('/api/me', auth, async (req, res) => {
     });
   } catch (e) {
     console.error('[me] error:', e);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+app.get('/api/tracking-email-preferences', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const reference = String(req.query.reference || '').trim();
+
+    if (!reference) {
+      return res.status(400).json({ error: 'reference es un parámetro requerido' });
+    }
+
+    const canManageReference = await canManageShipsgoReference(
+      currentUser,
+      reference,
+    );
+
+    if (!canManageReference) {
+      return res.status(403).json({
+        error: 'No puedes acceder a las configuraciones de otra cuenta',
+      });
+    }
+
+    const preference = await TrackingEmailPreference.findOne({ reference }).lean();
+
+    return res.json({
+      success: true,
+      preference: {
+        reference,
+        emails: preference?.emails || [],
+        updatedAt: preference?.updatedAt || null,
+      },
+    });
+  } catch (error) {
+    console.error('[tracking-email-preferences:get] error:', error);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+});
+
+app.put('/api/tracking-email-preferences', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const reference = String(req.body?.reference || '').trim();
+
+    if (!reference) {
+      return res.status(400).json({ error: 'reference es un campo requerido' });
+    }
+
+    const canManageReference = await canManageShipsgoReference(
+      currentUser,
+      reference,
+    );
+
+    if (!canManageReference) {
+      return res.status(403).json({
+        error: 'No puedes modificar las configuraciones de otra cuenta',
+      });
+    }
+
+    const validation = validateTrackingPreferenceEmails(req.body?.emails);
+
+    if (validation.error || !validation.emails) {
+      return res.status(400).json({ error: validation.error || 'emails inválidos' });
+    }
+
+    if (validation.emails.length === 0) {
+      await TrackingEmailPreference.deleteOne({ reference });
+
+      return res.json({
+        success: true,
+        preference: {
+          reference,
+          emails: [],
+          updatedAt: null,
+        },
+      });
+    }
+
+    const preference = await TrackingEmailPreference.findOneAndUpdate(
+      { reference },
+      {
+        reference,
+        emails: validation.emails,
+        updatedBy: currentUser.sub,
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+      },
+    ).lean();
+
+    return res.json({
+      success: true,
+      preference: {
+        reference,
+        emails: preference?.emails || [],
+        updatedAt: preference?.updatedAt || null,
+      },
+    });
+  } catch (error) {
+    console.error('[tracking-email-preferences:put] error:', error);
     return res.status(500).json({ error: 'Error interno' });
   }
 });

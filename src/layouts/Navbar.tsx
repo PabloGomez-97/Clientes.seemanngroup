@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
+import TrackingEmailSettings from "../components/settings/TrackingEmailSettings";
 
 // Design tokens - AWS/Azure inspired
 const colors = {
@@ -34,6 +35,7 @@ function Navbar({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showLanguage, setShowLanguage] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [notifications] = useState([
     {
       id: 1,
@@ -67,6 +69,7 @@ function Navbar({
   const email = user?.email || "usuario@ejemplo.com";
   const ejecutivo = user?.ejecutivo;
   const hasEjecutivo = !!ejecutivo;
+  const isExecutivePortal = user?.username === "Ejecutivo";
 
   const getInitials = (name: string) => {
     return name
@@ -111,6 +114,7 @@ function Navbar({
         setShowNotifications(false);
         setShowProfile(false);
         setShowLanguage(false);
+        setShowSettings(false);
       }
     };
 
@@ -692,6 +696,72 @@ function Navbar({
                   </div>
                 )}
 
+                {!isExecutivePortal && (
+                  <div
+                    style={{
+                      padding: "12px 16px",
+                      borderBottom: "1px solid #e5e7eb",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowProfile(false);
+                        setShowSettings(true);
+                      }}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        padding: "12px 14px",
+                        borderRadius: "8px",
+                        border: "1px solid #e5e7eb",
+                        backgroundColor: "#ffffff",
+                        color: "#1f2937",
+                        cursor: "pointer",
+                        transition: "background-color 0.15s ease",
+                        textAlign: "left",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#f9fafb";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "#ffffff";
+                      }}
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                      >
+                        <path
+                          d="M9.392 1.523a1.5 1.5 0 0 0-2.784 0l-.18.44a1.5 1.5 0 0 1-1.083.874l-.472.102a1.5 1.5 0 0 0-.79 2.482l.32.335c.31.326.432.789.327 1.228l-.11.463a1.5 1.5 0 0 0 2.07 1.729l.43-.193a1.5 1.5 0 0 1 1.23 0l.43.193a1.5 1.5 0 0 0 2.07-1.73l-.11-.462a1.5 1.5 0 0 1 .327-1.228l.32-.335a1.5 1.5 0 0 0-.79-2.482l-.472-.102a1.5 1.5 0 0 1-1.083-.875l-.18-.439ZM8 10.25a2.25 2.25 0 1 1 0-4.5 2.25 2.25 0 0 1 0 4.5Z"
+                          stroke="#6b7280"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontSize: "13px",
+                            fontWeight: "600",
+                            color: "#111827",
+                            marginBottom: "2px",
+                          }}
+                        >
+                          Configuraciones
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                          Administra correos predeterminados para tracking
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
                 {/* Logout button */}
                 <div style={{ padding: "12px 16px" }}>
                   <button
@@ -979,6 +1049,15 @@ function Navbar({
             </div>
           </div>
         </>
+      )}
+
+      {showSettings && !isExecutivePortal && (
+        <TrackingEmailSettings
+          reference={username}
+          username={username}
+          email={email}
+          onClose={() => setShowSettings(false)}
+        />
       )}
 
       <style>{`
