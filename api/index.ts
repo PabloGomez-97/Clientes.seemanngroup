@@ -1418,9 +1418,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permisos' });
         }
 
-        const { nombre, email, telefono } = (req.body as any) || {};
+        const { nombre, email, telefono, roles } = (req.body as any) || {};
         if (!nombre || !email || !telefono) {
           return res.status(400).json({ error: 'Faltan campos requeridos' });
+        }
+
+        // Validar roles si se envían
+        if (roles) {
+          const { administrador, pricing, ejecutivo: rolEjecutivo, proveedor: rolProveedor, operaciones: rolOperaciones } = roles;
+          if (administrador && (pricing || rolEjecutivo || rolProveedor || rolOperaciones)) {
+            return res.status(400).json({ error: 'El rol Administrador no se puede combinar con otros roles' });
+          }
+          if (rolProveedor && (administrador || pricing || rolEjecutivo || rolOperaciones)) {
+            return res.status(400).json({ error: 'El rol Proveedor no se puede combinar con otros roles' });
+          }
+          if (rolOperaciones && (administrador || pricing || rolEjecutivo || rolProveedor)) {
+            return res.status(400).json({ error: 'El rol Operaciones no se puede combinar con otros roles' });
+          }
+          if (!administrador && !pricing && !rolEjecutivo && !rolProveedor && !rolOperaciones) {
+            return res.status(400).json({ error: 'Debe tener al menos un rol asignado' });
+          }
         }
 
         const normalizedEmail = String(email).toLowerCase().trim();
@@ -1433,7 +1450,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           nombre: String(nombre).trim(),
           email: normalizedEmail,
           telefono: String(telefono).trim(),
-          activo: true
+          activo: true,
+          ...(roles ? { roles } : {})
         });
 
         await newEjecutivo.save();

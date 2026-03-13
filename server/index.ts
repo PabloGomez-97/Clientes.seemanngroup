@@ -1337,16 +1337,34 @@ app.post('/api/admin/ejecutivos', auth, async (req, res) => {
       return res.status(403).json({ error: 'No tienes permisos' });
     }
 
-    const { nombre, email, telefono } = (req.body as any) || {};
+    const { nombre, email, telefono, roles } = (req.body as any) || {};
     if (!nombre || !email || !telefono) {
       return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+
+    // Validar roles si se envían
+    if (roles) {
+      const { administrador, pricing, ejecutivo: rolEjecutivo, proveedor: rolProveedor, operaciones: rolOperaciones } = roles;
+      if (administrador && (pricing || rolEjecutivo || rolProveedor || rolOperaciones)) {
+        return res.status(400).json({ error: 'El rol Administrador no se puede combinar con otros roles' });
+      }
+      if (rolProveedor && (administrador || pricing || rolEjecutivo || rolOperaciones)) {
+        return res.status(400).json({ error: 'El rol Proveedor no se puede combinar con otros roles' });
+      }
+      if (rolOperaciones && (administrador || pricing || rolEjecutivo || rolProveedor)) {
+        return res.status(400).json({ error: 'El rol Operaciones no se puede combinar con otros roles' });
+      }
+      if (!administrador && !pricing && !rolEjecutivo && !rolProveedor && !rolOperaciones) {
+        return res.status(400).json({ error: 'Debe tener al menos un rol asignado' });
+      }
     }
 
     const nuevoEjecutivo = new Ejecutivo({
       nombre: String(nombre).trim(),
       email: String(email).toLowerCase().trim(),
       telefono: String(telefono).trim(),
-      activo: true
+      activo: true,
+      ...(roles ? { roles } : {})
     });
 
     await nuevoEjecutivo.save();

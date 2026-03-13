@@ -58,6 +58,10 @@ function UsersManagement() {
   const [ejecutivoId, setEjecutivoId] = useState<string>("");
   const [formLoading, setFormLoading] = useState(false);
 
+  // Tipo de cuenta para creación: cliente o ejecutivo
+  const [accountType, setAccountType] = useState<"cliente" | "ejecutivo">("cliente");
+  const [telefono, setTelefono] = useState("");
+
   // Estado de roles para edición de ejecutivos
   const [isEditingEjecutivo, setIsEditingEjecutivo] = useState(false);
   const [editRoles, setEditRoles] = useState({
@@ -134,6 +138,8 @@ function UsersManagement() {
     setEditingUserId(null);
     setShowForm(false);
     setIsEditingEjecutivo(false);
+    setAccountType("cliente");
+    setTelefono("");
     setEditRoles({
       administrador: false,
       pricing: false,
@@ -187,7 +193,89 @@ function UsersManagement() {
     setError(null);
     setSuccess(null);
 
-    // Filtrar usernames vacíos
+    if (accountType === "ejecutivo") {
+      // Validar roles
+      const roleError = validateRoles(editRoles);
+      if (roleError) {
+        setError(roleError);
+        setFormLoading(false);
+        return;
+      }
+      if (!telefono.trim()) {
+        setError("El teléfono es requerido para ejecutivos");
+        setFormLoading(false);
+        return;
+      }
+
+      try {
+        // 1. Crear el documento Ejecutivo
+        const ejResponse = await fetch("/api/admin/ejecutivos", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nombre: nombreuser,
+            email,
+            telefono: telefono.trim(),
+            roles: editRoles,
+          }),
+        });
+
+        const ejData = await ejResponse.json();
+
+        if (!ejResponse.ok) {
+          throw new Error(ejData.error || "Error al crear ejecutivo");
+        }
+
+        // 2. Crear la cuenta de usuario vinculada
+        const userResponse = await fetch("/api/admin/create-user", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            username: "Ejecutivo",
+            usernames: ["Ejecutivo"],
+            nombreuser,
+            password,
+            ejecutivoId: ejData.ejecutivo?.id || undefined,
+          }),
+        });
+
+        const userData = await userResponse.json();
+
+        if (!userResponse.ok) {
+          throw new Error(userData.error || "Error al crear cuenta de usuario");
+        }
+
+        setSuccess("Ejecutivo creado exitosamente");
+        registrarEvento({
+          accion: "EJECUTIVO_CREADO",
+          categoria: "GESTION_EJECUTIVOS",
+          descripcion: `Ejecutivo creado: ${nombreuser} (${email}) — Roles: ${getRoleLabels(editRoles).join(", ")}`,
+          detalles: {
+            email,
+            nombreuser,
+            telefono: telefono.trim(),
+            roles: editRoles,
+          },
+        });
+        resetForm();
+        fetchUsers();
+        fetchEjecutivos();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error desconocido");
+      } finally {
+        setFormLoading(false);
+      }
+      return;
+    }
+
+    // Flujo para clientes
     const cleanUsernames = usernames.map((u) => u.trim()).filter(Boolean);
     if (cleanUsernames.length === 0) {
       setError("Debe agregar al menos una empresa");
@@ -219,7 +307,6 @@ function UsersManagement() {
       }
 
       setSuccess("Usuario creado exitosamente");
-      // Registrar auditoría
       registrarEvento({
         accion: "USUARIO_CREADO",
         categoria: "GESTION_USUARIOS",
@@ -483,12 +570,13 @@ function UsersManagement() {
                   Descargar Excel
                 </button>
               )}
-              {(!showAdmins || showForm) && (
+              {(
                 <button
                   onClick={() => {
                     if (showForm) {
                       resetForm();
                     } else {
+                      setAccountType(showAdmins ? "ejecutivo" : "cliente");
                       setShowForm(true);
                     }
                   }}
@@ -529,6 +617,18 @@ function UsersManagement() {
                       </svg>
                       Cancelar
                     </>
+                  ) : showAdmins ? (
+                    <>
+                      <svg
+                        width="18"
+                        height="18"
+                        fill="currentColor"
+                        viewBox="0 0 16 16"
+                      >
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+                      </svg>
+                      Crear Ejecutivo
+                    </>
                   ) : (
                     <>
                       <svg
@@ -539,7 +639,7 @@ function UsersManagement() {
                       >
                         <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
                       </svg>
-                      Crear Usuario
+                      Crear Cliente
                     </>
                   )}
                 </button>
@@ -888,7 +988,7 @@ function UsersManagement() {
                     {isEditingEjecutivo ? "Editar Ejecutivo" : "Editar Usuario"}
                   </>
                 ) : (
-                  "Crear Nuevo Usuario"
+                  accountType === "ejecutivo" ? "Crear Nuevo Ejecutivo" : "Crear Nuevo Cliente"
                 )}
               </h5>
 
@@ -903,7 +1003,9 @@ function UsersManagement() {
                       marginBottom: "8px",
                     }}
                   >
-                    Email del Cliente *
+                    {isEditingEjecutivo || (!editingUserId && accountType === "ejecutivo")
+                      ? "Email del Ejecutivo *"
+                      : "Email del Cliente *"}
                   </label>
                   <input
                     type="email"
@@ -911,7 +1013,7 @@ function UsersManagement() {
                     onChange={(e) => setEmail(e.target.value)}
                     required={!editingUserId}
                     disabled={!!editingUserId}
-                    placeholder="cliente@empresa.com"
+                    placeholder={accountType === "ejecutivo" ? "ejecutivo@seemanngroup.com" : "cliente@empresa.com"}
                     style={{
                       width: "100%",
                       padding: "10px 14px",
@@ -945,6 +1047,86 @@ function UsersManagement() {
                   )}
                 </div>
 
+                {/* Selector de tipo de cuenta (solo al crear) */}
+                {!editingUserId && (
+                  <div style={{ marginBottom: "20px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: "#374151",
+                        marginBottom: "10px",
+                      }}
+                    >
+                      Tipo de cuenta *
+                    </label>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "12px",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAccountType("cliente");
+                          setEditRoles({
+                            administrador: false,
+                            pricing: false,
+                            ejecutivo: true,
+                            proveedor: false,
+                            operaciones: false,
+                          });
+                          setTelefono("");
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "14px 16px",
+                          borderRadius: "10px",
+                          border: accountType === "cliente" ? "2px solid #3b82f6" : "1px solid #d1d5db",
+                          backgroundColor: accountType === "cliente" ? "#eff6ff" : "white",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          textAlign: "left",
+                        }}
+                      >
+                        <div style={{ fontWeight: "600", fontSize: "14px", color: accountType === "cliente" ? "#1d4ed8" : "#374151" }}>
+                          👤 Cliente
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
+                          Cuenta con empresa y ejecutivo asignado
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAccountType("ejecutivo");
+                          setUsernames([""]);
+                          setEjecutivoId("");
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "14px 16px",
+                          borderRadius: "10px",
+                          border: accountType === "ejecutivo" ? "2px solid #a855f7" : "1px solid #d1d5db",
+                          backgroundColor: accountType === "ejecutivo" ? "#faf5ff" : "white",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          textAlign: "left",
+                        }}
+                      >
+                        <div style={{ fontWeight: "600", fontSize: "14px", color: accountType === "ejecutivo" ? "#7e22ce" : "#374151" }}>
+                          🛡️ Ejecutivo
+                        </div>
+                        <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
+                          Cuenta interna con roles del sistema
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ marginBottom: "20px" }}>
                   <label
                     style={{
@@ -955,7 +1137,7 @@ function UsersManagement() {
                       color: "#374151",
                     }}
                   >
-                    {isEditingEjecutivo
+                    {isEditingEjecutivo || (!editingUserId && accountType === "ejecutivo")
                       ? "Nombre del Ejecutivo *"
                       : "Nombre del Cliente *"}
                   </label>
@@ -985,7 +1167,7 @@ function UsersManagement() {
                   />
                 </div>
 
-                {!isEditingEjecutivo && (
+                {!isEditingEjecutivo && !(! editingUserId && accountType === "ejecutivo") && (
                   <div style={{ marginBottom: "16px" }}>
                     <label
                       style={{
@@ -1145,8 +1327,8 @@ function UsersManagement() {
                   </div>
                 )}
 
-                {/* Roles del ejecutivo (solo visible al editar ejecutivos) */}
-                {isEditingEjecutivo && (
+                {/* Roles del ejecutivo (visible al editar ejecutivos o crear cuenta ejecutivo) */}
+                {(isEditingEjecutivo || (!editingUserId && accountType === "ejecutivo")) && (
                   <div style={{ marginBottom: "16px" }}>
                     <label
                       style={{
@@ -1568,6 +1750,45 @@ function UsersManagement() {
                   </div>
                 )}
 
+                {/* Teléfono (solo al crear ejecutivo) */}
+                {!editingUserId && accountType === "ejecutivo" && (
+                  <div style={{ marginBottom: "16px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: "#374151",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Teléfono *
+                    </label>
+                    <input
+                      type="tel"
+                      value={telefono}
+                      onChange={(e) => setTelefono(e.target.value)}
+                      required
+                      placeholder="+56 9 1234 5678"
+                      style={{
+                        width: "100%",
+                        padding: "10px 14px",
+                        fontSize: "15px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                      }}
+                      onFocus={(e) =>
+                        (e.currentTarget.style.borderColor = "#3b82f6")
+                      }
+                      onBlur={(e) =>
+                        (e.currentTarget.style.borderColor = "#d1d5db")
+                      }
+                    />
+                  </div>
+                )}
+
                 <div style={{ marginBottom: "16px" }}>
                   <label
                     style={{
@@ -1621,7 +1842,7 @@ function UsersManagement() {
                   )}
                 </div>
 
-                {!isEditingEjecutivo && (
+                {!isEditingEjecutivo && !(!editingUserId && accountType === "ejecutivo") && (
                   <div style={{ marginBottom: "24px" }}>
                     <label
                       style={{
@@ -1710,7 +1931,9 @@ function UsersManagement() {
                         ? isEditingEjecutivo
                           ? "Actualizar Ejecutivo"
                           : "Actualizar Usuario"
-                        : "Crear Usuario"}
+                        : accountType === "ejecutivo"
+                          ? "Crear Ejecutivo"
+                          : "Crear Cliente"}
                   </button>
 
                   {editingUserId && (
