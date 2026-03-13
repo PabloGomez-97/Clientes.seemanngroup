@@ -1931,12 +1931,7 @@ function OceanShipmentsView() {
                   +
                 </button>
               </div>
-              <TrackingEmailSuggestions
-                savedEmails={savedTrackingEmails}
-                selectedEmails={trackEmails.filter((email) => email.trim())}
-                onSelectEmail={handleSelectSuggestedTrackEmail}
-                onAddAll={handleAddAllSuggestedTrackEmails}
-              />
+
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {trackEmails.map((email, index) => (
                   <div
@@ -1967,6 +1962,12 @@ function OceanShipmentsView() {
                 operaciones se agrega automáticamente.
               </small>
             </div>
+            <TrackingEmailSuggestions
+              savedEmails={savedTrackingEmails}
+              selectedEmails={trackEmails.filter((email) => email.trim())}
+              onSelectEmail={handleSelectSuggestedTrackEmail}
+              onAddAll={handleAddAllSuggestedTrackEmails}
+            />
 
             {trackError && <div className="osv-error">{trackError}</div>}
 

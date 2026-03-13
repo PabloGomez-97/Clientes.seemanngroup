@@ -246,6 +246,18 @@ const TrackingEmailPreference =
       TrackingEmailPreferenceSchema,
     )) as TrackingEmailPreferenceModel;
 
+async function getShipsgoExecutiveProfileForUser(
+  email: string,
+): Promise<IEjecutivoDoc | null> {
+  const lookupEmail = String(email || '').toLowerCase().trim();
+
+  if (!lookupEmail) {
+    return null;
+  }
+
+  return Ejecutivo.findOne({ email: lookupEmail });
+}
+
 async function canManageShipsgoReference(
   currentUser: AuthPayload,
   reference: string,
@@ -266,8 +278,17 @@ async function canManageShipsgoReference(
     return false;
   }
 
-  const lookupEmail = String(me.email || '').toLowerCase().trim();
-  const myExecutiveProfile = await Ejecutivo.findOne({ email: lookupEmail });
+  const ownReferences = new Set(
+    [me.username, ...(Array.isArray(me.usernames) ? me.usernames : [])]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean),
+  );
+
+  if (ownReferences.has(normalizedReference)) {
+    return true;
+  }
+
+  const myExecutiveProfile = await getShipsgoExecutiveProfileForUser(me.email);
 
   if (!myExecutiveProfile) {
     return false;
@@ -279,6 +300,75 @@ async function canManageShipsgoReference(
   });
 
   return !!targetClient;
+}
+
+async function canDeleteShipsgoShipment(
+  currentUser: AuthPayload,
+  shipmentType: 'air' | 'ocean',
+  shipmentId: string,
+  token: string,
+): Promise<{ allowed: boolean; status: number; error?: string }> {
+  const detailResponse = await fetch(
+    `https://api.shipsgo.com/v2/${shipmentType}/shipments/${encodeURIComponent(shipmentId)}`,
+    {
+      method: 'GET',
+      headers: {
+        'X-Shipsgo-User-Token': token,
+      },
+    },
+  );
+
+  if (detailResponse.status === 404) {
+    return {
+      allowed: false,
+      status: 404,
+      error: 'Tracking no encontrado',
+    };
+  }
+
+  if (!detailResponse.ok) {
+    return {
+      allowed: false,
+      status: detailResponse.status,
+      error: 'No se pudo validar el tracking',
+    };
+  }
+
+  const detailData = (await detailResponse.json().catch(() => ({}))) as {
+    shipment?: { reference?: string | null };
+  };
+
+  const reference = String(detailData.shipment?.reference || '').trim();
+
+  if (reference) {
+    const canManageReference = await canManageShipsgoReference(
+      currentUser,
+      reference,
+    );
+
+    return canManageReference
+      ? { allowed: true, status: 200 }
+      : {
+          allowed: false,
+          status: 403,
+          error: 'No tienes permisos para eliminar este tracking',
+        };
+  }
+
+  const me = await User.findOne({ email: currentUser.sub });
+  const myExecutiveProfile = me
+    ? await getShipsgoExecutiveProfileForUser(me.email)
+    : null;
+
+  if (myExecutiveProfile) {
+    return { allowed: true, status: 200 };
+  }
+
+  return {
+    allowed: false,
+    status: 403,
+    error: 'No tienes permisos para eliminar este tracking',
+  };
 }
 
 function getRequestedDocumentOwnerUsername(req: VercelRequest): string | undefined {
@@ -1979,6 +2069,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    const airShipmentDeleteMatch = path?.match(/^\/api\/shipsgo\/shipments\/([^/]+)$/);
+    if (airShipmentDeleteMatch && method === 'DELETE') {
+      const shipmentId = airShipmentDeleteMatch[1];
+      console.log(`✈️ [shipsgo] Deleting air shipment id=${shipmentId}...`);
+      try {
+        const currentUser = requireAuth(req);
+
+        const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+        if (!SHIPSGO_API_TOKEN) {
+          return res.status(500).json({ error: 'Missing ShipsGo API token' });
+        }
+
+        const permission = await canDeleteShipsgoShipment(
+          currentUser,
+          'air',
+          shipmentId,
+          SHIPSGO_API_TOKEN,
+        );
+
+        if (!permission.allowed) {
+          return res.status(permission.status).json({
+            error: permission.error || 'No tienes permisos para eliminar este tracking',
+          });
+        }
+
+        const response = await fetch(
+          `https://api.shipsgo.com/v2/air/shipments/${encodeURIComponent(shipmentId)}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN,
+            },
+          },
+        );
+
+        const data = await response.json().catch(() => ({} as Record<string, unknown>));
+
+        if (!response.ok) {
+          return res.status(response.status).json({
+            error:
+              (data as any).error ||
+              (data as any).message ||
+              'No se pudo eliminar el tracking',
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: 'Tracking eliminado correctamente',
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[shipsgo] Delete air shipment error:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+    }
+
     // POST /api/shipsgo/shipments/:id/followers - Agregar follower a shipment aéreo existente
     const airFollowerCreateMatch = path?.match(/^\/api\/shipsgo\/shipments\/(\d+)\/followers$/);
     if (airFollowerCreateMatch && method === 'POST') {
@@ -2393,6 +2542,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(401).json({ error: error.message });
         }
         console.error('[shipsgo-ocean] Error:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+    }
+
+    const oceanShipmentDeleteMatch = path?.match(/^\/api\/shipsgo\/ocean\/shipments\/([^/]+)$/);
+    if (oceanShipmentDeleteMatch && method === 'DELETE') {
+      const shipmentId = oceanShipmentDeleteMatch[1];
+      console.log(`🚢 [shipsgo-ocean] Deleting ocean shipment id=${shipmentId}...`);
+      try {
+        const currentUser = requireAuth(req);
+
+        const SHIPSGO_API_TOKEN = process.env.SHIPSGO_API_TOKEN;
+        if (!SHIPSGO_API_TOKEN) {
+          return res.status(500).json({ error: 'Missing ShipsGo API token' });
+        }
+
+        const permission = await canDeleteShipsgoShipment(
+          currentUser,
+          'ocean',
+          shipmentId,
+          SHIPSGO_API_TOKEN,
+        );
+
+        if (!permission.allowed) {
+          return res.status(permission.status).json({
+            error: permission.error || 'No tienes permisos para eliminar este tracking',
+          });
+        }
+
+        const response = await fetch(
+          `https://api.shipsgo.com/v2/ocean/shipments/${encodeURIComponent(shipmentId)}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'X-Shipsgo-User-Token': SHIPSGO_API_TOKEN,
+            },
+          },
+        );
+
+        const data = await response.json().catch(() => ({} as Record<string, unknown>));
+
+        if (!response.ok) {
+          return res.status(response.status).json({
+            error:
+              (data as any).error ||
+              (data as any).message ||
+              'No se pudo eliminar el tracking',
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: 'Tracking eliminado correctamente',
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[shipsgo-ocean] Delete ocean shipment error:', error);
         return res.status(500).json({ error: 'Error interno del servidor' });
       }
     }

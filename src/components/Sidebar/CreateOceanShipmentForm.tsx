@@ -446,12 +446,7 @@ function CreateOceanShipmentForm({
                     ({followers.length}/10)
                   </span>
                 </label>
-                <TrackingEmailSuggestions
-                  savedEmails={savedTrackingEmails}
-                  selectedEmails={followers}
-                  onSelectEmail={handleSelectSuggestedFollower}
-                  onAddAll={handleAddAllSuggestedFollowers}
-                />
+
                 <div className="csf-input-row">
                   <input
                     type="email"
@@ -475,6 +470,12 @@ function CreateOceanShipmentForm({
                     Agregar
                   </button>
                 </div>
+                <TrackingEmailSuggestions
+                  savedEmails={savedTrackingEmails}
+                  selectedEmails={followers}
+                  onSelectEmail={handleSelectSuggestedFollower}
+                  onAddAll={handleAddAllSuggestedFollowers}
+                />
                 {followers.length > 0 && (
                   <ul className="csf-chip-list">
                     {followers.map((email, i) => (

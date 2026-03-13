@@ -22,6 +22,12 @@ import {
 
 type TabType = "air" | "ocean";
 
+type DeleteTarget = {
+  type: TabType;
+  id: AirShipment["id"] | OceanShipment["id"];
+  label: string;
+};
+
 const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
@@ -38,7 +44,7 @@ function ShipsGoTracking({
   filterUsername,
   onNewTracking,
 }: ShipsGoTrackingProps = {}) {
-  const { user, activeUsername } = useAuth();
+  const { token, activeUsername } = useAuth();
   const navigate = useNavigate();
   const effectiveUsername = filterUsername || activeUsername;
 
@@ -62,6 +68,9 @@ function ShipsGoTracking({
     null,
   );
   const [showModal, setShowModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Filtered by active user
   const userAir = useMemo(() => {
@@ -169,6 +178,72 @@ function ShipsGoTracking({
     setShowModal(false);
     setSelectedAir(null);
     setSelectedOcean(null);
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleteLoading) return;
+    setDeleteTarget(null);
+    setDeleteError(null);
+  };
+
+  const handleDeleteShipment = async () => {
+    if (!deleteTarget) return;
+
+    if (!token) {
+      setDeleteError("No hay una sesión activa para eliminar el tracking.");
+      return;
+    }
+
+    setDeleteLoading(true);
+    setDeleteError(null);
+
+    try {
+      const endpoint =
+        deleteTarget.type === "air"
+          ? `${API_BASE_URL}/api/shipsgo/shipments/${encodeURIComponent(String(deleteTarget.id))}`
+          : `${API_BASE_URL}/api/shipsgo/ocean/shipments/${encodeURIComponent(String(deleteTarget.id))}`;
+
+      const response = await fetch(endpoint, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.error || "No se pudo eliminar el tracking.");
+      }
+
+      if (deleteTarget.type === "air") {
+        const deletedId = String(deleteTarget.id);
+        setAllAirShipments((prev) =>
+          prev.filter((shipment) => String(shipment.id) !== deletedId),
+        );
+
+        if (selectedAir && String(selectedAir.id) === deletedId) {
+          closeModal();
+        }
+      } else {
+        const deletedId = String(deleteTarget.id);
+        setAllOceanShipments((prev) =>
+          prev.filter((shipment) => String(shipment.id) !== deletedId),
+        );
+
+        if (selectedOcean && String(selectedOcean.id) === deletedId) {
+          closeModal();
+        }
+      }
+
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "No se pudo eliminar el tracking.",
+      );
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const isLoading = activeTab === "air" ? airLoading : oceanLoading;
@@ -493,16 +568,32 @@ function ShipsGoTracking({
                         </span>
                       </td>
                       <td>
-                        <button
-                          className="sg-btn-view"
-                          onClick={() => {
-                            setSelectedAir(s);
-                            setSelectedOcean(null);
-                            setShowModal(true);
-                          }}
-                        >
-                          Ver
-                        </button>
+                        <div className="sg-row-actions">
+                          <button
+                            type="button"
+                            className="sg-btn-view"
+                            onClick={() => {
+                              setSelectedAir(s);
+                              setSelectedOcean(null);
+                              setShowModal(true);
+                            }}
+                          >
+                            Ver
+                          </button>
+                          <button
+                            type="button"
+                            className="sg-btn-delete"
+                            onClick={() =>
+                              setDeleteTarget({
+                                type: "air",
+                                id: s.id,
+                                label: `AWB ${s.awb_number}`,
+                              })
+                            }
+                          >
+                            Eliminar
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -690,14 +781,9 @@ function ShipsGoTracking({
                         </span>
                       </td>
                       <td>
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "0.5rem",
-                            alignItems: "center",
-                          }}
-                        >
+                        <div className="sg-row-actions">
                           <button
+                            type="button"
                             className="sg-btn-view"
                             onClick={() => {
                               setSelectedOcean(s);
@@ -710,23 +796,32 @@ function ShipsGoTracking({
 
                           {(s.container_number || s.booking_number) && (
                             <a
+                              className="sg-link-live"
                               href={`https://shipsgo.com/live-map-container-tracking?query=${encodeURIComponent(
                                 s.container_number || s.booking_number || "",
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              style={{
-                                backgroundColor: "#ff6200",
-                                color: "#fff",
-                                padding: "0.375rem 0.75rem",
-                                borderRadius: "0.375rem",
-                                textDecoration: "none",
-                                display: "inline-block",
-                              }}
                             >
                               Ver en vivo
                             </a>
                           )}
+                          <button
+                            type="button"
+                            className="sg-btn-delete"
+                            onClick={() =>
+                              setDeleteTarget({
+                                type: "ocean",
+                                id: s.id,
+                                label:
+                                  s.container_number ||
+                                  s.booking_number ||
+                                  `Tracking ${s.id}`,
+                              })
+                            }
+                          >
+                            Eliminar
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -761,6 +856,54 @@ function ShipsGoTracking({
       {/* ═══ Ocean Detail Panel ═══ */}
       {showModal && selectedOcean && (
         <OceanShipmentDetail shipment={selectedOcean} onClose={closeModal} />
+      )}
+
+      {deleteTarget && (
+        <div className="sg-modal-overlay" onClick={closeDeleteDialog}>
+          <div
+            className="sg-modal sg-modal--confirm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sg-modal-header">
+              <h3>Eliminar seguimiento</h3>
+              <button
+                type="button"
+                className="sg-modal-close"
+                onClick={closeDeleteDialog}
+                disabled={deleteLoading}
+              >
+                ×
+              </button>
+            </div>
+            <div className="sg-modal-body">
+              <p className="sg-confirm-copy">
+                ¿Está seguro de eliminar este seguimiento?
+              </p>
+              <div className="sg-confirm-target">{deleteTarget.label}</div>
+              {deleteError && (
+                <div className="sg-confirm-error">{deleteError}</div>
+              )}
+            </div>
+            <div className="sg-modal-footer sg-modal-footer--confirm">
+              <button
+                type="button"
+                className="sg-btn-secondary"
+                onClick={closeDeleteDialog}
+                disabled={deleteLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="sg-btn-delete"
+                onClick={handleDeleteShipment}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? "Eliminando..." : "Eliminar seguimiento"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -663,6 +663,66 @@
   border-color: #9ca3af;
 }
 
+.sg-btn-delete,
+.sg-btn-secondary {
+  padding: 0.3125rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.sg-btn-delete {
+  color: #b42318;
+  background: #fff5f4;
+  border: 1px solid #fecdca;
+}
+
+.sg-btn-delete:hover:not(:disabled) {
+  background: #ffe9e7;
+  border-color: #fda29b;
+}
+
+.sg-btn-delete:disabled,
+.sg-btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sg-btn-secondary {
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+}
+
+.sg-btn-secondary:hover:not(:disabled) {
+  background: #f9fafb;
+}
+
+.sg-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.sg-link-live {
+  background-color: var(--primary-color, #ff6200);
+  color: #fff;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.sg-link-live:hover {
+  background-color: #e55700;
+}
+
 /* ====================================
    EMPTY STATE
    ==================================== */
@@ -800,6 +860,10 @@
   max-width: 680px;
   width: 100%;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+.sg-modal--confirm {
+  max-width: 480px;
 }
 
 .sg-modal-header {
@@ -1037,6 +1101,37 @@
   border-top: 1px solid #e5e7eb;
   display: flex;
   justify-content: flex-end;
+}
+
+.sg-modal-footer--confirm {
+  gap: 0.75rem;
+}
+
+.sg-confirm-copy {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.sg-confirm-target {
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 8px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #111827;
+  font-weight: 600;
+}
+
+.sg-confirm-error {
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 8px;
+  background: #fff4f4;
+  border: 1px solid #fecaca;
+  color: #b42318;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .sg-btn-close {

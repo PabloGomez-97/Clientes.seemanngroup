@@ -580,17 +580,6 @@ function AirShipmentDetail({ shipment, onClose }: AirShipmentDetailProps) {
               </div>
 
               <div className="sg-followers-compose">
-                <TrackingEmailSuggestions
-                  savedEmails={savedTrackingEmails}
-                  selectedEmails={visibleFollowers.map((item) => item.email)}
-                  onSelectEmail={(email) => {
-                    void handleAddFollower(email);
-                  }}
-                  disabled={
-                    followerLoading ||
-                    visibleFollowers.length >= MAX_VISIBLE_FOLLOWERS
-                  }
-                />
                 <input
                   className="sg-followers-input"
                   type="email"

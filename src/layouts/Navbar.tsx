@@ -1,9 +1,9 @@
 // src/layouts/Navbar.tsx - AWS/Azure Minimalist Design
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
-import TrackingEmailSettings from "../components/settings/TrackingEmailSettings";
 
 // Design tokens - AWS/Azure inspired
 const colors = {
@@ -29,13 +29,13 @@ function Navbar({
   isSidebarCollapsed,
 }: NavbarProps) {
   const { user, logout, activeUsername } = useAuth();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showLanguage, setShowLanguage] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [notifications] = useState([
     {
       id: 1,
@@ -114,7 +114,6 @@ function Navbar({
         setShowNotifications(false);
         setShowProfile(false);
         setShowLanguage(false);
-        setShowSettings(false);
       }
     };
 
@@ -707,7 +706,7 @@ function Navbar({
                       type="button"
                       onClick={() => {
                         setShowProfile(false);
-                        setShowSettings(true);
+                        navigate("/settings");
                       }}
                       style={{
                         width: "100%",
@@ -1049,15 +1048,6 @@ function Navbar({
             </div>
           </div>
         </>
-      )}
-
-      {showSettings && !isExecutivePortal && (
-        <TrackingEmailSettings
-          reference={username}
-          username={username}
-          email={email}
-          onClose={() => setShowSettings(false)}
-        />
       )}
 
       <style>{`
