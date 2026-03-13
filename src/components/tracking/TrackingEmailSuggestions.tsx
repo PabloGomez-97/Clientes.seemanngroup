@@ -1,7 +1,4 @@
-import {
-  addUniqueEmail,
-  normalizeEmail,
-} from "../../services/trackingEmailPreferences";
+import { normalizeEmail } from "../../services/trackingEmailPreferences";
 
 interface TrackingEmailSuggestionsProps {
   savedEmails: string[];
@@ -31,6 +28,13 @@ function TrackingEmailSuggestions({
   const allSelected = savedEmails.every((email) =>
     selectedSet.has(normalizeEmail(email)),
   );
+  const visibleEmails = savedEmails.filter(
+    (email) => !selectedSet.has(normalizeEmail(email)),
+  );
+
+  if (visibleEmails.length === 0) {
+    return null;
+  }
 
   return (
     <div
@@ -54,28 +58,25 @@ function TrackingEmailSuggestions({
       ></div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {savedEmails.map((email) => {
-          const isSelected = selectedSet.has(normalizeEmail(email));
-
+        {visibleEmails.map((email) => {
           return (
             <button
               key={email}
               type="button"
               onClick={() => onSelectEmail(email)}
-              disabled={disabled || isSelected}
+              disabled={disabled}
               style={{
-                border: `1px solid ${isSelected ? "#bfdbfe" : "#d1d5db"}`,
-                background: isSelected ? "#eff6ff" : "#ffffff",
-                color: isSelected ? "#1d4ed8" : "#374151",
+                border: `1px solid #d1d5db`,
+                background: "#ffffff",
+                color: "#374151",
                 borderRadius: 999,
                 padding: "7px 12px",
                 fontSize: 12,
                 fontWeight: 500,
-                cursor: disabled || isSelected ? "not-allowed" : "pointer",
+                cursor: disabled ? "not-allowed" : "pointer",
               }}
             >
-              {isSelected ? "Agregado: " : "+ "}
-              {email}
+              + {email}
             </button>
           );
         })}

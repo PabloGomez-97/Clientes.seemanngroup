@@ -127,23 +127,6 @@ function TrackingEmailSettings({
   return (
     <section className="tracking-settings-page">
       <div className="tracking-settings-shell">
-        <header className="tracking-settings-hero">
-          <div>
-            <p className="tracking-settings-eyebrow">Configuraciones</p>
-            <h1>Correos para seguimiento</h1>
-            <p className="tracking-settings-copy">
-              Puede añadir emails para que sea más rápido la gestión de
-              seguimientos en vivo.
-            </p>
-          </div>
-          <div className="tracking-settings-account-card">
-            <span>Cuenta activa</span>
-            <strong>{reference || "Sin cuenta activa"}</strong>
-            <small>{username}</small>
-            <small>{email}</small>
-          </div>
-        </header>
-
         <div className="tracking-settings-intro-card">
           <span>Límite por cuenta</span>
           <strong>
