@@ -59,7 +59,9 @@ function UsersManagement() {
   const [formLoading, setFormLoading] = useState(false);
 
   // Tipo de cuenta para creación: cliente o ejecutivo
-  const [accountType, setAccountType] = useState<"cliente" | "ejecutivo">("cliente");
+  const [accountType, setAccountType] = useState<"cliente" | "ejecutivo">(
+    "cliente",
+  );
   const [telefono, setTelefono] = useState("");
 
   // Estado de roles para edición de ejecutivos
@@ -570,7 +572,7 @@ function UsersManagement() {
                   Descargar Excel
                 </button>
               )}
-              {(
+              {
                 <button
                   onClick={() => {
                     if (showForm) {
@@ -643,7 +645,7 @@ function UsersManagement() {
                     </>
                   )}
                 </button>
-              )}
+              }
             </div>
           </div>
 
@@ -987,8 +989,10 @@ function UsersManagement() {
                     </svg>
                     {isEditingEjecutivo ? "Editar Ejecutivo" : "Editar Usuario"}
                   </>
+                ) : accountType === "ejecutivo" ? (
+                  "Crear Nuevo Ejecutivo"
                 ) : (
-                  accountType === "ejecutivo" ? "Crear Nuevo Ejecutivo" : "Crear Nuevo Cliente"
+                  "Crear Nuevo Cliente"
                 )}
               </h5>
 
@@ -1003,7 +1007,8 @@ function UsersManagement() {
                       marginBottom: "8px",
                     }}
                   >
-                    {isEditingEjecutivo || (!editingUserId && accountType === "ejecutivo")
+                    {isEditingEjecutivo ||
+                    (!editingUserId && accountType === "ejecutivo")
                       ? "Email del Ejecutivo *"
                       : "Email del Cliente *"}
                   </label>
@@ -1013,7 +1018,11 @@ function UsersManagement() {
                     onChange={(e) => setEmail(e.target.value)}
                     required={!editingUserId}
                     disabled={!!editingUserId}
-                    placeholder={accountType === "ejecutivo" ? "ejecutivo@seemanngroup.com" : "cliente@empresa.com"}
+                    placeholder={
+                      accountType === "ejecutivo"
+                        ? "ejecutivo@seemanngroup.com"
+                        : "cliente@empresa.com"
+                    }
                     style={{
                       width: "100%",
                       padding: "10px 14px",
@@ -1084,17 +1093,34 @@ function UsersManagement() {
                           flex: 1,
                           padding: "14px 16px",
                           borderRadius: "10px",
-                          border: accountType === "cliente" ? "2px solid #3b82f6" : "1px solid #d1d5db",
-                          backgroundColor: accountType === "cliente" ? "#eff6ff" : "white",
+                          border:
+                            accountType === "cliente"
+                              ? "2px solid #3b82f6"
+                              : "1px solid #d1d5db",
+                          backgroundColor:
+                            accountType === "cliente" ? "#eff6ff" : "white",
                           cursor: "pointer",
                           transition: "all 0.2s",
                           textAlign: "left",
                         }}
                       >
-                        <div style={{ fontWeight: "600", fontSize: "14px", color: accountType === "cliente" ? "#1d4ed8" : "#374151" }}>
+                        <div
+                          style={{
+                            fontWeight: "600",
+                            fontSize: "14px",
+                            color:
+                              accountType === "cliente" ? "#1d4ed8" : "#374151",
+                          }}
+                        >
                           👤 Cliente
                         </div>
-                        <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#6b7280",
+                            marginTop: "4px",
+                          }}
+                        >
                           Cuenta con empresa y ejecutivo asignado
                         </div>
                       </button>
@@ -1109,17 +1135,36 @@ function UsersManagement() {
                           flex: 1,
                           padding: "14px 16px",
                           borderRadius: "10px",
-                          border: accountType === "ejecutivo" ? "2px solid #a855f7" : "1px solid #d1d5db",
-                          backgroundColor: accountType === "ejecutivo" ? "#faf5ff" : "white",
+                          border:
+                            accountType === "ejecutivo"
+                              ? "2px solid #a855f7"
+                              : "1px solid #d1d5db",
+                          backgroundColor:
+                            accountType === "ejecutivo" ? "#faf5ff" : "white",
                           cursor: "pointer",
                           transition: "all 0.2s",
                           textAlign: "left",
                         }}
                       >
-                        <div style={{ fontWeight: "600", fontSize: "14px", color: accountType === "ejecutivo" ? "#7e22ce" : "#374151" }}>
+                        <div
+                          style={{
+                            fontWeight: "600",
+                            fontSize: "14px",
+                            color:
+                              accountType === "ejecutivo"
+                                ? "#7e22ce"
+                                : "#374151",
+                          }}
+                        >
                           🛡️ Ejecutivo
                         </div>
-                        <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#6b7280",
+                            marginTop: "4px",
+                          }}
+                        >
                           Cuenta interna con roles del sistema
                         </div>
                       </button>
@@ -1137,7 +1182,8 @@ function UsersManagement() {
                       color: "#374151",
                     }}
                   >
-                    {isEditingEjecutivo || (!editingUserId && accountType === "ejecutivo")
+                    {isEditingEjecutivo ||
+                    (!editingUserId && accountType === "ejecutivo")
                       ? "Nombre del Ejecutivo *"
                       : "Nombre del Cliente *"}
                   </label>
@@ -1167,168 +1213,172 @@ function UsersManagement() {
                   />
                 </div>
 
-                {!isEditingEjecutivo && !(! editingUserId && accountType === "ejecutivo") && (
-                  <div style={{ marginBottom: "16px" }}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        color: "#374151",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      Nombre / Empresa *{" "}
-                      {usernames.filter((u) => u.trim()).length > 1 && (
-                        <span
-                          style={{
-                            fontSize: "12px",
-                            color: "#6b7280",
-                            fontWeight: "400",
-                          }}
-                        >
-                          ({usernames.filter((u) => u.trim()).length} empresas)
-                        </span>
-                      )}
-                    </label>
-
-                    {usernames.map((uname, index) => (
-                      <div
-                        key={index}
+                {!isEditingEjecutivo &&
+                  !(!editingUserId && accountType === "ejecutivo") && (
+                    <div style={{ marginBottom: "16px" }}>
+                      <label
                         style={{
-                          display: "flex",
-                          gap: "8px",
+                          display: "block",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: "#374151",
                           marginBottom: "8px",
-                          alignItems: "center",
                         }}
                       >
-                        <input
-                          type="text"
-                          value={uname}
-                          onChange={(e) => {
-                            const updated = [...usernames];
-                            updated[index] = e.target.value;
-                            setUsernames(updated);
-                          }}
-                          required={index === 0}
-                          placeholder={
-                            index === 0
-                              ? "EMPRESA PRINCIPAL SPA"
-                              : `Empresa ${index + 1}`
-                          }
+                        Nombre / Empresa *{" "}
+                        {usernames.filter((u) => u.trim()).length > 1 && (
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              color: "#6b7280",
+                              fontWeight: "400",
+                            }}
+                          >
+                            ({usernames.filter((u) => u.trim()).length}{" "}
+                            empresas)
+                          </span>
+                        )}
+                      </label>
+
+                      {usernames.map((uname, index) => (
+                        <div
+                          key={index}
                           style={{
-                            flex: 1,
-                            padding: "10px 14px",
-                            fontSize: "15px",
-                            border: "1px solid #d1d5db",
-                            borderRadius: "8px",
-                            outline: "none",
-                            transition: "border-color 0.2s",
+                            display: "flex",
+                            gap: "8px",
+                            marginBottom: "8px",
+                            alignItems: "center",
                           }}
-                          onFocus={(e) =>
-                            (e.currentTarget.style.borderColor = "#3b82f6")
-                          }
-                          onBlur={(e) =>
-                            (e.currentTarget.style.borderColor = "#d1d5db")
-                          }
-                        />
-                        {usernames.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = usernames.filter(
-                                (_, i) => i !== index,
-                              );
+                        >
+                          <input
+                            type="text"
+                            value={uname}
+                            onChange={(e) => {
+                              const updated = [...usernames];
+                              updated[index] = e.target.value;
                               setUsernames(updated);
                             }}
+                            required={index === 0}
+                            placeholder={
+                              index === 0
+                                ? "EMPRESA PRINCIPAL SPA"
+                                : `Empresa ${index + 1}`
+                            }
                             style={{
-                              backgroundColor: "transparent",
-                              color: "#dc2626",
-                              border: "1px solid #fecaca",
-                              borderRadius: "6px",
-                              padding: "8px 10px",
-                              cursor: "pointer",
-                              transition: "all 0.2s",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0,
+                              flex: 1,
+                              padding: "10px 14px",
+                              fontSize: "15px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "8px",
+                              outline: "none",
+                              transition: "border-color 0.2s",
                             }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                "#fee2e2")
+                            onFocus={(e) =>
+                              (e.currentTarget.style.borderColor = "#3b82f6")
                             }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                "transparent")
+                            onBlur={(e) =>
+                              (e.currentTarget.style.borderColor = "#d1d5db")
                             }
-                            title="Eliminar empresa"
-                          >
-                            <svg
-                              width="16"
-                              height="16"
-                              fill="currentColor"
-                              viewBox="0 0 16 16"
+                          />
+                          {usernames.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = usernames.filter(
+                                  (_, i) => i !== index,
+                                );
+                                setUsernames(updated);
+                              }}
+                              style={{
+                                backgroundColor: "transparent",
+                                color: "#dc2626",
+                                border: "1px solid #fecaca",
+                                borderRadius: "6px",
+                                padding: "8px 10px",
+                                cursor: "pointer",
+                                transition: "all 0.2s",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                              onMouseEnter={(e) =>
+                                (e.currentTarget.style.backgroundColor =
+                                  "#fee2e2")
+                              }
+                              onMouseLeave={(e) =>
+                                (e.currentTarget.style.backgroundColor =
+                                  "transparent")
+                              }
+                              title="Eliminar empresa"
                             >
-                              <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                              <svg
+                                width="16"
+                                height="16"
+                                fill="currentColor"
+                                viewBox="0 0 16 16"
+                              >
+                                <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
 
-                    <button
-                      type="button"
-                      onClick={() => setUsernames([...usernames, ""])}
-                      style={{
-                        backgroundColor: "transparent",
-                        color: "#2563eb",
-                        border: "1px solid #bfdbfe",
-                        borderRadius: "6px",
-                        padding: "8px 14px",
-                        fontSize: "13px",
-                        fontWeight: "500",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        marginTop: "4px",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#eff6ff")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "transparent")
-                      }
-                    >
-                      <svg
-                        width="14"
-                        height="14"
-                        fill="currentColor"
-                        viewBox="0 0 16 16"
+                      <button
+                        type="button"
+                        onClick={() => setUsernames([...usernames, ""])}
+                        style={{
+                          backgroundColor: "transparent",
+                          color: "#2563eb",
+                          border: "1px solid #bfdbfe",
+                          borderRadius: "6px",
+                          padding: "8px 14px",
+                          fontSize: "13px",
+                          fontWeight: "500",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          marginTop: "4px",
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor = "#eff6ff")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            "transparent")
+                        }
                       >
-                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
-                      </svg>
-                      Agregar empresa
-                    </button>
+                        <svg
+                          width="14"
+                          height="14"
+                          fill="currentColor"
+                          viewBox="0 0 16 16"
+                        >
+                          <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+                        </svg>
+                        Agregar empresa
+                      </button>
 
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "#6b7280",
-                        marginTop: "6px",
-                        marginBottom: 0,
-                      }}
-                    >
-                      Puedes asignar múltiples empresas al mismo cliente. La
-                      primera será la empresa principal.
-                    </p>
-                  </div>
-                )}
+                      <p
+                        style={{
+                          fontSize: "12px",
+                          color: "#6b7280",
+                          marginTop: "6px",
+                          marginBottom: 0,
+                        }}
+                      >
+                        Puedes asignar múltiples empresas al mismo cliente. La
+                        primera será la empresa principal.
+                      </p>
+                    </div>
+                  )}
 
                 {/* Roles del ejecutivo (visible al editar ejecutivos o crear cuenta ejecutivo) */}
-                {(isEditingEjecutivo || (!editingUserId && accountType === "ejecutivo")) && (
+                {(isEditingEjecutivo ||
+                  (!editingUserId && accountType === "ejecutivo")) && (
                   <div style={{ marginBottom: "16px" }}>
                     <label
                       style={{
@@ -1842,61 +1892,62 @@ function UsersManagement() {
                   )}
                 </div>
 
-                {!isEditingEjecutivo && !(!editingUserId && accountType === "ejecutivo") && (
-                  <div style={{ marginBottom: "24px" }}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        color: "#374151",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      Ejecutivo Asignado
-                    </label>
-                    <select
-                      value={ejecutivoId}
-                      onChange={(e) => setEjecutivoId(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px 14px",
-                        fontSize: "15px",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "8px",
-                        outline: "none",
-                        transition: "border-color 0.2s",
-                        backgroundColor: "white",
-                        cursor: "pointer",
-                      }}
-                      onFocus={(e) =>
-                        (e.currentTarget.style.borderColor = "#3b82f6")
-                      }
-                      onBlur={(e) =>
-                        (e.currentTarget.style.borderColor = "#d1d5db")
-                      }
-                    >
-                      <option value="">Sin asignar</option>
-                      {ejecutivos.map((ej) => (
-                        <option key={ej.id} value={ej.id}>
-                          {ej.nombre} - {ej.email}
-                        </option>
-                      ))}
-                    </select>
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "#6b7280",
-                        marginTop: "6px",
-                        marginBottom: 0,
-                      }}
-                    >
-                      {editingUserId
-                        ? "Selecciona un ejecutivo diferente para reasignar el cliente"
-                        : "El cliente verá los datos de contacto de su ejecutivo en el portal"}
-                    </p>
-                  </div>
-                )}
+                {!isEditingEjecutivo &&
+                  !(!editingUserId && accountType === "ejecutivo") && (
+                    <div style={{ marginBottom: "24px" }}>
+                      <label
+                        style={{
+                          display: "block",
+                          fontSize: "14px",
+                          fontWeight: "600",
+                          color: "#374151",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        Ejecutivo Asignado
+                      </label>
+                      <select
+                        value={ejecutivoId}
+                        onChange={(e) => setEjecutivoId(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          fontSize: "15px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "8px",
+                          outline: "none",
+                          transition: "border-color 0.2s",
+                          backgroundColor: "white",
+                          cursor: "pointer",
+                        }}
+                        onFocus={(e) =>
+                          (e.currentTarget.style.borderColor = "#3b82f6")
+                        }
+                        onBlur={(e) =>
+                          (e.currentTarget.style.borderColor = "#d1d5db")
+                        }
+                      >
+                        <option value="">Sin asignar</option>
+                        {ejecutivos.map((ej) => (
+                          <option key={ej.id} value={ej.id}>
+                            {ej.nombre} - {ej.email}
+                          </option>
+                        ))}
+                      </select>
+                      <p
+                        style={{
+                          fontSize: "12px",
+                          color: "#6b7280",
+                          marginTop: "6px",
+                          marginBottom: 0,
+                        }}
+                      >
+                        {editingUserId
+                          ? "Selecciona un ejecutivo diferente para reasignar el cliente"
+                          : "El cliente verá los datos de contacto de su ejecutivo en el portal"}
+                      </p>
+                    </div>
+                  )}
 
                 <div style={{ display: "flex", gap: "12px" }}>
                   <button
