@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../auth/AuthContext";
+import { useAuditLog } from "../../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../../hooks/useTrackingEmailPreferences";
 import type {
   OceanShipment,
@@ -33,6 +34,7 @@ interface OceanShipmentDetailProps {
 
 function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
   const { token } = useAuth();
+  const { registrarEvento } = useAuditLog();
   const [detail, setDetail] = useState<OceanShipmentDetailType | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
   const [newFollowerEmail, setNewFollowerEmail] = useState("");
@@ -156,6 +158,20 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
             }
           : prev,
       );
+      registrarEvento({
+        accion: "TRACKING_FOLLOWER_AGREGADO",
+        categoria: "TRACKING",
+        descripcion: `Follower agregado al tracking marítimo ${shipment.container_number || shipment.booking_number}: ${follower}`,
+        detalles: {
+          tipo: "ocean",
+          shipmentId: String(shipment.id),
+          container: shipment.container_number,
+          booking: shipment.booking_number,
+          followerEmail: follower,
+          referencia: shipment.reference,
+        },
+        clienteAfectado: shipment.reference || undefined,
+      });
       setNewFollowerEmail("");
     } catch {
       setFollowerError("No se pudo agregar el correo.");
@@ -191,6 +207,9 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
         return;
       }
 
+      const removedFollower = detail?.followers?.find(
+        (item) => item.id === followerId,
+      );
       setDetail((prev) =>
         prev
           ? {
@@ -201,6 +220,21 @@ function OceanShipmentDetail({ shipment, onClose }: OceanShipmentDetailProps) {
             }
           : prev,
       );
+      registrarEvento({
+        accion: "TRACKING_FOLLOWER_ELIMINADO",
+        categoria: "TRACKING",
+        descripcion: `Follower eliminado del tracking marítimo ${shipment.container_number || shipment.booking_number}: ${removedFollower?.email || followerId}`,
+        detalles: {
+          tipo: "ocean",
+          shipmentId: String(shipment.id),
+          container: shipment.container_number,
+          booking: shipment.booking_number,
+          followerId: String(followerId),
+          followerEmail: removedFollower?.email,
+          referencia: shipment.reference,
+        },
+        clienteAfectado: shipment.reference || undefined,
+      });
     } catch {
       setFollowerError("No se pudo eliminar el correo.");
     } finally {

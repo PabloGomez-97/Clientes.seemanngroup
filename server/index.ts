@@ -1005,6 +1005,40 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// Cambiar contraseña
+app.post('/api/change-password', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const { currentPassword, newPassword } = (req.body as any) || {};
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Debes ingresar la contraseña actual y la nueva.' });
+    }
+
+    const user = await User.findOne({ email: currentUser.sub });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    if (!user.passwordHash) {
+      return res.status(500).json({ error: 'Usuario mal configurado.' });
+    }
+
+    const ok = bcrypt.compareSync(String(currentPassword), user.passwordHash);
+    if (!ok) {
+      return res.status(401).json({ error: 'La contraseña actual es incorrecta.' });
+    }
+
+    user.passwordHash = bcrypt.hashSync(String(newPassword), 12);
+    await user.save();
+
+    return res.json({ success: true, message: 'Contraseña actualizada correctamente.' });
+  } catch (e) {
+    console.error('[change-password] error:', e);
+    return res.status(500).json({ error: 'Error interno' });
+  }
+});
+
 // Verificar token
 app.get('/api/me', auth, async (req, res) => {
   try {

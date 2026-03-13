@@ -95,6 +95,9 @@ const ACCION_BADGES: Record<string, { bg: string; text: string }> = {
   COTIZACION_LCL_EJECUTIVO: { bg: "#e0cffc", text: "#3d0a91" },
   // Tracking
   TRACKING_CREADO: { bg: "#d1e7dd", text: "#0f5132" },
+  TRACKING_ELIMINADO: { bg: "#f8d7da", text: "#842029" },
+  TRACKING_FOLLOWER_AGREGADO: { bg: "#cff4fc", text: "#055160" },
+  TRACKING_FOLLOWER_ELIMINADO: { bg: "#f8d7da", text: "#842029" },
   // Pricing creados
   PRICING_AIR_CREADO: { bg: "#fff3cd", text: "#664d03" },
   PRICING_FCL_CREADO: { bg: "#fff3cd", text: "#664d03" },
@@ -125,6 +128,9 @@ const ACCION_LABELS: Record<string, string> = {
   COTIZACION_FCL_EJECUTIVO: "Cotización FCL (Ejec)",
   COTIZACION_LCL_EJECUTIVO: "Cotización LCL (Ejec)",
   TRACKING_CREADO: "Tracking Creado",
+  TRACKING_ELIMINADO: "Tracking Eliminado",
+  TRACKING_FOLLOWER_AGREGADO: "Follower Agregado",
+  TRACKING_FOLLOWER_ELIMINADO: "Follower Eliminado",
   PRICING_AIR_CREADO: "Tarifa Aérea Creada",
   PRICING_FCL_CREADO: "Tarifa FCL Creada",
   PRICING_LCL_CREADO: "Tarifa LCL Creada",

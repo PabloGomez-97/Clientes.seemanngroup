@@ -1,11 +1,11 @@
 import { useAuth } from "../../auth/AuthContext";
-import TrackingEmailSettings from "./TrackingEmailSettings";
+import SettingsClient from "./SettingsClient";
 
 function Settings() {
   const { user, activeUsername } = useAuth();
 
   return (
-    <TrackingEmailSettings
+    <SettingsClient
       reference={activeUsername}
       username={user?.nombreuser || user?.username || "Usuario"}
       email={user?.email || ""}

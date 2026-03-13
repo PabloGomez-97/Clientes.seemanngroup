@@ -3,6 +3,7 @@ import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesContext";
+import { useAuditLog } from "../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
 import "./AirShipmentsView.css";
 import { DocumentosSectionAir } from "../Sidebar/Documents/DocumentosSectionAir";
@@ -79,6 +80,7 @@ function AirShipmentsView() {
   const { accessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const reporteriaClientesContext = useReporteriaClientesContext();
+  const { registrarEvento } = useAuditLog();
   const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
@@ -810,6 +812,13 @@ function AirShipmentsView() {
       }
 
       closeTrackModal();
+      registrarEvento({
+        accion: "TRACKING_CREADO",
+        categoria: "TRACKING",
+        descripcion: `Tracking aéreo creado desde envíos: AWB ${cleanAwb}`,
+        detalles: { tipo: "air", awb: cleanAwb, cuenta: activeUsername },
+        clienteAfectado: activeUsername || undefined,
+      });
       if (reporteriaClientesContext) {
         reporteriaClientesContext.openTrackingTab();
       } else {
@@ -1410,7 +1419,13 @@ function AirShipmentsView() {
                                                     className="asv-btn asv-btn--ghost asv-btn--sm"
                                                     onClick={(e) => {
                                                       e.stopPropagation();
-                                                      navigate("/trackings");
+                                                      if (
+                                                        reporteriaClientesContext
+                                                      ) {
+                                                        reporteriaClientesContext.openTrackingTab();
+                                                      } else {
+                                                        navigate("/trackings");
+                                                      }
                                                     }}
                                                   >
                                                     ✓ Ya está siendo trackeado —

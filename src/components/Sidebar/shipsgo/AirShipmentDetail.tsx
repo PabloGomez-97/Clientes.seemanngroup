@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../../auth/AuthContext";
+import { useAuditLog } from "../../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../../hooks/useTrackingEmailPreferences";
 import type {
   AirShipment,
@@ -31,6 +32,7 @@ interface AirShipmentDetailProps {
 
 function AirShipmentDetail({ shipment, onClose }: AirShipmentDetailProps) {
   const { token } = useAuth();
+  const { registrarEvento } = useAuditLog();
   const [detail, setDetail] = useState<AirShipmentDetailType | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
   const [newFollowerEmail, setNewFollowerEmail] = useState("");
@@ -155,6 +157,19 @@ function AirShipmentDetail({ shipment, onClose }: AirShipmentDetailProps) {
             }
           : prev,
       );
+      registrarEvento({
+        accion: "TRACKING_FOLLOWER_AGREGADO",
+        categoria: "TRACKING",
+        descripcion: `Follower agregado al tracking aéreo AWB ${shipment.awb_number}: ${follower}`,
+        detalles: {
+          tipo: "air",
+          shipmentId: String(shipment.id),
+          awb: shipment.awb_number,
+          followerEmail: follower,
+          referencia: shipment.reference,
+        },
+        clienteAfectado: shipment.reference || undefined,
+      });
       setNewFollowerEmail("");
     } catch {
       setFollowerError("No se pudo agregar el correo.");
@@ -190,6 +205,9 @@ function AirShipmentDetail({ shipment, onClose }: AirShipmentDetailProps) {
         return;
       }
 
+      const removedFollower = detail?.followers?.find(
+        (item) => item.id === followerId,
+      );
       setDetail((prev) =>
         prev
           ? {
@@ -200,6 +218,20 @@ function AirShipmentDetail({ shipment, onClose }: AirShipmentDetailProps) {
             }
           : prev,
       );
+      registrarEvento({
+        accion: "TRACKING_FOLLOWER_ELIMINADO",
+        categoria: "TRACKING",
+        descripcion: `Follower eliminado del tracking aéreo AWB ${shipment.awb_number}: ${removedFollower?.email || followerId}`,
+        detalles: {
+          tipo: "air",
+          shipmentId: String(shipment.id),
+          awb: shipment.awb_number,
+          followerId: String(followerId),
+          followerEmail: removedFollower?.email,
+          referencia: shipment.reference,
+        },
+        clienteAfectado: shipment.reference || undefined,
+      });
     } catch {
       setFollowerError("No se pudo eliminar el correo.");
     } finally {

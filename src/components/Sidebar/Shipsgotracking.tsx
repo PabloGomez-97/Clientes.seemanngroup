@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useAuditLog } from "../../hooks/useAuditLog";
 import "./styles/Shipsgotracking.css";
 import AirShipmentDetail from "./shipsgo/AirShipmentDetail";
 import OceanShipmentDetail from "./shipsgo/OceanShipmentDetail";
@@ -46,6 +47,7 @@ function ShipsGoTracking({
 }: ShipsGoTrackingProps = {}) {
   const { token, activeUsername } = useAuth();
   const navigate = useNavigate();
+  const { registrarEvento } = useAuditLog();
   const effectiveUsername = filterUsername || activeUsername;
 
   const [activeTab, setActiveTab] = useState<TabType>("air");
@@ -215,6 +217,20 @@ function ShipsGoTracking({
       if (!response.ok) {
         throw new Error(data.error || "No se pudo eliminar el tracking.");
       }
+
+      const tipoTracking = deleteTarget.type === "air" ? "aéreo" : "marítimo";
+      registrarEvento({
+        accion: "TRACKING_ELIMINADO",
+        categoria: "TRACKING",
+        descripcion: `Tracking ${tipoTracking} eliminado: ${deleteTarget.label}`,
+        detalles: {
+          tipo: deleteTarget.type,
+          shipmentId: String(deleteTarget.id),
+          label: deleteTarget.label,
+          cuenta: effectiveUsername,
+        },
+        clienteAfectado: effectiveUsername || undefined,
+      });
 
       if (deleteTarget.type === "air") {
         const deletedId = String(deleteTarget.id);
