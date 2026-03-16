@@ -60,6 +60,7 @@ import ShipsGoTracking from "./components/Sidebar/Shipsgotracking";
 import CreateShipmentForm from "./components/Sidebar/CreateShipmentForm";
 import CreateOceanShipmentForm from "./components/Sidebar/CreateOceanShipmentForm";
 import Novedades from "./components/Sidebar/Novedades";
+import ShippingOrderView from "./components/Sidebar/ShippingOrder";
 
 // OFF
 import Operacionales from "./components/Sidebar/RO2";
@@ -199,6 +200,7 @@ function App() {
           <Route path="trackings" element={<ShipsGoTracking />} />
           <Route path="ocean-shipments" element={<OceanShipmentsView />} />
           <Route path="ground-shipments" element={<GroundShipmentsView />} />
+          <Route path="shipping-orders" element={<ShippingOrderView />} />
           <Route path="operacionales" element={<Operacionales />} />
           <Route path="envios" element={<Envios />} />
           <Route path="enviosmaritimos" element={<EnviosMaritimos />} />

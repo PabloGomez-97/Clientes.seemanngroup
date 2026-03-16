@@ -76,6 +76,11 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
           icon: "fa fa-folder-open",
         },
         {
+          path: "/shipping-orders",
+          name: t("home.sidebar.shippingOrders"),
+          icon: "fa fa-clipboard-list",
+        },
+        {
           path: "/air-shipments",
           name: t("home.sidebar.airOperations"),
           icon: "fa fa-plane",
