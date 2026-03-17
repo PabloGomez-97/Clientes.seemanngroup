@@ -15,6 +15,10 @@ interface SubMenuItem {
   path: string;
   name: string;
   restrictedTo?: string | string[];
+  badge?: {
+    text: string;
+    type: "new" | "beta" | "admin";
+  };
 }
 
 interface MenuItem {
@@ -30,7 +34,7 @@ interface MenuItem {
 }
 
 interface MenuSection {
-  title: string;
+  title?: string;
   items: MenuItem[];
 }
 
@@ -58,43 +62,47 @@ function SidebarAdmin({
 
   const menuSections: MenuSection[] = [
     {
-      title: "Principal",
       items: [{ path: "/admin/home", name: "Inicio", icon: "fa fa-home" }],
     },
 
     {
-      title: "Operaciones",
       items: [
         {
           path: "/admin/cotizador-administrador",
           name: "Cotizador",
           icon: "fa fa-calculator",
         },
+      ],
+    },
+
+    {
+      items: [
         {
-          path: "/admin/trackeos",
-          name: "Seguimiento de Operaciones",
+          name: "Operaciones",
           icon: "fa fa-route",
-        },
-        {
-          path: "/admin/op-trackeos",
-          name: "Seguimiento (Todos)",
-          icon: "fa fa-globe",
-        },
-        {
-          path: "/admin/reporteriaclientes",
-          name: "Mis Clientes",
-          icon: "fa fa-users",
-        },
-        {
-          path: "/admin/op-reporteriaclientes",
-          name: "Clientes (Todos)",
-          icon: "fa fa-address-book",
+          subItems: [
+            {
+              path: "/admin/trackeos",
+              name: "Seguimiento de Operaciones",
+            },
+            {
+              path: "/admin/op-trackeos",
+              name: "Seguimiento (Todos)",
+            },
+            {
+              path: "/admin/reporteriaclientes",
+              name: "Mis Clientes",
+            },
+            {
+              path: "/admin/op-reporteriaclientes",
+              name: "Clientes (Todos)",
+            },
+          ],
         },
       ],
     },
 
     {
-      title: "Tarifas",
       items: [
         {
           path: "/admin/pricing",
@@ -109,45 +117,45 @@ function SidebarAdmin({
       title: "Reportes",
       items: [
         {
-          path: "/admin/reporteria",
-          name: "Reportería LINBIS",
+          name: "Reportería",
           icon: "fa fa-chart-bar",
-        },
-        {
-          path: "/admin/reportexecutive",
-          name: "Cotizaciones Ejecutivo",
-          icon: "fa fa-file-alt",
-          badge: { text: "CHIEF", type: "admin" as const },
-        },
-        {
-          path: "/admin/reportoperational",
-          name: "Facturaciones Ejecutivo",
-          icon: "fa fa-file-invoice-dollar",
-          badge: { text: "CHIEF", type: "admin" as const },
+          subItems: [
+            {
+              path: "/admin/reporteria",
+              name: "Reportería LINBIS",
+            },
+            {
+              path: "/admin/reportexecutive",
+              name: "Cotizaciones Ejecutivo",
+              badge: { text: "CHIEF", type: "admin" as const },
+            },
+            {
+              path: "/admin/reportoperational",
+              name: "Facturaciones Ejecutivo",
+              badge: { text: "CHIEF", type: "admin" as const },
+            },
+          ],
         },
       ],
     },
 
     {
-      title: "Administración",
       items: [
         {
-          path: "/admin/users",
-          name: "Gestión Usuarios",
+          name: "Administración",
           icon: "fa fa-shield-alt",
-          badge: { text: "CHIEF", type: "admin" as const },
-        },
-      ],
-    },
-
-    {
-      title: "Auditoría",
-      items: [
-        {
-          path: "/admin/auditoria",
-          name: "Auditoría",
-          icon: "fa fa-clipboard-list",
-          badge: { text: "AUDIT", type: "admin" as const },
+          subItems: [
+            {
+              path: "/admin/users",
+              name: "Gestión Usuarios",
+              badge: { text: "CHIEF", type: "admin" as const },
+            },
+            {
+              path: "/admin/auditoria",
+              name: "Auditoría",
+              badge: { text: "AUDIT", type: "admin" as const },
+            },
+          ],
         },
       ],
     },
@@ -284,7 +292,7 @@ function SidebarAdmin({
                 marginBottom: isCollapsed && !isMobile ? "10px" : "4px",
               }}
             >
-              {!isCollapsed ? (
+              {!isCollapsed && section.title ? (
                 <div
                   style={{
                     padding: "20px 20px 8px",
@@ -298,7 +306,7 @@ function SidebarAdmin({
                 >
                   {section.title}
                 </div>
-              ) : sectionIdx > 0 ? (
+              ) : sectionIdx > 0 && isCollapsed ? (
                 <div
                   style={{
                     margin: "8px 14px",
@@ -486,7 +494,9 @@ function SidebarAdmin({
                                       }
                                       onMouseLeave={() => setHoveredItem(null)}
                                       style={{
-                                        display: "block",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
                                         padding: "10px 20px 10px 56px",
                                         cursor: "pointer",
                                         transition: "all 0.12s ease",
@@ -522,7 +532,25 @@ function SidebarAdmin({
                                           opacity: isSubActive ? 1 : 0.5,
                                         }}
                                       />
-                                      {subItem.name}
+                                      <span style={{ flex: 1 }}>
+                                        {subItem.name}
+                                      </span>
+                                      {subItem.badge && (
+                                        <span
+                                          style={{
+                                            padding: "2px 6px",
+                                            borderRadius: "3px",
+                                            fontSize: "9px",
+                                            fontWeight: "600",
+                                            backgroundColor:
+                                              "rgba(255, 255, 255, 0.15)",
+                                            color: colors.text,
+                                            textTransform: "uppercase",
+                                          }}
+                                        >
+                                          {subItem.badge.text}
+                                        </span>
+                                      )}
                                     </a>
                                   </li>
                                 );

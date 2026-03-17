@@ -1,20 +1,10 @@
-﻿import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useCallback,
-  lazy,
-  Suspense,
-} from "react";
+﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { useTranslation } from "react-i18next";
 import { DocumentosSection } from "./Documents/DocumentosSection";
 import "./styles/QuotesView.css";
-
-// Lazy load heavy map component as a single chunk
-const QuotesMap = lazy(() => import("./QuotesMap"));
 
 interface OutletContext {
   accessToken: string;
@@ -846,36 +836,82 @@ function QuotesView() {
   return (
     <div className="qv-container">
       <h2 className="hal-app-name">{t("quotesView.title")}</h2>
-      {/* -- Map --------------------------------------------- */}
+      {/* Image banner */}
       <div
         style={{
-          marginBottom: "32px",
-          height: "350px",
-          borderRadius: "12px",
-          overflow: "hidden",
-          border: "1px solid #e5e7eb",
-          boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
-          zIndex: 1,
           position: "relative",
+          height: 220,
+          overflow: "hidden",
+          background: "#1a1a1a",
+          borderRadius: 12,
+          marginBottom: 24,
         }}
       >
-        <Suspense
-          fallback={
+        <img
+          src="/imo.png"
+          alt="Cotizaciones"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            opacity: 0.75,
+          }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 32px",
+          }}
+        >
+          <div>
             <div
               style={{
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#f3f4f6",
+                display: "inline-block",
+                background: "var(--primary-color)",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                padding: "3px 10px",
+                borderRadius: 3,
+                marginBottom: 10,
               }}
             >
-              {t("quotesView.loading")}
+              Cotizaciones
             </div>
-          }
-        >
-          <QuotesMap />
-        </Suspense>
+            <h2
+              style={{
+                color: "#fff",
+                fontSize: 24,
+                fontWeight: 700,
+                margin: 0,
+                lineHeight: 1.3,
+              }}
+            >
+              Tus cotizaciones
+            </h2>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.78)",
+                fontSize: 14,
+                margin: "8px 0 0",
+                maxWidth: 460,
+              }}
+            >
+              Consulta el detalle, vigencia y estado de todas tus cotizaciones.
+              Desde aquí puedes revisar tarifas y volver a cotizar.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* -- Toolbar (advanced search) ------------------------- */}

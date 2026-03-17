@@ -1,9 +1,27 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
+import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesContext";
+import { useAuditLog } from "../../hooks/useAuditLog";
+import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
+import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
+import { addUniqueEmail } from "../../services/trackingEmailPreferences";
 import { InfoField } from "../shipments/Handlers/Handlersairshipments";
 import "./ShippingOrder.css";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_TRACK_FOLLOWERS = 9;
+const OPERATIONS_FOLLOWER_EMAIL = "operaciones@seemanngroup.com";
+const SOV_API_BASE_URL =
+  import.meta.env.MODE === "development"
+    ? "http://localhost:4000"
+    : "https://portalclientes.seemanngroup.com";
+
+/** Returns true when the tracking number is purely numeric (air AWB), false if it contains letters (ocean). */
+function isAirTrackingNumber(tn: string): boolean {
+  return /^\d+$/.test(tn.replace(/[\s-]/g, ""));
+}
 
 /* ────────────────────────────────────────────
    Types
@@ -303,8 +321,13 @@ function AddressBlock({
 function ShippingOrderView() {
   const { accessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
-  const { activeUsername: authUsername } = useAuth();
+  const reporteriaClientesContext = useReporteriaClientesContext();
+  const { registrarEvento } = useAuditLog();
+  const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
+  const navigate = useNavigate();
+  const { emails: savedTrackingEmails } =
+    useTrackingEmailPreferences(activeUsername);
 
   const [allOrders, setAllOrders] = useState<ShippingOrder[]>([]);
   const [displayedOrders, setDisplayedOrders] = useState<ShippingOrder[]>([]);
@@ -313,6 +336,13 @@ function ShippingOrderView() {
 
   // Accordion
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+
+  // Track modal
+  const [showTrackModal, setShowTrackModal] = useState(false);
+  const [trackOrder, setTrackOrder] = useState<ShippingOrder | null>(null);
+  const [trackEmails, setTrackEmails] = useState<string[]>([""]);
+  const [trackLoading, setTrackLoading] = useState(false);
+  const [trackError, setTrackError] = useState<string | null>(null);
 
   // Pagination
   const [rowsPerPage, setRowsPerPage] = useState(ITEMS_PER_PAGE);
@@ -527,6 +557,191 @@ function ShippingOrderView() {
     }
   };
 
+  /* ── Track Modal ─────────────────────────── */
+  const openTrackModal = (order: ShippingOrder) => {
+    setTrackOrder(order);
+    setTrackEmails([""]);
+    setTrackError(null);
+    setShowTrackModal(true);
+  };
+
+  const closeTrackModal = () => {
+    setShowTrackModal(false);
+    setTrackOrder(null);
+    setTrackEmails([""]);
+    setTrackError(null);
+  };
+
+  const updateTrackEmail = (index: number, value: string) => {
+    setTrackEmails((prev) =>
+      prev.map((email, i) => (i === index ? value : email)),
+    );
+  };
+
+  const addTrackEmailField = () => {
+    setTrackError(null);
+    setTrackEmails((prev) => {
+      if (prev.length >= MAX_TRACK_FOLLOWERS) return prev;
+      return [...prev, ""];
+    });
+  };
+
+  const removeTrackEmailField = (index: number) => {
+    setTrackError(null);
+    setTrackEmails((prev) => {
+      if (prev.length === 1) return [""];
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleSelectSuggestedTrackEmail = (email: string) => {
+    setTrackError(null);
+    setTrackEmails((prev) => addUniqueEmail(prev, email, MAX_TRACK_FOLLOWERS));
+  };
+
+  const handleAddAllSuggestedTrackEmails = () => {
+    setTrackError(null);
+    setTrackEmails((prev) =>
+      savedTrackingEmails.reduce(
+        (curr, email) => addUniqueEmail(curr, email, MAX_TRACK_FOLLOWERS),
+        prev,
+      ),
+    );
+  };
+
+  const handleTrackSubmit = async () => {
+    if (!trackOrder) return;
+
+    const rawTn = (trackOrder.trackingNumber || "").trim();
+    if (!rawTn) {
+      setTrackError("Sin número de seguimiento para este envío.");
+      return;
+    }
+
+    const normalizedEmails = trackEmails
+      .map((e) => e.trim())
+      .filter(Boolean)
+      .filter(
+        (e) => e.toLowerCase() !== OPERATIONS_FOLLOWER_EMAIL.toLowerCase(),
+      );
+
+    if (normalizedEmails.length === 0) {
+      setTrackError("Debes ingresar al menos un correo electrónico.");
+      return;
+    }
+    if (normalizedEmails.length > MAX_TRACK_FOLLOWERS) {
+      setTrackError("Máximo 9 correos electrónicos visibles para seguimiento.");
+      return;
+    }
+    const invalidEmail = normalizedEmails.find((e) => !EMAIL_REGEX.test(e));
+    if (invalidEmail) {
+      setTrackError(`El correo ${invalidEmail} no es válido.`);
+      return;
+    }
+    const uniqueMap = new Map<string, string>();
+    for (const email of normalizedEmails) {
+      const key = email.toLowerCase();
+      if (uniqueMap.has(key)) {
+        setTrackError("No repitas correos electrónicos en el seguimiento.");
+        return;
+      }
+      uniqueMap.set(key, email);
+    }
+    const followers = Array.from(uniqueMap.values());
+
+    if (!token) {
+      setTrackError("Tu sesión expiró. Vuelve a iniciar sesión.");
+      return;
+    }
+
+    setTrackLoading(true);
+    setTrackError(null);
+
+    try {
+      const cleanTn = rawTn.replace(/[\s-]/g, "");
+      const isAir = isAirTrackingNumber(rawTn);
+
+      let response: Response;
+      if (isAir) {
+        response = await fetch(`${SOV_API_BASE_URL}/api/shipsgo/shipments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            reference: activeUsername,
+            awb_number: cleanTn,
+            followers,
+            tags: [],
+          }),
+        });
+      } else {
+        const isContainerNumber = /^[A-Z]{4}[0-9]{7}$/i.test(cleanTn);
+        const payload: Record<string, unknown> = {
+          reference: activeUsername,
+          carrier: "SG_XXXX",
+          followers,
+          tags: [],
+        };
+        if (isContainerNumber) {
+          payload.container_number = cleanTn.toUpperCase();
+        } else {
+          payload.booking_number = cleanTn;
+        }
+        response = await fetch(
+          `${SOV_API_BASE_URL}/api/shipsgo/ocean/shipments`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          },
+        );
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 409)
+          setTrackError("Ya existe un trackeo con este número en tu cuenta.");
+        else if (response.status === 402)
+          setTrackError(
+            "No hay créditos disponibles. Contacta a tu ejecutivo de cuenta.",
+          );
+        else setTrackError(data.error || "Error al crear el trackeo.");
+        return;
+      }
+
+      closeTrackModal();
+      registrarEvento({
+        accion: "TRACKING_CREADO",
+        categoria: "TRACKING",
+        descripcion: `Tracking ${isAir ? "aéreo" : "marítimo"} creado desde Shipping Orders: ${cleanTn}`,
+        detalles: {
+          tipo: isAir ? "air" : "ocean",
+          numero: cleanTn,
+          cuenta: activeUsername,
+        },
+        clienteAfectado: activeUsername || undefined,
+      });
+
+      if (reporteriaClientesContext) {
+        reporteriaClientesContext.openTrackingTab();
+      } else {
+        navigate("/trackings");
+      }
+    } catch {
+      setTrackError(
+        "Error de conexión. Verifica tu internet e intenta nuevamente.",
+      );
+    } finally {
+      setTrackLoading(false);
+    }
+  };
+
   /* ── Floating label input helper ──────────── */
   const FloatingInput = ({
     label,
@@ -597,21 +812,93 @@ function ShippingOrderView() {
 
   return (
     <div className="sov-container">
-      {/* ShipsGo Map Embed */}
-      <div className="sov-map-wrapper">
-        <iframe
-          src={`https://embed.shipsgo.com/?token=${import.meta.env.VITE_SHIPSGO_EMBED_TOKEN}${embedQuery ? `&query=${embedQuery}` : ""}`}
-          width="100%"
-          height="450"
-          frameBorder="0"
-          title="ShipsGo Tracking"
+      {/* Image banner */}
+      <div
+        style={{
+          position: "relative",
+          height: 220,
+          overflow: "hidden",
+          background: "#1a1a1a",
+        }}
+      >
+        <img
+          src="/imo.png"
+          alt="Carga especial"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            opacity: 0.75,
+          }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
         />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 32px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                display: "inline-block",
+                background: "var(--primary-color)",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                padding: "3px 10px",
+                borderRadius: 3,
+                marginBottom: 10,
+              }}
+            >
+              Operaciones Activas
+            </div>
+            <h2
+              style={{
+                color: "#fff",
+                fontSize: 24,
+                fontWeight: 700,
+                margin: 0,
+                lineHeight: 1.3,
+              }}
+            >
+              Etapa Pre-Operacional
+            </h2>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.78)",
+                fontSize: 14,
+                margin: "8px 0 0",
+                maxWidth: 460,
+              }}
+            >
+              La información aquí mostrada es tentativa y puede variar. Aquí
+              recibirás de forma temprana tu AWB o HBL para que puedas iniciar
+              el seguimiento de tu carga antes de que la operación se refleje en
+              las vistas de envíos.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Toolbar */}
       <div
         className="sov-toolbar"
-        style={{ display: "flex", alignItems: "center", gap: "16px" }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginTop: 24,
+        }}
       >
         <div
           className="sov-toolbar__left"
@@ -1027,6 +1314,77 @@ function ShippingOrderView() {
                                             />
                                           </div>
                                         </div>
+
+                                        {/* Tracking card */}
+                                        {(() => {
+                                          const tn = (
+                                            order.trackingNumber || ""
+                                          ).trim();
+                                          const hasTracking = !!tn;
+                                          const trackType = hasTracking
+                                            ? isAirTrackingNumber(tn)
+                                              ? "Aéreo"
+                                              : "Marítimo"
+                                            : null;
+                                          return (
+                                            <div className="sov-card">
+                                              <h4>Seguimiento del Envío</h4>
+                                              <div className="sov-info-grid">
+                                                <div
+                                                  className="asv-track-field"
+                                                  style={{
+                                                    gridColumn: "1 / -1",
+                                                  }}
+                                                >
+                                                  <div className="asv-track-field__label">
+                                                    ¿Quieres trackear tu envío?
+                                                  </div>
+                                                  {hasTracking ? (
+                                                    <button
+                                                      className="sov-btn sov-btn--secondary sov-btn--sm"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openTrackModal(order);
+                                                      }}
+                                                    >
+                                                      Trackear envío {trackType}
+                                                    </button>
+                                                  ) : (
+                                                    <span
+                                                      className="asv-track-field__unavailable"
+                                                      style={{
+                                                        fontSize: "0.8125rem",
+                                                        color: "#9ca3af",
+                                                        fontStyle: "italic",
+                                                      }}
+                                                    >
+                                                      Sin número de seguimiento
+                                                    </span>
+                                                  )}
+                                                </div>
+                                                <InfoField
+                                                  label="Número de Seguimiento"
+                                                  value={tn || "-"}
+                                                  fullWidth
+                                                />
+                                                {trackType && (
+                                                  <InfoField
+                                                    label="Tipo de Tracking"
+                                                    value={trackType}
+                                                  />
+                                                )}
+                                                <InfoField
+                                                  label="Waybill"
+                                                  value={order.waybillNumber}
+                                                />
+                                                <InfoField
+                                                  label="Booking"
+                                                  value={order.bookingNumber}
+                                                />
+                                              </div>
+                                            </div>
+                                          );
+                                        })()}
 
                                         <div className="sov-card">
                                           <h4>Fechas Clave</h4>
@@ -1514,6 +1872,113 @@ function ShippingOrderView() {
           <p className="sov-empty__subtitle">
             No se encontraron shipping orders para tu cuenta
           </p>
+        </div>
+      )}
+
+      {/* Track Modal */}
+      {showTrackModal && trackOrder && (
+        <div className="asv-overlay" onClick={closeTrackModal}>
+          <div
+            className="asv-modal asv-modal--search"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="asv-modal__title">Trackea tu envío</h3>
+
+            <div style={{ marginBottom: 16 }}>
+              <label className="asv-label">
+                {isAirTrackingNumber(trackOrder.trackingNumber || "")
+                  ? "AWB Number"
+                  : "Tracking Number (Contenedor / Booking)"}
+              </label>
+              <input
+                className="asv-input"
+                type="text"
+                value={trackOrder.trackingNumber || ""}
+                disabled
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 8,
+                  gap: 12,
+                }}
+              >
+                <label className="asv-label" style={{ marginBottom: 0 }}>
+                  Correo electrónico para seguimiento
+                </label>
+                <button
+                  type="button"
+                  className="asv-btn asv-btn--ghost asv-btn--sm"
+                  onClick={addTrackEmailField}
+                  disabled={trackEmails.length >= MAX_TRACK_FOLLOWERS}
+                >
+                  +
+                </button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {trackEmails.map((email, index) => (
+                  <div
+                    key={`sov-track-email-${index}`}
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <input
+                      className="asv-input"
+                      type="email"
+                      value={email}
+                      onChange={(e) => updateTrackEmail(index, e.target.value)}
+                      placeholder={`Correo ${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      className="asv-btn asv-btn--ghost asv-btn--sm"
+                      onClick={() => removeTrackEmailField(index)}
+                      disabled={trackEmails.length === 1}
+                    >
+                      -
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <small className="asv-hint">
+                Puedes agregar hasta 9 correos visibles. El correo de
+                operaciones se agrega automáticamente.
+              </small>
+            </div>
+
+            <TrackingEmailSuggestions
+              savedEmails={savedTrackingEmails}
+              selectedEmails={trackEmails.filter((e) => e.trim())}
+              onSelectEmail={handleSelectSuggestedTrackEmail}
+              onAddAll={handleAddAllSuggestedTrackEmails}
+            />
+
+            {trackError && <div className="asv-error">{trackError}</div>}
+
+            <p className="asv-modal__question">
+              ¿Deseas generar el nuevo rastreo de tu envío?
+            </p>
+
+            <div className="asv-modal__actions">
+              <button
+                className="asv-btn asv-btn--ghost"
+                onClick={closeTrackModal}
+              >
+                No
+              </button>
+              <button
+                className="asv-btn asv-btn--primary"
+                onClick={handleTrackSubmit}
+                disabled={trackLoading}
+              >
+                {trackLoading ? "Creando..." : "Sí"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

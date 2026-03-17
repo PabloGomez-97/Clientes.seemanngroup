@@ -157,7 +157,7 @@ export default function ChatWidget() {
                     letterSpacing: "-0.01em",
                   }}
                 >
-                  Seemann Group
+                  Seemann Group [AI Beta]
                 </h3>
                 <p
                   style={{
@@ -267,17 +267,6 @@ export default function ChatWidget() {
                   animation: "fadeIn 0.4s ease-out",
                 }}
               >
-                <p
-                  style={{
-                    fontSize: "15px",
-                    color: "red",
-                    textAlign: "center",
-                    marginBottom: "12px",
-                    fontWeight: "800",
-                  }}
-                >
-                  Nuestro bot se encuentra en estado BETA.
-                </p>
                 <p
                   style={{
                     fontSize: "14px",

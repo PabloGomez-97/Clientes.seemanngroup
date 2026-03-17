@@ -4149,6 +4149,61 @@ Sistema de Cotizaciones Seemann Group
       }
     }
 
+    // POST /api/send-special-quote-email - Notificar al ejecutivo que el cliente necesita cotización especial
+    if (path === '/api/send-special-quote-email' && method === 'POST') {
+      try {
+        const currentUser = await User.findOne({ email: requireAuth(req).sub }).populate('ejecutivoId');
+        if (!currentUser || !currentUser.ejecutivoId) {
+          return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+        }
+
+        const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
+        const ejecutivoNombre = (currentUser.ejecutivoId as any).nombre || 'Ejecutivo';
+        const clienteUsername = currentUser.username || currentUser.email;
+
+        const subject = `Solicitud de cotización especial — ${clienteUsername}`;
+        const textContent = `
+Estimado/a ${ejecutivoNombre},
+
+Tu cliente ${clienteUsername} necesita una cotización de carácter especial y ha solicitado que lo contactes a la brevedad posible.
+
+Por favor, comunícate con él/ella para asistirle con su requerimiento.
+
+Fecha de solicitud: ${new Date().toLocaleString('es-CL')}
+
+Atentamente,
+Sistema de Portal Clientes — Seemann Group
+        `.trim();
+
+        const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'api-key': process.env.BREVO_API_KEY!,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+            to: [{ email: ejecutivoEmail }],
+            subject,
+            textContent,
+          }),
+        });
+
+        if (!brevoResponse.ok) {
+          const errText = await brevoResponse.text();
+          console.error('Error enviando correo especial con Brevo:', errText);
+        }
+
+        return res.status(200).json({ success: true });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('Error en /api/send-special-quote-email:', error);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+    }
+
     // ============================================================
     // RUTAS DE PDF DE COTIZACIONES
     // ============================================================

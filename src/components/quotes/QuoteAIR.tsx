@@ -3302,7 +3302,10 @@ function QuoteAPITester({
         <div className="qa-alert qa-alert-danger mb-4">
           <i className="bi bi-x-circle-fill"></i>
           <div className="w-100">
-            <strong>{t("QuoteAIR.error")}</strong>
+            <strong>
+              Haz permanecido inactivo mucho tiempo, actualiza la página e
+              intenta nuevamente.
+            </strong>
             <pre
               className="mt-2 bg-white p-2 rounded small text-danger border"
               style={{ maxHeight: "200px", overflow: "auto" }}

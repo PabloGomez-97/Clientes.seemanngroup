@@ -2836,7 +2836,10 @@ function QuoteLCL({
       {error && (
         <div className="qa-alert qa-alert-danger">
           <div>
-            <strong>{t("QuoteLCL.error")}</strong>
+            <strong>
+              Haz permanecido mucho tiempo inactivo, por favor actualiza la
+              página.
+            </strong>
             <pre
               style={{
                 backgroundColor: "transparent",

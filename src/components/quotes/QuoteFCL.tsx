@@ -2501,7 +2501,8 @@ function QuoteFCL({
         <div className="qf-alert qf-alert-danger mb-4">
           <div>
             <h5 className="alert-heading h6 fw-bold">
-              ❌ Error en la Cotización
+              ❌ Error en la Cotización, has permanecido inactivo mucho tiempo,
+              actualiza la página e intenta nuevamente.
             </h5>
             <p className="mb-0">{error}</p>
           </div>

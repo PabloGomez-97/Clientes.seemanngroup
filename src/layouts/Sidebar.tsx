@@ -28,7 +28,7 @@ interface MenuItem {
 }
 
 interface MenuSection {
-  title: string;
+  title?: string;
   items: MenuItem[];
 }
 
@@ -57,48 +57,51 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
 
   const menuSections: MenuSection[] = [
     {
-      title: t("home.sidebar.dashboard"),
+      items: [{ path: "/", name: t("home.sidebar.home"), icon: "fa fa-home" }],
+    },
+    {
       items: [
-        { path: "/", name: t("home.sidebar.home"), icon: "fa fa-home" },
         {
-          path: "/newquotes",
-          name: t("home.sidebar.quoteHere"),
+          name: t("home.sidebar.quote"),
           icon: "fa fa-calculator",
+          subItems: [
+            { path: "/newquotes", name: t("home.sidebar.newQuote") },
+            {
+              path: "/cotizacion-especial",
+              name: t("home.sidebar.specialQuote"),
+            },
+            { path: "/quotes", name: t("home.sidebar.quotes") },
+          ],
         },
       ],
     },
     {
-      title: t("home.sidebar.quotesOperations"),
       items: [
         {
-          path: "/quotes",
-          name: t("home.sidebar.quotes"),
+          name: t("home.sidebar.operations"),
           icon: "fa fa-folder-open",
-        },
-        {
-          path: "/shipping-orders",
-          name: t("home.sidebar.shippingOrders"),
-          icon: "fa fa-clipboard-list",
-        },
-        {
-          path: "/air-shipments",
-          name: t("home.sidebar.airOperations"),
-          icon: "fa fa-plane",
-        },
-        {
-          path: "/ocean-shipments",
-          name: t("home.sidebar.oceanOperations"),
-          icon: "fa fa-ship",
-        },
-        {
-          path: "/ground-shipments",
-          name: t("home.sidebar.groundOperations"),
-          icon: "fa fa-truck",
+          subItems: [
+            {
+              path: "/shipping-orders",
+              name: t("home.sidebar.shippingOrders"),
+            },
+            {
+              path: "/air-shipments",
+              name: t("home.sidebar.airOperations"),
+            },
+            {
+              path: "/ocean-shipments",
+              name: t("home.sidebar.oceanOperations"),
+            },
+            {
+              path: "/ground-shipments",
+              name: t("home.sidebar.groundOperations"),
+            },
+          ],
         },
       ],
     },
     {
-      title: t("home.sidebar.news"),
       items: [
         {
           path: "/novedades",
@@ -108,27 +111,25 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
       ],
     },
     {
-      title: t("home.sidebar.trackingOperations"),
       items: [
         {
-          path: "/new-tracking",
-          name: t("home.sidebar.trackNewShipment"),
+          name: t("home.sidebar.track"),
           icon: "fa fa-route",
-        },
-        {
-          path: "/new-ocean-tracking",
-          name: t("home.sidebar.trackNewOceanShipment"),
-          icon: "fa fa-ship",
-        },
-        {
-          path: "/trackings",
-          name: t("home.sidebar.myShipments"),
-          icon: "fa fa-route",
+          subItems: [
+            {
+              path: "/new-tracking",
+              name: t("home.sidebar.trackNewShipment"),
+            },
+            {
+              path: "/new-ocean-tracking",
+              name: t("home.sidebar.trackNewOceanShipment"),
+            },
+            { path: "/trackings", name: t("home.sidebar.myShipments") },
+          ],
         },
       ],
     },
     {
-      title: t("home.sidebar.reports"),
       items: [
         {
           name: t("home.sidebar.reporting"),
@@ -318,7 +319,7 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                 marginBottom: isCollapsed && !isMobile ? "10px" : "4px",
               }}
             >
-              {!isCollapsed ? (
+              {!isCollapsed && section.title ? (
                 <div
                   style={{
                     padding: "20px 20px 8px",
@@ -332,7 +333,7 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                 >
                   {section.title}
                 </div>
-              ) : sectionIdx > 0 ? (
+              ) : sectionIdx > 0 && isCollapsed ? (
                 <div
                   style={{
                     margin: "8px 14px",
