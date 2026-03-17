@@ -17,6 +17,7 @@ import {
   SubShipmentsList,
 } from "../shipments/Handlers/Handlersairshipments";
 import { MUNDOGAMING_DUMMY_SHIPMENTS } from "./Handlers/mundogamingDummyData";
+import { linbisFetch } from "../../services/linbisFetch";
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -77,7 +78,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    MAIN COMPONENT
     */
 function AirShipmentsView() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const reporteriaClientesContext = useReporteriaClientesContext();
   const { registrarEvento } = useAuditLog();
@@ -267,21 +268,20 @@ function AirShipmentsView() {
           SortBy: "newest",
         });
 
-        const response = await fetch(
+        const response = await linbisFetch(
           `https://api.linbis.com/air-shipments?${queryParams}`,
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
               "Content-Type": "application/json",
             },
           },
+          accessToken,
+          refreshAccessToken,
         );
 
         if (!response.ok) {
-          if (response.status === 401)
-            throw new Error("Token inválido o expirado.");
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
 
@@ -383,16 +383,17 @@ function AirShipmentsView() {
     parentShipmentLoadingIds.current.add(shipmentId);
 
     try {
-      const response = await fetch(
+      const response = await linbisFetch(
         `https://api.linbis.com/air-shipments/details/${shipmentId}`,
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json",
             "Content-Type": "application/json",
           },
         },
+        accessToken,
+        refreshAccessToken,
       );
 
       if (!response.ok) {

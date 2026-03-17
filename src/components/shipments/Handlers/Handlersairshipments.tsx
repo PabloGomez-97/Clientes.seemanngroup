@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 export interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 

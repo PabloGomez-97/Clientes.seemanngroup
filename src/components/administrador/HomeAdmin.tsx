@@ -5,6 +5,7 @@ import { useAuth } from "../../auth/AuthContext";
 
 interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 

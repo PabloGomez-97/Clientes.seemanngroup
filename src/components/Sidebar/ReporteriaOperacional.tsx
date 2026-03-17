@@ -17,12 +17,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import "./styles/ReporteriaOperacional.css";
+import { linbisFetch } from "../../services/linbisFetch";
 
 /* ============================================================
    TYPES
    ============================================================ */
 interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 
@@ -172,7 +174,7 @@ const shortenLocation = (loc: string): string => {
    COMPONENT
    ============================================================ */
 function ShipmentsView() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const { activeUsername } = useAuth();
   const { t } = useTranslation();
 
@@ -207,20 +209,19 @@ function ShipmentsView() {
           SortBy: "newest",
         });
 
-        const res = await fetch(
+        const res = await linbisFetch(
           `https://api.linbis.com/shipments/all?${params}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
               "Content-Type": "application/json",
             },
           },
+          accessToken,
+          refreshAccessToken,
         );
 
         if (!res.ok) {
-          if (res.status === 401)
-            throw new Error(t("reportOperational.tokenExpired"));
           throw new Error(`Error ${res.status}: ${res.statusText}`);
         }
 

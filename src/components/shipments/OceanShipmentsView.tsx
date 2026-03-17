@@ -17,6 +17,7 @@ import { DocumentosSectionOcean } from "../Sidebar/Documents/DocumentosSectionOc
 import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
 import { addUniqueEmail } from "../../services/trackingEmailPreferences";
 import "./OceanShipmentsView.css";
+import { linbisFetch } from "../../services/linbisFetch";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -79,7 +80,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    MAIN COMPONENT
    =========================================================== */
 function OceanShipmentsView() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const reporteriaClientesContext = useReporteriaClientesContext();
   const { registrarEvento } = useAuditLog();
@@ -216,14 +217,18 @@ function OceanShipmentsView() {
     if (!accessToken) return;
     setLoadingQuote(true);
     try {
-      const response = await fetch("https://api.linbis.com/Quotes", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-          "Content-Type": "application/json",
+      const response = await linbisFetch(
+        "https://api.linbis.com/Quotes",
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
         },
-      });
+        accessToken,
+        refreshAccessToken,
+      );
       if (!response.ok) throw new Error(`Error ${response.status}`);
       const data = await response.json();
       const quotesArray: Quote[] = Array.isArray(data) ? data : [];
@@ -284,16 +289,17 @@ function OceanShipmentsView() {
     oceanTrackingLoadingIds.current.add(shipmentId);
 
     try {
-      const response = await fetch(
+      const response = await linbisFetch(
         `https://api.linbis.com/ocean-shipments/details/${shipmentId}`,
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json",
             "Content-Type": "application/json",
           },
         },
+        accessToken,
+        refreshAccessToken,
       );
 
       if (!response.ok) {
@@ -332,21 +338,20 @@ function OceanShipmentsView() {
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await linbisFetch(
         "https://api.linbis.com/ocean-shipments/all",
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json",
             "Content-Type": "application/json",
           },
         },
+        accessToken,
+        refreshAccessToken,
       );
 
       if (!response.ok) {
-        if (response.status === 401)
-          throw new Error("Token invalido o expirado.");
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 

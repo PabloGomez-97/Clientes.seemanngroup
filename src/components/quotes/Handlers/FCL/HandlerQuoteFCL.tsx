@@ -3,6 +3,7 @@ export const GOOGLE_SHEET_CSV_URL =
 
 export interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 

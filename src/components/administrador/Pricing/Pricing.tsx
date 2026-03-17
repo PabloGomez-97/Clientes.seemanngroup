@@ -16,6 +16,7 @@ import { AirportAutocomplete } from "../Utils/Airportautocomplete";
 
 interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 

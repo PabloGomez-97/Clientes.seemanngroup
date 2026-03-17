@@ -32,6 +32,7 @@ interface User {
 
 interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 

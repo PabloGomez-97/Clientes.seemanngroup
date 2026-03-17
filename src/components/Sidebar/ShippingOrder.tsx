@@ -9,6 +9,7 @@ import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
 import { addUniqueEmail } from "../../services/trackingEmailPreferences";
 import { InfoField } from "../shipments/Handlers/Handlersairshipments";
 import "./ShippingOrder.css";
+import { linbisFetch } from "../../services/linbisFetch";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_TRACK_FOLLOWERS = 9;
@@ -29,6 +30,7 @@ function isAirTrackingNumber(tn: string): boolean {
 
 interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 
@@ -319,7 +321,7 @@ function AddressBlock({
    ──────────────────────────────────────────── */
 
 function ShippingOrderView() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const reporteriaClientesContext = useReporteriaClientesContext();
   const { registrarEvento } = useAuditLog();
@@ -423,21 +425,20 @@ function ShippingOrderView() {
         localStorage.removeItem(`${cacheKey}_timestamp`);
       }
 
-      const response = await fetch(
+      const response = await linbisFetch(
         "https://api.linbis.com/api/shipping-orders?PageNumber=1&PageSize=9999",
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json",
             "Content-Type": "application/json",
           },
         },
+        accessToken,
+        refreshAccessToken,
       );
 
       if (!response.ok) {
-        if (response.status === 401)
-          throw new Error("Token inválido o expirado.");
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 

@@ -42,13 +42,14 @@ import "./QuoteAIR.css";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getAirportByOrigin } from "../../config/airportCoordinates";
+import { linbisFetch } from "../../services/linbisFetch";
 
 function QuoteAPITester({
   preselectedOrigin,
   preselectedDestination,
   isEjecutivoMode = false,
 }: QuoteAIRProps = {}) {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const { user, token, activeUsername, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
@@ -905,14 +906,15 @@ function QuoteAPITester({
       // Obtener el ID máximo de cotización ANTES de crear la nueva
       let previousMaxId = 0;
       try {
-        const preRes = await fetch(
+        const preRes = await linbisFetch(
           `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername)}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
             },
           },
+          accessToken,
+          refreshAccessToken,
         );
         if (preRes.ok) {
           const preData = await preRes.json();
@@ -930,14 +932,18 @@ function QuoteAPITester({
 
       const payload = getTestPayload();
 
-      const res = await fetch("https://api.linbis.com/Quotes/create", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+      const res = await linbisFetch(
+        "https://api.linbis.com/Quotes/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+        accessToken,
+        refreshAccessToken,
+      );
 
       if (!res.ok) {
         const errorText = await res.text();
@@ -1129,14 +1135,15 @@ function QuoteAPITester({
         );
         await new Promise((r) => setTimeout(r, 2000));
 
-        const linbisRes = await fetch(
+        const linbisRes = await linbisFetch(
           `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername)}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
             },
           },
+          accessToken,
+          refreshAccessToken,
         );
 
         if (linbisRes.ok) {

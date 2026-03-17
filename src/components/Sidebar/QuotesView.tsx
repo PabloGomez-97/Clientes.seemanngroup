@@ -4,10 +4,12 @@ import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { useTranslation } from "react-i18next";
 import { DocumentosSection } from "./Documents/DocumentosSection";
+import { linbisFetch } from "../../services/linbisFetch";
 import "./styles/QuotesView.css";
 
 interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 
@@ -203,7 +205,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    =========================================================== */
 
 function QuotesView() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const { user, token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
@@ -383,21 +385,20 @@ function QuotesView() {
         SortBy: "newest",
       });
 
-      const response = await fetch(
+      const response = await linbisFetch(
         `https://api.linbis.com/Quotes?${queryParams}`,
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json",
             "Content-Type": "application/json",
           },
         },
+        accessToken,
+        refreshAccessToken,
       );
 
       if (!response.ok) {
-        if (response.status === 401)
-          throw new Error("Token invalido o expirado.");
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 

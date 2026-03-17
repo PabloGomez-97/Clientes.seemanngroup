@@ -6,6 +6,7 @@ import { useClientOverride } from "../../../contexts/ClientOverrideContext";
 
 interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 

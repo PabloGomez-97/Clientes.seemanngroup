@@ -18,9 +18,11 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import "./styles/ReporteriaFinanciera.css";
+import { linbisFetch } from "../../services/linbisFetch";
 
 interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 
@@ -168,7 +170,7 @@ function StatusBadge({ status }: { status: "paid" | "pending" | "overdue" }) {
    =========================================================== */
 
 function ReporteriaFinanciera() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const { activeUsername } = useAuth();
   const { t } = useTranslation();
 
@@ -349,22 +351,20 @@ function ReporteriaFinanciera() {
         SortBy: "newest",
       });
 
-      const response = await fetch(
+      const response = await linbisFetch(
         `https://api.linbis.com/invoices?${queryParams}`,
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json",
             "Content-Type": "application/json",
           },
         },
+        accessToken,
+        refreshAccessToken,
       );
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error(t("reportFinancial.tokenError"));
-        }
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 

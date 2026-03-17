@@ -37,13 +37,14 @@ import {
   OversizeNotifyExecutive,
   type OversizeReason,
 } from "./Handlers/Air/OversizeNotifyExecutive";
+import { linbisFetch } from "../../services/linbisFetch";
 
 function QuoteLCL({
   preselectedPOL,
   preselectedPOD,
   isEjecutivoMode = false,
 }: QuoteLCLProps = {}) {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const token = accessToken;
   const { user, token: jwtToken, activeUsername, getMisClientes } = useAuth();
   const ejecutivo = user?.ejecutivo;
@@ -887,14 +888,15 @@ function QuoteLCL({
       // Obtener el ID máximo de cotización ANTES de crear la nueva
       let previousMaxId = 0;
       try {
-        const preRes = await fetch(
+        const preRes = await linbisFetch(
           `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername || "")}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
             },
           },
+          accessToken,
+          refreshAccessToken,
         );
         if (preRes.ok) {
           const preData = await preRes.json();
@@ -912,14 +914,18 @@ function QuoteLCL({
 
       const payload = getTestPayload();
 
-      const res = await fetch("https://api.linbis.com/Quotes/create", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+      const res = await linbisFetch(
+        "https://api.linbis.com/Quotes/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+        accessToken,
+        refreshAccessToken,
+      );
 
       if (!res.ok) {
         const errorText = await res.text();
@@ -1123,14 +1129,15 @@ function QuoteLCL({
         );
         await new Promise((r) => setTimeout(r, 2000));
 
-        const linbisRes = await fetch(
+        const linbisRes = await linbisFetch(
           `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername || "")}`,
           {
             headers: {
-              Authorization: `Bearer ${accessToken}`,
               Accept: "application/json",
             },
           },
+          accessToken,
+          refreshAccessToken,
         );
 
         if (linbisRes.ok) {

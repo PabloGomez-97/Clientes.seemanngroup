@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import ChatWidget from "../components/ChatWidget";
+import { useLinbisToken } from "../hooks/useLinbisToken";
 
 const MOBILE_BREAKPOINT = 768;
 
@@ -13,9 +14,7 @@ const isMobileViewport = () =>
 
 function UserLayout() {
   const { t } = useTranslation();
-  const [accessToken, setAccessToken] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { accessToken, loading, error, refreshAccessToken } = useLinbisToken();
   const [isMobile, setIsMobile] = useState(isMobileViewport);
   const [hasUserPref, setHasUserPref] = useState<boolean>(() => {
     try {
@@ -35,36 +34,6 @@ function UserLayout() {
     return isMobileViewport();
   });
 
-  // Obtener token de Linbis automáticamente al cargar
-  useEffect(() => {
-    const fetchLinbisToken = async () => {
-      const startTime = Date.now();
-
-      try {
-        const response = await fetch("/api/linbis-token");
-        if (!response.ok) {
-          throw new Error("No se pudo obtener el token de Linbis");
-        }
-        const data = await response.json();
-        setAccessToken(data.token);
-        setError(null);
-      } catch (err) {
-        console.error("Error obteniendo token de Linbis:", err);
-        setError(err instanceof Error ? err.message : "Error desconocido");
-      } finally {
-        // Asegurar que el loading se muestre por al menos 1 segundos
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, 500 - elapsedTime);
-
-        setTimeout(() => {
-          setLoading(false);
-        }, remainingTime);
-      }
-    };
-
-    fetchLinbisToken();
-  }, []);
-
   useEffect(() => {
     const handleResize = () => {
       const mobile = isMobileViewport();
@@ -83,8 +52,7 @@ function UserLayout() {
   }, [hasUserPref]);
 
   const handleLogout = () => {
-    setAccessToken("");
-    setError(null);
+    // Token state is managed by useLinbisToken hook
   };
 
   const toggleSidebar = () => {
@@ -255,7 +223,13 @@ function UserLayout() {
           className="flex-fill p-4"
           style={{ overflowY: "auto", backgroundColor: "#f8f9fa" }}
         >
-          <Outlet context={{ accessToken, onLogout: handleLogout }} />
+          <Outlet
+            context={{
+              accessToken,
+              refreshAccessToken,
+              onLogout: handleLogout,
+            }}
+          />
         </div>
       </div>
       <ChatWidget />

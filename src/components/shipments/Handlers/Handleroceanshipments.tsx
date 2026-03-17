@@ -53,6 +53,7 @@ export interface OceanShipment {
 
 export interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 

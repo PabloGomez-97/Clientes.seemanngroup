@@ -10,6 +10,7 @@ import type { OutletContext } from "./Handlers/Handleroceanshipments";
 import { MUNDOGAMING_DUMMY_GROUND_SHIPMENTS } from "./Handlers/mundogamingDummyGroundData";
 import { DocumentosSectionGround } from "../Sidebar/Documents/DocumentosSectionGround";
 import "./GroundShipmentsView.css";
+import { linbisFetch } from "../../services/linbisFetch";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
 
@@ -53,7 +54,7 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    MAIN COMPONENT
    =========================================================== */
 function GroundShipmentsView() {
-  const { accessToken } = useOutletContext<OutletContext>();
+  const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const { activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
@@ -162,21 +163,20 @@ function GroundShipmentsView() {
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await linbisFetch(
         "https://api.linbis.com/ground-shipments/all",
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json",
             "Content-Type": "application/json",
           },
         },
+        accessToken,
+        refreshAccessToken,
       );
 
       if (!response.ok) {
-        if (response.status === 401)
-          throw new Error("Token invalido o expirado.");
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 

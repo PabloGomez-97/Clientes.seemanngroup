@@ -1,10 +1,19 @@
-import { useState, useEffect } from 'react';
-import { Card, Container, Row, Col, Spinner, Alert, Badge } from 'react-bootstrap';
-import { useOutletContext } from 'react-router-dom';
-import { useAuth } from '../../auth/AuthContext';
+import { useState, useEffect } from "react";
+import {
+  Card,
+  Container,
+  Row,
+  Col,
+  Spinner,
+  Alert,
+  Badge,
+} from "react-bootstrap";
+import { useOutletContext } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 
 interface OutletContext {
   accessToken: string;
+  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
 }
 
@@ -75,13 +84,13 @@ interface CacheData {
 }
 
 // Constantes para el caché
-const CACHE_KEY = 'shipping_orders_cache_v1'; // Versión 1 del caché
+const CACHE_KEY = "shipping_orders_cache_v1"; // Versión 1 del caché
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hora en milisegundos
 
 const Reporteria: React.FC = () => {
   const { accessToken, onLogout } = useOutletContext<OutletContext>();
   const { user } = useAuth();
-  
+
   const [shippingOrders, setShippingOrders] = useState<ShippingOrder[]>([]);
   const [userOrders, setUserOrders] = useState<ShippingOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -93,13 +102,19 @@ const Reporteria: React.FC = () => {
   const isCacheValid = (cacheData: CacheData): boolean => {
     const now = Date.now();
     const cacheAge = now - cacheData.timestamp;
-    const isValid = (
-      cacheAge < CACHE_DURATION && 
-      cacheData.version === 'v1' &&
-      cacheData.username === user?.username
+    const isValid =
+      cacheAge < CACHE_DURATION &&
+      cacheData.version === "v1" &&
+      cacheData.username === user?.username;
+
+    console.log(
+      "Caché válido:",
+      isValid,
+      "Edad del caché (ms):",
+      cacheAge,
+      "Límite (ms):",
+      CACHE_DURATION,
     );
-    
-    console.log('Caché válido:', isValid, 'Edad del caché (ms):', cacheAge, 'Límite (ms):', CACHE_DURATION);
     return isValid;
   };
 
@@ -107,24 +122,24 @@ const Reporteria: React.FC = () => {
   const getFromCache = (): CacheData | null => {
     try {
       const cacheStr = localStorage.getItem(CACHE_KEY);
-      console.log('Datos en caché encontrados:', cacheStr ? 'Sí' : 'No');
-      
+      console.log("Datos en caché encontrados:", cacheStr ? "Sí" : "No");
+
       if (!cacheStr) return null;
 
       const cacheData: CacheData = JSON.parse(cacheStr);
-      console.log('Datos del caché parseados:', !!cacheData);
-      
+      console.log("Datos del caché parseados:", !!cacheData);
+
       if (isCacheValid(cacheData)) {
-        console.log('Usando datos del caché');
+        console.log("Usando datos del caché");
         setCacheTimestamp(new Date(cacheData.timestamp));
         return cacheData;
       } else {
-        console.log('Caché expirado o inválido, eliminando');
+        console.log("Caché expirado o inválido, eliminando");
         localStorage.removeItem(CACHE_KEY);
         return null;
       }
     } catch (error) {
-      console.error('Error al leer del caché:', error);
+      console.error("Error al leer del caché:", error);
       localStorage.removeItem(CACHE_KEY); // Eliminar caché corrupto
       return null;
     }
@@ -138,26 +153,31 @@ const Reporteria: React.FC = () => {
         timestamp: timestamp,
         shippingOrders: data,
         username: user?.username || null,
-        version: 'v1'
+        version: "v1",
       };
-      
-      console.log('Guardando en caché', data.length, 'órdenes. Timestamp:', new Date(timestamp));
+
+      console.log(
+        "Guardando en caché",
+        data.length,
+        "órdenes. Timestamp:",
+        new Date(timestamp),
+      );
       localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-      console.log('Datos guardados en caché correctamente');
+      console.log("Datos guardados en caché correctamente");
     } catch (error) {
-      console.error('Error al guardar en caché:', error);
+      console.error("Error al guardar en caché:", error);
       // Intenta eliminar el caché si hay error al guardar
       try {
         localStorage.removeItem(CACHE_KEY);
       } catch (e) {
-        console.error('No se pudo eliminar el caché corrupto');
+        console.error("No se pudo eliminar el caché corrupto");
       }
     }
   };
 
   // Función para forzar recarga desde API
   const forceRefresh = () => {
-    console.log('Forzando recarga desde API');
+    console.log("Forzando recarga desde API");
     localStorage.removeItem(CACHE_KEY);
     setLoading(true);
     setUsingCache(false);
@@ -166,45 +186,53 @@ const Reporteria: React.FC = () => {
 
   // Función para procesar órdenes de envío
   const processShippingOrders = (orders: ShippingOrder[]) => {
-    console.log('Procesando', orders.length, 'órdenes de envío');
+    console.log("Procesando", orders.length, "órdenes de envío");
     // Almacenar todas las órdenes
     setShippingOrders(orders);
-    
+
     // Filtrar por el nombre del consignatario en lugar del ID
     if (user?.username) {
-      const userSpecificOrders = orders.filter(order => 
-        order.consignee && order.consignee.name === user.username
+      const userSpecificOrders = orders.filter(
+        (order) => order.consignee && order.consignee.name === user.username,
       );
-      console.log('Filtradas', userSpecificOrders.length, 'órdenes para el usuario', user.username);
+      console.log(
+        "Filtradas",
+        userSpecificOrders.length,
+        "órdenes para el usuario",
+        user.username,
+      );
       setUserOrders(userSpecificOrders);
     } else {
       // Si no hay nombre de usuario disponible, mostrar todas las órdenes
-      console.log('Ningún usuario específico, mostrando todas las órdenes');
+      console.log("Ningún usuario específico, mostrando todas las órdenes");
       setUserOrders(orders);
     }
   };
 
   // Función para obtener datos de la API
   const fetchShippingOrdersFromAPI = async () => {
-    console.log('Obteniendo datos de la API...');
+    console.log("Obteniendo datos de la API...");
     try {
       if (!accessToken) {
-        console.error('No hay accessToken, cerrando sesión');
+        console.error("No hay accessToken, cerrando sesión");
         onLogout();
         return;
       }
 
-      const response = await fetch('https://api.linbis.com/api/shipping-orders?PageNumber=1&PageSize=3324', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await fetch(
+        "https://api.linbis.com/api/shipping-orders?PageNumber=1&PageSize=3324",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        },
+      );
 
       if (!response.ok) {
-        console.error('Error en la respuesta de la API:', response.status);
+        console.error("Error en la respuesta de la API:", response.status);
         if (response.status === 401) {
           onLogout();
           return;
@@ -212,24 +240,26 @@ const Reporteria: React.FC = () => {
         throw new Error(`Error API: ${response.status}`);
       }
 
-      console.log('Respuesta de la API recibida, procesando datos...');
+      console.log("Respuesta de la API recibida, procesando datos...");
       const data: ShippingOrdersResponse = await response.json();
-      
+
       if (data && data.shippingOrders && data.shippingOrders.items) {
-        console.log('Datos válidos recibidos de la API, guardando en caché...');
+        console.log("Datos válidos recibidos de la API, guardando en caché...");
         // Guardar en caché
         saveToCache(data.shippingOrders.items);
-        
+
         // Procesar los datos
         processShippingOrders(data.shippingOrders.items);
         setUsingCache(false);
       } else {
-        console.error('Formato de datos inválido recibido de la API');
-        throw new Error('Formato de datos inválido recibido de la API');
+        console.error("Formato de datos inválido recibido de la API");
+        throw new Error("Formato de datos inválido recibido de la API");
       }
     } catch (err) {
-      console.error('Error completo al obtener órdenes de envío:', err);
-      setError(err instanceof Error ? err.message : 'Ocurrió un error desconocido');
+      console.error("Error completo al obtener órdenes de envío:", err);
+      setError(
+        err instanceof Error ? err.message : "Ocurrió un error desconocido",
+      );
     } finally {
       setLoading(false);
     }
@@ -239,25 +269,31 @@ const Reporteria: React.FC = () => {
   useEffect(() => {
     const fetchShippingOrders = async () => {
       try {
-        console.log('Iniciando carga de datos, verificando caché primero...');
+        console.log("Iniciando carga de datos, verificando caché primero...");
         // Primero verificamos si tenemos datos válidos en caché
         const cachedData = getFromCache();
-        
+
         if (cachedData && cachedData.shippingOrders.length > 0) {
           // Usar datos en caché
-          console.log('Usando', cachedData.shippingOrders.length, 'órdenes del caché');
+          console.log(
+            "Usando",
+            cachedData.shippingOrders.length,
+            "órdenes del caché",
+          );
           processShippingOrders(cachedData.shippingOrders);
           setUsingCache(true);
           setLoading(false);
           return;
         }
 
-        console.log('No hay caché válido disponible, obteniendo de la API...');
+        console.log("No hay caché válido disponible, obteniendo de la API...");
         // Si no hay caché válido, obtener de la API
         await fetchShippingOrdersFromAPI();
       } catch (err) {
-        console.error('Error en el flujo principal:', err);
-        setError(err instanceof Error ? err.message : 'Ocurrió un error desconocido');
+        console.error("Error en el flujo principal:", err);
+        setError(
+          err instanceof Error ? err.message : "Ocurrió un error desconocido",
+        );
         setLoading(false);
       }
     };
@@ -281,69 +317,69 @@ const Reporteria: React.FC = () => {
 
   // Helper function to format weight with UOM
   const formatWeight = (weight: number, uom: number) => {
-    const unit = uom === 2 ? 'kg' : 'lb';
+    const unit = uom === 2 ? "kg" : "lb";
     return `${weight.toLocaleString()} ${unit}`;
   };
 
   // Helper function to format volume with UOM
   const formatVolume = (volume: number, uom: number) => {
-    const unit = uom === 2 ? 'm³' : 'ft³';
-    return `${volume.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} ${unit}`;
+    const unit = uom === 2 ? "m³" : "ft³";
+    return `${volume.toLocaleString("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} ${unit}`;
   };
 
   // Format date directly without external utility
   const formatDate = (dateString: string | null): string => {
-    if (!dateString) return 'N/A';
-    
+    if (!dateString) return "N/A";
+
     try {
       const date = new Date(dateString);
-      
+
       if (isNaN(date.getTime())) {
-        return 'N/A';
+        return "N/A";
       }
-      
-      return new Intl.DateTimeFormat('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
+
+      return new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
       }).format(date);
     } catch {
-      return 'N/A';
+      return "N/A";
     }
   };
 
   // Función para formatear el tiempo restante del caché
   const formatCacheTimeRemaining = () => {
-    if (!cacheTimestamp) return '';
-    
+    if (!cacheTimestamp) return "";
+
     const expiryTime = new Date(cacheTimestamp.getTime() + CACHE_DURATION);
     const now = new Date();
     const remainingMs = expiryTime.getTime() - now.getTime();
-    
-    if (remainingMs <= 0) return 'Caché expirado';
-    
+
+    if (remainingMs <= 0) return "Caché expirado";
+
     const remainingMinutes = Math.floor(remainingMs / (60 * 1000));
     const remainingSeconds = Math.floor((remainingMs % (60 * 1000)) / 1000);
-    
+
     return `${remainingMinutes}m ${remainingSeconds}s`;
   };
 
   return (
     <Container fluid className="mt-4">
       <h2>Shipping Operations Reports</h2>
-      
+
       {/* Indicador de datos en caché */}
       {usingCache && !loading && !error && (
-        <Alert variant="info" className="d-flex justify-content-between align-items-center">
+        <Alert
+          variant="info"
+          className="d-flex justify-content-between align-items-center"
+        >
           <div>
             <strong>Datos cargados desde caché local</strong>
             <div>Tiempo restante: {formatCacheTimeRemaining()}</div>
             <div>Caché creado: {cacheTimestamp?.toLocaleTimeString()}</div>
           </div>
-          <button 
-            className="btn btn-sm btn-primary" 
-            onClick={forceRefresh}
-          >
+          <button className="btn btn-sm btn-primary" onClick={forceRefresh}>
             Actualizar datos
           </button>
         </Alert>
@@ -364,8 +400,8 @@ const Reporteria: React.FC = () => {
         <Alert variant="danger">
           <strong>Error:</strong> {error}
           <div className="mt-2">
-            <button 
-              className="btn btn-sm btn-outline-danger" 
+            <button
+              className="btn btn-sm btn-outline-danger"
               onClick={forceRefresh}
             >
               Reintentar
@@ -383,7 +419,7 @@ const Reporteria: React.FC = () => {
 
       {/* Shipping order cards */}
       <Row xs={1} md={2} lg={3} className="g-4">
-        {userOrders.map(order => (
+        {userOrders.map((order) => (
           <Col key={order.id}>
             <Card className="h-100 shadow-sm">
               <Card.Header className="d-flex justify-content-between align-items-center">
@@ -392,39 +428,43 @@ const Reporteria: React.FC = () => {
               </Card.Header>
               <Card.Body>
                 <Card.Title>
-                  {order.consignee?.name || 'No Consignee'}
+                  {order.consignee?.name || "No Consignee"}
                 </Card.Title>
                 <Card.Text>
                   <small className="text-muted">
-                    {order.customerReference ? `Ref: ${order.customerReference}` : 'No reference'}
+                    {order.customerReference
+                      ? `Ref: ${order.customerReference}`
+                      : "No reference"}
                   </small>
                 </Card.Text>
-                
+
                 <hr />
-                
+
                 <div className="mb-2">
-                  <strong>Shipper:</strong> {order.shipper?.name || 'N/A'}
+                  <strong>Shipper:</strong> {order.shipper?.name || "N/A"}
                 </div>
-                
+
                 {order.carrier && (
                   <div className="mb-2">
                     <strong>Carrier:</strong> {order.carrier.name}
                   </div>
                 )}
-                
+
                 <div className="d-flex justify-content-between mb-2">
                   <div>
-                    <strong>Departure:</strong><br />
+                    <strong>Departure:</strong>
+                    <br />
                     {formatDate(order.departureDate)}
                   </div>
                   <div>
-                    <strong>Arrival:</strong><br />
+                    <strong>Arrival:</strong>
+                    <br />
                     {formatDate(order.arrivalDate)}
                   </div>
                 </div>
-                
+
                 <hr />
-                
+
                 <Row className="mb-2 text-center">
                   <Col xs={4}>
                     <small className="d-block fw-bold">Pieces</small>
@@ -432,11 +472,21 @@ const Reporteria: React.FC = () => {
                   </Col>
                   <Col xs={4}>
                     <small className="d-block fw-bold">Weight</small>
-                    <span>{formatWeight(order.totalCargo.weightValue, order.totalCargo.weightUOM)}</span>
+                    <span>
+                      {formatWeight(
+                        order.totalCargo.weightValue,
+                        order.totalCargo.weightUOM,
+                      )}
+                    </span>
                   </Col>
                   <Col xs={4}>
                     <small className="d-block fw-bold">Peso Volumétrico</small>
-                    <span>{formatVolume(order.totalCargo.volumeWeightValue, order.totalCargo.volumeUOM)}</span>
+                    <span>
+                      {formatVolume(
+                        order.totalCargo.volumeWeightValue,
+                        order.totalCargo.volumeUOM,
+                      )}
+                    </span>
                   </Col>
                 </Row>
               </Card.Body>
@@ -450,9 +500,7 @@ const Reporteria: React.FC = () => {
 
       {/* No results message */}
       {!loading && !error && userOrders.length === 0 && (
-        <Alert variant="info">
-          No shipping orders found for your account.
-        </Alert>
+        <Alert variant="info">No shipping orders found for your account.</Alert>
       )}
     </Container>
   );
