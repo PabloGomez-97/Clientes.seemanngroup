@@ -1,5 +1,6 @@
 // src/components/administrador/ReporteriaClientes.tsx — Client portal view for ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { ClientOverrideProvider } from "../../contexts/ClientOverrideContext";
@@ -8,6 +9,7 @@ import OceanShipmentsView from "../shipments/OceanShipmentsView";
 import GroundShipmentsView from "../shipments/GroundShipmentsView";
 import EXWChargesView from "./Cobros-EXW/EXWChargesView";
 import QuotesView from "../Sidebar/QuotesView";
+import ShippingOrderView from "../Sidebar/ShippingOrder";
 import ClientTrackingView from "./ClientTrackingView";
 import { ReporteriaClientesProvider } from "../../contexts/ReporteriaClientesContext";
 
@@ -61,6 +63,7 @@ const FONT =
 function ReporteriaClientes() {
   useOutletContext<OutletContext>(); // validate outlet context exists
   const { token } = useAuth();
+  const { t } = useTranslation();
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +74,13 @@ function ReporteriaClientes() {
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [showAllExw, setShowAllExw] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "air" | "ocean" | "ground" | "quotes" | "exw" | "tracking"
+    | "air"
+    | "ocean"
+    | "ground"
+    | "quotes"
+    | "exw"
+    | "tracking"
+    | "shipping-orders"
   >("air");
 
   // ── Fetch clients list (with cache) ──
@@ -299,12 +308,30 @@ function ReporteriaClientes() {
     const openTrackingTab = () => setActiveTab("tracking");
 
     const tabs = [
-      { key: "air" as const, label: "Envíos Aéreos", icon: "" },
-      { key: "ocean" as const, label: "Envíos Marítimos", icon: "" },
-      { key: "ground" as const, label: "Envíos Terrestres", icon: "" },
-      { key: "quotes" as const, label: "Cotizaciones", icon: "" },
-      { key: "exw" as const, label: "Cobros EXW", icon: "" },
-      { key: "tracking" as const, label: "Seguimiento", icon: "" },
+      {
+        key: "shipping-orders" as const,
+        label: t("home.sidebar.shippingOrders"),
+        icon: "",
+      },
+      { key: "air" as const, label: t("home.sidebar.airOperations"), icon: "" },
+      {
+        key: "ocean" as const,
+        label: t("home.sidebar.oceanOperations"),
+        icon: "",
+      },
+      {
+        key: "ground" as const,
+        label: t("home.sidebar.groundOperations"),
+        icon: "",
+      },
+      { key: "quotes" as const, label: t("home.sidebar.quotes"), icon: "" },
+
+      { key: "exw" as const, label: t("home.sidebar.exwCharges"), icon: "" },
+      {
+        key: "tracking" as const,
+        label: t("home.sidebar.clientTracking"),
+        icon: "",
+      },
     ];
 
     return (
@@ -446,6 +473,7 @@ function ReporteriaClientes() {
             {activeTab === "air" && <AirShipmentsView />}
             {activeTab === "ocean" && <OceanShipmentsView />}
             {activeTab === "ground" && <GroundShipmentsView />}
+            {activeTab === "shipping-orders" && <ShippingOrderView />}
             {activeTab === "exw" && <EXWChargesView />}
             {activeTab === "quotes" && <QuotesView />}
             {activeTab === "tracking" && (

@@ -126,6 +126,8 @@
       "oceanOperations": "Ocean Operations",
       "groundOperations": "Ground Operations",
       "shippingOrders": "Pre-Operation Stage",
+      "exwCharges": "EXW Charges",
+      "clientTracking": "Tracking",
       "trackingOperations": "Shipment Tracking",
       "trackNewShipment": "Track New Air Shipment",
       "trackNewOceanShipment": "Track New Ocean Shipment",

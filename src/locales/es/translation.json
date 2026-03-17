@@ -126,6 +126,8 @@
       "oceanOperations": "Operaciones Marítimas",
       "groundOperations": "Operaciones Terrestres",
       "shippingOrders": "Etapa Pre-Operacional",
+      "exwCharges": "Cobros EXW",
+      "clientTracking": "Seguimiento",
       "trackingOperations": "Rastreo de Operaciones",
       "trackNewShipment": "Rastrear Envío Aéreo",
       "trackNewOceanShipment": "Rastrear Envío Marítimo",
