@@ -836,7 +836,6 @@ function QuotesView() {
      ========================================================= */
   return (
     <div className="qv-container">
-      <h2 className="hal-app-name">{t("quotesView.title")}</h2>
       {/* Image banner */}
       <div
         style={{
