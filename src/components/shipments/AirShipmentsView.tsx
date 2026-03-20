@@ -8,7 +8,11 @@ import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPrefere
 import "./AirShipmentsView.css";
 import { DocumentosSectionAir } from "../Sidebar/Documents/DocumentosSectionAir";
 import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
-import { addUniqueEmail } from "../../services/trackingEmailPreferences";
+import {
+  addUniqueEmail,
+  MAX_VISIBLE_TRACK_FOLLOWERS,
+  OPERATIONS_FOLLOWER_EMAIL,
+} from "../../services/trackingEmailPreferences";
 import {
   type OutletContext,
   type AirShipment,
@@ -21,8 +25,6 @@ import { linbisFetch } from "../../services/linbisFetch";
 
 const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_TRACK_FOLLOWERS = 9;
-const OPERATIONS_FOLLOWER_EMAIL = "operaciones@seemanngroup.com";
 
 /*  DetailTabs  */
 interface TabDef {
@@ -85,7 +87,7 @@ function AirShipmentsView() {
   const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
-  const { emails: savedTrackingEmails } =
+  const { emails: savedTrackingEmails, remember: rememberTrackingEmails } =
     useTrackingEmailPreferences(activeUsername);
 
   const [shipments, setShipments] = useState<AirShipment[]>([]);
@@ -694,7 +696,7 @@ function AirShipmentsView() {
   const addTrackEmailField = () => {
     setTrackError(null);
     setTrackEmails((prev) => {
-      if (prev.length >= MAX_TRACK_FOLLOWERS) return prev;
+      if (prev.length >= MAX_VISIBLE_TRACK_FOLLOWERS) return prev;
       return [...prev, ""];
     });
   };
@@ -709,7 +711,9 @@ function AirShipmentsView() {
 
   const handleSelectSuggestedTrackEmail = (email: string) => {
     setTrackError(null);
-    setTrackEmails((prev) => addUniqueEmail(prev, email, MAX_TRACK_FOLLOWERS));
+    setTrackEmails((prev) =>
+      addUniqueEmail(prev, email, MAX_VISIBLE_TRACK_FOLLOWERS),
+    );
   };
 
   const handleAddAllSuggestedTrackEmails = () => {
@@ -717,7 +721,7 @@ function AirShipmentsView() {
     setTrackEmails((prev) =>
       savedTrackingEmails.reduce(
         (currentEmails, email) =>
-          addUniqueEmail(currentEmails, email, MAX_TRACK_FOLLOWERS),
+          addUniqueEmail(currentEmails, email, MAX_VISIBLE_TRACK_FOLLOWERS),
         prev,
       ),
     );
@@ -739,8 +743,10 @@ function AirShipmentsView() {
       return;
     }
 
-    if (normalizedEmails.length > MAX_TRACK_FOLLOWERS) {
-      setTrackError("Máximo 9 correos electrónicos visibles para seguimiento.");
+    if (normalizedEmails.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
+      setTrackError(
+        "Máximo 10 correos electrónicos visibles para seguimiento.",
+      );
       return;
     }
 
@@ -811,6 +817,13 @@ function AirShipmentsView() {
         else setTrackError(data.error || "Error al crear el trackeo.");
         return;
       }
+
+      void rememberTrackingEmails(followers).catch((rememberError) => {
+        console.error(
+          "No se pudieron guardar los correos usados en el tracking aéreo:",
+          rememberError,
+        );
+      });
 
       closeTrackModal();
       registrarEvento({
@@ -1999,7 +2012,7 @@ function AirShipmentsView() {
                   type="button"
                   className="asv-btn asv-btn--ghost asv-btn--sm"
                   onClick={addTrackEmailField}
-                  disabled={trackEmails.length >= MAX_TRACK_FOLLOWERS}
+                  disabled={trackEmails.length >= MAX_VISIBLE_TRACK_FOLLOWERS}
                 >
                   +
                 </button>

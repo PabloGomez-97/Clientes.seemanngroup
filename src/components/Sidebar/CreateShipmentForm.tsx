@@ -8,6 +8,7 @@ import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
 import {
   addUniqueEmail,
   hasEmail,
+  MAX_VISIBLE_TRACK_FOLLOWERS,
 } from "../../services/trackingEmailPreferences";
 import "./styles/CreateShipmentForm.css";
 
@@ -35,7 +36,7 @@ function CreateShipmentForm({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const effectiveReference = referenceUsername || activeUsername;
-  const { emails: savedTrackingEmails } =
+  const { emails: savedTrackingEmails, remember: rememberTrackingEmails } =
     useTrackingEmailPreferences(effectiveReference);
 
   useEffect(() => {
@@ -81,7 +82,7 @@ function CreateShipmentForm({
       email &&
       isValidEmail(email) &&
       !hasEmail(followers, email) &&
-      followers.length < 10
+      followers.length < MAX_VISIBLE_TRACK_FOLLOWERS
     ) {
       setFollowers([...followers, email]);
       setNewFollower("");
@@ -92,13 +93,16 @@ function CreateShipmentForm({
     setFollowers(followers.filter((f) => f !== email));
 
   const handleSelectSuggestedFollower = (email: string) => {
-    setFollowers((prev) => addUniqueEmail(prev, email, 10));
+    setFollowers((prev) =>
+      addUniqueEmail(prev, email, MAX_VISIBLE_TRACK_FOLLOWERS),
+    );
   };
 
   const handleAddAllSuggestedFollowers = () => {
     setFollowers((prev) =>
       savedTrackingEmails.reduce(
-        (currentEmails, email) => addUniqueEmail(currentEmails, email, 10),
+        (currentEmails, email) =>
+          addUniqueEmail(currentEmails, email, MAX_VISIBLE_TRACK_FOLLOWERS),
         prev,
       ),
     );
@@ -163,6 +167,13 @@ function CreateShipmentForm({
         );
         return;
       }
+
+      void rememberTrackingEmails(followers).catch((rememberError) => {
+        console.error(
+          "No se pudieron guardar los correos usados en el tracking aéreo:",
+          rememberError,
+        );
+      });
 
       setCreatedShipment(data.shipment);
       setShowSuccessModal(true);
@@ -326,7 +337,7 @@ function CreateShipmentForm({
                     className="csf-field-msg csf-field-msg--hint"
                     style={{ marginLeft: "0.5rem", display: "inline" }}
                   >
-                    ({followers.length}/10)
+                    ({followers.length}/{MAX_VISIBLE_TRACK_FOLLOWERS})
                   </span>
                 </label>
 
@@ -347,7 +358,7 @@ function CreateShipmentForm({
                     disabled={
                       !newFollower.trim() ||
                       !isValidEmail(newFollower) ||
-                      followers.length >= 10
+                      followers.length >= MAX_VISIBLE_TRACK_FOLLOWERS
                     }
                   >
                     Agregar

@@ -16,7 +16,6 @@ function TrackingEmailSuggestions({
   onSelectEmail,
   onAddAll,
   disabled = false,
-  title = "Correos guardados para esta cuenta",
 }: TrackingEmailSuggestionsProps) {
   if (savedEmails.length === 0) {
     return null;

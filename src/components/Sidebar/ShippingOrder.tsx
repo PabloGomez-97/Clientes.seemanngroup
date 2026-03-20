@@ -6,14 +6,16 @@ import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesC
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
 import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
-import { addUniqueEmail } from "../../services/trackingEmailPreferences";
+import {
+  addUniqueEmail,
+  MAX_VISIBLE_TRACK_FOLLOWERS,
+  OPERATIONS_FOLLOWER_EMAIL,
+} from "../../services/trackingEmailPreferences";
 import { InfoField } from "../shipments/Handlers/Handlersairshipments";
 import "./ShippingOrder.css";
 import { linbisFetch } from "../../services/linbisFetch";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_TRACK_FOLLOWERS = 9;
-const OPERATIONS_FOLLOWER_EMAIL = "operaciones@seemanngroup.com";
 const SOV_API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
@@ -328,7 +330,7 @@ function ShippingOrderView() {
   const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
-  const { emails: savedTrackingEmails } =
+  const { emails: savedTrackingEmails, remember: rememberTrackingEmails } =
     useTrackingEmailPreferences(activeUsername);
 
   const [allOrders, setAllOrders] = useState<ShippingOrder[]>([]);
@@ -582,7 +584,7 @@ function ShippingOrderView() {
   const addTrackEmailField = () => {
     setTrackError(null);
     setTrackEmails((prev) => {
-      if (prev.length >= MAX_TRACK_FOLLOWERS) return prev;
+      if (prev.length >= MAX_VISIBLE_TRACK_FOLLOWERS) return prev;
       return [...prev, ""];
     });
   };
@@ -597,14 +599,17 @@ function ShippingOrderView() {
 
   const handleSelectSuggestedTrackEmail = (email: string) => {
     setTrackError(null);
-    setTrackEmails((prev) => addUniqueEmail(prev, email, MAX_TRACK_FOLLOWERS));
+    setTrackEmails((prev) =>
+      addUniqueEmail(prev, email, MAX_VISIBLE_TRACK_FOLLOWERS),
+    );
   };
 
   const handleAddAllSuggestedTrackEmails = () => {
     setTrackError(null);
     setTrackEmails((prev) =>
       savedTrackingEmails.reduce(
-        (curr, email) => addUniqueEmail(curr, email, MAX_TRACK_FOLLOWERS),
+        (curr, email) =>
+          addUniqueEmail(curr, email, MAX_VISIBLE_TRACK_FOLLOWERS),
         prev,
       ),
     );
@@ -630,8 +635,10 @@ function ShippingOrderView() {
       setTrackError("Debes ingresar al menos un correo electrónico.");
       return;
     }
-    if (normalizedEmails.length > MAX_TRACK_FOLLOWERS) {
-      setTrackError("Máximo 9 correos electrónicos visibles para seguimiento.");
+    if (normalizedEmails.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
+      setTrackError(
+        "Máximo 10 correos electrónicos visibles para seguimiento.",
+      );
       return;
     }
     const invalidEmail = normalizedEmails.find((e) => !EMAIL_REGEX.test(e));
@@ -715,6 +722,13 @@ function ShippingOrderView() {
         else setTrackError(data.error || "Error al crear el trackeo.");
         return;
       }
+
+      void rememberTrackingEmails(followers).catch((rememberError) => {
+        console.error(
+          "No se pudieron guardar los correos usados en el tracking desde Shipping Orders:",
+          rememberError,
+        );
+      });
 
       closeTrackModal();
       registrarEvento({
@@ -1916,7 +1930,7 @@ function ShippingOrderView() {
                   type="button"
                   className="asv-btn asv-btn--ghost asv-btn--sm"
                   onClick={addTrackEmailField}
-                  disabled={trackEmails.length >= MAX_TRACK_FOLLOWERS}
+                  disabled={trackEmails.length >= MAX_VISIBLE_TRACK_FOLLOWERS}
                 >
                   +
                 </button>

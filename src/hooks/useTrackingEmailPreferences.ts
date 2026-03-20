@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   fetchTrackingEmailPreference,
+  mergeTrackingEmails,
   saveTrackingEmailPreference,
 } from "../services/trackingEmailPreferences";
 
@@ -74,12 +75,27 @@ export function useTrackingEmailPreferences(
     [reference, token],
   );
 
+  const remember = useCallback(
+    async (candidateEmails: string[]) => {
+      const mergeResult = mergeTrackingEmails(emails, candidateEmails);
+
+      if (mergeResult.added.length === 0) {
+        return mergeResult;
+      }
+
+      await save(mergeResult.emails);
+      return mergeResult;
+    },
+    [emails, save],
+  );
+
   return {
     emails,
     loading,
     saving,
     error,
     reload: load,
+    remember,
     save,
   };
 }

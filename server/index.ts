@@ -40,8 +40,8 @@ function verifyToken(token: string): AuthPayload {
 }
 
 const OPERATIONS_FOLLOWER_EMAIL = 'operaciones@seemanngroup.com';
-const MAX_VISIBLE_TRACK_FOLLOWERS = 9;
-const MAX_SAVED_TRACKING_EMAILS = 5;
+const MAX_VISIBLE_TRACK_FOLLOWERS = 10;
+const MAX_SAVED_TRACKING_EMAILS = 20;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizeTrackingFollowers(rawFollowers: unknown): string[] {
@@ -1967,10 +1967,10 @@ app.post('/api/shipsgo/shipments', auth, async (req, res) => {
       });
     }
 
-    // Validar máximo 9 followers visibles + 1 correo interno de operaciones
+    // Validar máximo 10 followers visibles + 1 correo interno de operaciones
     if (followers && followers.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
       return res.status(400).json({ 
-        error: 'Máximo 9 emails visibles permitidos en followers' 
+        error: 'Máximo 10 emails visibles permitidos en followers' 
       });
     }
 
@@ -2446,7 +2446,7 @@ app.post('/api/shipsgo/ocean/shipments', auth, async (req, res) => {
       return res.status(400).json({ error: 'followers debe ser un array de emails' });
     }
     if (followers && followers.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
-      return res.status(400).json({ error: 'Máximo 9 emails visibles permitidos en followers' });
+      return res.status(400).json({ error: 'Máximo 10 emails visibles permitidos en followers' });
     }
 
     // Validar tags

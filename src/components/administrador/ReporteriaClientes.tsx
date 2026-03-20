@@ -12,6 +12,7 @@ import QuotesView from "../Sidebar/QuotesView";
 import ShippingOrderView from "../Sidebar/ShippingOrder";
 import ClientTrackingView from "./ClientTrackingView";
 import { ReporteriaClientesProvider } from "../../contexts/ReporteriaClientesContext";
+import SettingsClient from "../settings/SettingsClient";
 
 interface OutletContext {
   accessToken: string;
@@ -81,6 +82,7 @@ function ReporteriaClientes() {
     | "quotes"
     | "exw"
     | "tracking"
+    | "settings"
     | "shipping-orders"
   >("air");
 
@@ -333,6 +335,11 @@ function ReporteriaClientes() {
         label: t("home.sidebar.clientTracking"),
         icon: "",
       },
+      {
+        key: "settings" as const,
+        label: "Configuraciones",
+        icon: "",
+      },
     ];
 
     return (
@@ -479,6 +486,14 @@ function ReporteriaClientes() {
             {activeTab === "quotes" && <QuotesView />}
             {activeTab === "tracking" && (
               <ClientTrackingView clientUsername={selectedClient.username} />
+            )}
+            {activeTab === "settings" && (
+              <SettingsClient
+                reference={selectedClient.username}
+                username={selectedClient.nombreuser || selectedClient.username}
+                email={selectedClient.email}
+                allowPasswordChange={false}
+              />
             )}
           </ClientOverrideProvider>
         </ReporteriaClientesProvider>

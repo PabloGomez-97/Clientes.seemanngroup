@@ -8,6 +8,7 @@ import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
 import {
   addUniqueEmail,
   hasEmail,
+  MAX_VISIBLE_TRACK_FOLLOWERS,
 } from "../../services/trackingEmailPreferences";
 import "./styles/CreateShipmentForm.css";
 
@@ -34,7 +35,7 @@ function CreateOceanShipmentForm({
   const { registrarEvento } = useAuditLog();
   const navigate = useNavigate();
   const effectiveReference = referenceUsername || activeUsername;
-  const { emails: savedTrackingEmails } =
+  const { emails: savedTrackingEmails, remember: rememberTrackingEmails } =
     useTrackingEmailPreferences(effectiveReference);
 
   // Form state
@@ -96,7 +97,7 @@ function CreateOceanShipmentForm({
       email &&
       isValidEmail(email) &&
       !hasEmail(followers, email) &&
-      followers.length < 10
+      followers.length < MAX_VISIBLE_TRACK_FOLLOWERS
     ) {
       setFollowers([...followers, email]);
       setNewFollower("");
@@ -107,13 +108,16 @@ function CreateOceanShipmentForm({
     setFollowers(followers.filter((f) => f !== email));
 
   const handleSelectSuggestedFollower = (email: string) => {
-    setFollowers((prev) => addUniqueEmail(prev, email, 10));
+    setFollowers((prev) =>
+      addUniqueEmail(prev, email, MAX_VISIBLE_TRACK_FOLLOWERS),
+    );
   };
 
   const handleAddAllSuggestedFollowers = () => {
     setFollowers((prev) =>
       savedTrackingEmails.reduce(
-        (currentEmails, email) => addUniqueEmail(currentEmails, email, 10),
+        (currentEmails, email) =>
+          addUniqueEmail(currentEmails, email, MAX_VISIBLE_TRACK_FOLLOWERS),
         prev,
       ),
     );
@@ -191,6 +195,13 @@ function CreateOceanShipmentForm({
         );
         return;
       }
+
+      void rememberTrackingEmails(followers).catch((rememberError) => {
+        console.error(
+          "No se pudieron guardar los correos usados en el tracking marítimo:",
+          rememberError,
+        );
+      });
 
       setCreatedShipment(data.shipment);
       setShowSuccessModal(true);
@@ -443,7 +454,7 @@ function CreateOceanShipmentForm({
                     className="csf-field-msg csf-field-msg--hint"
                     style={{ marginLeft: "0.5rem", display: "inline" }}
                   >
-                    ({followers.length}/10)
+                    ({followers.length}/{MAX_VISIBLE_TRACK_FOLLOWERS})
                   </span>
                 </label>
 
@@ -464,7 +475,7 @@ function CreateOceanShipmentForm({
                     disabled={
                       !newFollower.trim() ||
                       !isValidEmail(newFollower) ||
-                      followers.length >= 10
+                      followers.length >= MAX_VISIBLE_TRACK_FOLLOWERS
                     }
                   >
                     Agregar

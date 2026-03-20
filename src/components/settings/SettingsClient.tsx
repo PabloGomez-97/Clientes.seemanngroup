@@ -17,6 +17,7 @@ interface SettingsClientProps {
   reference: string;
   username: string;
   email: string;
+  allowPasswordChange?: boolean;
 }
 
 /* ── Email Settings Section ── */
@@ -360,7 +361,12 @@ function PasswordSettings() {
 }
 
 /* ── Main Component ── */
-function SettingsClient({ reference, username, email }: SettingsClientProps) {
+function SettingsClient({
+  reference,
+  username,
+  email,
+  allowPasswordChange = true,
+}: SettingsClientProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("emails");
   const hasReference = Boolean(reference.trim());
 
@@ -374,27 +380,31 @@ function SettingsClient({ reference, username, email }: SettingsClientProps) {
           </p>
         </div>
 
-        <div className="sc-tabs">
-          <button
-            type="button"
-            className={`sc-tab ${activeTab === "emails" ? "sc-tab--active" : ""}`}
-            onClick={() => setActiveTab("emails")}
-          >
-            Correos de seguimiento
-          </button>
-          <button
-            type="button"
-            className={`sc-tab ${activeTab === "password" ? "sc-tab--active" : ""}`}
-            onClick={() => setActiveTab("password")}
-          >
-            Cambiar contraseña
-          </button>
-        </div>
+        {allowPasswordChange ? (
+          <div className="sc-tabs">
+            <button
+              type="button"
+              className={`sc-tab ${activeTab === "emails" ? "sc-tab--active" : ""}`}
+              onClick={() => setActiveTab("emails")}
+            >
+              Correos de seguimiento
+            </button>
+            <button
+              type="button"
+              className={`sc-tab ${activeTab === "password" ? "sc-tab--active" : ""}`}
+              onClick={() => setActiveTab("password")}
+            >
+              Cambiar contraseña
+            </button>
+          </div>
+        ) : null}
 
         {activeTab === "emails" && (
           <EmailSettings reference={reference} hasReference={hasReference} />
         )}
-        {activeTab === "password" && <PasswordSettings />}
+        {allowPasswordChange && activeTab === "password" ? (
+          <PasswordSettings />
+        ) : null}
       </div>
     </section>
   );

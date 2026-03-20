@@ -15,14 +15,16 @@ import {
 import { MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS } from "./Handlers/mundogamingDummyOceanData";
 import { DocumentosSectionOcean } from "../Sidebar/Documents/DocumentosSectionOcean";
 import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
-import { addUniqueEmail } from "../../services/trackingEmailPreferences";
+import {
+  addUniqueEmail,
+  MAX_VISIBLE_TRACK_FOLLOWERS,
+  OPERATIONS_FOLLOWER_EMAIL,
+} from "../../services/trackingEmailPreferences";
 import "./OceanShipmentsView.css";
 import { linbisFetch } from "../../services/linbisFetch";
 
 const DEFAULT_ROWS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_TRACK_FOLLOWERS = 9;
-const OPERATIONS_FOLLOWER_EMAIL = "operaciones@seemanngroup.com";
 const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
@@ -88,7 +90,7 @@ function OceanShipmentsView() {
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
   const filterConsignee = activeUsername || "";
-  const { emails: savedTrackingEmails } =
+  const { emails: savedTrackingEmails, remember: rememberTrackingEmails } =
     useTrackingEmailPreferences(activeUsername);
 
   const [oceanShipments, setOceanShipments] = useState<OceanShipment[]>([]);
@@ -539,7 +541,7 @@ function OceanShipmentsView() {
   const addTrackEmailField = () => {
     setTrackError(null);
     setTrackEmails((prev) => {
-      if (prev.length >= MAX_TRACK_FOLLOWERS) return prev;
+      if (prev.length >= MAX_VISIBLE_TRACK_FOLLOWERS) return prev;
       return [...prev, ""];
     });
   };
@@ -554,7 +556,9 @@ function OceanShipmentsView() {
 
   const handleSelectSuggestedTrackEmail = (email: string) => {
     setTrackError(null);
-    setTrackEmails((prev) => addUniqueEmail(prev, email, MAX_TRACK_FOLLOWERS));
+    setTrackEmails((prev) =>
+      addUniqueEmail(prev, email, MAX_VISIBLE_TRACK_FOLLOWERS),
+    );
   };
 
   const handleAddAllSuggestedTrackEmails = () => {
@@ -562,7 +566,7 @@ function OceanShipmentsView() {
     setTrackEmails((prev) =>
       savedTrackingEmails.reduce(
         (currentEmails, email) =>
-          addUniqueEmail(currentEmails, email, MAX_TRACK_FOLLOWERS),
+          addUniqueEmail(currentEmails, email, MAX_VISIBLE_TRACK_FOLLOWERS),
         prev,
       ),
     );
@@ -584,8 +588,10 @@ function OceanShipmentsView() {
       return;
     }
 
-    if (normalizedEmails.length > MAX_TRACK_FOLLOWERS) {
-      setTrackError("Máximo 9 correos electrónicos visibles para seguimiento.");
+    if (normalizedEmails.length > MAX_VISIBLE_TRACK_FOLLOWERS) {
+      setTrackError(
+        "Máximo 10 correos electrónicos visibles para seguimiento.",
+      );
       return;
     }
 
@@ -669,6 +675,13 @@ function OceanShipmentsView() {
         }
         return;
       }
+
+      void rememberTrackingEmails(followers).catch((rememberError) => {
+        console.error(
+          "No se pudieron guardar los correos usados en el tracking marítimo:",
+          rememberError,
+        );
+      });
 
       closeTrackModal();
       registrarEvento({
@@ -2019,7 +2032,7 @@ function OceanShipmentsView() {
                   type="button"
                   className="osv-btn osv-btn--ghost"
                   onClick={addTrackEmailField}
-                  disabled={trackEmails.length >= MAX_TRACK_FOLLOWERS}
+                  disabled={trackEmails.length >= MAX_VISIBLE_TRACK_FOLLOWERS}
                   style={{ height: 32, minWidth: 32, padding: 0 }}
                 >
                   +
