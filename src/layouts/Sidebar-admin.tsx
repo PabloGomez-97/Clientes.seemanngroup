@@ -60,6 +60,19 @@ function SidebarAdmin({
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
+  const canSeeByEmail = (restrictedTo?: string | string[]) => {
+    if (!restrictedTo) return true;
+
+    return Array.isArray(restrictedTo)
+      ? restrictedTo.includes(user?.email || "")
+      : user?.email === restrictedTo;
+  };
+
+  const canSeeByRole = (path?: string) => {
+    if (!path || !user?.roles) return true;
+    return canSeeSidebarItem(user.roles, path);
+  };
+
   const menuSections: MenuSection[] = [
     {
       items: [{ path: "/admin/home", name: "Inicio", icon: "fa fa-home" }],
@@ -117,6 +130,7 @@ function SidebarAdmin({
       title: "Reportes",
       items: [
         {
+          path: "/admin/reporteria",
           name: "Reportería",
           icon: "fa fa-chart-bar",
           subItems: [
@@ -165,21 +179,20 @@ function SidebarAdmin({
   const filteredSections = menuSections
     .map((s) => ({
       ...s,
-      items: s.items.filter((item) => {
-        // Verificar restricción por email (restrictedTo)
-        if (item.restrictedTo) {
-          if (Array.isArray(item.restrictedTo)) {
-            if (!item.restrictedTo.includes(user?.email || "")) return false;
-          } else {
-            if (user?.email !== item.restrictedTo) return false;
-          }
-        }
-        // Verificar acceso por rol (si tiene roles definidos)
-        if (user?.roles && item.path) {
-          return canSeeSidebarItem(user.roles, item.path);
-        }
-        return true;
-      }),
+      items: s.items
+        .map((item) => ({
+          ...item,
+          subItems: item.subItems?.filter(
+            (subItem) =>
+              canSeeByEmail(subItem.restrictedTo) && canSeeByRole(subItem.path),
+          ),
+        }))
+        .filter((item) => {
+          if (!canSeeByEmail(item.restrictedTo)) return false;
+          if (!canSeeByRole(item.path)) return false;
+          if (item.subItems) return item.subItems.length > 0;
+          return true;
+        }),
     }))
     .filter((s) => s.items.length > 0);
 
@@ -320,18 +333,11 @@ function SidebarAdmin({
               <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {section.items.map((item, itemIdx) => {
                   const hasSubItems = item.subItems && item.subItems.length > 0;
-                  const visibleSubItems =
-                    item.subItems?.filter((subItem) => {
-                      if (!subItem.restrictedTo) return true;
-
-                      return Array.isArray(subItem.restrictedTo)
-                        ? subItem.restrictedTo.includes(user?.email || "")
-                        : user?.email === subItem.restrictedTo;
-                    }) || [];
+                  const visibleSubItems = item.subItems || [];
                   const isExpanded = expandedMenus.includes(item.name);
-                  const isItemActive = item.path
-                    ? isActive(item.path)
-                    : visibleSubItems.some((subItem) => isActive(subItem.path));
+                  const isItemActive =
+                    (item.path ? isActive(item.path) : false) ||
+                    visibleSubItems.some((subItem) => isActive(subItem.path));
                   const isHovered =
                     hoveredItem === `${section.title}-${item.name}`;
 

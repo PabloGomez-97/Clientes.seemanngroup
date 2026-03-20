@@ -49,7 +49,6 @@ export const EJECUTIVO_ROUTES: string[] = [
   '/admin/cotizador-administrador',
   '/admin/tusclientes',
   '/admin/trackeos',
-  '/admin/reporteria',
   '/admin/reporteriaclientes',
   '/admin/settings',
 ];
