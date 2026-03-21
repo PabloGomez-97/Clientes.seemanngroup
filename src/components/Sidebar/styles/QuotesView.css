@@ -189,7 +189,7 @@
 }
 
 .qv-sort-icon--active {
-  color: var(--primary-color);
+  color: var(--secondary-color);
 }
 
 .qv-sort-icon--asc {
@@ -208,12 +208,12 @@
 }
 
 .qv-tr--active {
-  background-color: #fff7ed;
-  border-bottom-color: var(--primary-color);
+  background-color: #f9fafb;
+  border-bottom-color: #e5e7eb;
 }
 
 .qv-tr--active:hover {
-  background-color: #fff7ed;
+  background-color: #f3f4f6;
 }
 
 .qv-tr:last-child {
@@ -232,13 +232,13 @@
 
 .qv-row-chevron--open {
   transform: rotate(90deg);
-  color: var(--primary-color);
+  color: var(--secondary-color);
 }
 
 /* Accordion row */
 .qv-accordion-row {
   background: #fafafa;
-  border-bottom: 2px solid var(--primary-color);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .qv-accordion-row:hover {
@@ -341,7 +341,7 @@
 
 .qv-td--number {
   font-weight: 600;
-  color: var(--primary-color);
+  color: var(--secondary-color);
 }
 
 /*  Status badges  */
@@ -594,7 +594,7 @@
 .qv-route-card__transit {
   font-size: 0.6875rem;
   font-weight: 600;
-  color: var(--primary-color);
+  color: #6b7280;
 }
 
 /*  Collapsible  */

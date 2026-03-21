@@ -109,7 +109,10 @@ function AirShipmentsView() {
   const [rowsPerPage, setRowsPerPage] = useState(ITEMS_PER_PAGE);
   const [tablePage, setTablePage] = useState(1);
 
-  // Search modal
+  // Search / filter modal
+  const [showSearchModal, setShowSearchModal] = useState(false);
+
+  // Track modal
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [trackShipment, setTrackShipment] = useState<AirShipment | null>(null);
   const [trackEmails, setTrackEmails] = useState<string[]>([""]);
@@ -150,6 +153,15 @@ function AirShipmentsView() {
   const [isDepartureFocused, setIsDepartureFocused] = useState(false);
   const [isArrivalFocused, setIsArrivalFocused] = useState(false);
   const [isCarrierFocused, setIsCarrierFocused] = useState(false);
+
+  const activeFilterCount = [
+    filterNumber,
+    filterWaybill,
+    filterClientReference,
+    filterDepartureDate,
+    filterArrivalDate,
+    filterCarrier,
+  ].filter(Boolean).length;
 
   /* -- Table pagination (client-side slice) ----------------- */
   const totalTablePages = Math.max(
@@ -932,334 +944,57 @@ function AirShipmentsView() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "16px",
+          gap: 12,
           marginTop: 24,
         }}
       >
         <div
-          className="asv-toolbar__left"
           style={{
+            marginLeft: "auto",
             display: "flex",
+            gap: 8,
             alignItems: "center",
-            gap: "12px",
-            flexWrap: "wrap",
           }}
         >
-          <form
-            className="filters-form"
-            onSubmit={handleApplyFilters}
-            style={{ display: "flex", alignItems: "center", gap: "8px" }}
+          {/* Filter Icon Button */}
+          <button
+            className={`asv-btn asv-btn--ghost${activeFilterCount > 0 ? " asv-btn--ghost-active" : ""}`}
+            type="button"
+            onClick={() => setShowSearchModal(true)}
+            aria-label="Abrir filtros"
           >
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <label
-                style={{
-                  position: "absolute",
-                  top: filterNumber || isNumberFocused ? "2px" : "8px",
-                  left: "8px",
-                  fontSize: filterNumber || isNumberFocused ? "10px" : "12px",
-                  fontWeight: "bold",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  color: "#666",
-                  transition: "all 0.2s ease",
-                  pointerEvents: "none",
-                  backgroundColor: "#fff",
-                  padding: "0 2px",
-                  zIndex: 1,
-                }}
-              >
-                Número
-              </label>
-              <input
-                className="q-field__native q-placeholder"
-                type="text"
-                value={filterNumber}
-                onChange={(e) => setFilterNumber(e.target.value)}
-                onFocus={() => setIsNumberFocused(true)}
-                onBlur={() => setIsNumberFocused(false)}
-                placeholder=""
-                style={{
-                  width: "140px",
-                  height: "32px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "12px 8px 4px 8px",
-                  fontSize: "12px",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  backgroundColor: "#fff",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <label
-                style={{
-                  position: "absolute",
-                  top: filterWaybill || isWaybillFocused ? "2px" : "8px",
-                  left: "8px",
-                  fontSize: filterWaybill || isWaybillFocused ? "10px" : "12px",
-                  fontWeight: "bold",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  color: "#666",
-                  transition: "all 0.2s ease",
-                  pointerEvents: "none",
-                  backgroundColor: "#fff",
-                  padding: "0 2px",
-                  zIndex: 1,
-                }}
-              >
-                Waybill
-              </label>
-              <input
-                className="q-field__native q-placeholder"
-                type="text"
-                value={filterWaybill}
-                onChange={(e) => setFilterWaybill(e.target.value)}
-                onFocus={() => setIsWaybillFocused(true)}
-                onBlur={() => setIsWaybillFocused(false)}
-                placeholder=""
-                style={{
-                  width: "100px",
-                  height: "32px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "12px 8px 4px 8px",
-                  fontSize: "12px",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  backgroundColor: "#fff",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <label
-                style={{
-                  position: "absolute",
-                  top:
-                    filterClientReference || isClientReferenceFocused
-                      ? "2px"
-                      : "8px",
-                  left: "8px",
-                  fontSize:
-                    filterClientReference || isClientReferenceFocused
-                      ? "10px"
-                      : "12px",
-                  fontWeight: "bold",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  color: "#666",
-                  transition: "all 0.2s ease",
-                  pointerEvents: "none",
-                  backgroundColor: "#fff",
-                  padding: "0 2px",
-                  zIndex: 1,
-                }}
-              >
-                Ref. Cliente
-              </label>
-              <input
-                className="q-field__native q-placeholder"
-                type="text"
-                value={filterClientReference}
-                onChange={(e) => setFilterClientReference(e.target.value)}
-                onFocus={() => setIsClientReferenceFocused(true)}
-                onBlur={() => setIsClientReferenceFocused(false)}
-                placeholder=""
-                style={{
-                  width: "120px",
-                  height: "32px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "12px 8px 4px 8px",
-                  fontSize: "12px",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  backgroundColor: "#fff",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <label
-                style={{
-                  position: "absolute",
-                  top:
-                    filterDepartureDate || isDepartureFocused ? "2px" : "8px",
-                  left: "8px",
-                  fontSize:
-                    filterDepartureDate || isDepartureFocused ? "10px" : "12px",
-                  fontWeight: "bold",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  color: "#666",
-                  transition: "all 0.2s ease",
-                  pointerEvents: "none",
-                  backgroundColor: "#fff",
-                  padding: "0 2px",
-                  zIndex: 1,
-                }}
-              >
-                Fecha Salida
-              </label>
-              <input
-                className="q-field__native q-placeholder"
-                type="date"
-                value={filterDepartureDate}
-                onChange={(e) => setFilterDepartureDate(e.target.value)}
-                onFocus={() => setIsDepartureFocused(true)}
-                onBlur={() => setIsDepartureFocused(false)}
-                placeholder=""
-                style={{
-                  width: "120px",
-                  height: "32px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "12px 8px 4px 8px",
-                  fontSize: "12px",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  backgroundColor: "#fff",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <label
-                style={{
-                  position: "absolute",
-                  top: filterArrivalDate || isArrivalFocused ? "2px" : "8px",
-                  left: "8px",
-                  fontSize:
-                    filterArrivalDate || isArrivalFocused ? "10px" : "12px",
-                  fontWeight: "bold",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  color: "#666",
-                  transition: "all 0.2s ease",
-                  pointerEvents: "none",
-                  backgroundColor: "#fff",
-                  padding: "0 2px",
-                  zIndex: 1,
-                }}
-              >
-                Fecha Llegada
-              </label>
-              <input
-                className="q-field__native q-placeholder"
-                type="date"
-                value={filterArrivalDate}
-                onChange={(e) => setFilterArrivalDate(e.target.value)}
-                onFocus={() => setIsArrivalFocused(true)}
-                onBlur={() => setIsArrivalFocused(false)}
-                placeholder=""
-                style={{
-                  width: "120px",
-                  height: "32px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "12px 8px 4px 8px",
-                  fontSize: "12px",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  backgroundColor: "#fff",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <label
-                style={{
-                  position: "absolute",
-                  top: filterCarrier || isCarrierFocused ? "2px" : "8px",
-                  left: "8px",
-                  fontSize: filterCarrier || isCarrierFocused ? "10px" : "12px",
-                  fontWeight: "bold",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  color: "#666",
-                  transition: "all 0.2s ease",
-                  pointerEvents: "none",
-                  backgroundColor: "#fff",
-                  padding: "0 2px",
-                  zIndex: 1,
-                }}
-              >
-                Carrier
-              </label>
-              <input
-                className="q-field__native q-placeholder"
-                type="text"
-                value={filterCarrier}
-                onChange={(e) => setFilterCarrier(e.target.value)}
-                onFocus={() => setIsCarrierFocused(true)}
-                onBlur={() => setIsCarrierFocused(false)}
-                placeholder=""
-                style={{
-                  width: "100px",
-                  height: "32px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "12px 8px 4px 8px",
-                  fontSize: "12px",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  backgroundColor: "#fff",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <button
-              className="asv-btn asv-btn--primary"
-              type="submit"
-              style={{
-                height: "32px",
-                padding: "0 12px",
-                fontSize: "12px",
-                borderRadius: "4px",
-                border: "none",
-                fontFamily:
-                  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                backgroundColor: "var(--primary-color)",
-                color: "#fff",
-                cursor: "pointer",
-              }}
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              Apply
-            </button>
-            <button
-              className="asv-btn asv-btn--ghost"
-              type="button"
-              onClick={clearSearch}
-              style={{
-                height: "32px",
-                padding: "0 12px",
-                fontSize: "12px",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-                fontFamily:
-                  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                backgroundColor: "#fff",
-                color: "#666",
-                cursor: "pointer",
-              }}
-            >
-              Clear
-            </button>
-          </form>
-        </div>
-        <div
-          className="asv-toolbar__right"
-          style={{ marginLeft: "auto", display: "flex", gap: "8px" }}
-        >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <span>Filtros</span>
+            {activeFilterCount > 0 && (
+              <span
+                style={{
+                  backgroundColor: "var(--primary-color)",
+                  color: "#fff",
+                  borderRadius: "9999px",
+                  fontSize: "0.6875rem",
+                  fontWeight: 700,
+                  padding: "1px 7px",
+                  marginLeft: 2,
+                }}
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {/* Refresh Button */}
           <button
             className="asv-btn"
             onClick={refreshShipments}
@@ -1290,16 +1025,245 @@ function AirShipmentsView() {
             Actualizar
           </button>
           {loadingMore && <span className="asv-loading-text">Cargando</span>}
-          {showingAll && (
-            <button
-              className="asv-btn asv-btn--ghost asv-btn--sm"
-              onClick={clearSearch}
-            >
-              Limpiar filtros
-            </button>
-          )}
         </div>
       </div>
+
+      {/* Search / Filter modal */}
+      {showSearchModal && (
+        <div className="asv-overlay" onClick={() => setShowSearchModal(false)}>
+          <div
+            className="asv-modal asv-modal--search"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h5 className="asv-modal__title">Buscar y filtrar Air Shipments</h5>
+
+            <form
+              onSubmit={(e) => {
+                handleApplyFilters(e);
+                setShowSearchModal(false);
+              }}
+            >
+              <div className="asv-search-section">
+                <label className="asv-label">Filtros de tabla</label>
+                <div className="asv-search-row">
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterNumber || isNumberFocused ? "2px" : "10px",
+                        left: "8px",
+                        fontSize:
+                          filterNumber || isNumberFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Número
+                    </label>
+                    <input
+                      className="asv-input"
+                      type="text"
+                      value={filterNumber}
+                      onChange={(e) => setFilterNumber(e.target.value)}
+                      onFocus={() => setIsNumberFocused(true)}
+                      onBlur={() => setIsNumberFocused(false)}
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterWaybill || isWaybillFocused ? "2px" : "10px",
+                        left: "8px",
+                        fontSize:
+                          filterWaybill || isWaybillFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Waybill
+                    </label>
+                    <input
+                      className="asv-input"
+                      type="text"
+                      value={filterWaybill}
+                      onChange={(e) => setFilterWaybill(e.target.value)}
+                      onFocus={() => setIsWaybillFocused(true)}
+                      onBlur={() => setIsWaybillFocused(false)}
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                </div>
+                <div className="asv-search-row">
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <label
+                      style={{
+                        position: "absolute",
+                        top:
+                          filterClientReference || isClientReferenceFocused
+                            ? "2px"
+                            : "10px",
+                        left: "8px",
+                        fontSize:
+                          filterClientReference || isClientReferenceFocused
+                            ? "10px"
+                            : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Ref. Cliente
+                    </label>
+                    <input
+                      className="asv-input"
+                      type="text"
+                      value={filterClientReference}
+                      onChange={(e) => setFilterClientReference(e.target.value)}
+                      onFocus={() => setIsClientReferenceFocused(true)}
+                      onBlur={() => setIsClientReferenceFocused(false)}
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterCarrier || isCarrierFocused ? "2px" : "10px",
+                        left: "8px",
+                        fontSize:
+                          filterCarrier || isCarrierFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Carrier
+                    </label>
+                    <input
+                      className="asv-input"
+                      type="text"
+                      value={filterCarrier}
+                      onChange={(e) => setFilterCarrier(e.target.value)}
+                      onFocus={() => setIsCarrierFocused(true)}
+                      onBlur={() => setIsCarrierFocused(false)}
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                </div>
+                <div className="asv-search-row">
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <label
+                      style={{
+                        position: "absolute",
+                        top:
+                          filterDepartureDate || isDepartureFocused
+                            ? "2px"
+                            : "10px",
+                        left: "8px",
+                        fontSize:
+                          filterDepartureDate || isDepartureFocused
+                            ? "10px"
+                            : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Fecha Salida
+                    </label>
+                    <input
+                      className="asv-input"
+                      type="date"
+                      value={filterDepartureDate}
+                      onChange={(e) => setFilterDepartureDate(e.target.value)}
+                      onFocus={() => setIsDepartureFocused(true)}
+                      onBlur={() => setIsDepartureFocused(false)}
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <label
+                      style={{
+                        position: "absolute",
+                        top:
+                          filterArrivalDate || isArrivalFocused
+                            ? "2px"
+                            : "10px",
+                        left: "8px",
+                        fontSize:
+                          filterArrivalDate || isArrivalFocused
+                            ? "10px"
+                            : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Fecha Llegada
+                    </label>
+                    <input
+                      className="asv-input"
+                      type="date"
+                      value={filterArrivalDate}
+                      onChange={(e) => setFilterArrivalDate(e.target.value)}
+                      onFocus={() => setIsArrivalFocused(true)}
+                      onBlur={() => setIsArrivalFocused(false)}
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  className="asv-btn asv-btn--primary asv-btn--full"
+                  type="submit"
+                >
+                  Aplicar filtros
+                </button>
+                <button
+                  className="asv-btn asv-btn--ghost"
+                  type="button"
+                  onClick={() => {
+                    clearSearch();
+                    setShowSearchModal(false);
+                  }}
+                >
+                  Limpiar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (

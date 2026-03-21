@@ -119,11 +119,11 @@
   background-color: #fafafa;
 }
 .gsv-tr--active {
-  background-color: #fff7ed;
-  border-bottom-color: var(--primary-color);
+  background-color: #f9fafb;
+  border-bottom-color: #e5e7eb;
 }
 .gsv-tr--active:hover {
-  background-color: #fff7ed;
+  background-color: #f3f4f6;
 }
 .gsv-tr:last-child {
   border-bottom: none;
@@ -140,13 +140,13 @@
 }
 .gsv-row-chevron--open {
   transform: rotate(90deg);
-  color: var(--primary-color);
+  color: var(--secondary-color);
 }
 
 /* Accordion row */
 .gsv-accordion-row {
   background: #fafafa;
-  border-bottom: 2px solid var(--primary-color);
+  border-bottom: 1px solid #e5e7eb;
 }
 .gsv-accordion-row:hover {
   background: #fafafa;
@@ -351,7 +351,7 @@
 .gsv-finance-card__amount {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--primary-color);
+  color: var(--secondary-color);
   margin-top: 4px;
 }
 .gsv-finance-card__note {
@@ -407,7 +407,7 @@
   cursor: pointer;
 }
 .gsv-pagination-select:focus {
-  border-color: var(--primary-color);
+  border-color: var(--secondary-color);
 }
 
 .gsv-pagination-range {
@@ -430,8 +430,8 @@
   transition: all 0.15s;
 }
 .gsv-pagination-btn:hover:not(:disabled) {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
+  border-color: var(--secondary-color);
+  color: var(--secondary-color);
 }
 .gsv-pagination-btn:disabled {
   opacity: 0.5;

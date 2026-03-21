@@ -231,12 +231,12 @@
 }
 
 .asv-tr--active {
-  background-color: #fff7ed;
-  border-bottom-color: var(--primary-color);
+  background-color: #f9fafb;
+  border-bottom-color: #e5e7eb;
 }
 
 .asv-tr--active:hover {
-  background-color: #fff7ed;
+  background-color: #f3f4f6;
 }
 
 .asv-tr:last-child {
@@ -255,13 +255,13 @@
 
 .asv-row-chevron--open {
   transform: rotate(90deg);
-  color: var(--primary-color);
+  color: var(--secondary-color);
 }
 
 /* Accordion row */
 .asv-accordion-row {
   background: #fafafa;
-  border-bottom: 2px solid var(--primary-color);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .asv-accordion-row:hover {
@@ -348,7 +348,7 @@
 
 .asv-td--number {
   font-weight: 600;
-  color: var(--primary-color);
+  color: var(--secondary-color);
 }
 
 .asv-td--waybill {
