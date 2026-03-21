@@ -95,20 +95,20 @@ function SidebarAdmin({
           icon: "fa fa-route",
           subItems: [
             {
-              path: "/admin/trackeos",
-              name: "Seguimiento de Operaciones",
-            },
-            {
-              path: "/admin/op-trackeos",
-              name: "Seguimiento (Todos)",
-            },
-            {
               path: "/admin/reporteriaclientes",
               name: "Mis Clientes",
             },
             {
               path: "/admin/op-reporteriaclientes",
               name: "Clientes (Todos)",
+            },
+            {
+              path: "/admin/trackeos",
+              name: "Seguimiento de Operaciones",
+            },
+            {
+              path: "/admin/op-trackeos",
+              name: "Seguimiento (Todos)",
             },
           ],
         },
