@@ -31,6 +31,7 @@ import Pricing from "./components/administrador/PricingTabs";
 import PricingFCL from "./components/administrador/Pricing/PricingFCL";
 import PricingLCL from "./components/administrador/Pricing/PricingLCL";
 import HomeAdmin from "./components/administrador/HomeAdmin";
+import HomeOperaciones from "./components/administrador/HomeOperaciones";
 import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
 import OPReporteriaClientes from "./components/administrador/OP-reporteriaclientes";
 import Auditoria from "./components/administrador/Auditoria";
@@ -70,6 +71,13 @@ import EnviosMaritimos from "./components/deprecated/EnviosMaritimos OFF";
 
 // Proveedor Views
 import HomeProveedores from "./components/Proveedores/Homeproveedores";
+
+/** Renders different home page depending on the user's role */
+function HomeSwitch() {
+  const { user } = useAuth();
+  if (user?.roles?.operaciones) return <HomeOperaciones />;
+  return <HomeAdmin />;
+}
 
 function App() {
   const { user, loading } = useAuth();
@@ -138,7 +146,7 @@ function App() {
           />
           <Route path="tusclientes" element={<Clientesejecutivos />} />
           <Route index element={<Navigate to="/admin/home" replace />} />
-          <Route path="home" element={<HomeAdmin />} />
+          <Route path="home" element={<HomeSwitch />} />
           <Route path="reporteriaclientes" element={<ReporteriaClientes />} />
           <Route path="dashboard" element={<DashboardAdmin />} />
           <Route path="users" element={<UsersManagement />} />
