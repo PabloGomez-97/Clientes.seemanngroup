@@ -154,7 +154,7 @@ function Navbar({
   return (
     <>
       <nav
-        className="main-navbar"
+        className="main-navbar main-navbar-shell"
         style={{
           height: "70px",
           minHeight: "70px",
@@ -170,11 +170,15 @@ function Navbar({
           position: "sticky",
           top: 0,
           zIndex: 100,
+          backdropFilter: "blur(14px)",
           fontFamily:
             '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div
+          className="main-navbar-left"
+          style={{ display: "flex", alignItems: "center", gap: "12px" }}
+        >
           <button
             type="button"
             onClick={toggleSidebar}
@@ -233,11 +237,17 @@ function Navbar({
         </div>
 
         {/* Right Section - Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div
+          className="main-navbar-actions"
+          style={{ display: "flex", alignItems: "center", gap: "8px" }}
+        >
           {/* Language Selector */}
-          <div style={{ position: "relative" }}>
+          <div
+            className="main-navbar-language"
+            style={{ position: "relative" }}
+          >
             <button
-              className="language-button"
+              className="language-button navbar-language-trigger"
               onClick={() => setShowLanguage(!showLanguage)}
               style={{
                 height: "36px",
@@ -356,9 +366,9 @@ function Navbar({
           </div>
 
           {/* User Profile */}
-          <div style={{ position: "relative" }}>
+          <div className="main-navbar-profile" style={{ position: "relative" }}>
             <button
-              className="profile-button"
+              className="profile-button navbar-profile-trigger"
               onClick={() => setShowProfile(!showProfile)}
               style={{
                 height: "36px",
@@ -400,6 +410,7 @@ function Navbar({
                 {initials}
               </div>
               <span
+                className="navbar-user-name"
                 style={{
                   fontSize: "13px",
                   fontWeight: "500",
@@ -428,7 +439,7 @@ function Navbar({
             {/* Profile Dropdown */}
             {showProfile && (
               <div
-                className="profile-dropdown"
+                className="profile-dropdown navbar-profile-dropdown"
                 style={{
                   position: "absolute",
                   top: "calc(100% + 8px)",
@@ -1052,6 +1063,10 @@ function Navbar({
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        .main-navbar-shell {
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+        }
         
         /* Responsive: Tablets */
         @media (max-width: 1024px) {
@@ -1060,6 +1075,10 @@ function Navbar({
             min-height: 60px !important;
             max-height: 60px !important;
             padding: 0 16px !important;
+          }
+
+          .navbar-profile-dropdown {
+            width: min(320px, calc(100vw - 32px)) !important;
           }
         }
         
@@ -1070,6 +1089,59 @@ function Navbar({
             min-height: 65px !important;
             max-height: 65px !important;
             padding: 0 12px !important;
+            gap: 8px !important;
+          }
+
+          .main-navbar-actions {
+            gap: 6px !important;
+          }
+
+          .navbar-language-trigger,
+          .navbar-profile-trigger {
+            height: 40px !important;
+            border-radius: 10px !important;
+          }
+
+          .navbar-profile-trigger {
+            padding: 0 8px !important;
+          }
+
+          .navbar-user-name,
+          .navbar-profile-trigger svg:last-child {
+            display: none !important;
+          }
+
+          .navbar-language-trigger span {
+            font-size: 12px;
+          }
+
+          .language-dropdown,
+          .navbar-profile-dropdown {
+            right: 0 !important;
+            width: min(320px, calc(100vw - 24px)) !important;
+          }
+
+          .navbar-profile-dropdown {
+            max-height: min(78vh, 560px);
+            overflow-y: auto !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .main-navbar {
+            padding: 0 10px !important;
+          }
+
+          .main-navbar-actions {
+            gap: 4px !important;
+          }
+
+          .navbar-language-trigger {
+            padding: 0 10px !important;
+          }
+
+          .navbar-profile-trigger {
+            min-width: 42px;
           }
         }
       `}</style>

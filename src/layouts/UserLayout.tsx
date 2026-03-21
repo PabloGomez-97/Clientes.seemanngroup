@@ -201,7 +201,10 @@ function UserLayout() {
   }
 
   return (
-    <div className="d-flex" style={{ height: "100vh", position: "relative" }}>
+    <div
+      className="d-flex user-layout-shell"
+      style={{ height: "100vh", position: "relative" }}
+    >
       <Sidebar
         isCollapsed={sidebarCollapsed}
         isMobile={isMobile}
@@ -209,7 +212,7 @@ function UserLayout() {
       />
 
       <div
-        className="flex-fill d-flex flex-column"
+        className="flex-fill d-flex flex-column user-layout-frame"
         style={{ overflow: "hidden" }}
       >
         <Navbar
@@ -220,7 +223,7 @@ function UserLayout() {
         />
 
         <div
-          className="flex-fill p-4"
+          className="flex-fill user-layout-main"
           style={{ overflowY: "auto", backgroundColor: "#f8f9fa" }}
         >
           <Outlet
@@ -233,6 +236,18 @@ function UserLayout() {
         </div>
       </div>
       <ChatWidget />
+
+      <style>{`
+        .user-layout-main {
+          padding: 24px;
+        }
+
+        @media (max-width: 768px) {
+          .user-layout-main {
+            padding: 12px 0 18px;
+          }
+        }
+      `}</style>
     </div>
   );
 }

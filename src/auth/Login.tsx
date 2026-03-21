@@ -53,14 +53,18 @@ export default function Login() {
 
   return (
     <div
+      className="login-page"
       style={{
         minHeight: "100vh",
         display: "flex",
         fontFamily: FONT,
+        background:
+          "linear-gradient(135deg, rgba(26, 26, 26, 1) 0%, rgba(26, 26, 26, 1) 42%, rgba(250, 250, 250, 1) 42%, rgba(250, 250, 250, 1) 100%)",
       }}
     >
       {/* Left brand panel */}
       <div
+        className="login-brand-panel"
         style={{
           width: "42%",
           minHeight: "100vh",
@@ -68,6 +72,7 @@ export default function Login() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
+          gap: "32px",
           padding: "48px",
           position: "relative",
           overflow: "hidden",
@@ -98,8 +103,12 @@ export default function Login() {
         />
 
         {/* Top: Logo */}
-        <div>
+        <div
+          className="login-brand-header"
+          style={{ position: "relative", zIndex: 1 }}
+        >
           <img
+            className="login-brand-logo"
             src={logoSeemann}
             alt="Seemann Group"
             style={{
@@ -111,8 +120,12 @@ export default function Login() {
         </div>
 
         {/* Center: Brand message */}
-        <div style={{ position: "relative", zIndex: 1 }}>
+        <div
+          className="login-brand-copy"
+          style={{ position: "relative", zIndex: 1 }}
+        >
           <div
+            className="login-brand-accent"
             style={{
               width: "32px",
               height: "3px",
@@ -121,6 +134,7 @@ export default function Login() {
             }}
           />
           <h1
+            className="login-brand-title"
             style={{
               fontSize: "32px",
               fontWeight: "600",
@@ -133,6 +147,7 @@ export default function Login() {
             {t("home.login.title")}
           </h1>
           <p
+            className="login-brand-subtitle"
             style={{
               fontSize: "15px",
               color: "rgba(255, 255, 255, 0.5)",
@@ -147,6 +162,7 @@ export default function Login() {
 
         {/* Bottom: Footer */}
         <p
+          className="login-brand-footer"
           style={{
             fontSize: "12px",
             color: "rgba(255, 255, 255, 0.3)",
@@ -159,6 +175,7 @@ export default function Login() {
 
       {/* Right form panel */}
       <div
+        className="login-form-panel"
         style={{
           flex: 1,
           display: "flex",
@@ -168,9 +185,13 @@ export default function Login() {
           padding: "48px",
         }}
       >
-        <div style={{ width: "100%", maxWidth: "380px" }}>
+        <div
+          className="login-form-card"
+          style={{ width: "100%", maxWidth: "420px" }}
+        >
           {/* Language toggle */}
           <div
+            className="login-language-toggle"
             style={{
               display: "flex",
               justifyContent: "flex-end",
@@ -230,6 +251,7 @@ export default function Login() {
 
           {/* Heading */}
           <h2
+            className="login-form-title"
             style={{
               fontSize: "22px",
               fontWeight: "600",
@@ -241,6 +263,7 @@ export default function Login() {
             {t("home.login.loginButton")}
           </h2>
           <p
+            className="login-form-subtitle"
             style={{
               fontSize: "14px",
               color: "#888",
@@ -278,7 +301,7 @@ export default function Login() {
 
           <form onSubmit={onSubmit}>
             {/* Email */}
-            <div style={{ marginBottom: "20px" }}>
+            <div className="login-field-group" style={{ marginBottom: "20px" }}>
               <label
                 htmlFor="email"
                 style={{
@@ -302,8 +325,8 @@ export default function Login() {
                 onBlur={() => setFocusedField(null)}
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
-                  fontSize: "14px",
+                  padding: "14px 16px",
+                  fontSize: "16px",
                   fontFamily: FONT,
                   color: DARK,
                   backgroundColor: "#fff",
@@ -317,7 +340,7 @@ export default function Login() {
             </div>
 
             {/* Password */}
-            <div style={{ marginBottom: "28px" }}>
+            <div className="login-field-group" style={{ marginBottom: "28px" }}>
               <label
                 htmlFor="password"
                 style={{
@@ -341,8 +364,8 @@ export default function Login() {
                 onBlur={() => setFocusedField(null)}
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
-                  fontSize: "14px",
+                  padding: "14px 16px",
+                  fontSize: "16px",
                   fontFamily: FONT,
                   color: DARK,
                   backgroundColor: "#fff",
@@ -410,6 +433,7 @@ export default function Login() {
 
           {/* Divider + links */}
           <div
+            className="login-form-links"
             style={{
               marginTop: "32px",
               paddingTop: "24px",
@@ -484,8 +508,140 @@ export default function Login() {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        .login-page {
+          width: 100%;
+        }
+
+        .login-form-card {
+          position: relative;
+        }
+
+        .login-brand-title,
+        .login-form-title {
+          text-wrap: balance;
+        }
+
+        @media (max-width: 1024px) {
+          .login-brand-panel {
+            width: 38% !important;
+            padding: 40px 32px !important;
+          }
+
+          .login-form-panel {
+            padding: 40px 32px !important;
+          }
+        }
+
         @media (max-width: 768px) {
-          /* Stack vertically on mobile */
+          .login-page {
+            min-height: 100vh;
+            flex-direction: column;
+            background: linear-gradient(180deg, #1a1a1a 0%, #1a1a1a 34%, #f4f4f4 34%, #f4f4f4 100%) !important;
+          }
+
+          .login-brand-panel {
+            width: 100% !important;
+            min-height: auto !important;
+            padding: 24px 20px 88px !important;
+            gap: 24px !important;
+            justify-content: flex-start !important;
+          }
+
+          .login-brand-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .login-brand-logo {
+            height: 60px !important;
+            max-width: min(220px, 70vw);
+            object-fit: contain;
+          }
+
+          .login-brand-copy {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            max-width: 100%;
+          }
+
+          .login-brand-accent {
+            margin-bottom: 18px !important;
+          }
+
+          .login-brand-title {
+            font-size: 26px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .login-brand-subtitle {
+            max-width: 32ch !important;
+            font-size: 14px !important;
+            line-height: 1.7 !important;
+          }
+
+          .login-brand-footer {
+            display: none;
+          }
+
+          .login-form-panel {
+            align-items: flex-start !important;
+            padding: 0 14px 24px !important;
+            background: transparent !important;
+            margin-top: -56px;
+          }
+
+          .login-form-card {
+            max-width: 100% !important;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 24px;
+            padding: 22px 18px 20px;
+            box-shadow: 0 20px 55px rgba(0, 0, 0, 0.14);
+            backdrop-filter: blur(10px);
+          }
+
+          .login-language-toggle {
+            margin-bottom: 28px !important;
+          }
+
+          .login-form-title {
+            font-size: 24px !important;
+          }
+
+          .login-form-subtitle {
+            margin-bottom: 24px !important;
+            line-height: 1.6;
+          }
+
+          .login-field-group {
+            margin-bottom: 16px !important;
+          }
+
+          .login-form-links {
+            margin-top: 24px !important;
+            padding-top: 20px !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .login-brand-panel {
+            padding: 20px 16px 84px !important;
+          }
+
+          .login-brand-title {
+            font-size: 23px !important;
+          }
+
+          .login-form-panel {
+            padding: 0 10px 18px !important;
+          }
+
+          .login-form-card {
+            padding: 20px 16px 18px;
+            border-radius: 20px;
+          }
         }
       `}</style>
     </div>

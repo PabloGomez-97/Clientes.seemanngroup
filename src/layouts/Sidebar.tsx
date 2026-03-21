@@ -145,7 +145,11 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const sidebarWidth = isMobile ? "280px" : isCollapsed ? "84px" : "260px";
+  const sidebarWidth = isMobile
+    ? "min(86vw, 320px)"
+    : isCollapsed
+      ? "84px"
+      : "260px";
 
   const toggleMenu = (menuName: string) => {
     setExpandedMenus((prev) =>
@@ -170,6 +174,7 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
       )}
 
       <div
+        className="sidebar-scroll sidebar-shell"
         style={{
           width: sidebarWidth,
           minWidth: sidebarWidth,
@@ -197,7 +202,6 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
           zIndex: isMobile ? 1100 : 20,
           pointerEvents: isMobile && isCollapsed ? "none" : "auto",
         }}
-        className="sidebar-scroll"
       >
         <div
           className="sidebar-header"
@@ -307,6 +311,7 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
         )}
 
         <nav
+          className="sidebar-nav"
           style={{
             flex: 1,
             padding: isCollapsed && !isMobile ? "12px 10px" : "12px 0",
@@ -558,6 +563,11 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
         </nav>
 
         <style>{`
+          .sidebar-shell {
+            background-image: linear-gradient(180deg, rgba(45, 58, 74, 0.22) 0%, rgba(35, 47, 62, 0) 100%);
+            backdrop-filter: blur(10px);
+          }
+
           .sidebar-scroll::-webkit-scrollbar {
             width: 0;
           }
@@ -568,6 +578,34 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
 
           .sidebar-scroll::-webkit-scrollbar-thumb {
             background: transparent;
+          }
+
+          @media (max-width: 768px) {
+            .sidebar-shell {
+              border-top-right-radius: 24px;
+              border-bottom-right-radius: 24px;
+              box-shadow: 10px 0 32px rgba(15, 23, 42, 0.28) !important;
+            }
+
+            .sidebar-header {
+              height: 72px !important;
+              padding: 0 18px !important;
+            }
+
+            .sidebar-logo {
+              width: min(180px, 55vw) !important;
+            }
+
+            .sidebar-nav {
+              padding: 14px 0 28px !important;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .sidebar-shell {
+              width: min(90vw, 320px) !important;
+              min-width: min(90vw, 320px) !important;
+            }
           }
         `}</style>
       </div>
