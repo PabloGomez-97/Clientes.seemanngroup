@@ -14,7 +14,26 @@ import {
   formatDate,
   getFlagUrl,
 } from "../Sidebar/shipsgo/types";
+import AirShipmentDetail from "../Sidebar/shipsgo/AirShipmentDetail";
+import OceanShipmentDetail from "../Sidebar/shipsgo/OceanShipmentDetail";
+import "../Sidebar/styles/Shipsgotracking.css";
 import "./HomeOperaciones.css";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Modal types
+// ═══════════════════════════════════════════════════════════════════════════
+
+type ListModalType =
+  | null
+  | "all-shipments"
+  | "all-clients"
+  | "kpi-total"
+  | "kpi-active"
+  | "kpi-air-transit"
+  | "kpi-ocean-transit"
+  | "kpi-completed"
+  | "kpi-delayed"
+  | "kpi-clients";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -278,6 +297,16 @@ export default function HomeOperaciones() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [shipmentTab, setShipmentTab] = useState<"air" | "ocean">("air");
+
+  // Modal state
+  const [selectedAir, setSelectedAir] = useState<AirShipment | null>(null);
+  const [selectedOcean, setSelectedOcean] = useState<OceanShipment | null>(
+    null,
+  );
+  const [listModal, setListModal] = useState<ListModalType>(null);
+  const [listModalTab, setListModalTab] = useState<"air" | "ocean" | "all">(
+    "all",
+  );
 
   const displayName = user?.nombreuser || user?.username || "Operaciones";
 
@@ -634,7 +663,13 @@ export default function HomeOperaciones() {
       {/* ── KPI Cards ────────────────────────────────────────────────────── */}
       <div className="ops-kpi-grid">
         {/* Total seguimientos */}
-        <div className="ops-kpi ops-kpi--orange">
+        <div
+          className="ops-kpi ops-kpi--orange ops-kpi--clickable"
+          onClick={() => {
+            setListModal("kpi-total");
+            setListModalTab("all");
+          }}
+        >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Total Seguimientos</span>
             <div
@@ -668,7 +703,13 @@ export default function HomeOperaciones() {
         </div>
 
         {/* En movimiento */}
-        <div className="ops-kpi ops-kpi--cyan">
+        <div
+          className="ops-kpi ops-kpi--cyan ops-kpi--clickable"
+          onClick={() => {
+            setListModal("kpi-active");
+            setListModalTab("all");
+          }}
+        >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">En Movimiento</span>
             <div
@@ -698,7 +739,13 @@ export default function HomeOperaciones() {
         </div>
 
         {/* Aéreos en tránsito */}
-        <div className="ops-kpi ops-kpi--blue">
+        <div
+          className="ops-kpi ops-kpi--blue ops-kpi--clickable"
+          onClick={() => {
+            setListModal("kpi-air-transit");
+            setListModalTab("air");
+          }}
+        >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Aéreos En Tránsito</span>
             <div
@@ -726,7 +773,13 @@ export default function HomeOperaciones() {
         </div>
 
         {/* Marítimos navegando */}
-        <div className="ops-kpi ops-kpi--green">
+        <div
+          className="ops-kpi ops-kpi--green ops-kpi--clickable"
+          onClick={() => {
+            setListModal("kpi-ocean-transit");
+            setListModalTab("ocean");
+          }}
+        >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Marítimos Navegando</span>
             <div
@@ -759,7 +812,13 @@ export default function HomeOperaciones() {
         </div>
 
         {/* Completados total */}
-        <div className="ops-kpi ops-kpi--purple">
+        <div
+          className="ops-kpi ops-kpi--purple ops-kpi--clickable"
+          onClick={() => {
+            setListModal("kpi-completed");
+            setListModalTab("all");
+          }}
+        >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Completados</span>
             <div
@@ -794,7 +853,13 @@ export default function HomeOperaciones() {
         </div>
 
         {/* Retrasos */}
-        <div className="ops-kpi ops-kpi--red">
+        <div
+          className="ops-kpi ops-kpi--red ops-kpi--clickable"
+          onClick={() => {
+            setListModal("kpi-delayed");
+            setListModalTab("all");
+          }}
+        >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Retrasos Activos</span>
             <div
@@ -826,7 +891,10 @@ export default function HomeOperaciones() {
         </div>
 
         {/* Clientes con seguimiento */}
-        <div className="ops-kpi ops-kpi--amber">
+        <div
+          className="ops-kpi ops-kpi--amber ops-kpi--clickable"
+          onClick={() => setListModal("kpi-clients")}
+        >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Clientes con Seguimiento</span>
             <div
@@ -1149,7 +1217,10 @@ export default function HomeOperaciones() {
           </h3>
           <button
             className="ops-view-all"
-            onClick={() => navigate("/admin/op-trackeos")}
+            onClick={() => {
+              setListModal("all-shipments");
+              setListModalTab("all");
+            }}
           >
             Ver todos →
           </button>
@@ -1194,7 +1265,11 @@ export default function HomeOperaciones() {
                 {recentAir.map((s) => {
                   const delayed = isAirDelayed(s);
                   return (
-                    <tr key={s.id}>
+                    <tr
+                      key={s.id}
+                      className="ops-clickable-row"
+                      onClick={() => setSelectedAir(s)}
+                    >
                       <td>
                         <span
                           className={`ops-badge ${delayed ? "ops-badge--delayed" : getAirBadgeClass(s.status)}`}
@@ -1276,7 +1351,11 @@ export default function HomeOperaciones() {
               {recentOcean.map((s) => {
                 const delayed = isOceanDelayed(s);
                 return (
-                  <tr key={s.id}>
+                  <tr
+                    key={s.id}
+                    className="ops-clickable-row"
+                    onClick={() => setSelectedOcean(s)}
+                  >
                     <td>
                       <span
                         className={`ops-badge ${delayed ? "ops-badge--delayed" : getOceanBadgeClass(s.status)}`}
@@ -1471,7 +1550,7 @@ export default function HomeOperaciones() {
             </h3>
             <button
               className="ops-view-all"
-              onClick={() => navigate("/admin/op-reporteriaclientes")}
+              onClick={() => setListModal("all-clients")}
             >
               Ver todos →
             </button>
@@ -1688,6 +1767,51 @@ export default function HomeOperaciones() {
           </div>
         </div>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          MODALS
+          ═══════════════════════════════════════════════════════════════════ */}
+
+      {/* Individual shipment detail modals */}
+      {selectedAir && (
+        <AirShipmentDetail
+          shipment={selectedAir}
+          onClose={() => setSelectedAir(null)}
+        />
+      )}
+      {selectedOcean && (
+        <OceanShipmentDetail
+          shipment={selectedOcean}
+          onClose={() => setSelectedOcean(null)}
+        />
+      )}
+
+      {/* List modal (shipments / clients / KPI drill-down) */}
+      {listModal && (
+        <ListModal
+          type={listModal}
+          tab={listModalTab}
+          onTabChange={setListModalTab}
+          onClose={() => setListModal(null)}
+          allAir={allAir}
+          allOcean={allOcean}
+          airInTransit={airInTransit}
+          oceanInTransit={oceanInTransit}
+          airCompleted={airCompleted}
+          oceanCompleted={oceanCompleted}
+          airDelayed={airDelayed}
+          oceanDelayed={oceanDelayed}
+          clientRanking={clientRanking}
+          onSelectAir={(s) => {
+            setListModal(null);
+            setSelectedAir(s);
+          }}
+          onSelectOcean={(s) => {
+            setListModal(null);
+            setSelectedOcean(s);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1718,6 +1842,403 @@ function MiniStat({
     >
       <span style={{ color }}>{value}</span>
       <span style={{ color: "var(--ops-text-muted)" }}>{label}</span>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ListModal — Full-list overlay for shipments / clients / KPI drill-down
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ListModalProps {
+  type: NonNullable<ListModalType>;
+  tab: "air" | "ocean" | "all";
+  onTabChange: (t: "air" | "ocean" | "all") => void;
+  onClose: () => void;
+  allAir: AirShipment[];
+  allOcean: OceanShipment[];
+  airInTransit: AirShipment[];
+  oceanInTransit: OceanShipment[];
+  airCompleted: AirShipment[];
+  oceanCompleted: OceanShipment[];
+  airDelayed: AirShipment[];
+  oceanDelayed: OceanShipment[];
+  clientRanking: ClientShipmentCount[];
+  onSelectAir: (s: AirShipment) => void;
+  onSelectOcean: (s: OceanShipment) => void;
+}
+
+function ListModal({
+  type,
+  tab,
+  onTabChange,
+  onClose,
+  allAir,
+  allOcean,
+  airInTransit,
+  oceanInTransit,
+  airCompleted,
+  oceanCompleted,
+  airDelayed,
+  oceanDelayed,
+  clientRanking,
+  onSelectAir,
+  onSelectOcean,
+}: ListModalProps) {
+  // Determine which data to show
+  const isClientModal = type === "all-clients" || type === "kpi-clients";
+
+  let title = "";
+  let airList: AirShipment[] = [];
+  let oceanList: OceanShipment[] = [];
+
+  switch (type) {
+    case "all-shipments":
+    case "kpi-total":
+      title = "Todos los Seguimientos";
+      airList = allAir;
+      oceanList = allOcean;
+      break;
+    case "kpi-active":
+      title = "Envíos En Movimiento";
+      airList = airInTransit;
+      oceanList = oceanInTransit;
+      break;
+    case "kpi-air-transit":
+      title = "Aéreos En Tránsito";
+      airList = airInTransit;
+      oceanList = [];
+      break;
+    case "kpi-ocean-transit":
+      title = "Marítimos Navegando";
+      airList = [];
+      oceanList = oceanInTransit;
+      break;
+    case "kpi-completed":
+      title = "Envíos Completados";
+      airList = airCompleted;
+      oceanList = oceanCompleted;
+      break;
+    case "kpi-delayed":
+      title = "Retrasos Activos";
+      airList = airDelayed;
+      oceanList = oceanDelayed;
+      break;
+    case "all-clients":
+    case "kpi-clients":
+      title = "Clientes con Seguimiento";
+      break;
+  }
+
+  const showTabs = !isClientModal && airList.length > 0 && oceanList.length > 0;
+
+  const filteredAir = tab === "ocean" ? [] : airList;
+  const filteredOcean = tab === "air" ? [] : oceanList;
+
+  return (
+    <div className="ops-list-overlay" onClick={onClose}>
+      <div className="ops-list-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="ops-list-modal__header">
+          <h2 className="ops-list-modal__title">{title}</h2>
+          <button className="ops-list-modal__close" onClick={onClose}>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Client list */}
+        {isClientModal ? (
+          <div className="ops-list-modal__body">
+            {clientRanking.length === 0 ? (
+              <div className="ops-empty">Sin datos de clientes.</div>
+            ) : (
+              <table className="ops-mini-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Cliente</th>
+                    <th>Username</th>
+                    <th>Aéreos</th>
+                    <th>Marítimos</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clientRanking.map((c, i) => (
+                    <tr key={c.username}>
+                      <td>
+                        <span
+                          className="ops-client-row__rank"
+                          style={
+                            i === 0
+                              ? {}
+                              : i === 1
+                                ? { background: "#64748b" }
+                                : i === 2
+                                  ? { background: "#94a3b8" }
+                                  : { background: "#cbd5e1", color: "#64748b" }
+                          }
+                        >
+                          {i + 1}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 600 }}>
+                        {c.nombreuser || c.username}
+                      </td>
+                      <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                        {c.username}
+                      </td>
+                      <td>✈ {c.air}</td>
+                      <td>🚢 {c.ocean}</td>
+                      <td
+                        style={{ fontWeight: 700, color: "var(--ops-orange)" }}
+                      >
+                        {c.total}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Tabs */}
+            {showTabs && (
+              <div className="ops-tabs" style={{ padding: "0 24px" }}>
+                <button
+                  className={`ops-tab ${tab === "all" ? "ops-tab--active" : ""}`}
+                  onClick={() => onTabChange("all")}
+                >
+                  Todos ({airList.length + oceanList.length})
+                </button>
+                <button
+                  className={`ops-tab ${tab === "air" ? "ops-tab--active" : ""}`}
+                  onClick={() => onTabChange("air")}
+                >
+                  ✈ Aéreos ({airList.length})
+                </button>
+                <button
+                  className={`ops-tab ${tab === "ocean" ? "ops-tab--active" : ""}`}
+                  onClick={() => onTabChange("ocean")}
+                >
+                  🚢 Marítimos ({oceanList.length})
+                </button>
+              </div>
+            )}
+
+            <div className="ops-list-modal__body">
+              {/* Air shipments table */}
+              {filteredAir.length > 0 && (
+                <>
+                  {showTabs && tab === "all" && (
+                    <h4 className="ops-list-modal__subtitle">
+                      ✈ Aéreos ({filteredAir.length})
+                    </h4>
+                  )}
+                  <table className="ops-mini-table">
+                    <thead>
+                      <tr>
+                        <th>Estado</th>
+                        <th>AWB</th>
+                        <th>Aerolínea</th>
+                        <th>Origen</th>
+                        <th>Destino</th>
+                        <th>Cliente</th>
+                        <th>Progreso</th>
+                        <th>Creado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAir.map((s) => {
+                        const delayed = isAirDelayed(s);
+                        return (
+                          <tr
+                            key={s.id}
+                            className="ops-clickable-row"
+                            onClick={() => onSelectAir(s)}
+                          >
+                            <td>
+                              <span
+                                className={`ops-badge ${delayed ? "ops-badge--delayed" : getAirBadgeClass(s.status)}`}
+                              >
+                                {delayed
+                                  ? "⚠ Retraso"
+                                  : AIR_STATUS_LABELS[s.status] || s.status}
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                fontWeight: 600,
+                                fontFamily: "monospace",
+                                fontSize: 11,
+                              }}
+                            >
+                              {s.awb_number}
+                            </td>
+                            <td>{s.airline?.name || "—"}</td>
+                            <td>
+                              {s.route?.origin.location.country.code && (
+                                <img
+                                  src={getFlagUrl(
+                                    s.route.origin.location.country.code,
+                                  )}
+                                  alt=""
+                                  className="ops-flag"
+                                />
+                              )}
+                              {s.route?.origin.location.iata || "—"}
+                            </td>
+                            <td>
+                              {s.route?.destination.location.country.code && (
+                                <img
+                                  src={getFlagUrl(
+                                    s.route.destination.location.country.code,
+                                  )}
+                                  alt=""
+                                  className="ops-flag"
+                                />
+                              )}
+                              {s.route?.destination.location.iata || "—"}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>
+                              {s.reference || "—"}
+                            </td>
+                            <td style={{ minWidth: 100 }}>
+                              <ProgressBar
+                                value={s.route?.transit_percentage ?? 0}
+                                color={delayed ? "#dc2626" : "#0891b2"}
+                              />
+                            </td>
+                            <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                              {formatDate(s.created_at)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              )}
+
+              {/* Ocean shipments table */}
+              {filteredOcean.length > 0 && (
+                <>
+                  {showTabs && tab === "all" && (
+                    <h4 className="ops-list-modal__subtitle">
+                      🚢 Marítimos ({filteredOcean.length})
+                    </h4>
+                  )}
+                  <table className="ops-mini-table">
+                    <thead>
+                      <tr>
+                        <th>Estado</th>
+                        <th>Container / Booking</th>
+                        <th>Naviera</th>
+                        <th>Origen</th>
+                        <th>Destino</th>
+                        <th>Cliente</th>
+                        <th>Progreso</th>
+                        <th>Creado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredOcean.map((s) => {
+                        const delayed = isOceanDelayed(s);
+                        return (
+                          <tr
+                            key={s.id}
+                            className="ops-clickable-row"
+                            onClick={() => onSelectOcean(s)}
+                          >
+                            <td>
+                              <span
+                                className={`ops-badge ${delayed ? "ops-badge--delayed" : getOceanBadgeClass(s.status)}`}
+                              >
+                                {delayed
+                                  ? "⚠ Retraso"
+                                  : OCEAN_STATUS_LABELS[s.status] || s.status}
+                              </span>
+                            </td>
+                            <td
+                              style={{
+                                fontWeight: 600,
+                                fontFamily: "monospace",
+                                fontSize: 11,
+                              }}
+                            >
+                              {s.container_number || s.booking_number || "—"}
+                            </td>
+                            <td>{s.carrier?.name || "—"}</td>
+                            <td>
+                              {s.route?.port_of_loading.location.country
+                                ?.code && (
+                                <img
+                                  src={getFlagUrl(
+                                    s.route.port_of_loading.location.country
+                                      .code,
+                                  )}
+                                  alt=""
+                                  className="ops-flag"
+                                />
+                              )}
+                              {s.route?.port_of_loading.location.name || "—"}
+                            </td>
+                            <td>
+                              {s.route?.port_of_discharge.location.country
+                                ?.code && (
+                                <img
+                                  src={getFlagUrl(
+                                    s.route.port_of_discharge.location.country
+                                      .code,
+                                  )}
+                                  alt=""
+                                  className="ops-flag"
+                                />
+                              )}
+                              {s.route?.port_of_discharge.location.name || "—"}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>
+                              {s.reference || "—"}
+                            </td>
+                            <td style={{ minWidth: 100 }}>
+                              <ProgressBar
+                                value={s.route?.transit_percentage ?? 0}
+                                color={delayed ? "#dc2626" : "#2563eb"}
+                              />
+                            </td>
+                            <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                              {formatDate(s.created_at)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              )}
+
+              {filteredAir.length === 0 && filteredOcean.length === 0 && (
+                <div className="ops-empty">
+                  No hay seguimientos en esta categoría.
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
