@@ -342,6 +342,7 @@ function ShippingOrderView() {
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
 
   // Track modal
+  const [showFilterModal, setShowFilterModal] = useState(false);
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [trackOrder, setTrackOrder] = useState<ShippingOrder | null>(null);
   const [trackEmails, setTrackEmails] = useState<string[]>([""]);
@@ -369,8 +370,17 @@ function ShippingOrderView() {
   const [isArrivalFocused, setIsArrivalFocused] = useState(false);
   const [isFlowFocused, setIsFlowFocused] = useState(false);
 
+  const activeFilterCount = [
+    filterNumber,
+    filterReference,
+    filterCarrier,
+    filterDepartureDate,
+    filterArrivalDate,
+    filterFlow,
+  ].filter(Boolean).length;
+
   // Embed
-  const [embedQuery, setEmbedQuery] = useState<string | null>(null);
+  const [, setEmbedQuery] = useState<string | null>(null);
 
   /* ── Table pagination ─────────────────────── */
   const totalTablePages = Math.max(
@@ -544,6 +554,8 @@ function ShippingOrderView() {
 
     setDisplayedOrders(filtered);
     setShowingFiltered(true);
+    setTablePage(1);
+    setShowFilterModal(false);
   };
 
   /* ── Accordion ────────────────────────────── */
@@ -916,157 +928,33 @@ function ShippingOrderView() {
         }}
       >
         <div
-          className="sov-toolbar__left"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            flexWrap: "wrap",
-          }}
-        >
-          <form
-            onSubmit={handleApplyFilters}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              flexWrap: "wrap",
-            }}
-          >
-            <FloatingInput
-              label="Número"
-              value={filterNumber}
-              onChange={setFilterNumber}
-              isFocused={isNumberFocused}
-              onFocus={() => setIsNumberFocused(true)}
-              onBlur={() => setIsNumberFocused(false)}
-            />
-            <FloatingInput
-              label="Ref. Cliente"
-              value={filterReference}
-              onChange={setFilterReference}
-              isFocused={isReferenceFocused}
-              onFocus={() => setIsReferenceFocused(true)}
-              onBlur={() => setIsReferenceFocused(false)}
-              width="120px"
-            />
-            <FloatingInput
-              label="Carrier"
-              value={filterCarrier}
-              onChange={setFilterCarrier}
-              isFocused={isCarrierFocused}
-              onFocus={() => setIsCarrierFocused(true)}
-              onBlur={() => setIsCarrierFocused(false)}
-              width="120px"
-            />
-            <FloatingInput
-              label="Fecha Salida"
-              value={filterDepartureDate}
-              onChange={setFilterDepartureDate}
-              isFocused={isDepartureFocused}
-              onFocus={() => setIsDepartureFocused(true)}
-              onBlur={() => setIsDepartureFocused(false)}
-              type="date"
-              width="120px"
-            />
-            <FloatingInput
-              label="Fecha Llegada"
-              value={filterArrivalDate}
-              onChange={setFilterArrivalDate}
-              isFocused={isArrivalFocused}
-              onFocus={() => setIsArrivalFocused(true)}
-              onBlur={() => setIsArrivalFocused(false)}
-              type="date"
-              width="120px"
-            />
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <label
-                style={{
-                  position: "absolute",
-                  top: filterFlow || isFlowFocused ? "2px" : "8px",
-                  left: "8px",
-                  fontSize: filterFlow || isFlowFocused ? "10px" : "12px",
-                  fontWeight: "bold",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  color: "#666",
-                  transition: "all 0.2s ease",
-                  pointerEvents: "none",
-                  backgroundColor: "#fff",
-                  padding: "0 2px",
-                  zIndex: 1,
-                }}
-              >
-                Flujo
-              </label>
-              <select
-                value={filterFlow}
-                onChange={(e) => setFilterFlow(e.target.value)}
-                onFocus={() => setIsFlowFocused(true)}
-                onBlur={() => setIsFlowFocused(false)}
-                style={{
-                  width: "100px",
-                  height: "32px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "4px 8px",
-                  fontSize: "12px",
-                  fontFamily:
-                    '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                  backgroundColor: "#fff",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  cursor: "pointer",
-                }}
-              >
-                <option value="">Todos</option>
-                <option value="1">Export</option>
-                <option value="2">Import</option>
-                <option value="3">Transit</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              style={{
-                height: "32px",
-                padding: "0 12px",
-                fontSize: "12px",
-                borderRadius: "4px",
-                border: "none",
-                fontFamily:
-                  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                backgroundColor: "var(--primary-color)",
-                color: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              Apply
-            </button>
-            <button
-              type="button"
-              onClick={clearFilters}
-              style={{
-                height: "32px",
-                padding: "0 12px",
-                fontSize: "12px",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-                fontFamily:
-                  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-                backgroundColor: "#fff",
-                color: "#666",
-                cursor: "pointer",
-              }}
-            >
-              Clear
-            </button>
-          </form>
-        </div>
-
-        <div
           className="sov-toolbar__right"
           style={{ marginLeft: "auto", display: "flex", gap: "8px" }}
         >
+          <button
+            className={`sov-btn sov-btn--ghost sov-toolbar__icon-btn ${activeFilterCount > 0 ? "sov-toolbar__icon-btn--active" : ""}`}
+            type="button"
+            onClick={() => setShowFilterModal(true)}
+            aria-label="Abrir filtros"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <span>Filtros</span>
+            {activeFilterCount > 0 && (
+              <span className="sov-toolbar__badge">{activeFilterCount}</span>
+            )}
+          </button>
           <button
             onClick={refreshOrders}
             style={{
@@ -1108,6 +996,150 @@ function ShippingOrderView() {
           )}
         </div>
       </div>
+
+      {showFilterModal && (
+        <div className="asv-overlay" onClick={() => setShowFilterModal(false)}>
+          <div
+            className="asv-modal asv-modal--search"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h5 className="sov-modal__title">Filtrar shipping orders</h5>
+            <p className="asv-modal__question">
+              Configura solo los criterios que quieras aplicar sobre la tabla.
+            </p>
+
+            <form
+              onSubmit={handleApplyFilters}
+              className="sov-filters-modal__form"
+            >
+              <div className="sov-search-row">
+                <FloatingInput
+                  label="Número"
+                  value={filterNumber}
+                  onChange={setFilterNumber}
+                  isFocused={isNumberFocused}
+                  onFocus={() => setIsNumberFocused(true)}
+                  onBlur={() => setIsNumberFocused(false)}
+                  width="100%"
+                />
+                <FloatingInput
+                  label="Ref. Cliente"
+                  value={filterReference}
+                  onChange={setFilterReference}
+                  isFocused={isReferenceFocused}
+                  onFocus={() => setIsReferenceFocused(true)}
+                  onBlur={() => setIsReferenceFocused(false)}
+                  width="100%"
+                />
+              </div>
+              <div className="sov-search-row">
+                <FloatingInput
+                  label="Carrier"
+                  value={filterCarrier}
+                  onChange={setFilterCarrier}
+                  isFocused={isCarrierFocused}
+                  onFocus={() => setIsCarrierFocused(true)}
+                  onBlur={() => setIsCarrierFocused(false)}
+                  width="100%"
+                />
+                <FloatingInput
+                  label="Fecha Salida"
+                  value={filterDepartureDate}
+                  onChange={setFilterDepartureDate}
+                  isFocused={isDepartureFocused}
+                  onFocus={() => setIsDepartureFocused(true)}
+                  onBlur={() => setIsDepartureFocused(false)}
+                  type="date"
+                  width="100%"
+                />
+              </div>
+              <div className="sov-search-row">
+                <FloatingInput
+                  label="Fecha Llegada"
+                  value={filterArrivalDate}
+                  onChange={setFilterArrivalDate}
+                  isFocused={isArrivalFocused}
+                  onFocus={() => setIsArrivalFocused(true)}
+                  onBlur={() => setIsArrivalFocused(false)}
+                  type="date"
+                  width="100%"
+                />
+                <div
+                  style={{
+                    position: "relative",
+                    display: "inline-block",
+                    flex: 1,
+                  }}
+                >
+                  <label
+                    style={{
+                      position: "absolute",
+                      top: filterFlow || isFlowFocused ? "2px" : "8px",
+                      left: "8px",
+                      fontSize: filterFlow || isFlowFocused ? "10px" : "12px",
+                      fontWeight: "bold",
+                      fontFamily:
+                        '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                      color: "#666",
+                      transition: "all 0.2s ease",
+                      pointerEvents: "none",
+                      backgroundColor: "#fff",
+                      padding: "0 2px",
+                      zIndex: 1,
+                    }}
+                  >
+                    Flujo
+                  </label>
+                  <select
+                    value={filterFlow}
+                    onChange={(e) => setFilterFlow(e.target.value)}
+                    onFocus={() => setIsFlowFocused(true)}
+                    onBlur={() => setIsFlowFocused(false)}
+                    style={{
+                      width: "100%",
+                      height: "44px",
+                      border: "1px solid #ccc",
+                      borderRadius: "10px",
+                      padding: "12px 12px 4px",
+                      fontSize: "13px",
+                      fontFamily:
+                        '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+                      backgroundColor: "#fff",
+                      outline: "none",
+                      boxSizing: "border-box",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <option value="">Todos</option>
+                    <option value="1">Export</option>
+                    <option value="2">Import</option>
+                    <option value="3">Transit</option>
+                  </select>
+                </div>
+              </div>
+              <div className="asv-modal__actions">
+                <button className="sov-btn sov-btn--secondary" type="submit">
+                  Aplicar filtros
+                </button>
+                <button
+                  className="sov-btn sov-btn--ghost"
+                  type="button"
+                  onClick={clearFilters}
+                >
+                  Limpiar
+                </button>
+                <button
+                  className="sov-btn sov-btn--ghost"
+                  type="button"
+                  onClick={() => setShowFilterModal(false)}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (

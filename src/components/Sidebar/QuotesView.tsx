@@ -263,6 +263,18 @@ function QuotesView() {
   const [filterValidUntil, setFilterValidUntil] = useState("");
   const [filterTransit, setFilterTransit] = useState("");
 
+  const activeFilterCount = [
+    filterNumber,
+    filterStatus,
+    filterOrigin,
+    filterDestination,
+    filterTransport,
+    filterPieces,
+    filterDate,
+    filterValidUntil,
+    filterTransit,
+  ].filter(Boolean).length;
+
   /* -- Format helpers --------------------------------------- */
   const formatDateShort = useCallback((dateString?: string) => {
     if (!dateString) return "---";
@@ -685,6 +697,7 @@ function QuotesView() {
     setDisplayedQuotes(filtered);
     setShowingAll(true);
     setTablePage(1);
+    setShowSearchModal(false);
   };
 
   const clearSearch = useCallback(() => {
@@ -919,106 +932,6 @@ function QuotesView() {
         className="qv-toolbar"
         style={{ display: "flex", alignItems: "center", gap: 12 }}
       >
-        <form
-          className="qv-filters-form"
-          onSubmit={handleApplyFilters}
-          style={{
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <input
-            className="qv-input"
-            type="text"
-            placeholder={t("quotesView.filterNumber")}
-            value={filterNumber}
-            onChange={(e) => setFilterNumber(e.target.value)}
-            style={{ width: 120, height: 32 }}
-          />
-          <input
-            className="qv-input"
-            type="text"
-            placeholder={t("quotesView.filterStatus")}
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            style={{ width: 160, height: 32 }}
-          />
-          <input
-            className="qv-input"
-            type="text"
-            placeholder={t("quotesView.filterOrigin")}
-            value={filterOrigin}
-            onChange={(e) => setFilterOrigin(e.target.value)}
-            style={{ width: 140, height: 32 }}
-          />
-          <input
-            className="qv-input"
-            type="text"
-            placeholder={t("quotesView.filterDestination")}
-            value={filterDestination}
-            onChange={(e) => setFilterDestination(e.target.value)}
-            style={{ width: 140, height: 32 }}
-          />
-          <input
-            className="qv-input"
-            type="text"
-            placeholder={t("quotesView.filterTransport")}
-            value={filterTransport}
-            onChange={(e) => setFilterTransport(e.target.value)}
-            style={{ width: 120, height: 32 }}
-          />
-          <input
-            className="qv-input"
-            type="text"
-            placeholder={t("quotesView.filterPieces")}
-            value={filterPieces}
-            onChange={(e) => setFilterPieces(e.target.value)}
-            style={{ width: 80, height: 32 }}
-          />
-          <input
-            className="qv-input"
-            type="date"
-            placeholder={t("quotesView.filterDate")}
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            style={{ width: 140, height: 32 }}
-          />
-          <input
-            className="qv-input"
-            type="date"
-            placeholder={t("quotesView.filterValidUntil")}
-            value={filterValidUntil}
-            onChange={(e) => setFilterValidUntil(e.target.value)}
-            style={{ width: 140, height: 32 }}
-          />
-          <input
-            className="qv-input"
-            type="text"
-            placeholder={t("quotesView.filterTransit")}
-            value={filterTransit}
-            onChange={(e) => setFilterTransit(e.target.value)}
-            style={{ width: 80, height: 32 }}
-          />
-
-          <button
-            className="qv-btn qv-btn--primary"
-            type="submit"
-            style={{ height: 32 }}
-          >
-            {t("quotesView.apply")}
-          </button>
-          <button
-            className="qv-btn qv-btn--ghost"
-            type="button"
-            onClick={clearSearch}
-            style={{ height: 32 }}
-          >
-            {t("quotesView.clear")}
-          </button>
-        </form>
-
         <div
           style={{
             marginLeft: "auto",
@@ -1027,6 +940,30 @@ function QuotesView() {
             alignItems: "center",
           }}
         >
+          <button
+            className={`qv-btn qv-btn--ghost qv-toolbar__icon-btn ${activeFilterCount > 0 ? "qv-toolbar__icon-btn--active" : ""}`}
+            type="button"
+            onClick={() => setShowSearchModal(true)}
+            aria-label={t("quotesView.searchTitle")}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <span>Filtros</span>
+            {activeFilterCount > 0 && (
+              <span className="qv-toolbar__badge">{activeFilterCount}</span>
+            )}
+          </button>
           <button
             className="qv-btn"
             style={{ color: "white", backgroundColor: "var(--primary-color)" }}
@@ -1061,6 +998,106 @@ function QuotesView() {
             onClick={(e) => e.stopPropagation()}
           >
             <h5 className="qv-modal__title">{t("quotesView.searchTitle")}</h5>
+            <form
+              onSubmit={handleApplyFilters}
+              className="qv-filters-modal__form"
+            >
+              <div className="qv-search-section">
+                <label className="qv-label">Filtros de tabla</label>
+                <div className="qv-search-row">
+                  <input
+                    className="qv-input"
+                    type="text"
+                    placeholder={t("quotesView.filterNumber")}
+                    value={filterNumber}
+                    onChange={(e) => setFilterNumber(e.target.value)}
+                    style={{ flex: 1, height: 44 }}
+                  />
+                  <input
+                    className="qv-input"
+                    type="text"
+                    placeholder={t("quotesView.filterStatus")}
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    style={{ flex: 1, height: 44 }}
+                  />
+                </div>
+                <div className="qv-search-row">
+                  <input
+                    className="qv-input"
+                    type="text"
+                    placeholder={t("quotesView.filterOrigin")}
+                    value={filterOrigin}
+                    onChange={(e) => setFilterOrigin(e.target.value)}
+                    style={{ flex: 1, height: 44 }}
+                  />
+                  <input
+                    className="qv-input"
+                    type="text"
+                    placeholder={t("quotesView.filterDestination")}
+                    value={filterDestination}
+                    onChange={(e) => setFilterDestination(e.target.value)}
+                    style={{ flex: 1, height: 44 }}
+                  />
+                </div>
+                <div className="qv-search-row">
+                  <input
+                    className="qv-input"
+                    type="text"
+                    placeholder={t("quotesView.filterTransport")}
+                    value={filterTransport}
+                    onChange={(e) => setFilterTransport(e.target.value)}
+                    style={{ flex: 1, height: 44 }}
+                  />
+                  <input
+                    className="qv-input"
+                    type="text"
+                    placeholder={t("quotesView.filterPieces")}
+                    value={filterPieces}
+                    onChange={(e) => setFilterPieces(e.target.value)}
+                    style={{ flex: 1, height: 44 }}
+                  />
+                  <input
+                    className="qv-input"
+                    type="text"
+                    placeholder={t("quotesView.filterTransit")}
+                    value={filterTransit}
+                    onChange={(e) => setFilterTransit(e.target.value)}
+                    style={{ flex: 1, height: 44 }}
+                  />
+                </div>
+                <div className="qv-search-row">
+                  <input
+                    className="qv-input"
+                    type="date"
+                    placeholder={t("quotesView.filterDate")}
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    style={{ flex: 1, height: 44 }}
+                  />
+                  <input
+                    className="qv-input"
+                    type="date"
+                    placeholder={t("quotesView.filterValidUntil")}
+                    value={filterValidUntil}
+                    onChange={(e) => setFilterValidUntil(e.target.value)}
+                    style={{ flex: 1, height: 44 }}
+                  />
+                </div>
+                <div className="qv-modal__actions">
+                  <button className="qv-btn qv-btn--primary" type="submit">
+                    {t("quotesView.apply")}
+                  </button>
+                  <button
+                    className="qv-btn qv-btn--ghost"
+                    type="button"
+                    onClick={clearSearch}
+                  >
+                    {t("quotesView.clear")}
+                  </button>
+                </div>
+              </div>
+            </form>
             <div className="qv-search-section">
               <label className="qv-label">
                 {t("quotesView.searchByNumber")}

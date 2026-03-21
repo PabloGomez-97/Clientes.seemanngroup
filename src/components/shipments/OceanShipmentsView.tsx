@@ -134,13 +134,8 @@ function OceanShipmentsView() {
   );
 
   // Embed
-  const [embedQuery, setEmbedQuery] = useState<string | null>(null);
+  const [, setEmbedQuery] = useState<string | null>(null);
 
-  // Search fields
-  const [searchDate, setSearchDate] = useState("");
-  const [searchStartDate, setSearchStartDate] = useState("");
-  const [searchEndDate, setSearchEndDate] = useState("");
-  const [searchNumber, setSearchNumber] = useState("");
   const [showingAll, setShowingAll] = useState(false);
 
   // Advanced toolbar filters (replicated from AirShipmentsView)
@@ -160,6 +155,16 @@ function OceanShipmentsView() {
   const [isVesselFocused, setIsVesselFocused] = useState(false);
   const [isTypeFocused, setIsTypeFocused] = useState(false);
   const [isPiecesFocused, setIsPiecesFocused] = useState(false);
+
+  const activeFilterCount = [
+    filterNumber,
+    filterOrigin,
+    filterDestination,
+    filterDepartureDate,
+    filterVessel,
+    filterType,
+    filterPieces,
+  ].filter(Boolean).length;
 
   // Pagination
   const [tablePage, setTablePage] = useState(1);
@@ -709,79 +714,7 @@ function OceanShipmentsView() {
     }
   };
 
-  /* -- Search ------------------------------------------------ */
-  const handleSearchByNumber = () => {
-    if (!searchNumber.trim()) {
-      setDisplayedOceanShipments(oceanShipments);
-      setShowingAll(false);
-      setTablePage(1);
-      return;
-    }
-    const term = searchNumber.trim().toLowerCase();
-    setDisplayedOceanShipments(
-      oceanShipments.filter((s) =>
-        (s.number || "").toString().toLowerCase().includes(term),
-      ),
-    );
-    setShowingAll(true);
-    setTablePage(1);
-    setShowSearchModal(false);
-  };
-
-  const handleSearchByDate = () => {
-    if (!searchDate) {
-      setDisplayedOceanShipments(oceanShipments);
-      setShowingAll(false);
-      setTablePage(1);
-      return;
-    }
-    setDisplayedOceanShipments(
-      oceanShipments.filter((s) => {
-        if (!s.createdOn) return false;
-        return new Date(s.createdOn).toISOString().split("T")[0] === searchDate;
-      }),
-    );
-    setShowingAll(true);
-    setTablePage(1);
-    setShowSearchModal(false);
-  };
-
-  const handleSearchByDateRange = () => {
-    if (!searchStartDate && !searchEndDate) {
-      setDisplayedOceanShipments(oceanShipments);
-      setShowingAll(false);
-      setTablePage(1);
-      return;
-    }
-    setDisplayedOceanShipments(
-      oceanShipments.filter((s) => {
-        if (!s.createdOn) return false;
-        const d = new Date(s.createdOn);
-        if (searchStartDate && searchEndDate) {
-          const end = new Date(searchEndDate);
-          end.setHours(23, 59, 59, 999);
-          return d >= new Date(searchStartDate) && d <= end;
-        }
-        if (searchStartDate) return d >= new Date(searchStartDate);
-        if (searchEndDate) {
-          const end = new Date(searchEndDate);
-          end.setHours(23, 59, 59, 999);
-          return d <= end;
-        }
-        return false;
-      }),
-    );
-    setShowingAll(true);
-    setTablePage(1);
-    setShowSearchModal(false);
-  };
-
   const clearSearch = () => {
-    setSearchNumber("");
-    setSearchDate("");
-    setSearchStartDate("");
-    setSearchEndDate("");
-    // clear advanced filters as well
     setFilterNumber("");
     setFilterOrigin("");
     setFilterDestination("");
@@ -789,6 +722,13 @@ function OceanShipmentsView() {
     setFilterVessel("");
     setFilterType("");
     setFilterPieces("");
+    setIsNumberFocused(false);
+    setIsOriginFocused(false);
+    setIsDestinationFocused(false);
+    setIsDepartureFocused(false);
+    setIsVesselFocused(false);
+    setIsTypeFocused(false);
+    setIsPiecesFocused(false);
     setDisplayedOceanShipments(oceanShipments);
     setShowingAll(false);
     setTablePage(1);
@@ -955,7 +895,7 @@ function OceanShipmentsView() {
         </div>
       </div>
 
-      {/* Toolbar (advanced search) */}
+      {/* Toolbar */}
       <div
         className="osv-toolbar"
         style={{
@@ -965,245 +905,6 @@ function OceanShipmentsView() {
           marginTop: 24,
         }}
       >
-        <form
-          className="filters-form"
-          onSubmit={handleApplyFilters}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterNumber || isNumberFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterNumber || isNumberFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Numero
-            </label>
-            <input
-              className="osv-input"
-              type="text"
-              value={filterNumber}
-              onChange={(e) => setFilterNumber(e.target.value)}
-              onFocus={() => setIsNumberFocused(true)}
-              onBlur={() => setIsNumberFocused(false)}
-              placeholder=""
-              style={{ width: 140, height: 32 }}
-            />
-          </div>
-
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterOrigin || isOriginFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterOrigin || isOriginFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Origen
-            </label>
-            <input
-              className="osv-input"
-              type="text"
-              value={filterOrigin}
-              onChange={(e) => setFilterOrigin(e.target.value)}
-              onFocus={() => setIsOriginFocused(true)}
-              onBlur={() => setIsOriginFocused(false)}
-              placeholder=""
-              style={{ width: 140, height: 32 }}
-            />
-          </div>
-
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterDestination || isDestinationFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize:
-                  filterDestination || isDestinationFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Destino
-            </label>
-            <input
-              className="osv-input"
-              type="text"
-              value={filterDestination}
-              onChange={(e) => setFilterDestination(e.target.value)}
-              onFocus={() => setIsDestinationFocused(true)}
-              onBlur={() => setIsDestinationFocused(false)}
-              placeholder=""
-              style={{ width: 140, height: 32 }}
-            />
-          </div>
-
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterDepartureDate || isDepartureFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize:
-                  filterDepartureDate || isDepartureFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Fecha Salida
-            </label>
-            <input
-              className="osv-input"
-              type="date"
-              value={filterDepartureDate}
-              onChange={(e) => setFilterDepartureDate(e.target.value)}
-              onFocus={() => setIsDepartureFocused(true)}
-              onBlur={() => setIsDepartureFocused(false)}
-              placeholder=""
-              style={{ width: 140, height: 32 }}
-            />
-          </div>
-
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterVessel || isVesselFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterVessel || isVesselFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Vessel
-            </label>
-            <input
-              className="osv-input"
-              type="text"
-              value={filterVessel}
-              onChange={(e) => setFilterVessel(e.target.value)}
-              onFocus={() => setIsVesselFocused(true)}
-              onBlur={() => setIsVesselFocused(false)}
-              placeholder=""
-              style={{ width: 120, height: 32 }}
-            />
-          </div>
-
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterType || isTypeFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterType || isTypeFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Tipo
-            </label>
-            <input
-              className="osv-input"
-              type="text"
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              onFocus={() => setIsTypeFocused(true)}
-              onBlur={() => setIsTypeFocused(false)}
-              placeholder=""
-              style={{ width: 100, height: 32 }}
-            />
-          </div>
-
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterPieces || isPiecesFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterPieces || isPiecesFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Piezas
-            </label>
-            <input
-              className="osv-input"
-              type="text"
-              value={filterPieces}
-              onChange={(e) => setFilterPieces(e.target.value)}
-              onFocus={() => setIsPiecesFocused(true)}
-              onBlur={() => setIsPiecesFocused(false)}
-              placeholder=""
-              style={{ width: 80, height: 32 }}
-            />
-          </div>
-
-          <button
-            className="osv-btn"
-            type="submit"
-            style={{ color: "white", backgroundColor: "var(--primary-color)" }}
-          >
-            Aplicar
-          </button>
-          <button
-            className="osv-btn osv-btn--ghost"
-            type="button"
-            onClick={clearSearch}
-            style={{ height: 32 }}
-          >
-            Limpiar
-          </button>
-        </form>
-
         <div
           style={{
             marginLeft: "auto",
@@ -1212,6 +913,43 @@ function OceanShipmentsView() {
             alignItems: "center",
           }}
         >
+          <button
+            className={`osv-btn osv-btn--ghost osv-toolbar__icon-btn ${activeFilterCount > 0 ? "osv-toolbar__icon-btn--active" : ""}`}
+            type="button"
+            onClick={() => setShowSearchModal(true)}
+            aria-label="Abrir filtros"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <span>Filtros</span>
+            {activeFilterCount > 0 && (
+              <span
+                style={{
+                  backgroundColor: "var(--primary-color)",
+                  color: "#fff",
+                  borderRadius: "9999px",
+                  fontSize: "0.6875rem",
+                  fontWeight: 700,
+                  padding: "1px 7px",
+                  marginLeft: 2,
+                  display: "inline-block",
+                }}
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
           <button
             className="osv-btn"
             style={{ color: "white", backgroundColor: "var(--primary-color)" }}
@@ -1245,77 +983,305 @@ function OceanShipmentsView() {
             className="osv-modal osv-modal--search"
             onClick={(e) => e.stopPropagation()}
           >
-            <h5 className="osv-modal__title">Buscar Ocean Shipments</h5>
+            <h5 className="osv-modal__title">
+              Buscar y filtrar Ocean Shipments
+            </h5>
 
-            <div className="osv-search-section">
-              <label className="osv-label">Por Numero</label>
-              <input
-                className="osv-input"
-                type="text"
-                value={searchNumber}
-                onChange={(e) => setSearchNumber(e.target.value)}
-                placeholder="Numero del shipment"
-              />
-              <button
-                className="osv-btn osv-btn--primary osv-btn--full"
-                onClick={handleSearchByNumber}
-              >
-                Buscar
-              </button>
-            </div>
-
-            <div className="osv-search-section">
-              <label className="osv-label">Por Fecha Exacta</label>
-              <input
-                className="osv-input"
-                type="date"
-                value={searchDate}
-                onChange={(e) => setSearchDate(e.target.value)}
-              />
-              <button
-                className="osv-btn osv-btn--primary osv-btn--full"
-                onClick={handleSearchByDate}
-              >
-                Buscar
-              </button>
-            </div>
-
-            <div className="osv-search-section">
-              <label className="osv-label">Por Rango de Fechas</label>
-              <div className="osv-search-row">
-                <div style={{ flex: 1 }}>
-                  <span className="osv-label osv-label--small">Desde</span>
-                  <input
-                    className="osv-input"
-                    type="date"
-                    value={searchStartDate}
-                    onChange={(e) => setSearchStartDate(e.target.value)}
-                  />
+            <form
+              onSubmit={(e) => {
+                handleApplyFilters(e);
+                setShowSearchModal(false);
+              }}
+            >
+              <div className="osv-search-section">
+                <label className="osv-label">Filtros de tabla</label>
+                <div className="osv-search-row">
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterNumber || isNumberFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterNumber || isNumberFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Numero
+                    </label>
+                    <input
+                      className="osv-input"
+                      type="text"
+                      value={filterNumber}
+                      onChange={(e) => setFilterNumber(e.target.value)}
+                      onFocus={() => setIsNumberFocused(true)}
+                      onBlur={() => setIsNumberFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterOrigin || isOriginFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterOrigin || isOriginFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Origen
+                    </label>
+                    <input
+                      className="osv-input"
+                      type="text"
+                      value={filterOrigin}
+                      onChange={(e) => setFilterOrigin(e.target.value)}
+                      onFocus={() => setIsOriginFocused(true)}
+                      onBlur={() => setIsOriginFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <span className="osv-label osv-label--small">Hasta</span>
-                  <input
-                    className="osv-input"
-                    type="date"
-                    value={searchEndDate}
-                    onChange={(e) => setSearchEndDate(e.target.value)}
-                  />
+                <div className="osv-search-row">
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top:
+                          filterDestination || isDestinationFocused
+                            ? "2px"
+                            : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterDestination || isDestinationFocused
+                            ? "10px"
+                            : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Destino
+                    </label>
+                    <input
+                      className="osv-input"
+                      type="text"
+                      value={filterDestination}
+                      onChange={(e) => setFilterDestination(e.target.value)}
+                      onFocus={() => setIsDestinationFocused(true)}
+                      onBlur={() => setIsDestinationFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top:
+                          filterDepartureDate || isDepartureFocused
+                            ? "2px"
+                            : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterDepartureDate || isDepartureFocused
+                            ? "10px"
+                            : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Fecha Salida
+                    </label>
+                    <input
+                      className="osv-input"
+                      type="date"
+                      value={filterDepartureDate}
+                      onChange={(e) => setFilterDepartureDate(e.target.value)}
+                      onFocus={() => setIsDepartureFocused(true)}
+                      onBlur={() => setIsDepartureFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                </div>
+                <div className="osv-search-row">
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterVessel || isVesselFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterVessel || isVesselFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Vessel
+                    </label>
+                    <input
+                      className="osv-input"
+                      type="text"
+                      value={filterVessel}
+                      onChange={(e) => setFilterVessel(e.target.value)}
+                      onFocus={() => setIsVesselFocused(true)}
+                      onBlur={() => setIsVesselFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterType || isTypeFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize: filterType || isTypeFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Tipo
+                    </label>
+                    <input
+                      className="osv-input"
+                      type="text"
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value)}
+                      onFocus={() => setIsTypeFocused(true)}
+                      onBlur={() => setIsTypeFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterPieces || isPiecesFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterPieces || isPiecesFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Piezas
+                    </label>
+                    <input
+                      className="osv-input"
+                      type="text"
+                      value={filterPieces}
+                      onChange={(e) => setFilterPieces(e.target.value)}
+                      onFocus={() => setIsPiecesFocused(true)}
+                      onBlur={() => setIsPiecesFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                </div>
+                <div className="osv-modal__actions">
+                  <button
+                    className="osv-btn osv-btn--primary osv-btn--full"
+                    type="submit"
+                  >
+                    Aplicar filtros
+                  </button>
+                  <button
+                    className="osv-btn osv-btn--ghost"
+                    type="button"
+                    onClick={() => {
+                      clearSearch();
+                      setShowSearchModal(false);
+                    }}
+                  >
+                    Limpiar
+                  </button>
                 </div>
               </div>
-              <button
-                className="osv-btn osv-btn--primary osv-btn--full"
-                onClick={handleSearchByDateRange}
-              >
-                Buscar
-              </button>
-            </div>
-
-            <button
-              className="osv-btn osv-btn--ghost osv-btn--full"
-              onClick={() => setShowSearchModal(false)}
-            >
-              Cerrar
-            </button>
+            </form>
           </div>
         </div>
       )}

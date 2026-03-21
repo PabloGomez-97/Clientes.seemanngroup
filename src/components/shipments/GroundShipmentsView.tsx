@@ -76,7 +76,7 @@ function GroundShipmentsView() {
   const [showSearchModal, setShowSearchModal] = useState(false);
 
   // Embed
-  const [embedQuery, setEmbedQuery] = useState<string | null>(null);
+  const [, setEmbedQuery] = useState<string | null>(null);
 
   // Search fields
   const [searchDate, setSearchDate] = useState("");
@@ -102,6 +102,16 @@ function GroundShipmentsView() {
   const [isCarrierFocused, setIsCarrierFocused] = useState(false);
   const [isTypeFocused, setIsTypeFocused] = useState(false);
   const [isPiecesFocused, setIsPiecesFocused] = useState(false);
+
+  const activeFilterCount = [
+    filterNumber,
+    filterOrigin,
+    filterDestination,
+    filterDepartureDate,
+    filterCarrier,
+    filterType,
+    filterPieces,
+  ].filter(Boolean).length;
 
   // Pagination
   const [tablePage, setTablePage] = useState(1);
@@ -418,6 +428,7 @@ function GroundShipmentsView() {
     setDisplayedShipments(filtered);
     setShowingAll(true);
     setTablePage(1);
+    setShowSearchModal(false);
   };
 
   const refreshShipments = () => {
@@ -536,252 +547,6 @@ function GroundShipmentsView() {
           marginTop: 24,
         }}
       >
-        <form
-          className="filters-form"
-          onSubmit={handleApplyFilters}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-          }}
-        >
-          {/* Numero */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterNumber || isNumberFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterNumber || isNumberFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Numero
-            </label>
-            <input
-              className="gsv-input"
-              type="text"
-              value={filterNumber}
-              onChange={(e) => setFilterNumber(e.target.value)}
-              onFocus={() => setIsNumberFocused(true)}
-              onBlur={() => setIsNumberFocused(false)}
-              placeholder=""
-              style={{ width: 140, height: 32 }}
-            />
-          </div>
-
-          {/* Origen */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterOrigin || isOriginFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterOrigin || isOriginFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Origen
-            </label>
-            <input
-              className="gsv-input"
-              type="text"
-              value={filterOrigin}
-              onChange={(e) => setFilterOrigin(e.target.value)}
-              onFocus={() => setIsOriginFocused(true)}
-              onBlur={() => setIsOriginFocused(false)}
-              placeholder=""
-              style={{ width: 140, height: 32 }}
-            />
-          </div>
-
-          {/* Destino */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterDestination || isDestinationFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize:
-                  filterDestination || isDestinationFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Destino
-            </label>
-            <input
-              className="gsv-input"
-              type="text"
-              value={filterDestination}
-              onChange={(e) => setFilterDestination(e.target.value)}
-              onFocus={() => setIsDestinationFocused(true)}
-              onBlur={() => setIsDestinationFocused(false)}
-              placeholder=""
-              style={{ width: 140, height: 32 }}
-            />
-          </div>
-
-          {/* Fecha Salida */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterDepartureDate || isDepartureFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize:
-                  filterDepartureDate || isDepartureFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Fecha Salida
-            </label>
-            <input
-              className="gsv-input"
-              type="date"
-              value={filterDepartureDate}
-              onChange={(e) => setFilterDepartureDate(e.target.value)}
-              onFocus={() => setIsDepartureFocused(true)}
-              onBlur={() => setIsDepartureFocused(false)}
-              placeholder=""
-              style={{ width: 140, height: 32 }}
-            />
-          </div>
-
-          {/* Transportista */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterCarrier || isCarrierFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterCarrier || isCarrierFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Transportista
-            </label>
-            <input
-              className="gsv-input"
-              type="text"
-              value={filterCarrier}
-              onChange={(e) => setFilterCarrier(e.target.value)}
-              onFocus={() => setIsCarrierFocused(true)}
-              onBlur={() => setIsCarrierFocused(false)}
-              placeholder=""
-              style={{ width: 140, height: 32 }}
-            />
-          </div>
-
-          {/* Tipo */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterType || isTypeFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterType || isTypeFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Tipo
-            </label>
-            <input
-              className="gsv-input"
-              type="text"
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              onFocus={() => setIsTypeFocused(true)}
-              onBlur={() => setIsTypeFocused(false)}
-              placeholder=""
-              style={{ width: 100, height: 32 }}
-            />
-          </div>
-
-          {/* Piezas */}
-          <div style={{ position: "relative", display: "inline-block" }}>
-            <label
-              style={{
-                position: "absolute",
-                top: filterPieces || isPiecesFocused ? "2px" : "8px",
-                left: "8px",
-                fontSize: filterPieces || isPiecesFocused ? "10px" : "12px",
-                fontWeight: "bold",
-                color: "#666",
-                transition: "all 0.2s ease",
-                pointerEvents: "none",
-                backgroundColor: "#fff",
-                padding: "0 2px",
-                zIndex: 1,
-              }}
-            >
-              Piezas
-            </label>
-            <input
-              className="gsv-input"
-              type="text"
-              value={filterPieces}
-              onChange={(e) => setFilterPieces(e.target.value)}
-              onFocus={() => setIsPiecesFocused(true)}
-              onBlur={() => setIsPiecesFocused(false)}
-              placeholder=""
-              style={{ width: 80, height: 32 }}
-            />
-          </div>
-
-          <button
-            className="gsv-btn"
-            type="submit"
-            style={{ color: "white", backgroundColor: "var(--primary-color)" }}
-          >
-            Aplicar
-          </button>
-          <button
-            className="gsv-btn gsv-btn--ghost"
-            type="button"
-            onClick={clearSearch}
-            style={{ height: 32 }}
-          >
-            Limpiar
-          </button>
-        </form>
-
         <div
           style={{
             marginLeft: "auto",
@@ -790,6 +555,30 @@ function GroundShipmentsView() {
             alignItems: "center",
           }}
         >
+          <button
+            className={`gsv-btn gsv-btn--ghost gsv-toolbar__icon-btn ${activeFilterCount > 0 ? "gsv-toolbar__icon-btn--active" : ""}`}
+            type="button"
+            onClick={() => setShowSearchModal(true)}
+            aria-label="Abrir filtros"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <span>Filtros</span>
+            {activeFilterCount > 0 && (
+              <span className="gsv-toolbar__badge">{activeFilterCount}</span>
+            )}
+          </button>
           <button
             className="gsv-btn"
             style={{ color: "white", backgroundColor: "var(--primary-color)" }}
@@ -820,7 +609,304 @@ function GroundShipmentsView() {
             className="gsv-modal gsv-modal--search"
             onClick={(e) => e.stopPropagation()}
           >
-            <h5 className="gsv-modal__title">Buscar Ground Shipments</h5>
+            <h5 className="gsv-modal__title">
+              Buscar y filtrar Ground Shipments
+            </h5>
+
+            <form
+              onSubmit={handleApplyFilters}
+              className="gsv-filters-modal__form"
+            >
+              <div className="gsv-search-section">
+                <label className="gsv-label">Filtros de tabla</label>
+                <div className="gsv-search-row">
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterNumber || isNumberFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterNumber || isNumberFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Numero
+                    </label>
+                    <input
+                      className="gsv-input"
+                      type="text"
+                      value={filterNumber}
+                      onChange={(e) => setFilterNumber(e.target.value)}
+                      onFocus={() => setIsNumberFocused(true)}
+                      onBlur={() => setIsNumberFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterOrigin || isOriginFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterOrigin || isOriginFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Origen
+                    </label>
+                    <input
+                      className="gsv-input"
+                      type="text"
+                      value={filterOrigin}
+                      onChange={(e) => setFilterOrigin(e.target.value)}
+                      onFocus={() => setIsOriginFocused(true)}
+                      onBlur={() => setIsOriginFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                </div>
+                <div className="gsv-search-row">
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top:
+                          filterDestination || isDestinationFocused
+                            ? "2px"
+                            : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterDestination || isDestinationFocused
+                            ? "10px"
+                            : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Destino
+                    </label>
+                    <input
+                      className="gsv-input"
+                      type="text"
+                      value={filterDestination}
+                      onChange={(e) => setFilterDestination(e.target.value)}
+                      onFocus={() => setIsDestinationFocused(true)}
+                      onBlur={() => setIsDestinationFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top:
+                          filterDepartureDate || isDepartureFocused
+                            ? "2px"
+                            : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterDepartureDate || isDepartureFocused
+                            ? "10px"
+                            : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Fecha Salida
+                    </label>
+                    <input
+                      className="gsv-input"
+                      type="date"
+                      value={filterDepartureDate}
+                      onChange={(e) => setFilterDepartureDate(e.target.value)}
+                      onFocus={() => setIsDepartureFocused(true)}
+                      onBlur={() => setIsDepartureFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                </div>
+                <div className="gsv-search-row">
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterCarrier || isCarrierFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterCarrier || isCarrierFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Transportista
+                    </label>
+                    <input
+                      className="gsv-input"
+                      type="text"
+                      value={filterCarrier}
+                      onChange={(e) => setFilterCarrier(e.target.value)}
+                      onFocus={() => setIsCarrierFocused(true)}
+                      onBlur={() => setIsCarrierFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterType || isTypeFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize: filterType || isTypeFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Tipo
+                    </label>
+                    <input
+                      className="gsv-input"
+                      type="text"
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value)}
+                      onFocus={() => setIsTypeFocused(true)}
+                      onBlur={() => setIsTypeFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      display: "inline-block",
+                      flex: 1,
+                    }}
+                  >
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterPieces || isPiecesFocused ? "2px" : "8px",
+                        left: "8px",
+                        fontSize:
+                          filterPieces || isPiecesFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Piezas
+                    </label>
+                    <input
+                      className="gsv-input"
+                      type="text"
+                      value={filterPieces}
+                      onChange={(e) => setFilterPieces(e.target.value)}
+                      onFocus={() => setIsPiecesFocused(true)}
+                      onBlur={() => setIsPiecesFocused(false)}
+                      placeholder=""
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                </div>
+                <div className="gsv-modal__actions">
+                  <button
+                    className="gsv-btn"
+                    type="submit"
+                    style={{
+                      color: "white",
+                      backgroundColor: "var(--primary-color)",
+                    }}
+                  >
+                    Aplicar filtros
+                  </button>
+                  <button
+                    className="gsv-btn gsv-btn--ghost"
+                    type="button"
+                    onClick={clearSearch}
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              </div>
+            </form>
 
             <div className="gsv-search-section">
               <label className="gsv-label">Por Numero</label>
