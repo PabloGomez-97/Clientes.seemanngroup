@@ -25,7 +25,7 @@ import ReportExecutive from "./components/administrador/Facturaciones-Ejecutivos
 import Cotizadoradministrador from "./components/administrador/Cotizador-administrador";
 import Clientesejecutivos from "./components/administrador/Administracion-Cuentas/clientes-ejecutivos";
 import ShipsGoTrackingAdmin from "./components/administrador/Shipsgo/gettrackingshipsgo-admin";
-import ShipsGoTrackingAdminOP from "./components/administrador/Shipsgo/OP-gettrackingshipsgo-admin";
+import ShipsGoTrackingAdminOP from "./components/administrador/Shipsgo/OP-trackeo";
 import Invoicesxejecutivo from "./components/administrador/Facturaciones-Ejecutivos/Facturaciones";
 import Pricing from "./components/administrador/PricingTabs";
 import PricingFCL from "./components/administrador/Pricing/PricingFCL";
