@@ -1978,7 +1978,7 @@ function ListModal({
 
     return airList.filter((shipment) =>
       shipmentMatchesClientSearch(
-        shipment.reference,
+        shipment.reference || "",
         normalizedClientFilter,
         matchingClientUsernames,
       ),
@@ -1990,7 +1990,7 @@ function ListModal({
 
     return oceanList.filter((shipment) =>
       shipmentMatchesClientSearch(
-        shipment.reference,
+        shipment.reference || "",
         normalizedClientFilter,
         matchingClientUsernames,
       ),
