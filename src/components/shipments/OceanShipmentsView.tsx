@@ -81,7 +81,9 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
 /* ===========================================================
    MAIN COMPONENT
    =========================================================== */
-function OceanShipmentsView() {
+function OceanShipmentsView({
+  documentsOnly = false,
+}: { documentsOnly?: boolean } = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const reporteriaClientesContext = useReporteriaClientesContext();
@@ -1438,448 +1440,501 @@ function OceanShipmentsView() {
                               </div>
 
                               {/* Tabs */}
-                              <DetailTabs
-                                tabs={[
-                                  {
-                                    key: "general",
-                                    label: "Informacion General",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <circle cx="12" cy="12" r="10" />
-                                        <line x1="12" y1="16" x2="12" y2="12" />
-                                        <line
-                                          x1="12"
-                                          y1="8"
-                                          x2="12.01"
-                                          y2="8"
-                                        />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <div className="asv-cards-grid">
-                                        <div className="asv-card">
-                                          <h4>Detalles del Envío</h4>
-                                          <div className="asv-info-grid">
-                                            <InfoField
-                                              label="Numero de Envio"
-                                              value={shipment.number}
-                                            />
-                                            <InfoField
-                                              label="Tipo de Operacion"
-                                              value={shipment.operationFlow}
-                                            />
-                                            <InfoField
-                                              label="Tipo de Envio"
-                                              value={shipment.shipmentType}
-                                            />
-                                            <InfoField
-                                              label="Tipo de Movimiento"
-                                              value={shipment.typeOfMove}
-                                            />
-                                          </div>
-                                        </div>
-                                        <div className="asv-card">
-                                          <h4>Seguimiento del Envío</h4>
-                                          <div className="asv-info-grid">
-                                            <div className="asv-track-field">
-                                              <div className="asv-track-field__label">
-                                                ¿Quieres trackear tu envío?
-                                              </div>
-                                              {(() => {
-                                                const isTrackReady =
-                                                  isOceanTrackingReady(
-                                                    shipment,
-                                                  );
-
-                                                return isOceanShipmentAlreadyTracked(
-                                                  shipment,
-                                                ) ? (
-                                                  <button
-                                                    className="asv-btn asv-btn--ghost asv-btn--sm"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      if (
-                                                        reporteriaClientesContext
-                                                      ) {
-                                                        reporteriaClientesContext.openTrackingTab();
-                                                      } else {
-                                                        navigate("/trackings");
-                                                      }
-                                                    }}
-                                                  >
-                                                    ✓ Ya está siendo trackeado —
-                                                    Ver seguimiento
-                                                  </button>
-                                                ) : (
-                                                  <button
-                                                    className="asv-btn asv-btn--secondary asv-btn--sm"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      if (!isTrackReady) return;
-                                                      openTrackModal(shipment);
-                                                    }}
-                                                    disabled={!isTrackReady}
-                                                    title={
-                                                      isTrackReady
-                                                        ? undefined
-                                                        : "Espera a que se cargue el Número de Seguimiento."
-                                                    }
-                                                  >
-                                                    {isTrackReady
-                                                      ? "Trackea tu envío"
-                                                      : "Cargando número de seg..."}
-                                                  </button>
-                                                );
-                                              })()}
+                              {documentsOnly ? (
+                                <DocumentosSectionOcean
+                                  shipmentId={shipmentId}
+                                />
+                              ) : (
+                                <DetailTabs
+                                  tabs={[
+                                    {
+                                      key: "general",
+                                      label: "Informacion General",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <circle cx="12" cy="12" r="10" />
+                                          <line
+                                            x1="12"
+                                            y1="16"
+                                            x2="12"
+                                            y2="12"
+                                          />
+                                          <line
+                                            x1="12"
+                                            y1="8"
+                                            x2="12.01"
+                                            y2="8"
+                                          />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="asv-cards-grid">
+                                          <div className="asv-card">
+                                            <h4>Detalles del Envío</h4>
+                                            <div className="asv-info-grid">
+                                              <InfoField
+                                                label="Numero de Envio"
+                                                value={shipment.number}
+                                              />
+                                              <InfoField
+                                                label="Tipo de Operacion"
+                                                value={shipment.operationFlow}
+                                              />
+                                              <InfoField
+                                                label="Tipo de Envio"
+                                                value={shipment.shipmentType}
+                                              />
+                                              <InfoField
+                                                label="Tipo de Movimiento"
+                                                value={shipment.typeOfMove}
+                                              />
                                             </div>
-                                            <InfoField
-                                              label="Número de Seguimiento"
-                                              value={getDisplayedOceanTrackingNumber(
-                                                shipment,
-                                              )}
-                                            />
-                                            <InfoField
-                                              label="ID interno"
-                                              value={shipment.id}
-                                            />
+                                          </div>
+                                          <div className="asv-card">
+                                            <h4>Seguimiento del Envío</h4>
+                                            <div className="asv-info-grid">
+                                              <div className="asv-track-field">
+                                                <div className="asv-track-field__label">
+                                                  ¿Quieres trackear tu envío?
+                                                </div>
+                                                {(() => {
+                                                  const isTrackReady =
+                                                    isOceanTrackingReady(
+                                                      shipment,
+                                                    );
+
+                                                  return isOceanShipmentAlreadyTracked(
+                                                    shipment,
+                                                  ) ? (
+                                                    <button
+                                                      className="asv-btn asv-btn--ghost asv-btn--sm"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (
+                                                          reporteriaClientesContext
+                                                        ) {
+                                                          reporteriaClientesContext.openTrackingTab();
+                                                        } else {
+                                                          navigate(
+                                                            "/trackings",
+                                                          );
+                                                        }
+                                                      }}
+                                                    >
+                                                      ✓ Ya está siendo trackeado
+                                                      — Ver seguimiento
+                                                    </button>
+                                                  ) : (
+                                                    <button
+                                                      className="asv-btn asv-btn--secondary asv-btn--sm"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (!isTrackReady)
+                                                          return;
+                                                        openTrackModal(
+                                                          shipment,
+                                                        );
+                                                      }}
+                                                      disabled={!isTrackReady}
+                                                      title={
+                                                        isTrackReady
+                                                          ? undefined
+                                                          : "Espera a que se cargue el Número de Seguimiento."
+                                                      }
+                                                    >
+                                                      {isTrackReady
+                                                        ? "Trackea tu envío"
+                                                        : "Cargando número de seg..."}
+                                                    </button>
+                                                  );
+                                                })()}
+                                              </div>
+                                              <InfoField
+                                                label="Número de Seguimiento"
+                                                value={getDisplayedOceanTrackingNumber(
+                                                  shipment,
+                                                )}
+                                              />
+                                              <InfoField
+                                                label="ID interno"
+                                                value={shipment.id}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="asv-card">
+                                            <h4>Logistica Maritima</h4>
+                                            <div className="asv-info-grid">
+                                              <InfoField
+                                                label="Vessel"
+                                                value={shipment.vessel}
+                                              />
+                                              <InfoField
+                                                label="Voyage"
+                                                value={shipment.voyage}
+                                              />
+                                              <InfoField
+                                                label="Carrier"
+                                                value={shipment.carrier}
+                                              />
+                                              <InfoField
+                                                label="Puerto de Carga"
+                                                value={shipment.portOfLoading}
+                                              />
+                                              <InfoField
+                                                label="Puerto de Descarga"
+                                                value={shipment.portOfUnloading}
+                                              />
+                                              <InfoField
+                                                label="Lugar de Entrega"
+                                                value={shipment.placeOfDelivery}
+                                              />
+                                              <InfoField
+                                                label="Destino Final"
+                                                value={
+                                                  shipment.finalDestination
+                                                }
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="asv-card">
+                                            <h4>Documentos y Referencias</h4>
+                                            <div className="asv-info-grid">
+                                              <InfoField
+                                                label="Booking Number"
+                                                value={shipment.bookingNumber}
+                                              />
+                                              <InfoField
+                                                label="BL Number"
+                                                value={shipment.waybillNumber}
+                                              />
+                                              <InfoField
+                                                label="Forwarded BL"
+                                                value={shipment.fowaredBl}
+                                              />
+                                              <InfoField
+                                                label="Numero de Contenedor"
+                                                value={shipment.containerNumber}
+                                              />
+                                              <InfoField
+                                                label="Referencia Cliente"
+                                                value={
+                                                  shipment.customerReference
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Representante de Ventas"
+                                                value={shipment.salesRep}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="asv-card">
+                                            <h4>Fechas</h4>
+                                            <div className="asv-info-grid">
+                                              <InfoField
+                                                label="Fecha de Creación"
+                                                value={
+                                                  shipment.createdOn
+                                                    ? formatDate(
+                                                        shipment.createdOn,
+                                                      )
+                                                    : null
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Fecha Salida"
+                                                value={
+                                                  shipment.departure
+                                                    ? formatDate(
+                                                        shipment.departure,
+                                                      )
+                                                    : null
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Fecha Llegada"
+                                                value={
+                                                  shipment.arrival
+                                                    ? formatDate(
+                                                        shipment.arrival,
+                                                      )
+                                                    : null
+                                                }
+                                              />
+                                            </div>
                                           </div>
                                         </div>
-                                        <div className="asv-card">
-                                          <h4>Logistica Maritima</h4>
-                                          <div className="asv-info-grid">
-                                            <InfoField
-                                              label="Vessel"
-                                              value={shipment.vessel}
-                                            />
-                                            <InfoField
-                                              label="Voyage"
-                                              value={shipment.voyage}
-                                            />
-                                            <InfoField
-                                              label="Carrier"
-                                              value={shipment.carrier}
-                                            />
-                                            <InfoField
-                                              label="Puerto de Carga"
-                                              value={shipment.portOfLoading}
-                                            />
-                                            <InfoField
-                                              label="Puerto de Descarga"
-                                              value={shipment.portOfUnloading}
-                                            />
-                                            <InfoField
-                                              label="Lugar de Entrega"
-                                              value={shipment.placeOfDelivery}
-                                            />
-                                            <InfoField
-                                              label="Destino Final"
-                                              value={shipment.finalDestination}
-                                            />
+                                      ),
+                                    },
+                                    {
+                                      key: "cargo",
+                                      label: "Información de Carga",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <rect
+                                            x="1"
+                                            y="3"
+                                            width="15"
+                                            height="13"
+                                          />
+                                          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                          <circle cx="5.5" cy="18.5" r="2.5" />
+                                          <circle cx="18.5" cy="18.5" r="2.5" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="asv-cards-grid">
+                                          <div className="asv-card">
+                                            <h4>Cantidades</h4>
+                                            <div className="asv-info-grid">
+                                              <InfoField
+                                                label="Total de Piezas"
+                                                value={
+                                                  shipment.totalCargo_Pieces
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Peso Total"
+                                                value={
+                                                  shipment.totalCargo_WeightDisplayValue
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Volumen Total"
+                                                value={
+                                                  shipment.totalCargo_VolumeDisplayValue
+                                                }
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="asv-card">
+                                            <h4>Detalle de Carga</h4>
+                                            <div className="asv-info-grid">
+                                              <InfoField
+                                                label="Descripcion de Carga"
+                                                value={
+                                                  shipment.cargoDescription
+                                                }
+                                                fullWidth
+                                              />
+                                              <InfoField
+                                                label="Marcas de Carga"
+                                                value={shipment.cargoMarks}
+                                                fullWidth
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="asv-card">
+                                            <h4>Estado y Seguridad</h4>
+                                            <div className="asv-info-grid">
+                                              <InfoField
+                                                label="Estado de Carga"
+                                                value={shipment.cargoStatus}
+                                              />
+                                              <InfoField
+                                                label="Carga Peligrosa"
+                                                value={
+                                                  shipment.hazardous
+                                                    ? "Si"
+                                                    : "No"
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Containerizado"
+                                                value={
+                                                  shipment.containerized
+                                                    ? "Si"
+                                                    : "No"
+                                                }
+                                              />
+                                            </div>
                                           </div>
                                         </div>
-                                        <div className="asv-card">
-                                          <h4>Documentos y Referencias</h4>
-                                          <div className="asv-info-grid">
-                                            <InfoField
-                                              label="Booking Number"
-                                              value={shipment.bookingNumber}
-                                            />
-                                            <InfoField
-                                              label="BL Number"
-                                              value={shipment.waybillNumber}
-                                            />
-                                            <InfoField
-                                              label="Forwarded BL"
-                                              value={shipment.fowaredBl}
-                                            />
-                                            <InfoField
-                                              label="Numero de Contenedor"
-                                              value={shipment.containerNumber}
-                                            />
-                                            <InfoField
-                                              label="Referencia Cliente"
-                                              value={shipment.customerReference}
-                                            />
-                                            <InfoField
-                                              label="Representante de Ventas"
-                                              value={shipment.salesRep}
-                                            />
-                                          </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "documentos",
+                                      label: "Documentos",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                          <polyline points="14 2 14 8 20 8" />
+                                          <line
+                                            x1="16"
+                                            y1="13"
+                                            x2="8"
+                                            y2="13"
+                                          />
+                                          <line
+                                            x1="16"
+                                            y1="17"
+                                            x2="8"
+                                            y2="17"
+                                          />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <DocumentosSectionOcean
+                                          shipmentId={shipmentId}
+                                        />
+                                      ),
+                                    },
+                                    {
+                                      key: "financiero",
+                                      label: "Financiero",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <line
+                                            x1="12"
+                                            y1="1"
+                                            x2="12"
+                                            y2="23"
+                                          />
+                                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="osv-finance-card">
+                                          <span className="osv-finance-card__label">
+                                            Gasto Total (No incluye impuestos)
+                                          </span>
+                                          <span className="osv-finance-card__amount">
+                                            {formatCLP(
+                                              shipment.totalCharge_IncomeDisplayValue,
+                                            ) || "$0 CLP"}
+                                          </span>
+                                          <span className="osv-finance-card__note">
+                                            Monto estimado para este envio
+                                          </span>
                                         </div>
-                                        <div className="asv-card">
-                                          <h4>Fechas</h4>
-                                          <div className="asv-info-grid">
-                                            <InfoField
-                                              label="Fecha de Creación"
-                                              value={
-                                                shipment.createdOn
-                                                  ? formatDate(
-                                                      shipment.createdOn,
-                                                    )
-                                                  : null
-                                              }
-                                            />
-                                            <InfoField
-                                              label="Fecha Salida"
-                                              value={
-                                                shipment.departure
-                                                  ? formatDate(
-                                                      shipment.departure,
-                                                    )
-                                                  : null
-                                              }
-                                            />
-                                            <InfoField
-                                              label="Fecha Llegada"
-                                              value={
-                                                shipment.arrival
-                                                  ? formatDate(shipment.arrival)
-                                                  : null
-                                              }
-                                            />
-                                          </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "customs",
+                                      label: "Importacion y Aduana",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                          <polyline points="14 2 14 8 20 8" />
+                                          <line
+                                            x1="16"
+                                            y1="13"
+                                            x2="8"
+                                            y2="13"
+                                          />
+                                          <line
+                                            x1="16"
+                                            y1="17"
+                                            x2="8"
+                                            y2="17"
+                                          />
+                                        </svg>
+                                      ),
+                                      hidden: !(
+                                        shipment.entryNumber ||
+                                        shipment.itNumber ||
+                                        shipment.amsNumber ||
+                                        shipment.broker
+                                      ),
+                                      content: (
+                                        <div className="osv-info-grid">
+                                          <InfoField
+                                            label="Entry Number"
+                                            value={shipment.entryNumber}
+                                          />
+                                          <InfoField
+                                            label="IT Number"
+                                            value={shipment.itNumber}
+                                          />
+                                          <InfoField
+                                            label="AMS Number"
+                                            value={shipment.amsNumber}
+                                          />
+                                          <InfoField
+                                            label="Broker"
+                                            value={shipment.broker}
+                                          />
+                                          <InfoField
+                                            label="Liberado por Aduana"
+                                            value={
+                                              shipment.customsReleased
+                                                ? "Si"
+                                                : "No"
+                                            }
+                                          />
+                                          <InfoField
+                                            label="Flete Liberado"
+                                            value={
+                                              shipment.freightReleased
+                                                ? "Si"
+                                                : "No"
+                                            }
+                                          />
                                         </div>
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "cargo",
-                                    label: "Información de Carga",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <rect
-                                          x="1"
-                                          y="3"
-                                          width="15"
-                                          height="13"
-                                        />
-                                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                                        <circle cx="5.5" cy="18.5" r="2.5" />
-                                        <circle cx="18.5" cy="18.5" r="2.5" />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <div className="asv-cards-grid">
-                                        <div className="asv-card">
-                                          <h4>Cantidades</h4>
-                                          <div className="asv-info-grid">
-                                            <InfoField
-                                              label="Total de Piezas"
-                                              value={shipment.totalCargo_Pieces}
-                                            />
-                                            <InfoField
-                                              label="Peso Total"
-                                              value={
-                                                shipment.totalCargo_WeightDisplayValue
-                                              }
-                                            />
-                                            <InfoField
-                                              label="Volumen Total"
-                                              value={
-                                                shipment.totalCargo_VolumeDisplayValue
-                                              }
-                                            />
-                                          </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "notas",
+                                      label: "Notas",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                      ),
+                                      hidden:
+                                        !shipment.notes ||
+                                        shipment.notes === "N/A",
+                                      content: (
+                                        <div className="osv-notes">
+                                          {shipment.notes}
                                         </div>
-                                        <div className="asv-card">
-                                          <h4>Detalle de Carga</h4>
-                                          <div className="asv-info-grid">
-                                            <InfoField
-                                              label="Descripcion de Carga"
-                                              value={shipment.cargoDescription}
-                                              fullWidth
-                                            />
-                                            <InfoField
-                                              label="Marcas de Carga"
-                                              value={shipment.cargoMarks}
-                                              fullWidth
-                                            />
-                                          </div>
-                                        </div>
-                                        <div className="asv-card">
-                                          <h4>Estado y Seguridad</h4>
-                                          <div className="asv-info-grid">
-                                            <InfoField
-                                              label="Estado de Carga"
-                                              value={shipment.cargoStatus}
-                                            />
-                                            <InfoField
-                                              label="Carga Peligrosa"
-                                              value={
-                                                shipment.hazardous ? "Si" : "No"
-                                              }
-                                            />
-                                            <InfoField
-                                              label="Containerizado"
-                                              value={
-                                                shipment.containerized
-                                                  ? "Si"
-                                                  : "No"
-                                              }
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "documentos",
-                                    label: "Documentos",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                        <polyline points="14 2 14 8 20 8" />
-                                        <line x1="16" y1="13" x2="8" y2="13" />
-                                        <line x1="16" y1="17" x2="8" y2="17" />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <DocumentosSectionOcean
-                                        shipmentId={shipmentId}
-                                      />
-                                    ),
-                                  },
-                                  {
-                                    key: "financiero",
-                                    label: "Financiero",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <line x1="12" y1="1" x2="12" y2="23" />
-                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <div className="osv-finance-card">
-                                        <span className="osv-finance-card__label">
-                                          Gasto Total (No incluye impuestos)
-                                        </span>
-                                        <span className="osv-finance-card__amount">
-                                          {formatCLP(
-                                            shipment.totalCharge_IncomeDisplayValue,
-                                          ) || "$0 CLP"}
-                                        </span>
-                                        <span className="osv-finance-card__note">
-                                          Monto estimado para este envio
-                                        </span>
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "customs",
-                                    label: "Importacion y Aduana",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                        <polyline points="14 2 14 8 20 8" />
-                                        <line x1="16" y1="13" x2="8" y2="13" />
-                                        <line x1="16" y1="17" x2="8" y2="17" />
-                                      </svg>
-                                    ),
-                                    hidden: !(
-                                      shipment.entryNumber ||
-                                      shipment.itNumber ||
-                                      shipment.amsNumber ||
-                                      shipment.broker
-                                    ),
-                                    content: (
-                                      <div className="osv-info-grid">
-                                        <InfoField
-                                          label="Entry Number"
-                                          value={shipment.entryNumber}
-                                        />
-                                        <InfoField
-                                          label="IT Number"
-                                          value={shipment.itNumber}
-                                        />
-                                        <InfoField
-                                          label="AMS Number"
-                                          value={shipment.amsNumber}
-                                        />
-                                        <InfoField
-                                          label="Broker"
-                                          value={shipment.broker}
-                                        />
-                                        <InfoField
-                                          label="Liberado por Aduana"
-                                          value={
-                                            shipment.customsReleased
-                                              ? "Si"
-                                              : "No"
-                                          }
-                                        />
-                                        <InfoField
-                                          label="Flete Liberado"
-                                          value={
-                                            shipment.freightReleased
-                                              ? "Si"
-                                              : "No"
-                                          }
-                                        />
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "notas",
-                                    label: "Notas",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                      </svg>
-                                    ),
-                                    hidden:
-                                      !shipment.notes ||
-                                      shipment.notes === "N/A",
-                                    content: (
-                                      <div className="osv-notes">
-                                        {shipment.notes}
-                                      </div>
-                                    ),
-                                  },
-                                ]}
-                              />
+                                      ),
+                                    },
+                                  ]}
+                                />
+                              )}
                             </div>
                           </td>
                         </tr>

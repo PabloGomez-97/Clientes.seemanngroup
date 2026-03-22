@@ -79,7 +79,9 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
 /* 
    MAIN COMPONENT
     */
-function AirShipmentsView() {
+function AirShipmentsView({
+  documentsOnly = false,
+}: { documentsOnly?: boolean } = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const reporteriaClientesContext = useReporteriaClientesContext();
@@ -1401,433 +1403,454 @@ function AirShipmentsView() {
                               </div>
 
                               {/* Tabs */}
-                              <DetailTabs
-                                tabs={[
-                                  {
-                                    key: "general",
-                                    label: "Información General",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <circle cx="12" cy="12" r="10" />
-                                        <line x1="12" y1="16" x2="12" y2="12" />
-                                        <line
-                                          x1="12"
-                                          y1="8"
-                                          x2="12.01"
-                                          y2="8"
-                                        />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <div className="asv-cards-grid">
-                                        <div className="asv-card">
-                                          <h4>Detalles del Envío</h4>
-                                          <div className="asv-info-grid">
-                                            <InfoField
-                                              label="Número de Envío"
-                                              value={shipment.number}
-                                            />
-                                            <InfoField
-                                              label="Referencia Cliente"
-                                              value={shipment.customerReference}
-                                            />
-                                            <InfoField
-                                              label="Waybill"
-                                              value={shipment.waybillNumber}
-                                            />
-                                            <InfoField
-                                              label="Carga"
-                                              value={shipment.cargoDescription}
-                                            />
-                                          </div>
-                                        </div>
-                                        <div className="asv-card">
-                                          <h4>Seguimiento del Envío</h4>
-                                          <div className="asv-info-grid">
-                                            {/* Track button */}
-                                            <div className="asv-track-field">
-                                              <div className="asv-track-field__label">
-                                                ¿Quieres trackear tu envío?
-                                              </div>
-                                              {(() => {
-                                                const isTrackReady =
-                                                  isTrackAwbReady(shipment);
-
-                                                return isShipmentAlreadyTracked(
-                                                  shipment,
-                                                ) ? (
-                                                  <button
-                                                    className="asv-btn asv-btn--ghost asv-btn--sm"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      if (
-                                                        reporteriaClientesContext
-                                                      ) {
-                                                        reporteriaClientesContext.openTrackingTab();
-                                                      } else {
-                                                        navigate("/trackings");
-                                                      }
-                                                    }}
-                                                  >
-                                                    ✓ Ya está siendo trackeado —
-                                                    Ver seguimiento
-                                                  </button>
-                                                ) : (
-                                                  <button
-                                                    className="asv-btn asv-btn--secondary asv-btn--sm"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      if (!isTrackReady) return;
-                                                      openTrackModal(shipment);
-                                                    }}
-                                                    disabled={!isTrackReady}
-                                                    title={
-                                                      isTrackReady
-                                                        ? undefined
-                                                        : "Espera a que se cargue el Número de Seguimiento."
-                                                    }
-                                                  >
-                                                    {isTrackReady
-                                                      ? "Trackea tu envío"
-                                                      : "Cargando número de seg..."}
-                                                  </button>
-                                                );
-                                              })()}
-                                            </div>
-                                            <InfoField
-                                              label="Número de Seguimiento"
-                                              value={getDisplayedTrackAwbNumber(
-                                                shipment,
-                                              )}
-                                              fullWidth
-                                            />
-                                            <InfoField
-                                              label="ID Interno"
-                                              value={shipment.id}
-                                            />
-                                            <InfoField
-                                              label="Agente Forwarding"
-                                              value={
-                                                shipment.forwardingAgent?.name
-                                              }
-                                            />
-                                          </div>
-                                        </div>
-                                        <div className="asv-card">
-                                          <h4>Operación Logística</h4>
-                                          <div className="asv-info-grid">
-                                            <InfoField
-                                              label="Carrier"
-                                              value={shipment.carrier?.name}
-                                            />
-                                            <InfoField
-                                              label="Fecha Salida"
-                                              value={
-                                                shipment.departure
-                                                  ? formatDate(
-                                                      shipment.departure,
-                                                    )
-                                                  : null
-                                              }
-                                            />
-                                            <InfoField
-                                              label="Fecha Llegada"
-                                              value={
-                                                shipment.arrival
-                                                  ? formatDate(shipment.arrival)
-                                                  : null
-                                              }
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "cargo",
-                                    label: "Información de Carga",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <div>
-                                        <div
-                                          className="asv-cards-grid"
-                                          style={{
-                                            display: "grid",
-                                            gridTemplateColumns:
-                                              "repeat(2, 1fr)",
-                                            gap: "16px",
-                                            marginBottom: 16,
-                                          }}
+                              {documentsOnly ? (
+                                <DocumentosSectionAir shipmentId={shipmentId} />
+                              ) : (
+                                <DetailTabs
+                                  tabs={[
+                                    {
+                                      key: "general",
+                                      label: "Información General",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
                                         >
+                                          <circle cx="12" cy="12" r="10" />
+                                          <line
+                                            x1="12"
+                                            y1="16"
+                                            x2="12"
+                                            y2="12"
+                                          />
+                                          <line
+                                            x1="12"
+                                            y1="8"
+                                            x2="12.01"
+                                            y2="8"
+                                          />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="asv-cards-grid">
                                           <div className="asv-card">
-                                            <h4>Descripción Carga</h4>
+                                            <h4>Detalles del Envío</h4>
                                             <div className="asv-info-grid">
                                               <InfoField
-                                                label="Descripción de Carga"
+                                                label="Número de Envío"
+                                                value={shipment.number}
+                                              />
+                                              <InfoField
+                                                label="Referencia Cliente"
+                                                value={
+                                                  shipment.customerReference
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Waybill"
+                                                value={shipment.waybillNumber}
+                                              />
+                                              <InfoField
+                                                label="Carga"
                                                 value={
                                                   shipment.cargoDescription
                                                 }
-                                                fullWidth
-                                              />
-                                              <InfoField
-                                                label="Tipo de Empaque"
-                                                value={(() => {
-                                                  if (
-                                                    shipment.subShipments &&
-                                                    Array.isArray(
-                                                      shipment.subShipments,
-                                                    )
-                                                  ) {
-                                                    const packageTypes =
-                                                      new Set<string>();
-                                                    for (const sub of shipment.subShipments) {
-                                                      if (
-                                                        sub.commodities &&
-                                                        Array.isArray(
-                                                          sub.commodities,
-                                                        )
-                                                      ) {
-                                                        sub.commodities.forEach(
-                                                          (c: {
-                                                            packageType?: {
-                                                              description?: string;
-                                                            };
-                                                          }) => {
-                                                            if (
-                                                              c.packageType
-                                                                ?.description
-                                                            ) {
-                                                              packageTypes.add(
-                                                                c.packageType
-                                                                  .description,
-                                                              );
-                                                            }
-                                                          },
-                                                        );
-                                                      }
-                                                    }
-                                                    return packageTypes.size > 0
-                                                      ? Array.from(
-                                                          packageTypes,
-                                                        ).join(", ")
-                                                      : null;
-                                                  }
-                                                  return null;
-                                                })()}
                                               />
                                             </div>
                                           </div>
                                           <div className="asv-card">
-                                            <h4>Medidas y Peso</h4>
+                                            <h4>Seguimiento del Envío</h4>
+                                            <div className="asv-info-grid">
+                                              {/* Track button */}
+                                              <div className="asv-track-field">
+                                                <div className="asv-track-field__label">
+                                                  ¿Quieres trackear tu envío?
+                                                </div>
+                                                {(() => {
+                                                  const isTrackReady =
+                                                    isTrackAwbReady(shipment);
+
+                                                  return isShipmentAlreadyTracked(
+                                                    shipment,
+                                                  ) ? (
+                                                    <button
+                                                      className="asv-btn asv-btn--ghost asv-btn--sm"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (
+                                                          reporteriaClientesContext
+                                                        ) {
+                                                          reporteriaClientesContext.openTrackingTab();
+                                                        } else {
+                                                          navigate(
+                                                            "/trackings",
+                                                          );
+                                                        }
+                                                      }}
+                                                    >
+                                                      ✓ Ya está siendo trackeado
+                                                      — Ver seguimiento
+                                                    </button>
+                                                  ) : (
+                                                    <button
+                                                      className="asv-btn asv-btn--secondary asv-btn--sm"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (!isTrackReady)
+                                                          return;
+                                                        openTrackModal(
+                                                          shipment,
+                                                        );
+                                                      }}
+                                                      disabled={!isTrackReady}
+                                                      title={
+                                                        isTrackReady
+                                                          ? undefined
+                                                          : "Espera a que se cargue el Número de Seguimiento."
+                                                      }
+                                                    >
+                                                      {isTrackReady
+                                                        ? "Trackea tu envío"
+                                                        : "Cargando número de seg..."}
+                                                    </button>
+                                                  );
+                                                })()}
+                                              </div>
+                                              <InfoField
+                                                label="Número de Seguimiento"
+                                                value={getDisplayedTrackAwbNumber(
+                                                  shipment,
+                                                )}
+                                                fullWidth
+                                              />
+                                              <InfoField
+                                                label="ID Interno"
+                                                value={shipment.id}
+                                              />
+                                              <InfoField
+                                                label="Agente Forwarding"
+                                                value={
+                                                  shipment.forwardingAgent?.name
+                                                }
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="asv-card">
+                                            <h4>Operación Logística</h4>
                                             <div className="asv-info-grid">
                                               <InfoField
-                                                label="Piezas"
-                                                value={(() => {
-                                                  if (
-                                                    shipment.subShipments &&
-                                                    Array.isArray(
-                                                      shipment.subShipments,
-                                                    )
-                                                  ) {
-                                                    let total = 0;
-                                                    for (const sub of shipment.subShipments) {
-                                                      if (
-                                                        sub.commodities &&
-                                                        Array.isArray(
-                                                          sub.commodities,
-                                                        )
-                                                      ) {
-                                                        total +=
-                                                          sub.commodities.reduce(
-                                                            (
-                                                              sum: number,
-                                                              c: {
-                                                                pieces?: number;
-                                                              },
-                                                            ) =>
-                                                              sum +
-                                                              (c.pieces || 0),
-                                                            0,
-                                                          );
-                                                      }
-                                                    }
-                                                    return total > 0
-                                                      ? total
-                                                      : null;
-                                                  }
-                                                  return null;
-                                                })()}
+                                                label="Carrier"
+                                                value={shipment.carrier?.name}
                                               />
                                               <InfoField
-                                                label="Peso Total"
-                                                value={(() => {
-                                                  if (
-                                                    shipment.subShipments &&
-                                                    Array.isArray(
-                                                      shipment.subShipments,
-                                                    )
-                                                  ) {
-                                                    let total = 0;
-                                                    for (const sub of shipment.subShipments) {
-                                                      if (
-                                                        sub.commodities &&
-                                                        Array.isArray(
-                                                          sub.commodities,
-                                                        )
-                                                      ) {
-                                                        total +=
-                                                          sub.commodities.reduce(
-                                                            (
-                                                              sum: number,
-                                                              c: {
-                                                                totalWeightValue?: number;
-                                                              },
-                                                            ) =>
-                                                              sum +
-                                                              (c.totalWeightValue ||
-                                                                0),
-                                                            0,
-                                                          );
-                                                      }
-                                                    }
-                                                    return total > 0
-                                                      ? `${total} kg`
-                                                      : null;
-                                                  }
-                                                  return null;
-                                                })()}
+                                                label="Fecha Salida"
+                                                value={
+                                                  shipment.departure
+                                                    ? formatDate(
+                                                        shipment.departure,
+                                                      )
+                                                    : null
+                                                }
                                               />
                                               <InfoField
-                                                label="Volumen Total"
-                                                value={(() => {
-                                                  if (
-                                                    shipment.subShipments &&
-                                                    Array.isArray(
-                                                      shipment.subShipments,
-                                                    )
-                                                  ) {
-                                                    let total = 0;
-                                                    for (const sub of shipment.subShipments) {
-                                                      if (
-                                                        sub.commodities &&
-                                                        Array.isArray(
-                                                          sub.commodities,
-                                                        )
-                                                      ) {
-                                                        total +=
-                                                          sub.commodities.reduce(
-                                                            (
-                                                              sum: number,
-                                                              c: {
-                                                                totalVolumeValue?: number;
-                                                              },
-                                                            ) =>
-                                                              sum +
-                                                              (c.totalVolumeValue ||
-                                                                0),
-                                                            0,
-                                                          );
-                                                      }
-                                                    }
-                                                    return total > 0
-                                                      ? `${total} m³`
-                                                      : null;
-                                                  }
-                                                  return null;
-                                                })()}
-                                              />
-                                              <InfoField
-                                                label="¿Carga Peligrosa?"
-                                                value={shipment.hazardous}
-                                              />
-                                              <CommoditiesSection
-                                                commodities={
-                                                  shipment.commodities!
+                                                label="Fecha Llegada"
+                                                value={
+                                                  shipment.arrival
+                                                    ? formatDate(
+                                                        shipment.arrival,
+                                                      )
+                                                    : null
                                                 }
                                               />
                                             </div>
                                           </div>
                                         </div>
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "docs",
-                                    label: "Documentos",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                        <polyline points="14 2 14 8 20 8" />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <DocumentosSectionAir
-                                        shipmentId={shipmentId}
-                                      />
-                                    ),
-                                  },
-                                  {
-                                    key: "subshipments",
-                                    label: `Cotización (${shipment.subShipments?.length || 0})`,
-                                    hidden:
-                                      !shipment.subShipments ||
-                                      shipment.subShipments.length === 0,
-                                    content: (
-                                      <SubShipmentsList
-                                        subShipments={shipment.subShipments!}
-                                      />
-                                    ),
-                                  },
-                                  {
-                                    key: "notes",
-                                    label: "Notas",
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                      </svg>
-                                    ),
-                                    hidden: !shipment.notes,
-                                    content: (
-                                      <div className="asv-notes">
-                                        {shipment.notes}
-                                      </div>
-                                    ),
-                                  },
-                                ]}
-                              />
+                                      ),
+                                    },
+                                    {
+                                      key: "cargo",
+                                      label: "Información de Carga",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div>
+                                          <div
+                                            className="asv-cards-grid"
+                                            style={{
+                                              display: "grid",
+                                              gridTemplateColumns:
+                                                "repeat(2, 1fr)",
+                                              gap: "16px",
+                                              marginBottom: 16,
+                                            }}
+                                          >
+                                            <div className="asv-card">
+                                              <h4>Descripción Carga</h4>
+                                              <div className="asv-info-grid">
+                                                <InfoField
+                                                  label="Descripción de Carga"
+                                                  value={
+                                                    shipment.cargoDescription
+                                                  }
+                                                  fullWidth
+                                                />
+                                                <InfoField
+                                                  label="Tipo de Empaque"
+                                                  value={(() => {
+                                                    if (
+                                                      shipment.subShipments &&
+                                                      Array.isArray(
+                                                        shipment.subShipments,
+                                                      )
+                                                    ) {
+                                                      const packageTypes =
+                                                        new Set<string>();
+                                                      for (const sub of shipment.subShipments) {
+                                                        if (
+                                                          sub.commodities &&
+                                                          Array.isArray(
+                                                            sub.commodities,
+                                                          )
+                                                        ) {
+                                                          sub.commodities.forEach(
+                                                            (c: {
+                                                              packageType?: {
+                                                                description?: string;
+                                                              };
+                                                            }) => {
+                                                              if (
+                                                                c.packageType
+                                                                  ?.description
+                                                              ) {
+                                                                packageTypes.add(
+                                                                  c.packageType
+                                                                    .description,
+                                                                );
+                                                              }
+                                                            },
+                                                          );
+                                                        }
+                                                      }
+                                                      return packageTypes.size >
+                                                        0
+                                                        ? Array.from(
+                                                            packageTypes,
+                                                          ).join(", ")
+                                                        : null;
+                                                    }
+                                                    return null;
+                                                  })()}
+                                                />
+                                              </div>
+                                            </div>
+                                            <div className="asv-card">
+                                              <h4>Medidas y Peso</h4>
+                                              <div className="asv-info-grid">
+                                                <InfoField
+                                                  label="Piezas"
+                                                  value={(() => {
+                                                    if (
+                                                      shipment.subShipments &&
+                                                      Array.isArray(
+                                                        shipment.subShipments,
+                                                      )
+                                                    ) {
+                                                      let total = 0;
+                                                      for (const sub of shipment.subShipments) {
+                                                        if (
+                                                          sub.commodities &&
+                                                          Array.isArray(
+                                                            sub.commodities,
+                                                          )
+                                                        ) {
+                                                          total +=
+                                                            sub.commodities.reduce(
+                                                              (
+                                                                sum: number,
+                                                                c: {
+                                                                  pieces?: number;
+                                                                },
+                                                              ) =>
+                                                                sum +
+                                                                (c.pieces || 0),
+                                                              0,
+                                                            );
+                                                        }
+                                                      }
+                                                      return total > 0
+                                                        ? total
+                                                        : null;
+                                                    }
+                                                    return null;
+                                                  })()}
+                                                />
+                                                <InfoField
+                                                  label="Peso Total"
+                                                  value={(() => {
+                                                    if (
+                                                      shipment.subShipments &&
+                                                      Array.isArray(
+                                                        shipment.subShipments,
+                                                      )
+                                                    ) {
+                                                      let total = 0;
+                                                      for (const sub of shipment.subShipments) {
+                                                        if (
+                                                          sub.commodities &&
+                                                          Array.isArray(
+                                                            sub.commodities,
+                                                          )
+                                                        ) {
+                                                          total +=
+                                                            sub.commodities.reduce(
+                                                              (
+                                                                sum: number,
+                                                                c: {
+                                                                  totalWeightValue?: number;
+                                                                },
+                                                              ) =>
+                                                                sum +
+                                                                (c.totalWeightValue ||
+                                                                  0),
+                                                              0,
+                                                            );
+                                                        }
+                                                      }
+                                                      return total > 0
+                                                        ? `${total} kg`
+                                                        : null;
+                                                    }
+                                                    return null;
+                                                  })()}
+                                                />
+                                                <InfoField
+                                                  label="Volumen Total"
+                                                  value={(() => {
+                                                    if (
+                                                      shipment.subShipments &&
+                                                      Array.isArray(
+                                                        shipment.subShipments,
+                                                      )
+                                                    ) {
+                                                      let total = 0;
+                                                      for (const sub of shipment.subShipments) {
+                                                        if (
+                                                          sub.commodities &&
+                                                          Array.isArray(
+                                                            sub.commodities,
+                                                          )
+                                                        ) {
+                                                          total +=
+                                                            sub.commodities.reduce(
+                                                              (
+                                                                sum: number,
+                                                                c: {
+                                                                  totalVolumeValue?: number;
+                                                                },
+                                                              ) =>
+                                                                sum +
+                                                                (c.totalVolumeValue ||
+                                                                  0),
+                                                              0,
+                                                            );
+                                                        }
+                                                      }
+                                                      return total > 0
+                                                        ? `${total} m³`
+                                                        : null;
+                                                    }
+                                                    return null;
+                                                  })()}
+                                                />
+                                                <InfoField
+                                                  label="¿Carga Peligrosa?"
+                                                  value={shipment.hazardous}
+                                                />
+                                                <CommoditiesSection
+                                                  commodities={
+                                                    shipment.commodities!
+                                                  }
+                                                />
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "docs",
+                                      label: "Documentos",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                          <polyline points="14 2 14 8 20 8" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <DocumentosSectionAir
+                                          shipmentId={shipmentId}
+                                        />
+                                      ),
+                                    },
+                                    {
+                                      key: "subshipments",
+                                      label: `Cotización (${shipment.subShipments?.length || 0})`,
+                                      hidden:
+                                        !shipment.subShipments ||
+                                        shipment.subShipments.length === 0,
+                                      content: (
+                                        <SubShipmentsList
+                                          subShipments={shipment.subShipments!}
+                                        />
+                                      ),
+                                    },
+                                    {
+                                      key: "notes",
+                                      label: "Notas",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                      ),
+                                      hidden: !shipment.notes,
+                                      content: (
+                                        <div className="asv-notes">
+                                          {shipment.notes}
+                                        </div>
+                                      ),
+                                    },
+                                  ]}
+                                />
+                              )}
                             </div>
                           </td>
                         </tr>

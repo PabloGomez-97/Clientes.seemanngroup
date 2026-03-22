@@ -34,6 +34,7 @@ import HomeAdmin from "./components/administrador/HomeAdmin";
 import HomeEjecutivo from "./components/administrador/HomeEjecutivo";
 import HomeOperaciones from "./components/administrador/HomeOperaciones";
 import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
+import Documentacion from "./components/administrador/Documentacion";
 import OPReporteriaClientes from "./components/administrador/OP-reporteriaclientes";
 import Auditoria from "./components/administrador/Auditoria";
 
@@ -150,6 +151,7 @@ function App() {
           <Route index element={<Navigate to="/admin/home" replace />} />
           <Route path="home" element={<HomeSwitch />} />
           <Route path="reporteriaclientes" element={<ReporteriaClientes />} />
+          <Route path="documentacion" element={<Documentacion />} />
           <Route path="dashboard" element={<DashboardAdmin />} />
           <Route path="users" element={<UsersManagement />} />
           <Route path="reportexecutive" element={<ReportExecutive />} />

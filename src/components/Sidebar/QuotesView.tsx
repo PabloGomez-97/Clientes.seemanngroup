@@ -204,7 +204,9 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    MAIN COMPONENT
    =========================================================== */
 
-function QuotesView() {
+function QuotesView({
+  documentsOnly = false,
+}: { documentsOnly?: boolean } = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const { user, token, activeUsername: authUsername } = useAuth();
@@ -1491,292 +1493,343 @@ function QuotesView() {
                               </div>
 
                               {/* Tabs */}
-                              <DetailTabs
-                                tabs={[
-                                  {
-                                    key: "general",
-                                    label: t("quotesView.tabGeneral"),
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <circle cx="12" cy="12" r="10" />
-                                        <line x1="12" y1="16" x2="12" y2="12" />
-                                        <line
-                                          x1="12"
-                                          y1="8"
-                                          x2="12.01"
-                                          y2="8"
+                              {documentsOnly ? (
+                                <DocumentosSection
+                                  quoteId={String(
+                                    quote.id || quote.number || "",
+                                  )}
+                                  onCountChange={(count) =>
+                                    setDocumentCounts((prev) => ({
+                                      ...prev,
+                                      [String(quote.id || quote.number || "")]:
+                                        count,
+                                    }))
+                                  }
+                                />
+                              ) : (
+                                <DetailTabs
+                                  tabs={[
+                                    {
+                                      key: "general",
+                                      label: t("quotesView.tabGeneral"),
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <circle cx="12" cy="12" r="10" />
+                                          <line
+                                            x1="12"
+                                            y1="16"
+                                            x2="12"
+                                            y2="12"
+                                          />
+                                          <line
+                                            x1="12"
+                                            y1="8"
+                                            x2="12.01"
+                                            y2="8"
+                                          />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="qv-cards-grid">
+                                          <div className="qv-card">
+                                            <h4>
+                                              {t("quotesView.quoteDetails")}
+                                            </h4>
+                                            <div className="qv-info-grid">
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.quoteNumber",
+                                                )}
+                                                value={quote.number}
+                                              />
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.issueDate",
+                                                )}
+                                                value={
+                                                  quote.date
+                                                    ? formatDateLong(quote.date)
+                                                    : null
+                                                }
+                                              />
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.validUntil",
+                                                )}
+                                                value={
+                                                  quote.validUntil_Date
+                                                    ? formatDateLong(
+                                                        quote.validUntil_Date,
+                                                      )
+                                                    : null
+                                                }
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="qv-card">
+                                            <h4>{t("quotesView.logistics")}</h4>
+                                            <div className="qv-info-grid">
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.transitDaysLabel",
+                                                )}
+                                                value={quote.transitDays}
+                                              />
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.transportMode",
+                                                )}
+                                                value={
+                                                  quote.modeOfTransportation
+                                                }
+                                              />
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.paymentType",
+                                                )}
+                                                value={quote.paymentType}
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="qv-card">
+                                            <h4>
+                                              {t("quotesView.clientInfo")}
+                                            </h4>
+                                            <div className="qv-info-grid">
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.carrierBroker",
+                                                )}
+                                                value={quote.carrierBroker}
+                                                fullWidth
+                                              />
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.customerRef",
+                                                )}
+                                                value={quote.customerReference}
+                                                fullWidth
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "carga",
+                                      label: t("quotesView.tabCargo"),
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <rect
+                                            x="1"
+                                            y="3"
+                                            width="15"
+                                            height="13"
+                                          />
+                                          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                          <circle cx="5.5" cy="18.5" r="2.5" />
+                                          <circle cx="18.5" cy="18.5" r="2.5" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="qv-cards-grid">
+                                          <div className="qv-card">
+                                            <h4>
+                                              {t("quotesView.quantities")}
+                                            </h4>
+                                            <div className="qv-info-grid">
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.totalPieces",
+                                                )}
+                                                value={quote.totalCargo_Pieces}
+                                              />
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.containers",
+                                                )}
+                                                value={
+                                                  quote.totalCargo_Container
+                                                }
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="qv-card">
+                                            <h4>
+                                              {t("quotesView.weightsVolumes")}
+                                            </h4>
+                                            <div className="qv-info-grid">
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.totalWeight",
+                                                )}
+                                                value={
+                                                  quote.totalCargo_WeightDisplayValue
+                                                }
+                                              />
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.totalVolume",
+                                                )}
+                                                value={
+                                                  quote.totalCargo_VolumeDisplayValue
+                                                }
+                                              />
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.volumeWeight",
+                                                )}
+                                                value={
+                                                  quote.totalCargo_VolumeWeightDisplayValue
+                                                }
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="qv-card">
+                                            <h4>
+                                              {t("quotesView.statusSecurity")}
+                                            </h4>
+                                            <div className="qv-info-grid">
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.hazardous",
+                                                )}
+                                                value={quote.hazardous}
+                                              />
+                                              <InfoField
+                                                label={t(
+                                                  "quotesView.cargoStatus",
+                                                )}
+                                                value={quote.cargoStatus}
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "documentos",
+                                      label: t("quotesView.tabDocuments"),
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                          <polyline points="14 2 14 8 20 8" />
+                                          <line
+                                            x1="16"
+                                            y1="13"
+                                            x2="8"
+                                            y2="13"
+                                          />
+                                          <line
+                                            x1="16"
+                                            y1="17"
+                                            x2="8"
+                                            y2="17"
+                                          />
+                                          <polyline points="10 9 9 9 8 9" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <DocumentosSection
+                                          quoteId={String(
+                                            quote.id || quote.number || "",
+                                          )}
+                                          onCountChange={(count) =>
+                                            setDocumentCounts((prev) => ({
+                                              ...prev,
+                                              [String(
+                                                quote.id || quote.number || "",
+                                              )]: count,
+                                            }))
+                                          }
                                         />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <div className="qv-cards-grid">
-                                        <div className="qv-card">
-                                          <h4>
-                                            {t("quotesView.quoteDetails")}
-                                          </h4>
-                                          <div className="qv-info-grid">
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.quoteNumber",
-                                              )}
-                                              value={quote.number}
-                                            />
-                                            <InfoField
-                                              label={t("quotesView.issueDate")}
-                                              value={
-                                                quote.date
-                                                  ? formatDateLong(quote.date)
-                                                  : null
-                                              }
-                                            />
-                                            <InfoField
-                                              label={t("quotesView.validUntil")}
-                                              value={
-                                                quote.validUntil_Date
-                                                  ? formatDateLong(
-                                                      quote.validUntil_Date,
-                                                    )
-                                                  : null
-                                              }
-                                            />
-                                          </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "financiero",
+                                      label: t("quotesView.tabFinancial"),
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <line
+                                            x1="12"
+                                            y1="1"
+                                            x2="12"
+                                            y2="23"
+                                          />
+                                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <div className="qv-finance-card">
+                                          <span className="qv-finance-card__label">
+                                            {t("quotesView.totalExpense")}
+                                          </span>
+                                          <span className="qv-finance-card__amount">
+                                            {formatCLP(
+                                              quote.totalCharge_IncomeDisplayValue,
+                                            ) || "$0 CLP"}
+                                          </span>
+                                          <span className="qv-finance-card__note">
+                                            {t("quotesView.estimatedAmount")}
+                                          </span>
                                         </div>
-                                        <div className="qv-card">
-                                          <h4>{t("quotesView.logistics")}</h4>
-                                          <div className="qv-info-grid">
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.transitDaysLabel",
-                                              )}
-                                              value={quote.transitDays}
-                                            />
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.transportMode",
-                                              )}
-                                              value={quote.modeOfTransportation}
-                                            />
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.paymentType",
-                                              )}
-                                              value={quote.paymentType}
-                                            />
-                                          </div>
+                                      ),
+                                    },
+                                    {
+                                      key: "notas",
+                                      label: t("quotesView.tabNotes"),
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                      ),
+                                      hidden:
+                                        !quote.notes || quote.notes === "N/A",
+                                      content: (
+                                        <div className="qv-notes">
+                                          {quote.notes}
                                         </div>
-                                        <div className="qv-card">
-                                          <h4>{t("quotesView.clientInfo")}</h4>
-                                          <div className="qv-info-grid">
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.carrierBroker",
-                                              )}
-                                              value={quote.carrierBroker}
-                                              fullWidth
-                                            />
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.customerRef",
-                                              )}
-                                              value={quote.customerReference}
-                                              fullWidth
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "carga",
-                                    label: t("quotesView.tabCargo"),
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <rect
-                                          x="1"
-                                          y="3"
-                                          width="15"
-                                          height="13"
-                                        />
-                                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                                        <circle cx="5.5" cy="18.5" r="2.5" />
-                                        <circle cx="18.5" cy="18.5" r="2.5" />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <div className="qv-cards-grid">
-                                        <div className="qv-card">
-                                          <h4>{t("quotesView.quantities")}</h4>
-                                          <div className="qv-info-grid">
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.totalPieces",
-                                              )}
-                                              value={quote.totalCargo_Pieces}
-                                            />
-                                            <InfoField
-                                              label={t("quotesView.containers")}
-                                              value={quote.totalCargo_Container}
-                                            />
-                                          </div>
-                                        </div>
-                                        <div className="qv-card">
-                                          <h4>
-                                            {t("quotesView.weightsVolumes")}
-                                          </h4>
-                                          <div className="qv-info-grid">
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.totalWeight",
-                                              )}
-                                              value={
-                                                quote.totalCargo_WeightDisplayValue
-                                              }
-                                            />
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.totalVolume",
-                                              )}
-                                              value={
-                                                quote.totalCargo_VolumeDisplayValue
-                                              }
-                                            />
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.volumeWeight",
-                                              )}
-                                              value={
-                                                quote.totalCargo_VolumeWeightDisplayValue
-                                              }
-                                            />
-                                          </div>
-                                        </div>
-                                        <div className="qv-card">
-                                          <h4>
-                                            {t("quotesView.statusSecurity")}
-                                          </h4>
-                                          <div className="qv-info-grid">
-                                            <InfoField
-                                              label={t("quotesView.hazardous")}
-                                              value={quote.hazardous}
-                                            />
-                                            <InfoField
-                                              label={t(
-                                                "quotesView.cargoStatus",
-                                              )}
-                                              value={quote.cargoStatus}
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "documentos",
-                                    label: t("quotesView.tabDocuments"),
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                        <polyline points="14 2 14 8 20 8" />
-                                        <line x1="16" y1="13" x2="8" y2="13" />
-                                        <line x1="16" y1="17" x2="8" y2="17" />
-                                        <polyline points="10 9 9 9 8 9" />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <DocumentosSection
-                                        quoteId={String(
-                                          quote.id || quote.number || "",
-                                        )}
-                                        onCountChange={(count) =>
-                                          setDocumentCounts((prev) => ({
-                                            ...prev,
-                                            [String(
-                                              quote.id || quote.number || "",
-                                            )]: count,
-                                          }))
-                                        }
-                                      />
-                                    ),
-                                  },
-                                  {
-                                    key: "financiero",
-                                    label: t("quotesView.tabFinancial"),
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <line x1="12" y1="1" x2="12" y2="23" />
-                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                                      </svg>
-                                    ),
-                                    content: (
-                                      <div className="qv-finance-card">
-                                        <span className="qv-finance-card__label">
-                                          {t("quotesView.totalExpense")}
-                                        </span>
-                                        <span className="qv-finance-card__amount">
-                                          {formatCLP(
-                                            quote.totalCharge_IncomeDisplayValue,
-                                          ) || "$0 CLP"}
-                                        </span>
-                                        <span className="qv-finance-card__note">
-                                          {t("quotesView.estimatedAmount")}
-                                        </span>
-                                      </div>
-                                    ),
-                                  },
-                                  {
-                                    key: "notas",
-                                    label: t("quotesView.tabNotes"),
-                                    icon: (
-                                      <svg
-                                        width="14"
-                                        height="14"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                      >
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                      </svg>
-                                    ),
-                                    hidden:
-                                      !quote.notes || quote.notes === "N/A",
-                                    content: (
-                                      <div className="qv-notes">
-                                        {quote.notes}
-                                      </div>
-                                    ),
-                                  },
-                                ]}
-                              />
+                                      ),
+                                    },
+                                  ]}
+                                />
+                              )}
                             </div>
                           </td>
                         </tr>

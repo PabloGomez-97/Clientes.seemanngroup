@@ -114,7 +114,15 @@ function SidebarAdmin({
         },
       ],
     },
-
+    {
+      items: [
+        {
+          path: "/admin/documentacion",
+          name: "Documentos",
+          icon: "fa fa-file-alt",
+        },
+      ],
+    },
     {
       items: [
         {
