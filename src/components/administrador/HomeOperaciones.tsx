@@ -16,6 +16,7 @@ import {
 } from "../Sidebar/shipsgo/types";
 import AirShipmentDetail from "../Sidebar/shipsgo/AirShipmentDetail";
 import OceanShipmentDetail from "../Sidebar/shipsgo/OceanShipmentDetail";
+import ShipsGoTrackingAdminOP from "./Shipsgo/OP-trackeo";
 import "../Sidebar/styles/Shipsgotracking.css";
 import "./HomeOperaciones.css";
 
@@ -69,6 +70,36 @@ interface ClientShipmentCount {
   air: number;
   ocean: number;
   total: number;
+}
+
+function normalizeClientSearch(value?: string | null): string {
+  return value?.trim().toLowerCase() || "";
+}
+
+function clientMatchesSearch(client: ClientUser, query: string): boolean {
+  if (!query) return true;
+
+  return [
+    client.username,
+    client.email,
+    client.nombreuser,
+    ...(client.usernames || []),
+  ]
+    .filter(Boolean)
+    .some((value) => normalizeClientSearch(value).includes(query));
+}
+
+function shipmentMatchesClientSearch(
+  reference: string | undefined,
+  query: string,
+  matchingUsernames: Set<string>,
+): boolean {
+  if (!query) return true;
+
+  const normalizedReference = normalizeClientSearch(reference);
+  if (normalizedReference.includes(query)) return true;
+
+  return reference ? matchingUsernames.has(reference) : false;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -307,6 +338,7 @@ export default function HomeOperaciones() {
   const [listModalTab, setListModalTab] = useState<"air" | "ocean" | "all">(
     "all",
   );
+  const [showCreateTrackingModal, setShowCreateTrackingModal] = useState(false);
 
   const displayName = user?.nombreuser || user?.username || "Operaciones";
 
@@ -648,17 +680,36 @@ export default function HomeOperaciones() {
         </div>
       </div>
 
-      {lastRefresh && (
-        <div style={{ marginBottom: 16, marginTop: -8 }}>
-          <span className="ops-last-refresh">
-            Última actualización:{" "}
-            {lastRefresh.toLocaleTimeString("es-CL", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
+      {/* ── Quick Actions ────────────────────────────────────────────────── */}
+      <div className="ops-quick-actions-section">
+        <span className="ops-quick-actions-label">Acceso rápido</span>
+        <div className="ops-quick-actions">
+          <button
+            className="ops-quick-action"
+            onClick={() => setShowCreateTrackingModal(true)}
+          >
+            Nuevo Seguimiento
+          </button>
+          <button
+            className="ops-quick-action"
+            onClick={() => navigate("/admin/op-trackeos")}
+          >
+            Rastreo de envíos
+          </button>
+          <button
+            className="ops-quick-action"
+            onClick={() => navigate("/admin/op-reporteriaclientes")}
+          >
+            Todos los clientes
+          </button>
+          <button
+            className="ops-quick-action"
+            onClick={() => navigate("/admin/cotizador-administrador")}
+          >
+            Cotizador
+          </button>
         </div>
-      )}
+      </div>
 
       {/* ── KPI Cards ────────────────────────────────────────────────────── */}
       <div className="ops-kpi-grid">
@@ -1417,112 +1468,8 @@ export default function HomeOperaciones() {
         )}
       </div>
 
-      {/* ── Bottom row: Quick Actions + Client Ranking ────────────────────── */}
+      {/* ── Bottom row: Client Ranking ─────────────────────────────────────── */}
       <div className="ops-grid-3">
-        {/* Quick Actions */}
-        <div className="ops-panel">
-          <h3 className="ops-section-title">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--ops-orange)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-            Acceso Rápido
-          </h3>
-          <div
-            className="ops-quick-actions"
-            style={{ flexDirection: "column" }}
-          >
-            <button
-              className="ops-quick-action"
-              onClick={() => navigate("/admin/op-trackeos")}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              Seguimientos (ShipsGo)
-            </button>
-            <button
-              className="ops-quick-action"
-              onClick={() => navigate("/admin/op-reporteriaclientes")}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              Clientes (Todos)
-            </button>
-            <button
-              className="ops-quick-action"
-              onClick={() => navigate("/admin/cotizador-administrador")}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
-              Cotizador
-            </button>
-            <button
-              className="ops-quick-action"
-              onClick={() => navigate("/admin/settings")}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-              Configuración
-            </button>
-          </div>
-        </div>
-
         {/* Client Ranking */}
         <div className="ops-panel">
           <div
@@ -1791,6 +1738,7 @@ export default function HomeOperaciones() {
           tab={listModalTab}
           onTabChange={setListModalTab}
           onClose={() => setListModal(null)}
+          clients={clients}
           allAir={allAir}
           allOcean={allOcean}
           airInTransit={airInTransit}
@@ -1809,6 +1757,57 @@ export default function HomeOperaciones() {
             setSelectedOcean(s);
           }}
         />
+      )}
+
+      {showCreateTrackingModal && (
+        <div
+          className="ops-list-overlay"
+          onClick={() => setShowCreateTrackingModal(false)}
+        >
+          <div
+            className="ops-list-modal ops-list-modal--tracking"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="ops-list-modal__header">
+              <div>
+                <h2 className="ops-list-modal__title">
+                  Generar nuevo seguimiento
+                </h2>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--ops-text-muted)",
+                    marginTop: 4,
+                  }}
+                >
+                  Reutiliza el flujo de OP Trackeo para seleccionar cliente y
+                  crear un nuevo tracking.
+                </div>
+              </div>
+              <button
+                className="ops-list-modal__close"
+                onClick={() => setShowCreateTrackingModal(false)}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="ops-list-modal__body ops-list-modal__body--tracking">
+              <ShipsGoTrackingAdminOP />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1853,6 +1852,7 @@ interface ListModalProps {
   tab: "air" | "ocean" | "all";
   onTabChange: (t: "air" | "ocean" | "all") => void;
   onClose: () => void;
+  clients: ClientUser[];
   allAir: AirShipment[];
   allOcean: OceanShipment[];
   airInTransit: AirShipment[];
@@ -1871,6 +1871,7 @@ function ListModal({
   tab,
   onTabChange,
   onClose,
+  clients,
   allAir,
   allOcean,
   airInTransit,
@@ -1885,6 +1886,8 @@ function ListModal({
 }: ListModalProps) {
   // Determine which data to show
   const isClientModal = type === "all-clients" || type === "kpi-clients";
+  const [clientFilter, setClientFilter] = useState("");
+  const normalizedClientFilter = normalizeClientSearch(clientFilter);
 
   let title = "";
   let airList: AirShipment[] = [];
@@ -1928,10 +1931,71 @@ function ListModal({
       break;
   }
 
+  const matchingClientUsernames = useMemo(() => {
+    if (!normalizedClientFilter) return new Set<string>();
+
+    return clients.reduce((usernames, client) => {
+      if (!clientMatchesSearch(client, normalizedClientFilter)) {
+        return usernames;
+      }
+
+      usernames.add(client.username);
+      client.usernames?.forEach((username) => usernames.add(username));
+      return usernames;
+    }, new Set<string>());
+  }, [clients, normalizedClientFilter]);
+
+  const filteredClientRanking = useMemo(
+    () =>
+      clientRanking.filter((client) => {
+        if (!normalizedClientFilter) return true;
+
+        if (
+          normalizeClientSearch(client.username).includes(
+            normalizedClientFilter,
+          )
+        ) {
+          return true;
+        }
+
+        if (
+          normalizeClientSearch(client.nombreuser).includes(
+            normalizedClientFilter,
+          )
+        ) {
+          return true;
+        }
+
+        return matchingClientUsernames.has(client.username);
+      }),
+    [clientRanking, matchingClientUsernames, normalizedClientFilter],
+  );
+
   const showTabs = !isClientModal && airList.length > 0 && oceanList.length > 0;
 
-  const filteredAir = tab === "ocean" ? [] : airList;
-  const filteredOcean = tab === "air" ? [] : oceanList;
+  const filteredAir = useMemo(() => {
+    if (tab === "ocean") return [];
+
+    return airList.filter((shipment) =>
+      shipmentMatchesClientSearch(
+        shipment.reference,
+        normalizedClientFilter,
+        matchingClientUsernames,
+      ),
+    );
+  }, [airList, matchingClientUsernames, normalizedClientFilter, tab]);
+
+  const filteredOcean = useMemo(() => {
+    if (tab === "air") return [];
+
+    return oceanList.filter((shipment) =>
+      shipmentMatchesClientSearch(
+        shipment.reference,
+        normalizedClientFilter,
+        matchingClientUsernames,
+      ),
+    );
+  }, [matchingClientUsernames, normalizedClientFilter, oceanList, tab]);
 
   return (
     <div className="ops-list-overlay" onClick={onClose}>
@@ -1956,10 +2020,20 @@ function ListModal({
           </button>
         </div>
 
+        <div className="ops-list-modal__filters">
+          <input
+            type="text"
+            value={clientFilter}
+            onChange={(e) => setClientFilter(e.target.value)}
+            className="ops-list-modal__search"
+            placeholder="Filtrar por cliente, username o email..."
+          />
+        </div>
+
         {/* Client list */}
         {isClientModal ? (
           <div className="ops-list-modal__body">
-            {clientRanking.length === 0 ? (
+            {filteredClientRanking.length === 0 ? (
               <div className="ops-empty">Sin datos de clientes.</div>
             ) : (
               <table className="ops-mini-table">
@@ -1974,7 +2048,7 @@ function ListModal({
                   </tr>
                 </thead>
                 <tbody>
-                  {clientRanking.map((c, i) => (
+                  {filteredClientRanking.map((c, i) => (
                     <tr key={c.username}>
                       <td>
                         <span

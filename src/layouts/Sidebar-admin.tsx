@@ -100,7 +100,7 @@ function SidebarAdmin({
             },
             {
               path: "/admin/op-reporteriaclientes",
-              name: "Clientes (Todos)",
+              name: "Todos los clientes",
             },
             {
               path: "/admin/trackeos",
@@ -108,7 +108,7 @@ function SidebarAdmin({
             },
             {
               path: "/admin/op-trackeos",
-              name: "Seguimiento (Todos)",
+              name: "Rastreo de envíos",
             },
           ],
         },
