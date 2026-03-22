@@ -201,6 +201,48 @@ function linbisFetchBasic(url: string, accessToken: string): Promise<Response> {
   });
 }
 
+// ── Linbis localStorage cache (TTL: 4 horas) ─────────────────────────────
+const LINBIS_CACHE_TTL = 4 * 60 * 60 * 1000;
+
+interface LinbisCache {
+  air: LinbisAirShipment[];
+  ocean: LinbisOceanShipment[];
+  ground: LinbisGroundShipment[];
+  quotes: LinbisQuote[];
+  ts: number;
+}
+
+function readLinbisCache(username: string): LinbisCache | null {
+  try {
+    const raw = localStorage.getItem(`ej_linbis_v1_${username}`);
+    if (!raw) return null;
+    const data: LinbisCache = JSON.parse(raw);
+    if (Date.now() - data.ts > LINBIS_CACHE_TTL) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function writeLinbisCache(username: string, cache: Omit<LinbisCache, "ts">) {
+  try {
+    localStorage.setItem(
+      `ej_linbis_v1_${username}`,
+      JSON.stringify({ ...cache, ts: Date.now() }),
+    );
+  } catch {
+    /* quota exceeded */
+  }
+}
+
+function clearLinbisCache(username: string) {
+  try {
+    localStorage.removeItem(`ej_linbis_v1_${username}`);
+  } catch {
+    /* */
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Sub-components (stateless)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -362,6 +404,7 @@ export default function HomeEjecutivo() {
   const [linbisGround, setLinbisGround] = useState<LinbisGroundShipment[]>([]);
   const [linbisQuotes, setLinbisQuotes] = useState<LinbisQuote[]>([]);
   const [linbisLoading, setLinbisLoading] = useState(true);
+  const [linbisRefreshing, setLinbisRefreshing] = useState(false);
 
   // ShipsGo data
   const [trackingAir, setTrackingAir] = useState<AirShipment[]>([]);
@@ -451,19 +494,37 @@ export default function HomeEjecutivo() {
     fetchCoreData();
   }, [fetchCoreData]);
 
-  // ── Fetch Linbis data once we have clients + accessToken ─────────
-  useEffect(() => {
-    if (!accessToken || !clientes.length) {
-      if (!loading && clientes.length === 0) setLinbisLoading(false);
-      return;
-    }
+  // ── fetchLinbisData: carga con cache localStorage (TTL 4 hrs) ─────────────
+  const fetchLinbisData = useCallback(
+    async (force = false) => {
+      if (!accessToken || !clientes.length) {
+        setLinbisLoading(false);
+        return;
+      }
 
-    let cancelled = false;
-    setLinbisLoading(true);
+      const cacheKey = user?.username;
 
-    (async () => {
+      // Restaurar desde cache si no es forzado
+      if (!force && cacheKey) {
+        const cached = readLinbisCache(cacheKey);
+        if (cached) {
+          setLinbisAir(cached.air);
+          setLinbisOcean(cached.ocean);
+          setLinbisGround(cached.ground);
+          setLinbisQuotes(cached.quotes);
+          setLinbisLoading(false);
+          return;
+        }
+      }
+
+      if (force) {
+        setLinbisRefreshing(true);
+        if (cacheKey) clearLinbisCache(cacheKey);
+      } else {
+        setLinbisLoading(true);
+      }
+
       try {
-        // Ocean & Ground: fetch all, filter client-side
         const [oceanAllRes, groundAllRes] = await Promise.allSettled([
           linbisFetchBasic(
             "https://api.linbis.com/ocean-shipments/all",
@@ -491,7 +552,6 @@ export default function HomeEjecutivo() {
               )
             : [];
 
-        // Air shipments & quotes: per-client counts
         const airPromises = clientes.map((c) =>
           linbisFetchBasic(
             `https://api.linbis.com/air-shipments?ConsigneeName=${encodeURIComponent(c.username)}&SortBy=newest&ItemsPerPage=100`,
@@ -529,23 +589,34 @@ export default function HomeEjecutivo() {
           if (res.status === "fulfilled") allQuotes.push(...res.value);
         });
 
-        if (!cancelled) {
-          setLinbisAir(allAirShipments);
-          setLinbisOcean(oceanAll);
-          setLinbisGround(groundAll);
-          setLinbisQuotes(allQuotes);
+        setLinbisAir(allAirShipments);
+        setLinbisOcean(oceanAll);
+        setLinbisGround(groundAll);
+        setLinbisQuotes(allQuotes);
+
+        if (cacheKey) {
+          writeLinbisCache(cacheKey, {
+            air: allAirShipments,
+            ocean: oceanAll,
+            ground: groundAll,
+            quotes: allQuotes,
+          });
         }
       } catch {
         /* silent */
       } finally {
-        if (!cancelled) setLinbisLoading(false);
+        setLinbisLoading(false);
+        setLinbisRefreshing(false);
       }
-    })();
+    },
+    [accessToken, clientes, user],
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken, clientes, loading]);
+  // ── Disparar carga de Linbis al entrar al home (una vez que clientes esté listo) ─
+  useEffect(() => {
+    if (loading) return;
+    fetchLinbisData();
+  }, [loading, fetchLinbisData]);
 
   // Auto-refresh every 5 minutes
   useEffect(() => {
@@ -832,8 +903,11 @@ export default function HomeEjecutivo() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             className="ej-refresh-btn"
-            onClick={() => fetchCoreData(true)}
-            disabled={refreshing}
+            onClick={() => {
+              fetchCoreData(true);
+              fetchLinbisData(true);
+            }}
+            disabled={refreshing || linbisRefreshing}
           >
             <svg
               width="14"
@@ -844,13 +918,13 @@ export default function HomeEjecutivo() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={refreshing ? "spinning" : ""}
+              className={refreshing || linbisRefreshing ? "spinning" : ""}
             >
               <polyline points="23 4 23 10 17 10" />
               <polyline points="1 20 1 14 7 14" />
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
-            {refreshing ? "Actualizando..." : "Actualizar"}
+            {refreshing || linbisRefreshing ? "Actualizando..." : "Actualizar"}
           </button>
           <div className="ej-header__badge">
             <svg
@@ -2121,14 +2195,42 @@ function EjListModal({
                       <td style={{ fontSize: 11, color: "#8b92a5" }}>
                         {c.email}
                       </td>
-                      <td>{c.airCount}</td>
-                      <td>{c.oceanCount}</td>
-                      <td>{c.groundCount}</td>
-                      <td>{c.quoteCount}</td>
+                      <td>
+                        {linbisLoading ? (
+                          <span className="ej-spin-inline" />
+                        ) : (
+                          c.airCount
+                        )}
+                      </td>
+                      <td>
+                        {linbisLoading ? (
+                          <span className="ej-spin-inline" />
+                        ) : (
+                          c.oceanCount
+                        )}
+                      </td>
+                      <td>
+                        {linbisLoading ? (
+                          <span className="ej-spin-inline" />
+                        ) : (
+                          c.groundCount
+                        )}
+                      </td>
+                      <td>
+                        {linbisLoading ? (
+                          <span className="ej-spin-inline" />
+                        ) : (
+                          c.quoteCount
+                        )}
+                      </td>
                       <td
                         style={{ fontWeight: 700, color: "var(--ej-orange)" }}
                       >
-                        {c.airCount + c.oceanCount + c.groundCount}
+                        {linbisLoading ? (
+                          <span className="ej-spin-inline" />
+                        ) : (
+                          c.airCount + c.oceanCount + c.groundCount
+                        )}
                       </td>
                     </tr>
                   ))}
