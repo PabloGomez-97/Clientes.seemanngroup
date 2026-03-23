@@ -612,62 +612,95 @@ function QuoteAPITester({
 
   // ============================================================================
   // VALIDITY PARSER (moved here): determina si la fecha "Válido Hasta" está vigente
+  // Soporta: DD/MM/YYYY, serial GSheets, texto español ("28 marzo" o "28 febrero 2026")
   // ============================================================================
   const getValidityClass = (
     validUntil?: string | null,
   ): "valid" | "expired" | null => {
     if (!validUntil) return null;
 
-    // Normalizar texto: eliminar comas, ceros sobrantes, etc.
-    const txt = String(validUntil).trim().toLowerCase();
+    const txt = String(validUntil).trim();
+    if (!txt) return null;
 
-    // Regex para capturar día, mes y año opcional (ej: "28 febrero" o "28 febrero 2026")
-    const match = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
-    if (!match) return null;
+    let expiry: Date | null = null;
 
-    const day = parseInt(match[1], 10);
-    const monthName = match[2];
-    const year = match[3] ? parseInt(match[3], 10) : new Date().getFullYear();
+    // 1) Intentar formato numérico serial de Google Sheets (ej: 46072)
+    if (/^\d{5}$/.test(txt)) {
+      const serial = parseInt(txt, 10);
+      const epoch = new Date(1899, 11, 30);
+      expiry = new Date(epoch.getTime() + serial * 86400000);
+    }
 
-    const monthMap: Record<string, number> = {
-      enero: 0,
-      febrero: 1,
-      marzo: 2,
-      abril: 3,
-      mayo: 4,
-      junio: 5,
-      julio: 6,
-      agosto: 7,
-      septiembre: 8,
-      octubre: 9,
-      noviembre: 10,
-      diciembre: 11,
-      ene: 0,
-      feb: 1,
-      mar: 2,
-      abr: 3,
-      may: 4,
-      jun: 5,
-      jul: 6,
-      ago: 7,
-      sep: 8,
-      oct: 9,
-      nov: 10,
-      dic: 11,
-    };
+    // 2) Intentar formato DD/MM/YYYY o DD/M/YYYY
+    if (!expiry) {
+      const match = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (match) {
+        const part1 = parseInt(match[1], 10);
+        const part2 = parseInt(match[2], 10);
+        const year = parseInt(match[3], 10);
 
-    const monthIndex = monthMap[monthName.toLowerCase()];
-    if (monthIndex === undefined) return null;
+        if (part1 > 12) {
+          expiry = new Date(year, part2 - 1, part1, 23, 59, 59, 999);
+        } else if (part2 > 12) {
+          expiry = new Date(year, part1 - 1, part2, 23, 59, 59, 999);
+        } else {
+          expiry = new Date(year, part2 - 1, part1, 23, 59, 59, 999);
+        }
+      }
+    }
 
-    // Construir fecha al final del día para que la misma fecha sea considerada vigente
-    const expiry = new Date(year, monthIndex, day, 23, 59, 59, 999);
+    // 3) Intentar formato texto español (ej: "28 febrero 2026" o "28 marzo")
+    if (!expiry) {
+      const matchText = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
+      if (matchText) {
+        const day = parseInt(matchText[1], 10);
+        const monthName = matchText[2].toLowerCase();
+        const year = matchText[3]
+          ? parseInt(matchText[3], 10)
+          : new Date().getFullYear();
+
+        const monthMap: Record<string, number> = {
+          enero: 0,
+          febrero: 1,
+          marzo: 2,
+          abril: 3,
+          mayo: 4,
+          junio: 5,
+          julio: 6,
+          agosto: 7,
+          septiembre: 8,
+          octubre: 9,
+          noviembre: 10,
+          diciembre: 11,
+          ene: 0,
+          feb: 1,
+          mar: 2,
+          abr: 3,
+          may: 4,
+          jun: 5,
+          jul: 6,
+          ago: 7,
+          sep: 8,
+          oct: 9,
+          nov: 10,
+          dic: 11,
+        };
+
+        const monthIndex = monthMap[monthName];
+        if (monthIndex !== undefined) {
+          expiry = new Date(year, monthIndex, day, 23, 59, 59, 999);
+        }
+      }
+    }
+
+    if (!expiry || isNaN(expiry.getTime())) return null;
+
     const now = new Date();
-
     return expiry >= now ? "valid" : "expired";
   };
 
   // ============================================================================
-  // CONVERTIR validUntil ("28 marzo" o "28 febrero 2026") A ISO 8601
+  // CONVERTIR validUntil A ISO 8601 (soporta DD/M/YYYY, serial GSheets, texto español)
   // ============================================================================
   const parseValidUntilToISO = (validUntil?: string | null): string => {
     // Fallback: 7 días desde hoy si no se puede parsear
@@ -677,51 +710,78 @@ function QuoteAPITester({
 
     if (!validUntil) return fallback;
 
-    const txt = String(validUntil).trim().toLowerCase();
+    const txt = String(validUntil).trim();
+    if (!txt) return fallback;
 
-    const match = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
-    if (!match) return fallback;
+    let expiry: Date | null = null;
 
-    const day = parseInt(match[1], 10);
-    const monthName = match[2];
-    const year = match[3] ? parseInt(match[3], 10) : new Date().getFullYear();
+    // 1) Serial de Google Sheets (ej: 46072)
+    if (/^\d{5}$/.test(txt)) {
+      const serial = parseInt(txt, 10);
+      const epoch = new Date(Date.UTC(1899, 11, 30));
+      expiry = new Date(epoch.getTime() + serial * 86400000);
+    }
 
-    const monthMap: Record<string, number> = {
-      enero: 0,
-      febrero: 1,
-      marzo: 2,
-      abril: 3,
-      mayo: 4,
-      junio: 5,
-      julio: 6,
-      agosto: 7,
-      septiembre: 8,
-      octubre: 9,
-      noviembre: 10,
-      diciembre: 11,
-      ene: 0,
-      feb: 1,
-      mar: 2,
-      abr: 3,
-      may: 4,
-      jun: 5,
-      jul: 6,
-      ago: 7,
-      sep: 8,
-      oct: 9,
-      nov: 10,
-      dic: 11,
-    };
+    // 2) Formato DD/MM/YYYY o DD/M/YYYY
+    if (!expiry) {
+      const match = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (match) {
+        const part1 = parseInt(match[1], 10);
+        const part2 = parseInt(match[2], 10);
+        const year = parseInt(match[3], 10);
+        if (part1 > 12) {
+          expiry = new Date(Date.UTC(year, part2 - 1, part1, 23, 59, 59, 999));
+        } else if (part2 > 12) {
+          expiry = new Date(Date.UTC(year, part1 - 1, part2, 23, 59, 59, 999));
+        } else {
+          expiry = new Date(Date.UTC(year, part2 - 1, part1, 23, 59, 59, 999));
+        }
+      }
+    }
 
-    const monthIndex = monthMap[monthName.toLowerCase()];
-    if (monthIndex === undefined) return fallback;
+    // 3) Texto español ("28 febrero 2026" o "28 marzo")
+    if (!expiry) {
+      const matchText = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
+      if (matchText) {
+        const day = parseInt(matchText[1], 10);
+        const monthName = matchText[2].toLowerCase();
+        const year = matchText[3]
+          ? parseInt(matchText[3], 10)
+          : new Date().getFullYear();
+        const monthMap: Record<string, number> = {
+          enero: 0,
+          febrero: 1,
+          marzo: 2,
+          abril: 3,
+          mayo: 4,
+          junio: 5,
+          julio: 6,
+          agosto: 7,
+          septiembre: 8,
+          octubre: 9,
+          noviembre: 10,
+          diciembre: 11,
+          ene: 0,
+          feb: 1,
+          mar: 2,
+          abr: 3,
+          may: 4,
+          jun: 5,
+          jul: 6,
+          ago: 7,
+          sep: 8,
+          oct: 9,
+          nov: 10,
+          dic: 11,
+        };
+        const monthIndex = monthMap[monthName];
+        if (monthIndex !== undefined) {
+          expiry = new Date(Date.UTC(year, monthIndex, day, 23, 59, 59, 999));
+        }
+      }
+    }
 
-    // Construir fecha en UTC para evitar desfase de zona horaria
-    const expiry = new Date(Date.UTC(year, monthIndex, day, 23, 59, 59, 999));
-
-    // Validar que la fecha resultante sea real (no NaN)
-    if (isNaN(expiry.getTime())) return fallback;
-
+    if (!expiry || isNaN(expiry.getTime())) return fallback;
     return expiry.toISOString();
   };
 
