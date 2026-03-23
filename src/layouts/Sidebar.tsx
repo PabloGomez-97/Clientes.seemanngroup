@@ -1,9 +1,10 @@
 // src/layouts/Sidebar.tsx - AWS/Azure Minimalist Design
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import logoSeemann from "./logoseemann.png";
+import { handleSidebarNavigation } from "./sidebarNavigation";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -157,6 +158,19 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
         ? prev.filter((m) => m !== menuName)
         : [...prev, menuName],
     );
+  };
+
+  const navigateFromSidebar = (
+    event: MouseEvent<HTMLAnchorElement>,
+    targetPath: string,
+  ) => {
+    handleSidebarNavigation({
+      event,
+      navigate,
+      currentPathname: location.pathname,
+      targetPath,
+      onAfterNavigate: isMobile ? onCloseMobile : undefined,
+    });
   };
 
   return (
@@ -366,20 +380,15 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                       <a
                         href={item.path ?? item.subItems?.[0]?.path ?? "#"}
                         onClick={(e) => {
-                          if ((e as any).button === 1 || e.ctrlKey || e.metaKey)
-                            return;
-                          e.preventDefault();
-
                           if (hasSubItems) {
                             if (isCollapsed) {
-                              navigate(item.subItems![0].path);
-                              if (isMobile) onCloseMobile();
+                              navigateFromSidebar(e, item.subItems![0].path);
                             } else {
+                              e.preventDefault();
                               toggleMenu(item.name);
                             }
                           } else if (item.path) {
-                            navigate(item.path);
-                            if (isMobile) onCloseMobile();
+                            navigateFromSidebar(e, item.path);
                           }
                         }}
                         title={isCollapsed ? item.name : undefined}
@@ -495,15 +504,7 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                                   <a
                                     href={subItem.path}
                                     onClick={(e) => {
-                                      if (
-                                        (e as any).button === 1 ||
-                                        e.ctrlKey ||
-                                        e.metaKey
-                                      )
-                                        return;
-                                      e.preventDefault();
-                                      navigate(subItem.path);
-                                      if (isMobile) onCloseMobile();
+                                      navigateFromSidebar(e, subItem.path);
                                     }}
                                     onMouseEnter={() =>
                                       setHoveredItem(`sub-${subItem.path}`)

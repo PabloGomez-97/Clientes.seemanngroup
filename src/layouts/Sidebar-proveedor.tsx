@@ -1,9 +1,10 @@
 // src/layouts/Sidebar-proveedor.tsx — Sidebar minimalista para Proveedores
 
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
+import { handleSidebarNavigation } from "./sidebarNavigation";
 
 interface SidebarProveedorProps {
   isCollapsed: boolean;
@@ -53,6 +54,19 @@ function SidebarProveedor({
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
+
+  const navigateFromSidebar = (
+    event: MouseEvent<HTMLAnchorElement>,
+    targetPath: string,
+  ) => {
+    handleSidebarNavigation({
+      event,
+      navigate,
+      currentPathname: location.pathname,
+      targetPath,
+      onAfterNavigate: isMobile ? onCloseMobile : undefined,
+    });
+  };
 
   const sidebarWidth = isMobile ? "280px" : isCollapsed ? "84px" : "260px";
 
@@ -201,10 +215,7 @@ function SidebarProveedor({
                     href={item.path}
                     title={isCollapsed ? item.name : undefined}
                     onClick={(e) => {
-                      if (e.button === 1 || e.ctrlKey || e.metaKey) return;
-                      e.preventDefault();
-                      navigate(item.path);
-                      if (isMobile) onCloseMobile();
+                      navigateFromSidebar(e, item.path);
                     }}
                     onMouseEnter={() => setHoveredItem(item.path)}
                     onMouseLeave={() => setHoveredItem(null)}

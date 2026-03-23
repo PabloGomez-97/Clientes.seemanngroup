@@ -1,9 +1,10 @@
 // src/layouts/Sidebar-admin.tsx - AWS/Azure Minimalist Design (same as client)
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { canSeeSidebarItem } from "../config/roleRoutes";
 import logoSeemann from "./logoseemann.png";
+import { handleSidebarNavigation } from "./sidebarNavigation";
 
 interface SidebarAdminProps {
   isCollapsed: boolean;
@@ -217,6 +218,19 @@ function SidebarAdmin({
     );
   };
 
+  const navigateFromSidebar = (
+    event: MouseEvent<HTMLAnchorElement>,
+    targetPath: string,
+  ) => {
+    handleSidebarNavigation({
+      event,
+      navigate,
+      currentPathname: location.pathname,
+      targetPath,
+      onAfterNavigate: isMobile ? onCloseMobile : undefined,
+    });
+  };
+
   return (
     <>
       {isMobile && !isCollapsed && (
@@ -361,18 +375,15 @@ function SidebarAdmin({
                         }
                         title={isCollapsed ? item.name : undefined}
                         onClick={(e) => {
-                          if (e.button === 1 || e.ctrlKey || e.metaKey) return;
-                          e.preventDefault();
                           if (hasSubItems) {
                             if (isCollapsed && visibleSubItems.length > 0) {
-                              navigate(visibleSubItems[0].path);
-                              if (isMobile) onCloseMobile();
+                              navigateFromSidebar(e, visibleSubItems[0].path);
                             } else {
+                              e.preventDefault();
                               toggleMenu(item.name);
                             }
                           } else if (item.path) {
-                            navigate(item.path);
-                            if (isMobile) onCloseMobile();
+                            navigateFromSidebar(e, item.path);
                           }
                         }}
                         onMouseEnter={() =>
@@ -492,16 +503,8 @@ function SidebarAdmin({
                                     <a
                                       href={subItem.path}
                                       onClick={(e) => {
-                                        if (
-                                          e.button === 1 ||
-                                          e.ctrlKey ||
-                                          e.metaKey
-                                        )
-                                          return;
-                                        e.preventDefault();
                                         e.stopPropagation();
-                                        navigate(subItem.path);
-                                        if (isMobile) onCloseMobile();
+                                        navigateFromSidebar(e, subItem.path);
                                       }}
                                       onMouseEnter={() =>
                                         setHoveredItem(`sub-${subItem.path}`)
