@@ -42,7 +42,13 @@ function QuoteFCL({
   isEjecutivoMode = false,
 }: QuoteFCLProps = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
-  const { user, token, activeUsername, getMisClientes } = useAuth();
+  const {
+    user,
+    token,
+    activeUsername,
+    getMisClientes,
+    loading: authLoading,
+  } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
@@ -64,6 +70,10 @@ function QuoteFCL({
   const effectiveUsername = isEjecutivoMode
     ? clienteSeleccionado?.username || user?.username || ""
     : activeUsername || "";
+  const salesRepName =
+    ejecutivo?.nombre && ejecutivo.nombre.trim().length > 0
+      ? ejecutivo.nombre.trim()
+      : "Ignacio Maldonado";
 
   // ============================================================================
   // ESTADOS PARA RUTAS FCL
@@ -652,6 +662,13 @@ function QuoteFCL({
   const testAPI = async (
     tipoAccion: "cotizacion" | "operacion" = "cotizacion",
   ) => {
+    if (authLoading) {
+      setError(
+        "Espera a que termine de cargarse la sesión antes de generar la cotización",
+      );
+      return;
+    }
+
     if (!rutaSeleccionada || !containerSeleccionado) {
       setError(
         "Debes seleccionar una ruta y un contenedor antes de generar la cotización",
@@ -968,7 +985,7 @@ function QuoteFCL({
                 ? (deliveryToAddressDerived ?? undefined)
                 : undefined
             }
-            salesRep={ejecutivo?.nombre ?? "Ignacio Maldonado"}
+            salesRep={salesRepName}
             containerType={containerName}
             containerQuantity={cantidadContenedores}
             description={"Cargamento Marítimo FCL"}
@@ -1409,7 +1426,7 @@ function QuoteFCL({
         name: "FCL",
       },
       salesRep: {
-        name: ejecutivo?.nombre || "Ignacio Maldonado",
+        name: salesRepName,
       },
       PaymentTerms: {
         name: "Prepaid",
@@ -2412,6 +2429,7 @@ function QuoteFCL({
                   }}
                   disabled={
                     loading ||
+                    authLoading ||
                     !accessToken ||
                     !rutaSeleccionada ||
                     !containerSeleccionado ||
@@ -2468,6 +2486,7 @@ function QuoteFCL({
                     }}
                     disabled={
                       loading ||
+                      authLoading ||
                       !accessToken ||
                       !rutaSeleccionada ||
                       !containerSeleccionado ||

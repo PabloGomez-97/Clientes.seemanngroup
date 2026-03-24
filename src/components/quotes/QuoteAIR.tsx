@@ -50,7 +50,13 @@ function QuoteAPITester({
   isEjecutivoMode = false,
 }: QuoteAIRProps = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
-  const { user, token, activeUsername, getMisClientes } = useAuth();
+  const {
+    user,
+    token,
+    activeUsername,
+    getMisClientes,
+    loading: authLoading,
+  } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
@@ -116,6 +122,10 @@ function QuoteAPITester({
   const effectiveUsername = isEjecutivoMode
     ? clienteSeleccionado?.username || user?.username || ""
     : activeUsername || "";
+  const salesRepName =
+    ejecutivo?.nombre && ejecutivo.nombre.trim().length > 0
+      ? ejecutivo.nombre.trim()
+      : "Ignacio Maldonado";
 
   // ============================================================================
   // ESTADOS PARA RUTAS AÉREAS
@@ -242,6 +252,11 @@ function QuoteAPITester({
     }
 
     const cargarClientes = async () => {
+      if (user?.username !== "Ejecutivo") {
+        setLoadingClientes(false);
+        return;
+      }
+
       try {
         setLoadingClientes(true);
         const clientes = await getMisClientes();
@@ -261,7 +276,7 @@ function QuoteAPITester({
     };
 
     cargarClientes();
-  }, [isEjecutivoMode, getMisClientes]);
+  }, [user, getMisClientes, isEjecutivoMode]);
 
   // Aplicar preselección cuando se cargan las rutas y hay datos pre-seleccionados
   useEffect(() => {
@@ -907,6 +922,13 @@ function QuoteAPITester({
   const testAPI = async (
     tipoAccion: "cotizacion" | "operacion" = "cotizacion",
   ) => {
+    if (authLoading) {
+      setError(
+        "Espera a que termine de cargarse la sesión antes de generar la cotización",
+      );
+      return;
+    }
+
     if (!rutaSeleccionada) {
       setError("Debes seleccionar una ruta antes de generar la cotización");
       return;
@@ -1269,7 +1291,7 @@ function QuoteAPITester({
             deliveryToAddress={
               incoterm === "EXW" ? deliveryToAddressDerived : undefined
             }
-            salesRep={ejecutivo?.nombre || "Ignacio Maldonado"}
+            salesRep={salesRepName}
             pieces={piecesData.length}
             packageTypeName={packageTypeName}
             length={overallDimsAndWeight ? 0 : piecesData[0]?.length || 0}
@@ -1770,7 +1792,7 @@ function QuoteAPITester({
           name: "Normal",
         },
         salesRep: {
-          name: ejecutivo?.nombre || "Ignacio Maldonado",
+          name: salesRepName,
         },
         commodities: piecesData.map((piece) => ({
           commodityType: "Standard",
@@ -2095,7 +2117,7 @@ function QuoteAPITester({
           name: "Overall Dims & Weight",
         },
         salesRep: {
-          name: ejecutivo?.nombre || "Ignacio Maldonado",
+          name: salesRepName,
         },
         commodities: [
           {
@@ -3184,6 +3206,7 @@ function QuoteAPITester({
               }}
               disabled={
                 loading ||
+                authLoading ||
                 !accessToken ||
                 weightError !== null ||
                 dimensionError !== null ||
@@ -3219,6 +3242,7 @@ function QuoteAPITester({
               }}
               disabled={
                 loading ||
+                authLoading ||
                 !accessToken ||
                 weightError !== null ||
                 dimensionError !== null ||

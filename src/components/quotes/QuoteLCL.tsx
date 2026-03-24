@@ -46,7 +46,13 @@ function QuoteLCL({
 }: QuoteLCLProps = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const token = accessToken;
-  const { user, token: jwtToken, activeUsername, getMisClientes } = useAuth();
+  const {
+    user,
+    token: jwtToken,
+    activeUsername,
+    getMisClientes,
+    loading: authLoading,
+  } = useAuth();
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
@@ -64,6 +70,10 @@ function QuoteLCL({
   const effectiveUsername = isEjecutivoMode
     ? clienteSeleccionado?.username
     : activeUsername;
+  const salesRepName =
+    ejecutivo?.nombre && ejecutivo.nombre.trim().length > 0
+      ? ejecutivo.nombre.trim()
+      : "Ignacio Maldonado";
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -858,6 +868,13 @@ function QuoteLCL({
   const testAPI = async (
     tipoAccion: "cotizacion" | "operacion" = "cotizacion",
   ) => {
+    if (authLoading) {
+      setError(
+        "Espera a que termine de cargarse la sesión antes de generar la cotización",
+      );
+      return;
+    }
+
     if (!rutaSeleccionada) {
       setError(t("QuoteLCL.inforuta"));
       return;
@@ -1199,7 +1216,7 @@ function QuoteLCL({
                 ? (deliveryToAddressDerived ?? undefined)
                 : undefined
             }
-            salesRep={ejecutivo?.nombre ?? "Ignacio Maldonado"}
+            salesRep={salesRepName}
             pieces={piecesData.length}
             packageTypeName={packageTypeName}
             length={piecesData[0]?.length || 0}
@@ -1696,7 +1713,7 @@ function QuoteLCL({
         name: "Prepaid",
       },
       salesRep: {
-        name: ejecutivo?.nombre || "Ignacio Maldonado",
+        name: salesRepName,
       },
       commodities: piecesData.map((piece) => ({
         commodityType: "Standard",
@@ -2630,6 +2647,7 @@ function QuoteLCL({
                   }}
                   disabled={
                     loading ||
+                    authLoading ||
                     !accessToken ||
                     !incoterm ||
                     oversizeErrorLCL ||
@@ -2679,6 +2697,7 @@ function QuoteLCL({
                     }}
                     disabled={
                       loading ||
+                      authLoading ||
                       !accessToken ||
                       !incoterm ||
                       oversizeErrorLCL ||
