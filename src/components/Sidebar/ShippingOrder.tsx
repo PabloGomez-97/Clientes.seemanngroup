@@ -21,11 +21,6 @@ const SOV_API_BASE_URL =
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
-/** Returns true when the tracking number is purely numeric (air AWB), false if it contains letters (ocean). */
-function isAirTrackingNumber(tn: string): boolean {
-  return /^\d+$/.test(tn.replace(/[\s-]/g, ""));
-}
-
 /* ────────────────────────────────────────────
    Types
    ──────────────────────────────────────────── */
@@ -349,6 +344,22 @@ function ShippingOrderView() {
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
+  // Track type selection modal
+  const [showTrackTypeModal, setShowTrackTypeModal] = useState(false);
+  const [pendingTrackOrder, setPendingTrackOrder] =
+    useState<ShippingOrder | null>(null);
+  const [selectedTrackType, setSelectedTrackType] = useState<
+    "air" | "ocean" | null
+  >(null);
+
+  // Already-tracked numbers (from ShipsGo — mirrors AirShipmentsView / OceanShipmentsView)
+  const [trackedAirNumbers, setTrackedAirNumbers] = useState<Set<string>>(
+    new Set(),
+  );
+  const [trackedOceanNumbers, setTrackedOceanNumbers] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Pagination
   const [rowsPerPage, setRowsPerPage] = useState(ITEMS_PER_PAGE);
   const [tablePage, setTablePage] = useState(1);
@@ -490,6 +501,49 @@ function ShippingOrderView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, activeUsername]);
 
+  // Reset tracked sets when user changes
+  useEffect(() => {
+    setTrackedAirNumbers(new Set());
+    setTrackedOceanNumbers(new Set());
+  }, [activeUsername]);
+
+  // Fetch tracked shipments from ShipsGo (both air and ocean)
+  useEffect(() => {
+    if (!activeUsername || !token) return;
+    (async () => {
+      try {
+        const [airRes, oceanRes] = await Promise.all([
+          fetch(`${SOV_API_BASE_URL}/api/shipsgo/shipments`),
+          fetch(`${SOV_API_BASE_URL}/api/shipsgo/ocean/shipments`),
+        ]);
+        if (airRes.ok) {
+          const airData = await airRes.json();
+          const awbs = new Set<string>();
+          for (const s of airData.shipments ?? []) {
+            if (s.reference === activeUsername && s.awb_number) {
+              awbs.add(s.awb_number.replace(/[\s-]/g, ""));
+            }
+          }
+          setTrackedAirNumbers(awbs);
+        }
+        if (oceanRes.ok) {
+          const oceanData = await oceanRes.json();
+          const nums = new Set<string>();
+          for (const s of oceanData.shipments ?? []) {
+            if (s.reference === activeUsername) {
+              if (s.container_number)
+                nums.add(s.container_number.toUpperCase());
+              if (s.booking_number) nums.add(s.booking_number.toUpperCase());
+            }
+          }
+          setTrackedOceanNumbers(nums);
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [activeUsername, token]);
+
   /* ── Refresh ──────────────────────────────── */
   const refreshOrders = () => {
     if (!activeUsername) return;
@@ -572,19 +626,35 @@ function ShippingOrderView() {
     }
   };
 
-  /* ── Track Modal ─────────────────────────── */
-  const openTrackModal = (order: ShippingOrder) => {
-    setTrackOrder(order);
+  /* ── Track Type Selection Modal ─────────────────────────── */
+  const openTypeSelectionModal = (order: ShippingOrder) => {
+    setPendingTrackOrder(order);
+    setShowTrackTypeModal(true);
+  };
+
+  const closeTypeSelectionModal = () => {
+    setShowTrackTypeModal(false);
+    setPendingTrackOrder(null);
+  };
+
+  const selectTrackType = (type: "air" | "ocean") => {
+    if (!pendingTrackOrder) return;
+    setSelectedTrackType(type);
+    setShowTrackTypeModal(false);
+    setTrackOrder(pendingTrackOrder);
+    setPendingTrackOrder(null);
     setTrackEmails([""]);
     setTrackError(null);
     setShowTrackModal(true);
   };
 
+  /* ── Track Modal ─────────────────────────── */
   const closeTrackModal = () => {
     setShowTrackModal(false);
     setTrackOrder(null);
     setTrackEmails([""]);
     setTrackError(null);
+    setSelectedTrackType(null);
   };
 
   const updateTrackEmail = (index: number, value: string) => {
@@ -679,7 +749,7 @@ function ShippingOrderView() {
 
     try {
       const cleanTn = rawTn.replace(/[\s-]/g, "");
-      const isAir = isAirTrackingNumber(rawTn);
+      const isAir = selectedTrackType === "air";
 
       let response: Response;
       if (isAir) {
@@ -741,6 +811,21 @@ function ShippingOrderView() {
           rememberError,
         );
       });
+
+      // Update local tracked sets so the button reflects immediately
+      if (isAir) {
+        setTrackedAirNumbers((prev) => {
+          const n = new Set(prev);
+          n.add(cleanTn);
+          return n;
+        });
+      } else {
+        setTrackedOceanNumbers((prev) => {
+          const n = new Set(prev);
+          n.add(cleanTn.toUpperCase());
+          return n;
+        });
+      }
 
       closeTrackModal();
       registrarEvento({
@@ -1368,11 +1453,16 @@ function ShippingOrderView() {
                                             order.trackingNumber || ""
                                           ).trim();
                                           const hasTracking = !!tn;
-                                          const trackType = hasTracking
-                                            ? isAirTrackingNumber(tn)
-                                              ? "Aéreo"
-                                              : "Marítimo"
-                                            : null;
+                                          const cleanTn = tn.replace(
+                                            /[\s-]/g,
+                                            "",
+                                          );
+                                          const isAlreadyTracked =
+                                            hasTracking &&
+                                            (trackedAirNumbers.has(cleanTn) ||
+                                              trackedOceanNumbers.has(
+                                                cleanTn.toUpperCase(),
+                                              ));
                                           return (
                                             <div className="sov-card">
                                               <h4>Seguimiento del Envío</h4>
@@ -1387,15 +1477,39 @@ function ShippingOrderView() {
                                                     ¿Quieres trackear tu envío?
                                                   </div>
                                                   {hasTracking ? (
-                                                    <button
-                                                      className="sov-btn sov-btn--secondary sov-btn--sm"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openTrackModal(order);
-                                                      }}
-                                                    >
-                                                      Trackear envío {trackType}
-                                                    </button>
+                                                    isAlreadyTracked ? (
+                                                      <button
+                                                        className="asv-btn asv-btn--ghost asv-btn--sm"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          if (
+                                                            reporteriaClientesContext
+                                                          ) {
+                                                            reporteriaClientesContext.openTrackingTab();
+                                                          } else {
+                                                            navigate(
+                                                              "/trackings",
+                                                            );
+                                                          }
+                                                        }}
+                                                      >
+                                                        ✓ Ya está siendo
+                                                        trackeado — Ver
+                                                        seguimiento
+                                                      </button>
+                                                    ) : (
+                                                      <button
+                                                        className="sov-btn sov-btn--secondary sov-btn--sm"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          openTypeSelectionModal(
+                                                            order,
+                                                          );
+                                                        }}
+                                                      >
+                                                        Trackear envío
+                                                      </button>
+                                                    )
                                                   ) : (
                                                     <span
                                                       className="asv-track-field__unavailable"
@@ -1414,12 +1528,6 @@ function ShippingOrderView() {
                                                   value={tn || "-"}
                                                   fullWidth
                                                 />
-                                                {trackType && (
-                                                  <InfoField
-                                                    label="Tipo de Tracking"
-                                                    value={trackType}
-                                                  />
-                                                )}
                                                 <InfoField
                                                   label="Waybill"
                                                   value={order.waybillNumber}
@@ -1922,6 +2030,143 @@ function ShippingOrderView() {
         </div>
       )}
 
+      {/* Track Type Selection Modal */}
+      {showTrackTypeModal && pendingTrackOrder && (
+        <div className="asv-overlay" onClick={closeTypeSelectionModal}>
+          <div
+            className="asv-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 460, padding: 28 }}
+          >
+            <h3 className="asv-modal__title">Tipo de seguimiento</h3>
+            <p
+              style={{
+                fontSize: 14,
+                color: "#6b7280",
+                margin: "0 0 24px",
+                lineHeight: 1.5,
+              }}
+            >
+              Selecciona el tipo de seguimiento para el número{" "}
+              <strong style={{ color: "#374151" }}>
+                {pendingTrackOrder.trackingNumber}
+              </strong>
+              .
+            </p>
+
+            <div style={{ display: "flex", gap: 14, marginBottom: 24 }}>
+              {/* Air option */}
+              <button
+                onClick={() => selectTrackType("air")}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "22px 16px",
+                  background: "#f9fafb",
+                  border: "2px solid #e5e7eb",
+                  borderRadius: 14,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  fontFamily: "inherit",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#fff7ed";
+                  e.currentTarget.style.borderColor = "#ff6200";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#f9fafb";
+                  e.currentTarget.style.borderColor = "#e5e7eb";
+                }}
+              >
+                <svg
+                  width="30"
+                  height="30"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#ff6200"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21 4 19.5 2.5c-1.5-1.5-3.5-1.5-5 0L11 6 3 4 2 5l7 3-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.1.7-.4" />
+                </svg>
+                <span
+                  style={{ fontWeight: 600, fontSize: 14, color: "#374151" }}
+                >
+                  Seguimiento Aéreo
+                </span>
+                <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                  AWB / Air Waybill
+                </span>
+              </button>
+
+              {/* Ocean option */}
+              <button
+                onClick={() => selectTrackType("ocean")}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "22px 16px",
+                  background: "#f9fafb",
+                  border: "2px solid #e5e7eb",
+                  borderRadius: 14,
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  fontFamily: "inherit",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#eff6ff";
+                  e.currentTarget.style.borderColor = "#3b82f6";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#f9fafb";
+                  e.currentTarget.style.borderColor = "#e5e7eb";
+                }}
+              >
+                <svg
+                  width="30"
+                  height="30"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#3b82f6"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1" />
+                  <path d="M4 14 2 9l4-2h12l4 2-2 5" />
+                  <rect x="8" y="5" width="8" height="4" rx="1" />
+                  <path d="M12 1v4" />
+                </svg>
+                <span
+                  style={{ fontWeight: 600, fontSize: 14, color: "#374151" }}
+                >
+                  Seguimiento Marítimo
+                </span>
+                <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                  BL / Contenedor / Booking
+                </span>
+              </button>
+            </div>
+
+            <div className="asv-modal__actions">
+              <button
+                className="asv-btn asv-btn--ghost"
+                onClick={closeTypeSelectionModal}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Track Modal */}
       {showTrackModal && trackOrder && (
         <div className="asv-overlay" onClick={closeTrackModal}>
@@ -1933,7 +2178,7 @@ function ShippingOrderView() {
 
             <div style={{ marginBottom: 16 }}>
               <label className="asv-label">
-                {isAirTrackingNumber(trackOrder.trackingNumber || "")
+                {selectedTrackType === "air"
                   ? "AWB Number"
                   : "Tracking Number (Contenedor / Booking)"}
               </label>
