@@ -85,7 +85,12 @@ export const getBillableWM = (weightTons: number, volumeM3: number): number => {
 
 export const normalize = (str: string | null): string => {
   if (!str) return "";
-  return str.toString().toLowerCase().trim();
+  return str
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 };
 
 export const capitalize = (str: string): string => {
@@ -142,7 +147,11 @@ export const parseCSV = (csvText: string): any[] => {
 export const normalizePOD = (pod: string): string => {
   if (!pod) return "";
 
-  const podLower = pod.toLowerCase().trim();
+  const podLower = pod
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 
   // Definir mapeo de variantes a nombres canónicos
   const podMapping: { [key: string]: string } = {
@@ -219,9 +228,19 @@ export const parseLCL = (data: any[]): RutaLCL[] => {
 
       rutas.push({
         id: `LCL-${idCounter++}`,
-        pol: pol.trim(),
+        pol: capitalize(
+          pol
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim(),
+        ),
         polNormalized: normalize(pol),
-        pod: pod.trim(),
+        pod: capitalize(
+          pod
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim(),
+        ),
         podNormalized: normalizePOD(pod),
         servicio: servicio ? servicio.toString().trim() : null,
         ofWM: ofWMNumber,

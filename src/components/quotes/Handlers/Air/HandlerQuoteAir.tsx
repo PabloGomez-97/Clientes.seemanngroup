@@ -68,7 +68,12 @@ export const parseCurrency = (currencyStr: string | null): Currency => {
 
 export const normalize = (str: string | null): string => {
   if (!str) return "";
-  return str.toString().toLowerCase().trim();
+  return str
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 };
 
 // FUNCIÓN PARA PARSEAR CSV CORRECTAMENTE
@@ -187,9 +192,19 @@ export const parseAEREO = (data: any[]): RutaAerea[] => {
 
       rutas.push({
         id: `AEREO-${idCounter++}`,
-        origin: origin.trim(),
+        origin: capitalize(
+          origin
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim(),
+        ),
         originNormalized: normalize(origin),
-        destination: destination.trim(),
+        destination: capitalize(
+          destination
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim(),
+        ),
         destinationNormalized: normalize(destination),
         kg45: kg45 ? kg45.toString().trim() : null,
         kg100: kg100 ? kg100.toString().trim() : null,

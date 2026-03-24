@@ -83,7 +83,12 @@ export const parseCurrency = (currencyStr: string | null): Currency => {
 
 export const normalize = (str: string | null): string => {
   if (!str) return "";
-  return str.toString().toLowerCase().trim();
+  return str
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 };
 
 // ============================================================================
@@ -168,9 +173,19 @@ export const parseFCL = (data: any[]): RutaFCL[] => {
 
       rutas.push({
         id: `FCL-${idCounter++}`,
-        pol: pol.trim(),
+        pol: capitalize(
+          pol
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim(),
+        ),
         polNormalized: normalize(pol),
-        pod: pod.trim(),
+        pod: capitalize(
+          pod
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .trim(),
+        ),
         podNormalized: normalize(pod),
         gp20: gp20 ? gp20.toString().trim() : "N/A",
         hq40: hq40 ? hq40.toString().trim() : "N/A",
