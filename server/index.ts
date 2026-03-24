@@ -227,6 +227,49 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
 
 const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchema)) as UserModel;
 
+const normalizeCompanyName = (value: string): string =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const findDuplicateCompanyNames = async (companyNames: string[]): Promise<string[]> => {
+  const normalizedRequested = Array.from(
+    new Set(companyNames.map((name) => normalizeCompanyName(name)).filter(Boolean))
+  );
+
+  if (normalizedRequested.length === 0) {
+    return [];
+  }
+
+  const existingUsers = await User.find(
+    { username: { $ne: 'Ejecutivo' } },
+    { username: 1, usernames: 1 }
+  ).lean();
+
+  const duplicates = new Set<string>();
+
+  for (const existingUser of existingUsers) {
+    const existingCompanies = Array.from(
+      new Set([
+        existingUser.username,
+        ...(Array.isArray(existingUser.usernames) ? existingUser.usernames : []),
+      ])
+    );
+
+    for (const existingCompany of existingCompanies) {
+      const normalizedExisting = normalizeCompanyName(existingCompany);
+      if (normalizedRequested.includes(normalizedExisting)) {
+        duplicates.add(existingCompany);
+      }
+    }
+  }
+
+  return Array.from(duplicates);
+};
+
 interface ITrackingEmailPreference {
   reference: string;
   emails: string[];
@@ -1526,6 +1569,16 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
     const usernamesArray = Array.isArray(usernames) && usernames.length > 0
       ? usernames.map((u: string) => String(u).trim()).filter(Boolean)
       : [String(username).trim()];
+
+    if (String(username).trim() !== 'Ejecutivo') {
+      const duplicateCompanies = await findDuplicateCompanyNames(usernamesArray);
+      if (duplicateCompanies.length > 0) {
+        const duplicateLabel = duplicateCompanies[0];
+        return res.status(400).json({
+          error: `Ya existe una cuenta registrada con el nombre de empresa \"${duplicateLabel}\"`,
+        });
+      }
+    }
 
     const newUser = new User({
       email: normalizedEmail,

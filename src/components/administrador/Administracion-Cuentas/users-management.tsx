@@ -1,5 +1,5 @@
 // src/components/administrador/users-management.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { useAuditLog } from "../../../hooks/useAuditLog";
@@ -36,10 +36,19 @@ interface OutletContext {
   onLogout: () => void;
 }
 
+const normalizeCompanyName = (value: string): string =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
 function UsersManagement() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { token } = useAuth();
   const { registrarEvento } = useAuditLog();
+  const topRef = useRef<HTMLDivElement>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [ejecutivos, setEjecutivos] = useState<Ejecutivo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -131,6 +140,44 @@ function UsersManagement() {
   // ✨ NUEVO: Contar admins y usuarios
   const adminCount = users.filter((u) => u.username === "Ejecutivo").length;
   const userCount = users.filter((u) => u.username !== "Ejecutivo").length;
+  const duplicateCompanyError = error?.startsWith(
+    "Ya existe una cuenta registrada con el nombre de empresa",
+  )
+    ? error
+    : null;
+
+  const getDuplicateCompanyName = (companyNames: string[]) => {
+    const requestedNames = Array.from(
+      new Set(
+        companyNames.map((name) => normalizeCompanyName(name)).filter(Boolean),
+      ),
+    );
+
+    if (requestedNames.length === 0) {
+      return null;
+    }
+
+    for (const user of users) {
+      if (user.username === "Ejecutivo") {
+        continue;
+      }
+
+      const existingCompanies = Array.from(
+        new Set([
+          user.username,
+          ...(Array.isArray(user.usernames) ? user.usernames : []),
+        ]),
+      );
+
+      for (const existingCompany of existingCompanies) {
+        if (requestedNames.includes(normalizeCompanyName(existingCompany))) {
+          return existingCompany;
+        }
+      }
+    }
+
+    return null;
+  };
 
   const resetForm = () => {
     setEmail("");
@@ -189,7 +236,11 @@ function UsersManagement() {
     }
 
     setShowForm(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setTimeout(
+      () =>
+        topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      0,
+    );
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -284,6 +335,15 @@ function UsersManagement() {
     const cleanUsernames = usernames.map((u) => u.trim()).filter(Boolean);
     if (cleanUsernames.length === 0) {
       setError("Debe agregar al menos una empresa");
+      setFormLoading(false);
+      return;
+    }
+
+    const duplicateCompany = getDuplicateCompanyName(cleanUsernames);
+    if (duplicateCompany) {
+      setError(
+        `Ya existe una cuenta registrada con el nombre de empresa "${duplicateCompany}"`,
+      );
       setFormLoading(false);
       return;
     }
@@ -505,7 +565,7 @@ function UsersManagement() {
   };
 
   return (
-    <div className="container-fluid">
+    <div className="container-fluid" ref={topRef}>
       {/* Header con estadísticas */}
       <div className="row mb-4">
         <div className="col">
@@ -1954,69 +2014,91 @@ function UsersManagement() {
                     </div>
                   )}
 
-                <div style={{ display: "flex", gap: "12px" }}>
-                  <button
-                    type="submit"
-                    disabled={formLoading}
-                    style={{
-                      flex: 1,
-                      backgroundColor: formLoading ? "#93c5fd" : "#2563eb",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "8px",
-                      padding: "14px",
-                      fontSize: "15px",
-                      fontWeight: "600",
-                      cursor: formLoading ? "not-allowed" : "pointer",
-                      transition: "background-color 0.2s",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!formLoading)
-                        e.currentTarget.style.backgroundColor = "#1d4ed8";
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!formLoading)
-                        e.currentTarget.style.backgroundColor = "#2563eb";
-                    }}
-                  >
-                    {formLoading
-                      ? editingUserId
-                        ? "Actualizando..."
-                        : "Creando..."
-                      : editingUserId
-                        ? isEditingEjecutivo
-                          ? "Actualizar Ejecutivo"
-                          : "Actualizar Usuario"
-                        : accountType === "ejecutivo"
-                          ? "Crear Ejecutivo"
-                          : "Crear Cliente"}
-                  </button>
-
-                  {editingUserId && (
+                <div>
+                  <div style={{ display: "flex", gap: "12px" }}>
                     <button
-                      type="button"
-                      onClick={resetForm}
+                      type="submit"
+                      disabled={formLoading}
                       style={{
-                        padding: "14px 24px",
-                        backgroundColor: "transparent",
-                        color: "#6b7280",
-                        border: "1px solid #d1d5db",
+                        flex: 1,
+                        backgroundColor: formLoading ? "#93c5fd" : "#2563eb",
+                        color: "white",
+                        border: "none",
                         borderRadius: "8px",
+                        padding: "14px",
                         fontSize: "15px",
                         fontWeight: "600",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
+                        cursor: formLoading ? "not-allowed" : "pointer",
+                        transition: "background-color 0.2s",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#f3f4f6";
+                        if (!formLoading)
+                          e.currentTarget.style.backgroundColor = "#1d4ed8";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "transparent";
+                        if (!formLoading)
+                          e.currentTarget.style.backgroundColor = "#2563eb";
                       }}
                     >
-                      Cancelar
+                      {formLoading
+                        ? editingUserId
+                          ? "Actualizando..."
+                          : "Creando..."
+                        : editingUserId
+                          ? isEditingEjecutivo
+                            ? "Actualizar Ejecutivo"
+                            : "Actualizar Usuario"
+                          : accountType === "ejecutivo"
+                            ? "Crear Ejecutivo"
+                            : "Crear Cliente"}
                     </button>
-                  )}
+
+                    {editingUserId && (
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        style={{
+                          padding: "14px 24px",
+                          backgroundColor: "transparent",
+                          color: "#6b7280",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "8px",
+                          fontSize: "15px",
+                          fontWeight: "600",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "#f3f4f6";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+
+                  {!editingUserId &&
+                    accountType === "cliente" &&
+                    duplicateCompanyError && (
+                      <p
+                        style={{
+                          marginTop: "10px",
+                          marginBottom: 0,
+                          padding: "10px 12px",
+                          borderRadius: "8px",
+                          backgroundColor: "#fee2e2",
+                          border: "1px solid #fecaca",
+                          color: "#991b1b",
+                          fontSize: "13px",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {duplicateCompanyError}
+                      </p>
+                    )}
                 </div>
               </form>
             </div>
