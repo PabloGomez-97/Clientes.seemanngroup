@@ -75,6 +75,14 @@ export const extractPrice = (priceValue: any): number => {
   return parseFloat(match[0].replace(/,/g, ""));
 };
 
+export const getBillableWM = (weightTons: number, volumeM3: number): number => {
+  const calculatedWM = Math.max(weightTons, volumeM3);
+
+  if (calculatedWM <= 0) return 0;
+
+  return Math.max(calculatedWM, 1);
+};
+
 export const normalize = (str: string | null): string => {
   if (!str) return "";
   return str.toString().toLowerCase().trim();

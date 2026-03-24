@@ -31,6 +31,7 @@ import {
   capitalize,
   parseCSV,
   getPODDisplayName,
+  getBillableWM,
   parseLCL,
 } from "./Handlers/LCL/HandlerQuoteLCL.tsx";
 import {
@@ -518,7 +519,7 @@ function QuoteLCL({
       (sum, piece) => sum + piece.volume,
       0,
     );
-    const chargeableVolume = Math.max(totalWeightTons, totalVolume); // W/M Chargeable
+    const chargeableVolume = getBillableWM(totalWeightTons, totalVolume);
 
     return {
       totalWeightKg,
@@ -2790,7 +2791,7 @@ function QuoteLCL({
                   });
                 }
                 items.push({
-                  label: `Ocean Freight (${chargeableVolume.toFixed(2)} m\u00B3)`,
+                  label: `Ocean Freight (${chargeableVolume.toFixed(2)} W/M)`,
                   amount: tarifaOceanFreight.income,
                 });
                 if (seguroActivo && calculateSeguro() > 0) {
