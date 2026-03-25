@@ -2,7 +2,7 @@
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useTranslation } from "react-i18next";
-import { MUNDOGAMING_DUMMY_INVOICES } from "./mundogamingDummyInvoiceData";
+import { MUNDOGAMING_DUMMY_INVOICES } from "./Mundogaming/mundogamingDummyInvoiceData";
 import {
   AreaChart,
   Area,

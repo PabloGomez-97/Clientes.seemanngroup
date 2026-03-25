@@ -50,7 +50,7 @@ import QuoteFCL from "./components/quotes/QuoteFCL";
 import QuoteAIR from "./components/quotes/QuoteAIR";
 
 // User Views
-import Cotizador from "./components/Sidebar/Cotizador";
+import Cotizador from "./components/Sidebar/Newquotes";
 import QuotesView from "./components/Sidebar/QuotesView";
 import AirShipmentsView from "./components/shipments/AirShipmentsView";
 import OceanShipmentsView from "./components/shipments/OceanShipmentsView";
@@ -58,18 +58,12 @@ import GroundShipmentsView from "./components/shipments/GroundShipmentsView";
 import Financiera from "./components/Sidebar/ReporteriaFinanciera";
 import Settings from "./components/settings/Settings";
 import ReporteriaOperacional from "./components/Sidebar/ReporteriaOperacional";
-import Changelog from "./components/Sidebar/Changelog";
 import ShipsGoTracking from "./components/Sidebar/Shipsgotracking";
-import CreateShipmentForm from "./components/Sidebar/CreateShipmentForm";
-import CreateOceanShipmentForm from "./components/Sidebar/CreateOceanShipmentForm";
+import CreateShipmentForm from "./components/Sidebar/New-tracking";
+import CreateOceanShipmentForm from "./components/Sidebar/New-ocean-tracking";
 import Novedades from "./components/Sidebar/Novedades";
 import ShippingOrderView from "./components/Sidebar/ShippingOrder";
-import CotizacionEspecial from "./components/Sidebar/CotizacionEspecial";
-
-// OFF
-import Operacionales from "./components/Sidebar/RO2";
-import Envios from "./components/deprecated/EnviosAereos OFF";
-import EnviosMaritimos from "./components/deprecated/EnviosMaritimos OFF";
+import CotizacionEspecial from "./components/Sidebar/Cotizacion-especial";
 
 // Proveedor Views
 import HomeProveedores from "./components/Proveedores/Homeproveedores";
@@ -215,12 +209,8 @@ function App() {
           <Route path="ground-shipments" element={<GroundShipmentsView />} />
           <Route path="shipping-orders" element={<ShippingOrderView />} />
           <Route path="cotizacion-especial" element={<CotizacionEspecial />} />
-          <Route path="operacionales" element={<Operacionales />} />
-          <Route path="envios" element={<Envios />} />
-          <Route path="enviosmaritimos" element={<EnviosMaritimos />} />
           <Route path="financiera" element={<Financiera />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="changelog" element={<Changelog />} />
           <Route path="operacional" element={<ReporteriaOperacional />} />
           <Route path="new-tracking" element={<CreateShipmentForm />} />
           <Route

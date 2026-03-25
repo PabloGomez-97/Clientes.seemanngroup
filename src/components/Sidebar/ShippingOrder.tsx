@@ -12,7 +12,7 @@ import {
   OPERATIONS_FOLLOWER_EMAIL,
 } from "../../services/trackingEmailPreferences";
 import { InfoField } from "../shipments/Handlers/Handlersairshipments";
-import "./ShippingOrder.css";
+import "./styles/ShippingOrder.css";
 import { linbisFetch } from "../../services/linbisFetch";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
