@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useAuth } from "./AuthContext";
 import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -11,8 +11,9 @@ const PRIMARY = "#ff6200";
 const DARK = "#1a1a1a";
 
 export default function Login() {
-  const { login, logout } = useAuth();
+  const { login } = useAuth();
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -32,16 +33,12 @@ export default function Login() {
       const loggedUser = await login(email, password);
 
       if (loggedUser.username === "Ejecutivo") {
-        // Detectar si es un proveedor
+        // Redirigir automáticamente al portal correspondiente
         if (loggedUser.roles?.proveedor) {
-          logout();
-          setErr(t("home.login.proveedorMessage"));
-          setLoading(false);
-          return;
+          navigate("/proveedor/home", { replace: true });
+        } else {
+          navigate("/admin/home", { replace: true });
         }
-        logout();
-        setErr(t("home.login.executiveMessage"));
-        setLoading(false);
         return;
       }
     } catch (e: unknown) {
