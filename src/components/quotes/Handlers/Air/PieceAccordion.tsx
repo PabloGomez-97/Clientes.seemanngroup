@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import { type PieceData } from "./HandlerQuoteAir";
 import { useTranslation } from "react-i18next";
@@ -34,6 +34,17 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
     return (length * width * height) / 1000000; // cm³ a m³
   };
   const { t } = useTranslation();
+  const [useUSCustomary, setUseUSCustomary] = useState(false);
+
+  // US Customary ↔ SI conversion helpers
+  const displayDim = (cm: number): number | string => {
+    if (!cm) return "";
+    return useUSCustomary ? parseFloat((cm / 2.54).toFixed(3)) : cm;
+  };
+  const displayWeight = (kg: number): number | string => {
+    if (!kg) return "";
+    return useUSCustomary ? parseFloat((kg / 0.453592).toFixed(3)) : kg;
+  };
 
   // Calcular peso volumétrico (volumen * 167 para aéreo)
   const calculateVolumeWeight = (volume: number): number => {
@@ -43,8 +54,9 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
   // Handler para actualizar dimensiones y recalcular
   const handleDimensionChange = (
     field: "length" | "width" | "height",
-    value: number,
+    rawValue: number,
   ) => {
+    const value = useUSCustomary ? rawValue * 2.54 : rawValue; // in → cm
     onUpdate(field, value);
 
     // Recalcular volumen y peso volumétrico
@@ -62,7 +74,8 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
   };
 
   // Handler para actualizar peso
-  const handleWeightChange = (value: number) => {
+  const handleWeightChange = (rawValue: number) => {
+    const value = useUSCustomary ? rawValue * 0.453592 : rawValue; // lbs → kg
     onUpdate("weight", value);
     onUpdate("totalWeight", value);
   };
@@ -149,17 +162,64 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
               />
             </div>
 
+            {/* Unit System Toggle */}
+            <div className="col-12">
+              <div className="d-flex align-items-center gap-2">
+                <small className="qa-text-muted fw-semibold">
+                  {t("Pieceaccordionair.unitSistema")}:
+                </small>
+                <div
+                  className="d-flex"
+                  style={{
+                    border: "1px solid var(--qa-border)",
+                    borderRadius: "6px",
+                    overflow: "hidden",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className={`qa-btn qa-btn-sm ${!useUSCustomary ? "qa-btn-primary" : ""}`}
+                    style={{
+                      borderRadius: 0,
+                      border: "none",
+                      padding: "0.2rem 0.8rem",
+                      fontSize: "0.78rem",
+                    }}
+                    onClick={() => setUseUSCustomary(false)}
+                  >
+                    {t("Pieceaccordionair.unitMetric")}
+                  </button>
+                  <button
+                    type="button"
+                    className={`qa-btn qa-btn-sm ${useUSCustomary ? "qa-btn-primary" : ""}`}
+                    style={{
+                      borderRadius: 0,
+                      border: "none",
+                      borderLeft: "1px solid var(--qa-border)",
+                      padding: "0.2rem 0.8rem",
+                      fontSize: "0.78rem",
+                    }}
+                    onClick={() => setUseUSCustomary(true)}
+                  >
+                    {t("Pieceaccordionair.unitUS")}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Dimensiones */}
             <div className="col-12">
               <div className="qa-grid-4">
                 <div>
                   <label className="qa-label">
-                    {t("Pieceaccordionair.largo")}
+                    {useUSCustomary
+                      ? t("Pieceaccordionair.largoIn")
+                      : t("Pieceaccordionair.largo")}
                   </label>
                   <input
                     type="number"
                     className="qa-input"
-                    value={piece.length || ""}
+                    value={displayDim(piece.length)}
                     onChange={(e) =>
                       handleDimensionChange("length", Number(e.target.value))
                     }
@@ -169,12 +229,14 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
                 </div>
                 <div>
                   <label className="qa-label">
-                    {t("Pieceaccordionair.ancho")}
+                    {useUSCustomary
+                      ? t("Pieceaccordionair.anchoIn")
+                      : t("Pieceaccordionair.ancho")}
                   </label>
                   <input
                     type="number"
                     className="qa-input"
-                    value={piece.width || ""}
+                    value={displayDim(piece.width)}
                     onChange={(e) =>
                       handleDimensionChange("width", Number(e.target.value))
                     }
@@ -184,12 +246,14 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
                 </div>
                 <div>
                   <label className="qa-label">
-                    {t("Pieceaccordionair.alto")}
+                    {useUSCustomary
+                      ? t("Pieceaccordionair.altoIn")
+                      : t("Pieceaccordionair.alto")}
                   </label>
                   <input
                     type="number"
                     className="qa-input"
-                    value={piece.height || ""}
+                    value={displayDim(piece.height)}
                     onChange={(e) =>
                       handleDimensionChange("height", Number(e.target.value))
                     }
@@ -199,12 +263,14 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
                 </div>
                 <div>
                   <label className="qa-label">
-                    {t("Pieceaccordionair.peso")}
+                    {useUSCustomary
+                      ? t("Pieceaccordionair.pesoLbs")
+                      : t("Pieceaccordionair.peso")}
                   </label>
                   <input
                     type="number"
                     className="qa-input"
-                    value={piece.weight || ""}
+                    value={displayWeight(piece.weight)}
                     onChange={(e) => handleWeightChange(Number(e.target.value))}
                     min="0"
                     step="0.01"

@@ -6,7 +6,7 @@ import { useAuth } from "./auth/AuthContext";
 import Login from "./auth/Login";
 import LoginAdmin from "./auth/LoginAdmin";
 import LoginProveedor from "./auth/LoginProveedor";
-import ProtectedRoute from "./components/ProtectedRoute";
+import ProtectedRoute from "./auth/ProtectedRoute";
 
 // Layouts
 import AdminLayout from "./layouts/AdminLayout";
@@ -14,7 +14,7 @@ import UserLayout from "./layouts/UserLayout";
 import ProveedorLayout from "./layouts/ProveedorLayout";
 
 // Home Page
-import Home from "./components/Home";
+import Home from "./components/Sidebar/Home";
 
 // Admin Views
 import DashboardAdmin from "./components/administrador/dashboard-admin";

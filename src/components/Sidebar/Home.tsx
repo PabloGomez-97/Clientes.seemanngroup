@@ -3,10 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
-import { getRecentPosts } from "../services/contentful";
-import type { BlogPost } from "../services/contentful";
-import "./Home.css";
-import ItineraryFinder from "./ItineraryFinder";
+import { getRecentPosts } from "../../services/contentful";
+import type { BlogPost } from "../../services/contentful";
+import "./styles/Home.css";
+import ItineraryFinder from "../ItineraryFinder";
 
 const Home: React.FC = () => {
   const { t, i18n } = useTranslation();

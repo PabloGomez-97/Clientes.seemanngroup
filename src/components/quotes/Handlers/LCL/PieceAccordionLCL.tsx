@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { type PieceData } from "./HandlerQuoteLCL";
 import { useTranslation } from "react-i18next";
 
@@ -24,6 +24,18 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
   canRemove,
 }) => {
   const { t } = useTranslation();
+  const [useUSCustomary, setUseUSCustomary] = useState(false);
+
+  // US Customary ↔ SI conversion helpers
+  const displayDim = (cm: number): number | string => {
+    if (!cm) return "";
+    return useUSCustomary ? parseFloat((cm / 2.54).toFixed(3)) : cm;
+  };
+  const displayWeight = (kg: number): number | string => {
+    if (!kg) return "";
+    return useUSCustomary ? parseFloat((kg / 0.453592).toFixed(3)) : kg;
+  };
+
   // Calcular volumen (L x W x H) en m³
   const calculateVolume = (
     length: number,
@@ -50,8 +62,9 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
   // Handler para actualizar dimensiones y recalcular
   const handleDimensionChange = (
     field: "length" | "width" | "height",
-    value: number,
+    rawValue: number,
   ) => {
+    const value = useUSCustomary ? rawValue * 2.54 : rawValue; // in → cm
     onUpdate(field, value);
 
     // Recalcular volumen
@@ -68,7 +81,8 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
   };
 
   // Handler para actualizar peso
-  const handleWeightChange = (value: number) => {
+  const handleWeightChange = (rawValue: number) => {
+    const value = useUSCustomary ? rawValue * 0.453592 : rawValue; // lbs → kg
     onUpdate("weight", value);
 
     const weightTons = calculateWeightTons(value);
@@ -160,17 +174,64 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
               />
             </div>
 
+            {/* Unit System Toggle */}
+            <div className="col-12">
+              <div className="d-flex align-items-center gap-2">
+                <small className="qa-text-muted fw-semibold">
+                  {t("Pieceaccordionlcl.unitSistema")}:
+                </small>
+                <div
+                  className="d-flex"
+                  style={{
+                    border: "1px solid var(--qa-border)",
+                    borderRadius: "6px",
+                    overflow: "hidden",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className={`qa-btn qa-btn-sm ${!useUSCustomary ? "qa-btn-primary" : ""}`}
+                    style={{
+                      borderRadius: 0,
+                      border: "none",
+                      padding: "0.2rem 0.8rem",
+                      fontSize: "0.78rem",
+                    }}
+                    onClick={() => setUseUSCustomary(false)}
+                  >
+                    {t("Pieceaccordionlcl.unitMetric")}
+                  </button>
+                  <button
+                    type="button"
+                    className={`qa-btn qa-btn-sm ${useUSCustomary ? "qa-btn-primary" : ""}`}
+                    style={{
+                      borderRadius: 0,
+                      border: "none",
+                      borderLeft: "1px solid var(--qa-border)",
+                      padding: "0.2rem 0.8rem",
+                      fontSize: "0.78rem",
+                    }}
+                    onClick={() => setUseUSCustomary(true)}
+                  >
+                    {t("Pieceaccordionlcl.unitUS")}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Dimensiones */}
             <div className="col-12">
               <div className="qa-grid-4">
                 <div>
                   <label className="qa-label">
-                    {t("Pieceaccordionlcl.largo")}
+                    {useUSCustomary
+                      ? t("Pieceaccordionlcl.largoIn")
+                      : t("Pieceaccordionlcl.largo")}
                   </label>
                   <input
                     type="number"
                     className="qa-input"
-                    value={piece.length || ""}
+                    value={displayDim(piece.length)}
                     onChange={(e) =>
                       handleDimensionChange("length", Number(e.target.value))
                     }
@@ -180,12 +241,14 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
                 </div>
                 <div>
                   <label className="qa-label">
-                    {t("Pieceaccordionlcl.ancho")}
+                    {useUSCustomary
+                      ? t("Pieceaccordionlcl.anchoIn")
+                      : t("Pieceaccordionlcl.ancho")}
                   </label>
                   <input
                     type="number"
                     className="qa-input"
-                    value={piece.width || ""}
+                    value={displayDim(piece.width)}
                     onChange={(e) =>
                       handleDimensionChange("width", Number(e.target.value))
                     }
@@ -195,12 +258,14 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
                 </div>
                 <div>
                   <label className="qa-label">
-                    {t("Pieceaccordionlcl.alto")}
+                    {useUSCustomary
+                      ? t("Pieceaccordionlcl.altoIn")
+                      : t("Pieceaccordionlcl.alto")}
                   </label>
                   <input
                     type="number"
                     className="qa-input"
-                    value={piece.height || ""}
+                    value={displayDim(piece.height)}
                     onChange={(e) =>
                       handleDimensionChange("height", Number(e.target.value))
                     }
@@ -211,12 +276,14 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
                 </div>
                 <div>
                   <label className="qa-label">
-                    {t("Pieceaccordionlcl.peso")}
+                    {useUSCustomary
+                      ? t("Pieceaccordionlcl.pesoLbs")
+                      : t("Pieceaccordionlcl.peso")}
                   </label>
                   <input
                     type="number"
                     className="qa-input"
-                    value={piece.weight || ""}
+                    value={displayWeight(piece.weight)}
                     onChange={(e) => handleWeightChange(Number(e.target.value))}
                     min="0"
                     step="0.01"
@@ -227,7 +294,10 @@ export const PieceAccordionLCL: React.FC<PieceAccordionLCLProps> = ({
 
             {/* Checkbox No Apilable */}
             <div className="col-12 mt-3">
-              <div className="qa-switch-container" style={{ width: "fit-content", padding: "0.5rem 1rem" }}>
+              <div
+                className="qa-switch-container"
+                style={{ width: "fit-content", padding: "0.5rem 1rem" }}
+              >
                 <input
                   className="qa-switch-input"
                   type="checkbox"

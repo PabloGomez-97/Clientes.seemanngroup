@@ -1,8 +1,8 @@
 // src/components/ChatWidget.tsx
 import { useState, useRef, useEffect } from "react";
-import { useChatbot } from "../hooks/useChatbot";
-import { useAuth } from "../auth/AuthContext";
-import logoSeemann from "../../public/logo.png";
+import { useChatbot } from "../../hooks/useChatbot";
+import { useAuth } from "../../auth/AuthContext";
+import logoSeemann from "../../../public/logo.png";
 
 export default function ChatWidget() {
   const { user, activeUsername } = useAuth();

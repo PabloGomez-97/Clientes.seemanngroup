@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import NavbarAdmin from "./Navbar-admin";
 import SidebarAdmin from "./Sidebar-admin";
-import ChatWidget from "../components/ChatWidget";
+import ChatWidget from "../components/Chatbot/ChatWidget";
 import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";
 import { useLinbisToken } from "../hooks/useLinbisToken";

@@ -4,7 +4,7 @@ import { Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
-import ChatWidget from "../components/ChatWidget";
+import ChatWidget from "../components/Chatbot/ChatWidget";
 import { useLinbisToken } from "../hooks/useLinbisToken";
 
 const MOBILE_BREAKPOINT = 768;
