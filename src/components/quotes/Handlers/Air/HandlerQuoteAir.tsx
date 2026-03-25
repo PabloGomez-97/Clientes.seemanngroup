@@ -24,6 +24,11 @@ export interface RutaAerea {
   remark2: string | null;
   validUntil: string | null;
 
+  // FCA charges (from CSV columns 17, 18, 19)
+  localCharges: number;
+  gastosXKg: number;
+  minGastosXKg: number;
+
   row_number: number;
   priceForComparison: number;
   currency: Currency;
@@ -169,6 +174,9 @@ export const parseAEREO = (data: any[]): RutaAerea[] => {
     const remark2 = row[13];
     const currency = row[14];
     const validUntil = row[15];
+    const localChargesRaw = row[17];
+    const gastosXKgRaw = row[18];
+    const minGastosXKgRaw = row[19];
 
     if (
       origin &&
@@ -219,6 +227,15 @@ export const parseAEREO = (data: any[]): RutaAerea[] => {
         remark1: remark1 ? remark1.toString().trim() : null,
         remark2: remark2 ? remark2.toString().trim() : null,
         validUntil: validUntil ? validUntil.toString().trim() : null,
+        localCharges: extractPrice(
+          localChargesRaw ? localChargesRaw.toString().trim() : null,
+        ),
+        gastosXKg: extractPrice(
+          gastosXKgRaw ? gastosXKgRaw.toString().trim() : null,
+        ),
+        minGastosXKg: extractPrice(
+          minGastosXKgRaw ? minGastosXKgRaw.toString().trim() : null,
+        ),
         row_number: i + 1,
         priceForComparison: lowestPrice.price,
         currency: parsedCurrency, // 🆕 Usar la moneda parseada desde columna [14]

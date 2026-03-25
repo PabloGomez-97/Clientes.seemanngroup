@@ -44,6 +44,13 @@ import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getAirportByOrigin } from "../../config/airportCoordinates";
 import { linbisFetch } from "../../services/linbisFetch";
 
+// ============================================================================
+// MARKUP CONFIGURABLE PARA COBROS FCA (Local Charges & Gastos x kg)
+// Modificar este valor para ajustar el porcentaje de markup sobre los cobros FCA.
+// Ejemplo: 1.20 = 20% adicional, 1.30 = 30% adicional
+// ============================================================================
+const FCA_MARKUP = 1.2;
+
 function QuoteAPITester({
   preselectedOrigin,
   preselectedDestination,
@@ -897,7 +904,20 @@ function QuoteAPITester({
         : 0) + // EXW
       30 + // AWB
       Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-      tarifaAirFreight.precioConMarkup * pesoChargeable; // Air Freight
+      tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
+      (incoterm === "FCA" && rutaSeleccionada
+        ? (rutaSeleccionada.localCharges > 0
+            ? rutaSeleccionada.localCharges * FCA_MARKUP
+            : 0) +
+          (rutaSeleccionada.gastosXKg > 0
+            ? Math.max(
+                rutaSeleccionada.gastosXKg * pesoChargeable * FCA_MARKUP,
+                rutaSeleccionada.minGastosXKg > 0
+                  ? rutaSeleccionada.minGastosXKg
+                  : 0,
+              )
+            : 0)
+        : 0); // FCA charges
 
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
   };
@@ -913,6 +933,25 @@ function QuoteAPITester({
     const exwRate = calculateEXWRate(totalRealWeight, chargeableWeightCalc);
 
     return exwRate * 0.6;
+  };
+
+  // Función para calcular FCA Local Charges (solo si incoterm es FCA y la ruta tiene localCharges > 0)
+  const calculateFCALocalCharges = (): number => {
+    if (incoterm !== "FCA" || !rutaSeleccionada) return 0;
+    const base = rutaSeleccionada.localCharges;
+    if (base <= 0) return 0;
+    return base * FCA_MARKUP;
+  };
+
+  // Función para calcular Gastos x kg (solo si incoterm es FCA)
+  // Aplica: gastosXKg * pesoChargeable * markup, con mínimo de minGastosXKg
+  const calculateGastosXKg = (): number => {
+    if (incoterm !== "FCA" || !rutaSeleccionada) return 0;
+    const ratePerKg = rutaSeleccionada.gastosXKg;
+    if (ratePerKg <= 0) return 0;
+    const calculated = ratePerKg * pesoChargeable * FCA_MARKUP;
+    const minimo = rutaSeleccionada.minGastosXKg;
+    return minimo > 0 ? Math.max(calculated, minimo) : calculated;
   };
 
   // ============================================================================
@@ -1161,6 +1200,34 @@ function QuoteAPITester({
         rate: tarifaAirFreight.precioConMarkup,
         amount: tarifaAirFreight.precioConMarkup * chargeableWeight,
       });
+
+      // FCA Local Charges (solo si incoterm es FCA y la ruta tiene localCharges)
+      if (incoterm === "FCA") {
+        const fcaLocalAmount = calculateFCALocalCharges();
+        if (fcaLocalAmount > 0) {
+          pdfCharges.push({
+            code: "FC",
+            description: "FCA CHARGES",
+            quantity: 1,
+            unit: "Shipment",
+            rate: fcaLocalAmount,
+            amount: fcaLocalAmount,
+          });
+        }
+
+        // Gastos x kg (solo si incoterm es FCA y la ruta tiene gastosXKg)
+        const gastosXKgAmount = calculateGastosXKg();
+        if (gastosXKgAmount > 0) {
+          pdfCharges.push({
+            code: "Gxk",
+            description: "Gastos x kg",
+            quantity: chargeableWeight,
+            unit: "kg",
+            rate: rutaSeleccionada.gastosXKg * FCA_MARKUP,
+            amount: gastosXKgAmount,
+          });
+        }
+      }
 
       // Seguro (solo si está activo)
       if (seguroActivo) {
@@ -1640,6 +1707,76 @@ function QuoteAPITester({
         },
       });
 
+      // Cobro de FCA CHARGES (solo si incoterm es FCA y la ruta tiene localCharges)
+      if (incoterm === "FCA") {
+        const fcaLocalAmount = calculateFCALocalCharges();
+        if (fcaLocalAmount > 0) {
+          charges.push({
+            service: {
+              id: 125539,
+              code: "FC",
+            },
+            income: {
+              quantity: 1,
+              unit: "FCA CHARGES",
+              rate: fcaLocalAmount,
+              amount: fcaLocalAmount,
+              showamount: fcaLocalAmount,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: effectiveUsername,
+              },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to FCA Charges",
+              showOnDocument: true,
+              notes: `FCA Local Charges - Base: ${rutaSeleccionada.localCharges} + ${((FCA_MARKUP - 1) * 100).toFixed(0)}% markup`,
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+        }
+
+        // Cobro de Gastos x kg (solo si incoterm es FCA y la ruta tiene gastosXKg)
+        const gastosXKgAmount = calculateGastosXKg();
+        if (gastosXKgAmount > 0) {
+          charges.push({
+            service: {
+              id: 125595,
+              code: "Gxk",
+            },
+            income: {
+              quantity: pesoChargeable,
+              unit: "kg",
+              rate: rutaSeleccionada.gastosXKg * FCA_MARKUP,
+              amount: gastosXKgAmount,
+              showamount: gastosXKgAmount,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: effectiveUsername,
+              },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to Gastos x kg",
+              showOnDocument: true,
+              notes: `Gastos x kg - Rate: ${rutaSeleccionada.gastosXKg}/kg + ${((FCA_MARKUP - 1) * 100).toFixed(0)}% markup${rutaSeleccionada.minGastosXKg > 0 ? ` (min: ${rutaSeleccionada.minGastosXKg})` : ""}`,
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+        }
+      }
+
       // Cobro de SEGURO (solo si está activo)
       if (seguroActivo) {
         const seguroAmount = calculateSeguro();
@@ -2002,6 +2139,76 @@ function QuoteAPITester({
           notes: `AIR FREIGHT expense (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
         },
       });
+
+      // Cobro de FCA CHARGES (solo si incoterm es FCA y la ruta tiene localCharges) - Overall mode
+      if (incoterm === "FCA") {
+        const fcaLocalAmount = calculateFCALocalCharges();
+        if (fcaLocalAmount > 0) {
+          charges.push({
+            service: {
+              id: 125539,
+              code: "FC",
+            },
+            income: {
+              quantity: 1,
+              unit: "FCA CHARGES",
+              rate: fcaLocalAmount,
+              amount: fcaLocalAmount,
+              showamount: fcaLocalAmount,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: effectiveUsername,
+              },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to FCA Charges to OVERALL",
+              showOnDocument: true,
+              notes: `FCA Local Charges (Overall) - Base: ${rutaSeleccionada.localCharges} + ${((FCA_MARKUP - 1) * 100).toFixed(0)}% markup`,
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+        }
+
+        // Cobro de Gastos x kg (solo si incoterm es FCA y la ruta tiene gastosXKg) - Overall mode
+        const gastosXKgAmount = calculateGastosXKg();
+        if (gastosXKgAmount > 0) {
+          charges.push({
+            service: {
+              id: 125595,
+              code: "Gxk",
+            },
+            income: {
+              quantity: pesoChargeable,
+              unit: "kg",
+              rate: rutaSeleccionada.gastosXKg * FCA_MARKUP,
+              amount: gastosXKgAmount,
+              showamount: gastosXKgAmount,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: effectiveUsername,
+              },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to Gastos x kg to OVERALL",
+              showOnDocument: true,
+              notes: `Gastos x kg (Overall) - Rate: ${rutaSeleccionada.gastosXKg}/kg + ${((FCA_MARKUP - 1) * 100).toFixed(0)}% markup${rutaSeleccionada.minGastosXKg > 0 ? ` (min: ${rutaSeleccionada.minGastosXKg})` : ""}`,
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+        }
+      }
 
       // Cobro de SEGURO (solo si está activo) - Overall mode
       if (seguroActivo) {
