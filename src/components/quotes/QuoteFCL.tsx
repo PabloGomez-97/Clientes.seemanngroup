@@ -70,10 +70,9 @@ function QuoteFCL({
   const effectiveUsername = isEjecutivoMode
     ? clienteSeleccionado?.username || user?.username || ""
     : activeUsername || "";
-  const salesRepName =
-    ejecutivo?.nombre && ejecutivo.nombre.trim().length > 0
-      ? ejecutivo.nombre.trim()
-      : "Ignacio Maldonado";
+  const salesRepName = isEjecutivoMode
+    ? user?.nombreuser || user?.username || ""
+    : ejecutivo?.nombre?.trim() || "";
 
   // ============================================================================
   // ESTADOS PARA RUTAS FCL
