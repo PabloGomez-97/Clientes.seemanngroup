@@ -340,11 +340,14 @@ const CotizadorAddressMap = ({
           aria-label="Busqueda de direccion"
         >
           <div className="qa-address-map__toolbar">
-            <span>
-              {isLoading
-                ? "Validando direccion..."
-                : "Confirma la direccion en el mapa (Enter para seleccionar)"}
-            </span>
+            {!showRoute && (
+              <span>
+                {isLoading
+                  ? "Validando direccion..."
+                  : "Confirma la direccion en el mapa (Enter para seleccionar)"}
+              </span>
+            )}
+            {showRoute && <span />}
             <button
               type="button"
               className="qa-address-map__close"
@@ -357,7 +360,7 @@ const CotizadorAddressMap = ({
             </button>
           </div>
 
-          {showSuggestions && (
+          {!showRoute && showSuggestions && (
             <ul className="qa-address-map__suggestions">
               {suggestions.map((item) => (
                 <li key={item.placeId}>
@@ -373,8 +376,11 @@ const CotizadorAddressMap = ({
             </ul>
           )}
 
-          {error && <p className="qa-address-map__error">{error}</p>}
-          {!isLoading &&
+          {!showRoute && error && (
+            <p className="qa-address-map__error">{error}</p>
+          )}
+          {!showRoute &&
+            !isLoading &&
             value.trim().length >= 3 &&
             suggestions.length === 0 &&
             !error && (
