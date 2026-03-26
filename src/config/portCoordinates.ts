@@ -10,11 +10,53 @@ export interface PortCoords {
  * Se utiliza para trazar la ruta desde la dirección de recogida hasta el puerto de origen.
  */
 export const portCoordinates: Record<string, PortCoords> = {
+  atlanta: {
+    lat: 33.7490,
+    lng: -84.3880,
+    name: "Atlanta (Inland Port)",
+    unlocode: "USATL",
+  },
   barcelona: {
     lat: 41.3485,
     lng: 2.1745,
     name: "Port of Barcelona",
     unlocode: "ESBCN",
+  },
+  bilbao: {
+    lat: 43.3413,
+    lng: -3.0414,
+    name: "Port of Bilbao",
+    unlocode: "ESBIO",
+  },
+  charleston: {
+    lat: 32.8343,
+    lng: -79.8822,
+    name: "Port of Charleston",
+    unlocode: "USCHS",
+  },
+  chennai: {
+    lat: 13.1002,
+    lng: 80.2975,
+    name: "Port of Chennai",
+    unlocode: "INMAA",
+  },
+  chicago: {
+    lat: 41.7269,
+    lng: -87.5333,
+    name: "Port of Chicago",
+    unlocode: "USCHI",
+  },
+  cleveland: {
+    lat: 41.5014,
+    lng: -81.7037,
+    name: "Port of Cleveland",
+    unlocode: "USCLE",
+  },
+  cochin: {
+    lat: 9.9698,
+    lng: 76.2594,
+    name: "Cochin Port",
+    unlocode: "INCOK",
   },
   dalian: {
     lat: 38.9281,
@@ -22,9 +64,21 @@ export const portCoordinates: Record<string, PortCoords> = {
     name: "Port of Dalian",
     unlocode: "CNDLC",
   },
+  dallas: {
+    lat: 32.7767,
+    lng: -96.7970,
+    name: "Dallas (Inland Port)",
+    unlocode: "USDAL",
+  },
+  durban: {
+    lat: -29.8727,
+    lng: 31.0464,
+    name: "Port of Durban",
+    unlocode: "ZADUR",
+  },
   genoa: {
-    lat: 44.4072,
-    lng: 8.9267,
+    lat: 44.4066,
+    lng: 8.8967,
     name: "Port of Genoa",
     unlocode: "ITGOA",
   },
@@ -34,11 +88,35 @@ export const portCoordinates: Record<string, PortCoords> = {
     name: "Port of Hamburg",
     unlocode: "DEHAM",
   },
+  hazira: {
+    lat: 21.0867,
+    lng: 72.6313,
+    name: "Hazira Port",
+    unlocode: "INHZA",
+  },
   houston: {
     lat: 29.7261,
     lng: -95.2688,
     name: "Port of Houston",
     unlocode: "USHOU",
+  },
+  istanbul: {
+    lat: 41.0088,
+    lng: 28.0097,
+    name: "Port of Istanbul",
+    unlocode: "TRIST",
+  },
+  kocaeli: {
+    lat: 40.7639,
+    lng: 29.9317,
+    name: "Port of Kocaeli",
+    unlocode: "TRKOC",
+  },
+  kolkata: {
+    lat: 22.5755,
+    lng: 88.3459,
+    name: "Port of Kolkata",
+    unlocode: "INCCU",
   },
   london: {
     lat: 51.5049,
@@ -46,9 +124,15 @@ export const portCoordinates: Record<string, PortCoords> = {
     name: "Port of London",
     unlocode: "GBLON",
   },
-  "los angeles": {
-    lat: 33.7361,
-    lng: -118.2642,
+  long: {
+    lat: 33.7601,
+    lng: -118.2292,
+    name: "Port of Long Beach",
+    unlocode: "USLGB",
+  },
+  los: {
+    lat: 33.7369,
+    lng: -118.2650,
     name: "Port of Los Angeles",
     unlocode: "USLAX",
   },
@@ -64,15 +148,21 @@ export const portCoordinates: Record<string, PortCoords> = {
     name: "Mundra Port",
     unlocode: "INMUN",
   },
-  "new york": {
-    lat: 40.6681,
-    lng: -74.0415,
+  new: {
+    lat: 40.6906,
+    lng: -73.9998,
     name: "Port of New York and New Jersey",
     unlocode: "USNYC",
   },
-  "nhava sheva": {
-    lat: 18.9543,
-    lng: 72.9517,
+  newark: {
+    lat: 40.6963,
+    lng: -74.1404,
+    name: "Port Newark",
+    unlocode: "USEWR",
+  },
+  nhava: {
+    lat: 18.9478,
+    lng: 72.9454,
     name: "Jawaharlal Nehru Port (Nhava Sheva)",
     unlocode: "INNSA",
   },
@@ -82,9 +172,15 @@ export const portCoordinates: Record<string, PortCoords> = {
     name: "Port of Ningbo-Zhoushan",
     unlocode: "CNNGB",
   },
-  "port everglades": {
-    lat: 26.0895,
-    lng: -80.1157,
+  philadelphia: {
+    lat: 39.9807,
+    lng: -75.0892,
+    name: "Port of Philadelphia",
+    unlocode: "USPHL",
+  },
+  port: {
+    lat: 26.0958,
+    lng: -80.1233,
     name: "Port Everglades",
     unlocode: "USPEF",
   },
@@ -93,6 +189,12 @@ export const portCoordinates: Record<string, PortCoords> = {
     lng: 120.3829,
     name: "Port of Qingdao",
     unlocode: "CNQDG",
+  },
+  savannah: {
+    lat: 32.1236,
+    lng: -81.1361,
+    name: "Port of Savannah",
+    unlocode: "USSAV",
   },
   shanghai: {
     lat: 30.6264,
@@ -117,6 +219,12 @@ export const portCoordinates: Record<string, PortCoords> = {
     lng: 29.0648,
     name: "Port of Ambarlı (Istanbul)",
     unlocode: "TRIST",
+  },
+  tuticorin: {
+    lat: 8.7560,
+    lng: 78.1792,
+    name: "V.O. Chidambaranar Port (Tuticorin)",
+    unlocode: "INTUT",
   },
   valencia: {
     lat: 39.4394,

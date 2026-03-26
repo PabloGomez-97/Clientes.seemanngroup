@@ -52,7 +52,7 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     name: "London Heathrow Airport",
     iata: "LHR",
   },
-  alemania: {
+  Fráncfort: {
     lat: 50.0485,
     lng: 8.5586,
     name: "Frankfurt am Main Airport",
@@ -76,7 +76,7 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     name: "Hong Kong International Airport",
     iata: "HKG",
   },
-  italia: {
+  Milán: {
     lat: 45.6272,
     lng: 8.7125,
     name: "Milan Malpensa Airport",
@@ -99,6 +99,18 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     lng: -70.7931,
     name: "Comodoro Arturo Merino Benítez International Airport",
     iata: "SCL",
+  },
+  nankin: {
+    lat: 31.7337,
+    lng: 118.8716,
+    name: "Nanjing Lukou International Airport",
+    iata: "NKG",
+  },
+  helsinki: {
+    lat: 60.3164,
+    lng: 24.9673,
+    name: "Helsinki-Vantaa Airport",
+    iata: "HEL",
   },
 };
 
