@@ -141,12 +141,18 @@ const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 function formatISODate(dateString: string | null | undefined): string {
   if (!dateString) return "-";
   try {
-    const d = new Date(dateString);
+    // Linbis API returns dates as midnight UTC+1 without timezone suffix (e.g. T23:00:00).
+    // Extract the date part and add 1 day using Date.UTC so month/year rollovers
+    // (Jan 31 → Feb 1, Dec 31 → Jan 1, etc.) are handled automatically.
+    const datePart = dateString.split("T")[0];
+    const [year, month, day] = datePart.split("-").map(Number);
+    const d = new Date(Date.UTC(year, month - 1, day + 1));
     if (isNaN(d.getTime())) return "-";
     return d.toLocaleDateString("es-CL", {
       day: "numeric",
       month: "long",
       year: "numeric",
+      timeZone: "UTC",
     });
   } catch {
     return "-";
@@ -156,12 +162,16 @@ function formatISODate(dateString: string | null | undefined): string {
 function formatISODateShort(dateString: string | null | undefined): string {
   if (!dateString) return "-";
   try {
-    const d = new Date(dateString);
+    // Same UTC+1 offset correction as formatISODate.
+    const datePart = dateString.split("T")[0];
+    const [year, month, day] = datePart.split("-").map(Number);
+    const d = new Date(Date.UTC(year, month - 1, day + 1));
     if (isNaN(d.getTime())) return "-";
     return d.toLocaleDateString("es-CL", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+      timeZone: "UTC",
     });
   } catch {
     return "-";
