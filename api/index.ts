@@ -1362,7 +1362,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         const clientes = await User.find(
-          { ejecutivoId: ejecutivoObjectId },
+          { ejecutivoId: ejecutivoObjectId, username: { $ne: 'Ejecutivo' } },
           { passwordHash: 0 }
         ).sort({ createdAt: -1 });
 

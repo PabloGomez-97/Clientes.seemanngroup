@@ -285,7 +285,7 @@ function UsersManagement() {
           throw new Error(ejData.error || "Error al crear ejecutivo");
         }
 
-        // 2. Crear la cuenta de usuario vinculada
+        // 2. Crear la cuenta de usuario vinculada (sin ejecutivoId: el ejecutivo NO es cliente de sí mismo)
         const userResponse = await fetch("/api/admin/create-user", {
           method: "POST",
           headers: {
@@ -298,7 +298,6 @@ function UsersManagement() {
             usernames: ["Ejecutivo"],
             nombreuser,
             password,
-            ejecutivoId: ejData.ejecutivo?.id || undefined,
           }),
         });
 
