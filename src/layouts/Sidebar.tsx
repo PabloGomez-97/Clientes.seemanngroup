@@ -83,10 +83,6 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
           icon: "fa fa-folder-open",
           subItems: [
             {
-              path: "/shipping-orders",
-              name: t("home.sidebar.shippingOrders"),
-            },
-            {
               path: "/air-shipments",
               name: t("home.sidebar.airOperations"),
             },

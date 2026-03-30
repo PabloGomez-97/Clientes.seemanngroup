@@ -193,10 +193,8 @@
   text-align: center;
 }
 .osv-td--number {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   font-weight: 600;
+  color: var(--primary-color);
 }
 
 /* Quote badge */
@@ -417,20 +415,26 @@
 /*  Table footer  */
 .osv-table-footer {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   padding: 10px 16px;
   border-top: 1px solid #e5e7eb;
-  font-size: 0.75rem;
+  background: #fafafa;
+  font-size: 0.8125rem;
   color: #6b7280;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .osv-table-footer__left strong {
-  color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .osv-table-footer__right {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
 }
 
 .osv-pagination-label {

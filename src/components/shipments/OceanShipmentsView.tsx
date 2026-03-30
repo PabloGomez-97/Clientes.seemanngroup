@@ -1645,13 +1645,7 @@ function OceanShipmentsView({
                                     Destino
                                   </span>
                                   <span className="osv-route-card__value">
-                                    {shipment.consigneeAddress
-                                      ? shipment.consigneeAddress
-                                          .split("\n")
-                                          .filter(Boolean)
-                                          .pop()
-                                          ?.trim() || "-"
-                                      : "-"}
+                                    SCL
                                   </span>
                                   {shipment.arrivalDate && (
                                     <span className="osv-route-card__date">
@@ -1807,38 +1801,6 @@ function OceanShipmentsView({
                                                     </div>
                                                   );
                                                 }
-                                                if (hbli?.fetched) {
-                                                  return (
-                                                    <>
-                                                      <InfoField
-                                                        label="Número BL (HBLI)"
-                                                        value={
-                                                          hbli.hbliNumber || "-"
-                                                        }
-                                                        fullWidth
-                                                      />
-                                                      {hbli.description && (
-                                                        <InfoField
-                                                          label="Descripción"
-                                                          value={
-                                                            hbli.description
-                                                          }
-                                                          fullWidth
-                                                        />
-                                                      )}
-                                                      {hbli.containerNumber && (
-                                                        <InfoField
-                                                          label="Contenedor"
-                                                          value={
-                                                            hbli.containerNumber
-                                                          }
-                                                          fullWidth
-                                                        />
-                                                      )}
-                                                    </>
-                                                  );
-                                                }
-                                                return null;
                                               })()}
                                             </div>
                                           </div>

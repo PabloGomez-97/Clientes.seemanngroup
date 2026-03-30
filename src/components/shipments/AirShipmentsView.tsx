@@ -1523,12 +1523,6 @@ function AirShipmentsView({
                                                 label="ID Interno"
                                                 value={shipment.id}
                                               />
-                                              <InfoField
-                                                label="Agente Forwarding"
-                                                value={
-                                                  shipment.forwardingAgent?.name
-                                                }
-                                              />
                                             </div>
                                           </div>
                                           <div className="asv-card">
