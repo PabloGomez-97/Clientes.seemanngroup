@@ -765,6 +765,7 @@ function OceanShipmentsView({
         return id === shipmentId;
       });
       setEmbedQuery(s?.number || null);
+      if (s?.number) fetchHBLIForShipment(s.number);
     }
   };
 
@@ -789,10 +790,13 @@ function OceanShipmentsView({
     if (hbli?.fetched && hbli.containerNumber) return hbli.containerNumber;
     if (shipment.bookingNumber) return shipment.bookingNumber;
     if (shipment.waybillNumber) return shipment.waybillNumber;
-    return "Consulta BL/HBLI";
+    if (!hbli?.fetched) return "Cargando...";
+    return "-";
   };
 
   const isTrackingReady = (shipment: OceanShippingOrder) => {
+    const hbli = hbliCache[shipment.number];
+    if (hbli?.loading) return false;
     const num = getTrackOceanNumber(shipment);
     return !!num;
   };
@@ -1764,12 +1768,12 @@ function OceanShipmentsView({
                                                       title={
                                                         trackReady
                                                           ? undefined
-                                                          : "Consulta la pestaña BL/HBLI para obtener el número de seguimiento."
+                                                          : "Espera a que se cargue el Número de Seguimiento."
                                                       }
                                                     >
                                                       {trackReady
                                                         ? "Trackea tu envío"
-                                                        : "Consulta BL/HBLI primero"}
+                                                        : "Cargando número de seg..."}
                                                     </button>
                                                   );
                                                 })()}
@@ -1785,6 +1789,57 @@ function OceanShipmentsView({
                                                 label="ID Interno"
                                                 value={shipment.id}
                                               />
+                                              {(() => {
+                                                const hbli =
+                                                  hbliCache[shipment.number];
+                                                if (hbli?.loading) {
+                                                  return (
+                                                    <div
+                                                      style={{
+                                                        gridColumn: "1 / -1",
+                                                        textAlign: "center",
+                                                        padding: 8,
+                                                        color: "#9ca3af",
+                                                        fontSize: "0.8125rem",
+                                                      }}
+                                                    >
+                                                      Buscando BL (HBLI)...
+                                                    </div>
+                                                  );
+                                                }
+                                                if (hbli?.fetched) {
+                                                  return (
+                                                    <>
+                                                      <InfoField
+                                                        label="Número BL (HBLI)"
+                                                        value={
+                                                          hbli.hbliNumber || "-"
+                                                        }
+                                                        fullWidth
+                                                      />
+                                                      {hbli.description && (
+                                                        <InfoField
+                                                          label="Descripción"
+                                                          value={
+                                                            hbli.description
+                                                          }
+                                                          fullWidth
+                                                        />
+                                                      )}
+                                                      {hbli.containerNumber && (
+                                                        <InfoField
+                                                          label="Contenedor"
+                                                          value={
+                                                            hbli.containerNumber
+                                                          }
+                                                          fullWidth
+                                                        />
+                                                      )}
+                                                    </>
+                                                  );
+                                                }
+                                                return null;
+                                              })()}
                                             </div>
                                           </div>
                                           <div className="asv-card">
@@ -1865,34 +1920,6 @@ function OceanShipmentsView({
                                             </div>
                                           </div>
                                         </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "hbli",
-                                      label: "BL / HBLI",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                          <polyline points="14 2 14 8 20 8" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <HBLITabContent
-                                          sogNumber={shipment.number}
-                                          accessToken={accessToken}
-                                          refreshAccessToken={
-                                            refreshAccessToken
-                                          }
-                                          hbliData={hbliCache[shipment.number]}
-                                          onFetch={fetchHBLIForShipment}
-                                        />
                                       ),
                                     },
                                     {

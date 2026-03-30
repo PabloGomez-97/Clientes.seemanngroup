@@ -1314,7 +1314,7 @@ function AirShipmentsView({
                           {shipment.number || "---"}
                         </td>
                         <td className="asv-td asv-td--waybill">
-                          {shipment.waybillNumber || "-"}
+                          {shipment.executedAt?.name?.trim() || "-"}
                         </td>
                         <td className="asv-td">
                           {shipment.customerReference || "-"}
