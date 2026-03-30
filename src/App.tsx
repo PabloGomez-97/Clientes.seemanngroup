@@ -30,7 +30,6 @@ import Invoicesxejecutivo from "./components/administrador/Facturaciones-Ejecuti
 import Pricing from "./components/administrador/PricingTabs";
 import PricingFCL from "./components/administrador/Pricing/PricingFCL";
 import PricingLCL from "./components/administrador/Pricing/PricingLCL";
-import HomeAdmin from "./components/administrador/HomeAdmin";
 import HomeEjecutivo from "./components/administrador/HomeEjecutivo";
 import HomeOperaciones from "./components/administrador/HomeOperaciones";
 import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
@@ -73,7 +72,7 @@ function HomeSwitch() {
   const { user } = useAuth();
   if (user?.roles?.ejecutivo) return <HomeEjecutivo />;
   if (user?.roles?.operaciones) return <HomeOperaciones />;
-  return <HomeAdmin />;
+  return <HomeEjecutivo />;
 }
 
 function App() {
