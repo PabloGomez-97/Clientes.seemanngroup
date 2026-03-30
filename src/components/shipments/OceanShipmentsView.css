@@ -685,6 +685,53 @@
   }
 }
 
+/*  Track field (inside accordion)  */
+.osv-track-field {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.osv-track-field__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/*  Button variants  */
+.osv-btn--secondary {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+.osv-btn--secondary:hover:not(:disabled) {
+  opacity: 0.85;
+}
+.osv-btn--secondary:disabled,
+.osv-btn--sm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.osv-btn--ghost-active {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/*  Modal question / actions  */
+.osv-modal__question {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--secondary-color);
+  text-align: center;
+  margin: 16px 0;
+}
+.osv-modal__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
 /* Custom styles for cards grid */
 .asv-cards-grid {
   display: grid;

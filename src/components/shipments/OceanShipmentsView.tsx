@@ -1,4 +1,10 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
@@ -6,7 +12,6 @@ import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesC
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
 import {
-  type OceanShipment,
   type OutletContext,
   type Quote,
   InfoField,
@@ -23,14 +28,65 @@ import {
 import "./OceanShipmentsView.css";
 import { linbisFetch } from "../../services/linbisFetch";
 
-const DEFAULT_ROWS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 10;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const API_BASE_URL =
   import.meta.env.MODE === "development"
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
-/* -- DetailTabs (accordion inline tabs) --------------------- */
+/* -- Types -------------------------------------------------- */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+interface OceanShippingOrder {
+  id: number;
+  number: string;
+  waybillNumber?: string | null;
+  bookingNumber?: string | null;
+  customerReference?: string | null;
+  additionalCustomerReference?: string | null;
+  departureDate?: string | null;
+  arrivalDate?: string | null;
+  cutOffDate?: string | null;
+  cutOffDocsDate?: string | null;
+  notes?: string | null;
+  operationFlow?: number | null;
+  modeOfTransportation?: string | null;
+  rateCategoryId?: number | null;
+  carrier?: { id?: number; name?: string; code?: string } | null;
+  shipper?: { id?: number; name?: string; code?: string } | null;
+  shipperAddress?: string | null;
+  consignee?: { id?: number; name?: string; code?: string } | null;
+  consigneeAddress?: string | null;
+  notifyParty?: { name?: string } | null;
+  notifyPartyAddress?: string | null;
+  executedAt?: { code?: string; name?: string } | null;
+  salesRep?: string | null;
+  trackingNumber?: string | null;
+  totalCargo?: {
+    pieces?: number;
+    value?: number;
+    containers?: number;
+    weight?: { userDisplay?: string; value?: number };
+    volume?: { userDisplay?: string; value?: number };
+    volumeWeight?: { userDisplay?: string; value?: number };
+  } | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  commodities?: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  charges?: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [key: string]: any;
+}
+
+interface HBLICacheEntry {
+  loading: boolean;
+  fetched: boolean;
+  hbliNumber: string | null;
+  description: string | null;
+  containerNumber: string | null;
+}
+
+/* -- DetailTabs  -------------------------------------------- */
 interface TabDef {
   key: string;
   label: string;
@@ -39,33 +95,21 @@ interface TabDef {
   hidden?: boolean;
 }
 
-interface OceanDetailsCommodityNode {
-  trackingNumber?: string | null;
-  description?: string | null;
-  repackItems?: OceanDetailsCommodityNode[];
-  containedItems?: OceanDetailsCommodityNode[];
-}
-
-interface OceanShipmentDetailsResponse {
-  commodities?: OceanDetailsCommodityNode[];
-  repackItems?: OceanDetailsCommodityNode[];
-}
-
 function DetailTabs({ tabs }: { tabs: TabDef[] }) {
-  const visibleTabs = tabs.filter((t) => !t.hidden);
-  const [activeTab, setActiveTab] = useState(visibleTabs[0]?.key || "");
-  const current = visibleTabs.find((t) => t.key === activeTab);
+  const visible = tabs.filter((t) => !t.hidden);
+  const [active, setActive] = useState(visible[0]?.key || "");
+  const current = visible.find((t) => t.key === active);
 
   return (
     <div className="osv-tabs">
       <div className="osv-tabs__nav">
-        {visibleTabs.map((tab) => (
+        {visible.map((tab) => (
           <button
             key={tab.key}
-            className={`osv-tabs__btn ${activeTab === tab.key ? "osv-tabs__btn--active" : ""}`}
+            className={`osv-tabs__btn ${active === tab.key ? "osv-tabs__btn--active" : ""}`}
             onClick={(e) => {
               e.stopPropagation();
-              setActiveTab(tab.key);
+              setActive(tab.key);
             }}
           >
             {tab.icon && <span className="osv-tabs__icon">{tab.icon}</span>}
@@ -76,6 +120,72 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
       <div className="osv-tabs__panel">{current?.content}</div>
     </div>
   );
+}
+
+/* -- HBLITabContent (lazy loaded) --------------------------- */
+function HBLITabContent({
+  sogNumber,
+  accessToken,
+  refreshAccessToken,
+  hbliData,
+  onFetch,
+}: {
+  sogNumber: string;
+  accessToken: string;
+  refreshAccessToken: () => Promise<string>;
+  hbliData: HBLICacheEntry | undefined;
+  onFetch: (sogNumber: string) => void;
+}) {
+  useEffect(() => {
+    if (!hbliData?.fetched && !hbliData?.loading) {
+      onFetch(sogNumber);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (hbliData?.loading) {
+    return (
+      <div style={{ textAlign: "center", padding: 24, color: "#9ca3af" }}>
+        <div className="osv-spinner" />
+        <p style={{ marginTop: 8, fontSize: "0.8125rem" }}>
+          Buscando BL (HBLI)...
+        </p>
+      </div>
+    );
+  }
+
+  if (hbliData?.fetched) {
+    return (
+      <div className="osv-cards-grid" style={{ gridTemplateColumns: "1fr" }}>
+        <div className="osv-card">
+          <h4>BL / HBLI</h4>
+          <div className="osv-info-grid">
+            <InfoField
+              label="Número BL (HBLI)"
+              value={hbliData.hbliNumber || "-"}
+              fullWidth
+            />
+            {hbliData.description && (
+              <InfoField
+                label="Descripción"
+                value={hbliData.description}
+                fullWidth
+              />
+            )}
+            {hbliData.containerNumber && (
+              <InfoField
+                label="Contenedor"
+                value={hbliData.containerNumber}
+                fullWidth
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 /* ===========================================================
@@ -91,13 +201,14 @@ function OceanShipmentsView({
   const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
-  const filterConsignee = activeUsername || "";
   const { emails: savedTrackingEmails, remember: rememberTrackingEmails } =
     useTrackingEmailPreferences(activeUsername);
 
-  const [oceanShipments, setOceanShipments] = useState<OceanShipment[]>([]);
+  const [oceanShipments, setOceanShipments] = useState<OceanShippingOrder[]>(
+    [],
+  );
   const [displayedOceanShipments, setDisplayedOceanShipments] = useState<
-    OceanShipment[]
+    OceanShippingOrder[]
   >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,7 +218,11 @@ function OceanShipmentsView({
     string | number | null
   >(null);
 
-  // Search modal
+  // Pagination
+  const [rowsPerPage, setRowsPerPage] = useState(ITEMS_PER_PAGE);
+  const [tablePage, setTablePage] = useState(1);
+
+  // Search / filter modal
   const [showSearchModal, setShowSearchModal] = useState(false);
 
   // Quote modal
@@ -117,22 +232,21 @@ function OceanShipmentsView({
 
   // Track modal
   const [showTrackModal, setShowTrackModal] = useState(false);
-  const [trackShipment, setTrackShipment] = useState<OceanShipment | null>(
+  const [trackShipment, setTrackShipment] = useState<OceanShippingOrder | null>(
     null,
   );
   const [trackEmails, setTrackEmails] = useState<string[]>([""]);
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
-  // trackingNumber by shipment.id (from ocean-shipments/details/{id})
-  const [oceanTrackingNumbers, setOceanTrackingNumbers] = useState<
-    Record<string | number, string>
-  >({});
-  const oceanTrackingLoadingIds = useRef<Set<string | number>>(new Set());
-
   // Already-tracked ocean numbers (from ShipsGo)
   const [trackedOceanNumbers, setTrackedOceanNumbers] = useState<Set<string>>(
     new Set(),
+  );
+
+  // HBLI cache
+  const [hbliCache, setHbliCache] = useState<Record<string, HBLICacheEntry>>(
+    {},
   );
 
   // Embed
@@ -140,68 +254,33 @@ function OceanShipmentsView({
 
   const [showingAll, setShowingAll] = useState(false);
 
-  // Advanced toolbar filters (replicated from AirShipmentsView)
+  // Filter fields (matching AirShipmentsView pattern)
   const [filterNumber, setFilterNumber] = useState("");
-  const [filterOrigin, setFilterOrigin] = useState("");
-  const [filterDestination, setFilterDestination] = useState("");
+  const [filterWaybill, setFilterWaybill] = useState("");
+  const [filterClientReference, setFilterClientReference] = useState("");
   const [filterDepartureDate, setFilterDepartureDate] = useState("");
-  const [filterVessel, setFilterVessel] = useState("");
-  const [filterType, setFilterType] = useState("");
-  const [filterPieces, setFilterPieces] = useState("");
+  const [filterArrivalDate, setFilterArrivalDate] = useState("");
+  const [filterCarrier, setFilterCarrier] = useState("");
 
-  // Focus states for floating labels (optional)
+  // Focus states for floating labels
   const [isNumberFocused, setIsNumberFocused] = useState(false);
-  const [isOriginFocused, setIsOriginFocused] = useState(false);
-  const [isDestinationFocused, setIsDestinationFocused] = useState(false);
+  const [isWaybillFocused, setIsWaybillFocused] = useState(false);
+  const [isClientReferenceFocused, setIsClientReferenceFocused] =
+    useState(false);
   const [isDepartureFocused, setIsDepartureFocused] = useState(false);
-  const [isVesselFocused, setIsVesselFocused] = useState(false);
-  const [isTypeFocused, setIsTypeFocused] = useState(false);
-  const [isPiecesFocused, setIsPiecesFocused] = useState(false);
+  const [isArrivalFocused, setIsArrivalFocused] = useState(false);
+  const [isCarrierFocused, setIsCarrierFocused] = useState(false);
 
   const activeFilterCount = [
     filterNumber,
-    filterOrigin,
-    filterDestination,
+    filterWaybill,
+    filterClientReference,
     filterDepartureDate,
-    filterVessel,
-    filterType,
-    filterPieces,
+    filterArrivalDate,
+    filterCarrier,
   ].filter(Boolean).length;
 
-  // Pagination
-  const [tablePage, setTablePage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(DEFAULT_ROWS_PER_PAGE);
-
-  /* -- Helpers ------------------------------------------------ */
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("es-CL", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const formatDateShort = (dateString?: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("es-CL", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  const formatCLP = (priceString?: string) => {
-    if (!priceString) return null;
-    const numberMatch = priceString.match(/[\d.,]+/);
-    if (!numberMatch) return priceString;
-    const cleanNumber = numberMatch[0].replace(/,/g, "");
-    const number = parseFloat(cleanNumber);
-    if (isNaN(number)) return priceString;
-    return `$${new Intl.NumberFormat("es-CL").format(number)} CLP`;
-  };
-
-  /* -- Pagination ------------------------------------------------ */
+  /* -- Table pagination (client-side slice) ----------------- */
   const totalTablePages = Math.max(
     1,
     Math.ceil(displayedOceanShipments.length / rowsPerPage),
@@ -221,7 +300,38 @@ function OceanShipmentsView({
     return `${start}-${end} de ${displayedOceanShipments.length}`;
   }, [tablePage, rowsPerPage, displayedOceanShipments.length]);
 
-  /* -- Quote fetch ------------------------------------------- */
+  useEffect(() => {
+    setTablePage(1);
+  }, [displayedOceanShipments]);
+
+  /* -- Helpers ---------------------------------------------- */
+  const formatDateLong = (dateString?: string | null) => {
+    if (!dateString) return "-";
+    try {
+      return new Date(dateString).toLocaleDateString("es-CL", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatDateInline = (dateString?: string | null) => {
+    if (!dateString) return "-";
+    try {
+      return new Date(dateString).toLocaleDateString("es-CL", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  /* -- Quote fetch ------------------------------------------ */
   const fetchQuoteByNumber = async (quoteNumber: string) => {
     if (!accessToken) return;
     setLoadingQuote(true);
@@ -246,109 +356,205 @@ function OceanShipmentsView({
         setSelectedQuote(found);
         setShowQuoteModal(true);
       } else {
-        alert(`No se encontro la cotizacion ${quoteNumber}`);
+        alert(`No se encontró la cotización ${quoteNumber}`);
       }
     } catch (err) {
-      console.error("Error al cargar cotizacion:", err);
-      alert("Error al cargar la cotizacion");
+      console.error("Error al cargar cotización:", err);
+      alert("Error al cargar la cotización");
     } finally {
       setLoadingQuote(false);
     }
   };
 
-  const findTrackingNumberRecursive = (
-    nodes: OceanDetailsCommodityNode[] | undefined,
-  ): string | null => {
-    if (!nodes || !Array.isArray(nodes)) return null;
+  /* -- HBLI fetch (lazy, triggered by tab click) ------------ */
+  const fetchHBLIForShipment = useCallback(
+    async (sogNumber: string) => {
+      if (!accessToken) return;
+      if (hbliCache[sogNumber]?.fetched || hbliCache[sogNumber]?.loading)
+        return;
 
-    for (const node of nodes) {
-      const current = node.trackingNumber?.trim();
-      if (current) return current;
-
-      const inRepack = findTrackingNumberRecursive(node.repackItems);
-      if (inRepack) return inRepack;
-
-      const inContained = findTrackingNumberRecursive(node.containedItems);
-      if (inContained) return inContained;
-    }
-
-    return null;
-  };
-
-  const findDescriptionFallback = (
-    nodes: OceanDetailsCommodityNode[] | undefined,
-  ): string | null => {
-    if (!nodes || !Array.isArray(nodes)) return null;
-    for (const node of nodes) {
-      const desc = node.description?.trim();
-      if (desc && desc.length >= 11) {
-        return desc.substring(0, 11);
-      }
-    }
-    return null;
-  };
-
-  const fetchOceanTrackingNumber = async (
-    shipmentId: string | number | undefined,
-  ) => {
-    if (shipmentId === undefined || shipmentId === null || !accessToken) return;
-    if (oceanTrackingNumbers[shipmentId]) return;
-    if (oceanTrackingLoadingIds.current.has(shipmentId)) return;
-
-    oceanTrackingLoadingIds.current.add(shipmentId);
-
-    try {
-      const response = await linbisFetch(
-        `https://api.linbis.com/ocean-shipments/details/${shipmentId}`,
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        },
-        accessToken,
-        refreshAccessToken,
-      );
-
-      if (!response.ok) {
-        throw new Error(`Error al obtener trackingNumber (${response.status})`);
-      }
-
-      const details: OceanShipmentDetailsResponse = await response.json();
-      let trackingNumber =
-        findTrackingNumberRecursive(details.commodities) ||
-        findTrackingNumberRecursive(details.repackItems);
-
-      if (!trackingNumber) {
-        trackingNumber = findDescriptionFallback(details.commodities);
-      }
-
-      setOceanTrackingNumbers((prev) => ({
+      setHbliCache((prev) => ({
         ...prev,
-        [shipmentId]:
-          trackingNumber && trackingNumber.length > 0 ? trackingNumber : "-",
+        [sogNumber]: {
+          loading: true,
+          fetched: false,
+          hbliNumber: null,
+          description: null,
+          containerNumber: null,
+        },
       }));
-    } catch (err) {
-      console.error("No se pudo obtener trackingNumber ocean:", err);
-      setOceanTrackingNumbers((prev) => ({ ...prev, [shipmentId]: "-" }));
-    } finally {
-      oceanTrackingLoadingIds.current.delete(shipmentId);
-    }
-  };
 
-  /* -- API --------------------------------------------------- */
+      try {
+        // Step 1: Get commodities for this SOG number
+        const resp1 = await linbisFetch(
+          `https://api.linbis.com/commodities?Number=${encodeURIComponent(sogNumber)}&PageNumber=1&PageSize=5`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+          accessToken,
+          refreshAccessToken,
+        );
+
+        if (!resp1.ok) {
+          setHbliCache((prev) => ({
+            ...prev,
+            [sogNumber]: {
+              loading: false,
+              fetched: true,
+              hbliNumber: null,
+              description: null,
+              containerNumber: null,
+            },
+          }));
+          return;
+        }
+
+        const data1 = await resp1.json();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const items1: any[] = data1.items || [];
+        if (items1.length === 0) {
+          setHbliCache((prev) => ({
+            ...prev,
+            [sogNumber]: {
+              loading: false,
+              fetched: true,
+              hbliNumber: null,
+              description: null,
+              containerNumber: null,
+            },
+          }));
+          return;
+        }
+
+        const moduleId = items1[0].moduleId;
+        if (!moduleId) {
+          setHbliCache((prev) => ({
+            ...prev,
+            [sogNumber]: {
+              loading: false,
+              fetched: true,
+              hbliNumber: null,
+              description: null,
+              containerNumber: null,
+            },
+          }));
+          return;
+        }
+
+        // Step 2: Get commodities by module
+        const resp2 = await linbisFetch(
+          `https://api.linbis.com/commodities/by-module/${moduleId}?pageNumber=1&pageSize=50`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+          accessToken,
+          refreshAccessToken,
+        );
+
+        if (!resp2.ok) {
+          setHbliCache((prev) => ({
+            ...prev,
+            [sogNumber]: {
+              loading: false,
+              fetched: true,
+              hbliNumber: null,
+              description: null,
+              containerNumber: null,
+            },
+          }));
+          return;
+        }
+
+        const data2 = await resp2.json();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const items2: any[] = data2.items || [];
+
+        // Step 3: Find item whose number starts with HBLI
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const hbliItem = items2.find(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (item: any) =>
+            typeof item.number === "string" &&
+            item.number.toUpperCase().startsWith("HBLI"),
+        );
+
+        let hbliNumber: string | null = null;
+        let description: string | null = null;
+        let containerNumber: string | null = null;
+
+        if (hbliItem) {
+          hbliNumber = hbliItem.number;
+          description = hbliItem.description || null;
+
+          // Try to extract container number from description
+          // Container format: 4 uppercase letters + 7 digits (e.g., CAIU8517096)
+          if (description) {
+            const lines = description.split("\n");
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (/^[A-Z]{4}[0-9]{7}$/.test(trimmed)) {
+                containerNumber = trimmed;
+                break;
+              }
+            }
+          }
+        }
+
+        setHbliCache((prev) => ({
+          ...prev,
+          [sogNumber]: {
+            loading: false,
+            fetched: true,
+            hbliNumber,
+            description,
+            containerNumber,
+          },
+        }));
+      } catch (err) {
+        console.error("Error fetching HBLI:", err);
+        setHbliCache((prev) => ({
+          ...prev,
+          [sogNumber]: {
+            loading: false,
+            fetched: true,
+            hbliNumber: null,
+            description: null,
+            containerNumber: null,
+          },
+        }));
+      }
+    },
+    [accessToken, refreshAccessToken, hbliCache],
+  );
+
+  /* -- API: Fetch ocean shipments via shipping-orders ------- */
   const fetchOceanShipments = async () => {
     if (!accessToken) {
       setError("Debes ingresar un token primero");
       return;
     }
+    if (!activeUsername) {
+      setError("No se pudo obtener el nombre de usuario");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const response = await linbisFetch(
-        "https://api.linbis.com/ocean-shipments/all",
+      const cacheKey = `oceanShipmentsCache_${activeUsername}`;
+
+      // Step 1: Fetch all shipping orders
+      const soResponse = await linbisFetch(
+        `https://api.linbis.com/api/shipping-orders?SearchText=&PageNumber=1&PageSize=9999`,
         {
           method: "GET",
           headers: {
@@ -360,31 +566,85 @@ function OceanShipmentsView({
         refreshAccessToken,
       );
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      if (!soResponse.ok) {
+        throw new Error(`Error ${soResponse.status}: ${soResponse.statusText}`);
       }
 
-      const data = await response.json();
-      const arr: OceanShipment[] = Array.isArray(data) ? data : [];
-      const filtered = arr.filter((os) => os.consignee === filterConsignee);
-      const sorted = filtered.sort((a, b) => {
-        const da = a.departure ? new Date(a.departure) : new Date(0);
-        const db = b.departure ? new Date(b.departure) : new Date(0);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const soData: any = await soResponse.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allOrders: any[] = soData.shippingOrders?.items ?? [];
+
+      // Filter by consignee name or code matching activeUsername
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userOrders = allOrders.filter((order: any) => {
+        const name = (order.consignee?.name || "").toLowerCase();
+        const code = (order.consignee?.code || "").toLowerCase();
+        const user = activeUsername.toLowerCase();
+        return name === user || code === user;
+      });
+
+      console.log(
+        `Shipping orders: ${allOrders.length} total, ${userOrders.length} para ${activeUsername}`,
+      );
+
+      // Step 2: For each order, check if it's an air shipment via /air-shipments/number
+      // If 404 = ocean shipment, keep it
+      const BATCH_SIZE = 10;
+      const oceanOrders: OceanShippingOrder[] = [];
+      const seenIds = new Set<number>();
+
+      for (let i = 0; i < userOrders.length; i += BATCH_SIZE) {
+        const batch = userOrders.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          batch.map(async (order: any) => {
+            const resp = await linbisFetch(
+              `https://api.linbis.com/air-shipments/number?number=${encodeURIComponent(order.number)}`,
+              {
+                method: "GET",
+                headers: {
+                  Accept: "application/json",
+                  "Content-Type": "application/json",
+                },
+              },
+              accessToken,
+              refreshAccessToken,
+            );
+            // 404 = not an air shipment = it's an ocean shipment
+            if (resp.status === 404) return order;
+            // If it responded OK, it's an air shipment, skip
+            return null;
+          }),
+        );
+
+        for (const result of results) {
+          if (result.status === "fulfilled" && result.value) {
+            const order = result.value as OceanShippingOrder;
+            if (order.id && !seenIds.has(order.id)) {
+              oceanOrders.push(order);
+              seenIds.add(order.id);
+            }
+          }
+        }
+      }
+
+      console.log(`${oceanOrders.length} ocean shipments identificados`);
+
+      // Sort by departure date (newest first)
+      const sorted = oceanOrders.sort((a, b) => {
+        const da = a.departureDate ? new Date(a.departureDate) : new Date(0);
+        const db = b.departureDate ? new Date(b.departureDate) : new Date(0);
         return db.getTime() - da.getTime();
       });
 
       setOceanShipments(sorted);
-      localStorage.setItem("oceanShipmentsCache", JSON.stringify(sorted));
-      localStorage.setItem(
-        "oceanShipmentsCacheTimestamp",
-        new Date().getTime().toString(),
-      );
       setDisplayedOceanShipments(sorted);
       setShowingAll(false);
-      setTablePage(1);
-
-      console.log(
-        `${arr.length} ocean shipments totales, ${filtered.length} del consignee`,
+      localStorage.setItem(cacheKey, JSON.stringify(sorted));
+      localStorage.setItem(
+        `${cacheKey}_timestamp`,
+        new Date().getTime().toString(),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -394,25 +654,42 @@ function OceanShipmentsView({
     }
   };
 
+  /* -- Cache / load effects --------------------------------- */
   useEffect(() => {
-    setTablePage(1);
-  }, [displayedOceanShipments, rowsPerPage]);
-  useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken || !activeUsername) return;
 
-    // ── Cuenta dummy MundoGaming: carga datos hardcodeados ──
-    if (filterConsignee === "MundoGaming") {
-      const dummySorted = [...MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS].sort(
-        (a, b) => {
-          const da = a.departure ? new Date(a.departure) : new Date(0);
-          const db = b.departure ? new Date(b.departure) : new Date(0);
-          return db.getTime() - da.getTime();
-        },
-      );
+    // MundoGaming dummy account
+    if (activeUsername === "MundoGaming") {
+      // Map old format to new OceanShippingOrder format
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped: OceanShippingOrder[] =
+        MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS.map((s: any) => ({
+          id: s.id || 0,
+          number: s.number || "",
+          waybillNumber: s.waybillNumber || null,
+          bookingNumber: s.bookingNumber || null,
+          customerReference: s.customerReference || null,
+          departureDate: s.departure || null,
+          arrivalDate: s.arrival || null,
+          carrier: s.carrier ? { name: s.carrier } : null,
+          shipper: s.shipper ? { name: s.shipper } : null,
+          shipperAddress: s.shipperAddress || null,
+          consignee: s.consignee ? { name: s.consignee } : null,
+          consigneeAddress: s.consigneeAddress || null,
+          notes: s.notes || null,
+          totalCargo: {
+            pieces: s.totalCargo_Pieces || 0,
+            weight: { userDisplay: s.totalCargo_WeightDisplayValue || "" },
+            volume: { userDisplay: s.totalCargo_VolumeDisplayValue || "" },
+          },
+        }));
+      const dummySorted = mapped.sort((a, b) => {
+        const da = a.departureDate ? new Date(a.departureDate) : new Date(0);
+        const db = b.departureDate ? new Date(b.departureDate) : new Date(0);
+        return db.getTime() - da.getTime();
+      });
       setOceanShipments(dummySorted);
       setDisplayedOceanShipments(dummySorted);
-      setShowingAll(false);
-      setTablePage(1);
       setLoading(false);
       console.log(
         "MundoGaming: cargando datos dummy ocean (",
@@ -422,37 +699,35 @@ function OceanShipmentsView({
       return;
     }
 
-    const cached = localStorage.getItem("oceanShipmentsCache");
-    const ts = localStorage.getItem("oceanShipmentsCacheTimestamp");
+    const cacheKey = `oceanShipmentsCache_${activeUsername}`;
+    const cached = localStorage.getItem(cacheKey);
+    const ts = localStorage.getItem(`${cacheKey}_timestamp`);
 
     if (cached && ts) {
       const age = Date.now() - parseInt(ts);
       if (age < 3600000) {
-        const parsed: OceanShipment[] = JSON.parse(cached);
-        const filtered = parsed.filter(
-          (os) => os.consignee === filterConsignee,
-        );
-        setOceanShipments(filtered);
-        setDisplayedOceanShipments(filtered);
+        const parsed = JSON.parse(cached) as OceanShippingOrder[];
+        setOceanShipments(parsed);
+        setDisplayedOceanShipments(parsed);
         setShowingAll(false);
-        setTablePage(1);
         setLoading(false);
         console.log(
-          "Cargando desde cache -",
+          "Cargando desde caché - datos guardados hace",
           Math.floor(age / 60000),
           "minutos",
         );
         return;
       }
+      localStorage.removeItem(cacheKey);
+      localStorage.removeItem(`${cacheKey}_timestamp`);
     }
 
     fetchOceanShipments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken]);
+  }, [accessToken, activeUsername]);
 
   useEffect(() => {
-    setOceanTrackingNumbers({});
-    oceanTrackingLoadingIds.current.clear();
+    setHbliCache({});
     setTrackedOceanNumbers(new Set());
   }, [activeUsername]);
 
@@ -478,7 +753,7 @@ function OceanShipmentsView({
     })();
   }, [activeUsername, token]);
 
-  /* -- Accordion --------------------------------------------- */
+  /* -- Accordion -------------------------------------------- */
   const toggleAccordion = (shipmentId: string | number) => {
     if (expandedShipmentId === shipmentId) {
       setExpandedShipmentId(null);
@@ -490,40 +765,47 @@ function OceanShipmentsView({
         return id === shipmentId;
       });
       setEmbedQuery(s?.number || null);
-      fetchOceanTrackingNumber(s?.id);
     }
   };
 
-  const getTrackoceanNumber = (shipment: OceanShipment | null) => {
+  /* -- Tracking helpers ------------------------------------- */
+  const getTrackOceanNumber = (shipment: OceanShippingOrder | null) => {
     if (!shipment) return "";
 
-    const shipmentId = shipment.id;
-    if (shipmentId !== undefined && shipmentId !== null) {
-      const tracked = oceanTrackingNumbers[shipmentId];
-      if (tracked && tracked !== "-" && tracked !== "Cargando...") {
-        return tracked;
-      }
-    }
+    // Check HBLI cache for container number
+    const hbli = hbliCache[shipment.number];
+    if (hbli?.containerNumber) return hbli.containerNumber;
 
-    return shipment.containerNumber || shipment.number || "";
+    // Fall back to booking or waybill number
+    if (shipment.bookingNumber) return shipment.bookingNumber;
+    if (shipment.waybillNumber) return shipment.waybillNumber;
+
+    return "";
   };
 
-  const getDisplayedOceanTrackingNumber = (shipment: OceanShipment) => {
-    if (shipment.id === undefined || shipment.id === null) return "-";
-    return oceanTrackingNumbers[shipment.id] ?? "Cargando...";
+  const getDisplayedTrackingNumber = (shipment: OceanShippingOrder) => {
+    const hbli = hbliCache[shipment.number];
+    if (hbli?.loading) return "Cargando...";
+    if (hbli?.fetched && hbli.containerNumber) return hbli.containerNumber;
+    if (shipment.bookingNumber) return shipment.bookingNumber;
+    if (shipment.waybillNumber) return shipment.waybillNumber;
+    return "Consulta BL/HBLI";
   };
 
-  const isOceanTrackingReady = (shipment: OceanShipment) =>
-    getDisplayedOceanTrackingNumber(shipment) !== "Cargando...";
+  const isTrackingReady = (shipment: OceanShippingOrder) => {
+    const num = getTrackOceanNumber(shipment);
+    return !!num;
+  };
 
-  const isOceanShipmentAlreadyTracked = (shipment: OceanShipment): boolean => {
+  const isOceanShipmentAlreadyTracked = (
+    shipment: OceanShippingOrder,
+  ): boolean => {
     if (trackedOceanNumbers.size === 0) return false;
-    const num = getTrackoceanNumber(shipment).trim().toUpperCase();
+    const num = getTrackOceanNumber(shipment).trim().toUpperCase();
     return !!num && trackedOceanNumbers.has(num);
   };
 
-  const openTrackModal = (shipment: OceanShipment) => {
-    fetchOceanTrackingNumber(shipment.id);
+  const openTrackModal = (shipment: OceanShippingOrder) => {
     setTrackShipment(shipment);
     setTrackEmails([""]);
     setTrackError(null);
@@ -627,9 +909,11 @@ function OceanShipmentsView({
       return;
     }
 
-    const oceanNumber = getTrackoceanNumber(trackShipment).trim();
+    const oceanNumber = getTrackOceanNumber(trackShipment).trim();
     if (!oceanNumber) {
-      setTrackError("No se pudo obtener el número de tracking.");
+      setTrackError(
+        "No se pudo obtener el número de tracking. Consulta la pestaña BL/HBLI.",
+      );
       return;
     }
 
@@ -716,102 +1000,116 @@ function OceanShipmentsView({
     }
   };
 
+  /* -- Search / filter -------------------------------------- */
   const clearSearch = () => {
     setFilterNumber("");
-    setFilterOrigin("");
-    setFilterDestination("");
+    setFilterWaybill("");
+    setFilterClientReference("");
     setFilterDepartureDate("");
-    setFilterVessel("");
-    setFilterType("");
-    setFilterPieces("");
+    setFilterArrivalDate("");
+    setFilterCarrier("");
     setIsNumberFocused(false);
-    setIsOriginFocused(false);
-    setIsDestinationFocused(false);
+    setIsWaybillFocused(false);
+    setIsClientReferenceFocused(false);
     setIsDepartureFocused(false);
-    setIsVesselFocused(false);
-    setIsTypeFocused(false);
-    setIsPiecesFocused(false);
+    setIsArrivalFocused(false);
+    setIsCarrierFocused(false);
     setDisplayedOceanShipments(oceanShipments);
     setShowingAll(false);
-    setTablePage(1);
   };
 
   const handleApplyFilters = (e: React.FormEvent) => {
     e.preventDefault();
     let filtered = oceanShipments;
     if (filterNumber.trim()) {
-      const term = filterNumber.trim().toLowerCase();
       filtered = filtered.filter((s) =>
-        (s.number || "").toString().toLowerCase().includes(term),
+        (s.number || "").toLowerCase().includes(filterNumber.toLowerCase()),
       );
     }
-    if (filterOrigin.trim()) {
-      const term = filterOrigin.trim().toLowerCase();
+    if (filterWaybill.trim()) {
       filtered = filtered.filter((s) =>
-        (s.portOfLoading || "").toLowerCase().includes(term),
+        (s.waybillNumber || "")
+          .toLowerCase()
+          .includes(filterWaybill.toLowerCase()),
       );
     }
-    if (filterDestination.trim()) {
-      const term = filterDestination.trim().toLowerCase();
+    if (filterClientReference.trim()) {
       filtered = filtered.filter((s) =>
-        (s.portOfUnloading || "").toLowerCase().includes(term),
+        (s.customerReference || "")
+          .toLowerCase()
+          .includes(filterClientReference.toLowerCase()),
       );
     }
     if (filterDepartureDate) {
       filtered = filtered.filter((s) => {
-        if (!s.departure) return false;
+        if (!s.departureDate) return false;
         return (
-          new Date(s.departure).toISOString().split("T")[0] ===
+          new Date(s.departureDate).toISOString().split("T")[0] ===
           filterDepartureDate
         );
       });
     }
-    if (filterVessel.trim()) {
-      const term = filterVessel.trim().toLowerCase();
-      filtered = filtered.filter((s) =>
-        (s.vessel || "").toLowerCase().includes(term),
-      );
+    if (filterArrivalDate) {
+      filtered = filtered.filter((s) => {
+        if (!s.arrivalDate) return false;
+        return (
+          new Date(s.arrivalDate).toISOString().split("T")[0] ===
+          filterArrivalDate
+        );
+      });
     }
-    if (filterType.trim()) {
-      const term = filterType.trim().toLowerCase();
+    if (filterCarrier.trim()) {
       filtered = filtered.filter((s) =>
-        (s.typeOfMove || "").toLowerCase().includes(term),
-      );
-    }
-    if (filterPieces.trim()) {
-      const term = filterPieces.trim().toLowerCase();
-      filtered = filtered.filter((s) =>
-        (s.totalCargo_Pieces ?? "").toString().toLowerCase().includes(term),
+        (s.carrier?.name || "")
+          .toLowerCase()
+          .includes(filterCarrier.toLowerCase()),
       );
     }
     setDisplayedOceanShipments(filtered);
     setShowingAll(true);
-    setTablePage(1);
   };
 
   const refreshShipments = () => {
-    // ── Cuenta dummy MundoGaming: reload datos hardcodeados ──
-    if (filterConsignee === "MundoGaming") {
-      const dummySorted = [...MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS].sort(
-        (a, b) => {
-          const da = a.departure ? new Date(a.departure) : new Date(0);
-          const db = b.departure ? new Date(b.departure) : new Date(0);
-          return db.getTime() - da.getTime();
-        },
-      );
+    if (!activeUsername) return;
+
+    // MundoGaming dummy
+    if (activeUsername === "MundoGaming") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapped: OceanShippingOrder[] =
+        MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS.map((s: any) => ({
+          id: s.id || 0,
+          number: s.number || "",
+          waybillNumber: s.waybillNumber || null,
+          bookingNumber: s.bookingNumber || null,
+          customerReference: s.customerReference || null,
+          departureDate: s.departure || null,
+          arrivalDate: s.arrival || null,
+          carrier: s.carrier ? { name: s.carrier } : null,
+          consignee: s.consignee ? { name: s.consignee } : null,
+          notes: s.notes || null,
+          totalCargo: {
+            pieces: s.totalCargo_Pieces || 0,
+            weight: { userDisplay: s.totalCargo_WeightDisplayValue || "" },
+            volume: { userDisplay: s.totalCargo_VolumeDisplayValue || "" },
+          },
+        }));
+      const dummySorted = mapped.sort((a, b) => {
+        const da = a.departureDate ? new Date(a.departureDate) : new Date(0);
+        const db = b.departureDate ? new Date(b.departureDate) : new Date(0);
+        return db.getTime() - da.getTime();
+      });
       setOceanShipments(dummySorted);
       setDisplayedOceanShipments(dummySorted);
       setShowingAll(false);
-      setTablePage(1);
       console.log("MundoGaming: datos dummy ocean recargados");
       return;
     }
 
-    localStorage.removeItem("oceanShipmentsCache");
-    localStorage.removeItem("oceanShipmentsCacheTimestamp");
+    const cacheKey = `oceanShipmentsCache_${activeUsername}`;
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(`${cacheKey}_timestamp`);
     setOceanShipments([]);
     setDisplayedOceanShipments([]);
-    setTablePage(1);
     fetchOceanShipments();
   };
 
@@ -915,8 +1213,9 @@ function OceanShipmentsView({
             alignItems: "center",
           }}
         >
+          {/* Filter Icon Button */}
           <button
-            className={`osv-btn osv-btn--ghost osv-toolbar__icon-btn ${activeFilterCount > 0 ? "osv-toolbar__icon-btn--active" : ""}`}
+            className={`osv-btn osv-btn--ghost${activeFilterCount > 0 ? " osv-btn--ghost-active" : ""}`}
             type="button"
             onClick={() => setShowSearchModal(true)}
             aria-label="Abrir filtros"
@@ -945,17 +1244,29 @@ function OceanShipmentsView({
                   fontWeight: 700,
                   padding: "1px 7px",
                   marginLeft: 2,
-                  display: "inline-block",
                 }}
               >
                 {activeFilterCount}
               </span>
             )}
           </button>
+
+          {/* Refresh Button */}
           <button
             className="osv-btn"
-            style={{ color: "white", backgroundColor: "var(--primary-color)" }}
             onClick={refreshShipments}
+            style={{
+              backgroundColor: "var(--primary-color)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "4px",
+              padding: "0 12px",
+              height: "32px",
+              fontSize: "12px",
+              cursor: "pointer",
+              fontFamily:
+                '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            }}
           >
             <svg
               width="14"
@@ -963,9 +1274,7 @@ function OceanShipmentsView({
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              strokeWidth="2"
             >
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
@@ -978,7 +1287,7 @@ function OceanShipmentsView({
         </div>
       </div>
 
-      {/* Search modal */}
+      {/* Search / Filter modal */}
       {showSearchModal && (
         <div className="osv-overlay" onClick={() => setShowSearchModal(false)}>
           <div
@@ -998,17 +1307,11 @@ function OceanShipmentsView({
               <div className="osv-search-section">
                 <label className="osv-label">Filtros de tabla</label>
                 <div className="osv-search-row">
-                  <div
-                    style={{
-                      position: "relative",
-                      display: "inline-block",
-                      flex: 1,
-                    }}
-                  >
+                  <div style={{ position: "relative", flex: 1 }}>
                     <label
                       style={{
                         position: "absolute",
-                        top: filterNumber || isNumberFocused ? "2px" : "8px",
+                        top: filterNumber || isNumberFocused ? "2px" : "10px",
                         left: "8px",
                         fontSize:
                           filterNumber || isNumberFocused ? "10px" : "12px",
@@ -1021,7 +1324,7 @@ function OceanShipmentsView({
                         zIndex: 1,
                       }}
                     >
-                      Numero
+                      Número
                     </label>
                     <input
                       className="osv-input"
@@ -1030,24 +1333,17 @@ function OceanShipmentsView({
                       onChange={(e) => setFilterNumber(e.target.value)}
                       onFocus={() => setIsNumberFocused(true)}
                       onBlur={() => setIsNumberFocused(false)}
-                      placeholder=""
                       style={{ width: "100%", height: 44 }}
                     />
                   </div>
-                  <div
-                    style={{
-                      position: "relative",
-                      display: "inline-block",
-                      flex: 1,
-                    }}
-                  >
+                  <div style={{ position: "relative", flex: 1 }}>
                     <label
                       style={{
                         position: "absolute",
-                        top: filterOrigin || isOriginFocused ? "2px" : "8px",
+                        top: filterWaybill || isWaybillFocused ? "2px" : "10px",
                         left: "8px",
                         fontSize:
-                          filterOrigin || isOriginFocused ? "10px" : "12px",
+                          filterWaybill || isWaybillFocused ? "10px" : "12px",
                         fontWeight: "bold",
                         color: "#666",
                         transition: "all 0.2s ease",
@@ -1057,38 +1353,31 @@ function OceanShipmentsView({
                         zIndex: 1,
                       }}
                     >
-                      Origen
+                      Waybill
                     </label>
                     <input
                       className="osv-input"
                       type="text"
-                      value={filterOrigin}
-                      onChange={(e) => setFilterOrigin(e.target.value)}
-                      onFocus={() => setIsOriginFocused(true)}
-                      onBlur={() => setIsOriginFocused(false)}
-                      placeholder=""
+                      value={filterWaybill}
+                      onChange={(e) => setFilterWaybill(e.target.value)}
+                      onFocus={() => setIsWaybillFocused(true)}
+                      onBlur={() => setIsWaybillFocused(false)}
                       style={{ width: "100%", height: 44 }}
                     />
                   </div>
                 </div>
                 <div className="osv-search-row">
-                  <div
-                    style={{
-                      position: "relative",
-                      display: "inline-block",
-                      flex: 1,
-                    }}
-                  >
+                  <div style={{ position: "relative", flex: 1 }}>
                     <label
                       style={{
                         position: "absolute",
                         top:
-                          filterDestination || isDestinationFocused
+                          filterClientReference || isClientReferenceFocused
                             ? "2px"
-                            : "8px",
+                            : "10px",
                         left: "8px",
                         fontSize:
-                          filterDestination || isDestinationFocused
+                          filterClientReference || isClientReferenceFocused
                             ? "10px"
                             : "12px",
                         fontWeight: "bold",
@@ -1100,33 +1389,57 @@ function OceanShipmentsView({
                         zIndex: 1,
                       }}
                     >
-                      Destino
+                      Ref. Cliente
                     </label>
                     <input
                       className="osv-input"
                       type="text"
-                      value={filterDestination}
-                      onChange={(e) => setFilterDestination(e.target.value)}
-                      onFocus={() => setIsDestinationFocused(true)}
-                      onBlur={() => setIsDestinationFocused(false)}
-                      placeholder=""
+                      value={filterClientReference}
+                      onChange={(e) => setFilterClientReference(e.target.value)}
+                      onFocus={() => setIsClientReferenceFocused(true)}
+                      onBlur={() => setIsClientReferenceFocused(false)}
                       style={{ width: "100%", height: 44 }}
                     />
                   </div>
-                  <div
-                    style={{
-                      position: "relative",
-                      display: "inline-block",
-                      flex: 1,
-                    }}
-                  >
+                  <div style={{ position: "relative", flex: 1 }}>
+                    <label
+                      style={{
+                        position: "absolute",
+                        top: filterCarrier || isCarrierFocused ? "2px" : "10px",
+                        left: "8px",
+                        fontSize:
+                          filterCarrier || isCarrierFocused ? "10px" : "12px",
+                        fontWeight: "bold",
+                        color: "#666",
+                        transition: "all 0.2s ease",
+                        pointerEvents: "none",
+                        backgroundColor: "#fff",
+                        padding: "0 2px",
+                        zIndex: 1,
+                      }}
+                    >
+                      Carrier
+                    </label>
+                    <input
+                      className="osv-input"
+                      type="text"
+                      value={filterCarrier}
+                      onChange={(e) => setFilterCarrier(e.target.value)}
+                      onFocus={() => setIsCarrierFocused(true)}
+                      onBlur={() => setIsCarrierFocused(false)}
+                      style={{ width: "100%", height: 44 }}
+                    />
+                  </div>
+                </div>
+                <div className="osv-search-row">
+                  <div style={{ position: "relative", flex: 1 }}>
                     <label
                       style={{
                         position: "absolute",
                         top:
                           filterDepartureDate || isDepartureFocused
                             ? "2px"
-                            : "8px",
+                            : "10px",
                         left: "8px",
                         fontSize:
                           filterDepartureDate || isDepartureFocused
@@ -1150,26 +1463,22 @@ function OceanShipmentsView({
                       onChange={(e) => setFilterDepartureDate(e.target.value)}
                       onFocus={() => setIsDepartureFocused(true)}
                       onBlur={() => setIsDepartureFocused(false)}
-                      placeholder=""
                       style={{ width: "100%", height: 44 }}
                     />
                   </div>
-                </div>
-                <div className="osv-search-row">
-                  <div
-                    style={{
-                      position: "relative",
-                      display: "inline-block",
-                      flex: 1,
-                    }}
-                  >
+                  <div style={{ position: "relative", flex: 1 }}>
                     <label
                       style={{
                         position: "absolute",
-                        top: filterVessel || isVesselFocused ? "2px" : "8px",
+                        top:
+                          filterArrivalDate || isArrivalFocused
+                            ? "2px"
+                            : "10px",
                         left: "8px",
                         fontSize:
-                          filterVessel || isVesselFocused ? "10px" : "12px",
+                          filterArrivalDate || isArrivalFocused
+                            ? "10px"
+                            : "12px",
                         fontWeight: "bold",
                         color: "#666",
                         transition: "all 0.2s ease",
@@ -1179,109 +1488,38 @@ function OceanShipmentsView({
                         zIndex: 1,
                       }}
                     >
-                      Vessel
+                      Fecha Llegada
                     </label>
                     <input
                       className="osv-input"
-                      type="text"
-                      value={filterVessel}
-                      onChange={(e) => setFilterVessel(e.target.value)}
-                      onFocus={() => setIsVesselFocused(true)}
-                      onBlur={() => setIsVesselFocused(false)}
-                      placeholder=""
-                      style={{ width: "100%", height: 44 }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      position: "relative",
-                      display: "inline-block",
-                      flex: 1,
-                    }}
-                  >
-                    <label
-                      style={{
-                        position: "absolute",
-                        top: filterType || isTypeFocused ? "2px" : "8px",
-                        left: "8px",
-                        fontSize: filterType || isTypeFocused ? "10px" : "12px",
-                        fontWeight: "bold",
-                        color: "#666",
-                        transition: "all 0.2s ease",
-                        pointerEvents: "none",
-                        backgroundColor: "#fff",
-                        padding: "0 2px",
-                        zIndex: 1,
-                      }}
-                    >
-                      Tipo
-                    </label>
-                    <input
-                      className="osv-input"
-                      type="text"
-                      value={filterType}
-                      onChange={(e) => setFilterType(e.target.value)}
-                      onFocus={() => setIsTypeFocused(true)}
-                      onBlur={() => setIsTypeFocused(false)}
-                      placeholder=""
-                      style={{ width: "100%", height: 44 }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      position: "relative",
-                      display: "inline-block",
-                      flex: 1,
-                    }}
-                  >
-                    <label
-                      style={{
-                        position: "absolute",
-                        top: filterPieces || isPiecesFocused ? "2px" : "8px",
-                        left: "8px",
-                        fontSize:
-                          filterPieces || isPiecesFocused ? "10px" : "12px",
-                        fontWeight: "bold",
-                        color: "#666",
-                        transition: "all 0.2s ease",
-                        pointerEvents: "none",
-                        backgroundColor: "#fff",
-                        padding: "0 2px",
-                        zIndex: 1,
-                      }}
-                    >
-                      Piezas
-                    </label>
-                    <input
-                      className="osv-input"
-                      type="text"
-                      value={filterPieces}
-                      onChange={(e) => setFilterPieces(e.target.value)}
-                      onFocus={() => setIsPiecesFocused(true)}
-                      onBlur={() => setIsPiecesFocused(false)}
-                      placeholder=""
+                      type="date"
+                      value={filterArrivalDate}
+                      onChange={(e) => setFilterArrivalDate(e.target.value)}
+                      onFocus={() => setIsArrivalFocused(true)}
+                      onBlur={() => setIsArrivalFocused(false)}
                       style={{ width: "100%", height: 44 }}
                     />
                   </div>
                 </div>
-                <div className="osv-modal__actions">
-                  <button
-                    className="osv-btn osv-btn--primary osv-btn--full"
-                    type="submit"
-                  >
-                    Aplicar filtros
-                  </button>
-                  <button
-                    className="osv-btn osv-btn--ghost"
-                    type="button"
-                    onClick={() => {
-                      clearSearch();
-                      setShowSearchModal(false);
-                    }}
-                  >
-                    Limpiar
-                  </button>
-                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  className="osv-btn osv-btn--primary osv-btn--full"
+                  type="submit"
+                >
+                  Aplicar filtros
+                </button>
+                <button
+                  className="osv-btn osv-btn--ghost"
+                  type="button"
+                  onClick={() => {
+                    clearSearch();
+                    setShowSearchModal(false);
+                  }}
+                >
+                  Limpiar
+                </button>
               </div>
             </form>
           </div>
@@ -1292,7 +1530,7 @@ function OceanShipmentsView({
       {loading && (
         <div className="osv-empty">
           <div className="osv-spinner" />
-          <p>Cargando ocean shipments...</p>
+          <p className="osv-empty__subtitle">Cargando ocean shipments...</p>
         </div>
       )}
 
@@ -1303,23 +1541,19 @@ function OceanShipmentsView({
         </div>
       )}
 
-      {/* =====================================================
-          TABLE
-         ===================================================== */}
+      {/* Table */}
       {!loading && displayedOceanShipments.length > 0 && (
         <div className="osv-table-wrapper">
           <div className="osv-table-scroll">
             <table className="osv-table">
               <thead>
                 <tr>
-                  <th className="osv-th">Numero</th>
+                  <th className="osv-th">Número</th>
                   <th className="osv-th">Origen</th>
-                  <th className="osv-th">Destino</th>
-                  <th className="osv-th">Fecha Salida</th>
-                  <th className="osv-th">Fecha Llegada</th>
-                  <th className="osv-th">Vessel</th>
-                  <th className="osv-th osv-th--center">Tipo</th>
-                  <th className="osv-th osv-th--center">Piezas</th>
+                  <th className="osv-th">Referencia Cliente</th>
+                  <th className="osv-th osv-th--center">Fecha Salida</th>
+                  <th className="osv-th osv-th--center">Fecha Llegada</th>
+                  <th className="osv-th osv-th--center">Carrier</th>
                 </tr>
               </thead>
               <tbody>
@@ -1346,63 +1580,41 @@ function OceanShipmentsView({
                             <polyline points="9 18 15 12 9 6" />
                           </svg>
                           {shipment.number || "---"}
-                          {shipment.quoteNumber && (
-                            <span
-                              className="osv-quote-badge"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                fetchQuoteByNumber(shipment.quoteNumber!);
-                              }}
-                            >
-                              {shipment.quoteNumber}
-                            </span>
-                          )}
                         </td>
                         <td className="osv-td">
-                          {shipment.portOfLoading || "---"}
+                          {shipment.executedAt?.name?.trim() || "-"}
                         </td>
                         <td className="osv-td">
-                          {shipment.portOfUnloading || "---"}
-                        </td>
-                        <td className="osv-td">
-                          {formatDateShort(shipment.departure)}
-                        </td>
-                        <td className="osv-td">
-                          {formatDateShort(shipment.arrival)}
-                        </td>
-                        <td className="osv-td">{shipment.vessel || "-"}</td>
-                        <td className="osv-td osv-td--center">
-                          {shipment.typeOfMove ? (
-                            <span
-                              className={`osv-badge osv-badge--${shipment.typeOfMove.toLowerCase()}`}
-                            >
-                              {shipment.typeOfMove}
-                            </span>
-                          ) : (
-                            "---"
-                          )}
+                          {shipment.customerReference || "-"}
                         </td>
                         <td className="osv-td osv-td--center">
-                          {shipment.totalCargo_Pieces ?? "---"}
+                          {formatDateInline(shipment.departureDate)}
+                        </td>
+                        <td className="osv-td osv-td--center">
+                          {formatDateInline(shipment.arrivalDate)}
+                        </td>
+                        <td className="osv-td osv-td--center">
+                          {shipment.carrier?.name || "-"}
                         </td>
                       </tr>
 
+                      {/* Accordion content */}
                       {isExpanded && (
                         <tr className="osv-accordion-row">
-                          <td colSpan={8} className="osv-accordion-cell">
+                          <td colSpan={6} className="osv-accordion-cell">
                             <div className="osv-accordion-content">
                               {/* Route summary card */}
                               <div className="osv-route-card">
                                 <div className="osv-route-card__point">
                                   <span className="osv-route-card__label">
-                                    Puerto de Carga
+                                    Origen
                                   </span>
                                   <span className="osv-route-card__value">
-                                    {shipment.portOfLoading || "N/A"}
+                                    {shipment.executedAt?.name?.trim() || "-"}
                                   </span>
-                                  {shipment.departure && (
+                                  {shipment.departureDate && (
                                     <span className="osv-route-card__date">
-                                      {formatDateShort(shipment.departure)}
+                                      {formatDateInline(shipment.departureDate)}
                                     </span>
                                   )}
                                 </div>
@@ -1418,22 +1630,28 @@ function OceanShipmentsView({
                                     <line x1="5" y1="12" x2="19" y2="12" />
                                     <polyline points="12 5 19 12 12 19" />
                                   </svg>
-                                  {shipment.vessel && (
+                                  {shipment.carrier?.name && (
                                     <span className="osv-route-card__transit">
-                                      {shipment.vessel}
+                                      {shipment.carrier.name}
                                     </span>
                                   )}
                                 </div>
                                 <div className="osv-route-card__point osv-route-card__point--end">
                                   <span className="osv-route-card__label">
-                                    Puerto de Descarga
+                                    Destino
                                   </span>
                                   <span className="osv-route-card__value">
-                                    {shipment.portOfUnloading || "N/A"}
+                                    {shipment.consigneeAddress
+                                      ? shipment.consigneeAddress
+                                          .split("\n")
+                                          .filter(Boolean)
+                                          .pop()
+                                          ?.trim() || "-"
+                                      : "-"}
                                   </span>
-                                  {shipment.arrival && (
+                                  {shipment.arrivalDate && (
                                     <span className="osv-route-card__date">
-                                      {formatDateShort(shipment.arrival)}
+                                      {formatDateInline(shipment.arrivalDate)}
                                     </span>
                                   )}
                                 </div>
@@ -1449,7 +1667,7 @@ function OceanShipmentsView({
                                   tabs={[
                                     {
                                       key: "general",
-                                      label: "Informacion General",
+                                      label: "Información General",
                                       icon: (
                                         <svg
                                           width="14"
@@ -1480,35 +1698,36 @@ function OceanShipmentsView({
                                             <h4>Detalles del Envío</h4>
                                             <div className="asv-info-grid">
                                               <InfoField
-                                                label="Numero de Envio"
+                                                label="Número de Envío"
                                                 value={shipment.number}
                                               />
                                               <InfoField
-                                                label="Tipo de Operacion"
-                                                value={shipment.operationFlow}
+                                                label="Referencia Cliente"
+                                                value={
+                                                  shipment.customerReference
+                                                }
                                               />
                                               <InfoField
-                                                label="Tipo de Envio"
-                                                value={shipment.shipmentType}
+                                                label="Waybill"
+                                                value={shipment.waybillNumber}
                                               />
                                               <InfoField
-                                                label="Tipo de Movimiento"
-                                                value={shipment.typeOfMove}
+                                                label="Booking Number"
+                                                value={shipment.bookingNumber}
                                               />
                                             </div>
                                           </div>
                                           <div className="asv-card">
                                             <h4>Seguimiento del Envío</h4>
                                             <div className="asv-info-grid">
+                                              {/* Track button */}
                                               <div className="asv-track-field">
                                                 <div className="asv-track-field__label">
                                                   ¿Quieres trackear tu envío?
                                                 </div>
                                                 {(() => {
-                                                  const isTrackReady =
-                                                    isOceanTrackingReady(
-                                                      shipment,
-                                                    );
+                                                  const trackReady =
+                                                    isTrackingReady(shipment);
 
                                                   return isOceanShipmentAlreadyTracked(
                                                     shipment,
@@ -1536,136 +1755,56 @@ function OceanShipmentsView({
                                                       className="asv-btn asv-btn--secondary asv-btn--sm"
                                                       onClick={(e) => {
                                                         e.stopPropagation();
-                                                        if (!isTrackReady)
-                                                          return;
+                                                        if (!trackReady) return;
                                                         openTrackModal(
                                                           shipment,
                                                         );
                                                       }}
-                                                      disabled={!isTrackReady}
+                                                      disabled={!trackReady}
                                                       title={
-                                                        isTrackReady
+                                                        trackReady
                                                           ? undefined
-                                                          : "Espera a que se cargue el Número de Seguimiento."
+                                                          : "Consulta la pestaña BL/HBLI para obtener el número de seguimiento."
                                                       }
                                                     >
-                                                      {isTrackReady
+                                                      {trackReady
                                                         ? "Trackea tu envío"
-                                                        : "Cargando número de seg..."}
+                                                        : "Consulta BL/HBLI primero"}
                                                     </button>
                                                   );
                                                 })()}
                                               </div>
                                               <InfoField
                                                 label="Número de Seguimiento"
-                                                value={getDisplayedOceanTrackingNumber(
+                                                value={getDisplayedTrackingNumber(
                                                   shipment,
                                                 )}
+                                                fullWidth
                                               />
                                               <InfoField
-                                                label="ID interno"
+                                                label="ID Interno"
                                                 value={shipment.id}
                                               />
                                             </div>
                                           </div>
                                           <div className="asv-card">
-                                            <h4>Logistica Maritima</h4>
+                                            <h4>Operación Logística</h4>
                                             <div className="asv-info-grid">
-                                              <InfoField
-                                                label="Vessel"
-                                                value={shipment.vessel}
-                                              />
-                                              <InfoField
-                                                label="Voyage"
-                                                value={shipment.voyage}
-                                              />
                                               <InfoField
                                                 label="Carrier"
-                                                value={shipment.carrier}
-                                              />
-                                              <InfoField
-                                                label="Puerto de Carga"
-                                                value={shipment.portOfLoading}
-                                              />
-                                              <InfoField
-                                                label="Puerto de Descarga"
-                                                value={shipment.portOfUnloading}
-                                              />
-                                              <InfoField
-                                                label="Lugar de Entrega"
-                                                value={shipment.placeOfDelivery}
-                                              />
-                                              <InfoField
-                                                label="Destino Final"
-                                                value={
-                                                  shipment.finalDestination
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="asv-card">
-                                            <h4>Documentos y Referencias</h4>
-                                            <div className="asv-info-grid">
-                                              <InfoField
-                                                label="Booking Number"
-                                                value={shipment.bookingNumber}
-                                              />
-                                              <InfoField
-                                                label="BL Number"
-                                                value={shipment.waybillNumber}
-                                              />
-                                              <InfoField
-                                                label="Forwarded BL"
-                                                value={shipment.fowaredBl}
-                                              />
-                                              <InfoField
-                                                label="Numero de Contenedor"
-                                                value={shipment.containerNumber}
-                                              />
-                                              <InfoField
-                                                label="Referencia Cliente"
-                                                value={
-                                                  shipment.customerReference
-                                                }
-                                              />
-                                              <InfoField
-                                                label="Representante de Ventas"
-                                                value={shipment.salesRep}
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="asv-card">
-                                            <h4>Fechas</h4>
-                                            <div className="asv-info-grid">
-                                              <InfoField
-                                                label="Fecha de Creación"
-                                                value={
-                                                  shipment.createdOn
-                                                    ? formatDate(
-                                                        shipment.createdOn,
-                                                      )
-                                                    : null
-                                                }
+                                                value={shipment.carrier?.name}
                                               />
                                               <InfoField
                                                 label="Fecha Salida"
-                                                value={
-                                                  shipment.departure
-                                                    ? formatDate(
-                                                        shipment.departure,
-                                                      )
-                                                    : null
-                                                }
+                                                value={formatDateLong(
+                                                  shipment.departureDate,
+                                                )}
                                               />
                                               <InfoField
                                                 label="Fecha Llegada"
-                                                value={
-                                                  shipment.arrival
-                                                    ? formatDate(
-                                                        shipment.arrival,
-                                                      )
-                                                    : null
-                                                }
+                                                value={formatDateLong(
+                                                  shipment.arrivalDate,
+                                                )}
                                               />
                                             </div>
                                           </div>
@@ -1684,15 +1823,7 @@ function OceanShipmentsView({
                                           stroke="currentColor"
                                           strokeWidth="2"
                                         >
-                                          <rect
-                                            x="1"
-                                            y="3"
-                                            width="15"
-                                            height="13"
-                                          />
-                                          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                                          <circle cx="5.5" cy="18.5" r="2.5" />
-                                          <circle cx="18.5" cy="18.5" r="2.5" />
+                                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                                         </svg>
                                       ),
                                       content: (
@@ -1703,61 +1834,32 @@ function OceanShipmentsView({
                                               <InfoField
                                                 label="Total de Piezas"
                                                 value={
-                                                  shipment.totalCargo_Pieces
+                                                  shipment.totalCargo?.pieces ||
+                                                  "-"
                                                 }
                                               />
                                               <InfoField
                                                 label="Peso Total"
                                                 value={
-                                                  shipment.totalCargo_WeightDisplayValue
+                                                  shipment.totalCargo?.weight
+                                                    ?.userDisplay || "-"
                                                 }
                                               />
                                               <InfoField
                                                 label="Volumen Total"
                                                 value={
-                                                  shipment.totalCargo_VolumeDisplayValue
-                                                }
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="asv-card">
-                                            <h4>Detalle de Carga</h4>
-                                            <div className="asv-info-grid">
-                                              <InfoField
-                                                label="Descripcion de Carga"
-                                                value={
-                                                  shipment.cargoDescription
-                                                }
-                                                fullWidth
-                                              />
-                                              <InfoField
-                                                label="Marcas de Carga"
-                                                value={shipment.cargoMarks}
-                                                fullWidth
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="asv-card">
-                                            <h4>Estado y Seguridad</h4>
-                                            <div className="asv-info-grid">
-                                              <InfoField
-                                                label="Estado de Carga"
-                                                value={shipment.cargoStatus}
-                                              />
-                                              <InfoField
-                                                label="Carga Peligrosa"
-                                                value={
-                                                  shipment.hazardous
-                                                    ? "Si"
-                                                    : "No"
+                                                  shipment.totalCargo?.volume
+                                                    ?.userDisplay || "-"
                                                 }
                                               />
                                               <InfoField
-                                                label="Containerizado"
+                                                label="Contenedores"
                                                 value={
-                                                  shipment.containerized
-                                                    ? "Si"
-                                                    : "No"
+                                                  shipment.totalCargo
+                                                    ?.containers
+                                                    ? shipment.totalCargo
+                                                        .containers
+                                                    : null
                                                 }
                                               />
                                             </div>
@@ -1766,7 +1868,35 @@ function OceanShipmentsView({
                                       ),
                                     },
                                     {
-                                      key: "documentos",
+                                      key: "hbli",
+                                      label: "BL / HBLI",
+                                      icon: (
+                                        <svg
+                                          width="14"
+                                          height="14"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                          <polyline points="14 2 14 8 20 8" />
+                                        </svg>
+                                      ),
+                                      content: (
+                                        <HBLITabContent
+                                          sogNumber={shipment.number}
+                                          accessToken={accessToken}
+                                          refreshAccessToken={
+                                            refreshAccessToken
+                                          }
+                                          hbliData={hbliCache[shipment.number]}
+                                          onFetch={fetchHBLIForShipment}
+                                        />
+                                      ),
+                                    },
+                                    {
+                                      key: "docs",
                                       label: "Documentos",
                                       icon: (
                                         <svg
@@ -1800,115 +1930,7 @@ function OceanShipmentsView({
                                       ),
                                     },
                                     {
-                                      key: "financiero",
-                                      label: "Financiero",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <line
-                                            x1="12"
-                                            y1="1"
-                                            x2="12"
-                                            y2="23"
-                                          />
-                                          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                                        </svg>
-                                      ),
-                                      content: (
-                                        <div className="osv-finance-card">
-                                          <span className="osv-finance-card__label">
-                                            Gasto Total (No incluye impuestos)
-                                          </span>
-                                          <span className="osv-finance-card__amount">
-                                            {formatCLP(
-                                              shipment.totalCharge_IncomeDisplayValue,
-                                            ) || "$0 CLP"}
-                                          </span>
-                                          <span className="osv-finance-card__note">
-                                            Monto estimado para este envio
-                                          </span>
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "customs",
-                                      label: "Importacion y Aduana",
-                                      icon: (
-                                        <svg
-                                          width="14"
-                                          height="14"
-                                          viewBox="0 0 24 24"
-                                          fill="none"
-                                          stroke="currentColor"
-                                          strokeWidth="2"
-                                        >
-                                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                          <polyline points="14 2 14 8 20 8" />
-                                          <line
-                                            x1="16"
-                                            y1="13"
-                                            x2="8"
-                                            y2="13"
-                                          />
-                                          <line
-                                            x1="16"
-                                            y1="17"
-                                            x2="8"
-                                            y2="17"
-                                          />
-                                        </svg>
-                                      ),
-                                      hidden: !(
-                                        shipment.entryNumber ||
-                                        shipment.itNumber ||
-                                        shipment.amsNumber ||
-                                        shipment.broker
-                                      ),
-                                      content: (
-                                        <div className="osv-info-grid">
-                                          <InfoField
-                                            label="Entry Number"
-                                            value={shipment.entryNumber}
-                                          />
-                                          <InfoField
-                                            label="IT Number"
-                                            value={shipment.itNumber}
-                                          />
-                                          <InfoField
-                                            label="AMS Number"
-                                            value={shipment.amsNumber}
-                                          />
-                                          <InfoField
-                                            label="Broker"
-                                            value={shipment.broker}
-                                          />
-                                          <InfoField
-                                            label="Liberado por Aduana"
-                                            value={
-                                              shipment.customsReleased
-                                                ? "Si"
-                                                : "No"
-                                            }
-                                          />
-                                          <InfoField
-                                            label="Flete Liberado"
-                                            value={
-                                              shipment.freightReleased
-                                                ? "Si"
-                                                : "No"
-                                            }
-                                          />
-                                        </div>
-                                      ),
-                                    },
-                                    {
-                                      key: "notas",
+                                      key: "notes",
                                       label: "Notas",
                                       icon: (
                                         <svg
@@ -1923,9 +1945,7 @@ function OceanShipmentsView({
                                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                         </svg>
                                       ),
-                                      hidden:
-                                        !shipment.notes ||
-                                        shipment.notes === "N/A",
+                                      hidden: !shipment.notes,
                                       content: (
                                         <div className="osv-notes">
                                           {shipment.notes}
@@ -1952,7 +1972,7 @@ function OceanShipmentsView({
               {loading && <span className="osv-loading-text">Cargando...</span>}
             </div>
             <div className="osv-table-footer__right">
-              <span className="osv-pagination-label">Filas por pagina:</span>
+              <span className="osv-pagination-label">Filas por página:</span>
               <select
                 className="osv-pagination-select"
                 value={rowsPerPage}
@@ -2031,7 +2051,7 @@ function OceanShipmentsView({
               <input
                 className="osv-input"
                 type="text"
-                value={getTrackoceanNumber(trackShipment)}
+                value={getTrackOceanNumber(trackShipment)}
                 disabled
               />
             </div>
@@ -2051,15 +2071,13 @@ function OceanShipmentsView({
                 </label>
                 <button
                   type="button"
-                  className="osv-btn osv-btn--ghost"
+                  className="osv-btn osv-btn--ghost osv-btn--sm"
                   onClick={addTrackEmailField}
                   disabled={trackEmails.length >= MAX_VISIBLE_TRACK_FOLLOWERS}
-                  style={{ height: 32, minWidth: 32, padding: 0 }}
                 >
                   +
                 </button>
               </div>
-
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {trackEmails.map((email, index) => (
                   <div
@@ -2075,10 +2093,9 @@ function OceanShipmentsView({
                     />
                     <button
                       type="button"
-                      className="osv-btn osv-btn--ghost"
+                      className="osv-btn osv-btn--ghost osv-btn--sm"
                       onClick={() => removeTrackEmailField(index)}
                       disabled={trackEmails.length === 1}
-                      style={{ height: 32, minWidth: 32, padding: 0 }}
                     >
                       -
                     </button>
@@ -2111,11 +2128,7 @@ function OceanShipmentsView({
                 No
               </button>
               <button
-                className="osv-btn"
-                style={{
-                  color: "white",
-                  backgroundColor: "var(--primary-color)",
-                }}
+                className="osv-btn osv-btn--primary"
                 onClick={handleTrackSubmit}
                 disabled={trackLoading}
               >
@@ -2136,10 +2149,10 @@ function OceanShipmentsView({
               No se encontraron ocean shipments
             </p>
             <p className="osv-empty__subtitle">
-              No hay ocean shipments que coincidan con tu busqueda
+              No hay ocean shipments que coincidan con tu búsqueda
             </p>
             <button className="osv-btn osv-btn--primary" onClick={clearSearch}>
-              Limpiar filtros
+              Ver los últimos ocean shipments
             </button>
           </div>
         )}
