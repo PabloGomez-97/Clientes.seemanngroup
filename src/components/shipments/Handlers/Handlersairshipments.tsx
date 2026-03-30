@@ -22,6 +22,7 @@ export interface AirShipment {
   consignee?: Consignee;
   origin?: string;
   destination?: string;
+  executedAt?: { code?: string; name?: string } | null;
   [key: string]: any;
 }
 

@@ -343,7 +343,8 @@ function AirShipmentsView({
             // 404 = maritime shipment, skip
             if (resp.status === 404) return null;
             if (!resp.ok) return null;
-            return resp.json();
+            const data = await resp.json();
+            return { ...data, executedAt: order.executedAt ?? null };
           }),
         );
 
@@ -1281,7 +1282,7 @@ function AirShipmentsView({
               <thead>
                 <tr>
                   <th className="asv-th">Número</th>
-                  <th className="asv-th">Waybill</th>
+                  <th className="asv-th">Origen</th>
                   <th className="asv-th">Referencia Cliente</th>
                   <th className="asv-th asv-th--center">Fecha Salida</th>
                   <th className="asv-th asv-th--center">Fecha Llegada</th>
@@ -1313,7 +1314,7 @@ function AirShipmentsView({
                           </svg>
                           {shipment.number || "---"}
                         </td>
-                        <td className="asv-td asv-td--waybill">
+                        <td className="osv-td osv-td--waybill">
                           {shipment.executedAt?.name?.trim() || "-"}
                         </td>
                         <td className="asv-td">
