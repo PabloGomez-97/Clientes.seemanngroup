@@ -245,10 +245,28 @@ function AirShipmentsView({
   };
 
   /*  API  */
-  const fetchAirShipments = async (
-    page: number = 1,
-    append: boolean = false,
-  ) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getAllCommodities = (s: AirShipment): any[] => {
+    if (
+      s.subShipments &&
+      Array.isArray(s.subShipments) &&
+      s.subShipments.length > 0
+    ) {
+      const comms: any[] = [];
+      for (const sub of s.subShipments) {
+        if (sub.commodities && Array.isArray(sub.commodities)) {
+          comms.push(...sub.commodities);
+        }
+      }
+      if (comms.length > 0) return comms;
+    }
+    if (s.commodities && Array.isArray(s.commodities)) {
+      return s.commodities;
+    }
+    return [];
+  };
+
+  const fetchAirShipments = async () => {
     if (!accessToken) {
       setError("Debes ingresar un token primero");
       return;
@@ -258,122 +276,106 @@ function AirShipmentsView({
       return;
     }
 
-    if (page === 1) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
+    setLoading(true);
     setError(null);
 
     try {
       const cacheKey = `airShipmentsCache_${activeUsername}`;
 
-      // We'll collect results across pages into these
-      const combinedAllShipments: AirShipment[] = [];
+      // Step 1: Fetch all shipping orders
+      const soResponse = await linbisFetch(
+        `https://api.linbis.com/api/shipping-orders?SearchText=&PageNumber=1&PageSize=9999`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        },
+        accessToken,
+        refreshAccessToken,
+      );
+
+      if (!soResponse.ok) {
+        throw new Error(`Error ${soResponse.status}: ${soResponse.statusText}`);
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const soData: any = await soResponse.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const allOrders: any[] = soData.shippingOrders?.items ?? [];
+
+      // Filter by consignee name or code matching activeUsername
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userOrders = allOrders.filter((order: any) => {
+        const name = (order.consignee?.name || "").toLowerCase();
+        const code = (order.consignee?.code || "").toLowerCase();
+        const user = activeUsername.toLowerCase();
+        return name === user || code === user;
+      });
+
+      console.log(
+        `Shipping orders: ${allOrders.length} total, ${userOrders.length} para ${activeUsername}`,
+      );
+
+      // Step 2: For each order, check if it's an air shipment via /air-shipments/number
+      const BATCH_SIZE = 10;
+      const airShipments: AirShipment[] = [];
       const seenIds = new Set<number | string>();
 
-      let pageToFetch = page;
-      let lastPageCount = 0;
-
-      // Continue fetching pages until we get less than ITEMS_PER_PAGE
-      while (true) {
-        const queryParams = new URLSearchParams({
-          ConsigneeName: activeUsername,
-          Page: pageToFetch.toString(),
-          ItemsPerPage: ITEMS_PER_PAGE.toString(),
-          SortBy: "newest",
-        });
-
-        const response = await linbisFetch(
-          `https://api.linbis.com/air-shipments?${queryParams}`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
-          accessToken,
-          refreshAccessToken,
+      for (let i = 0; i < userOrders.length; i += BATCH_SIZE) {
+        const batch = userOrders.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          batch.map(async (order: any) => {
+            const resp = await linbisFetch(
+              `https://api.linbis.com/air-shipments/number?number=${encodeURIComponent(order.number)}`,
+              {
+                method: "GET",
+                headers: {
+                  Accept: "application/json",
+                  "Content-Type": "application/json",
+                },
+              },
+              accessToken,
+              refreshAccessToken,
+            );
+            // 404 = maritime shipment, skip
+            if (resp.status === 404) return null;
+            if (!resp.ok) return null;
+            return resp.json();
+          }),
         );
 
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-
-        const shipmentsArray: AirShipment[] = await response.json();
-        lastPageCount = shipmentsArray.length;
-
-        for (const s of shipmentsArray) {
-          if (s.id && !seenIds.has(s.id)) {
-            combinedAllShipments.push(s);
-            seenIds.add(s.id);
-          }
-          if (s.subShipments && Array.isArray(s.subShipments)) {
-            for (const sub of s.subShipments) {
-              if (sub.id && !seenIds.has(sub.id)) {
-                combinedAllShipments.push(sub);
-                seenIds.add(sub.id);
-              }
+        for (const result of results) {
+          if (result.status === "fulfilled" && result.value) {
+            const s = result.value as AirShipment;
+            if (s.id && !seenIds.has(s.id)) {
+              airShipments.push(s);
+              seenIds.add(s.id);
             }
           }
         }
-
-        console.log(
-          `Página ${pageToFetch}: ${shipmentsArray.length} air-shipments cargados`,
-        );
-
-        // If this was a single-page append request, or the last fetched page has less than ITEMS_PER_PAGE, stop
-        if (append && pageToFetch === page) break;
-        if (shipmentsArray.length < ITEMS_PER_PAGE) break;
-
-        pageToFetch += 1;
       }
 
-      // Sort combined results by departure date (newest first)
-      const sorted = combinedAllShipments.sort((a, b) => {
+      console.log(`${airShipments.length} air-shipments identificados`);
+
+      // Sort by departure date (newest first)
+      const sorted = airShipments.sort((a, b) => {
         const da = a.departure?.date ? new Date(a.departure.date) : new Date(0);
         const db = b.departure?.date ? new Date(b.departure.date) : new Date(0);
         return db.getTime() - da.getTime();
       });
 
-      const filtered = filterShipments(sorted);
-
-      // If append was requested and there were existing shipments, merge them and dedupe
-      if (append && page > 1) {
-        const combined = [...shipments, ...filtered].sort((a, b) => {
-          const da = a.departure?.date
-            ? new Date(a.departure.date)
-            : new Date(0);
-          const db = b.departure?.date
-            ? new Date(b.departure.date)
-            : new Date(0);
-          return db.getTime() - da.getTime();
-        });
-        const finalFiltered = filterShipments(combined);
-        setShipments(finalFiltered);
-        setDisplayedShipments(finalFiltered);
-        localStorage.setItem(cacheKey, JSON.stringify(finalFiltered));
-        localStorage.setItem(
-          `${cacheKey}_timestamp`,
-          new Date().getTime().toString(),
-        );
-        localStorage.setItem(`${cacheKey}_page`, pageToFetch.toString());
-      } else {
-        setShipments(filtered);
-        setDisplayedShipments(filtered);
-        setShowingAll(false);
-        localStorage.setItem(cacheKey, JSON.stringify(filtered));
-        localStorage.setItem(
-          `${cacheKey}_timestamp`,
-          new Date().getTime().toString(),
-        );
-        localStorage.setItem(`${cacheKey}_page`, pageToFetch.toString());
-      }
-
-      // Update pagination flags
-      setHasMoreShipments(lastPageCount === ITEMS_PER_PAGE);
-      setCurrentPage(pageToFetch);
+      setShipments(sorted);
+      setDisplayedShipments(sorted);
+      setShowingAll(false);
+      setHasMoreShipments(false);
+      localStorage.setItem(cacheKey, JSON.stringify(sorted));
+      localStorage.setItem(
+        `${cacheKey}_timestamp`,
+        new Date().getTime().toString(),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
       console.error("Error completo:", err);
@@ -384,9 +386,7 @@ function AirShipmentsView({
   };
 
   const loadMoreShipments = () => {
-    const next = currentPage + 1;
-    setCurrentPage(next);
-    fetchAirShipments(next, true);
+    fetchAirShipments();
   };
 
   const fetchParentShipmentNumber = async (
@@ -400,7 +400,7 @@ function AirShipmentsView({
 
     try {
       const response = await linbisFetch(
-        `https://api.linbis.com/air-shipments/details/${shipmentId}`,
+        `https://api.linbis.com/air-shipments/details/${shipmentId}?commoditiesPage=1&commoditiesPageSize=10&barcodingTool=false`,
         {
           method: "GET",
           headers: {
@@ -521,20 +521,15 @@ function AirShipmentsView({
     const cacheKey = `airShipmentsCache_${activeUsername}`;
     const cached = localStorage.getItem(cacheKey);
     const ts = localStorage.getItem(`${cacheKey}_timestamp`);
-    const cachedPage = localStorage.getItem(`${cacheKey}_page`);
 
     if (cached && ts) {
       const age = Date.now() - parseInt(ts);
       if (age < 3600000) {
-        const parsed = filterShipments(JSON.parse(cached) as AirShipment[]);
+        const parsed = JSON.parse(cached) as AirShipment[];
         setShipments(parsed);
         setDisplayedShipments(parsed);
         setShowingAll(false);
-        if (cachedPage) setCurrentPage(parseInt(cachedPage));
-        setHasMoreShipments(
-          parsed.length % ITEMS_PER_PAGE === 0 &&
-            parsed.length >= ITEMS_PER_PAGE,
-        );
+        setHasMoreShipments(false);
         setLoading(false);
         console.log(
           "Cargando desde caché - datos guardados hace",
@@ -545,11 +540,9 @@ function AirShipmentsView({
       }
       localStorage.removeItem(cacheKey);
       localStorage.removeItem(`${cacheKey}_timestamp`);
-      localStorage.removeItem(`${cacheKey}_page`);
     }
 
-    setCurrentPage(1);
-    fetchAirShipments(1, false);
+    fetchAirShipments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, activeUsername]);
 
@@ -644,11 +637,9 @@ function AirShipmentsView({
     const cacheKey = `airShipmentsCache_${activeUsername}`;
     localStorage.removeItem(cacheKey);
     localStorage.removeItem(`${cacheKey}_timestamp`);
-    localStorage.removeItem(`${cacheKey}_page`);
-    setCurrentPage(1);
     setShipments([]);
     setDisplayedShipments([]);
-    fetchAirShipments(1, false);
+    fetchAirShipments();
   };
 
   /*  Track Modal  */
@@ -1611,48 +1602,28 @@ function AirShipmentsView({
                                                 <InfoField
                                                   label="Tipo de Empaque"
                                                   value={(() => {
-                                                    if (
-                                                      shipment.subShipments &&
-                                                      Array.isArray(
-                                                        shipment.subShipments,
-                                                      )
-                                                    ) {
-                                                      const packageTypes =
-                                                        new Set<string>();
-                                                      for (const sub of shipment.subShipments) {
-                                                        if (
-                                                          sub.commodities &&
-                                                          Array.isArray(
-                                                            sub.commodities,
-                                                          )
-                                                        ) {
-                                                          sub.commodities.forEach(
-                                                            (c: {
-                                                              packageType?: {
-                                                                description?: string;
-                                                              };
-                                                            }) => {
-                                                              if (
-                                                                c.packageType
-                                                                  ?.description
-                                                              ) {
-                                                                packageTypes.add(
-                                                                  c.packageType
-                                                                    .description,
-                                                                );
-                                                              }
-                                                            },
-                                                          );
-                                                        }
+                                                    const comms =
+                                                      getAllCommodities(
+                                                        shipment,
+                                                      );
+                                                    const packageTypes =
+                                                      new Set<string>();
+                                                    for (const c of comms) {
+                                                      if (
+                                                        c.packageType
+                                                          ?.description
+                                                      ) {
+                                                        packageTypes.add(
+                                                          c.packageType
+                                                            .description,
+                                                        );
                                                       }
-                                                      return packageTypes.size >
-                                                        0
-                                                        ? Array.from(
-                                                            packageTypes,
-                                                          ).join(", ")
-                                                        : null;
                                                     }
-                                                    return null;
+                                                    return packageTypes.size > 0
+                                                      ? Array.from(
+                                                          packageTypes,
+                                                        ).join(", ")
+                                                      : null;
                                                   })()}
                                                 />
                                               </div>
@@ -1663,117 +1634,69 @@ function AirShipmentsView({
                                                 <InfoField
                                                   label="Piezas"
                                                   value={(() => {
-                                                    if (
-                                                      shipment.subShipments &&
-                                                      Array.isArray(
-                                                        shipment.subShipments,
-                                                      )
-                                                    ) {
-                                                      let total = 0;
-                                                      for (const sub of shipment.subShipments) {
-                                                        if (
-                                                          sub.commodities &&
-                                                          Array.isArray(
-                                                            sub.commodities,
-                                                          )
-                                                        ) {
-                                                          total +=
-                                                            sub.commodities.reduce(
-                                                              (
-                                                                sum: number,
-                                                                c: {
-                                                                  pieces?: number;
-                                                                },
-                                                              ) =>
-                                                                sum +
-                                                                (c.pieces || 0),
-                                                              0,
-                                                            );
-                                                        }
-                                                      }
-                                                      return total > 0
-                                                        ? total
-                                                        : null;
-                                                    }
-                                                    return null;
+                                                    const comms =
+                                                      getAllCommodities(
+                                                        shipment,
+                                                      );
+                                                    const total = comms.reduce(
+                                                      (
+                                                        sum: number,
+                                                        c: { pieces?: number },
+                                                      ) =>
+                                                        sum + (c.pieces || 0),
+                                                      0,
+                                                    );
+                                                    return total > 0
+                                                      ? total
+                                                      : null;
                                                   })()}
                                                 />
                                                 <InfoField
                                                   label="Peso Total"
                                                   value={(() => {
-                                                    if (
-                                                      shipment.subShipments &&
-                                                      Array.isArray(
-                                                        shipment.subShipments,
-                                                      )
-                                                    ) {
-                                                      let total = 0;
-                                                      for (const sub of shipment.subShipments) {
-                                                        if (
-                                                          sub.commodities &&
-                                                          Array.isArray(
-                                                            sub.commodities,
-                                                          )
-                                                        ) {
-                                                          total +=
-                                                            sub.commodities.reduce(
-                                                              (
-                                                                sum: number,
-                                                                c: {
-                                                                  totalWeightValue?: number;
-                                                                },
-                                                              ) =>
-                                                                sum +
-                                                                (c.totalWeightValue ||
-                                                                  0),
-                                                              0,
-                                                            );
-                                                        }
-                                                      }
-                                                      return total > 0
-                                                        ? `${total} kg`
-                                                        : null;
-                                                    }
-                                                    return null;
+                                                    const comms =
+                                                      getAllCommodities(
+                                                        shipment,
+                                                      );
+                                                    const total = comms.reduce(
+                                                      (
+                                                        sum: number,
+                                                        c: {
+                                                          totalWeightValue?: number;
+                                                        },
+                                                      ) =>
+                                                        sum +
+                                                        (c.totalWeightValue ||
+                                                          0),
+                                                      0,
+                                                    );
+                                                    return total > 0
+                                                      ? `${total} kg`
+                                                      : null;
                                                   })()}
                                                 />
                                                 <InfoField
                                                   label="Volumen Total"
                                                   value={(() => {
-                                                    if (
-                                                      shipment.subShipments &&
-                                                      Array.isArray(
-                                                        shipment.subShipments,
-                                                      )
-                                                    ) {
-                                                      let total = 0;
-                                                      for (const sub of shipment.subShipments) {
-                                                        if (
-                                                          sub.commodities &&
-                                                          Array.isArray(
-                                                            sub.commodities,
-                                                          )
-                                                        ) {
-                                                          total +=
-                                                            sub.commodities.reduce(
-                                                              (
-                                                                sum: number,
-                                                                c: {
-                                                                  totalVolumeValue?: number;
-                                                                },
-                                                              ) =>
-                                                                sum +
-                                                                (c.totalVolumeValue ||
-                                                                  0),
-                                                              0,
-                                                            );
-                                                        }
-                                                      }
-                                                      return total > 0
-                                                        ? `${total} m³`
-                                                        : null;
-                                                    }
-                                                    return null;
+                                                    const comms =
+                                                      getAllCommodities(
+                                                        shipment,
+                                                      );
+                                                    const total = comms.reduce(
+                                                      (
+                                                        sum: number,
+                                                        c: {
+                                                          totalVolumeValue?: number;
+                                                        },
+                                                      ) =>
+                                                        sum +
+                                                        (c.totalVolumeValue ||
+                                                          0),
+                                                      0,
+                                                    );
+                                                    return total > 0
+                                                      ? `${total} m³`
+                                                      : null;
                                                   })()}
                                                 />
                                                 <InfoField
