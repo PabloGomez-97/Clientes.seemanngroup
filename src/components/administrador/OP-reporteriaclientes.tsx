@@ -9,7 +9,6 @@ import OceanShipmentsView from "../shipments/OceanShipmentsView";
 import GroundShipmentsView from "../shipments/GroundShipmentsView";
 import EXWChargesView from "./Cobros-EXW/EXWChargesView";
 import QuotesView from "../Sidebar/QuotesView";
-import ShippingOrderView from "../Sidebar/ShippingOrder";
 import ClientTrackingView from "./ClientTrackingView";
 import { ReporteriaClientesProvider } from "../../contexts/ReporteriaClientesContext";
 import SettingsClient from "../settings/SettingsClient";
@@ -307,11 +306,6 @@ function OPReporteriaClientes() {
     const openTrackingTab = () => setActiveTab("tracking");
 
     const tabs = [
-      {
-        key: "shipping-orders" as const,
-        label: t("home.sidebar.shippingOrders"),
-        icon: "",
-      },
       { key: "air" as const, label: t("home.sidebar.airOperations"), icon: "" },
       {
         key: "ocean" as const,
@@ -473,7 +467,6 @@ function OPReporteriaClientes() {
             {activeTab === "air" && <AirShipmentsView />}
             {activeTab === "ocean" && <OceanShipmentsView />}
             {activeTab === "ground" && <GroundShipmentsView />}
-            {activeTab === "shipping-orders" && <ShippingOrderView />}
             {activeTab === "exw" && <EXWChargesView />}
             {activeTab === "quotes" && <QuotesView />}
             {activeTab === "tracking" && (
