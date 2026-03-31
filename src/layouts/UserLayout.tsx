@@ -217,6 +217,7 @@ function UserLayout() {
       >
         <Navbar
           accessToken={accessToken}
+          refreshAccessToken={refreshAccessToken}
           onLogout={handleLogout}
           toggleSidebar={toggleSidebar}
           isSidebarCollapsed={sidebarCollapsed}
