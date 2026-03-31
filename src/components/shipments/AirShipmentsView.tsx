@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useMemo, useRef } from "react";
+import LoadingTips from "./LoadingTips";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
@@ -291,18 +292,28 @@ function AirShipmentsView({
         const encodedName = encodeURIComponent(activeUsername);
         const acctResp = await linbisFetch(
           `https://api.linbis.com/accounts/list?searchTerm=${encodedName}&take=10`,
-          { method: "GET", headers: { Accept: "application/json", "Content-Type": "application/json" } },
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
           accessToken,
           refreshAccessToken,
         );
         if (acctResp.ok) {
-          const accounts: { id: number; name: string }[] = await acctResp.json();
+          const accounts: { id: number; name: string }[] =
+            await acctResp.json();
           const match = accounts.find(
             (acc) => acc.name.toUpperCase() === activeUsername.toUpperCase(),
           );
           if (match) {
             linbisAccountId = String(match.id);
-            localStorage.setItem(`linbis_account_id_${activeUsername}`, linbisAccountId);
+            localStorage.setItem(
+              `linbis_account_id_${activeUsername}`,
+              linbisAccountId,
+            );
           }
         }
         if (!linbisAccountId) {
@@ -1293,12 +1304,7 @@ function AirShipmentsView({
       )}
 
       {/* Loading */}
-      {loading && (
-        <div className="asv-empty">
-          <div className="asv-spinner" />
-          <p className="asv-empty__subtitle">Cargando air-shipments</p>
-        </div>
-      )}
+      {loading && <LoadingTips />}
 
       {/* Error */}
       {error && (

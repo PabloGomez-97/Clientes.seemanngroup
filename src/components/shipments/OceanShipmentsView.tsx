@@ -5,6 +5,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import LoadingTips from "./LoadingTips";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
@@ -559,18 +560,28 @@ function OceanShipmentsView({
         const encodedName = encodeURIComponent(activeUsername);
         const acctResp = await linbisFetch(
           `https://api.linbis.com/accounts/list?searchTerm=${encodedName}&take=10`,
-          { method: "GET", headers: { Accept: "application/json", "Content-Type": "application/json" } },
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
           accessToken,
           refreshAccessToken,
         );
         if (acctResp.ok) {
-          const accounts: { id: number; name: string }[] = await acctResp.json();
+          const accounts: { id: number; name: string }[] =
+            await acctResp.json();
           const match = accounts.find(
             (acc) => acc.name.toUpperCase() === activeUsername.toUpperCase(),
           );
           if (match) {
             linbisAccountId = String(match.id);
-            localStorage.setItem(`linbis_account_id_${activeUsername}`, linbisAccountId);
+            localStorage.setItem(
+              `linbis_account_id_${activeUsername}`,
+              linbisAccountId,
+            );
           }
         }
         if (!linbisAccountId) {
@@ -1555,12 +1566,7 @@ function OceanShipmentsView({
       )}
 
       {/* Loading */}
-      {loading && (
-        <div className="osv-empty">
-          <div className="osv-spinner" />
-          <p className="osv-empty__subtitle">Cargando ocean shipments...</p>
-        </div>
-      )}
+      {loading && <LoadingTips />}
 
       {/* Error */}
       {error && (

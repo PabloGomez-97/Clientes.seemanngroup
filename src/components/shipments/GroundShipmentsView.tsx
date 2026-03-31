@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import LoadingTips from "./LoadingTips";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
@@ -984,12 +985,7 @@ function GroundShipmentsView({
       )}
 
       {/* Loading */}
-      {loading && (
-        <div className="gsv-empty">
-          <div className="gsv-spinner" />
-          <p>Cargando operaciones terrestres...</p>
-        </div>
-      )}
+      {loading && <LoadingTips />}
 
       {/* Error */}
       {error && (
