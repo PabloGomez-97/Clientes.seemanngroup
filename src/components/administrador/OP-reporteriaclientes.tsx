@@ -72,13 +72,7 @@ function OPReporteriaClientes() {
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [showAllExw, setShowAllExw] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    | "air"
-    | "ocean"
-    | "ground"
-    | "quotes"
-    | "exw"
-    | "tracking"
-    | "settings"
+    "air" | "ocean" | "ground" | "quotes" | "exw" | "tracking" | "settings"
   >("air");
 
   // ── Fetch ALL clients list (via /api/admin/users, with cache) ──

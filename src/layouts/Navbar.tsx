@@ -21,11 +21,7 @@ interface NavbarProps {
   isSidebarCollapsed: boolean;
 }
 
-function Navbar({
-  onLogout,
-  toggleSidebar,
-  isSidebarCollapsed,
-}: NavbarProps) {
+function Navbar({ onLogout, toggleSidebar, isSidebarCollapsed }: NavbarProps) {
   const { user, logout, activeUsername } = useAuth();
   const navigate = useNavigate();
   const { t } = useTranslation();

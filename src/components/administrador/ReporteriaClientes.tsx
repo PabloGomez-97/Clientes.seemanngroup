@@ -75,13 +75,7 @@ function ReporteriaClientes() {
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [showAllExw, setShowAllExw] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    | "air"
-    | "ocean"
-    | "ground"
-    | "quotes"
-    | "exw"
-    | "tracking"
-    | "settings"
+    "air" | "ocean" | "ground" | "quotes" | "exw" | "tracking" | "settings"
   >("air");
 
   // ── Fetch clients list (with cache) ──
