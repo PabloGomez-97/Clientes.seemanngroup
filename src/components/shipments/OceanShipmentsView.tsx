@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import LoadingTips from "./LoadingTips";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -14,9 +8,7 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
 import {
   type OutletContext,
-  type Quote,
   InfoField,
-  QuoteModal,
 } from "../shipments/Handlers/Handleroceanshipments";
 import { MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS } from "./Handlers/mundogamingDummyOceanData";
 import { DocumentosSectionOcean } from "../Sidebar/Documents/DocumentosSectionOcean";
@@ -121,72 +113,6 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
   );
 }
 
-/* -- HBLITabContent (lazy loaded) --------------------------- */
-function HBLITabContent({
-  sogNumber,
-  accessToken,
-  refreshAccessToken,
-  hbliData,
-  onFetch,
-}: {
-  sogNumber: string;
-  accessToken: string;
-  refreshAccessToken: () => Promise<string>;
-  hbliData: HBLICacheEntry | undefined;
-  onFetch: (sogNumber: string) => void;
-}) {
-  useEffect(() => {
-    if (!hbliData?.fetched && !hbliData?.loading) {
-      onFetch(sogNumber);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  if (hbliData?.loading) {
-    return (
-      <div style={{ textAlign: "center", padding: 24, color: "#9ca3af" }}>
-        <div className="osv-spinner" />
-        <p style={{ marginTop: 8, fontSize: "0.8125rem" }}>
-          Buscando BL (HBLI)...
-        </p>
-      </div>
-    );
-  }
-
-  if (hbliData?.fetched) {
-    return (
-      <div className="osv-cards-grid" style={{ gridTemplateColumns: "1fr" }}>
-        <div className="osv-card">
-          <h4>BL / HBLI</h4>
-          <div className="osv-info-grid">
-            <InfoField
-              label="Número BL (HBLI)"
-              value={hbliData.hbliNumber || "-"}
-              fullWidth
-            />
-            {hbliData.description && (
-              <InfoField
-                label="Descripción"
-                value={hbliData.description}
-                fullWidth
-              />
-            )}
-            {hbliData.containerNumber && (
-              <InfoField
-                label="Contenedor"
-                value={hbliData.containerNumber}
-                fullWidth
-              />
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-}
-
 /* ===========================================================
    MAIN COMPONENT
    =========================================================== */
@@ -224,11 +150,6 @@ function OceanShipmentsView({
   // Search / filter modal
   const [showSearchModal, setShowSearchModal] = useState(false);
 
-  // Quote modal
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
-  const [showQuoteModal, setShowQuoteModal] = useState(false);
-  const [loadingQuote, setLoadingQuote] = useState(false);
-
   // Track modal
   const [showTrackModal, setShowTrackModal] = useState(false);
   const [trackShipment, setTrackShipment] = useState<OceanShippingOrder | null>(
@@ -247,9 +168,6 @@ function OceanShipmentsView({
   const [hbliCache, setHbliCache] = useState<Record<string, HBLICacheEntry>>(
     {},
   );
-
-  // Embed
-  const [, setEmbedQuery] = useState<string | null>(null);
 
   const [showingAll, setShowingAll] = useState(false);
 
@@ -327,41 +245,6 @@ function OceanShipmentsView({
       });
     } catch {
       return dateString;
-    }
-  };
-
-  /* -- Quote fetch ------------------------------------------ */
-  const fetchQuoteByNumber = async (quoteNumber: string) => {
-    if (!accessToken) return;
-    setLoadingQuote(true);
-    try {
-      const response = await linbisFetch(
-        "https://api.linbis.com/Quotes",
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        },
-        accessToken,
-        refreshAccessToken,
-      );
-      if (!response.ok) throw new Error(`Error ${response.status}`);
-      const data = await response.json();
-      const quotesArray: Quote[] = Array.isArray(data) ? data : [];
-      const found = quotesArray.find((q) => q.number === quoteNumber);
-      if (found) {
-        setSelectedQuote(found);
-        setShowQuoteModal(true);
-      } else {
-        alert(`No se encontró la cotización ${quoteNumber}`);
-      }
-    } catch (err) {
-      console.error("Error al cargar cotización:", err);
-      alert("Error al cargar la cotización");
-    } finally {
-      setLoadingQuote(false);
     }
   };
 
@@ -746,14 +629,12 @@ function OceanShipmentsView({
   const toggleAccordion = (shipmentId: string | number) => {
     if (expandedShipmentId === shipmentId) {
       setExpandedShipmentId(null);
-      setEmbedQuery(null);
     } else {
       setExpandedShipmentId(shipmentId);
       const s = displayedOceanShipments.find((sh) => {
         const id = sh.id || sh.number;
         return id === shipmentId;
       });
-      setEmbedQuery(s?.number || null);
       if (s?.number) fetchHBLIForShipment(s.number);
     }
   };
@@ -1281,9 +1162,6 @@ function OceanShipmentsView({
             </svg>
             Actualizar
           </button>
-          {loadingQuote && (
-            <span className="osv-loading-text">Cargando...</span>
-          )}
         </div>
       </div>
 
@@ -2004,17 +1882,6 @@ function OceanShipmentsView({
             </div>
           </div>
         </div>
-      )}
-
-      {/* Quote Modal */}
-      {showQuoteModal && (
-        <QuoteModal
-          quote={selectedQuote}
-          onClose={() => {
-            setShowQuoteModal(false);
-            setSelectedQuote(null);
-          }}
-        />
       )}
 
       {/* Track Modal */}

@@ -106,9 +106,6 @@ function AirShipmentsView({
   >(null);
 
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMoreShipments, setHasMoreShipments] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(ITEMS_PER_PAGE);
   const [tablePage, setTablePage] = useState(1);
 
@@ -135,9 +132,6 @@ function AirShipmentsView({
 
   // Already-tracked AWBs (from ShipsGo)
   const [trackedAwbs, setTrackedAwbs] = useState<Set<string>>(new Set());
-
-  // Embed
-  const [embedQuery, setEmbedQuery] = useState<string | null>(null);
 
   // Filter fields
   const [filterNumber, setFilterNumber] = useState("");
@@ -215,34 +209,6 @@ function AirShipmentsView({
     } catch {
       return displayDate;
     }
-  };
-
-  const filterShipments = (shipments: AirShipment[]): AirShipment[] => {
-    const groups = new Map<string, AirShipment[]>();
-    for (const s of shipments) {
-      const key = String(s.customerReference || "");
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(s);
-    }
-
-    const result: AirShipment[] = [];
-    for (const group of groups.values()) {
-      if (group.length > 1) {
-        // Excluir los que empiezan con SOG
-        result.push(
-          ...group.filter(
-            (s) =>
-              !String(s.number ?? "")
-                .toUpperCase()
-                .startsWith("SOG"),
-          ),
-        );
-      } else {
-        // Incluir el único
-        result.push(...group);
-      }
-    }
-    return result;
   };
 
   /*  API  */
@@ -368,7 +334,6 @@ function AirShipmentsView({
       setShipments(sorted);
       setDisplayedShipments(sorted);
       setShowingAll(false);
-      setHasMoreShipments(false);
       localStorage.setItem(cacheKey, JSON.stringify(sorted));
       localStorage.setItem(
         `${cacheKey}_timestamp`,
@@ -379,12 +344,7 @@ function AirShipmentsView({
       console.error("Error completo:", err);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
-  };
-
-  const loadMoreShipments = () => {
-    fetchAirShipments();
   };
 
   const fetchParentShipmentNumber = async (
@@ -449,14 +409,12 @@ function AirShipmentsView({
   const toggleAccordion = (shipmentId: string | number) => {
     if (expandedShipmentId === shipmentId) {
       setExpandedShipmentId(null);
-      setEmbedQuery(null);
     } else {
       setExpandedShipmentId(shipmentId);
       const s = displayedShipments.find((sh) => {
         const id = sh.id || sh.number;
         return id === shipmentId;
       });
-      setEmbedQuery(s?.number || null);
       fetchParentShipmentNumber(s?.id);
     }
   };
@@ -506,7 +464,6 @@ function AirShipmentsView({
       });
       setShipments(dummySorted);
       setDisplayedShipments(dummySorted);
-      setHasMoreShipments(false);
       setLoading(false);
       console.log(
         "MundoGaming: cargando datos dummy (",
@@ -527,7 +484,6 @@ function AirShipmentsView({
         setShipments(parsed);
         setDisplayedShipments(parsed);
         setShowingAll(false);
-        setHasMoreShipments(false);
         setLoading(false);
         console.log(
           "Cargando desde caché - datos guardados hace",
@@ -626,7 +582,6 @@ function AirShipmentsView({
       });
       setShipments(dummySorted);
       setDisplayedShipments(dummySorted);
-      setHasMoreShipments(false);
       setShowingAll(false);
       console.log("MundoGaming: datos dummy recargados");
       return;
@@ -1023,7 +978,6 @@ function AirShipmentsView({
             </svg>
             Actualizar
           </button>
-          {loadingMore && <span className="asv-loading-text">Cargando</span>}
         </div>
       </div>
 
@@ -1782,24 +1736,7 @@ function AirShipmentsView({
 
           {/* Table footer */}
           <div className="asv-table-footer">
-            <div className="asv-table-footer__left">
-              {loadingMore && (
-                <span className="asv-loading-text">Cargando...</span>
-              )}
-              {hasMoreShipments && !loadingMore && (
-                <button
-                  className="asv-btn asv-btn--primary"
-                  onClick={loadMoreShipments}
-                  style={{
-                    fontSize: "12px",
-                    padding: "4px 8px",
-                    height: "auto",
-                  }}
-                >
-                  Cargar más
-                </button>
-              )}
-            </div>
+            <div className="asv-table-footer__left" />
             <div className="asv-table-footer__right">
               <span className="asv-pagination-label">Filas por pagina:</span>
               <select
