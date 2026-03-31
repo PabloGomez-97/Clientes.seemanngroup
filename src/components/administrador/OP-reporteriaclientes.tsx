@@ -79,7 +79,6 @@ function OPReporteriaClientes() {
     | "exw"
     | "tracking"
     | "settings"
-    | "shipping-orders"
   >("air");
 
   // ── Fetch ALL clients list (via /api/admin/users, with cache) ──

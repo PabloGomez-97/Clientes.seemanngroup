@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
-import { linbisFetch } from "../services/linbisFetch";
 
 // Design tokens - AWS/Azure inspired
 const colors = {
@@ -17,16 +16,12 @@ const colors = {
 };
 
 interface NavbarProps {
-  accessToken: string;
-  refreshAccessToken: () => Promise<string>;
   onLogout: () => void;
   toggleSidebar: () => void;
   isSidebarCollapsed: boolean;
 }
 
 function Navbar({
-  accessToken,
-  refreshAccessToken,
   onLogout,
   toggleSidebar,
   isSidebarCollapsed,
@@ -66,12 +61,6 @@ function Navbar({
     },
   ]);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [linbisAccountId, setLinbisAccountId] = useState<number | null>(() => {
-    const cached = localStorage.getItem(
-      `linbis_account_id_${activeUsername || username}`,
-    );
-    return cached ? Number(cached) : null;
-  });
 
   // User data
   const username = activeUsername || user?.username || "Usuarios";
@@ -103,56 +92,6 @@ function Navbar({
   };
 
   const ejecutivoImage = getEjecutivoImage(ejecutivo?.nombre);
-
-  // Fetch Linbis account ID on mount
-  useEffect(() => {
-    const target = activeUsername || username;
-    if (!target || target === "Usuarios" || !accessToken) return;
-
-    // Check cache first
-    const cached = localStorage.getItem(`linbis_account_id_${target}`);
-    if (cached) {
-      setLinbisAccountId(Number(cached));
-      return;
-    }
-
-    const fetchAccountId = async () => {
-      try {
-        const encodedName = encodeURIComponent(target);
-        const response = await linbisFetch(
-          `https://api.linbis.com/accounts/list?searchTerm=${encodedName}&take=10`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
-          accessToken,
-          refreshAccessToken,
-        );
-
-        if (!response.ok) return;
-
-        const accounts: { id: number; name: string }[] = await response.json();
-        const exactMatch = accounts.find(
-          (acc) => acc.name.toUpperCase() === target.toUpperCase(),
-        );
-
-        if (exactMatch) {
-          setLinbisAccountId(exactMatch.id);
-          localStorage.setItem(
-            `linbis_account_id_${target}`,
-            String(exactMatch.id),
-          );
-        }
-      } catch (err) {
-        console.error("Error fetching Linbis account ID:", err);
-      }
-    };
-
-    fetchAccountId();
-  }, [activeUsername, username, accessToken]);
 
   const handleLogout = () => {
     logout();
@@ -567,17 +506,6 @@ function Navbar({
                       >
                         {email}
                       </div>
-                      {linbisAccountId && (
-                        <div
-                          style={{
-                            fontSize: "11px",
-                            color: "#9ca3af",
-                            marginTop: "2px",
-                          }}
-                        >
-                          Número interno: {linbisAccountId}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>

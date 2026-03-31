@@ -82,7 +82,6 @@ function ReporteriaClientes() {
     | "exw"
     | "tracking"
     | "settings"
-    | "shipping-orders"
   >("air");
 
   // ── Fetch clients list (with cache) ──

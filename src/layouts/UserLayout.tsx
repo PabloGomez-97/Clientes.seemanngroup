@@ -216,8 +216,6 @@ function UserLayout() {
         style={{ overflow: "hidden" }}
       >
         <Navbar
-          accessToken={accessToken}
-          refreshAccessToken={refreshAccessToken}
           onLogout={handleLogout}
           toggleSidebar={toggleSidebar}
           isSidebarCollapsed={sidebarCollapsed}
