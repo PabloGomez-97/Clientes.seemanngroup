@@ -551,49 +551,10 @@ function OceanShipmentsView({
     try {
       const cacheKey = `oceanShipmentsCache_${activeUsername}`;
 
-      // Get the Linbis account ID (ConsigneeId) from localStorage, or fetch it
-      let linbisAccountId = localStorage.getItem(
-        `linbis_account_id_${activeUsername}`,
-      );
-      if (!linbisAccountId) {
-        // Fetch it from Linbis (same logic as Navbar)
-        const encodedName = encodeURIComponent(activeUsername);
-        const acctResp = await linbisFetch(
-          `https://api.linbis.com/accounts/list?searchTerm=${encodedName}&take=10`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
-          accessToken,
-          refreshAccessToken,
-        );
-        if (acctResp.ok) {
-          const accounts: { id: number; name: string }[] =
-            await acctResp.json();
-          const match = accounts.find(
-            (acc) => acc.name.toUpperCase() === activeUsername.toUpperCase(),
-          );
-          if (match) {
-            linbisAccountId = String(match.id);
-            localStorage.setItem(
-              `linbis_account_id_${activeUsername}`,
-              linbisAccountId,
-            );
-          }
-        }
-        if (!linbisAccountId) {
-          throw new Error(
-            "No se encontró el ID de cuenta Linbis para este cliente.",
-          );
-        }
-      }
-
-      // Step 1: Fetch shipping orders filtered by ConsigneeId
+      // Step 1: Fetch shipping orders filtered by ConsigneeName
+      const encodedName = encodeURIComponent(activeUsername);
       const soResponse = await linbisFetch(
-        `https://api.linbis.com/api/shipping-orders?ConsigneeId=${linbisAccountId}&PageNumber=1&PageSize=9999`,
+        `https://api.linbis.com/api/shipping-orders?ConsigneeName=${encodedName}&PageNumber=1&PageSize=999`,
         {
           method: "GET",
           headers: {
@@ -615,7 +576,7 @@ function OceanShipmentsView({
       const userOrders: any[] = soData.shippingOrders?.items ?? [];
 
       console.log(
-        `Shipping orders: ${userOrders.length} para ${activeUsername} (ConsigneeId=${linbisAccountId})`,
+        `Shipping orders: ${userOrders.length} para ${activeUsername} (ConsigneeName)`,
       );
 
       // Step 2: For each order, check if it's an air shipment via /air-shipments/number
