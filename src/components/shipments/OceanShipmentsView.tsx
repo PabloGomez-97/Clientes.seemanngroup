@@ -550,14 +550,34 @@ function OceanShipmentsView({
     try {
       const cacheKey = `oceanShipmentsCache_${activeUsername}`;
 
-      // Get the Linbis account ID (ConsigneeId) from localStorage
-      const linbisAccountId = localStorage.getItem(
+      // Get the Linbis account ID (ConsigneeId) from localStorage, or fetch it
+      let linbisAccountId = localStorage.getItem(
         `linbis_account_id_${activeUsername}`,
       );
       if (!linbisAccountId) {
-        throw new Error(
-          "No se encontró el ID de cuenta Linbis. Recarga la página.",
+        // Fetch it from Linbis (same logic as Navbar)
+        const encodedName = encodeURIComponent(activeUsername);
+        const acctResp = await linbisFetch(
+          `https://api.linbis.com/accounts/list?searchTerm=${encodedName}&take=10`,
+          { method: "GET", headers: { Accept: "application/json", "Content-Type": "application/json" } },
+          accessToken,
+          refreshAccessToken,
         );
+        if (acctResp.ok) {
+          const accounts: { id: number; name: string }[] = await acctResp.json();
+          const match = accounts.find(
+            (acc) => acc.name.toUpperCase() === activeUsername.toUpperCase(),
+          );
+          if (match) {
+            linbisAccountId = String(match.id);
+            localStorage.setItem(`linbis_account_id_${activeUsername}`, linbisAccountId);
+          }
+        }
+        if (!linbisAccountId) {
+          throw new Error(
+            "No se encontró el ID de cuenta Linbis para este cliente.",
+          );
+        }
       }
 
       // Step 1: Fetch shipping orders filtered by ConsigneeId
