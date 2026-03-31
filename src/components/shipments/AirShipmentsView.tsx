@@ -344,7 +344,11 @@ function AirShipmentsView({
             if (resp.status === 404) return null;
             if (!resp.ok) return null;
             const data = await resp.json();
-            return { ...data, executedAt: order.executedAt ?? null };
+            return {
+              ...data,
+              executedAt: order.executedAt ?? null,
+              trackingNumber: order.trackingNumber ?? null,
+            };
           }),
         );
 
@@ -653,6 +657,9 @@ function AirShipmentsView({
   const getTrackAwbNumber = (shipment: AirShipment | null) => {
     if (!shipment) return "";
 
+    // Use trackingNumber from the shipping-orders API
+    if (shipment.trackingNumber) return shipment.trackingNumber;
+
     const shipmentId = shipment.id;
     if (shipmentId !== undefined && shipmentId !== null) {
       const parentNumber = parentShipmentNumbers[shipmentId];
@@ -669,12 +676,17 @@ function AirShipmentsView({
   };
 
   const getDisplayedTrackAwbNumber = (shipment: AirShipment) => {
+    // Use trackingNumber from the shipping-orders API
+    if (shipment.trackingNumber) return shipment.trackingNumber;
+
     if (shipment.id === undefined || shipment.id === null) return "-";
     return parentShipmentNumbers[shipment.id] ?? "Cargando...";
   };
 
-  const isTrackAwbReady = (shipment: AirShipment) =>
-    getDisplayedTrackAwbNumber(shipment) !== "Cargando...";
+  const isTrackAwbReady = (shipment: AirShipment) => {
+    if (shipment.trackingNumber) return true;
+    return getDisplayedTrackAwbNumber(shipment) !== "Cargando...";
+  };
 
   const openTrackModal = (shipment: AirShipment) => {
     fetchParentShipmentNumber(shipment.id);

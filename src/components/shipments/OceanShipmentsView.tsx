@@ -35,8 +35,6 @@ const API_BASE_URL =
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
-/* -- Types -------------------------------------------------- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface OceanShippingOrder {
   id: number;
   number: string;
@@ -660,8 +658,6 @@ function OceanShipmentsView({
 
     // MundoGaming dummy account
     if (activeUsername === "MundoGaming") {
-      // Map old format to new OceanShippingOrder format
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped: OceanShippingOrder[] =
         MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS.map((s: any) => ({
           id: s.id || 0,
@@ -773,6 +769,9 @@ function OceanShipmentsView({
   const getTrackOceanNumber = (shipment: OceanShippingOrder | null) => {
     if (!shipment) return "";
 
+    // Use trackingNumber from the shipping-orders API
+    if (shipment.trackingNumber) return shipment.trackingNumber;
+
     // Check HBLI cache for container number
     const hbli = hbliCache[shipment.number];
     if (hbli?.containerNumber) return hbli.containerNumber;
@@ -785,6 +784,9 @@ function OceanShipmentsView({
   };
 
   const getDisplayedTrackingNumber = (shipment: OceanShippingOrder) => {
+    // Use trackingNumber from the shipping-orders API
+    if (shipment.trackingNumber) return shipment.trackingNumber;
+
     const hbli = hbliCache[shipment.number];
     if (hbli?.loading) return "Cargando...";
     if (hbli?.fetched && hbli.containerNumber) return hbli.containerNumber;
@@ -795,6 +797,7 @@ function OceanShipmentsView({
   };
 
   const isTrackingReady = (shipment: OceanShippingOrder) => {
+    if (shipment.trackingNumber) return true;
     const hbli = hbliCache[shipment.number];
     if (hbli?.loading) return false;
     const num = getTrackOceanNumber(shipment);
