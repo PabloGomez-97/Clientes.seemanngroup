@@ -955,7 +955,6 @@ function OceanShipmentsView({
 
     // MundoGaming dummy
     if (activeUsername === "MundoGaming") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped: OceanShippingOrder[] =
         MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS.map((s: any) => ({
           id: s.id || 0,
