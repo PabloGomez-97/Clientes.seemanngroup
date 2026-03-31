@@ -282,9 +282,19 @@ function AirShipmentsView({
     try {
       const cacheKey = `airShipmentsCache_${activeUsername}`;
 
-      // Step 1: Fetch all shipping orders
+      // Get the Linbis account ID (ConsigneeId) from localStorage
+      const linbisAccountId = localStorage.getItem(
+        `linbis_account_id_${activeUsername}`,
+      );
+      if (!linbisAccountId) {
+        throw new Error(
+          "No se encontró el ID de cuenta Linbis. Recarga la página.",
+        );
+      }
+
+      // Step 1: Fetch shipping orders filtered by ConsigneeId
       const soResponse = await linbisFetch(
-        `https://api.linbis.com/api/shipping-orders?SearchText=&PageNumber=1&PageSize=9999`,
+        `https://api.linbis.com/api/shipping-orders?ConsigneeId=${linbisAccountId}&PageNumber=1&PageSize=9999`,
         {
           method: "GET",
           headers: {
@@ -303,19 +313,10 @@ function AirShipmentsView({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const soData: any = await soResponse.json();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const allOrders: any[] = soData.shippingOrders?.items ?? [];
-
-      // Filter by consignee name or code matching activeUsername
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const userOrders = allOrders.filter((order: any) => {
-        const name = (order.consignee?.name || "").toLowerCase();
-        const code = (order.consignee?.code || "").toLowerCase();
-        const user = activeUsername.toLowerCase();
-        return name === user || code === user;
-      });
+      const userOrders: any[] = soData.shippingOrders?.items ?? [];
 
       console.log(
-        `Shipping orders: ${allOrders.length} total, ${userOrders.length} para ${activeUsername}`,
+        `Shipping orders: ${userOrders.length} para ${activeUsername} (ConsigneeId=${linbisAccountId})`,
       );
 
       // Step 2: For each order, check if it's an air shipment via /air-shipments/number
