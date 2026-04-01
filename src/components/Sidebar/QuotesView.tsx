@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { useTranslation } from "react-i18next";
@@ -207,12 +207,14 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
 
 function QuotesView({
   documentsOnly = false,
-}: { documentsOnly?: boolean } = {}) {
+  initialQuoteFilter,
+}: { documentsOnly?: boolean; initialQuoteFilter?: string } = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const { user, token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -242,6 +244,10 @@ function QuotesView({
   // Sorting
   const [sortColumn, setSortColumn] = useState<string>("number");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // Tracks whether an external filter (from initial prop / navigation state) is active
+  // Using a ref avoids stale-closure issues inside the quick-search setTimeout
+  const externalFilterApplied = React.useRef(false);
 
   // Search
   const [quickSearch, setQuickSearch] = useState("");
@@ -498,10 +504,14 @@ function QuotesView({
     const t = setTimeout(() => {
       const term = quickSearch.trim().toLowerCase();
       if (!term) {
+        // If an external (navigation/prop) filter is active, don't wipe it out
+        if (externalFilterApplied.current) return;
         setDisplayedQuotes(quotes);
         setShowingAll(false);
         return;
       }
+      // User is now driving quick search manually — release the external filter lock
+      externalFilterApplied.current = false;
       const results = quotes.filter((q) => {
         const number = (q.number || "").toLowerCase();
         const origin = (q.origin || "").toLowerCase();
@@ -519,6 +529,31 @@ function QuotesView({
     }, 250);
     return () => clearTimeout(t);
   }, [quickSearch, quotes]);
+
+  /* -- Auto-apply initial quote filter (from navigation) ---- */
+  useEffect(() => {
+    const filterFromProp = initialQuoteFilter;
+    const filterFromState = (location.state as { quoteFilter?: string })
+      ?.quoteFilter;
+    const quoteFilter = filterFromProp || filterFromState;
+    if (!quoteFilter || quotes.length === 0) return;
+
+    // Lock: prevent the quick-search effect from resetting this filter
+    externalFilterApplied.current = true;
+    setFilterNumber(quoteFilter);
+    const term = quoteFilter.trim().toLowerCase();
+    const filtered = quotes.filter((q) =>
+      (q.number || "").toLowerCase().includes(term),
+    );
+    setDisplayedQuotes(filtered);
+    setShowingAll(true);
+    setTablePage(1);
+
+    // Clear location state so it doesn't re-apply on re-renders
+    if (filterFromState) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [initialQuoteFilter, quotes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* -- Unique origins/destinations -------------------------- */
   const uniqueOrigins = useMemo(
@@ -704,6 +739,7 @@ function QuotesView({
   };
 
   const clearSearch = useCallback(() => {
+    externalFilterApplied.current = false;
     setQuickSearch("");
     setSearchNumber("");
     setSearchDate("");

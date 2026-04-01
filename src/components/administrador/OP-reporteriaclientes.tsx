@@ -95,6 +95,9 @@ function OPReporteriaClientes() {
   const [activeTab, setActiveTab] = useState<
     "air" | "ocean" | "ground" | "quotes" | "exw" | "tracking" | "settings"
   >("air");
+  const [quoteFilterNumber, setQuoteFilterNumber] = useState<
+    string | undefined
+  >();
 
   // ── Fetch ALL clients list (via /api/admin/users, with cache) ──
   useEffect(() => {
@@ -325,6 +328,10 @@ function OPReporteriaClientes() {
   // ── Client Detail View ──
   if (selectedClient) {
     const openTrackingTab = () => setActiveTab("tracking");
+    const openQuotesTab = (quoteNumber?: string) => {
+      setQuoteFilterNumber(quoteNumber);
+      setActiveTab("quotes");
+    };
 
     const tabs = [
       { key: "air" as const, label: t("home.sidebar.airOperations"), icon: "" },
@@ -498,13 +505,17 @@ function OPReporteriaClientes() {
           ))}
         </div>
 
-        <ReporteriaClientesProvider value={{ openTrackingTab }}>
+        <ReporteriaClientesProvider
+          value={{ openTrackingTab, openQuotesTab, quoteFilterNumber }}
+        >
           <ClientOverrideProvider value={selectedClient.username}>
             {activeTab === "air" && <AirShipmentsView />}
             {activeTab === "ocean" && <OceanShipmentsView />}
             {activeTab === "ground" && <GroundShipmentsView />}
             {activeTab === "exw" && <EXWChargesView />}
-            {activeTab === "quotes" && <QuotesView />}
+            {activeTab === "quotes" && (
+              <QuotesView initialQuoteFilter={quoteFilterNumber} />
+            )}
             {activeTab === "tracking" && (
               <ClientTrackingView clientUsername={selectedClient.username} />
             )}

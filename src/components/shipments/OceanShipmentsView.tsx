@@ -77,6 +77,12 @@ interface HBLICacheEntry {
   containerNumber: string | null;
 }
 
+interface QuoteNumberCacheEntry {
+  loading: boolean;
+  fetched: boolean;
+  quoteNumber: string | null;
+}
+
 /* -- DetailTabs  -------------------------------------------- */
 interface TabDef {
   key: string;
@@ -168,6 +174,11 @@ function OceanShipmentsView({
   const [hbliCache, setHbliCache] = useState<Record<string, HBLICacheEntry>>(
     {},
   );
+
+  // Quote number cache
+  const [quoteNumberCache, setQuoteNumberCache] = useState<
+    Record<string, QuoteNumberCacheEntry>
+  >({});
 
   const [showingAll, setShowingAll] = useState(false);
 
@@ -421,6 +432,115 @@ function OceanShipmentsView({
     [accessToken, refreshAccessToken, hbliCache],
   );
 
+  /* -- Quote number fetch (lazy, triggered by accordion) ---- */
+  const fetchQuoteNumberForShipment = useCallback(
+    async (sogNumber: string) => {
+      if (!accessToken) return;
+      if (
+        quoteNumberCache[sogNumber]?.fetched ||
+        quoteNumberCache[sogNumber]?.loading
+      )
+        return;
+
+      setQuoteNumberCache((prev) => ({
+        ...prev,
+        [sogNumber]: { loading: true, fetched: false, quoteNumber: null },
+      }));
+
+      try {
+        // Step 1: Get commodities for this SOG number to find trackingNumber
+        const resp1 = await linbisFetch(
+          `https://api.linbis.com/commodities?Number=${encodeURIComponent(sogNumber)}&PageNumber=1&PageSize=5`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+          accessToken,
+          refreshAccessToken,
+        );
+
+        if (!resp1.ok) {
+          setQuoteNumberCache((prev) => ({
+            ...prev,
+            [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
+          }));
+          return;
+        }
+
+        const data1 = await resp1.json();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const items1: any[] = data1.items || [];
+        // Find first trackingNumber
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const trackingNumber = items1.find(
+          (i: any) => i.trackingNumber,
+        )?.trackingNumber;
+
+        if (!trackingNumber) {
+          setQuoteNumberCache((prev) => ({
+            ...prev,
+            [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
+          }));
+          return;
+        }
+
+        // Step 2: Search commodities by trackingNumber to find QUO moduleNumber
+        const resp2 = await linbisFetch(
+          `https://api.linbis.com/commodities/search/${encodeURIComponent(trackingNumber)}?pageNumber=1&pageSize=50`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+          accessToken,
+          refreshAccessToken,
+        );
+
+        if (!resp2.ok) {
+          setQuoteNumberCache((prev) => ({
+            ...prev,
+            [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
+          }));
+          return;
+        }
+
+        const data2 = await resp2.json();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const items2: any[] = data2.items || [];
+
+        // Find the first moduleNumber that starts with "QUO"
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const quoteItem = items2.find(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (item: any) =>
+            typeof item.moduleNumber === "string" &&
+            item.moduleNumber.toUpperCase().startsWith("QUO"),
+        );
+
+        setQuoteNumberCache((prev) => ({
+          ...prev,
+          [sogNumber]: {
+            loading: false,
+            fetched: true,
+            quoteNumber: quoteItem?.moduleNumber || null,
+          },
+        }));
+      } catch (err) {
+        console.error("Error fetching quote number:", err);
+        setQuoteNumberCache((prev) => ({
+          ...prev,
+          [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
+        }));
+      }
+    },
+    [accessToken, refreshAccessToken, quoteNumberCache],
+  );
+
   /* -- API: Fetch ocean shipments via shipping-orders ------- */
   const fetchOceanShipments = async () => {
     if (!accessToken) {
@@ -604,6 +724,7 @@ function OceanShipmentsView({
 
   useEffect(() => {
     setHbliCache({});
+    setQuoteNumberCache({});
     setTrackedOceanNumbers(new Set());
   }, [activeUsername]);
 
@@ -639,7 +760,10 @@ function OceanShipmentsView({
         const id = sh.id || sh.number;
         return id === shipmentId;
       });
-      if (s?.number) fetchHBLIForShipment(s.number);
+      if (s?.number) {
+        fetchHBLIForShipment(s.number);
+        fetchQuoteNumberForShipment(s.number);
+      }
     }
   };
 
@@ -1583,6 +1707,82 @@ function OceanShipmentsView({
                                                 label="Booking Number"
                                                 value={shipment.bookingNumber}
                                               />
+                                              {/* Quote number (fetched from commodities) */}
+                                              {(() => {
+                                                const qnEntry =
+                                                  quoteNumberCache[
+                                                    shipment.number
+                                                  ];
+                                                if (qnEntry?.loading)
+                                                  return (
+                                                    <InfoField
+                                                      label="Número de Cotización"
+                                                      value="Cargando..."
+                                                    />
+                                                  );
+                                                if (qnEntry?.quoteNumber)
+                                                  return (
+                                                    <div
+                                                      style={{
+                                                        marginBottom: "12px",
+                                                        flex: "1 1 48%",
+                                                        minWidth: "200px",
+                                                      }}
+                                                    >
+                                                      <div
+                                                        style={{
+                                                          fontSize: "0.7rem",
+                                                          fontWeight: "600",
+                                                          color: "#6b7280",
+                                                          textTransform:
+                                                            "uppercase",
+                                                          letterSpacing:
+                                                            "0.5px",
+                                                          marginBottom: "4px",
+                                                        }}
+                                                      >
+                                                        Número de Cotización
+                                                      </div>
+                                                      <div
+                                                        style={{
+                                                          fontSize: "0.875rem",
+                                                          color:
+                                                            "var(--primary-color, #ff6200)",
+                                                          cursor: "pointer",
+                                                          fontWeight: 600,
+                                                          wordBreak:
+                                                            "break-word",
+                                                        }}
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          const qn =
+                                                            qnEntry.quoteNumber!;
+                                                          if (
+                                                            reporteriaClientesContext
+                                                          ) {
+                                                            reporteriaClientesContext.openQuotesTab(
+                                                              qn,
+                                                            );
+                                                          } else {
+                                                            navigate(
+                                                              "/quotes",
+                                                              {
+                                                                state: {
+                                                                  quoteFilter:
+                                                                    qn,
+                                                                },
+                                                              },
+                                                            );
+                                                          }
+                                                        }}
+                                                        title="Ver cotización"
+                                                      >
+                                                        {qnEntry.quoteNumber}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                return null;
+                                              })()}
                                             </div>
                                           </div>
                                           <div className="asv-card">
