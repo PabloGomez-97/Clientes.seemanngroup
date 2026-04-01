@@ -47,6 +47,30 @@ const tips: string[] = [
   "El aeropuerto de Memphis es el mayor hub de carga aérea del mundo, solo por la decisión de FedEx de instalar allí su base de operaciones.",
   "Una de las rutas terrestres más largas del mundo es la ruta de la seda moderna: trenes de carga de China a Europa que recorren más de 11,000 km.",
   "El Canal de Panamá fue ampliado en 2016 para barcos de hasta 14,000 contenedores. Antes del canal, la alternativa era rodear toda América del Sur.",
+  "Ya existen sistemas de pago automatizado de aranceles aduaneros en algunos puertos asiáticos donde el barco ni siquiera necesita detenerse para declarar su carga.",
+  "Rolls-Royce diseñó un sistema de navegación autónoma para barcos que usa cámaras y radar en lugar de tripulación en el puente.",
+  // Canal de Suez
+  "Ever Given (marzo 2021): el barco más famoso de la historia reciente. 400 metros atascados en diagonal durante 6 días. Bloqueó USD 9,600 millones diarios en comercio. El meme del excavador pequeño al lado fue visto por 500 millones de personas.",
+  "Ataques Houthi (2024): rebeldes yemeníes comenzaron a atacar barcos en el Mar Rojo con drones y misiles. Más de 500 barcos desviaron su ruta, evitando Suez y rodeando África. El flete mundial subió un 300% en semanas.",
+  "Sequía del Canal de Panamá (2023–2024): niveles históricos bajos de agua obligaron a reducir el número de barcos por día de 38 a 18. Había filas de hasta 160 barcos esperando turno. Algunos pagaron hasta USD 4 millones por saltar la fila.",
+
+  // Colapsos portuarios
+  "Puerto de Los Ángeles colapsado (2021): en el peak de la pandemia, había 109 barcos esperando ancla afuera del puerto. Algunos esperaron más de 3 semanas. Las estanterías vacías en EE.UU. fueron portada de todos los diarios del mundo.",
+  "Puerto de Shanghái cerrado por COVID (2022): China cerró el puerto más grande del mundo durante semanas por un brote. Se acumularon más de 500 barcos en espera. El impacto se sintió en Chile 6 semanas después cuando llegaron los contenedores rezagados todos juntos.",
+  "Huelga portuaria en EE.UU. (octubre 2024): los estibadores de la costa este amenazaron con paralizar 36 puertos simultáneamente. La Casa Blanca intervino directamente. Se estimaba un costo de USD 5,000 millones por día si el paro se concretaba.",
+  "Puerto de Beirut (agosto 2020): la explosión que destruyó medio Beirut fue causada por 2,750 toneladas de nitrato de amonio almacenadas ilegalmente en el puerto durante 6 años. Documentación mal gestionada, nadie reclamó la carga.",
+
+  // Naufragios y accidentes
+  "El Wakashio en Mauricio (2020): un barco carguero japonés encalló en un arrecife de coral mientras la tripulación celebraba un cumpleaños con música alta. Derramó 1,000 toneladas de petróleo en una de las zonas marinas más prístinas del mundo.",
+  "El X-Press Pearl en Sri Lanka (2021): considerado el peor desastre ambiental marítimo de Asia. Un barco con químicos peligrosos se incendió durante 13 días frente a Colombo. Millones de pellets de plástico cubrieron las playas de Sri Lanka.",
+  "El Ever Forward encallado (2022): un año después del Ever Given, otro barco de la misma naviera quedó varado en la bahía de Chesapeake, EE.UU. durante 35 días. La ironía fue tan grande que los medios la llamaron 'el barco maldito'.",
+  "Incendio del Felicity Ace (2022): un barco que transportaba 4,000 autos de lujo de Volkswagen, Porsche y Lamborghini se incendió en el Atlántico. Las baterías de los autos eléctricos a bordo hicieron imposible apagar el fuego. Pérdidas estimadas: USD 500 millones.",
+
+  // Robos, fraudes y mafias
+  "El mayor decomiso de cocaína en un puerto (2023): autoridades europeas encontraron más de 35 toneladas de cocaína escondida en contenedores de banana provenientes de Ecuador en el puerto de Amberes. Amberes es conocido como la puerta de entrada de droga a Europa.",
+  "Fraude masivo de contenedores vacíos en Asia (2022): una red criminal cobró flete a múltiples empresas por el mismo contenedor vacío, usando documentación falsa. El fraude superó los USD 100 millones antes de ser detectado.",
+  "Piratas somalíes vs. drones (2024): los piratas somalíes retomaron actividad en el Índico, pero esta vez las navieras respondieron con drones de vigilancia privados y escoltas armados. El seguro por zona de riesgo se triplicó.",
+  "El escándalo de los BL falsos en Chile (2023): la PDI detectó una red que falsificaba Bills of Lading para importar mercancía sobrevaluada y sacar divisas del país ilegalmente. Involucró a varias empresas de comercio exterior.",
 ];
 
 const INTERVAL_MS = 3000;

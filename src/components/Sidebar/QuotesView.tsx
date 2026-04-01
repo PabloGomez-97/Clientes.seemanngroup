@@ -3,6 +3,7 @@ import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { useTranslation } from "react-i18next";
+import LoadingTips from "../shipments/LoadingTips";
 import { DocumentosSection } from "./Documents/DocumentosSection";
 import { linbisFetch } from "../../services/linbisFetch";
 import "./styles/QuotesView.css";
@@ -1217,12 +1218,8 @@ function QuotesView({
       )}
 
       {/* -- Loading ----------------------------------------- */}
-      {loading && (
-        <div className="qv-empty">
-          <div className="qv-spinner" />
-          <p>{t("quotesView.loadingQuotes")}</p>
-        </div>
-      )}
+      {/* Loading */}
+      {loading && <LoadingTips />}
 
       {/* -- Error ------------------------------------------- */}
       {error && (
