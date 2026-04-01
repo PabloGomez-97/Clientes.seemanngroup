@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import LoadingTips from "../shipments/LoadingTips";
 import { useTranslation } from "react-i18next";
 import { MUNDOGAMING_DUMMY_INVOICES } from "./Mundogaming/mundogamingDummyInvoiceData";
 import {
@@ -1152,15 +1153,8 @@ function ReporteriaFinanciera() {
         </div>
       </div>
 
-      {/* -- Loading ----------------------------------------- */}
-      {loading && (
-        <div className="rf-loading">
-          <div className="rf-spinner" />
-          <p className="rf-loading__text">
-            {t("reportFinancial.loadingInvoices")}
-          </p>
-        </div>
-      )}
+      {/* Loading */}
+      {loading && <LoadingTips />}
 
       {/* -- Error ------------------------------------------- */}
       {error && (

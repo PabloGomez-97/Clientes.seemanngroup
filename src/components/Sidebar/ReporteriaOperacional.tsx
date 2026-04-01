@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import LoadingTips from "../shipments/LoadingTips";
 import { useTranslation } from "react-i18next";
 import {
   AreaChart,
@@ -747,15 +748,8 @@ function ShipmentsView() {
         </div>
       )}
 
-      {/* -- Loading -- */}
-      {loading && (
-        <div className="rop-loading">
-          <div className="rop-spinner" />
-          <span className="rop-loading__text">
-            {t("reportOperational.loadingData")}
-          </span>
-        </div>
-      )}
+      {/* Loading */}
+      {loading && <LoadingTips />}
 
       {/* -- Main content -- */}
       {!loading && shipments.length > 0 && (
