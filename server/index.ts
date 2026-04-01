@@ -8,6 +8,7 @@ import 'dotenv/config';
 import chatHandler from '../api/chat.ts'; 
 import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData } from '../api/emails/oversizeEmailTemplate.ts';
 import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from '../api/emails/oversizeEmailTemplateOcean.ts';
+import { buildDocumentUploadEmailHTML, getDocumentUploadEmailSubject, type DocumentUploadEmailData } from '../api/emails/documentUploadEmailTemplate.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -538,6 +539,108 @@ function documentBelongsToOwnerScope(
   }
 
   return ownerUsername !== 'Ejecutivo' && documento.usuarioId === 'Ejecutivo';
+}
+
+// ============================================================
+// HELPER: NOTIFICACIÓN POR EMAIL AL SUBIR DOCUMENTO
+// ============================================================
+
+/**
+ * Envía notificación por correo al ejecutivo y a los emails de seguimiento
+ * cuando se sube un documento. Se ejecuta en background (fire-and-forget).
+ */
+async function sendDocumentUploadNotification(opts: {
+  uploaderEmail: string;
+  ownerUsername: string;
+  numero: string;
+  tipoOperacion: string;
+  tipoDocumento: string;
+  nombreArchivo: string;
+}): Promise<void> {
+  try {
+    if (!process.env.BREVO_API_KEY) {
+      console.warn('[doc-notification] BREVO_API_KEY not set, skipping email');
+      return;
+    }
+
+    // 1. Buscar el usuario dueño del documento para obtener su ejecutivo
+    const ownerUser = await User.findOne({
+      $or: [{ username: opts.ownerUsername }, { usernames: opts.ownerUsername }],
+    }).populate('ejecutivoId');
+
+    // 2. Buscar el usuario que subió el documento (puede ser ejecutivo u otro)
+    const uploaderUser = await User.findOne({ email: opts.uploaderEmail }).populate('ejecutivoId');
+
+    // 3. Obtener el email del ejecutivo
+    let ejecutivoEmail: string | null = null;
+    if (ownerUser?.ejecutivoId && typeof (ownerUser.ejecutivoId as any).email === 'string') {
+      ejecutivoEmail = (ownerUser.ejecutivoId as any).email;
+    } else if (uploaderUser?.ejecutivoId && typeof (uploaderUser.ejecutivoId as any).email === 'string') {
+      ejecutivoEmail = (uploaderUser.ejecutivoId as any).email;
+    }
+
+    // 4. Obtener los emails de preferencias de seguimiento
+    const preference = await TrackingEmailPreference.findOne({
+      reference: opts.ownerUsername,
+    }).lean();
+    const trackingEmails: string[] = preference?.emails || [];
+
+    // 5. Combinar destinatarios (sin duplicados, sin noreply)
+    const allRecipients = new Set<string>();
+    if (ejecutivoEmail) allRecipients.add(ejecutivoEmail.toLowerCase().trim());
+    for (const email of trackingEmails) {
+      const normalized = email.toLowerCase().trim();
+      if (normalized && normalized !== 'noreply@sphereglobal.io') {
+        allRecipients.add(normalized);
+      }
+    }
+
+    if (allRecipients.size === 0) {
+      console.log('[doc-notification] No recipients found, skipping');
+      return;
+    }
+
+    // 6. Determinar quién subió: nombre legible
+    const subidoPor = uploaderUser?.nombreuser || uploaderUser?.username || opts.uploaderEmail;
+
+    // 7. Construir el email
+    const emailData: DocumentUploadEmailData = {
+      numero: opts.numero,
+      tipoOperacion: opts.tipoOperacion,
+      tipoDocumento: opts.tipoDocumento,
+      nombreArchivo: opts.nombreArchivo,
+      subidoPor,
+    };
+
+    const subject = getDocumentUploadEmailSubject(emailData);
+    const htmlContent = buildDocumentUploadEmailHTML(emailData);
+    const toList = Array.from(allRecipients).map((email) => ({ email }));
+
+    // 8. Enviar vía Brevo
+    const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: 'Seemann Cloud · Documentos', email: 'noreply@sphereglobal.io' },
+        to: toList,
+        subject,
+        htmlContent,
+      }),
+    });
+
+    if (!brevoResponse.ok) {
+      const errorText = await brevoResponse.text();
+      console.error('[doc-notification] Brevo error:', brevoResponse.status, errorText);
+    } else {
+      console.log(`[doc-notification] Email sent to ${toList.length} recipients for ${opts.tipoOperacion} #${opts.numero}`);
+    }
+  } catch (err) {
+    // No propagar errores — la subida del documento no debe fallar por el email
+    console.error('[doc-notification] Error sending notification:', err);
+  }
 }
 
 // ============================================================
@@ -2915,6 +3018,16 @@ app.post('/api/documentos/upload', auth, async (req, res) => {
 
     console.log(`[documentos] Documento subido: ${nuevoDocumento._id}`);
 
+    // Fire-and-forget: notificar por email
+    sendDocumentUploadNotification({
+      uploaderEmail: currentUser.sub,
+      ownerUsername,
+      numero: String(quoteId),
+      tipoOperacion: 'Cotización',
+      tipoDocumento: tipo,
+      nombreArchivo: String(nombreArchivo),
+    }).catch(() => {});
+
     return res.status(201).json({
       success: true,
       message: 'Documento subido exitosamente',
@@ -3159,6 +3272,16 @@ app.post('/api/air-shipments/documentos/upload', auth, async (req, res) => {
       usuarioId: ownerUsername,
     });
 
+    // Fire-and-forget: notificar por email
+    sendDocumentUploadNotification({
+      uploaderEmail: currentUser.sub,
+      ownerUsername,
+      numero: String(shipmentId),
+      tipoOperacion: 'Operación Aérea',
+      tipoDocumento: tipo,
+      nombreArchivo: String(nombreArchivo),
+    }).catch(() => {});
+
     return res.status(201).json({
       success: true,
       documento: {
@@ -3354,6 +3477,16 @@ app.post('/api/ocean-shipments/documentos/upload', auth, async (req, res) => {
       usuarioId: ownerUsername,
     });
 
+    // Fire-and-forget: notificar por email
+    sendDocumentUploadNotification({
+      uploaderEmail: currentUser.sub,
+      ownerUsername,
+      numero: String(shipmentId),
+      tipoOperacion: 'Operación Marítima',
+      tipoDocumento: tipo,
+      nombreArchivo: String(nombreArchivo),
+    }).catch(() => {});
+
     return res.status(201).json({
       success: true,
       documento: {
@@ -3547,6 +3680,16 @@ app.post('/api/ground-shipments/documentos/upload', auth, async (req, res) => {
       subidoPor: currentUser.sub,
       usuarioId: ownerUsername,
     });
+
+    // Fire-and-forget: notificar por email
+    sendDocumentUploadNotification({
+      uploaderEmail: currentUser.sub,
+      ownerUsername,
+      numero: String(shipmentId),
+      tipoOperacion: 'Operación Terrestre',
+      tipoDocumento: tipo,
+      nombreArchivo: String(nombreArchivo),
+    }).catch(() => {});
 
     return res.status(201).json({
       success: true,
