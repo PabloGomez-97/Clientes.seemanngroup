@@ -579,26 +579,9 @@ async function sendDocumentUploadNotification(opts: {
       ejecutivoEmail = (uploaderUser.ejecutivoId as any).email;
     }
 
-    // 4. Obtener los emails de preferencias de seguimiento
-    const preference = await TrackingEmailPreference.findOne({
-      reference: opts.ownerUsername,
-    }).lean();
-    const trackingEmails: string[] = preference?.emails || [];
-
-    // 5. Combinar destinatarios (sin duplicados, sin noreply)
-    const allRecipients = new Set<string>();
-    // Operaciones siempre recibe notificaciones de documentos
-    allRecipients.add('operaciones@seemanngroup.com');
-    if (ejecutivoEmail) allRecipients.add(ejecutivoEmail.toLowerCase().trim());
-    for (const email of trackingEmails) {
-      const normalized = email.toLowerCase().trim();
-      if (normalized && normalized !== 'noreply@sphereglobal.io') {
-        allRecipients.add(normalized);
-      }
-    }
-
-    if (allRecipients.size === 0) {
-      console.log('[doc-notification] No recipients found, skipping');
+    // 4. Verificar que haya ejecutivo
+    if (!ejecutivoEmail) {
+      console.log('[doc-notification] No ejecutivo found, skipping');
       return;
     }
 
@@ -616,7 +599,7 @@ async function sendDocumentUploadNotification(opts: {
 
     const subject = getDocumentUploadEmailSubject(emailData);
     const htmlContent = buildDocumentUploadEmailHTML(emailData);
-    const toList = Array.from(allRecipients).map((email) => ({ email }));
+    const toList = [{ email: ejecutivoEmail }];
 
     // 8. Enviar vía Brevo
     const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
