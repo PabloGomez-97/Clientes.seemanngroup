@@ -561,6 +561,8 @@ async function sendDocumentUploadNotification(opts: {
     const trackingEmails: string[] = preference?.emails || [];
 
     const allRecipients = new Set<string>();
+    // Operaciones siempre recibe notificaciones de documentos
+    allRecipients.add('operaciones@seemanngroup.com');
     if (ejecutivoEmail) allRecipients.add(ejecutivoEmail.toLowerCase().trim());
     for (const email of trackingEmails) {
       const normalized = email.toLowerCase().trim();
