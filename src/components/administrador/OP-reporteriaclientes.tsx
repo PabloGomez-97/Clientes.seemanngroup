@@ -24,11 +24,32 @@ interface Cliente {
   username: string;
   nombreuser?: string;
   createdAt: string;
+  usernames?: string[];
+  parentUsername?: string;
+}
+
+/** Expand users with multiple company names into separate list entries */
+function expandClients(rawClients: Cliente[]): Cliente[] {
+  const expanded: Cliente[] = [];
+  for (const client of rawClients) {
+    const names =
+      client.usernames && client.usernames.length > 1
+        ? client.usernames
+        : [client.username];
+    for (let i = 0; i < names.length; i++) {
+      expanded.push({
+        ...client,
+        username: names[i],
+        parentUsername: i > 0 ? names[0] : undefined,
+      });
+    }
+  }
+  return expanded;
 }
 
 // ── Cache helpers (1 hour TTL) ──
 const CACHE_TTL = 60 * 60 * 1000;
-const CLIENTS_CACHE_KEY = "op_rc_clients_list";
+const CLIENTS_CACHE_KEY = "op_rc_clients_list_v2";
 
 function getCachedClients(): Cliente[] | null {
   try {
@@ -96,11 +117,11 @@ function OPReporteriaClientes() {
         if (!resp.ok)
           throw new Error(data?.error || "Error al cargar clientes");
         // Filter out Ejecutivo users (only show actual clients)
-        const lista: Cliente[] = (Array.isArray(data?.users) ? data.users : [])
-          .filter((u: Cliente) => u.username !== "Ejecutivo")
-          .sort((a: Cliente, b: Cliente) =>
-            a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
-          );
+        const raw: Cliente[] = (Array.isArray(data?.users) ? data.users : [])
+          .filter((u: Cliente) => u.username !== "Ejecutivo");
+        const lista = expandClients(raw).sort((a, b) =>
+          a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
+        );
         setClientes(lista);
         setCachedClients(lista);
       } catch (e) {
@@ -135,9 +156,15 @@ function OPReporteriaClientes() {
       (c) =>
         c.username.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
-        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)),
+        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)) ||
+        (c.parentUsername && c.parentUsername.toLowerCase().includes(q)),
     );
   }, [clientes, searchQuery]);
+
+  const uniqueAccountCount = useMemo(
+    () => new Set(clientes.map((c) => c.id)).size,
+    [clientes],
+  );
 
   // ── Loading state ──
   if (loading) {
@@ -404,6 +431,21 @@ function OPReporteriaClientes() {
               {selectedClient.username}
             </h1>
             <p style={{ fontSize: 14, color: "#6b7280", margin: "2px 0 0" }}>
+              {selectedClient.parentUsername && (
+                <span
+                  style={{
+                    background: "#fef3c7",
+                    color: "#92400e",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    marginRight: 8,
+                  }}
+                >
+                  Cuenta: {selectedClient.parentUsername}
+                </span>
+              )}
               {selectedClient.email} · Registrado el{" "}
               {new Date(selectedClient.createdAt).toLocaleDateString("es-CL", {
                 day: "2-digit",
@@ -511,11 +553,22 @@ function OPReporteriaClientes() {
             style={{ fontSize: 16, color: "#ff9900" }}
           />
           <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
-            {clientes.length}
+            {uniqueAccountCount}
           </span>
           <span style={{ fontSize: 13, color: "#6b7280" }}>
-            clientes en el portal
+            cuentas en el portal
           </span>
+          {clientes.length > uniqueAccountCount && (
+            <>
+              <span style={{ fontSize: 13, color: "#d1d5db" }}>·</span>
+              <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
+                {clientes.length}
+              </span>
+              <span style={{ fontSize: 13, color: "#6b7280" }}>
+                empresas
+              </span>
+            </>
+          )}
         </div>
         <div style={{ flex: 1 }} />
 
@@ -609,15 +662,17 @@ function OPReporteriaClientes() {
         {filteredClients.map((client) => {
           return (
             <div
-              key={client.id}
+              key={`${client.id}-${client.username}`}
               onClick={() => handleSelectClient(client)}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 14,
                 padding: "14px 18px",
-                background: "#fff",
-                border: "1px solid #e5e7eb",
+                background: client.parentUsername ? "#fffbf5" : "#fff",
+                border: client.parentUsername
+                  ? "1px solid #fde68a"
+                  : "1px solid #e5e7eb",
                 borderRadius: 10,
                 cursor: "pointer",
                 transition: "all 0.15s",
@@ -627,7 +682,9 @@ function OPReporteriaClientes() {
                 e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#e5e7eb";
+                e.currentTarget.style.borderColor = client.parentUsername
+                  ? "#fde68a"
+                  : "#e5e7eb";
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
@@ -636,7 +693,7 @@ function OPReporteriaClientes() {
                   width: 38,
                   height: 38,
                   borderRadius: 10,
-                  background: "#232f3e",
+                  background: client.parentUsername ? "#f59e0b" : "#232f3e",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -662,6 +719,20 @@ function OPReporteriaClientes() {
                 >
                   {client.username}
                 </div>
+                {client.parentUsername && (
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#d97706",
+                      marginTop: 1,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Cuenta: {client.parentUsername}
+                  </div>
+                )}
                 <div style={{ fontSize: 12, color: "#9ca3af" }}>
                   {client.email}
                 </div>

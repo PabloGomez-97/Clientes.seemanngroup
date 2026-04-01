@@ -1290,6 +1290,7 @@ app.get('/api/ejecutivo/clientes', auth, async (req, res) => {
         id: u._id,
         email: u.email,
         username: u.username,
+        usernames: (u.usernames && u.usernames.length > 0) ? u.usernames : [u.username],
         nombreuser: u.nombreuser,
         createdAt: u.createdAt,
         ejecutivo: u.ejecutivoId ? {
