@@ -184,8 +184,18 @@ function AirShipmentsView({
   /*  Helpers  */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formatDate = (dateObj: any) => {
-    if (!dateObj?.displayDate || dateObj.displayDate.trim() === "") return "-";
+    if (!dateObj) return "-";
     try {
+      if (dateObj.date) {
+        const d = new Date(dateObj.date);
+        d.setTime(d.getTime() + 3600000);
+        return d.toLocaleDateString("es-CL", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      }
+      if (!dateObj.displayDate || dateObj.displayDate.trim() === "") return "-";
       const [m, d, y] = dateObj.displayDate.split("/");
       return new Date(+y, +m - 1, +d).toLocaleDateString("es-CL", {
         year: "numeric",
@@ -193,13 +203,22 @@ function AirShipmentsView({
         day: "numeric",
       });
     } catch {
-      return dateObj.displayDate;
+      return dateObj.displayDate ?? "-";
     }
   };
 
   const formatDateInline = (displayDate: string | undefined) => {
     if (!displayDate || displayDate.trim() === "") return "-";
     try {
+      if (/^\d{4}-\d{2}-\d{2}/.test(displayDate)) {
+        const d = new Date(displayDate);
+        d.setTime(d.getTime() + 3600000);
+        return d.toLocaleDateString("es-CL", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+      }
       const [m, d, y] = displayDate.split("/");
       return new Date(+y, +m - 1, +d).toLocaleDateString("es-CL", {
         day: "numeric",
@@ -544,19 +563,17 @@ function AirShipmentsView({
     if (filterDepartureDate) {
       filtered = filtered.filter((s) => {
         if (!s.departure?.date) return false;
-        return (
-          new Date(s.departure.date).toISOString().split("T")[0] ===
-          filterDepartureDate
-        );
+        const d = new Date(s.departure.date);
+        d.setTime(d.getTime() + 3600000);
+        return d.toISOString().split("T")[0] === filterDepartureDate;
       });
     }
     if (filterArrivalDate) {
       filtered = filtered.filter((s) => {
         if (!s.arrival?.date) return false;
-        return (
-          new Date(s.arrival.date).toISOString().split("T")[0] ===
-          filterArrivalDate
-        );
+        const d = new Date(s.arrival.date);
+        d.setTime(d.getTime() + 3600000);
+        return d.toISOString().split("T")[0] === filterArrivalDate;
       });
     }
     if (filterCarrier.trim()) {
@@ -1275,10 +1292,16 @@ function AirShipmentsView({
                           {shipment.customerReference || "-"}
                         </td>
                         <td className="asv-td asv-td--center">
-                          {formatDateInline(shipment.departure?.displayDate)}
+                          {formatDateInline(
+                            shipment.departure?.date ??
+                              shipment.departure?.displayDate,
+                          )}
                         </td>
                         <td className="asv-td asv-td--center">
-                          {formatDateInline(shipment.arrival?.displayDate)}
+                          {formatDateInline(
+                            shipment.arrival?.date ??
+                              shipment.arrival?.displayDate,
+                          )}
                         </td>
                         <td className="asv-td asv-td--center">
                           {shipment.carrier?.name || "-"}
@@ -1305,7 +1328,8 @@ function AirShipmentsView({
                                   {shipment.departure?.displayDate && (
                                     <span className="asv-route-card__date">
                                       {formatDateInline(
-                                        shipment.departure.displayDate,
+                                        shipment.departure?.date ??
+                                          shipment.departure?.displayDate,
                                       )}
                                     </span>
                                   )}
@@ -1341,7 +1365,8 @@ function AirShipmentsView({
                                   {shipment.arrival?.displayDate && (
                                     <span className="asv-route-card__date">
                                       {formatDateInline(
-                                        shipment.arrival.displayDate,
+                                        shipment.arrival?.date ??
+                                          shipment.arrival?.displayDate,
                                       )}
                                     </span>
                                   )}

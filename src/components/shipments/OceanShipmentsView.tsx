@@ -225,7 +225,9 @@ function OceanShipmentsView({
   const formatDateLong = (dateString?: string | null) => {
     if (!dateString) return "-";
     try {
-      return new Date(dateString).toLocaleDateString("es-CL", {
+      const d = new Date(dateString);
+      d.setTime(d.getTime() + 3600000);
+      return d.toLocaleDateString("es-CL", {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -238,7 +240,9 @@ function OceanShipmentsView({
   const formatDateInline = (dateString?: string | null) => {
     if (!dateString) return "-";
     try {
-      return new Date(dateString).toLocaleDateString("es-CL", {
+      const d = new Date(dateString);
+      d.setTime(d.getTime() + 3600000);
+      return d.toLocaleDateString("es-CL", {
         day: "numeric",
         month: "long",
         year: "numeric",
@@ -924,19 +928,17 @@ function OceanShipmentsView({
     if (filterDepartureDate) {
       filtered = filtered.filter((s) => {
         if (!s.departureDate) return false;
-        return (
-          new Date(s.departureDate).toISOString().split("T")[0] ===
-          filterDepartureDate
-        );
+        const d = new Date(s.departureDate);
+        d.setTime(d.getTime() + 3600000);
+        return d.toISOString().split("T")[0] === filterDepartureDate;
       });
     }
     if (filterArrivalDate) {
       filtered = filtered.filter((s) => {
         if (!s.arrivalDate) return false;
-        return (
-          new Date(s.arrivalDate).toISOString().split("T")[0] ===
-          filterArrivalDate
-        );
+        const d = new Date(s.arrivalDate);
+        d.setTime(d.getTime() + 3600000);
+        return d.toISOString().split("T")[0] === filterArrivalDate;
       });
     }
     if (filterCarrier.trim()) {
