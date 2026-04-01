@@ -1,14 +1,14 @@
 // src/components/shipsgo/ShipsGoTracking.tsx
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import "./styles/Shipsgotracking.css";
-import AirShipmentDetail from "./shipsgo/AirShipmentDetail";
 import OceanShipmentDetail from "./shipsgo/OceanShipmentDetail";
 import type {
   AirShipment,
   AirResponse,
+  AirShipmentDetail,
   OceanShipment,
   OceanResponse,
 } from "./shipsgo/types";
@@ -74,7 +74,8 @@ function ShipsGoTracking({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  // Filtered by active user
+  // Air map tokens: shipmentId -> map token string
+  const [airMapTokens, setAirMapTokens] = useState<Record<number, string>>({});
   const userAir = useMemo(() => {
     if (!effectiveUsername) return [];
     return allAirShipments.filter(
@@ -159,6 +160,35 @@ function ShipsGoTracking({
     fetchAir();
     fetchOcean();
   }, []);
+
+  // Fetch map tokens for air shipments (lazy, after userAir is populated)
+  const fetchAirMapToken = useCallback(
+    async (shipmentId: number) => {
+      if (airMapTokens[shipmentId] !== undefined) return;
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/shipsgo/shipments/${shipmentId}`,
+        );
+        if (!res.ok) return;
+        const data: { shipment: AirShipmentDetail } = await res.json();
+        const mapToken = data.shipment?.tokens?.map;
+        if (mapToken) {
+          setAirMapTokens((prev) => ({ ...prev, [shipmentId]: mapToken }));
+        }
+      } catch {
+        // silently ignore – button simply won't show
+      }
+    },
+    [airMapTokens],
+  );
+
+  useEffect(() => {
+    for (const s of userAir) {
+      if (airMapTokens[s.id] === undefined) {
+        fetchAirMapToken(s.id);
+      }
+    }
+  }, [userAir, fetchAirMapToken]);
 
   function isAirDelayed(s: AirShipment): boolean {
     if (!s.route) return false;
@@ -596,6 +626,16 @@ function ShipsGoTracking({
                           >
                             Ver
                           </button>
+                          {airMapTokens[s.id] && (
+                            <a
+                              className="sg-link-live"
+                              href={`https://map.shipsgo.com/air/shipments/${s.id}?token=${airMapTokens[s.id]}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Ver en vivo
+                            </a>
+                          )}
                           <button
                             type="button"
                             className="sg-btn-delete"

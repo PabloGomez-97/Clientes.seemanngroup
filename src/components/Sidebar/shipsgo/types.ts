@@ -81,6 +81,7 @@ export interface AirShipmentDetail extends AirShipment {
   status_extended: Record<string, number>;
   movements: AirMovement[];
   followers: { id: number; email: string }[];
+  tokens?: { map?: string };
 }
 
 // GeoJSON types (from /air/shipments/:id/geojson)
