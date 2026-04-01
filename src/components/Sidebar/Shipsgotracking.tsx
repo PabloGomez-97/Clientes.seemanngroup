@@ -20,6 +20,7 @@ import {
   formatDateTime,
   getFlagUrl,
 } from "./shipsgo/types";
+import AirShipmentDetails from "./shipsgo/AirShipmentDetail";
 
 type TabType = "air" | "ocean";
 
@@ -906,7 +907,7 @@ function ShipsGoTracking({
 
       {/* ═══ Air Detail Panel ═══ */}
       {showModal && selectedAir && (
-        <AirShipmentDetail shipment={selectedAir} onClose={closeModal} />
+        <AirShipmentDetails shipment={selectedAir} onClose={closeModal} />
       )}
 
       {/* ═══ Ocean Detail Panel ═══ */}

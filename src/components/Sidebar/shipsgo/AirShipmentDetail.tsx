@@ -30,7 +30,7 @@ interface AirShipmentDetailProps {
   onClose: () => void;
 }
 
-function AirShipmentDetail({ shipment, onClose }: AirShipmentDetailProps) {
+function AirShipmentDetails({ shipment, onClose }: AirShipmentDetailProps) {
   const { token } = useAuth();
   const { registrarEvento } = useAuditLog();
   const [detail, setDetail] = useState<AirShipmentDetailType | null>(null);
@@ -693,4 +693,4 @@ function AirShipmentDetail({ shipment, onClose }: AirShipmentDetailProps) {
   );
 }
 
-export default AirShipmentDetail;
+export default AirShipmentDetails;
