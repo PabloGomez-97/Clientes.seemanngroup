@@ -117,8 +117,9 @@ function OPReporteriaClientes() {
         if (!resp.ok)
           throw new Error(data?.error || "Error al cargar clientes");
         // Filter out Ejecutivo users (only show actual clients)
-        const raw: Cliente[] = (Array.isArray(data?.users) ? data.users : [])
-          .filter((u: Cliente) => u.username !== "Ejecutivo");
+        const raw: Cliente[] = (
+          Array.isArray(data?.users) ? data.users : []
+        ).filter((u: Cliente) => u.username !== "Ejecutivo");
         const lista = expandClients(raw).sort((a, b) =>
           a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
         );
@@ -564,9 +565,7 @@ function OPReporteriaClientes() {
               <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
                 {clientes.length}
               </span>
-              <span style={{ fontSize: 13, color: "#6b7280" }}>
-                empresas
-              </span>
+              <span style={{ fontSize: 13, color: "#6b7280" }}>empresas</span>
             </>
           )}
         </div>

@@ -577,9 +577,7 @@ function ReporteriaClientes() {
               <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
                 {clientes.length}
               </span>
-              <span style={{ fontSize: 13, color: "#6b7280" }}>
-                empresas
-              </span>
+              <span style={{ fontSize: 13, color: "#6b7280" }}>empresas</span>
             </>
           )}
         </div>
