@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
-const tips = [
+const tips: string[] = [
   "En 2021, el buque Ever Given encalló en el Canal de Suez durante 6 días y bloqueó mercancías por más de USD 9,600 millones diarios.",
   "El primer contenedor marino estándar fue creado por Malcolm McLean en 1956. Antes de eso, descargar un barco tomaba semanas enteras.",
   "El puerto de Shanghái mueve más contenedores al año que todos los puertos de América Latina juntos.",
@@ -27,107 +27,270 @@ const tips = [
   "Los contenedores reefer (refrigerados) tienen su propio sistema eléctrico y pueden mantener temperaturas entre -30°C y +30°C durante semanas.",
   "El puerto de Busan en Corea del Sur procesa más del 75% de toda la carga de exportación del país y está entre los 5 más activos del mundo.",
   "En promedio, cada persona en el mundo consume indirectamente los servicios de la cadena logística unas 4 veces al día.",
-  "El Airbus A380 tiene una versión carguera que nunca llegó a producirse masivamente, aunque Airbus estudió convertir los modelos de pasajeros en retiro.",
   "La primera vez que se utilizó un código de barras para rastrear carga fue en los años 70 en EE.UU., aplicado inicialmente en vagones de ferrocarril.",
   "India planea construir el puerto de Vadhavan, que al completarse será uno de los 10 puertos más grandes del mundo con capacidad para 23 millones de TEUs.",
   "En la logística moderna, se estima que el 60% de los errores de entrega ocurren no en el transporte, sino en la gestión administrativa de los documentos.",
-  "El 80% del comercio mundial viaja por mar",
-  "Un contenedor de 40’ puede mover hasta 67 m³",
-  "Shanghái es el puerto más activo del mundo",
-  "El Canal de Panamá permite ahorrar miles de km",
-  "El transporte aéreo mueve poco volumen, pero mucho valor",
-  "Un error en el BL puede retrasar toda la carga",
-  "El lead time puede variar por congestión portuaria",
-  "Los contenedores reefer controlan temperatura y oxígeno",
-  "Más de 20 millones de contenedores circulan en el mundo",
-  "El flete marítimo es el más barato por kilo",
-  "Los Incoterms definen quién paga qué en un envío",
-  "Chile tiene acuerdos comerciales con más de 65 economías",
-  "El tracking de barcos es posible en tiempo real (AIS)",
-  "Rotterdam es el puerto más grande de Europa",
-  "Un buque puede transportar más de 20.000 contenedores",
-  "La logística puede representar hasta el 15% del costo",
-  "FedEx opera el mayor hub de carga aérea en Memphis",
-  "El pallet nació para uso militar en la Segunda Guerra Mundial",
-  "Los drones ya se usan para entregas médicas",
-  "El 'Just-in-Time' nació observando supermercados",
-  "Los barcos modernos también usan energía eólica",
-  "Más del 90% de los productos pasaron por un barco",
-  "El transporte marítimo es clave para la globalización",
-  "Los contenedores estandarizaron el comercio mundial",
-  "La documentación causa la mayoría de errores logísticos",
+  "El 80% del comercio mundial viaja por mar.",
+  "Un contenedor de 40' puede mover hasta 67 m³ de carga.",
+  "Shanghái es el puerto más activo del mundo por volumen de TEUs.",
+  "El Canal de Panamá permite ahorrar miles de kilómetros en rutas transoceánicas.",
+  "El transporte aéreo mueve poco volumen, pero concentra gran parte del valor global.",
+  "Un error en el Bill of Lading puede retrasar toda la carga indefinidamente.",
+  "El lead time puede variar significativamente por congestión portuaria.",
+  "Los contenedores reefer controlan temperatura y niveles de oxígeno simultáneamente.",
+  "Más de 20 millones de contenedores circulan en el mundo en todo momento.",
+  "El flete marítimo es el modo de transporte más barato por kilo transportado.",
+  "Los Incoterms definen con precisión quién paga qué en cada etapa de un envío.",
+  "El tracking de barcos es posible en tiempo real gracias al sistema AIS.",
+  "Un buque moderno puede transportar más de 20,000 contenedores en un solo viaje.",
+  "FedEx opera el mayor hub de carga aérea del mundo en Memphis, Tennessee.",
+  "El pallet fue desarrollado originalmente para uso militar durante la Segunda Guerra Mundial.",
+  "Los barcos modernos también experimentan con energía eólica para reducir emisiones.",
+  "Más del 90% de los productos manufacturados pasaron por un barco en algún punto.",
+  "Los contenedores estandarizaron el comercio mundial y redujeron costos radicalmente.",
+  "La documentación incorrecta es la principal causa de errores en logística internacional.",
 ];
 
-function LoadingTips() {
-  const getRandomIndex = useCallback(
-    () => Math.floor(Math.random() * tips.length),
-    [],
-  );
+const INTERVAL_MS = 3000;
+const DOT_COUNT = 5;
+const ACCENT = "#ff6200";
 
-  const [index, setIndex] = useState(getRandomIndex);
+function shuffleIndices(length: number): number[] {
+  return [...Array(length).keys()].sort(() => Math.random() - 0.5);
+}
+
+export default function LoadingTips() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [displayedTip, setDisplayedTip] = useState("");
+  const [visible, setVisible] = useState(true);
+  const [progressKey, setProgressKey] = useState(0);
+
+  const orderRef = useRef<number[]>(shuffleIndices(tips.length));
+
+  const getTip = useCallback((idx: number): string => {
+    return tips[orderRef.current[idx % orderRef.current.length]];
+  }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIndex((prev) => {
-        let next = getRandomIndex();
-        while (next === prev) {
-          next = getRandomIndex();
-        }
-        return next;
-      });
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [getRandomIndex]);
+    setDisplayedTip(getTip(0));
+  }, [getTip]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setCurrentIndex((prev) => {
+          const next = prev + 1;
+          setDisplayedTip(getTip(next));
+          setProgressKey((k) => k + 1);
+          return next;
+        });
+        setVisible(true);
+      }, 280);
+    }, INTERVAL_MS);
+
+    return () => clearInterval(id);
+  }, [getTip]);
+
+  const displayNumber = (currentIndex % tips.length) + 1;
+  const activeDot = currentIndex % DOT_COUNT;
 
   return (
-    <div className="osv-empty">
-      <div className="osv-spinner" />
-      <p className="osv-empty__subtitle">Cargando la información...</p>
-      <div
-        style={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          marginTop: "1.5rem",
-        }}
-      >
+    <div style={styles.root}>
+      {/* Spinner + label */}
+      <div style={styles.spinnerWrap}>
+        <svg
+          style={styles.spinnerSvg}
+          viewBox="0 0 20 20"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle cx="10" cy="10" r="8" stroke="#e0e0e0" strokeWidth="2" />
+          <path
+            d="M10 2a8 8 0 0 1 8 8"
+            stroke={ACCENT}
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+        <span style={styles.spinnerLabel}>Cargando la información...</span>
+      </div>
+
+      {/* Card */}
+      <div style={styles.cardOuter}>
         <div
           style={{
-            width: "min(600px, calc(100% - 2rem))",
-            borderRadius: "4px",
-            padding: "1rem 1.25rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-            fontFamily:
-              '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+            ...styles.card,
+            opacity: visible ? 1 : 0,
+            transform: visible ? "translateY(0)" : "translateY(5px)",
           }}
         >
-          <span
-            style={{
-              fontSize: "0.7rem",
-              fontWeight: 600,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "var(--primary-color, #ff6200)",
-            }}
-          >
-            ¿Sabías que...?
-          </span>
-          <span
-            style={{
-              fontSize: "0.9rem",
-              color: "var(--secondary-color, #1a1a1a)",
-              lineHeight: 1.6,
-              fontWeight: 400,
-            }}
-          >
-            {tips[index]}
-          </span>
+          {/* Left accent bar */}
+          <div style={styles.accentBar} />
+
+          {/* Content */}
+          <div style={styles.cardBody}>
+            <div style={styles.cardHeader}>
+              <span style={styles.label}>¿Sabías que...?</span>
+              <span style={styles.counter}>
+                {displayNumber} / {tips.length}
+              </span>
+            </div>
+            <p style={styles.tipText}>{displayedTip}</p>
+          </div>
+
+          {/* Progress bar */}
+          <div style={styles.progressTrack}>
+            <div
+              key={progressKey}
+              style={{
+                ...styles.progressFill,
+                animationDuration: `${INTERVAL_MS}ms`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Dots */}
+        <div style={styles.dots}>
+          {Array.from({ length: DOT_COUNT }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                ...styles.dot,
+                background: i === activeDot ? ACCENT : "#d0d0d0",
+                opacity: i === activeDot ? 0.8 : 0.35,
+                transform: i === activeDot ? "scale(1.2)" : "scale(1)",
+              }}
+            />
+          ))}
         </div>
       </div>
+
+      <style>{`
+        @keyframes osv-spin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes osv-progress {
+          from { width: 0%; }
+          to   { width: 100%; }
+        }
+        .osv-spinner-anim {
+          animation: osv-spin 1s linear infinite;
+        }
+        .osv-progress-anim {
+          animation: osv-progress linear forwards;
+        }
+      `}</style>
     </div>
   );
 }
 
-export default LoadingTips;
+/* ─── Styles ────────────────────────────────────────────────────── */
+const styles: Record<string, React.CSSProperties> = {
+  root: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "1.75rem",
+    padding: "2rem 0",
+    fontFamily:
+      '"DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  },
+  spinnerWrap: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "0.5rem",
+  },
+  spinnerSvg: {
+    width: 22,
+    height: 22,
+    animation: "osv-spin 1s linear infinite",
+  } as React.CSSProperties,
+  spinnerLabel: {
+    fontSize: "0.8125rem",
+    color: "#999",
+    letterSpacing: "0.02em",
+  },
+  cardOuter: {
+    width: "min(560px, calc(100% - 2rem))",
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.875rem",
+  },
+  card: {
+    background: "#30302e",
+    border: "0.5px solid #e8e8e8",
+    borderRadius: 12,
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "row",
+    transition: "opacity 0.28s ease, transform 0.28s ease",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+  },
+  accentBar: {
+    width: 3,
+    flexShrink: 0,
+    background: ACCENT,
+    borderRadius: "12px 0 0 0",
+  },
+  cardBody: {
+    flex: 1,
+    padding: "1.25rem 1.5rem 1.125rem",
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.625rem",
+  },
+  cardHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  label: {
+    fontSize: "0.6875rem",
+    fontWeight: 600,
+    letterSpacing: "0.09em",
+    textTransform: "uppercase" as const,
+    color: ACCENT,
+  },
+  counter: {
+    fontSize: "0.6875rem",
+    color: "#888",
+    fontVariantNumeric: "tabular-nums",
+    letterSpacing: "0.04em",
+  },
+  tipText: {
+    fontSize: "0.9375rem",
+    color: "#ffffff",
+    lineHeight: 1.65,
+    margin: 0,
+    fontWeight: 400,
+    minHeight: 60,
+  },
+  progressTrack: {
+    position: "absolute" as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    background: "#f0f0f0",
+  },
+  progressFill: {
+    height: "100%",
+    background: ACCENT,
+    opacity: 0.5,
+    animation: "osv-progress linear forwards",
+  } as React.CSSProperties,
+  dots: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "0.4rem",
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: "50%",
+    transition: "background 0.3s ease, opacity 0.3s ease, transform 0.3s ease",
+  },
+};
