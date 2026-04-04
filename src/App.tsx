@@ -30,6 +30,7 @@ import Invoicesxejecutivo from "./components/administrador/Facturaciones-Ejecuti
 import GestorTarifas from "./components/Pricing/GestorTarifas";
 import TarifarioCompleto from "./components/Pricing/TarifarioCompleto";
 import HomePricing from "./components/Pricing/HomePricing";
+import DocumentosProveedores from "./components/Pricing/DocumentosProveedores";
 import HomeEjecutivo from "./components/administrador/HomeEjecutivo";
 import HomeOperaciones from "./components/administrador/HomeOperaciones";
 import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
@@ -166,12 +167,7 @@ function App() {
           <Route path="tarifario-completo" element={<TarifarioCompleto />} />
           <Route
             path="documentos-proveedores"
-            element={
-              <ArchivosProveedor
-                title="Documentos Proveedores"
-                subtitle="Archivos y documentos subidos por todos los proveedores"
-              />
-            }
+            element={<DocumentosProveedores />}
           />
 
           {/* Rutas de Reportería con subrutas */}

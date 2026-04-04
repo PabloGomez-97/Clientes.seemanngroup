@@ -4986,7 +4986,7 @@ Sistema de Portal Clientes — Seemann Group
         const categoria = url.searchParams.get('categoria') || undefined;
 
         // Check if user has pricing or admin role → show ALL provider files
-        const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub });
+        const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub.toLowerCase() });
         const isPricingOrAdmin = !!(ejecutivoDoc?.roles?.pricing || ejecutivoDoc?.roles?.administrador);
 
         const filter: Record<string, unknown> = {};
@@ -5029,10 +5029,14 @@ Sistema de Portal Clientes — Seemann Group
         const parts = path.split('/');
         const archivoId = parts[3];
 
-        const archivo = await ProveedorArchivo.findOne({
-          _id: archivoId,
-          subidoPor: currentUser.sub,
-        });
+        const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub.toLowerCase() });
+        const isPricingOrAdmin = !!(ejecutivoDoc?.roles?.pricing || ejecutivoDoc?.roles?.administrador);
+
+        const query: Record<string, unknown> = { _id: archivoId };
+        if (!isPricingOrAdmin) {
+          query.subidoPor = currentUser.sub;
+        }
+        const archivo = await ProveedorArchivo.findOne(query);
         if (!archivo) {
           return res.status(404).json({ error: 'Archivo no encontrado' });
         }

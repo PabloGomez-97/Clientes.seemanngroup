@@ -4732,7 +4732,13 @@ app.get('/api/proveedor-archivos', auth, async (req, res) => {
     const currentUser = (req as any).user as AuthPayload;
     const categoria = req.query.categoria as string | undefined;
 
-    const filter: Record<string, unknown> = { subidoPor: currentUser.sub };
+    const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub.toLowerCase() });
+    const isPricingOrAdmin = !!(ejecutivoDoc?.roles?.pricing || ejecutivoDoc?.roles?.administrador);
+
+    const filter: Record<string, unknown> = {};
+    if (!isPricingOrAdmin) {
+      filter.subidoPor = currentUser.sub;
+    }
     if (categoria && ['AEREO', 'FCL', 'LCL'].includes(categoria)) {
       filter.categoria = categoria;
     }
@@ -4763,10 +4769,15 @@ app.get('/api/proveedor-archivos', auth, async (req, res) => {
 app.get('/api/proveedor-archivos/:id/download', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
-    const archivo = await ProveedorArchivo.findOne({
-      _id: req.params.id,
-      subidoPor: currentUser.sub,
-    });
+
+    const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub.toLowerCase() });
+    const isPricingOrAdmin = !!(ejecutivoDoc?.roles?.pricing || ejecutivoDoc?.roles?.administrador);
+
+    const query: Record<string, unknown> = { _id: req.params.id };
+    if (!isPricingOrAdmin) {
+      query.subidoPor = currentUser.sub;
+    }
+    const archivo = await ProveedorArchivo.findOne(query);
 
     if (!archivo) {
       return res.status(404).json({ error: 'Archivo no encontrado' });
