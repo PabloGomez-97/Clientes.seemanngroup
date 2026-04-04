@@ -36,10 +36,15 @@ interface RouteForm {
   remark1: string;
   remark2: string;
   currency: string;
+  validUntil: string;
+  company: string;
+  localCharges: string;
+  gastosXkg: string;
+  minimoGastosXkg: string;
 }
 
 const GOOGLE_APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbyYYU3sdPvU5svUgCWMovXMu4AeDpqvcpqTTjpiZoYTGQQbWsfDqSnt-SgKV2sEHXMz/exec";
+  "https://script.google.com/macros/s/AKfycbw2HBzC1sHIKUAHG2PVCBKLtdTEatgv5I_hy2nL_DfjR-_rRR9nTwaxY7FNWojm5oMs/exec";
 
 const CURRENCY_OPTIONS = ["USD", "EUR", "GBP", "CAD", "CHF", "CLP", "SEK"];
 
@@ -65,6 +70,11 @@ function Pricing() {
       remark1: "",
       remark2: "",
       currency: "USD",
+      validUntil: "",
+      company: "",
+      localCharges: "",
+      gastosXkg: "",
+      minimoGastosXkg: "",
     },
   ]);
 
@@ -107,6 +117,11 @@ function Pricing() {
       remark1: "",
       remark2: "",
       currency: "USD",
+      validUntil: "",
+      company: "",
+      localCharges: "",
+      gastosXkg: "",
+      minimoGastosXkg: "",
     };
     setForms([...forms, newForm]);
     setActiveKey(forms.length.toString());
@@ -140,6 +155,14 @@ function Pricing() {
     if (!form.remark1.trim()) return 'El campo "Remark 1" es obligatorio';
     if (!form.remark2.trim()) return 'El campo "Remark 2" es obligatorio';
     if (!form.currency.trim()) return 'El campo "Moneda" es obligatorio';
+    if (!form.validUntil.trim())
+      return 'El campo "Válido Hasta" es obligatorio';
+    if (!form.company.trim()) return 'El campo "Compañía" es obligatorio';
+    if (!form.localCharges.trim())
+      return 'El campo "Local Charges" es obligatorio';
+    if (!form.gastosXkg.trim()) return 'El campo "Gastos x kg" es obligatorio';
+    if (!form.minimoGastosXkg.trim())
+      return 'El campo "Mínimo gastos x kg" es obligatorio';
     return null;
   };
 
@@ -216,6 +239,11 @@ function Pricing() {
             remark1: "",
             remark2: "",
             currency: "USD",
+            validUntil: "",
+            company: "",
+            localCharges: "",
+            gastosXkg: "",
+            minimoGastosXkg: "",
           },
         ]);
         setActiveKey("0");
@@ -256,6 +284,11 @@ function Pricing() {
         form.remark1,
         form.remark2,
         form.currency,
+        form.validUntil,
+        form.company,
+        form.localCharges,
+        form.gastosXkg,
+        form.minimoGastosXkg,
       ];
 
       // Crear input con JSON
@@ -366,6 +399,11 @@ function Pricing() {
       remark1: route[12],
       remark2: route[13],
       currency: route[14],
+      validUntil: route[15] || "",
+      company: route[16] || "",
+      localCharges: route[17] || "",
+      gastosXkg: route[18] || "",
+      minimoGastosXkg: route[19] || "",
     });
   };
 
@@ -390,6 +428,11 @@ function Pricing() {
         editForm.remark1,
         editForm.remark2,
         editForm.currency,
+        editForm.validUntil,
+        editForm.company,
+        editForm.localCharges,
+        editForm.gastosXkg,
+        editForm.minimoGastosXkg,
       ];
 
       const response = await fetch(
@@ -500,6 +543,11 @@ function Pricing() {
           "remark1",
           "remark2",
           "currency",
+          "validUntil",
+          "company",
+          "localCharges",
+          "gastosXkg",
+          "minimoGastosXkg",
         ];
         registrarEvento({
           accion: "PRICING_AIR_ACTUALIZADO",
@@ -894,6 +942,90 @@ function Pricing() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Sección: Información Comercial */}
+                  <div className="mb-3">
+                    <h6 className="text-muted mb-3">Información Comercial</h6>
+                    <div className="row g-3">
+                      <div className="col-md-3">
+                        <Form.Group>
+                          <Form.Label>Válido Hasta</Form.Label>
+                          <Form.Control
+                            type="date"
+                            value={form.validUntil}
+                            onChange={(e) =>
+                              updateForm(form.id, "validUntil", e.target.value)
+                            }
+                            required
+                          />
+                        </Form.Group>
+                      </div>
+                      <div className="col-md-3">
+                        <Form.Group>
+                          <Form.Label>Compañía</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={form.company}
+                            onChange={(e) =>
+                              updateForm(form.id, "company", e.target.value)
+                            }
+                            placeholder="Ej: Seemann Group"
+                            required
+                          />
+                        </Form.Group>
+                      </div>
+                      <div className="col-md-3">
+                        <Form.Group>
+                          <Form.Label>Local Charges</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={form.localCharges}
+                            onChange={(e) =>
+                              updateForm(
+                                form.id,
+                                "localCharges",
+                                e.target.value,
+                              )
+                            }
+                            placeholder="Ej: 100 USD"
+                            required
+                          />
+                        </Form.Group>
+                      </div>
+                      <div className="col-md-3">
+                        <Form.Group>
+                          <Form.Label>Gastos x kg</Form.Label>
+                          <Form.Control
+                            type="number"
+                            step="0.01"
+                            value={form.gastosXkg}
+                            onChange={(e) =>
+                              updateForm(form.id, "gastosXkg", e.target.value)
+                            }
+                            required
+                          />
+                        </Form.Group>
+                      </div>
+                      <div className="col-md-3">
+                        <Form.Group>
+                          <Form.Label>Mínimo gastos x kg</Form.Label>
+                          <Form.Control
+                            type="number"
+                            step="0.01"
+                            value={form.minimoGastosXkg}
+                            onChange={(e) =>
+                              updateForm(
+                                form.id,
+                                "minimoGastosXkg",
+                                e.target.value,
+                              )
+                            }
+                            required
+                          />
+                        </Form.Group>
+                      </div>
+                    </div>
+                  </div>
                 </Form>
               </Accordion.Body>
             </Accordion.Item>
@@ -1029,6 +1161,11 @@ function Pricing() {
                     <th>Remark1</th>
                     <th>Mínimo</th>
                     <th>Currency</th>
+                    <th>Válido Hasta</th>
+                    <th>Compañía</th>
+                    <th>Local Charges</th>
+                    <th>Gastos x kg</th>
+                    <th>Mín. g. x kg</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1277,6 +1414,71 @@ function Pricing() {
                                 ))}
                               </Form.Select>
                             </td>
+                            <td>
+                              <Form.Control
+                                size="sm"
+                                type="date"
+                                value={editForm.validUntil}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    validUntil: e.target.value,
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <Form.Control
+                                size="sm"
+                                value={editForm.company}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    company: e.target.value,
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <Form.Control
+                                size="sm"
+                                value={editForm.localCharges}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    localCharges: e.target.value,
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <Form.Control
+                                size="sm"
+                                type="number"
+                                step="0.01"
+                                value={editForm.gastosXkg}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    gastosXkg: e.target.value,
+                                  })
+                                }
+                              />
+                            </td>
+                            <td>
+                              <Form.Control
+                                size="sm"
+                                type="number"
+                                step="0.01"
+                                value={editForm.minimoGastosXkg}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    minimoGastosXkg: e.target.value,
+                                  })
+                                }
+                              />
+                            </td>
                           </>
                         ) : (
                           <>
@@ -1375,6 +1577,65 @@ function Pricing() {
                                 </span>
                               )}
                             </td>
+                            {[15, 16, 17, 18, 19].map((colIndex) => {
+                              const isEditingThisCell =
+                                editingCell?.row === actualIndex &&
+                                editingCell?.col === colIndex;
+
+                              return (
+                                <td
+                                  key={colIndex}
+                                  onDoubleClick={() =>
+                                    handleCellDoubleClick(
+                                      actualIndex,
+                                      colIndex,
+                                      route[colIndex],
+                                    )
+                                  }
+                                  style={{
+                                    cursor: "pointer",
+                                    position: "relative",
+                                  }}
+                                  title="Doble clic para editar"
+                                >
+                                  {isEditingThisCell ? (
+                                    <Form.Control
+                                      size="sm"
+                                      type={
+                                        colIndex === 15
+                                          ? "date"
+                                          : [18, 19].includes(colIndex)
+                                            ? "number"
+                                            : "text"
+                                      }
+                                      step={
+                                        [18, 19].includes(colIndex)
+                                          ? "0.01"
+                                          : undefined
+                                      }
+                                      value={cellValue}
+                                      onChange={(e) =>
+                                        setCellValue(e.target.value)
+                                      }
+                                      onKeyDown={(e) =>
+                                        handleCellKeyDown(
+                                          e,
+                                          actualIndex,
+                                          colIndex,
+                                        )
+                                      }
+                                      onBlur={() =>
+                                        saveCellEdit(actualIndex, colIndex)
+                                      }
+                                      autoFocus
+                                      style={{ minWidth: "80px" }}
+                                    />
+                                  ) : (
+                                    <span>{route[colIndex]}</span>
+                                  )}
+                                </td>
+                              );
+                            })}
                           </>
                         )}
                       </tr>

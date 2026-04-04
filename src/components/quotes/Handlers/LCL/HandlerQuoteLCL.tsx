@@ -70,9 +70,15 @@ export type Operador = string;
 export const extractPrice = (priceValue: any): number => {
   if (!priceValue) return 0;
   if (typeof priceValue === "number") return priceValue;
-  const match = priceValue.toString().match(/[\d,]+\.?\d*/);
+
+  // Reemplazamos cualquier coma por un punto para que JS reconozca el decimal
+  const formattedValue = priceValue.toString().replace(/,/g, ".");
+
+  // Extraemos solo los números y el posible punto decimal
+  const match = formattedValue.match(/\d+\.?\d*/);
   if (!match) return 0;
-  return parseFloat(match[0].replace(/,/g, ""));
+
+  return parseFloat(match[0]);
 };
 
 export const getBillableWM = (weightTons: number, volumeM3: number): number => {
