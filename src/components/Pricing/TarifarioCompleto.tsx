@@ -1,12 +1,11 @@
-// src/components/administrador/PricingTabs.tsx
 import { useState } from "react";
 import { Tab, Tabs } from "react-bootstrap";
-import Pricing from "./Pricing/Pricing";
-import PricingFCL from "./Pricing/PricingFCL";
-import PricingLCL from "./Pricing/PricingLCL";
-import "./PricingTabs.css";
+import TarifarioAereo from "../Proveedores/TarifarioAereo";
+import TarifarioFCL from "../Proveedores/TarifarioFCL";
+import TarifarioLCL from "../Proveedores/TarifarioLCL";
+import "../administrador/PricingTabs.css";
 
-function PricingTabs() {
+function TarifarioCompleto() {
   const [activeKey, setActiveKey] = useState<string>("air");
 
   return (
@@ -21,10 +20,9 @@ function PricingTabs() {
               className="header-logo"
             />
             <div className="header-text">
-              <h1 className="header-title">Gestión Integral de Tarifas</h1>
+              <h1 className="header-title">Tarifario Completo</h1>
               <p className="header-subtitle">
-                Administra tus precios de envíos aéreos, FCL y LCL en un solo
-                lugar
+                Visualización de todas las tarifas de todos los proveedores en un solo lugar
               </p>
             </div>
           </div>
@@ -34,7 +32,7 @@ function PricingTabs() {
       {/* Tabs */}
       <div className="tabs-wrapper">
         <Tabs
-          id="pricing-tabs"
+          id="tarifario-completo-tabs"
           activeKey={activeKey}
           onSelect={(k) => setActiveKey(k as string)}
           className="custom-tabs"
@@ -50,7 +48,7 @@ function PricingTabs() {
             tabClassName={activeKey === "air" ? "tab-active" : "tab-inactive"}
           >
             <div className="tab-content-panel">
-              <Pricing />
+              <TarifarioAereo showAddForm={false} />
             </div>
           </Tab>
 
@@ -65,7 +63,7 @@ function PricingTabs() {
             tabClassName={activeKey === "fcl" ? "tab-active" : "tab-inactive"}
           >
             <div className="tab-content-panel">
-              <PricingFCL />
+              <TarifarioFCL showAddForm={false} />
             </div>
           </Tab>
 
@@ -80,7 +78,7 @@ function PricingTabs() {
             tabClassName={activeKey === "lcl" ? "tab-active" : "tab-inactive"}
           >
             <div className="tab-content-panel">
-              <PricingLCL />
+              <TarifarioLCL showAddForm={false} />
             </div>
           </Tab>
         </Tabs>
@@ -89,4 +87,4 @@ function PricingTabs() {
   );
 }
 
-export default PricingTabs;
+export default TarifarioCompleto;

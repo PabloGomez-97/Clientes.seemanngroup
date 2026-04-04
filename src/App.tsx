@@ -27,9 +27,9 @@ import Clientesejecutivos from "./components/administrador/Administracion-Cuenta
 import ShipsGoTrackingAdmin from "./components/administrador/Shipsgo/gettrackingshipsgo-admin";
 import ShipsGoTrackingAdminOP from "./components/administrador/Shipsgo/OP-trackeo";
 import Invoicesxejecutivo from "./components/administrador/Facturaciones-Ejecutivos/Facturaciones";
-import Pricing from "./components/administrador/PricingTabs";
-import PricingFCL from "./components/administrador/Pricing/PricingFCL";
-import PricingLCL from "./components/administrador/Pricing/PricingLCL";
+import GestorTarifas from "./components/Pricing/GestorTarifas";
+import TarifarioCompleto from "./components/Pricing/TarifarioCompleto";
+import HomePricing from "./components/Pricing/HomePricing";
 import HomeEjecutivo from "./components/administrador/HomeEjecutivo";
 import HomeOperaciones from "./components/administrador/HomeOperaciones";
 import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
@@ -75,8 +75,10 @@ import NecesitasAyuda from "./components/Proveedores/NecesitasAyuda";
 /** Renders different home page depending on the user's role */
 function HomeSwitch() {
   const { user } = useAuth();
+  if (user?.roles?.pricing && !user?.roles?.ejecutivo) return <HomePricing />;
   if (user?.roles?.ejecutivo) return <HomeEjecutivo />;
   if (user?.roles?.operaciones) return <HomeOperaciones />;
+  if (user?.roles?.pricing) return <HomePricing />;
   return <HomeEjecutivo />;
 }
 
@@ -160,9 +162,17 @@ function App() {
             path="op-reporteriaclientes"
             element={<OPReporteriaClientes />}
           />
-          <Route path="pricing" element={<Pricing />} />
-          <Route path="pricingFCL" element={<PricingFCL />} />
-          <Route path="pricingLCL" element={<PricingLCL />} />
+          <Route path="pricing" element={<GestorTarifas />} />
+          <Route path="tarifario-completo" element={<TarifarioCompleto />} />
+          <Route
+            path="documentos-proveedores"
+            element={
+              <ArchivosProveedor
+                title="Documentos Proveedores"
+                subtitle="Archivos y documentos subidos por todos los proveedores"
+              />
+            }
+          />
 
           {/* Rutas de Reportería con subrutas */}
           <Route path="reporteria" element={<ReporteriaLayout />}>

@@ -40,7 +40,12 @@ function formatDate(iso: string): string {
   }
 }
 
-export default function ArchivosProveedor() {
+interface ArchivosProveedorProps {
+  title?: string;
+  subtitle?: string;
+}
+
+export default function ArchivosProveedor({ title = "Mis Archivos", subtitle = "Sube y gestiona tus archivos Excel por categoría" }: ArchivosProveedorProps) {
   const { token } = useAuth();
   const [tab, setTab] = useState<Categoria>("AEREO");
   const [archivos, setArchivos] = useState<ArchivoItem[]>([]);
@@ -190,10 +195,10 @@ export default function ArchivosProveedor() {
         <h1
           style={{ fontSize: 22, fontWeight: 700, color: "#1f2937", margin: 0 }}
         >
-          Mis Archivos
+          {title}
         </h1>
         <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
-          Sube y gestiona tus archivos Excel por categoría
+          {subtitle}
         </p>
       </div>
 

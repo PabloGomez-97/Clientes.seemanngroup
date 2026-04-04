@@ -45,9 +45,14 @@ const emptyForm = (): RouteFormFCL => ({
   validez: "",
 });
 
-export default function TarifarioFCL() {
+interface TarifarioFCLProps {
+  proveedorNombreOverride?: string;
+  showAddForm?: boolean;
+}
+
+export default function TarifarioFCL({ proveedorNombreOverride, showAddForm = true }: TarifarioFCLProps = {}) {
   const { user } = useAuth();
-  const nombreUsuario = user?.nombreuser || user?.email || "Proveedor";
+  const nombreUsuario = proveedorNombreOverride || user?.nombreuser || user?.email || "Proveedor";
   const isProveedor = !!user?.roles?.proveedor;
 
   const [form, setForm] = useState<RouteFormFCL>(emptyForm());
@@ -272,7 +277,7 @@ export default function TarifarioFCL() {
       )}
 
       {/* Add tariff toggle */}
-      {!showForm ? (
+      {showAddForm && (!showForm ? (
         <button
           onClick={() => setShowForm(true)}
           style={{
@@ -517,7 +522,7 @@ export default function TarifarioFCL() {
             {loading ? "Enviando..." : "Agregar tarifa"}
           </button>
         </div>
-      )}
+      ))}
 
       {/* Table section */}
       <div>

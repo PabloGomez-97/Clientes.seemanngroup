@@ -4985,7 +4985,14 @@ Sistema de Portal Clientes — Seemann Group
         const url = new URL(req.url || '', 'http://localhost');
         const categoria = url.searchParams.get('categoria') || undefined;
 
-        const filter: Record<string, unknown> = { subidoPor: currentUser.sub };
+        // Check if user has pricing or admin role → show ALL provider files
+        const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub });
+        const isPricingOrAdmin = !!(ejecutivoDoc?.roles?.pricing || ejecutivoDoc?.roles?.administrador);
+
+        const filter: Record<string, unknown> = {};
+        if (!isPricingOrAdmin) {
+          filter.subidoPor = currentUser.sub;
+        }
         if (categoria && ['AEREO', 'FCL', 'LCL'].includes(categoria)) {
           filter.categoria = categoria;
         }

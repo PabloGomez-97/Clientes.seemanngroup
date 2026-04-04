@@ -59,9 +59,14 @@ const emptyForm = (): RouteForm => ({
   minimoGastosXkg: "",
 });
 
-export default function TarifarioAereo() {
+interface TarifarioAereoProps {
+  proveedorNombreOverride?: string;
+  showAddForm?: boolean;
+}
+
+export default function TarifarioAereo({ proveedorNombreOverride, showAddForm = true }: TarifarioAereoProps = {}) {
   const { user } = useAuth();
-  const nombreUsuario = user?.nombreuser || user?.email || "Proveedor";
+  const nombreUsuario = proveedorNombreOverride || user?.nombreuser || user?.email || "Proveedor";
   const isProveedor = !!user?.roles?.proveedor;
 
   const [form, setForm] = useState<RouteForm>(emptyForm());
@@ -302,7 +307,7 @@ export default function TarifarioAereo() {
       )}
 
       {/* Add tariff toggle */}
-      {!showForm ? (
+      {showAddForm && (!showForm ? (
         <button
           onClick={() => setShowForm(true)}
           style={{
@@ -618,7 +623,7 @@ export default function TarifarioAereo() {
             {loading ? "Enviando..." : "Agregar tarifa"}
           </button>
         </div>
-      )}
+      ))}
 
       {/* Table section */}
       <div>

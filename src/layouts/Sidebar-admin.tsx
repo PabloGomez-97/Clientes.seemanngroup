@@ -127,10 +127,23 @@ function SidebarAdmin({
     {
       items: [
         {
-          path: "/admin/pricing",
           name: "Tarifas",
           icon: "fa fa-dollar-sign",
           badge: { text: "Pricing", type: "admin" as const },
+          subItems: [
+            {
+              path: "/admin/pricing",
+              name: "Gestionar Tarifas",
+            },
+            {
+              path: "/admin/tarifario-completo",
+              name: "Tarifario Completo",
+            },
+            {
+              path: "/admin/documentos-proveedores",
+              name: "Documentos Proveedores",
+            },
+          ],
         },
       ],
     },
