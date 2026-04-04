@@ -3,15 +3,7 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { useAuditLog } from "../../../hooks/useAuditLog";
-import {
-  Accordion,
-  Button,
-  Form,
-  Spinner,
-  Alert,
-  OverlayTrigger,
-  Tooltip,
-} from "react-bootstrap";
+import { Accordion, Button, Form, Spinner, Alert } from "react-bootstrap";
 
 interface OutletContext {
   accessToken: string;
@@ -27,16 +19,16 @@ interface RouteFormFCL {
   hq40: string;
   nor40: string;
   carrier: string;
-  freeTime: string;
-  remarks: string;
   tt: string;
+  remarks: string;
+  freeTime: string;
   company: string;
   currency: string;
-  client: string;
+  validez: string;
 }
 
 const GOOGLE_APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbwItrwoAoOvwFGL5kvn-dqyV54UjUP7_Dby-iC5EDAQLKRyEo5KVMCs-U2VQGCuJ3yS/exec";
+  "https://script.google.com/macros/s/AKfycbyOfoEKwyJK6kzkVMuMtB-N1QZB65R-S5tuTG38QQjY2SY01B3EupTwhAZ4J_OWycU/exec";
 
 const CURRENCY_OPTIONS = ["USD", "EUR", "GBP", "CAD", "CHF", "CLP", "SEK"];
 
@@ -54,12 +46,12 @@ function PricingFCL() {
       hq40: "",
       nor40: "",
       carrier: "",
-      freeTime: "",
-      remarks: "",
       tt: "",
+      remarks: "",
+      freeTime: "",
       company: "",
       currency: "USD",
-      client: "",
+      validez: "",
     },
   ]);
 
@@ -94,12 +86,12 @@ function PricingFCL() {
       hq40: "",
       nor40: "",
       carrier: "",
-      freeTime: "",
-      remarks: "",
       tt: "",
+      remarks: "",
+      freeTime: "",
       company: "",
       currency: "USD",
-      client: "",
+      validez: "",
     };
     setForms([...forms, newForm]);
     setActiveKey(forms.length.toString());
@@ -170,12 +162,12 @@ function PricingFCL() {
             hq40: "",
             nor40: "",
             carrier: "",
-            freeTime: "",
-            remarks: "",
             tt: "",
+            remarks: "",
+            freeTime: "",
             company: "",
             currency: "USD",
-            client: "",
+            validez: "",
           },
         ]);
         setActiveKey("0");
@@ -206,12 +198,12 @@ function PricingFCL() {
         form.hq40,
         form.nor40,
         form.carrier,
-        form.freeTime,
-        form.remarks,
         form.tt,
+        form.remarks,
+        form.freeTime,
         form.company,
         form.currency,
-        form.client,
+        form.validez,
       ];
 
       const input = document.createElement("input");
@@ -307,12 +299,12 @@ function PricingFCL() {
       hq40: route[4],
       nor40: route[5],
       carrier: route[6],
-      freeTime: route[7],
+      tt: route[7],
       remarks: route[8],
-      tt: route[9],
+      freeTime: route[9],
       company: route[10],
       currency: route[11],
-      client: route[12],
+      validez: route[12] || "",
     });
   };
 
@@ -329,12 +321,12 @@ function PricingFCL() {
         editForm.hq40,
         editForm.nor40,
         editForm.carrier,
-        editForm.freeTime,
-        editForm.remarks,
         editForm.tt,
+        editForm.remarks,
+        editForm.freeTime,
         editForm.company,
         editForm.currency,
-        editForm.client,
+        editForm.validez,
       ];
 
       const response = await fetch(
@@ -430,12 +422,12 @@ function PricingFCL() {
           "hq40",
           "nor40",
           "carrier",
-          "freeTime",
-          "remarks",
           "tt",
+          "remarks",
+          "freeTime",
           "company",
           "currency",
-          "client",
+          "validez",
         ];
         registrarEvento({
           accion: "PRICING_FCL_ACTUALIZADO",
@@ -675,19 +667,6 @@ function PricingFCL() {
                       </div>
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Free Time</Form.Label>
-                          <Form.Control
-                            type="text"
-                            value={form.freeTime}
-                            onChange={(e) =>
-                              updateForm(form.id, "freeTime", e.target.value)
-                            }
-                            placeholder="Ej: 7 días"
-                          />
-                        </Form.Group>
-                      </div>
-                      <div className="col-md-4">
-                        <Form.Group>
                           <Form.Label>Transit Time (T.T)</Form.Label>
                           <Form.Control
                             type="text"
@@ -696,6 +675,19 @@ function PricingFCL() {
                               updateForm(form.id, "tt", e.target.value)
                             }
                             placeholder="Ej: 25-30 días"
+                          />
+                        </Form.Group>
+                      </div>
+                      <div className="col-md-4">
+                        <Form.Group>
+                          <Form.Label>Free Time</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={form.freeTime}
+                            onChange={(e) =>
+                              updateForm(form.id, "freeTime", e.target.value)
+                            }
+                            placeholder="Ej: 7 días"
                           />
                         </Form.Group>
                       </div>
@@ -721,37 +713,13 @@ function PricingFCL() {
                       </div>
                       <div className="col-md-4">
                         <Form.Group>
-                          <div className="d-flex align-items-center gap-2 mb-2">
-                            <label className="form-label mb-0">
-                              Cliente (Opcional)
-                            </label>
-                            <OverlayTrigger
-                              placement="right"
-                              overlay={
-                                <Tooltip id="tooltip-cliente">
-                                  Agregar nombre de la empresa que solamente
-                                  verá esta ruta
-                                </Tooltip>
-                              }
-                            >
-                              <i
-                                className="bi bi-info-circle"
-                                style={{
-                                  color: "#ff0000",
-                                  fontSize: "18px",
-                                  fontWeight: "bold",
-                                  cursor: "pointer",
-                                }}
-                              ></i>
-                            </OverlayTrigger>
-                          </div>
+                          <Form.Label>Validez</Form.Label>
                           <Form.Control
-                            type="text"
-                            value={form.client}
+                            type="date"
+                            value={form.validez}
                             onChange={(e) =>
-                              updateForm(form.id, "client", e.target.value)
+                              updateForm(form.id, "validez", e.target.value)
                             }
-                            placeholder="Nombre del cliente"
                           />
                         </Form.Group>
                       </div>
@@ -897,12 +865,12 @@ function PricingFCL() {
                     <th>40HQ</th>
                     <th>40NOR</th>
                     <th>Carrier</th>
-                    <th>Free Time</th>
-                    <th>Remarks</th>
                     <th>T.T</th>
+                    <th>Remarks</th>
+                    <th>Free Time</th>
                     <th>Compañía</th>
                     <th>Currency</th>
-                    <th>Cliente</th>
+                    <th>Validez</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1048,11 +1016,11 @@ function PricingFCL() {
                             <td>
                               <Form.Control
                                 size="sm"
-                                value={editForm.freeTime}
+                                value={editForm.tt}
                                 onChange={(e) =>
                                   setEditForm({
                                     ...editForm,
-                                    freeTime: e.target.value,
+                                    tt: e.target.value,
                                   })
                                 }
                               />
@@ -1072,11 +1040,11 @@ function PricingFCL() {
                             <td>
                               <Form.Control
                                 size="sm"
-                                value={editForm.tt}
+                                value={editForm.freeTime}
                                 onChange={(e) =>
                                   setEditForm({
                                     ...editForm,
-                                    tt: e.target.value,
+                                    freeTime: e.target.value,
                                   })
                                 }
                               />
@@ -1114,11 +1082,12 @@ function PricingFCL() {
                             <td>
                               <Form.Control
                                 size="sm"
-                                value={editForm.client}
+                                type="date"
+                                value={editForm.validez}
                                 onChange={(e) =>
                                   setEditForm({
                                     ...editForm,
-                                    client: e.target.value,
+                                    validez: e.target.value,
                                   })
                                 }
                               />
@@ -1234,6 +1203,7 @@ function PricingFCL() {
                               editingCell?.col === 12 ? (
                                 <Form.Control
                                   size="sm"
+                                  type="date"
                                   value={cellValue}
                                   onChange={(e) => setCellValue(e.target.value)}
                                   onKeyDown={(e) =>

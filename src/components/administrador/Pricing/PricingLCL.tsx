@@ -3,15 +3,7 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { useAuditLog } from "../../../hooks/useAuditLog";
-import {
-  Accordion,
-  Button,
-  Form,
-  Spinner,
-  Alert,
-  OverlayTrigger,
-  Tooltip,
-} from "react-bootstrap";
+import { Accordion, Button, Form, Spinner, Alert } from "react-bootstrap";
 
 interface OutletContext {
   accessToken: string;
@@ -30,7 +22,7 @@ interface RouteFormLCL {
   agente: string;
   tt: string;
   operador: string;
-  cliente: string;
+  validez: string;
 }
 
 const GOOGLE_APPS_SCRIPT_URL =
@@ -55,7 +47,7 @@ function PricingLCL() {
       agente: "",
       tt: "",
       operador: "",
-      cliente: "",
+      validez: "",
     },
   ]);
 
@@ -93,7 +85,7 @@ function PricingLCL() {
       agente: "",
       tt: "",
       operador: "",
-      cliente: "",
+      validez: "",
     };
     setForms([...forms, newForm]);
     setActiveKey(forms.length.toString());
@@ -166,7 +158,7 @@ function PricingLCL() {
             agente: "",
             tt: "",
             operador: "",
-            cliente: "",
+            validez: "",
           },
         ]);
         setActiveKey("0");
@@ -200,7 +192,7 @@ function PricingLCL() {
         form.agente,
         form.tt,
         form.operador,
-        form.cliente,
+        form.validez,
       ];
 
       const input = document.createElement("input");
@@ -299,7 +291,7 @@ function PricingLCL() {
       agente: route[7],
       tt: route[8],
       operador: route[9],
-      cliente: route[10],
+      validez: route[10] || "",
     });
   };
 
@@ -319,7 +311,7 @@ function PricingLCL() {
         editForm.agente,
         editForm.tt,
         editForm.operador,
-        editForm.cliente,
+        editForm.validez,
       ];
 
       const response = await fetch(
@@ -417,7 +409,7 @@ function PricingLCL() {
           "agente",
           "tt",
           "operador",
-          "cliente",
+          "validez",
         ];
         registrarEvento({
           accion: "PRICING_LCL_ACTUALIZADO",
@@ -645,19 +637,6 @@ function PricingLCL() {
                       </div>
                       <div className="col-md-4">
                         <Form.Group>
-                          <Form.Label>Transit Time Aprox</Form.Label>
-                          <Form.Control
-                            type="text"
-                            value={form.tt}
-                            onChange={(e) =>
-                              updateForm(form.id, "tt", e.target.value)
-                            }
-                            placeholder="Ej: 30-35 días"
-                          />
-                        </Form.Group>
-                      </div>
-                      <div className="col-md-4">
-                        <Form.Group>
                           <Form.Label>Agente</Form.Label>
                           <Form.Control
                             type="text"
@@ -666,6 +645,19 @@ function PricingLCL() {
                               updateForm(form.id, "agente", e.target.value)
                             }
                             placeholder="Nombre del agente"
+                          />
+                        </Form.Group>
+                      </div>
+                      <div className="col-md-4">
+                        <Form.Group>
+                          <Form.Label>Transit Time Aprox</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={form.tt}
+                            onChange={(e) =>
+                              updateForm(form.id, "tt", e.target.value)
+                            }
+                            placeholder="Ej: 30-35 días"
                           />
                         </Form.Group>
                       </div>
@@ -691,37 +683,13 @@ function PricingLCL() {
                       </div>
                       <div className="col-md-6">
                         <Form.Group>
-                          <div className="d-flex align-items-center gap-2 mb-2">
-                            <label className="form-label mb-0">
-                              Cliente (Opcional)
-                            </label>
-                            <OverlayTrigger
-                              placement="right"
-                              overlay={
-                                <Tooltip id="tooltip-cliente">
-                                  Agregar nombre de la empresa que solamente
-                                  verá esta ruta
-                                </Tooltip>
-                              }
-                            >
-                              <i
-                                className="bi bi-info-circle"
-                                style={{
-                                  color: "#ff0000",
-                                  fontSize: "18px",
-                                  fontWeight: "bold",
-                                  cursor: "pointer",
-                                }}
-                              ></i>
-                            </OverlayTrigger>
-                          </div>
+                          <Form.Label>Validez</Form.Label>
                           <Form.Control
-                            type="text"
-                            value={form.cliente}
+                            type="date"
+                            value={form.validez}
                             onChange={(e) =>
-                              updateForm(form.id, "cliente", e.target.value)
+                              updateForm(form.id, "validez", e.target.value)
                             }
-                            placeholder="Nombre del cliente"
                           />
                         </Form.Group>
                       </div>
@@ -857,7 +825,7 @@ function PricingLCL() {
                     <th>Agente</th>
                     <th>TT Aprox</th>
                     <th>Operador</th>
-                    <th>Cliente</th>
+                    <th>Validez</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1041,11 +1009,12 @@ function PricingLCL() {
                             <td>
                               <Form.Control
                                 size="sm"
-                                value={editForm.cliente}
+                                type="date"
+                                value={editForm.validez}
                                 onChange={(e) =>
                                   setEditForm({
                                     ...editForm,
-                                    cliente: e.target.value,
+                                    validez: e.target.value,
                                   })
                                 }
                               />
@@ -1162,7 +1131,7 @@ function PricingLCL() {
                                   {isEditingThisCell ? (
                                     <Form.Control
                                       size="sm"
-                                      type="text"
+                                      type={colIndex === 10 ? "date" : "text"}
                                       value={cellValue}
                                       onChange={(e) =>
                                         setCellValue(e.target.value)
