@@ -1511,7 +1511,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permisos' });
         }
         
-        const ejecutivos = await Ejecutivo.find({ activo: true })
+        const ejecutivos = await Ejecutivo.find({ activo: true, 'roles.ejecutivo': true })
           .select('nombre email telefono')
           .sort({ nombre: 1 });
 

@@ -1442,7 +1442,7 @@ app.get('/api/ejecutivo/clientes', auth, async (req, res) => {
 // Listar ejecutivos (usuarios autenticados)
 app.get('/api/ejecutivos', auth, async (req, res) => {
   try {
-    const ejecutivos = await Ejecutivo.find({ activo: true }).sort({ nombre: 1 });
+    const ejecutivos = await Ejecutivo.find({ activo: true, 'roles.ejecutivo': true }).sort({ nombre: 1 });
 
     return res.json({
       success: true,
