@@ -46,9 +46,13 @@ interface TarifarioLCLProps {
   showAddForm?: boolean;
 }
 
-export default function TarifarioLCL({ proveedorNombreOverride, showAddForm = true }: TarifarioLCLProps = {}) {
+export default function TarifarioLCL({
+  proveedorNombreOverride,
+  showAddForm = true,
+}: TarifarioLCLProps = {}) {
   const { user } = useAuth();
-  const nombreUsuario = proveedorNombreOverride || user?.nombreuser || user?.email || "Proveedor";
+  const nombreUsuario =
+    proveedorNombreOverride || user?.nombreuser || user?.email || "Proveedor";
   const isProveedor = !!user?.roles?.proveedor;
 
   const [form, setForm] = useState<RouteFormLCL>(emptyForm());
@@ -268,241 +272,243 @@ export default function TarifarioLCL({ proveedorNombreOverride, showAddForm = tr
       )}
 
       {/* Add tariff toggle */}
-      {showAddForm && (!showForm ? (
-        <button
-          onClick={() => setShowForm(true)}
-          style={{
-            fontFamily: FONT,
-            width: "100%",
-            padding: "14px 20px",
-            borderRadius: 10,
-            border: "2px dashed #d1d5db",
-            backgroundColor: "#fafafa",
-            color: "#6b7280",
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: "pointer",
-            marginBottom: 32,
-            transition: "all 0.15s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "var(--primary-color, #ff6200)";
-            e.currentTarget.style.color = "var(--primary-color, #ff6200)";
-            e.currentTarget.style.backgroundColor = "#fff7ed";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "#d1d5db";
-            e.currentTarget.style.color = "#6b7280";
-            e.currentTarget.style.backgroundColor = "#fafafa";
-          }}
-        >
-          + Nueva tarifa LCL
-        </button>
-      ) : (
-        <div
-          style={{
-            backgroundColor: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            padding: 28,
-            marginBottom: 32,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 24,
-            }}
-          >
-            <h2
-              style={{
-                fontSize: 16,
-                fontWeight: 600,
-                color: "#1f2937",
-                margin: 0,
-              }}
-            >
-              Nueva tarifa
-            </h2>
-            <button
-              onClick={() => {
-                setShowForm(false);
-                setForm(emptyForm());
-              }}
-              style={{
-                fontFamily: FONT,
-                background: "none",
-                border: "none",
-                color: "#6b7280",
-                fontSize: 13,
-                cursor: "pointer",
-                padding: "4px 8px",
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-
-          {/* Operador display */}
-          <div
-            style={{
-              padding: "10px 14px",
-              backgroundColor: "#f3f4f6",
-              borderRadius: 8,
-              marginBottom: 20,
-              fontSize: 13,
-              color: "#374151",
-            }}
-          >
-            Operador: <strong>{nombreUsuario}</strong>
-          </div>
-
-          {/* Form grid */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: 16,
-              marginBottom: 20,
-            }}
-          >
-            <Field
-              label="POL (Puerto de Origen) *"
-              value={form.pol}
-              onChange={(v) => update("pol", v)}
-              placeholder="Ej: Valparaíso"
-            />
-            <Field
-              label="Servicio / Vía"
-              value={form.servicio}
-              onChange={(v) => update("servicio", v)}
-              placeholder="Ej: Directo"
-            />
-            <Field
-              label="POD (Puerto de Destino) *"
-              value={form.pod}
-              onChange={(v) => update("pod", v)}
-              placeholder="Ej: Santos"
-            />
-          </div>
-
-          <p
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#9ca3af",
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            Tarifa
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 20,
-            }}
-          >
-            <Field
-              label="OF W/M *"
-              value={form.ofwm}
-              onChange={(v) => update("ofwm", v)}
-              type="number"
-            />
-            <SelectField
-              label="Moneda"
-              value={form.currency}
-              options={CURRENCY_OPTIONS}
-              onChange={(v) => update("currency", v)}
-            />
-          </div>
-
-          <p
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#9ca3af",
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            Servicio
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 12,
-              marginBottom: 20,
-            }}
-          >
-            <Field
-              label="Frecuencia"
-              value={form.frecuencia}
-              onChange={(v) => update("frecuencia", v)}
-              placeholder="Ej: Semanal"
-            />
-            <Field
-              label="Agente"
-              value={form.agente}
-              onChange={(v) => update("agente", v)}
-              placeholder="Nombre del agente"
-            />
-            <Field
-              label="Transit Time"
-              value={form.tt}
-              onChange={(v) => update("tt", v)}
-              placeholder="Ej: 30-35 días"
-            />
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr",
-              gap: 12,
-              marginBottom: 24,
-              maxWidth: 300,
-            }}
-          >
-            <FieldWithTooltip
-              label="Validez"
-              value={form.validez}
-              onChange={(v) => update("validez", v)}
-              type="date"
-              tooltip="Ingrese la fecha en formato DÍA/MES/AÑO"
-            />
-          </div>
-
+      {showAddForm &&
+        (!showForm ? (
           <button
-            onClick={submit}
-            disabled={loading}
+            onClick={() => setShowForm(true)}
             style={{
               fontFamily: FONT,
               width: "100%",
-              padding: "12px",
-              borderRadius: 8,
-              border: "none",
-              backgroundColor: loading
-                ? "#d1d5db"
-                : "var(--primary-color, #ff6200)",
-              color: "#fff",
+              padding: "14px 20px",
+              borderRadius: 10,
+              border: "2px dashed #d1d5db",
+              backgroundColor: "#fafafa",
+              color: "#6b7280",
               fontSize: 14,
-              fontWeight: 600,
-              cursor: loading ? "default" : "pointer",
-              transition: "background-color 0.15s ease",
+              fontWeight: 500,
+              cursor: "pointer",
+              marginBottom: 32,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor =
+                "var(--primary-color, #ff6200)";
+              e.currentTarget.style.color = "var(--primary-color, #ff6200)";
+              e.currentTarget.style.backgroundColor = "#fff7ed";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "#d1d5db";
+              e.currentTarget.style.color = "#6b7280";
+              e.currentTarget.style.backgroundColor = "#fafafa";
             }}
           >
-            {loading ? "Enviando..." : "Agregar tarifa"}
+            + Nueva tarifa LCL
           </button>
-        </div>
-      ))}
+        ) : (
+          <div
+            style={{
+              backgroundColor: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 12,
+              padding: 28,
+              marginBottom: 32,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 24,
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: "#1f2937",
+                  margin: 0,
+                }}
+              >
+                Nueva tarifa
+              </h2>
+              <button
+                onClick={() => {
+                  setShowForm(false);
+                  setForm(emptyForm());
+                }}
+                style={{
+                  fontFamily: FONT,
+                  background: "none",
+                  border: "none",
+                  color: "#6b7280",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+
+            {/* Operador display */}
+            <div
+              style={{
+                padding: "10px 14px",
+                backgroundColor: "#f3f4f6",
+                borderRadius: 8,
+                marginBottom: 20,
+                fontSize: 13,
+                color: "#374151",
+              }}
+            >
+              Operador: <strong>{nombreUsuario}</strong>
+            </div>
+
+            {/* Form grid */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              <Field
+                label="POL (Puerto de Origen) *"
+                value={form.pol}
+                onChange={(v) => update("pol", v)}
+                placeholder="Ej: Valparaíso"
+              />
+              <Field
+                label="Servicio / Vía"
+                value={form.servicio}
+                onChange={(v) => update("servicio", v)}
+                placeholder="Ej: Directo"
+              />
+              <Field
+                label="POD (Puerto de Destino) *"
+                value={form.pod}
+                onChange={(v) => update("pod", v)}
+                placeholder="Ej: Santos"
+              />
+            </div>
+
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#9ca3af",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              Tarifa
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
+              <Field
+                label="OF W/M *"
+                value={form.ofwm}
+                onChange={(v) => update("ofwm", v)}
+                type="number"
+              />
+              <SelectField
+                label="Moneda"
+                value={form.currency}
+                options={CURRENCY_OPTIONS}
+                onChange={(v) => update("currency", v)}
+              />
+            </div>
+
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#9ca3af",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              Servicio
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
+              <Field
+                label="Frecuencia"
+                value={form.frecuencia}
+                onChange={(v) => update("frecuencia", v)}
+                placeholder="Ej: Semanal"
+              />
+              <Field
+                label="Agente"
+                value={form.agente}
+                onChange={(v) => update("agente", v)}
+                placeholder="Nombre del agente"
+              />
+              <Field
+                label="Transit Time"
+                value={form.tt}
+                onChange={(v) => update("tt", v)}
+                placeholder="Ej: 30-35 días"
+              />
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr",
+                gap: 12,
+                marginBottom: 24,
+                maxWidth: 300,
+              }}
+            >
+              <FieldWithTooltip
+                label="Validez"
+                value={form.validez}
+                onChange={(v) => update("validez", v)}
+                type="date"
+                tooltip="Ingrese la fecha en formato DÍA/MES/AÑO"
+              />
+            </div>
+
+            <button
+              onClick={submit}
+              disabled={loading}
+              style={{
+                fontFamily: FONT,
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                border: "none",
+                backgroundColor: loading
+                  ? "#d1d5db"
+                  : "var(--primary-color, #ff6200)",
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: loading ? "default" : "pointer",
+                transition: "background-color 0.15s ease",
+              }}
+            >
+              {loading ? "Enviando..." : "Agregar tarifa"}
+            </button>
+          </div>
+        ))}
 
       {/* Table section */}
       <div>

@@ -64,9 +64,13 @@ interface TarifarioAereoProps {
   showAddForm?: boolean;
 }
 
-export default function TarifarioAereo({ proveedorNombreOverride, showAddForm = true }: TarifarioAereoProps = {}) {
+export default function TarifarioAereo({
+  proveedorNombreOverride,
+  showAddForm = true,
+}: TarifarioAereoProps = {}) {
   const { user } = useAuth();
-  const nombreUsuario = proveedorNombreOverride || user?.nombreuser || user?.email || "Proveedor";
+  const nombreUsuario =
+    proveedorNombreOverride || user?.nombreuser || user?.email || "Proveedor";
   const isProveedor = !!user?.roles?.proveedor;
 
   const [form, setForm] = useState<RouteForm>(emptyForm());
@@ -307,323 +311,325 @@ export default function TarifarioAereo({ proveedorNombreOverride, showAddForm = 
       )}
 
       {/* Add tariff toggle */}
-      {showAddForm && (!showForm ? (
-        <button
-          onClick={() => setShowForm(true)}
-          style={{
-            fontFamily: FONT,
-            width: "100%",
-            padding: "14px 20px",
-            borderRadius: 10,
-            border: "2px dashed #d1d5db",
-            backgroundColor: "#fafafa",
-            color: "#6b7280",
-            fontSize: 14,
-            fontWeight: 500,
-            cursor: "pointer",
-            marginBottom: 32,
-            transition: "all 0.15s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "var(--primary-color, #ff6200)";
-            e.currentTarget.style.color = "var(--primary-color, #ff6200)";
-            e.currentTarget.style.backgroundColor = "#fff7ed";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "#d1d5db";
-            e.currentTarget.style.color = "#6b7280";
-            e.currentTarget.style.backgroundColor = "#fafafa";
-          }}
-        >
-          + Nueva tarifa aérea
-        </button>
-      ) : (
-        <div
-          style={{
-            backgroundColor: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            padding: 28,
-            marginBottom: 32,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 24,
-            }}
-          >
-            <h2
-              style={{
-                fontSize: 16,
-                fontWeight: 600,
-                color: "#1f2937",
-                margin: 0,
-              }}
-            >
-              Nueva tarifa
-            </h2>
-            <button
-              onClick={() => {
-                setShowForm(false);
-                setForm(emptyForm());
-              }}
-              style={{
-                fontFamily: FONT,
-                background: "none",
-                border: "none",
-                color: "#6b7280",
-                fontSize: 13,
-                cursor: "pointer",
-                padding: "4px 8px",
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-
-          {/* Company display */}
-          <div
-            style={{
-              padding: "10px 14px",
-              backgroundColor: "#f3f4f6",
-              borderRadius: 8,
-              marginBottom: 20,
-              fontSize: 13,
-              color: "#374151",
-            }}
-          >
-            Compañía: <strong>{nombreUsuario}</strong>
-          </div>
-
-          {/* Form grid */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 16,
-              marginBottom: 20,
-            }}
-          >
-            <Field
-              label="Origen *"
-              value={form.origin}
-              onChange={(v) => update("origin", v)}
-              placeholder="Ej: SCL, MIA"
-            />
-            <Field
-              label="Destino *"
-              value={form.destination}
-              onChange={(v) => update("destination", v)}
-              placeholder="Ej: FRA, JFK"
-            />
-          </div>
-
-          <p
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#9ca3af",
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            Tarifas por peso
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(5, 1fr)",
-              gap: 12,
-              marginBottom: 20,
-            }}
-          >
-            <Field
-              label="1-99kg *"
-              value={form.kg45}
-              onChange={(v) => update("kg45", v)}
-              type="number"
-            />
-            <Field
-              label="100-299kg"
-              value={form.kg100}
-              onChange={(v) => update("kg100", v)}
-              type="number"
-            />
-            <Field
-              label="300-499kg"
-              value={form.kg300}
-              onChange={(v) => update("kg300", v)}
-              type="number"
-            />
-            <Field
-              label="500-999kg"
-              value={form.kg500}
-              onChange={(v) => update("kg500", v)}
-              type="number"
-            />
-            <Field
-              label="+1000kg"
-              value={form.kg1000}
-              onChange={(v) => update("kg1000", v)}
-              type="number"
-            />
-          </div>
-
-          <p
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#9ca3af",
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            Servicio
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 12,
-              marginBottom: 20,
-            }}
-          >
-            <Field
-              label="Carrier *"
-              value={form.carrier}
-              onChange={(v) => update("carrier", v)}
-              placeholder="Ej: Lufthansa"
-            />
-            <Field
-              label="Frecuencia"
-              value={form.frequency}
-              onChange={(v) => update("frequency", v)}
-              placeholder="Ej: Daily"
-            />
-            <Field
-              label="Transit Time"
-              value={form.transitTime}
-              onChange={(v) => update("transitTime", v)}
-              placeholder="Ej: 2-3 días"
-            />
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 12,
-              marginBottom: 20,
-            }}
-          >
-            <Field
-              label="Routing"
-              value={form.routing}
-              onChange={(v) => update("routing", v)}
-              placeholder="Ej: Direct"
-            />
-            <Field
-              label="Remark"
-              value={form.remark1}
-              onChange={(v) => update("remark1", v)}
-            />
-            <Field
-              label="Mínimo"
-              value={form.remark2}
-              onChange={(v) => update("remark2", v)}
-            />
-          </div>
-
-          <p
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#9ca3af",
-              textTransform: "uppercase",
-              letterSpacing: 0.5,
-              marginBottom: 12,
-            }}
-          >
-            Comercial
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 12,
-              marginBottom: 24,
-            }}
-          >
-            <SelectField
-              label="Moneda"
-              value={form.currency}
-              options={CURRENCY_OPTIONS}
-              onChange={(v) => update("currency", v)}
-            />
-            <FieldWithTooltip
-              label="Válido hasta"
-              value={form.validUntil}
-              onChange={(v) => update("validUntil", v)}
-              type="date"
-              tooltip="Ingrese la fecha en formato DÍA/MES/AÑO"
-            />
-            <Field
-              label="Local Charges"
-              value={form.localCharges}
-              onChange={(v) => update("localCharges", v)}
-            />
-            <Field
-              label="Gastos/kg"
-              value={form.gastosXkg}
-              onChange={(v) => update("gastosXkg", v)}
-              type="number"
-            />
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 3fr",
-              gap: 12,
-              marginBottom: 24,
-            }}
-          >
-            <Field
-              label="Mín. gastos/kg"
-              value={form.minimoGastosXkg}
-              onChange={(v) => update("minimoGastosXkg", v)}
-              type="number"
-            />
-          </div>
-
+      {showAddForm &&
+        (!showForm ? (
           <button
-            onClick={submit}
-            disabled={loading}
+            onClick={() => setShowForm(true)}
             style={{
               fontFamily: FONT,
               width: "100%",
-              padding: "12px",
-              borderRadius: 8,
-              border: "none",
-              backgroundColor: loading
-                ? "#d1d5db"
-                : "var(--primary-color, #ff6200)",
-              color: "#fff",
+              padding: "14px 20px",
+              borderRadius: 10,
+              border: "2px dashed #d1d5db",
+              backgroundColor: "#fafafa",
+              color: "#6b7280",
               fontSize: 14,
-              fontWeight: 600,
-              cursor: loading ? "default" : "pointer",
-              transition: "background-color 0.15s ease",
+              fontWeight: 500,
+              cursor: "pointer",
+              marginBottom: 32,
+              transition: "all 0.15s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor =
+                "var(--primary-color, #ff6200)";
+              e.currentTarget.style.color = "var(--primary-color, #ff6200)";
+              e.currentTarget.style.backgroundColor = "#fff7ed";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "#d1d5db";
+              e.currentTarget.style.color = "#6b7280";
+              e.currentTarget.style.backgroundColor = "#fafafa";
             }}
           >
-            {loading ? "Enviando..." : "Agregar tarifa"}
+            + Nueva tarifa aérea
           </button>
-        </div>
-      ))}
+        ) : (
+          <div
+            style={{
+              backgroundColor: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 12,
+              padding: 28,
+              marginBottom: 32,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 24,
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: "#1f2937",
+                  margin: 0,
+                }}
+              >
+                Nueva tarifa
+              </h2>
+              <button
+                onClick={() => {
+                  setShowForm(false);
+                  setForm(emptyForm());
+                }}
+                style={{
+                  fontFamily: FONT,
+                  background: "none",
+                  border: "none",
+                  color: "#6b7280",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+
+            {/* Company display */}
+            <div
+              style={{
+                padding: "10px 14px",
+                backgroundColor: "#f3f4f6",
+                borderRadius: 8,
+                marginBottom: 20,
+                fontSize: 13,
+                color: "#374151",
+              }}
+            >
+              Compañía: <strong>{nombreUsuario}</strong>
+            </div>
+
+            {/* Form grid */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              <Field
+                label="Origen *"
+                value={form.origin}
+                onChange={(v) => update("origin", v)}
+                placeholder="Ej: SCL, MIA"
+              />
+              <Field
+                label="Destino *"
+                value={form.destination}
+                onChange={(v) => update("destination", v)}
+                placeholder="Ej: FRA, JFK"
+              />
+            </div>
+
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#9ca3af",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              Tarifas por peso
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(5, 1fr)",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
+              <Field
+                label="1-99kg *"
+                value={form.kg45}
+                onChange={(v) => update("kg45", v)}
+                type="number"
+              />
+              <Field
+                label="100-299kg"
+                value={form.kg100}
+                onChange={(v) => update("kg100", v)}
+                type="number"
+              />
+              <Field
+                label="300-499kg"
+                value={form.kg300}
+                onChange={(v) => update("kg300", v)}
+                type="number"
+              />
+              <Field
+                label="500-999kg"
+                value={form.kg500}
+                onChange={(v) => update("kg500", v)}
+                type="number"
+              />
+              <Field
+                label="+1000kg"
+                value={form.kg1000}
+                onChange={(v) => update("kg1000", v)}
+                type="number"
+              />
+            </div>
+
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#9ca3af",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              Servicio
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
+              <Field
+                label="Carrier *"
+                value={form.carrier}
+                onChange={(v) => update("carrier", v)}
+                placeholder="Ej: Lufthansa"
+              />
+              <Field
+                label="Frecuencia"
+                value={form.frequency}
+                onChange={(v) => update("frequency", v)}
+                placeholder="Ej: Daily"
+              />
+              <Field
+                label="Transit Time"
+                value={form.transitTime}
+                onChange={(v) => update("transitTime", v)}
+                placeholder="Ej: 2-3 días"
+              />
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
+              <Field
+                label="Routing"
+                value={form.routing}
+                onChange={(v) => update("routing", v)}
+                placeholder="Ej: Direct"
+              />
+              <Field
+                label="Remark"
+                value={form.remark1}
+                onChange={(v) => update("remark1", v)}
+              />
+              <Field
+                label="Mínimo"
+                value={form.remark2}
+                onChange={(v) => update("remark2", v)}
+              />
+            </div>
+
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#9ca3af",
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+                marginBottom: 12,
+              }}
+            >
+              Comercial
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 12,
+                marginBottom: 24,
+              }}
+            >
+              <SelectField
+                label="Moneda"
+                value={form.currency}
+                options={CURRENCY_OPTIONS}
+                onChange={(v) => update("currency", v)}
+              />
+              <FieldWithTooltip
+                label="Válido hasta"
+                value={form.validUntil}
+                onChange={(v) => update("validUntil", v)}
+                type="date"
+                tooltip="Ingrese la fecha en formato DÍA/MES/AÑO"
+              />
+              <Field
+                label="Local Charges"
+                value={form.localCharges}
+                onChange={(v) => update("localCharges", v)}
+              />
+              <Field
+                label="Gastos/kg"
+                value={form.gastosXkg}
+                onChange={(v) => update("gastosXkg", v)}
+                type="number"
+              />
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 3fr",
+                gap: 12,
+                marginBottom: 24,
+              }}
+            >
+              <Field
+                label="Mín. gastos/kg"
+                value={form.minimoGastosXkg}
+                onChange={(v) => update("minimoGastosXkg", v)}
+                type="number"
+              />
+            </div>
+
+            <button
+              onClick={submit}
+              disabled={loading}
+              style={{
+                fontFamily: FONT,
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                border: "none",
+                backgroundColor: loading
+                  ? "#d1d5db"
+                  : "var(--primary-color, #ff6200)",
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: loading ? "default" : "pointer",
+                transition: "background-color 0.15s ease",
+              }}
+            >
+              {loading ? "Enviando..." : "Agregar tarifa"}
+            </button>
+          </div>
+        ))}
 
       {/* Table section */}
       <div>

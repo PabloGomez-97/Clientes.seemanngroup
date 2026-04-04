@@ -45,7 +45,10 @@ interface ArchivosProveedorProps {
   subtitle?: string;
 }
 
-export default function ArchivosProveedor({ title = "Mis Archivos", subtitle = "Sube y gestiona tus archivos Excel por categoría" }: ArchivosProveedorProps) {
+export default function ArchivosProveedor({
+  title = "Mis Archivos",
+  subtitle = "Sube y gestiona tus archivos Excel por categoría",
+}: ArchivosProveedorProps) {
   const { token } = useAuth();
   const [tab, setTab] = useState<Categoria>("AEREO");
   const [archivos, setArchivos] = useState<ArchivoItem[]>([]);

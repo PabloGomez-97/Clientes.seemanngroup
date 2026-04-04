@@ -22,7 +22,8 @@ function TarifarioCompleto() {
             <div className="header-text">
               <h1 className="header-title">Tarifario Completo</h1>
               <p className="header-subtitle">
-                Visualización de todas las tarifas de todos los proveedores en un solo lugar
+                Visualización de todas las tarifas de todos los proveedores en
+                un solo lugar
               </p>
             </div>
           </div>

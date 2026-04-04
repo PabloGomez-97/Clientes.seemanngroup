@@ -20,24 +20,42 @@ const serviceTypes = [
   { key: "LCL" as const, icon: "fa fa-cubes" },
 ] as const;
 
-const typeLabels: Record<string, { title: string; badge: string; description: string; features: string[] }> = {
+const typeLabels: Record<
+  string,
+  { title: string; badge: string; description: string; features: string[] }
+> = {
   AEREO: {
     title: "Tarifas Aéreas",
     badge: "AIR",
-    description: "Gestiona tarifas de carga aérea por peso para todos los proveedores",
-    features: ["Tarifas por rango de peso", "Carriers y frecuencias", "Local charges y gastos"],
+    description:
+      "Gestiona tarifas de carga aérea por peso para todos los proveedores",
+    features: [
+      "Tarifas por rango de peso",
+      "Carriers y frecuencias",
+      "Local charges y gastos",
+    ],
   },
   FCL: {
     title: "Tarifas FCL",
     badge: "FCL",
-    description: "Gestiona tarifas de contenedor completo de todos los proveedores",
-    features: ["Contenedores 20GP, 40HQ, 40NOR", "Free time y remarks", "Carriers y transit time"],
+    description:
+      "Gestiona tarifas de contenedor completo de todos los proveedores",
+    features: [
+      "Contenedores 20GP, 40HQ, 40NOR",
+      "Free time y remarks",
+      "Carriers y transit time",
+    ],
   },
   LCL: {
     title: "Tarifas LCL",
     badge: "LCL",
-    description: "Gestiona tarifas de carga consolidada de todos los proveedores",
-    features: ["Tarifas OF W/M", "Servicios y frecuencias", "Agentes y operadores"],
+    description:
+      "Gestiona tarifas de carga consolidada de todos los proveedores",
+    features: [
+      "Tarifas OF W/M",
+      "Servicios y frecuencias",
+      "Agentes y operadores",
+    ],
   },
 };
 
@@ -58,7 +76,11 @@ const GestorTarifas: React.FC = () => {
           const data = await response.json();
           const provs = data.ejecutivos
             .filter((e: any) => e.activo && e.roles?.proveedor)
-            .map((e: any) => ({ id: e.id || e._id, nombre: e.nombre, email: e.email }));
+            .map((e: any) => ({
+              id: e.id || e._id,
+              nombre: e.nombre,
+              email: e.email,
+            }));
           setProveedores(provs);
         }
       } catch (err) {
@@ -85,7 +107,9 @@ const GestorTarifas: React.FC = () => {
         <div className="cotizador-container">
           <div className="cotizador-header">
             <h1>Gestión de Tarifas</h1>
-            <p>Administra tarifas aéreas, FCL y LCL en nombre de los proveedores</p>
+            <p>
+              Administra tarifas aéreas, FCL y LCL en nombre de los proveedores
+            </p>
           </div>
 
           <div className="cotizador-grid">
@@ -167,7 +191,10 @@ const GestorTarifas: React.FC = () => {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <i className="fa fa-user-tie" style={{ color: "#6b7280", fontSize: 16 }} />
+            <i
+              className="fa fa-user-tie"
+              style={{ color: "#6b7280", fontSize: 16 }}
+            />
             <span
               style={{
                 fontSize: 14,

@@ -9,7 +9,8 @@ const quickActions = [
   {
     key: "gestionar",
     title: "Gestionar Tarifas",
-    description: "Agrega y administra tarifas aéreas, FCL y LCL en nombre de los proveedores",
+    description:
+      "Agrega y administra tarifas aéreas, FCL y LCL en nombre de los proveedores",
     icon: "fa fa-edit",
     path: "/admin/pricing",
     accent: "var(--primary-color, #ff6200)",
@@ -23,7 +24,8 @@ const quickActions = [
   {
     key: "completo",
     title: "Tarifario Completo",
-    description: "Visualiza todas las tarifas de todos los proveedores en un solo lugar",
+    description:
+      "Visualiza todas las tarifas de todos los proveedores en un solo lugar",
     icon: "fa fa-table",
     path: "/admin/tarifario-completo",
     accent: "#2563eb",
@@ -71,17 +73,41 @@ export default function HomePricing() {
   const nombreUsuario = user?.nombreuser || user?.email || "Pricing";
 
   return (
-    <div style={{ fontFamily: FONT, backgroundColor: "#f8f9fa", minHeight: "100vh", padding: "32px 24px", margin: "-24px", marginBottom: 0 }}>
+    <div
+      style={{
+        fontFamily: FONT,
+        backgroundColor: "#f8f9fa",
+        minHeight: "100vh",
+        padding: "32px 24px",
+        margin: "-24px",
+        marginBottom: 0,
+      }}
+    >
       <div style={{ maxWidth: 1120, margin: "0 auto" }}>
         {/* Welcome */}
         <div style={{ marginBottom: 36 }}>
           <p style={{ fontSize: 14, color: "#6b7280", margin: "0 0 4px" }}>
             Bienvenido/a
           </p>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: "#1f2937", margin: "0 0 6px", letterSpacing: -0.3 }}>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              color: "#1f2937",
+              margin: "0 0 6px",
+              letterSpacing: -0.3,
+            }}
+          >
             {nombreUsuario}
           </h1>
-          <p style={{ fontSize: 14, color: "#6b7280", margin: 0, lineHeight: 1.5 }}>
+          <p
+            style={{
+              fontSize: 14,
+              color: "#6b7280",
+              margin: 0,
+              lineHeight: 1.5,
+            }}
+          >
             Panel de administración de tarifas y proveedores
           </p>
         </div>
@@ -99,11 +125,24 @@ export default function HomePricing() {
             gap: 12,
           }}
         >
-          <i className="fa fa-info-circle" style={{ color: "#6b7280", fontSize: 16, marginTop: 2 }} />
-          <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.55, margin: 0, fontFamily: FONT }}>
-            Como usuario de <strong style={{ color: "#1f2937" }}>Pricing</strong>, tienes acceso completo
-            a las tarifas de todos los proveedores. Puedes gestionar, visualizar y agregar tarifas en
-            su nombre, así como revisar los documentos que han subido.
+          <i
+            className="fa fa-info-circle"
+            style={{ color: "#6b7280", fontSize: 16, marginTop: 2 }}
+          />
+          <p
+            style={{
+              fontSize: 13,
+              color: "#6b7280",
+              lineHeight: 1.55,
+              margin: 0,
+              fontFamily: FONT,
+            }}
+          >
+            Como usuario de{" "}
+            <strong style={{ color: "#1f2937" }}>Pricing</strong>, tienes acceso
+            completo a las tarifas de todos los proveedores. Puedes gestionar,
+            visualizar y agregar tarifas en su nombre, así como revisar los
+            documentos que han subido.
           </p>
         </div>
 
@@ -134,13 +173,17 @@ export default function HomePricing() {
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = action.accent;
                 e.currentTarget.style.boxShadow = `0 1px 6px ${action.accent}20`;
-                const indicator = e.currentTarget.querySelector(".card-indicator") as HTMLElement;
+                const indicator = e.currentTarget.querySelector(
+                  ".card-indicator",
+                ) as HTMLElement;
                 if (indicator) indicator.style.backgroundColor = action.accent;
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = "#e5e7eb";
                 e.currentTarget.style.boxShadow = "none";
-                const indicator = e.currentTarget.querySelector(".card-indicator") as HTMLElement;
+                const indicator = e.currentTarget.querySelector(
+                  ".card-indicator",
+                ) as HTMLElement;
                 if (indicator) indicator.style.backgroundColor = "transparent";
               }}
             >
@@ -158,7 +201,14 @@ export default function HomePricing() {
                 }}
               />
 
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  marginBottom: 16,
+                }}
+              >
                 <div
                   style={{
                     width: 40,
@@ -175,16 +225,43 @@ export default function HomePricing() {
                 >
                   <i className={action.icon} />
                 </div>
-                <h2 style={{ fontSize: 16, fontWeight: 600, color: "#232f3e", margin: 0, letterSpacing: -0.1, fontFamily: FONT }}>
+                <h2
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "#232f3e",
+                    margin: 0,
+                    letterSpacing: -0.1,
+                    fontFamily: FONT,
+                  }}
+                >
                   {action.title}
                 </h2>
               </div>
 
-              <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.55, margin: "0 0 20px", flex: 1, fontFamily: FONT }}>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "#6b7280",
+                  lineHeight: 1.55,
+                  margin: "0 0 20px",
+                  flex: 1,
+                  fontFamily: FONT,
+                }}
+              >
                 {action.description}
               </p>
 
-              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px", display: "flex", flexDirection: "column", gap: 8 }}>
+              <ul
+                style={{
+                  listStyle: "none",
+                  padding: 0,
+                  margin: "0 0 24px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
                 {action.features.map((f, i) => (
                   <li
                     key={i}
