@@ -33,11 +33,6 @@ function ProveedorLayout() {
   });
   const location = useLocation();
 
-  // Verificar acceso por rol a la ruta actual
-  if (user?.roles && !canAccessRoute(user.roles, location.pathname)) {
-    return <Navigate to="/proveedor/home" replace />;
-  }
-
   useEffect(() => {
     const handleResize = () => {
       const mobile = isMobileViewport();
@@ -67,6 +62,11 @@ function ProveedorLayout() {
       return next;
     });
   };
+
+  // Verificar acceso por rol a la ruta actual (debe ir después de todos los hooks)
+  if (user?.roles && !canAccessRoute(user.roles, location.pathname)) {
+    return <Navigate to="/proveedor/home" replace />;
+  }
 
   return (
     <div className="d-flex" style={{ height: "100vh", position: "relative" }}>

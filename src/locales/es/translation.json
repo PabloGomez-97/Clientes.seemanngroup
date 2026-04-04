@@ -778,13 +778,34 @@
       "welcomeMessage": "Bienvenido al portal de proveedores de Seemann Group. Aquí podrás gestionar tus operaciones de forma rápida y eficiente.",
       "infoTitle": "Panel del Proveedor",
       "infoMessage": "Sube tus tarifas aéreas, FCL y LCL directamente desde este portal. Tu equipo en Seemann Group las recibirá de inmediato.",
-      "quickAccess": "Subir tarifas"
+      "quickAccess": "Subir tarifas",
+      "slide1Title": "Gestiona tus tarifas con facilidad",
+      "slide1Subtitle": "Sube y actualiza tarifas aéreas, FCL y LCL desde un solo lugar.",
+      "slide1Button": "Subir tarifa aérea",
+      "slide2Title": "Tus archivos siempre disponibles",
+      "slide2Subtitle": "Carga tus documentos Excel y consúltalos cuando quieras.",
+      "slide2Button": "Ir a mis archivos",
+      "slide3Title": "Colabora con Seemann Group",
+      "slide3Subtitle": "Mantén tus tarifas actualizadas para agilizar las cotizaciones.",
+      "slide3Button": "Ver tarifas FCL",
+      "goToTariff": "Ir al tarifario →",
+      "myFiles": "Mis Archivos",
+      "myFilesDesc": "Sube y gestiona tus archivos Excel organizados por categoría.",
+      "goToFiles": "Ir a mis archivos →"
+    },
+    "ayuda": {
+      "title": "¿Necesitas ayuda?",
+      "subtitle": "Contacta a nuestro equipo ejecutivo para cualquier consulta.",
+      "loading": "Cargando...",
+      "noResults": "No hay ejecutivos disponibles en este momento."
     },
     "sidebar": {
       "home": "Inicio",
       "tarifarioAereo": "Tarifario Aéreo",
       "tarifarioFCL": "Tarifario FCL",
       "tarifarioLCL": "Tarifario LCL",
+      "archivos": "Mis Archivos",
+      "ayuda": "¿Necesitas ayuda?",
       "settings": "Configuración",
       "portalLabel": "Portal de Proveedores",
       "badge": "PROVEEDOR"

@@ -60,6 +60,16 @@ function SidebarProveedor({
       name: t("proveedor.sidebar.tarifarioLCL", "Tarifario LCL"),
       icon: "fa fa-cubes",
     },
+    {
+      path: "/proveedor/archivos",
+      name: t("proveedor.sidebar.archivos", "Mis Archivos"),
+      icon: "fa fa-file",
+    },
+    {
+      path: "/proveedor/ayuda",
+      name: t("proveedor.sidebar.ayuda", "¿Necesitas ayuda?"),
+      icon: "fa fa-question-circle",
+    },
   ];
 
   const isActive = (path: string) =>

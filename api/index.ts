@@ -876,6 +876,45 @@ const Documento = (mongoose.models.Documento ||
   mongoose.model<IDocumentoDoc>('Documento', DocumentoSchema)) as DocumentoModel;
 
 // ============================================================
+// MODELO DE ARCHIVOS DE PROVEEDORES
+// ============================================================
+
+interface IProveedorArchivo {
+  nombreArchivo: string;
+  tipoArchivo: string;
+  tamanoBytes: number;
+  contenidoBase64: string;
+  categoria: 'AEREO' | 'FCL' | 'LCL';
+  subidoPor: string;
+  proveedorNombre: string;
+}
+
+interface IProveedorArchivoDoc extends IProveedorArchivo, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type ProveedorArchivoModel = mongoose.Model<IProveedorArchivoDoc>;
+
+const ProveedorArchivoSchema = new mongoose.Schema<IProveedorArchivoDoc>(
+  {
+    nombreArchivo: { type: String, required: true },
+    tipoArchivo: { type: String, required: true },
+    tamanoBytes: { type: Number, required: true },
+    contenidoBase64: { type: String, required: true },
+    categoria: { type: String, required: true, enum: ['AEREO', 'FCL', 'LCL'] },
+    subidoPor: { type: String, required: true, index: true },
+    proveedorNombre: { type: String, required: true },
+  },
+  { timestamps: true }
+);
+
+ProveedorArchivoSchema.index({ subidoPor: 1, categoria: 1 });
+
+const ProveedorArchivo = (mongoose.models.ProveedorArchivo ||
+  mongoose.model<IProveedorArchivoDoc>('ProveedorArchivo', ProveedorArchivoSchema)) as ProveedorArchivoModel;
+
+// ============================================================
 // MODELO DE PDF DE COTIZACIONES
 // ============================================================
 
@@ -4866,6 +4905,171 @@ Sistema de Portal Clientes — Seemann Group
         }
         console.error('[alumnos] Error al eliminar:', error);
         return res.status(500).json({ error: 'Error al eliminar alumno' });
+      }
+    }
+
+    // ============================================================
+    // ARCHIVOS DE PROVEEDORES
+    // ============================================================
+
+    const PROVEEDOR_ALLOWED = [
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel.sheet.macroEnabled.12',
+      'text/csv',
+    ];
+    const PROVEEDOR_MAX = 10 * 1024 * 1024;
+
+    // POST /api/proveedor-archivos/upload
+    if (path === '/api/proveedor-archivos/upload' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+        const { nombreArchivo, contenidoBase64, categoria } = req.body as any;
+
+        if (!nombreArchivo || !contenidoBase64 || !categoria) {
+          return res.status(400).json({ error: 'Faltan campos: nombreArchivo, contenidoBase64, categoria' });
+        }
+        if (!['AEREO', 'FCL', 'LCL'].includes(categoria)) {
+          return res.status(400).json({ error: 'Categoría inválida' });
+        }
+        if (!validateBase64(contenidoBase64)) {
+          return res.status(400).json({ error: 'Archivo base64 inválido' });
+        }
+        const mimeType = getMimeTypeFromBase64(contenidoBase64);
+        if (!mimeType || !PROVEEDOR_ALLOWED.includes(mimeType)) {
+          return res.status(400).json({ error: 'Solo se permiten archivos Excel (.xls, .xlsx, .csv)' });
+        }
+        const fileSize = getBase64Size(contenidoBase64);
+        if (fileSize > PROVEEDOR_MAX) {
+          return res.status(400).json({ error: `El archivo excede 10MB` });
+        }
+
+        const userDoc = await User.findById(currentUser.sub);
+        const proveedorNombre = userDoc?.nombreuser || userDoc?.email || 'Proveedor';
+
+        const archivo = await ProveedorArchivo.create({
+          nombreArchivo: String(nombreArchivo),
+          tipoArchivo: mimeType,
+          tamanoBytes: fileSize,
+          contenidoBase64,
+          categoria,
+          subidoPor: currentUser.sub,
+          proveedorNombre,
+        });
+
+        return res.status(201).json({
+          success: true,
+          archivo: {
+            id: archivo._id,
+            nombreArchivo: archivo.nombreArchivo,
+            tipoArchivo: archivo.tipoArchivo,
+            tamanoBytes: archivo.tamanoBytes,
+            categoria: archivo.categoria,
+            proveedorNombre: archivo.proveedorNombre,
+            createdAt: archivo.createdAt,
+          },
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[proveedor-archivos] upload error:', error);
+        return res.status(500).json({ error: 'Error al subir archivo' });
+      }
+    }
+
+    // GET /api/proveedor-archivos
+    if (path === '/api/proveedor-archivos' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        const url = new URL(req.url || '', 'http://localhost');
+        const categoria = url.searchParams.get('categoria') || undefined;
+
+        const filter: Record<string, unknown> = { subidoPor: currentUser.sub };
+        if (categoria && ['AEREO', 'FCL', 'LCL'].includes(categoria)) {
+          filter.categoria = categoria;
+        }
+
+        const archivos = await ProveedorArchivo.find(filter)
+          .select('-contenidoBase64')
+          .sort({ createdAt: -1 });
+
+        return res.json({
+          success: true,
+          archivos: archivos.map((a) => ({
+            id: a._id,
+            nombreArchivo: a.nombreArchivo,
+            tipoArchivo: a.tipoArchivo,
+            tamanoBytes: a.tamanoBytes,
+            categoria: a.categoria,
+            proveedorNombre: a.proveedorNombre,
+            createdAt: a.createdAt,
+          })),
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[proveedor-archivos] list error:', error);
+        return res.status(500).json({ error: 'Error al listar archivos' });
+      }
+    }
+
+    // GET /api/proveedor-archivos/:id/download
+    if (path.startsWith('/api/proveedor-archivos/') && path.endsWith('/download') && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        const parts = path.split('/');
+        const archivoId = parts[3];
+
+        const archivo = await ProveedorArchivo.findOne({
+          _id: archivoId,
+          subidoPor: currentUser.sub,
+        });
+        if (!archivo) {
+          return res.status(404).json({ error: 'Archivo no encontrado' });
+        }
+
+        return res.json({
+          success: true,
+          archivo: {
+            id: archivo._id,
+            nombreArchivo: archivo.nombreArchivo,
+            tipoArchivo: archivo.tipoArchivo,
+            contenidoBase64: archivo.contenidoBase64,
+          },
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[proveedor-archivos] download error:', error);
+        return res.status(500).json({ error: 'Error al descargar archivo' });
+      }
+    }
+
+    // DELETE /api/proveedor-archivos/:id
+    if (path.startsWith('/api/proveedor-archivos/') && method === 'DELETE') {
+      try {
+        const currentUser = requireAuth(req);
+        const parts = path.split('/');
+        const archivoId = parts[3];
+
+        const archivo = await ProveedorArchivo.findOneAndDelete({
+          _id: archivoId,
+          subidoPor: currentUser.sub,
+        });
+        if (!archivo) {
+          return res.status(404).json({ error: 'Archivo no encontrado' });
+        }
+
+        return res.json({ success: true, message: 'Archivo eliminado' });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[proveedor-archivos] delete error:', error);
+        return res.status(500).json({ error: 'Error al eliminar archivo' });
       }
     }
 

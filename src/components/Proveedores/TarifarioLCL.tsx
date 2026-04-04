@@ -9,6 +9,13 @@ const GOOGLE_APPS_SCRIPT_URL =
 
 const CURRENCY_OPTIONS = ["USD", "EUR", "GBP", "CAD", "CHF", "CLP", "SEK"];
 
+function formatDateOnly(value: string | undefined | null): string {
+  if (!value) return "";
+  const s = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  return s;
+}
+
 interface RouteFormLCL {
   pol: string;
   servicio: string;
@@ -458,11 +465,12 @@ export default function TarifarioLCL() {
               maxWidth: 300,
             }}
           >
-            <Field
+            <FieldWithTooltip
               label="Validez"
               value={form.validez}
               onChange={(v) => update("validez", v)}
               type="date"
+              tooltip="Ingrese la fecha en formato DÍA/MES/AÑO"
             />
           </div>
 
@@ -696,6 +704,8 @@ export default function TarifarioLCL() {
                                     boxSizing: "border-box",
                                   }}
                                 />
+                              ) : col.idx === 10 ? (
+                                formatDateOnly(route[col.idx]) || "—"
                               ) : (
                                 route[col.idx] || "—"
                               )}
@@ -864,6 +874,104 @@ function SelectField({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function FieldWithTooltip({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  tooltip,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  tooltip: string;
+}) {
+  const [showTip, setShowTip] = useState(false);
+  return (
+    <div>
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 12,
+          fontWeight: 500,
+          color: "#6b7280",
+          marginBottom: 4,
+        }}
+      >
+        {label}
+        <span
+          onMouseEnter={() => setShowTip(true)}
+          onMouseLeave={() => setShowTip(false)}
+          style={{
+            position: "relative",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            border: "1px solid #d1d5db",
+            fontSize: 10,
+            fontWeight: 700,
+            color: "#9ca3af",
+            cursor: "help",
+            userSelect: "none",
+          }}
+        >
+          ?
+          {showTip && (
+            <span
+              style={{
+                position: "absolute",
+                bottom: "calc(100% + 6px)",
+                left: "50%",
+                transform: "translateX(-50%)",
+                backgroundColor: "#1f2937",
+                color: "#fff",
+                fontSize: 11,
+                padding: "6px 10px",
+                borderRadius: 6,
+                whiteSpace: "nowrap",
+                zIndex: 50,
+                pointerEvents: "none",
+              }}
+            >
+              {tooltip}
+            </span>
+          )}
+        </span>
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          fontFamily:
+            '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+          width: "100%",
+          padding: "8px 10px",
+          borderRadius: 6,
+          border: "1px solid #e5e7eb",
+          fontSize: 14,
+          outline: "none",
+          boxSizing: "border-box",
+          transition: "border-color 0.12s ease",
+        }}
+        onFocus={(e) =>
+          (e.currentTarget.style.borderColor = "var(--primary-color, #ff6200)")
+        }
+        onBlur={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
+      />
     </div>
   );
 }

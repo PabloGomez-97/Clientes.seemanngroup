@@ -777,13 +777,34 @@
       "welcomeMessage": "Welcome to the Seemann Group carrier portal. Here you can manage your operations quickly and efficiently.",
       "infoTitle": "Carrier Dashboard",
       "infoMessage": "Upload your air, FCL, and LCL rates directly from this portal. Your Seemann Group team will receive them immediately.",
-      "quickAccess": "Upload rates"
+      "quickAccess": "Upload rates",
+      "slide1Title": "Manage your rates with ease",
+      "slide1Subtitle": "Upload and update air, FCL, and LCL rates from a single place.",
+      "slide1Button": "Upload air rate",
+      "slide2Title": "Your files always available",
+      "slide2Subtitle": "Upload your Excel documents and access them anytime.",
+      "slide2Button": "Go to my files",
+      "slide3Title": "Collaborate with Seemann Group",
+      "slide3Subtitle": "Keep your rates updated to streamline quotations.",
+      "slide3Button": "View FCL rates",
+      "goToTariff": "Go to rates →",
+      "myFiles": "My Files",
+      "myFilesDesc": "Upload and manage your Excel files organized by category.",
+      "goToFiles": "Go to my files →"
+    },
+    "ayuda": {
+      "title": "Need help?",
+      "subtitle": "Contact our executive team for any inquiries.",
+      "loading": "Loading...",
+      "noResults": "No executives available at this time."
     },
     "sidebar": {
       "home": "Home",
       "tarifarioAereo": "Air Rates",
       "tarifarioFCL": "FCL Rates",
       "tarifarioLCL": "LCL Rates",
+      "archivos": "My Files",
+      "ayuda": "Need help?",
       "settings": "Settings",
       "portalLabel": "Carrier Portal",
       "badge": "CARRIER"
