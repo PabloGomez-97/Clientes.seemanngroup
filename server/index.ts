@@ -4695,7 +4695,7 @@ app.post('/api/proveedor-archivos/upload', auth, async (req, res) => {
       return res.status(400).json({ error: `El archivo excede 10MB. Tamaño: ${(fileSize / 1024 / 1024).toFixed(2)}MB` });
     }
 
-    const userDoc = await User.findById(currentUser.sub);
+    const userDoc = await User.findOne({ email: currentUser.sub });
     const proveedorNombre = userDoc?.nombreuser || userDoc?.email || 'Proveedor';
 
     const archivo = await ProveedorArchivo.create({

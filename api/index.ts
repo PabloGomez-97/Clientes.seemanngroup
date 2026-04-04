@@ -4944,7 +4944,7 @@ Sistema de Portal Clientes — Seemann Group
           return res.status(400).json({ error: `El archivo excede 10MB` });
         }
 
-        const userDoc = await User.findById(currentUser.sub);
+        const userDoc = await User.findOne({ email: currentUser.sub });
         const proveedorNombre = userDoc?.nombreuser || userDoc?.email || 'Proveedor';
 
         const archivo = await ProveedorArchivo.create({
