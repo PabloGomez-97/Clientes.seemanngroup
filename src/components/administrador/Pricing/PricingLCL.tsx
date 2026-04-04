@@ -34,7 +34,7 @@ interface RouteFormLCL {
 }
 
 const GOOGLE_APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycby7iaJleKt2m5smmcySNuL9IEAEdUkL1ZGmjZeOxqZgo8hwHeUfIUnlRnSC5jqvScUQ/exec";
+  "https://script.google.com/macros/s/AKfycbyDcpZT3TmaOmrOq-vJPoMMmwHlUzNf1wBQeZiUjSoPexfZ_IpShAJV2RivzyFLGGk3Jw/exec";
 
 const CURRENCY_OPTIONS = ["USD", "EUR", "GBP", "CAD", "CHF", "CLP", "SEK"];
 
