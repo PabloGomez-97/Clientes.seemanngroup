@@ -215,14 +215,16 @@ export default function TarifarioFCL({
     }
   };
 
-  // Filter: proveedores only see their own routes (company = route[10])
-  const visibleRoutes = isProveedor
-    ? routes.filter(
-        (r) =>
-          r[10] &&
-          r[10].toString().toLowerCase() === nombreUsuario.toLowerCase(),
-      )
-    : routes;
+  // Filter: proveedores see only their own routes; pricing role sees all
+  // unless a specific provider is selected via proveedorNombreOverride
+  const visibleRoutes =
+    isProveedor || !!proveedorNombreOverride
+      ? routes.filter(
+          (r) =>
+            r[10] &&
+            r[10].toString().toLowerCase() === nombreUsuario.toLowerCase(),
+        )
+      : routes;
 
   const filtered = visibleRoutes.filter((route) => {
     if (!search) return true;

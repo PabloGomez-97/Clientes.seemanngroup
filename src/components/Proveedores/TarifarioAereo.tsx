@@ -238,14 +238,16 @@ export default function TarifarioAereo({
     }
   };
 
-  // Filter: proveedores only see their own routes
-  const visibleRoutes = isProveedor
-    ? routes.filter(
-        (r) =>
-          r[16] &&
-          r[16].toString().toLowerCase() === nombreUsuario.toLowerCase(),
-      )
-    : routes;
+  // Filter: proveedores see only their own routes; pricing role sees all
+  // unless a specific provider is selected via proveedorNombreOverride
+  const visibleRoutes =
+    isProveedor || !!proveedorNombreOverride
+      ? routes.filter(
+          (r) =>
+            r[16] &&
+            r[16].toString().toLowerCase() === nombreUsuario.toLowerCase(),
+        )
+      : routes;
 
   const filtered = visibleRoutes.filter((route) => {
     if (!search) return true;
