@@ -397,7 +397,18 @@ function QuoteFCL({
       expiry = new Date(epoch.getTime() + serial * 86400000);
     }
 
-    // 2) Intentar formato DD/MM/YYYY o DD/M/YYYY
+    // 2) Intentar formato ISO YYYY-MM-DD (ej: 2026-02-06)
+    if (!expiry) {
+      const match = txt.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (match) {
+        const year = parseInt(match[1], 10);
+        const month = parseInt(match[2], 10);
+        const day = parseInt(match[3], 10);
+        expiry = new Date(year, month - 1, day, 23, 59, 59, 999);
+      }
+    }
+
+    // 3) Intentar formato DD/MM/YYYY o DD/M/YYYY
     if (!expiry) {
       const match = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       if (match) {
@@ -421,7 +432,7 @@ function QuoteFCL({
       }
     }
 
-    // 3) Intentar formato texto español (ej: "28 febrero 2026" o "28 febrero")
+    // 4) Intentar formato texto español (ej: "28 febrero 2026" o "28 febrero")
     if (!expiry) {
       const matchText = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
       if (matchText) {

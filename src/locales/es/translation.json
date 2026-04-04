@@ -777,10 +777,14 @@
       "greeting": "Hola,",
       "welcomeMessage": "Bienvenido al portal de proveedores de Seemann Group. Aquí podrás gestionar tus operaciones de forma rápida y eficiente.",
       "infoTitle": "Panel del Proveedor",
-      "infoMessage": "Próximamente tendrás acceso a herramientas para gestionar cotizaciones, documentos y seguimiento de operaciones."
+      "infoMessage": "Sube tus tarifas aéreas, FCL y LCL directamente desde este portal. Tu equipo en Seemann Group las recibirá de inmediato.",
+      "quickAccess": "Subir tarifas"
     },
     "sidebar": {
       "home": "Inicio",
+      "tarifarioAereo": "Tarifario Aéreo",
+      "tarifarioFCL": "Tarifario FCL",
+      "tarifarioLCL": "Tarifario LCL",
       "settings": "Configuración",
       "portalLabel": "Portal de Proveedores",
       "badge": "PROVEEDOR"

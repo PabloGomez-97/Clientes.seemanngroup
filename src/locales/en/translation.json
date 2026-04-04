@@ -776,10 +776,14 @@
       "greeting": "Hello,",
       "welcomeMessage": "Welcome to the Seemann Group carrier portal. Here you can manage your operations quickly and efficiently.",
       "infoTitle": "Carrier Dashboard",
-      "infoMessage": "Soon you will have access to tools for managing quotes, documents, and operation tracking."
+      "infoMessage": "Upload your air, FCL, and LCL rates directly from this portal. Your Seemann Group team will receive them immediately.",
+      "quickAccess": "Upload rates"
     },
     "sidebar": {
       "home": "Home",
+      "tarifarioAereo": "Air Rates",
+      "tarifarioFCL": "FCL Rates",
+      "tarifarioLCL": "LCL Rates",
       "settings": "Settings",
       "portalLabel": "Carrier Portal",
       "badge": "CARRIER"

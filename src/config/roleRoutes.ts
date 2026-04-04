@@ -72,6 +72,9 @@ export const OPERACIONES_ROUTES: string[] = [
 // ────────────────────────────────────────────────────────────────────────────
 export const PROVEEDOR_ROUTES: string[] = [
   '/proveedor/home',
+  '/proveedor/tarifario-aereo',
+  '/proveedor/tarifario-fcl',
+  '/proveedor/tarifario-lcl',
   '/proveedor/settings',
 ];
 

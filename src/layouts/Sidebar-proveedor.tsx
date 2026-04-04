@@ -46,9 +46,19 @@ function SidebarProveedor({
       icon: "fa fa-home",
     },
     {
-      path: "/proveedor/settings",
-      name: t("proveedor.sidebar.settings"),
-      icon: "fa fa-cog",
+      path: "/proveedor/tarifario-aereo",
+      name: t("proveedor.sidebar.tarifarioAereo", "Tarifario Aéreo"),
+      icon: "fa fa-plane",
+    },
+    {
+      path: "/proveedor/tarifario-fcl",
+      name: t("proveedor.sidebar.tarifarioFCL", "Tarifario FCL"),
+      icon: "fa fa-ship",
+    },
+    {
+      path: "/proveedor/tarifario-lcl",
+      name: t("proveedor.sidebar.tarifarioLCL", "Tarifario LCL"),
+      icon: "fa fa-cubes",
     },
   ];
 

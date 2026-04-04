@@ -66,6 +66,9 @@ import CotizacionEspecial from "./components/Sidebar/Cotizacion-especial";
 
 // Proveedor Views
 import HomeProveedores from "./components/Proveedores/Homeproveedores";
+import TarifarioAereo from "./components/Proveedores/TarifarioAereo";
+import TarifarioFCL from "./components/Proveedores/TarifarioFCL";
+import TarifarioLCL from "./components/Proveedores/TarifarioLCL";
 
 /** Renders different home page depending on the user's role */
 function HomeSwitch() {
@@ -185,6 +188,9 @@ function App() {
         >
           <Route index element={<Navigate to="/proveedor/home" replace />} />
           <Route path="home" element={<HomeProveedores />} />
+          <Route path="tarifario-aereo" element={<TarifarioAereo />} />
+          <Route path="tarifario-fcl" element={<TarifarioFCL />} />
+          <Route path="tarifario-lcl" element={<TarifarioLCL />} />
         </Route>
 
         {/* Rutas de Usuario Regular */}
