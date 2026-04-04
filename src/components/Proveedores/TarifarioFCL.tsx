@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import LoadingTips from "../shipments/LoadingTips";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -582,7 +583,7 @@ export default function TarifarioFCL() {
 
         {loadingRoutes && routes.length === 0 ? (
           <p style={{ textAlign: "center", color: "#9ca3af", padding: 40 }}>
-            Cargando tarifas...
+            <LoadingTips />
           </p>
         ) : filtered.length === 0 ? (
           <div
