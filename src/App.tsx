@@ -37,6 +37,7 @@ import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
 import Documentacion from "./components/administrador/Documentacion";
 import OPReporteriaClientes from "./components/administrador/OP-reporteriaclientes";
 import Auditoria from "./components/administrador/Auditoria";
+import AgenciaAduanas from "./components/administrador/AgenciaAduanas";
 
 // Reportería Pages
 import ReporteriaDashboard from "./components/administrador/reporteria/pages/ReporteriaDashboard";
@@ -182,6 +183,7 @@ function App() {
             <Route path="tendencias" element={<ReporteriaTrends />} />
           </Route>
           <Route path="auditoria" element={<Auditoria />} />
+          <Route path="agencia-aduanas" element={<AgenciaAduanas />} />
           <Route path="settings" element={<SettingsAdmin />} />
         </Route>
 

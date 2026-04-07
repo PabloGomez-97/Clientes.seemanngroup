@@ -809,5 +809,25 @@
       "portalLabel": "Carrier Portal",
       "badge": "CARRIER"
     }
+  },
+  "AgenciaAduana": {
+    "toggle": "Add Customs Agency & Nationalization",
+    "tooltip": "Includes fees, clearance expenses, processing, courier, customs VAT and duties",
+    "valorProducto": "Product Value",
+    "calculoCIF": "CIF Calculation (Cost, Insurance & Freight)",
+    "valorProductoLabel": "Product Value",
+    "costoTransporte": "Transport Cost",
+    "seguroReal": "Insurance (actual)",
+    "seguroTeorico": "Insurance (theoretical)",
+    "desgloseCobros": "Charges Breakdown - Customs Agency",
+    "honorarios": "Agency Fees",
+    "minimo": "min. applied",
+    "gastosDespacho": "Clearance Expenses",
+    "tramitacion": "Processing",
+    "mensajeria": "Courier",
+    "ivaAduanero": "Customs VAT",
+    "derechos": "Customs Duties",
+    "totalAduana": "Total Customs Agency",
+    "notaSeguroTeorico": "Insurance is calculated theoretically: ((Product Value + Transport Cost) × 1.1) × 2%. Enable insurance to use the actual value."
   }
 }

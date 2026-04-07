@@ -810,5 +810,25 @@
       "portalLabel": "Portal de Proveedores",
       "badge": "PROVEEDOR"
     }
+  },
+  "AgenciaAduana": {
+    "toggle": "Agregar Agencia de Aduanas y Nacionalización",
+    "tooltip": "Incluye honorarios, gastos de despacho, tramitación, mensajería, IVA aduanero y derechos de aduana",
+    "valorProducto": "Valor del Producto",
+    "calculoCIF": "Cálculo CIF (Cost, Insurance & Freight)",
+    "valorProductoLabel": "Valor del Producto",
+    "costoTransporte": "Costo Transporte",
+    "seguroReal": "Seguro (real)",
+    "seguroTeorico": "Seguro (teórico)",
+    "desgloseCobros": "Desglose de Cobros - Agencia de Aduanas",
+    "honorarios": "Honorarios",
+    "minimo": "mín. aplicado",
+    "gastosDespacho": "Gastos de Despacho",
+    "tramitacion": "Tramitación",
+    "mensajeria": "Mensajería",
+    "ivaAduanero": "IVA Aduanero",
+    "derechos": "Derechos de Aduana",
+    "totalAduana": "Total Agencia de Aduana",
+    "notaSeguroTeorico": "El seguro se calcula de forma teórica: ((Valor Producto + Costo Transporte) × 1.1) × 2%. Active el seguro para usar el valor real."
   }
 }

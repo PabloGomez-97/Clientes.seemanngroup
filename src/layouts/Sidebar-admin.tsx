@@ -191,6 +191,11 @@ function SidebarAdmin({
               name: "Auditoría",
               badge: { text: "AUDIT", type: "admin" as const },
             },
+            {
+              path: "/admin/agencia-aduanas",
+              name: "Agencia de Aduanas",
+              badge: { text: "CHIEF", type: "admin" as const },
+            },
           ],
         },
       ],

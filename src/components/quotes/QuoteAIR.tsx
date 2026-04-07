@@ -38,6 +38,12 @@ import {
   OversizeNotifyExecutive,
   type OversizeReason,
 } from "./Handlers/Air/OversizeNotifyExecutive";
+import { AduanaSection } from "./Handlers/Air/AduanaSection";
+import { useAgenciaAduanas } from "../../hooks/useAgenciaAduanas";
+import {
+  calculateAduanaCharges,
+  type SupportedCurrency,
+} from "../../types/agenciaAduana";
 import "./QuoteAIR.css";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
@@ -180,6 +186,12 @@ function QuoteAPITester({
   // Estado para Gastos Locales (Desconsolidación)
   const [gastolocal, setGastolocal] = useState(false);
 
+  // Estado para Agencia de Aduanas y Nacionalización
+  const [aduanaActivo, setAduanaActivo] = useState(false);
+  const [valorProductoAduana, setValorProductoAduana] = useState<string>("");
+  const { config: aduanaConfig, loading: aduanaConfigLoading } =
+    useAgenciaAduanas();
+
   // Calcular si hay alguna pieza no apilable
   const noApilableActivo = useMemo(
     () => piecesData.some((piece) => piece.noApilable),
@@ -319,6 +331,13 @@ function QuoteAPITester({
       setOpenSection(2);
     }
   }, [rutaSeleccionada]);
+
+  // Auto-completar valor producto de aduana con valorMercaderia del seguro
+  useEffect(() => {
+    if (aduanaActivo && valorMercaderia && !valorProductoAduana) {
+      setValorProductoAduana(valorMercaderia);
+    }
+  }, [aduanaActivo]);
 
   // Función para manejar el toggle de secciones
   const handleSectionToggle = (section: number) => {
@@ -975,6 +994,62 @@ function QuoteAPITester({
     return minimo > 0 ? Math.max(calculated, minimo) : calculated;
   };
 
+  // Función para calcular el costo de transporte base (sin opcionales)
+  const calculateCostoTransporteBase = (): number => {
+    if (!tarifaAirFreight) return 0;
+    const { totalRealWeight } = calculateTotals();
+    return (
+      45 + // Handling
+      (incoterm === "EXW"
+        ? calculateEXWRate(totalRealWeight, pesoChargeable)
+        : 0) +
+      30 + // AWB
+      Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
+      tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
+      (incoterm === "FCA" && rutaSeleccionada
+        ? (rutaSeleccionada.localCharges > 0
+            ? rutaSeleccionada.localCharges * FCA_MARKUP
+            : 0) +
+          (rutaSeleccionada.gastosXKg > 0
+            ? Math.max(
+                rutaSeleccionada.gastosXKg * pesoChargeable * FCA_MARKUP,
+                rutaSeleccionada.minGastosXKg > 0
+                  ? rutaSeleccionada.minGastosXKg
+                  : 0,
+              )
+            : 0)
+        : 0)
+    );
+  };
+
+  // Función para calcular el monto de Agencia de Aduanas
+  const calculateAduana = (): number => {
+    if (!aduanaActivo || !tarifaAirFreight) return 0;
+    const valorProd = parseFloat(valorProductoAduana.replace(",", ".")) || 0;
+    if (valorProd === 0) return 0;
+
+    const costoTransporte = calculateCostoTransporteBase();
+
+    // Determinar el seguro para CIF
+    let seguroParaCIF: number;
+    if (seguroActivo) {
+      seguroParaCIF = calculateSeguro();
+    } else {
+      // Seguro teórico: ((valor producto + valor transporte) * 1.1) * 0.02
+      seguroParaCIF = (valorProd + costoTransporte) * 1.1 * 0.02;
+    }
+
+    const result = calculateAduanaCharges(
+      valorProd,
+      costoTransporte,
+      seguroParaCIF,
+      (rutaSeleccionada?.currency || "USD") as SupportedCurrency,
+      aduanaConfig,
+    );
+
+    return result.total;
+  };
+
   // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
@@ -1265,7 +1340,7 @@ function QuoteAPITester({
 
       // Gastos Locales (Desconsolidación) - cargo fijo
       if (gastolocal) {
-        const gastoLocalAmount = 194.4;
+        const gastoLocalAmount = 190.4;
         pdfCharges.push({
           code: "D",
           description: "GASTOS LOCALES (Desconsolidación)",
@@ -1287,6 +1362,21 @@ function QuoteAPITester({
           rate: noApilableAmount,
           amount: noApilableAmount,
         });
+      }
+
+      // Agencia de Aduanas y Nacionalización (solo si está activo)
+      if (aduanaActivo) {
+        const aduanaAmount = calculateAduana();
+        if (aduanaAmount > 0) {
+          pdfCharges.push({
+            code: "ADA",
+            description: "AGENCIA DE ADUANA",
+            quantity: 1,
+            unit: "Shipment",
+            rate: aduanaAmount,
+            amount: aduanaAmount,
+          });
+        }
       }
 
       // Calcular total
@@ -1902,6 +1992,44 @@ function QuoteAPITester({
         });
       }
 
+      // Cobro de AGENCIA DE ADUANA (solo si está activo y hay valor producto)
+      if (aduanaActivo) {
+        const aduanaAmount = calculateAduana();
+        if (aduanaAmount > 0) {
+          charges.push({
+            service: {
+              id: 127954,
+              code: "ADA",
+              description: "AGENCIA DE ADUANA",
+            },
+            income: {
+              quantity: 1,
+              unit: "AGENCIA DE ADUANA",
+              rate: aduanaAmount,
+              amount: aduanaAmount,
+              showamount: aduanaAmount,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: effectiveUsername,
+              },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to Agencia de Aduana",
+              showOnDocument: true,
+              notes:
+                "Agencia de Aduana y Nacionalización - incluye honorarios, gastos despacho, tramitación, mensajería, IVA aduanero y derechos",
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+        }
+      }
+
       return {
         date: new Date().toISOString(),
         validUntil: parseValidUntilToISO(rutaSeleccionada.validUntil),
@@ -2298,6 +2426,44 @@ function QuoteAPITester({
             },
           },
         });
+      }
+
+      // Cobro de AGENCIA DE ADUANA (solo si está activo) - Overall mode
+      if (aduanaActivo) {
+        const aduanaAmount = calculateAduana();
+        if (aduanaAmount > 0) {
+          charges.push({
+            service: {
+              id: 127954,
+              code: "ADA",
+              description: "AGENCIA DE ADUANA",
+            },
+            income: {
+              quantity: 1,
+              unit: "AGENCIA DE ADUANA",
+              rate: aduanaAmount,
+              amount: aduanaAmount,
+              showamount: aduanaAmount,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: {
+                name: effectiveUsername,
+              },
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+              reference: "Amount to Agencia de Aduana to OVERALL",
+              showOnDocument: true,
+              notes:
+                "Agencia de Aduana y Nacionalización - incluye honorarios, gastos despacho, tramitación, mensajería, IVA aduanero y derechos (Overall)",
+            },
+            expense: {
+              currency: {
+                abbr: (rutaSeleccionada.currency || "USD") as any,
+              },
+            },
+          });
+        }
       }
 
       return {
@@ -3380,6 +3546,22 @@ function QuoteAPITester({
                       </label>
                     </div>
                   </div>
+
+                  {/* Agencia de Aduanas y Nacionalización */}
+                  <AduanaSection
+                    activo={aduanaActivo}
+                    onToggle={setAduanaActivo}
+                    valorProducto={valorProductoAduana}
+                    onValorProductoChange={setValorProductoAduana}
+                    costoTransporte={calculateCostoTransporteBase()}
+                    seguroActivo={seguroActivo}
+                    seguroMonto={calculateSeguro()}
+                    currency={
+                      (rutaSeleccionada.currency || "USD") as SupportedCurrency
+                    }
+                    config={aduanaConfig}
+                    configLoading={aduanaConfigLoading}
+                  />
 
                   {/* Nota informativa */}
                   <div

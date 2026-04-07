@@ -1044,6 +1044,21 @@ AuditLogSchema.index({ usuario: 1, createdAt: -1 });
 const AuditLog = (mongoose.models.AuditLog || mongoose.model<IAuditLogDoc>('AuditLog', AuditLogSchema)) as AuditLogModel;
 
 // ============================================================
+// MODELO AGENCIA DE ADUANAS - CONFIG (Singleton)
+// ============================================================
+import {
+  AgenciaAduanaConfigSchema,
+  DEFAULT_CONFIG,
+  type IAgenciaAduanaConfigDoc,
+  type AgenciaAduanaConfigModel,
+} from './models/AgenciaAduanaConfig.js';
+
+const AgenciaAduanaConfig = (
+  mongoose.models.AgenciaAduanaConfig ||
+  mongoose.model<IAgenciaAduanaConfigDoc>('AgenciaAduanaConfig', AgenciaAduanaConfigSchema)
+) as AgenciaAduanaConfigModel;
+
+// ============================================================
 // MODELO ALUMNOS PRÁCTICA
 // ============================================================
 interface IAlumnoPuntaje {
@@ -5089,6 +5104,70 @@ Sistema de Portal Clientes — Seemann Group
     // ============================================================
     if (path === '/api/chat' && (method === 'POST' || method === 'OPTIONS')) {
       return chatHandler(req, res);
+    }
+
+    // ============================================================
+    // AGENCIA DE ADUANAS - CONFIG ENDPOINTS
+    // ============================================================
+
+    // GET /api/agencia-aduana/config - Obtener configuración actual
+    if (path === '/api/agencia-aduana/config' && method === 'GET') {
+      try {
+        let config = await AgenciaAduanaConfig.findOne();
+        if (!config) {
+          config = await AgenciaAduanaConfig.create(DEFAULT_CONFIG);
+        }
+        return res.json(config);
+      } catch (e) {
+        console.error('[agencia-aduana] Error GET config:', e);
+        return res.status(500).json({ error: 'Error al obtener configuración' });
+      }
+    }
+
+    // PUT /api/agencia-aduana/config - Actualizar configuración (solo admin)
+    if (path === '/api/agencia-aduana/config' && method === 'PUT') {
+      try {
+        const currentUser = requireAuth(req);
+        const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub });
+        if (!ejecutivoDoc?.roles?.administrador) {
+          return res.status(403).json({ error: 'Solo administradores pueden modificar la configuración' });
+        }
+
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        const { exchangeRates, charges } = body;
+        if (!exchangeRates && !charges) {
+          return res.status(400).json({ error: 'Debe enviar exchangeRates, charges o ambos' });
+        }
+
+        const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
+        if (exchangeRates) {
+          for (const [key, val] of Object.entries(exchangeRates)) {
+            if (typeof val !== 'number' || val <= 0) {
+              return res.status(400).json({ error: `Tasa de cambio inválida: ${key}` });
+            }
+            updateData[`exchangeRates.${key}`] = val;
+          }
+        }
+        if (charges) {
+          for (const [key, val] of Object.entries(charges)) {
+            if (typeof val !== 'number' || val < 0) {
+              return res.status(400).json({ error: `Valor de cobro inválido: ${key}` });
+            }
+            updateData[`charges.${key}`] = val;
+          }
+        }
+
+        const config = await AgenciaAduanaConfig.findOneAndUpdate(
+          {},
+          { $set: updateData },
+          { new: true, upsert: true }
+        );
+
+        return res.json(config);
+      } catch (e) {
+        console.error('[agencia-aduana] Error PUT config:', e);
+        return res.status(500).json({ error: 'Error al actualizar configuración' });
+      }
     }
 
     // Ruta no encontrada
