@@ -26,6 +26,8 @@ interface AduanaSectionProps {
   config: IAgenciaAduanaConfig;
   /** Si la configuración está cargando */
   configLoading: boolean;
+  /** Si el input de valor del producto debe estar bloqueado (cuando seguro es master) */
+  valorProductoDisabled?: boolean;
 }
 
 /**
@@ -43,6 +45,7 @@ export const AduanaSection: React.FC<AduanaSectionProps> = ({
   currency,
   config,
   configLoading,
+  valorProductoDisabled = false,
 }) => {
   const { t } = useTranslation();
 
@@ -127,14 +130,25 @@ export const AduanaSection: React.FC<AduanaSectionProps> = ({
             id="valorProductoAduana"
             placeholder="Ej: 10000 o 10000,50"
             value={valorProducto}
+            disabled={valorProductoDisabled}
             onChange={(e) => {
               const value = e.target.value;
               if (value === "" || /^[\d,.]+$/.test(value)) {
                 onValorProductoChange(value);
               }
             }}
-            style={{ maxWidth: "300px" }}
+            style={{
+              maxWidth: "300px",
+              backgroundColor: valorProductoDisabled ? "#f0f0f0" : undefined,
+              cursor: valorProductoDisabled ? "not-allowed" : undefined,
+            }}
           />
+          {valorProductoDisabled && (
+            <small className="text-muted ms-1">
+              <i className="bi bi-lock-fill me-1"></i>
+              {t("QuoteAIR.sincronizadoConSeguro")}
+            </small>
+          )}
 
           {/* Desglose CIF */}
           {valorProductoNum > 0 && aduanaResult && (

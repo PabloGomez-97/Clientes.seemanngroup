@@ -308,7 +308,9 @@
     "altura": "The height exceeds 240 cm. This cargo cannot be handled via air transport.",
     "alturasupera": "The height exceeds 160 cm. This cargo requires cargo flights. Please check with your executive if the selected rate corresponds to cargo flights.",
     "seleccionarincoterm": "You must select an Incoterm before generating the quote.",
-    "desglose": "The cost breakdown will be available in the PDF when generating the quote or operation."
+    "desglose": "The cost breakdown will be available in the PDF when generating the quote or operation.",
+    "sincronizadoConAduana": "Synced with the value entered in Customs Agency",
+    "sincronizadoConSeguro": "Synced with the value entered in Insurance"
   },
   "Pieceaccordionair": {
     "tipopaquete": "Package Type",

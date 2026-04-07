@@ -189,6 +189,13 @@ function QuoteAPITester({
   // Estado para Agencia de Aduanas y Nacionalización
   const [aduanaActivo, setAduanaActivo] = useState(false);
   const [valorProductoAduana, setValorProductoAduana] = useState<string>("");
+  /**
+   * aduanaMaster controla qué input es la "fuente de verdad" cuando ambos están activos:
+   *   true  → aduana fue activada primero → valorProductoAduana es editable, valorMercaderia está bloqueado
+   *   false → seguro fue activado primero  → valorMercaderia es editable, valorProductoAduana está bloqueado
+   *   null  → solo uno está activo (sin bloqueos)
+   */
+  const [aduanaMaster, setAduanaMaster] = useState<boolean | null>(null);
   const { config: aduanaConfig, loading: aduanaConfigLoading } =
     useAgenciaAduanas();
 
@@ -333,11 +340,81 @@ function QuoteAPITester({
   }, [rutaSeleccionada]);
 
   // Auto-completar valor producto de aduana con valorMercaderia del seguro
-  useEffect(() => {
-    if (aduanaActivo && valorMercaderia && !valorProductoAduana) {
-      setValorProductoAduana(valorMercaderia);
+  // REEMPLAZADO POR handleToggleSeguro / handleToggleAduana
+
+  /**
+   * Toggle del seguro.
+   * Caso 3: si aduana ya está activo → copia valorProductoAduana → valorMercaderia y bloquea aduana (aduanaMaster=false).
+   * Al desactivar: libera el bloqueo si aduana era master.
+   */
+  const handleToggleSeguro = (checked: boolean) => {
+    setSeguroActivo(checked);
+    if (checked) {
+      if (aduanaActivo) {
+        // Aduana ya activo → seguro es el esclavo, aduana es master
+        // Copia valorProductoAduana → valorMercaderia y bloquea valorMercaderia
+        setValorMercaderia(valorProductoAduana);
+        setAduanaMaster(true); // aduana es master
+      } else {
+        // Solo seguro se activa → seguro es master
+        setAduanaMaster(null);
+      }
+    } else {
+      // Se desactiva el seguro
+      if (aduanaActivo) {
+        // Solo aduana queda activo → sin bloqueo
+        setAduanaMaster(null);
+      } else {
+        setAduanaMaster(null);
+      }
     }
-  }, [aduanaActivo]);
+  };
+
+  /**
+   * Toggle de aduana.
+   * Caso 2: si seguro ya está activo → copia valorMercaderia → valorProductoAduana y bloquea aduana (aduanaMaster=false).
+   * Caso 3 inverso: si seguro ya NO está activo → aduana es master.
+   * Al desactivar: limpia el estado de bloqueo.
+   */
+  const handleToggleAduana = (checked: boolean) => {
+    setAduanaActivo(checked);
+    if (checked) {
+      if (seguroActivo) {
+        // Seguro ya activo → seguro es master, aduana es esclavo
+        setValorProductoAduana(valorMercaderia);
+        setAduanaMaster(false); // seguro es master
+      } else {
+        // Aduana se activa primero → aduana es master
+        setAduanaMaster(null); // sin bloqueo todavía (solo aduana activo)
+      }
+    } else {
+      // Se desactiva aduana
+      setAduanaActivo(false);
+      setAduanaMaster(null);
+    }
+  };
+
+  /**
+   * Cambio en el input de valorMercaderia (seguro).
+   * Si aduana es esclavo (aduanaMaster=false), sincronizar valorProductoAduana.
+   */
+  const handleValorMercaderiaChange = (value: string) => {
+    setValorMercaderia(value);
+    if (aduanaMaster === false && aduanaActivo) {
+      setValorProductoAduana(value);
+    }
+  };
+
+  /**
+   * Cambio en el input de valorProductoAduana (aduana).
+   * Si seguro es esclavo (aduanaMaster=true), sincronizar valorMercaderia.
+   */
+  const handleValorProductoAduanaChange = (value: string) => {
+    setValorProductoAduana(value);
+    if (aduanaMaster === true && seguroActivo) {
+      setValorMercaderia(value);
+    }
+  };
 
   // Función para manejar el toggle de secciones
   const handleSectionToggle = (section: number) => {
@@ -3488,7 +3565,7 @@ function QuoteAPITester({
                         type="checkbox"
                         id="seguroCheckbox"
                         checked={seguroActivo}
-                        onChange={(e) => setSeguroActivo(e.target.checked)}
+                        onChange={(e) => handleToggleSeguro(e.target.checked)}
                       />
                       <label
                         className="form-check-label small"
@@ -3510,14 +3587,27 @@ function QuoteAPITester({
                           id="valorMercaderia"
                           placeholder="Ej: 10000 o 10000,50"
                           value={valorMercaderia}
+                          disabled={aduanaMaster === true}
                           onChange={(e) => {
                             const value = e.target.value;
                             if (value === "" || /^[\d,\.]+$/.test(value)) {
-                              setValorMercaderia(value);
+                              handleValorMercaderiaChange(value);
                             }
                           }}
-                          style={{ maxWidth: "300px" }}
+                          style={{
+                            maxWidth: "300px",
+                            backgroundColor:
+                              aduanaMaster === true ? "#f0f0f0" : undefined,
+                            cursor:
+                              aduanaMaster === true ? "not-allowed" : undefined,
+                          }}
                         />
+                        {aduanaMaster === true && (
+                          <small className="text-muted ms-1">
+                            <i className="bi bi-lock-fill me-1"></i>
+                            {t("QuoteAIR.sincronizadoConAduana")}
+                          </small>
+                        )}
                       </div>
                     )}
                   </div>
@@ -3550,9 +3640,11 @@ function QuoteAPITester({
                   {/* Agencia de Aduanas y Nacionalización */}
                   <AduanaSection
                     activo={aduanaActivo}
-                    onToggle={setAduanaActivo}
+                    onToggle={handleToggleAduana}
                     valorProducto={valorProductoAduana}
-                    onValorProductoChange={setValorProductoAduana}
+                    onValorProductoChange={(value) =>
+                      handleValorProductoAduanaChange(value)
+                    }
                     costoTransporte={calculateCostoTransporteBase()}
                     seguroActivo={seguroActivo}
                     seguroMonto={calculateSeguro()}
@@ -3561,6 +3653,7 @@ function QuoteAPITester({
                     }
                     config={aduanaConfig}
                     configLoading={aduanaConfigLoading}
+                    valorProductoDisabled={aduanaMaster === false}
                   />
 
                   {/* Nota informativa */}

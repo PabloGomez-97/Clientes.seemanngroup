@@ -308,7 +308,9 @@
     "altura": "El alto supera los 240 cm. Esta carga no puede ser manejada vía aérea.",
     "alturasupera": "El alto supera los 160 cm. Esta carga requiere vuelos cargueros. Verifique con su ejecutivo si la tarifa seleccionada corresponde a vuelos cargueros.",
     "seleccionarincoterm": "Debes seleccionar un Incoterm antes de generar la cotización",
-    "desglose": "El desglose de costos estará disponible en el PDF al generar la cotización u operación."
+    "desglose": "El desglose de costos estará disponible en el PDF al generar la cotización u operación.",
+    "sincronizadoConAduana": "Sincronizado con el valor ingresado en Agencia de Aduanas",
+    "sincronizadoConSeguro": "Sincronizado con el valor ingresado en Seguro"
   },
   "Pieceaccordionair": {
     "tipopaquete": "Tipo de Paquete",
