@@ -805,6 +805,7 @@
       "tarifarioAereo": "Air Rates",
       "tarifarioFCL": "FCL Rates",
       "tarifarioLCL": "LCL Rates",
+      "internacionalizacion": "Internationalization",
       "archivos": "My Files",
       "ayuda": "Need help?",
       "settings": "Settings",
@@ -831,5 +832,27 @@
     "derechos": "Customs Duties",
     "totalAduana": "Total Customs Agency",
     "notaSeguroTeorico": "Insurance is calculated theoretically: ((Product Value + Transport Cost) × 1.1) × 2%. Enable insurance to use the actual value."
+  },
+  "QuoteINT": {
+    "titulo": "Customs Agency & Internationalization",
+    "subtitulo": "Generate an internationalization quotation by entering your operation values.",
+    "divisa": "Currency",
+    "valorProducto": "Product Value (FOB)",
+    "valorProductoHelp": "Declared value of the goods.",
+    "costoTransporte": "Transport Cost (Freight)",
+    "costoTransporteHelp": "International freight cost.",
+    "seguro": "Insurance",
+    "seguroPlaceholder": "Optional (theoretical calculated)",
+    "seguroHelp": "Leave empty to calculate theoretical insurance.",
+    "seguroTeoricoNota": "Insurance was calculated theoretically: ((Product Value + Transport Cost) × 1.1) × 2%. Enter the insurance value to use the actual amount.",
+    "generarCotizacion": "Generate Internationalization Quotation",
+    "generando": "Generating quotation...",
+    "cargandoConfig": "Loading configuration...",
+    "errorValorProducto": "You must enter the Product Value.",
+    "errorCostoTransporte": "You must enter the Transport Cost.",
+    "errorTokenLoading": "Wait for the Linbis connection to load.",
+    "errorPayload": "Could not generate the quotation payload.",
+    "successConNumero": "Quotation {{numero}} generated successfully.",
+    "successSinNumero": "Quotation generated successfully (downloading PDF)."
   }
 }

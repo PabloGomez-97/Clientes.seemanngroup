@@ -61,6 +61,11 @@ function SidebarProveedor({
       icon: "fa fa-cubes",
     },
     {
+      path: "/proveedor/internacionalizacion",
+      name: t("proveedor.sidebar.internacionalizacion", "Internacionalización"),
+      icon: "fa fa-university",
+    },
+    {
       path: "/proveedor/archivos",
       name: t("proveedor.sidebar.archivos", "Mis Archivos"),
       icon: "fa fa-file",

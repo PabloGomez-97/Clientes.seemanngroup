@@ -73,6 +73,7 @@ import TarifarioFCL from "./components/Proveedores/TarifarioFCL";
 import TarifarioLCL from "./components/Proveedores/TarifarioLCL";
 import ArchivosProveedor from "./components/Proveedores/ArchivosProveedor";
 import NecesitasAyuda from "./components/Proveedores/NecesitasAyuda";
+import QuoteInternacionalizacion from "./components/Proveedores/QuoteInternacionalizacion";
 
 /** Renders different home page depending on the user's role */
 function HomeSwitch() {
@@ -201,6 +202,10 @@ function App() {
           <Route path="tarifario-aereo" element={<TarifarioAereo />} />
           <Route path="tarifario-fcl" element={<TarifarioFCL />} />
           <Route path="tarifario-lcl" element={<TarifarioLCL />} />
+          <Route
+            path="internacionalizacion"
+            element={<QuoteInternacionalizacion />}
+          />
           <Route path="archivos" element={<ArchivosProveedor />} />
           <Route path="ayuda" element={<NecesitasAyuda />} />
         </Route>

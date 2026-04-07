@@ -923,7 +923,7 @@ interface IQuotePDF {
   nombreArchivo: string;
   tamanoBytes: number;
   contenidoBase64: string;
-  tipoServicio: 'AIR' | 'FCL' | 'LCL';
+  tipoServicio: 'AIR' | 'FCL' | 'LCL' | 'INTERNACIONALIZACION';
   origen: string;
   destino: string;
   usuarioId: string;
@@ -943,7 +943,7 @@ const QuotePDFSchema = new mongoose.Schema<IQuotePDFDoc>(
     nombreArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
     contenidoBase64: { type: String, required: true },
-    tipoServicio: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL'] },
+    tipoServicio: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL', 'INTERNACIONALIZACION'] },
     origen: { type: String, default: '' },
     destino: { type: String, default: '' },
     usuarioId: { type: String, required: true, index: true },
@@ -4457,8 +4457,8 @@ Sistema de Portal Clientes — Seemann Group
           });
         }
 
-        if (!['AIR', 'FCL', 'LCL'].includes(tipoServicio)) {
-          return res.status(400).json({ error: 'tipoServicio debe ser AIR, FCL o LCL' });
+        if (!['AIR', 'FCL', 'LCL', 'INTERNACIONALIZACION'].includes(tipoServicio)) {
+          return res.status(400).json({ error: 'tipoServicio debe ser AIR, FCL, LCL o INTERNACIONALIZACION' });
         }
 
         // Calcular tamaño del base64

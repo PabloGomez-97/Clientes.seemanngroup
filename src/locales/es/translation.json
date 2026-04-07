@@ -806,6 +806,7 @@
       "tarifarioAereo": "Tarifario Aéreo",
       "tarifarioFCL": "Tarifario FCL",
       "tarifarioLCL": "Tarifario LCL",
+      "internacionalizacion": "Internacionalización",
       "archivos": "Mis Archivos",
       "ayuda": "¿Necesitas ayuda?",
       "settings": "Configuración",
@@ -832,5 +833,27 @@
     "derechos": "Derechos de Aduana",
     "totalAduana": "Total Agencia de Aduana",
     "notaSeguroTeorico": "El seguro se calcula de forma teórica: ((Valor Producto + Costo Transporte) × 1.1) × 2%. Active el seguro para usar el valor real."
+  },
+  "QuoteINT": {
+    "titulo": "Agencia de Aduanas e Internacionalización",
+    "subtitulo": "Genera una cotización de internacionalización ingresando los valores de tu operación.",
+    "divisa": "Divisa",
+    "valorProducto": "Valor del Producto (FOB)",
+    "valorProductoHelp": "Valor declarado de la mercadería.",
+    "costoTransporte": "Costo de Transporte (Flete)",
+    "costoTransporteHelp": "Costo del flete internacional.",
+    "seguro": "Seguro",
+    "seguroPlaceholder": "Opcional (se calcula teórico)",
+    "seguroHelp": "Deja vacío para calcular seguro teórico.",
+    "seguroTeoricoNota": "El seguro se calculó de forma teórica: ((Valor Producto + Costo Transporte) × 1.1) × 2%. Ingresa el valor del seguro para usar el monto real.",
+    "generarCotizacion": "Generar Cotización de Internacionalización",
+    "generando": "Generando cotización...",
+    "cargandoConfig": "Cargando configuración...",
+    "errorValorProducto": "Debes ingresar el Valor del Producto.",
+    "errorCostoTransporte": "Debes ingresar el Costo de Transporte.",
+    "errorTokenLoading": "Espera a que cargue la conexión con Linbis.",
+    "errorPayload": "No se pudo generar el payload de la cotización.",
+    "successConNumero": "Cotización {{numero}} generada exitosamente.",
+    "successSinNumero": "Cotización generada exitosamente (descargando PDF)."
   }
 }
