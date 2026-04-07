@@ -46,6 +46,11 @@ function SidebarProveedor({
       icon: "fa fa-home",
     },
     {
+      path: "/proveedor/internacionalizacion",
+      name: t("proveedor.sidebar.internacionalizacion", "Internacionalización"),
+      icon: "fa fa-university",
+    },
+    {
       path: "/proveedor/tarifario-aereo",
       name: t("proveedor.sidebar.tarifarioAereo", "Tarifario Aéreo"),
       icon: "fa fa-plane",
@@ -59,11 +64,6 @@ function SidebarProveedor({
       path: "/proveedor/tarifario-lcl",
       name: t("proveedor.sidebar.tarifarioLCL", "Tarifario LCL"),
       icon: "fa fa-cubes",
-    },
-    {
-      path: "/proveedor/internacionalizacion",
-      name: t("proveedor.sidebar.internacionalizacion", "Internacionalización"),
-      icon: "fa fa-university",
     },
     {
       path: "/proveedor/archivos",
