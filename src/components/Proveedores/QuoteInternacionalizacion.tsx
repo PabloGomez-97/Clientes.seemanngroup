@@ -57,7 +57,7 @@ export default function QuoteInternacionalizacion() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const effectiveUsername = user?.username || "";
+  const effectiveUsername = user?.nombreuser || user?.username || "";
   const salesRepName = user?.ejecutivo?.nombre?.trim() || "Seemann Group";
 
   // ── Parsed values ──
@@ -136,20 +136,20 @@ export default function QuoteInternacionalizacion() {
       date: new Date().toISOString(),
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       transitDays: 999,
-      project: { name: "AIR" },
-      customerReference: "Portal Created [INTERNACIONALIZACION]",
+      project: { name: "Internacionalización" },
+      customerReference: "Portal Created [INTERNACIONALIZACIÓN]",
       contact: { name: effectiveUsername },
       origin: { name: "N/A" },
-      carrierBroker: { name: "N/A" },
+      carrierBroker: { name: effectiveUsername },
       destination: { name: "N/A" },
-      modeOfTransportation: { id: 8 },
+      modeOfTransportation: { id: 47 },
       rateCategoryId: 2,
       incoterm: { code: "CIF", name: "CIF" },
       portOfReceipt: { name: "N/A" },
       shipper: { name: effectiveUsername },
       consignee: { name: effectiveUsername },
-      issuingCompany: { name: "Por Confirmar" },
-      serviceType: { name: "Normal" },
+      issuingCompany: { name: effectiveUsername },
+      serviceType: { name: "Agencia de Aduanas e Internacionalización" },
       salesRep: { name: salesRepName },
       commodities: [
         {
