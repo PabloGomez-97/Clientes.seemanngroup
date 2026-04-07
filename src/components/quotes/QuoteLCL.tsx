@@ -30,6 +30,7 @@ import {
   type Operador,
   capitalize,
   parseCSV,
+  normalizePOD,
   getPODDisplayName,
   getBillableWM,
   parseLCL,
@@ -39,6 +40,10 @@ import {
   type OversizeReason,
 } from "./Handlers/Air/OversizeNotifyExecutive";
 import { linbisFetch } from "../../services/linbisFetch";
+import {
+  fetchExpandedRoutes,
+  type ExpandedRoutesData,
+} from "./Handlers/ExpandedRoutes";
 
 function QuoteLCL({
   preselectedPOL,
@@ -161,6 +166,14 @@ function QuoteLCL({
   // Estado para notificación de oversize al ejecutivo
   const [loadingOversizeNotify, setLoadingOversizeNotify] = useState(false);
 
+  // ============================================================================
+  // ESTADOS PARA RUTAS EXPANDIDAS (tercer sheet)
+  // ============================================================================
+  const [expandedRoutes, setExpandedRoutes] =
+    useState<ExpandedRoutesData | null>(null);
+  // Indica si la ruta seleccionada NO tiene tarifa en el sheet LCL
+  const [sinTarifa, setSinTarifa] = useState(false);
+
   // ── Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) ──
   useEffect(() => {
     if (!isEjecutivoMode) {
@@ -205,8 +218,13 @@ function QuoteLCL({
         setLoadingRutas(true);
         setErrorRutas(null);
 
-        // Fetch del CSV desde Google Sheets
-        const response = await fetch(GOOGLE_SHEET_CSV_URL);
+        // Fetch LCL CSV y rutas expandidas en paralelo
+        const [response, expRoutes] = await Promise.all([
+          fetch(GOOGLE_SHEET_CSV_URL),
+          fetchExpandedRoutes(),
+        ]);
+
+        setExpandedRoutes(expRoutes);
 
         if (!response.ok) {
           throw new Error(
@@ -222,11 +240,18 @@ function QuoteLCL({
         const rutasParsed = parseLCL(data);
         setRutas(rutasParsed);
 
-        // Extraer POLs únicos
+        // Extraer POLs únicos (tarifa + expandidas)
         const polMap = new Map<string, string>();
         rutasParsed.forEach((r) => {
           if (!polMap.has(r.polNormalized)) {
             polMap.set(r.polNormalized, r.pol);
+          }
+        });
+        // Merge POLs de rutas expandidas
+        expRoutes.pols.forEach((p) => {
+          const key = p.value.toLowerCase();
+          if (!polMap.has(key)) {
+            polMap.set(key, p.label);
           }
         });
         const polsUnicos = Array.from(polMap.entries())
@@ -553,6 +578,16 @@ function QuoteLCL({
         }
       });
 
+      // Merge PODs de rutas expandidas
+      if (expandedRoutes) {
+        expandedRoutes.pods.forEach((p) => {
+          const key = normalizePOD(p.label);
+          if (!podMap.has(key)) {
+            podMap.set(key, getPODDisplayName(key));
+          }
+        });
+      }
+
       // Crear opciones únicas ordenadas alfabéticamente
       const podsUnicos = Array.from(podMap.entries())
         .map(([normalized, displayName]) => ({
@@ -564,12 +599,14 @@ function QuoteLCL({
       setOpcionesPOD(podsUnicos);
       setPodSeleccionado(null);
       setRutaSeleccionada(null);
+      setSinTarifa(false);
     } else {
       setOpcionesPOD([]);
       setPodSeleccionado(null);
       setRutaSeleccionada(null);
+      setSinTarifa(false);
     }
-  }, [polSeleccionado, rutas]);
+  }, [polSeleccionado, rutas, expandedRoutes]);
 
   // Cerrar Paso 1 y abrir Paso 2 cuando se selecciona una ruta
   useEffect(() => {
@@ -1019,20 +1056,25 @@ function QuoteLCL({
         return;
       }
 
-      if (!tarifaOceanFreight) {
+      if (!tarifaOceanFreight && !sinTarifa) {
         console.error(t("QuoteLCL.inforuta5"));
         return;
       }
 
       // Calcular total para el email
-      const subtotalAmount =
-        60 + // BL
-        45 + // Handling
-        (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
-        tarifaOceanFreight.income + // Ocean Freight
-        (seguroActivo ? calculateSeguro() : 0); // Seguro
-      const totalAmount = subtotalAmount + calculateNoApilable();
-      const total = rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
+      const subtotalAmount = sinTarifa
+        ? 0
+        : 60 + // BL
+          45 + // Handling
+          (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
+          (tarifaOceanFreight?.income ?? 0) + // Ocean Freight
+          (seguroActivo ? calculateSeguro() : 0); // Seguro
+      const totalAmount = sinTarifa
+        ? 0
+        : subtotalAmount + calculateNoApilable();
+      const total = sinTarifa
+        ? "PENDIENTE"
+        : rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
 
       // Obtener el nombre del packageType
       const packageType = packageTypeOptions.find(
@@ -1152,8 +1194,13 @@ function QuoteLCL({
         });
       }
 
+      // Si sinTarifa, poner todos los montos en 0
+      const finalPdfCharges = sinTarifa
+        ? pdfCharges.map((c) => ({ ...c, rate: 0, amount: 0 }))
+        : pdfCharges;
+
       // Calcular total
-      const totalCharges = pdfCharges.reduce(
+      const totalCharges = finalPdfCharges.reduce(
         (sum, charge) => sum + charge.amount,
         0,
       );
@@ -1224,10 +1271,14 @@ function QuoteLCL({
             pod={rutaSeleccionada.pod}
             effectiveDate={new Date().toLocaleDateString()}
             expirationDate={
-              rutaSeleccionada.validUntil ||
-              new Date(
-                Date.now() + 7 * 24 * 60 * 60 * 1000,
-              ).toLocaleDateString()
+              sinTarifa
+                ? new Date(
+                    Date.now() + 7 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString()
+                : rutaSeleccionada.validUntil ||
+                  new Date(
+                    Date.now() + 7 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString()
             }
             incoterm={incoterm}
             pickupFromAddress={
@@ -1250,14 +1301,29 @@ function QuoteLCL({
             totalVolumeWeight={totalVolumeWeight}
             weightUnit="kg"
             volumeUnit="m³"
-            charges={pdfCharges}
+            charges={finalPdfCharges}
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
-            carrier={rutaSeleccionada.operador}
-            transitTime={rutaSeleccionada?.ttAprox ?? undefined}
-            frequency={rutaSeleccionada?.frecuencia ?? undefined}
-            service={rutaSeleccionada?.servicio ?? undefined}
-            validUntil={rutaSeleccionada.validUntil || undefined}
+            carrier={sinTarifa ? "X" : rutaSeleccionada.operador}
+            transitTime={
+              sinTarifa ? "X" : (rutaSeleccionada?.ttAprox ?? undefined)
+            }
+            frequency={
+              sinTarifa
+                ? undefined
+                : (rutaSeleccionada?.frecuencia ?? undefined)
+            }
+            service={
+              sinTarifa ? undefined : (rutaSeleccionada?.servicio ?? undefined)
+            }
+            validUntil={
+              sinTarifa
+                ? new Date(
+                    Date.now() + 7 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString()
+                : rutaSeleccionada.validUntil || undefined
+            }
+            isPendingQuote={sinTarifa}
           />,
         );
 
@@ -1343,10 +1409,10 @@ function QuoteLCL({
             tipoServicio: "Marítimo LCL",
             origen: rutaSeleccionada.pol,
             destino: rutaSeleccionada.pod,
-            carrier: rutaSeleccionada.operador,
-            precio: tarifaOceanFreight.income,
+            carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.operador,
+            precio: sinTarifa ? 0 : (tarifaOceanFreight?.income ?? 0),
             currency: rutaSeleccionada.currency,
-            total: total,
+            total: sinTarifa ? "PENDIENTE" : total,
             tipoAccion: tipoAccionParam,
             quoteId: (apiResponse || response)?.quote?.id,
           }),
@@ -1363,7 +1429,7 @@ function QuoteLCL({
   };
 
   const getTestPayload = () => {
-    if (!rutaSeleccionada || !tarifaOceanFreight) {
+    if (!rutaSeleccionada || (!tarifaOceanFreight && !sinTarifa)) {
       return null;
     }
 
@@ -1684,14 +1750,30 @@ function QuoteLCL({
       });
     }
 
+    // Si sinTarifa, poner todos los montos en 0
+    const finalCharges = sinTarifa
+      ? charges.map((c: any) => ({
+          ...c,
+          income: { ...c.income, rate: 0, amount: 0, showamount: 0 },
+          expense:
+            c.expense?.amount !== undefined
+              ? { ...c.expense, rate: 0, amount: 0, showamount: 0 }
+              : c.expense,
+        }))
+      : charges;
+
     return {
       date: new Date().toISOString(),
-      validUntil: parseValidUntilToISO(rutaSeleccionada.validUntil),
-      transitDays: parseTransitDays(rutaSeleccionada.ttAprox),
+      validUntil: sinTarifa
+        ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        : parseValidUntilToISO(rutaSeleccionada.validUntil),
+      transitDays: sinTarifa ? 999 : parseTransitDays(rutaSeleccionada.ttAprox),
       project: {
         name: "LCL",
       },
-      customerReference: "Portal Created [LCL]",
+      customerReference: sinTarifa
+        ? "Portal Created [LCL] - PENDIENTE TARIFA"
+        : "Portal Created [LCL]",
       contact: {
         name: effectiveUsername,
       },
@@ -1699,7 +1781,7 @@ function QuoteLCL({
         name: rutaSeleccionada.pol,
       },
       carrierBroker: {
-        name: rutaSeleccionada.agente,
+        name: sinTarifa ? "X" : rutaSeleccionada.agente,
       },
       destination: {
         name: rutaSeleccionada.pod,
@@ -1726,7 +1808,7 @@ function QuoteLCL({
         name: effectiveUsername,
       },
       issuingCompany: {
-        name: rutaSeleccionada?.operador || "Por Confirmar",
+        name: sinTarifa ? "X" : rutaSeleccionada?.operador || "Por Confirmar",
       },
       serviceType: {
         name: "LCL",
@@ -1759,7 +1841,7 @@ function QuoteLCL({
         totalVolumeValue: piece.volume,
         totalVolumeUOM: "m3",
       })),
-      charges,
+      charges: finalCharges,
     };
   };
 
@@ -2098,6 +2180,43 @@ function QuoteLCL({
                       <div className="text-center py-4 bg-light rounded text-muted">
                         <p className="mb-1">{t("Quotelcl.norutas")}</p>
                         <small>{t("Quotelcl.intenta")}</small>
+                        {polSeleccionado && podSeleccionado && (
+                          <div className="mt-3">
+                            <button
+                              className="btn btn-outline-warning btn-sm"
+                              onClick={() => {
+                                const mockRuta: RutaLCL = {
+                                  id: "sin-tarifa-lcl",
+                                  pol: polSeleccionado.label,
+                                  polNormalized: polSeleccionado.value,
+                                  pod: podSeleccionado.label,
+                                  podNormalized: podSeleccionado.value,
+                                  servicio: null,
+                                  ofWM: 0,
+                                  ofWMString: "0",
+                                  currency: "USD",
+                                  frecuencia: null,
+                                  agente: null,
+                                  ttAprox: "X",
+                                  operador: "X",
+                                  operadorNormalized: "x",
+                                  validUntil: null,
+                                  row_number: -1,
+                                };
+                                setRutaSeleccionada(mockRuta);
+                                setSinTarifa(true);
+                              }}
+                            >
+                              ⚠️ Solicitar Cotización Sin Tarifa
+                            </button>
+                            <div className="mt-1">
+                              <small className="text-warning">
+                                Se generará una cotización pendiente de tarifa.
+                                Su ejecutivo le responderá en 48 horas hábiles.
+                              </small>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="qa-table-container">
@@ -2136,6 +2255,7 @@ function QuoteLCL({
                                       return;
                                     }
                                     setRutaSeleccionada(ruta);
+                                    setSinTarifa(false);
                                     setError(null);
                                     setResponse(null);
                                   }}
@@ -2258,24 +2378,50 @@ function QuoteLCL({
                 <strong>
                   {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
                 </strong>
-                <span className="ms-3 qa-text-muted">|</span>
-                <span className="qa-badge qa-badge-primary ms-2">
-                  {rutaSeleccionada.operador}
-                </span>
+                {sinTarifa ? (
+                  <>
+                    <span className="ms-3 qa-text-muted">|</span>
+                    <span className="badge bg-warning text-dark ms-2">
+                      Pendiente
+                    </span>
+                    <span className="text-danger ms-2 small">Sin Tarifa</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="ms-3 qa-text-muted">|</span>
+                    <span className="qa-badge qa-badge-primary ms-2">
+                      {rutaSeleccionada.operador}
+                    </span>
+                  </>
+                )}
               </div>
               <div>
-                <span
-                  className="qa-badge"
-                  style={{
-                    fontSize: "0.9rem",
-                    backgroundColor: "rgba(255, 98, 0, 0.1)",
-                    color: "var(--qa-primary)",
-                    borderColor: "rgba(255, 98, 0, 0.2)",
-                  }}
-                >
-                  {rutaSeleccionada.currency}{" "}
-                  {(rutaSeleccionada.ofWM * 1.35).toFixed(2)}/W/M
-                </span>
+                {sinTarifa ? (
+                  <span
+                    className="qa-badge"
+                    style={{
+                      fontSize: "0.9rem",
+                      backgroundColor: "rgba(255, 193, 7, 0.15)",
+                      color: "#856404",
+                      borderColor: "rgba(255, 193, 7, 0.3)",
+                    }}
+                  >
+                    PENDIENTE
+                  </span>
+                ) : (
+                  <span
+                    className="qa-badge"
+                    style={{
+                      fontSize: "0.9rem",
+                      backgroundColor: "rgba(255, 98, 0, 0.1)",
+                      color: "var(--qa-primary)",
+                      borderColor: "rgba(255, 98, 0, 0.2)",
+                    }}
+                  >
+                    {rutaSeleccionada.currency}{" "}
+                    {(rutaSeleccionada.ofWM * 1.35).toFixed(2)}/W/M
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -2638,8 +2784,22 @@ function QuoteLCL({
       {/* PASO 3: GENERAR COTIZACIÓN */}
       {/* ============================================================================ */}
 
-      {rutaSeleccionada && tarifaOceanFreight && (
+      {rutaSeleccionada && (tarifaOceanFreight || sinTarifa) && (
         <>
+          {sinTarifa && (
+            <div
+              className="alert alert-warning d-flex align-items-center mb-3"
+              role="alert"
+            >
+              <i className="bi bi-exclamation-triangle-fill me-2"></i>
+              <div>
+                <strong>Cotización Sin Tarifa:</strong> Se generará una
+                cotización con todos los costos en $0. Su ejecutivo de ventas le
+                proporcionará una cotización formal en un plazo de 48 horas
+                hábiles.
+              </div>
+            </div>
+          )}
           <div className="row g-3">
             <div className="col-md-12">
               <div
