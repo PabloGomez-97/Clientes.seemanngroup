@@ -1613,6 +1613,8 @@ function QuoteLCL({
     }
 
     // Cobro de OCEAN FREIGHT
+    const ofIncome = tarifaOceanFreight?.income ?? 0;
+    const ofExpense = tarifaOceanFreight?.expense ?? 0;
     charges.push({
       service: {
         id: 106,
@@ -1622,8 +1624,8 @@ function QuoteLCL({
         quantity: chargeableVolume,
         unit: "OCEAN FREIGHT",
         rate: (rutaSeleccionada?.ofWM ?? 0) * 1.35,
-        amount: tarifaOceanFreight.income,
-        showamount: tarifaOceanFreight.income,
+        amount: ofIncome,
+        showamount: ofIncome,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -1634,14 +1636,14 @@ function QuoteLCL({
         },
         reference: "LCL-OCEANFREIGHT",
         showOnDocument: true,
-        notes: `OCEAN FREIGHT charge - ${rutaSeleccionada?.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada?.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)} + 15%`,
+        notes: `OCEAN FREIGHT charge - ${rutaSeleccionada?.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada?.ofWM}/W/M - Total: ${divisa} ${ofExpense.toFixed(2)} + 15%`,
       },
       expense: {
         quantity: chargeableVolume,
         unit: "OCEAN FREIGHT",
         rate: rutaSeleccionada?.ofWM ?? 0,
-        amount: tarifaOceanFreight.expense,
-        showamount: tarifaOceanFreight.expense,
+        amount: ofExpense,
+        showamount: ofExpense,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -1652,7 +1654,7 @@ function QuoteLCL({
         },
         reference: "LCL-OCEANFREIGHT",
         showOnDocument: true,
-        notes: `OCEAN FREIGHT expense - ${rutaSeleccionada?.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada?.ofWM}/W/M - Total: ${divisa} ${tarifaOceanFreight.expense.toFixed(2)}`,
+        notes: `OCEAN FREIGHT expense - ${rutaSeleccionada?.operador} - W/M: ${chargeableVolume.toFixed(3)} - Tarifa: ${divisa} ${rutaSeleccionada?.ofWM}/W/M - Total: ${divisa} ${ofExpense.toFixed(2)}`,
       },
     });
 
