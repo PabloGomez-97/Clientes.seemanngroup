@@ -615,6 +615,50 @@ function QuoteLCL({
     }
   }, [rutaSeleccionada]);
 
+  // Auto-activar sinTarifa cuando el POD elegido no tiene rutas disponibles
+  useEffect(() => {
+    if (!polSeleccionado || !podSeleccionado || loadingRutas) return;
+
+    const hayRutas = rutas.some((r) => {
+      const validityState = getValidityClass(r.validUntil);
+      if (validityState === "expired") return false;
+      return (
+        r.polNormalized === polSeleccionado.value &&
+        r.podNormalized === podSeleccionado.value &&
+        operadoresActivos.has(r.operador)
+      );
+    });
+
+    if (!hayRutas && !rutaSeleccionada) {
+      const mockRuta: RutaLCL = {
+        id: "sin-tarifa-lcl",
+        pol: polSeleccionado.label,
+        polNormalized: polSeleccionado.value,
+        pod: podSeleccionado.label,
+        podNormalized: podSeleccionado.value,
+        servicio: null,
+        ofWM: 0,
+        ofWMString: "0",
+        currency: "USD",
+        frecuencia: null,
+        agente: null,
+        ttAprox: "X",
+        operador: "X",
+        operadorNormalized: "x",
+        validUntil: null,
+        row_number: -1,
+      };
+      setRutaSeleccionada(mockRuta);
+      setSinTarifa(true);
+    }
+  }, [
+    polSeleccionado,
+    podSeleccionado,
+    rutas,
+    operadoresActivos,
+    loadingRutas,
+  ]);
+
   useEffect(() => {
     const tooltipTriggerList = document.querySelectorAll(
       '[data-bs-toggle="tooltip"]',
@@ -2123,45 +2167,6 @@ function QuoteLCL({
                   </div>
                 </div>
 
-                {/* Filtro de Operadores */}
-                {polSeleccionado && podSeleccionado && (
-                  <div
-                    style={{
-                      borderTop: "1px solid var(--qa-border-color)",
-                      paddingTop: "1rem",
-                      marginBottom: "1.5rem",
-                    }}
-                  >
-                    <label className="qa-label mb-2">
-                      {t("Quotelcl.operador")}
-                    </label>
-                    <div className="d-flex flex-wrap gap-2">
-                      {operadoresDisponibles.map((operador) => (
-                        <button
-                          key={operador}
-                          type="button"
-                          className={`qa-btn qa-btn-sm ${
-                            operadoresActivos.has(operador)
-                              ? "qa-btn-primary"
-                              : "qa-btn-outline"
-                          }`}
-                          onClick={() => {
-                            const newSet = new Set(operadoresActivos);
-                            if (newSet.has(operador)) {
-                              newSet.delete(operador);
-                            } else {
-                              newSet.add(operador);
-                            }
-                            setOperadoresActivos(newSet);
-                          }}
-                        >
-                          {operador}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {polSeleccionado && podSeleccionado && (
                   <div className="mt-4">
                     <div className="d-flex justify-content-between align-items-center mb-3">
@@ -2176,49 +2181,7 @@ function QuoteLCL({
                       )}
                     </div>
 
-                    {rutasFiltradas.length === 0 ? (
-                      <div className="text-center py-4 bg-light rounded text-muted">
-                        <p className="mb-1">{t("Quotelcl.norutas")}</p>
-                        <small>{t("Quotelcl.intenta")}</small>
-                        {polSeleccionado && podSeleccionado && (
-                          <div className="mt-3">
-                            <button
-                              className="btn btn-outline-warning btn-sm"
-                              onClick={() => {
-                                const mockRuta: RutaLCL = {
-                                  id: "sin-tarifa-lcl",
-                                  pol: polSeleccionado.label,
-                                  polNormalized: polSeleccionado.value,
-                                  pod: podSeleccionado.label,
-                                  podNormalized: podSeleccionado.value,
-                                  servicio: null,
-                                  ofWM: 0,
-                                  ofWMString: "0",
-                                  currency: "USD",
-                                  frecuencia: null,
-                                  agente: null,
-                                  ttAprox: "X",
-                                  operador: "X",
-                                  operadorNormalized: "x",
-                                  validUntil: null,
-                                  row_number: -1,
-                                };
-                                setRutaSeleccionada(mockRuta);
-                                setSinTarifa(true);
-                              }}
-                            >
-                              ⚠️ Solicitar Cotización Sin Tarifa
-                            </button>
-                            <div className="mt-1">
-                              <small className="text-warning">
-                                Se generará una cotización pendiente de tarifa.
-                                Su ejecutivo le responderá en 48 horas hábiles.
-                              </small>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
+                    {rutasFiltradas.length > 0 && (
                       <div className="qa-table-container">
                         <table className="qa-table">
                           <thead>
@@ -2269,16 +2232,6 @@ function QuoteLCL({
                                       ></i>
                                     ) : (
                                       <i className="bi bi-circle text-muted"></i>
-                                    )}
-                                    {isEjecutivoMode && index === 0 && (
-                                      <div className="mt-1">
-                                        <span
-                                          className="qa-badge qa-badge-primary"
-                                          title={t("Quotelcl.mejoropcion")}
-                                        >
-                                          <i className="bi bi-star-fill"></i>
-                                        </span>
-                                      </div>
                                     )}
                                   </td>
                                   <td>
@@ -2378,15 +2331,7 @@ function QuoteLCL({
                 <strong>
                   {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
                 </strong>
-                {sinTarifa ? (
-                  <>
-                    <span className="ms-3 qa-text-muted">|</span>
-                    <span className="badge bg-warning text-dark ms-2">
-                      Pendiente
-                    </span>
-                    <span className="text-danger ms-2 small">Sin Tarifa</span>
-                  </>
-                ) : (
+                {!sinTarifa && (
                   <>
                     <span className="ms-3 qa-text-muted">|</span>
                     <span className="qa-badge qa-badge-primary ms-2">
@@ -2396,19 +2341,7 @@ function QuoteLCL({
                 )}
               </div>
               <div>
-                {sinTarifa ? (
-                  <span
-                    className="qa-badge"
-                    style={{
-                      fontSize: "0.9rem",
-                      backgroundColor: "rgba(255, 193, 7, 0.15)",
-                      color: "#856404",
-                      borderColor: "rgba(255, 193, 7, 0.3)",
-                    }}
-                  >
-                    PENDIENTE
-                  </span>
-                ) : (
+                {sinTarifa ? null : (
                   <span
                     className="qa-badge"
                     style={{
@@ -2786,20 +2719,6 @@ function QuoteLCL({
 
       {rutaSeleccionada && (tarifaOceanFreight || sinTarifa) && (
         <>
-          {sinTarifa && (
-            <div
-              className="alert alert-warning d-flex align-items-center mb-3"
-              role="alert"
-            >
-              <i className="bi bi-exclamation-triangle-fill me-2"></i>
-              <div>
-                <strong>Cotización Sin Tarifa:</strong> Se generará una
-                cotización con todos los costos en $0. Su ejecutivo de ventas le
-                proporcionará una cotización formal en un plazo de 48 horas
-                hábiles.
-              </div>
-            </div>
-          )}
           <div className="row g-3">
             <div className="col-md-12">
               <div

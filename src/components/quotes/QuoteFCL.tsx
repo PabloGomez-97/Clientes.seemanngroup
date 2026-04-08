@@ -408,6 +408,54 @@ function QuoteFCL({
     }
   }, [polSeleccionado, rutas, expandedRoutes]);
 
+  // Auto-activar sinTarifa cuando el POD elegido no tiene rutas disponibles
+  useEffect(() => {
+    if (!polSeleccionado || !podSeleccionado || loadingRutas) return;
+
+    const hayRutas = rutas.some((r) => {
+      const validityState = getValidityClass(r.validUntil);
+      if (validityState === "expired") return false;
+      const matchPOL = r.polNormalized === polSeleccionado.value;
+      const matchPOD = r.podNormalized === podSeleccionado.value;
+      const matchCarrier =
+        !r.carrier || r.carrier === "N/A" || carriersActivos.has(r.carrier);
+      return matchPOL && matchPOD && matchCarrier;
+    });
+
+    if (!hayRutas && !rutaSeleccionada) {
+      const mockRuta: RutaFCL = {
+        id: "FCL-PENDING",
+        pol: polSeleccionado.label,
+        polNormalized: polSeleccionado.value,
+        pod: podSeleccionado.label,
+        podNormalized: podSeleccionado.value,
+        gp20: "0",
+        hq40: "0",
+        nor40: "0",
+        carrier: "X",
+        carrierNormalized: "x",
+        tt: "X",
+        remarks: "",
+        company: "",
+        companyNormalized: "",
+        validUntil: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ).toLocaleDateString("es-CL"),
+        row_number: 0,
+        priceForComparison: 0,
+        currency: "USD",
+      };
+      setRutaSeleccionada(mockRuta);
+      setSinTarifa(true);
+      setContainerSeleccionado({
+        type: "40HQ",
+        packageTypeId: CONTAINER_MAPPING["40HQ"].id,
+        price: 0,
+        priceString: "0",
+      });
+    }
+  }, [polSeleccionado, podSeleccionado, rutas, carriersActivos, loadingRutas]);
+
   const handleSectionToggle = (section: number) => {
     setOpenSection(openSection === section ? 0 : section);
   };
@@ -1890,79 +1938,7 @@ function QuoteFCL({
                       )}
                     </div>
 
-                    {rutasFiltradas.length === 0 ? (
-                      <div className="alert alert-light border-0 shadow-sm">
-                        <div className="d-flex align-items-center gap-3">
-                          <i className="bi bi-search text-muted fs-3"></i>
-                          <div>
-                            <p className="mb-1 fw-semibold">
-                              {t("Quotelcl.norutas")}
-                            </p>
-                            <small className="text-muted">
-                              {t("Quotelcl.intenta")}
-                            </small>
-                          </div>
-                        </div>
-                        {/* Botón para cotizar sin tarifa (ruta expandida sin precio) */}
-                        <div
-                          className="mt-3 pt-3"
-                          style={{ borderTop: "1px solid #dee2e6" }}
-                        >
-                          <p className="mb-2 small text-muted">
-                            <i className="bi bi-info-circle me-1"></i>
-                            ¿No encuentras tarifa para esta ruta? Puedes
-                            solicitar una cotización y tu ejecutivo te la
-                            proporcionará en 48 horas hábiles.
-                          </p>
-                          <button
-                            type="button"
-                            className="qf-btn qf-btn-outline w-100"
-                            style={{
-                              color: "#ff6200",
-                              borderColor: "#ff6200",
-                            }}
-                            onClick={() => {
-                              // Crear una ruta ficticia sin tarifa
-                              const mockRuta: RutaFCL = {
-                                id: "FCL-PENDING",
-                                pol: polSeleccionado?.label || "",
-                                polNormalized: polSeleccionado?.value || "",
-                                pod: podSeleccionado?.label || "",
-                                podNormalized: podSeleccionado?.value || "",
-                                gp20: "0",
-                                hq40: "0",
-                                nor40: "0",
-                                carrier: "X",
-                                carrierNormalized: "x",
-                                tt: "X",
-                                remarks: "",
-                                company: "",
-                                companyNormalized: "",
-                                validUntil: new Date(
-                                  Date.now() + 7 * 24 * 60 * 60 * 1000,
-                                ).toLocaleDateString("es-CL"),
-                                row_number: 0,
-                                priceForComparison: 0,
-                                currency: "USD",
-                              };
-                              setRutaSeleccionada(mockRuta);
-                              setSinTarifa(true);
-                              setContainerSeleccionado({
-                                type: "40HQ",
-                                packageTypeId: CONTAINER_MAPPING["40HQ"].id,
-                                price: 0,
-                                priceString: "0",
-                              });
-                              setError(null);
-                              setResponse(null);
-                            }}
-                          >
-                            <i className="bi bi-envelope-paper me-2"></i>
-                            Solicitar Cotización Sin Tarifa
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
+                    {rutasFiltradas.length > 0 && (
                       <div className="row g-3">
                         {rutasFiltradas.map((ruta, index) => (
                           <div key={ruta.id} className="col-md-6 col-lg-4">
@@ -2264,14 +2240,13 @@ function QuoteFCL({
                 <strong>
                   {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
                 </strong>
-                <span className="ms-3 text-muted">|</span>
-                <span className="qf-badge qf-badge-primary ms-2">
-                  {sinTarifa ? "Pendiente" : rutaSeleccionada.carrier}
-                </span>
-                {sinTarifa && (
-                  <span className="badge bg-warning text-dark ms-2">
-                    Sin Tarifa
-                  </span>
+                {!sinTarifa && (
+                  <>
+                    <span className="ms-3 text-muted">|</span>
+                    <span className="qf-badge qf-badge-primary ms-2">
+                      {rutaSeleccionada.carrier}
+                    </span>
+                  </>
                 )}
               </div>
               <div className="d-flex align-items-center gap-3">
@@ -2279,15 +2254,8 @@ function QuoteFCL({
                   <small className="text-muted d-block">Contenedor:</small>
                   <strong>{containerSeleccionado.type}</strong>
                 </div>
-                <div>
-                  {sinTarifa ? (
-                    <span
-                      className="badge bg-warning text-dark"
-                      style={{ fontSize: "0.9rem" }}
-                    >
-                      Pendiente
-                    </span>
-                  ) : (
+                {!sinTarifa && (
+                  <div>
                     <span
                       className="badge bg-success"
                       style={{ fontSize: "0.9rem" }}
@@ -2295,8 +2263,8 @@ function QuoteFCL({
                       {rutaSeleccionada.currency}{" "}
                       {(containerSeleccionado.price * 1.15).toFixed(2)}
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -2459,17 +2427,6 @@ function QuoteFCL({
                 <h6 className="fw-bold mb-3">
                   <i className="bi bi-box-seam me-2"></i>Resumen del Cargamento
                 </h6>
-
-                {sinTarifa && (
-                  <div
-                    className="alert alert-warning py-2 px-3 mb-3"
-                    style={{ fontSize: "0.82rem" }}
-                  >
-                    <i className="bi bi-exclamation-triangle-fill me-1"></i>
-                    <strong>Cotización sin tarifa:</strong> Su ejecutivo le
-                    proporcionará los valores en un plazo de 48 horas hábiles.
-                  </div>
-                )}
 
                 <div className="d-flex flex-column gap-3 small">
                   <div>
