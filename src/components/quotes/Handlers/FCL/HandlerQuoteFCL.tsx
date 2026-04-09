@@ -211,6 +211,7 @@ export interface ClienteAsignado {
   id: string;
   email: string;
   username: string;
+  usernames?: string[];
   nombreuser: string;
   createdAt: string;
 }

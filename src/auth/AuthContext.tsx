@@ -35,6 +35,7 @@ type Cliente = {
   id: string;
   email: string;
   username: string;
+  usernames?: string[];
   nombreuser: string;
   createdAt: string;
 };

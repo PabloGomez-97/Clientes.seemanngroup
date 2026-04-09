@@ -45,6 +45,23 @@ import {
   type ExpandedRoutesData,
 } from "./Handlers/ExpandedRoutes";
 
+/** Expande cuentas multi-empresa: una entrada por empresa en el selector */
+function expandClientesPorEmpresa(
+  clientes: ClienteAsignado[],
+): ClienteAsignado[] {
+  const expanded: ClienteAsignado[] = [];
+  for (const cliente of clientes) {
+    const names =
+      cliente.usernames && cliente.usernames.length > 1
+        ? cliente.usernames
+        : [cliente.username];
+    for (const name of names) {
+      expanded.push({ ...cliente, username: name });
+    }
+  }
+  return expanded;
+}
+
 function QuoteLCL({
   preselectedPOL,
   preselectedPOD,
@@ -190,10 +207,11 @@ function QuoteLCL({
       try {
         setLoadingClientes(true);
         const clientes = await getMisClientes();
-        setClientesAsignados(clientes);
+        const expanded = expandClientesPorEmpresa(clientes);
+        setClientesAsignados(expanded);
 
-        if (clientes.length === 1) {
-          setClienteSeleccionado(clientes[0]);
+        if (expanded.length === 1) {
+          setClienteSeleccionado(expanded[0]);
         }
       } catch (err) {
         console.error("Error cargando clientes:", err);
@@ -1897,6 +1915,13 @@ function QuoteLCL({
 
   return (
     <div className="qa-container">
+      <div className="qa-section-header">
+        <div>
+          <h2 className="qa-title">{t("Quotelcl.title")}</h2>
+          <p className="qa-subtitle">{t("Quotelcl.subtitle")}</p>
+        </div>
+      </div>
+
       {/* ============================================================================ */}
       {/* SELECTOR DE CLIENTE (Solo para modo ejecutivo) */}
       {/* ============================================================================ */}
@@ -1905,24 +1930,10 @@ function QuoteLCL({
         <div
           className="card shadow-sm mb-4"
           style={{
-            borderLeft: "4px solid #0d6efd",
             background: "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
           }}
         >
           <div className="card-body">
-            <h5 className="card-title mb-3">
-              <svg
-                width="20"
-                height="20"
-                fill="currentColor"
-                className="me-2"
-                viewBox="0 0 16 16"
-              >
-                <path d="M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm.256 7a4.474 4.474 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10c.26 0 .507.009.74.025.226-.341.496-.65.804-.918C9.077 9.038 8.564 9 8 9c-5 0-6 3-6 4s1 1 1 1h5.256Z" />
-              </svg>
-              Seleccionar Cliente
-            </h5>
-
             {loadingClientes ? (
               <div className="text-center py-3">
                 <div
@@ -1941,7 +1952,7 @@ function QuoteLCL({
               </div>
             ) : clientesAsignados.length === 0 ? (
               <div className="alert alert-warning mb-0">
-                <strong>⚠️ Sin clientes asignados</strong>
+                <strong>Sin clientes asignados</strong>
                 <p className="mb-0 mt-2 small">
                   No tienes clientes asignados. Contacta al administrador.
                 </p>
@@ -1950,15 +1961,14 @@ function QuoteLCL({
               <div className="row g-3">
                 <div className="col-md-8">
                   <label className="form-label fw-semibold">
-                    Cliente para esta cotización{" "}
-                    <span className="text-danger">*</span>
+                    Cliente para esta cotización
                   </label>
                   <select
                     className="form-select form-select-lg"
-                    value={clienteSeleccionado?.id || ""}
+                    value={clienteSeleccionado?.username || ""}
                     onChange={(e) => {
                       const cliente = clientesAsignados.find(
-                        (c) => c.id === e.target.value,
+                        (c) => c.username === e.target.value,
                       );
                       setClienteSeleccionado(cliente || null);
                     }}
@@ -1971,14 +1981,14 @@ function QuoteLCL({
                   >
                     <option value="">Selecciona un cliente...</option>
                     {clientesAsignados.map((c) => (
-                      <option key={c.id} value={c.id}>
+                      <option key={c.username} value={c.username}>
                         {c.username} ({c.email})
                       </option>
                     ))}
                   </select>
                   {!clienteSeleccionado && (
                     <small className="text-danger d-block mt-1">
-                      ⚠️ Debes seleccionar un cliente antes de generar la
+                      Debes seleccionar un cliente antes de generar la
                       cotización
                     </small>
                   )}
@@ -2017,13 +2027,6 @@ function QuoteLCL({
           </div>
         </div>
       )}
-
-      <div className="qa-section-header">
-        <div>
-          <h2 className="qa-title">{t("Quotelcl.title")}</h2>
-          <p className="qa-subtitle">{t("Quotelcl.subtitle")}</p>
-        </div>
-      </div>
 
       {/* ============================================================================ */}
       {/* SECCIÓN 1: SELECCIÓN DE RUTA */}
