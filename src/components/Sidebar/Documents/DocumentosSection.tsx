@@ -49,6 +49,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
   const [carpetasAbiertas, setCarpetasAbiertas] = useState<Set<TipoDocumento>>(
     new Set(),
   );
+  const [dragOverTipo, setDragOverTipo] = useState<TipoDocumento | null>(null);
 
   // Referencias para los inputs de archivo
   const fileInputRefs = {
@@ -120,26 +121,11 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
   };
 
   // ============================================================
-  // SUBIR DOCUMENTO
+  // SUBIR DOCUMENTO (soporta múltiples archivos y drag & drop)
   // ============================================================
 
-  const handleFileSelect = async (
-    tipo: TipoDocumento,
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    // Validar tamaño (5MB)
+  const processFiles = async (tipo: TipoDocumento, files: File[]) => {
     const MAX_SIZE = 5 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      setError(`El archivo "${file.name}" excede el tamaño máximo de 5MB`);
-      event.target.value = "";
-      return;
-    }
-
-    // Validar tipo de archivo
     const allowedTypes = [
       "application/pdf",
       "application/vnd.ms-excel",
@@ -148,11 +134,21 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
 
-    if (!allowedTypes.includes(file.type)) {
-      setError(
-        "Solo se permiten archivos PDF, Excel (.xls, .xlsx) y Word (.doc, .docx)",
-      );
-      event.target.value = "";
+    const validFiles: File[] = [];
+    const rejected: string[] = [];
+
+    for (const file of files) {
+      if (file.size > MAX_SIZE) {
+        rejected.push(`"${file.name}" excede 5MB`);
+      } else if (!allowedTypes.includes(file.type)) {
+        rejected.push(`"${file.name}" tipo no permitido`);
+      } else {
+        validFiles.push(file);
+      }
+    }
+
+    if (validFiles.length === 0) {
+      if (rejected.length > 0) setError(rejected.join(". "));
       return;
     }
 
@@ -160,43 +156,95 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
     setError(null);
     setSuccessMessage(null);
 
-    try {
-      const base64 = await fileToBase64(file);
+    const uploaded: string[] = [];
+    const failed: string[] = [];
 
-      const response = await fetch("/api/documentos/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          quoteId: String(quoteId),
-          ownerUsername,
-          tipo,
-          nombreArchivo: file.name,
-          contenidoBase64: base64,
-        }),
-      });
+    for (const file of validFiles) {
+      try {
+        const base64 = await fileToBase64(file);
+        const response = await fetch("/api/documentos/upload", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            quoteId: String(quoteId),
+            ownerUsername,
+            tipo,
+            nombreArchivo: file.name,
+            contenidoBase64: base64,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Error al subir documento");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Error al subir documento");
+        }
+        uploaded.push(file.name);
+      } catch (err: any) {
+        console.error("Error subiendo documento:", err);
+        failed.push(file.name);
       }
+    }
 
-      setSuccessMessage(`✅ "${file.name}" subido exitosamente`);
-      await loadDocumentos();
-      event.target.value = "";
+    await loadDocumentos();
+    setCarpetasAbiertas((prev) => new Set(prev).add(tipo));
+    setUploading(false);
 
-      // Abrir la carpeta automáticamente
-      setCarpetasAbiertas((prev) => new Set(prev).add(tipo));
-
+    if (uploaded.length > 0) {
+      const msg =
+        uploaded.length === 1
+          ? `✅ "${uploaded[0]}" subido exitosamente`
+          : `✅ ${uploaded.length} archivos subidos exitosamente`;
+      setSuccessMessage(msg);
       setTimeout(() => setSuccessMessage(null), 5000);
-    } catch (err: any) {
-      console.error("Error subiendo documento:", err);
-      setError(err.message || "Error al subir documento");
-      event.target.value = "";
-    } finally {
-      setUploading(false);
+    }
+
+    const allErrors = [
+      ...rejected,
+      ...failed.map((f) => `Error al subir "${f}"`),
+    ];
+    if (allErrors.length > 0) {
+      setError(allErrors.join(". "));
+    }
+  };
+
+  const handleFileSelect = async (
+    tipo: TipoDocumento,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    await processFiles(tipo, files);
+    event.target.value = "";
+  };
+
+  // ============================================================
+  // DRAG & DROP
+  // ============================================================
+
+  const handleDragEnter = (e: React.DragEvent, tipo: TipoDocumento) => {
+    e.preventDefault();
+    setDragOverTipo(tipo);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverTipo(null);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, tipo: TipoDocumento) => {
+    e.preventDefault();
+    setDragOverTipo(null);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      await processFiles(tipo, files);
     }
   };
 
@@ -362,7 +410,14 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
             const isOpen = carpetasAbiertas.has(tipo);
 
             return (
-              <div key={tipo} className="folder-item">
+              <div
+                key={tipo}
+                className={`folder-item${dragOverTipo === tipo ? " drag-over" : ""}`}
+                onDragEnter={(e) => handleDragEnter(e, tipo)}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, tipo)}
+              >
                 {/* Header de la carpeta */}
                 <div
                   className="folder-header"
@@ -432,7 +487,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
                       </div>
                     )}
 
-                    {/* Botón de subir archivo - MOVIDO AL FINAL */}
+                    {/* Subir archivo + zona de arrastre */}
                     <div className="upload-area">
                       <input
                         ref={fileInputRefs[tipo]}
@@ -441,6 +496,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
                         onChange={(e) => handleFileSelect(tipo, e)}
                         style={{ display: "none" }}
                         disabled={uploading}
+                        multiple
                       />
 
                       <button
@@ -457,6 +513,11 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
                           <>📤 Subir archivo</>
                         )}
                       </button>
+                    </div>
+
+                    <div className="drop-zone-inline">
+                      <span className="drop-zone-icon">📥</span>
+                      Arrastra archivos aquí para subirlos
                     </div>
                   </div>
                 )}

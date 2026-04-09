@@ -1,5 +1,5 @@
 // src/layouts/AdminLayout.tsx - Same structure as UserLayout
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import NavbarAdmin from "./Navbar-admin";
 import SidebarAdmin from "./Sidebar-admin";
@@ -35,6 +35,13 @@ function AdminLayout() {
     return isMobileViewport();
   });
   const location = useLocation();
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
 
   // Verificar acceso por rol a la ruta actual
   if (
@@ -148,8 +155,13 @@ function AdminLayout() {
         />
 
         <div
+          ref={mainRef}
           className="flex-fill p-4"
-          style={{ overflowY: "auto", backgroundColor: "#f8f9fa" }}
+          style={{
+            overflowY: "auto",
+            backgroundColor: "#f8f9fa",
+            minHeight: 0,
+          }}
         >
           <Outlet
             context={{

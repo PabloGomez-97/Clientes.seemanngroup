@@ -47,6 +47,9 @@ export const DocumentosSectionOcean: React.FC<Props> = ({ shipmentId }) => {
   const [carpetasAbiertas, setCarpetasAbiertas] = useState<
     Set<TipoDocumentoOcean>
   >(new Set());
+  const [dragOverTipo, setDragOverTipo] = useState<TipoDocumentoOcean | null>(
+    null,
+  );
 
   const fileInputRefs: Record<
     TipoDocumentoOcean,
@@ -165,16 +168,14 @@ export const DocumentosSectionOcean: React.FC<Props> = ({ shipmentId }) => {
     tipo: TipoDocumentoOcean,
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    await processFiles(tipo, files);
+    event.target.value = "";
+  };
 
+  const processFiles = async (tipo: TipoDocumentoOcean, files: File[]) => {
     const MAX_SIZE = 5 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      setError(`El archivo "${file.name}" excede el tamaño máximo de 5MB`);
-      event.target.value = "";
-      return;
-    }
-
     const allowedTypes = [
       "application/pdf",
       "application/vnd.ms-excel",
@@ -182,11 +183,22 @@ export const DocumentosSectionOcean: React.FC<Props> = ({ shipmentId }) => {
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
-    if (!allowedTypes.includes(file.type)) {
-      setError(
-        "Solo se permiten archivos PDF, Excel (.xls, .xlsx) y Word (.doc, .docx)",
-      );
-      event.target.value = "";
+
+    const validFiles: File[] = [];
+    const rejected: string[] = [];
+
+    for (const file of files) {
+      if (file.size > MAX_SIZE) {
+        rejected.push(`"${file.name}" excede 5MB`);
+      } else if (!allowedTypes.includes(file.type)) {
+        rejected.push(`"${file.name}" tipo no permitido`);
+      } else {
+        validFiles.push(file);
+      }
+    }
+
+    if (validFiles.length === 0) {
+      if (rejected.length > 0) setError(rejected.join(". "));
       return;
     }
 
@@ -194,41 +206,81 @@ export const DocumentosSectionOcean: React.FC<Props> = ({ shipmentId }) => {
     setError(null);
     setSuccessMessage(null);
 
-    try {
-      const base64 = await fileToBase64(file);
+    const uploaded: string[] = [];
+    const failed: string[] = [];
 
-      const response = await fetch("/api/ocean-shipments/documentos/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          shipmentId: String(shipmentId),
-          ownerUsername,
-          tipo,
-          nombreArchivo: file.name,
-          contenidoBase64: base64,
-        }),
-      });
+    for (const file of validFiles) {
+      try {
+        const base64 = await fileToBase64(file);
+        const response = await fetch("/api/ocean-shipments/documentos/upload", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            shipmentId: String(shipmentId),
+            ownerUsername,
+            tipo,
+            nombreArchivo: file.name,
+            contenidoBase64: base64,
+          }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Error al subir documento");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Error al subir documento");
+        }
+        uploaded.push(file.name);
+      } catch (err: any) {
+        console.error("Error subiendo documento:", err);
+        failed.push(file.name);
       }
+    }
 
-      setSuccessMessage(`✅ "${file.name}" subido exitosamente`);
-      await loadDocumentos();
-      event.target.value = "";
+    await loadDocumentos();
+    setCarpetasAbiertas((prev) => new Set(prev).add(tipo));
+    setUploading(false);
 
-      setCarpetasAbiertas((prev) => new Set(prev).add(tipo));
+    if (uploaded.length > 0) {
+      const msg =
+        uploaded.length === 1
+          ? `✅ "${uploaded[0]}" subido exitosamente`
+          : `✅ ${uploaded.length} archivos subidos exitosamente`;
+      setSuccessMessage(msg);
       setTimeout(() => setSuccessMessage(null), 5000);
-    } catch (err: any) {
-      console.error("Error subiendo documento:", err);
-      setError(err.message || "Error al subir documento");
-      event.target.value = "";
-    } finally {
-      setUploading(false);
+    }
+
+    const allErrors = [
+      ...rejected,
+      ...failed.map((f) => `Error al subir "${f}"`),
+    ];
+    if (allErrors.length > 0) {
+      setError(allErrors.join(". "));
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent, tipo: TipoDocumentoOcean) => {
+    e.preventDefault();
+    setDragOverTipo(tipo);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverTipo(null);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent, tipo: TipoDocumentoOcean) => {
+    e.preventDefault();
+    setDragOverTipo(null);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      await processFiles(tipo, files);
     }
   };
 
@@ -334,7 +386,14 @@ export const DocumentosSectionOcean: React.FC<Props> = ({ shipmentId }) => {
             const isOpen = carpetasAbiertas.has(tipo);
 
             return (
-              <div key={tipo} className="folder-item">
+              <div
+                key={tipo}
+                className={`folder-item${dragOverTipo === tipo ? " drag-over" : ""}`}
+                onDragEnter={(e) => handleDragEnter(e, tipo)}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, tipo)}
+              >
                 <div
                   className="folder-header"
                   onClick={() => toggleCarpeta(tipo)}
@@ -409,6 +468,7 @@ export const DocumentosSectionOcean: React.FC<Props> = ({ shipmentId }) => {
                         onChange={(e) => handleFileSelect(tipo, e)}
                         style={{ display: "none" }}
                         disabled={uploading}
+                        multiple
                       />
 
                       <button
@@ -425,6 +485,11 @@ export const DocumentosSectionOcean: React.FC<Props> = ({ shipmentId }) => {
                           <>📤 Subir archivo</>
                         )}
                       </button>
+                    </div>
+
+                    <div className="drop-zone-inline">
+                      <span className="drop-zone-icon">📥</span>
+                      Arrastra archivos aquí para subirlos
                     </div>
                   </div>
                 )}

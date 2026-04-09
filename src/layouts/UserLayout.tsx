@@ -1,6 +1,6 @@
 // src/layouts/UserLayout.tsx
-import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
@@ -15,6 +15,8 @@ const isMobileViewport = () =>
 function UserLayout() {
   const { t } = useTranslation();
   const { accessToken, loading, error, refreshAccessToken } = useLinbisToken();
+  const location = useLocation();
+  const mainRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(isMobileViewport);
   const [hasUserPref, setHasUserPref] = useState<boolean>(() => {
     try {
@@ -33,6 +35,12 @@ function UserLayout() {
     }
     return isMobileViewport();
   });
+
+  useLayoutEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -222,8 +230,13 @@ function UserLayout() {
         />
 
         <div
+          ref={mainRef}
           className="flex-fill user-layout-main"
-          style={{ overflowY: "auto", backgroundColor: "#f8f9fa" }}
+          style={{
+            overflowY: "auto",
+            backgroundColor: "#f8f9fa",
+            minHeight: 0,
+          }}
         >
           <Outlet
             context={{

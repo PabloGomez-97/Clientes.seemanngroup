@@ -326,6 +326,44 @@
   color: #6c757d;
 }
 
+/* ============================================================
+   DRAG & DROP
+   ============================================================ */
+
+.folder-item.drag-over > .folder-header {
+  background: #e3f2fd;
+  box-shadow: inset 0 0 0 2px #2196f3;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.folder-item.drag-over > .folder-content {
+  background: #f5faff;
+}
+
+.drop-zone-inline {
+  border: 2px dashed #b0bec5;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  color: #999;
+  font-size: 0.85rem;
+  margin-top: 8px;
+  transition: all 0.2s ease;
+  background: #fafafa;
+}
+
+.drop-zone-inline .drop-zone-icon {
+  font-size: 1.4rem;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.folder-item.drag-over .drop-zone-inline {
+  border-color: #2196f3;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .folder-header {
