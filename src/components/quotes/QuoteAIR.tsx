@@ -44,6 +44,7 @@ import {
   calculateAduanaCharges,
   type SupportedCurrency,
 } from "../../types/agenciaAduana";
+import { fetchExpandedRoutesAir } from "./Handlers/Air/ExpandedRoutesAir";
 import "./QuoteAIR.css";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
@@ -174,6 +175,9 @@ function QuoteAPITester({
   );
   const [carriersDisponibles, setCarriersDisponibles] = useState<string[]>([]);
 
+  // Estado para sinTarifa (ruta expandida sin tarifa en el sheet aéreo)
+  const [sinTarifa, setSinTarifa] = useState(false);
+
   // Estado para modal de precio 0
   const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
 
@@ -215,7 +219,7 @@ function QuoteAPITester({
         setLoadingRutas(true);
         setErrorRutas(null);
 
-        // Fetch del CSV desde Google Sheets
+        // Fetch del CSV desde Google Sheets (tarifas aéreas)
         const response = await fetch(GOOGLE_SHEET_CSV_URL);
 
         if (!response.ok) {
@@ -232,15 +236,30 @@ function QuoteAPITester({
         const rutasParsed = parseAEREO(data);
         setRutas(rutasParsed);
 
-        // Extraer origins únicos
-        const originsUnicos = Array.from(
-          new Set(rutasParsed.map((r) => r.origin)),
-        )
-          .sort()
-          .map((origin) => ({
-            value: normalize(origin),
-            label: capitalize(origin),
-          }));
+        // Extraer origins únicos del sheet de tarifas
+        const originsMap = new Map<string, string>();
+        rutasParsed.forEach((r) => {
+          const norm = normalize(r.origin);
+          if (norm && !originsMap.has(norm)) {
+            originsMap.set(norm, capitalize(r.origin));
+          }
+        });
+
+        // Fetch de rutas expandidas (segundo sheet) y fusionar origins/destinations
+        try {
+          const expanded = await fetchExpandedRoutesAir();
+          expanded.origins.forEach((o) => {
+            if (!originsMap.has(o.value)) {
+              originsMap.set(o.value, o.label);
+            }
+          });
+        } catch (expandErr) {
+          console.warn("Error cargando rutas aéreas expandidas:", expandErr);
+        }
+
+        const originsUnicos = Array.from(originsMap.entries())
+          .map(([value, label]) => ({ value, label }))
+          .sort((a, b) => a.label.localeCompare(b.label));
         setOpcionesOrigin(originsUnicos);
 
         // Extraer carriers únicos
@@ -697,26 +716,109 @@ function QuoteAPITester({
 
   useEffect(() => {
     if (originSeleccionado) {
-      const destinationsParaOrigin = rutas
+      // Destinations del sheet de tarifas
+      const destsMap = new Map<string, string>();
+      rutas
         .filter((r) => r.originNormalized === originSeleccionado.value)
-        .map((r) => r.destination);
+        .forEach((r) => {
+          const norm = normalize(r.destination);
+          if (norm && !destsMap.has(norm)) {
+            destsMap.set(norm, capitalize(r.destination));
+          }
+        });
 
-      const destinationsUnicos = Array.from(new Set(destinationsParaOrigin))
-        .sort()
-        .map((dest) => ({
-          value: normalize(dest),
-          label: capitalize(dest),
-        }));
+      // Fusionar destinations del sheet expandido (todas las destinations expandidas
+      // están disponibles para cualquier origin expandido)
+      fetchExpandedRoutesAir()
+        .then((expanded) => {
+          // Solo agregar destinations expandidas si el origin está en el sheet expandido
+          const originInExpanded = expanded.origins.some(
+            (o) => o.value === originSeleccionado.value,
+          );
+          if (originInExpanded) {
+            expanded.destinations.forEach((d) => {
+              if (!destsMap.has(d.value)) {
+                destsMap.set(d.value, d.label);
+              }
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          const destinationsUnicos = Array.from(destsMap.entries())
+            .map(([value, label]) => ({ value, label }))
+            .sort((a, b) => a.label.localeCompare(b.label));
+          setOpcionesDestination(destinationsUnicos);
+        });
 
-      setOpcionesDestination(destinationsUnicos);
       setDestinationSeleccionado(null);
       setRutaSeleccionada(null);
+      setSinTarifa(false);
     } else {
       setOpcionesDestination([]);
       setDestinationSeleccionado(null);
       setRutaSeleccionada(null);
+      setSinTarifa(false);
     }
   }, [originSeleccionado, rutas]);
+
+  // ============================================================================
+  // Auto-activar sinTarifa cuando no hay rutas con tarifa para Origin+Destination
+  // ============================================================================
+  useEffect(() => {
+    if (!originSeleccionado || !destinationSeleccionado || loadingRutas) return;
+
+    const hayRutas = rutas.some((r) => {
+      const validityState = getValidityClass(r.validUntil);
+      if (validityState === "expired") return false;
+      const matchOrigin = r.originNormalized === originSeleccionado.value;
+      const matchDestination =
+        r.destinationNormalized === destinationSeleccionado.value;
+      const matchCarrier = !r.carrier || carriersActivos.has(r.carrier);
+      return matchOrigin && matchDestination && matchCarrier;
+    });
+
+    if (!hayRutas && !rutaSeleccionada) {
+      const mockRuta: RutaAerea = {
+        id: "AIR-PENDING",
+        origin: originSeleccionado.label,
+        originNormalized: originSeleccionado.value,
+        destination: destinationSeleccionado.label,
+        destinationNormalized: destinationSeleccionado.value,
+        kg45: null,
+        kg100: null,
+        kg300: null,
+        kg500: null,
+        kg1000: null,
+        carrier: "X",
+        carrierNormalized: "x",
+        frequency: null,
+        transitTime: "X",
+        routing: null,
+        remark1: null,
+        remark2: null,
+        validUntil: new Date(
+          Date.now() + 7 * 24 * 60 * 60 * 1000,
+        ).toLocaleDateString("es-CL"),
+        localCharges: 0,
+        gastosXKg: 0,
+        minGastosXKg: 0,
+        row_number: 0,
+        priceForComparison: 0,
+        currency: "USD",
+      };
+      setRutaSeleccionada(mockRuta);
+      setSinTarifa(true);
+    } else if (hayRutas) {
+      setSinTarifa(false);
+    }
+  }, [
+    originSeleccionado,
+    destinationSeleccionado,
+    rutas,
+    carriersActivos,
+    loadingRutas,
+  ]);
 
   useEffect(() => {
     const tooltipTriggerList = document.querySelectorAll(
@@ -1004,7 +1106,7 @@ function QuoteAPITester({
 
   // Función para calcular el seguro (TOTAL * 1.1 * 0.002)
   const calculateSeguro = (): number => {
-    if (!seguroActivo || !tarifaAirFreight) return 0;
+    if (!seguroActivo || (!tarifaAirFreight && !sinTarifa)) return 0;
 
     // Convertir valorMercaderia a número (reemplazar coma por punto)
     const valorCarga = parseFloat(valorMercaderia.replace(",", ".")) || 0;
@@ -1021,7 +1123,7 @@ function QuoteAPITester({
         : 0) + // EXW
       30 + // AWB
       Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-      tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
+      (tarifaAirFreight?.precioConMarkup ?? 0) * pesoChargeable + // Air Freight
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
             ? rutaSeleccionada.localCharges * FCA_MARKUP
@@ -1073,7 +1175,7 @@ function QuoteAPITester({
 
   // Función para calcular el costo de transporte base (sin opcionales)
   const calculateCostoTransporteBase = (): number => {
-    if (!tarifaAirFreight) return 0;
+    if (!tarifaAirFreight && !sinTarifa) return 0;
     const { totalRealWeight } = calculateTotals();
     return (
       45 + // Handling
@@ -1082,7 +1184,7 @@ function QuoteAPITester({
         : 0) +
       30 + // AWB
       Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-      tarifaAirFreight.precioConMarkup * pesoChargeable + // Air Freight
+      (tarifaAirFreight?.precioConMarkup ?? 0) * pesoChargeable + // Air Freight
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
             ? rutaSeleccionada.localCharges * FCA_MARKUP
@@ -1101,7 +1203,7 @@ function QuoteAPITester({
 
   // Función para calcular el monto de Agencia de Aduanas
   const calculateAduana = (): number => {
-    if (!aduanaActivo || !tarifaAirFreight) return 0;
+    if (!aduanaActivo || (!tarifaAirFreight && !sinTarifa)) return 0;
     const valorProd = parseFloat(valorProductoAduana.replace(",", ".")) || 0;
     if (valorProd === 0) return 0;
 
@@ -1147,7 +1249,7 @@ function QuoteAPITester({
     }
 
     // Validar que el peso chargeable tenga precio en la ruta seleccionada
-    if (weightRangeError) {
+    if (weightRangeError && !sinTarifa) {
       setError(
         `Esta ruta no tiene tarifa para el rango ${weightRangeValidation?.rangoActual}. ` +
           (weightRangeValidation?.pesoMinimoRequerido
@@ -1285,7 +1387,7 @@ function QuoteAPITester({
     previousMaxId?: number,
   ) => {
     try {
-      if (!rutaSeleccionada || !tarifaAirFreight) return;
+      if (!rutaSeleccionada || (!tarifaAirFreight && !sinTarifa)) return;
 
       // Obtener el nombre del packageType
       const packageType = packageTypeOptions.find(
@@ -1370,8 +1472,8 @@ function QuoteAPITester({
         description: "AIR FREIGHT",
         quantity: chargeableWeight,
         unit: "kg",
-        rate: tarifaAirFreight.precioConMarkup,
-        amount: tarifaAirFreight.precioConMarkup * chargeableWeight,
+        rate: tarifaAirFreight?.precioConMarkup ?? 0,
+        amount: (tarifaAirFreight?.precioConMarkup ?? 0) * chargeableWeight,
       });
 
       // FCA Local Charges (solo si incoterm es FCA y la ruta tiene localCharges)
@@ -1456,8 +1558,13 @@ function QuoteAPITester({
         }
       }
 
+      // Si sinTarifa, poner todos los montos en 0
+      const finalPdfCharges = sinTarifa
+        ? pdfCharges.map((c) => ({ ...c, rate: 0, amount: 0 }))
+        : pdfCharges;
+
       // Calcular total
-      const totalCharges = pdfCharges.reduce(
+      const totalCharges = finalPdfCharges.reduce(
         (sum, charge) => sum + charge.amount,
         0,
       );
@@ -1534,10 +1641,14 @@ function QuoteAPITester({
             destination={rutaSeleccionada.destination}
             effectiveDate={new Date().toLocaleDateString()}
             expirationDate={
-              rutaSeleccionada.validUntil ||
-              new Date(
-                Date.now() + 7 * 24 * 60 * 60 * 1000,
-              ).toLocaleDateString()
+              sinTarifa
+                ? new Date(
+                    Date.now() + 7 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString()
+                : rutaSeleccionada.validUntil ||
+                  new Date(
+                    Date.now() + 7 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString()
             }
             incoterm={incoterm}
             pickupFromAddress={
@@ -1560,16 +1671,23 @@ function QuoteAPITester({
             chargeableWeight={chargeableWeight}
             weightUnit="kg"
             volumeUnit="m³"
-            charges={pdfCharges}
+            charges={finalPdfCharges}
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
             overallMode={overallDimsAndWeight}
             piecesData={overallDimsAndWeight ? [] : piecesData}
-            carrier={rutaSeleccionada.carrier || undefined}
-            transitTime={rutaSeleccionada.transitTime || undefined}
-            frequency={rutaSeleccionada.frequency || undefined}
-            routing={rutaSeleccionada.routing || undefined}
+            carrier={sinTarifa ? "X" : rutaSeleccionada.carrier || undefined}
+            transitTime={
+              sinTarifa ? "X" : rutaSeleccionada.transitTime || undefined
+            }
+            frequency={
+              sinTarifa ? undefined : rutaSeleccionada.frequency || undefined
+            }
+            routing={
+              sinTarifa ? undefined : rutaSeleccionada.routing || undefined
+            }
             validUntil={rutaSeleccionada.validUntil || undefined}
+            isPendingQuote={sinTarifa}
           />,
         );
 
@@ -1641,7 +1759,9 @@ function QuoteAPITester({
 
       // Enviar notificación por email al ejecutivo
       try {
-        const total = rutaSeleccionada.currency + " " + totalCharges.toFixed(2);
+        const total = sinTarifa
+          ? "PENDIENTE"
+          : rutaSeleccionada.currency + " " + totalCharges.toFixed(2);
         const emailRes = await fetch("/api/send-operation-email", {
           method: "POST",
           headers: {
@@ -1655,8 +1775,10 @@ function QuoteAPITester({
             tipoServicio: "Aéreo",
             origen: rutaSeleccionada.origin,
             destino: rutaSeleccionada.destination,
-            carrier: rutaSeleccionada.carrier,
-            precio: tarifaAirFreight.precioConMarkup * chargeableWeight,
+            carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.carrier,
+            precio: sinTarifa
+              ? 0
+              : (tarifaAirFreight?.precioConMarkup ?? 0) * chargeableWeight,
             currency: rutaSeleccionada.currency,
             total: total,
             tipoAccion: tipoAccionParam,
@@ -1675,9 +1797,14 @@ function QuoteAPITester({
   };
 
   const getTestPayload = () => {
-    if (!rutaSeleccionada || !tarifaAirFreight) {
+    if (!rutaSeleccionada || (!tarifaAirFreight && !sinTarifa)) {
       return null;
     }
+
+    // Safe access for sinTarifa (tarifaAirFreight may be null)
+    const afPrecio = tarifaAirFreight?.precio ?? 0;
+    const afPrecioConMarkup = tarifaAirFreight?.precioConMarkup ?? 0;
+    const afMoneda = tarifaAirFreight?.moneda ?? "USD";
 
     const charges = [];
 
@@ -1860,9 +1987,9 @@ function QuoteAPITester({
         income: {
           quantity: pesoChargeable,
           unit: "AIR FREIGHT",
-          rate: tarifaAirFreight.precioConMarkup,
-          amount: pesoChargeable * tarifaAirFreight.precioConMarkup,
-          showamount: pesoChargeable * tarifaAirFreight.precioConMarkup,
+          rate: afPrecioConMarkup,
+          amount: pesoChargeable * afPrecioConMarkup,
+          showamount: pesoChargeable * afPrecioConMarkup,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -1873,14 +2000,14 @@ function QuoteAPITester({
           },
           reference: "Amount to Air Freight",
           showOnDocument: true,
-          notes: `AIR FREIGHT charge - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg + 15%`,
+          notes: `AIR FREIGHT charge - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg + 15%`,
         },
         expense: {
           quantity: pesoChargeable,
           unit: "AIR FREIGHT",
-          rate: tarifaAirFreight.precio,
-          amount: pesoChargeable * tarifaAirFreight.precio,
-          showamount: pesoChargeable * tarifaAirFreight.precio,
+          rate: afPrecio,
+          amount: pesoChargeable * afPrecio,
+          showamount: pesoChargeable * afPrecio,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -1891,7 +2018,7 @@ function QuoteAPITester({
           },
           reference: "TEST-REF-AIRFREIGHT",
           showOnDocument: true,
-          notes: `AIR FREIGHT expense - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/kg`,
+          notes: `AIR FREIGHT expense - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg`,
         },
       });
 
@@ -2107,14 +2234,42 @@ function QuoteAPITester({
         }
       }
 
+      // Si sinTarifa, poner todos los montos en 0
+      const finalCharges = sinTarifa
+        ? charges.map((ch: any) => ({
+            ...ch,
+            income: {
+              ...ch.income,
+              rate: 0,
+              amount: 0,
+              ...(ch.income.showamount !== undefined ? { showamount: 0 } : {}),
+            },
+            expense: {
+              ...ch.expense,
+              ...(ch.expense.rate !== undefined ? { rate: 0 } : {}),
+              ...(ch.expense.amount !== undefined ? { amount: 0 } : {}),
+            },
+          }))
+        : charges;
+
+      const oneWeekFromNow = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+
       return {
         date: new Date().toISOString(),
-        validUntil: parseValidUntilToISO(rutaSeleccionada.validUntil),
-        transitDays: parseTransitDays(rutaSeleccionada.transitTime),
+        validUntil: sinTarifa
+          ? oneWeekFromNow
+          : parseValidUntilToISO(rutaSeleccionada.validUntil),
+        transitDays: sinTarifa
+          ? 999
+          : parseTransitDays(rutaSeleccionada.transitTime),
         project: {
           name: "AIR",
         },
-        customerReference: "Portal Created [AIR]",
+        customerReference: sinTarifa
+          ? "Portal Created [AIR] - PENDIENTE TARIFA"
+          : "Portal Created [AIR]",
         contact: {
           name: effectiveUsername,
         },
@@ -2183,7 +2338,7 @@ function QuoteAPITester({
           totalVolumeWeightValue: piece.totalVolumeWeight,
           totalVolumeWeightUOM: "kg",
         })),
-        charges,
+        charges: finalCharges,
       };
     }
     // MODO OVERALL
@@ -2331,9 +2486,9 @@ function QuoteAPITester({
         income: {
           quantity: pesoChargeable,
           unit: chargeableUnit === "kg" ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
-          rate: tarifaAirFreight.precioConMarkup,
-          amount: pesoChargeable * tarifaAirFreight.precioConMarkup,
-          showamount: pesoChargeable * tarifaAirFreight.precioConMarkup,
+          rate: afPrecioConMarkup,
+          amount: pesoChargeable * afPrecioConMarkup,
+          showamount: pesoChargeable * afPrecioConMarkup,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -2344,14 +2499,14 @@ function QuoteAPITester({
           },
           reference: "Amount to AIRFREIGHT to OVERALL",
           showOnDocument: true,
-          notes: `AIR FREIGHT charge (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} + 15% - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
+          notes: `AIR FREIGHT charge (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} + 15% - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
         },
         expense: {
           quantity: pesoChargeable,
           unit: chargeableUnit === "kg" ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
-          rate: tarifaAirFreight.precio,
-          amount: pesoChargeable * tarifaAirFreight.precio,
-          showamount: pesoChargeable * tarifaAirFreight.precio,
+          rate: afPrecio,
+          amount: pesoChargeable * afPrecio,
+          showamount: pesoChargeable * afPrecio,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -2362,7 +2517,7 @@ function QuoteAPITester({
           },
           reference: "Amount to AIRFREIGHT to OVERALL",
           showOnDocument: true,
-          notes: `AIR FREIGHT expense (Overall) - Tarifa: ${tarifaAirFreight.moneda} ${tarifaAirFreight.precio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
+          notes: `AIR FREIGHT expense (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
         },
       });
 
@@ -2543,11 +2698,39 @@ function QuoteAPITester({
         }
       }
 
+      // Si sinTarifa, poner todos los montos en 0
+      const finalChargesOverall = sinTarifa
+        ? charges.map((ch: any) => ({
+            ...ch,
+            income: {
+              ...ch.income,
+              rate: 0,
+              amount: 0,
+              ...(ch.income.showamount !== undefined ? { showamount: 0 } : {}),
+            },
+            expense: {
+              ...ch.expense,
+              ...(ch.expense.rate !== undefined ? { rate: 0 } : {}),
+              ...(ch.expense.amount !== undefined ? { amount: 0 } : {}),
+            },
+          }))
+        : charges;
+
+      const oneWeekFromNowOverall = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+
       return {
         date: new Date().toISOString(),
-        validUntil: parseValidUntilToISO(rutaSeleccionada.validUntil),
-        transitDays: parseTransitDays(rutaSeleccionada.transitTime),
-        customerReference: "Portal-Created [AIR-OVERALL]",
+        validUntil: sinTarifa
+          ? oneWeekFromNowOverall
+          : parseValidUntilToISO(rutaSeleccionada.validUntil),
+        transitDays: sinTarifa
+          ? 999
+          : parseTransitDays(rutaSeleccionada.transitTime),
+        customerReference: sinTarifa
+          ? "Portal Created [AIR-OVERALL] - PENDIENTE TARIFA"
+          : "Portal-Created [AIR-OVERALL]",
         contact: {
           name: effectiveUsername,
         },
@@ -2605,7 +2788,7 @@ function QuoteAPITester({
             totalVolumeUOM: "m3",
           },
         ],
-        charges,
+        charges: finalChargesOverall,
       };
     }
   };
@@ -3434,7 +3617,8 @@ function QuoteAPITester({
           {/* Alerta de rango de peso sin precio */}
           {weightRangeValidation &&
             !weightRangeValidation.tienePrecio &&
-            rutaSeleccionada && (
+            rutaSeleccionada &&
+            !sinTarifa && (
               <WeightRangeAlert
                 validation={weightRangeValidation}
                 pesoChargeable={pesoChargeable}
@@ -3690,7 +3874,7 @@ function QuoteAPITester({
       {rutaSeleccionada && (
         <div className="qa-grid-1 mb-5">
           <div
-            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError || weightRangeError ? "opacity-50" : ""}`}
+            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError || (weightRangeError && !sinTarifa) ? "opacity-50" : ""}`}
           >
             <div className="mb-3 text-dark">
               <i
@@ -3715,7 +3899,7 @@ function QuoteAPITester({
                 dimensionError !== null ||
                 oversizeError !== null ||
                 heightError !== null ||
-                weightRangeError ||
+                (weightRangeError && !sinTarifa) ||
                 !rutaSeleccionada
               }
               className="qa-btn qa-btn-primary w-100 mt-auto"
@@ -3823,7 +4007,8 @@ function QuoteAPITester({
                 });
                 items.push({
                   label: "Air Freight",
-                  amount: tarifaAirFreight.precioConMarkup * pesoChargeable,
+                  amount:
+                    (tarifaAirFreight?.precioConMarkup ?? 0) * pesoChargeable,
                 });
                 if (seguroActivo && calculateSeguro() > 0) {
                   items.push({

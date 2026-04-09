@@ -50,6 +50,7 @@ interface PDFTemplateAIRProps {
   frequency?: string;
   routing?: string;
   validUntil?: string;
+  isPendingQuote?: boolean;
 }
 
 const fmt = (num: number): string => {
@@ -90,6 +91,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   frequency,
   routing,
   validUntil,
+  isPendingQuote = false,
 }) => {
   const C = {
     text: "#111",
@@ -595,7 +597,31 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
         tracking system to monitor your shipment status, ETA, and location
         updates.
       </div>
-
+      {/* ── Mensaje 48hrs para cotizaciones sin tarifa ── */}
+      {isPendingQuote && (
+        <div
+          style={{
+            backgroundColor: "#fff5f5",
+            border: "2px solid #dc3545",
+            borderRadius: "4px",
+            padding: "12px 16px",
+            marginBottom: "12px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              color: "#dc3545",
+              fontSize: "11pt",
+              fontWeight: 700,
+              lineHeight: 1.4,
+            }}
+          >
+            Su ejecutivo de ventas le proporcionará una cotización formal en un
+            plazo de 48 horas hábiles.
+          </div>
+        </div>
+      )}
       {/* ── Terms ── */}
       <div style={{ marginBottom: "10px" }}>
         <div

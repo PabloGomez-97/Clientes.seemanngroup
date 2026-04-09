@@ -2759,16 +2759,9 @@ function QuoteLCL({
                   className="qa-btn qa-btn-primary w-100"
                 >
                   {loading ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      {t("QuoteAIR.generando")}
-                    </>
+                    <span className="spinner-border spinner-border-sm"></span>
                   ) : (
-                    <>{t("QuoteAIR.generarcotizacion")}</>
+                    t("QuoteAIR.generarcotizacion")
                   )}
                 </button>
               </div>
