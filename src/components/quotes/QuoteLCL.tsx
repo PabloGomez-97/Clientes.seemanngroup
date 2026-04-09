@@ -1963,29 +1963,51 @@ function QuoteLCL({
                   <label className="form-label fw-semibold">
                     Cliente para esta cotización
                   </label>
-                  <select
-                    className="form-select form-select-lg"
-                    value={clienteSeleccionado?.username || ""}
-                    onChange={(e) => {
+                  <Select
+                    value={
+                      clienteSeleccionado
+                        ? {
+                            value: clienteSeleccionado.username,
+                            label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
+                          }
+                        : null
+                    }
+                    onChange={(option) => {
                       const cliente = clientesAsignados.find(
-                        (c) => c.username === e.target.value,
+                        (c) => c.username === option?.value,
                       );
                       setClienteSeleccionado(cliente || null);
                     }}
-                    style={{
-                      borderColor: clienteSeleccionado ? "#198754" : "#dee2e6",
-                      backgroundColor: clienteSeleccionado
-                        ? "#f0f9f4"
-                        : "white",
+                    options={clientesAsignados.map((c) => ({
+                      value: c.username,
+                      label: `${c.username} (${c.email})`,
+                    }))}
+                    placeholder="Selecciona un cliente..."
+                    isClearable={false}
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: clienteSeleccionado
+                          ? "#198754"
+                          : state.isFocused
+                            ? "#0d6efd"
+                            : "#dee2e6",
+                        boxShadow: state.isFocused
+                          ? "0 0 0 0.25rem rgba(13, 110, 253, 0.25)"
+                          : "none",
+                        "&:hover": { borderColor: "#0d6efd" },
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isSelected
+                          ? "#0d6efd"
+                          : state.isFocused
+                            ? "#e7f1ff"
+                            : "white",
+                        color: state.isSelected ? "white" : "#212529",
+                      }),
                     }}
-                  >
-                    <option value="">Selecciona un cliente...</option>
-                    {clientesAsignados.map((c) => (
-                      <option key={c.username} value={c.username}>
-                        {c.username} ({c.email})
-                      </option>
-                    ))}
-                  </select>
+                  />
                   {!clienteSeleccionado && (
                     <small className="text-danger d-block mt-1">
                       Debes seleccionar un cliente antes de generar la
