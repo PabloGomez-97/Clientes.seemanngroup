@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
 import LoadingTips from "../shipments/LoadingTips";
 
@@ -69,6 +70,7 @@ export default function TarifarioAereo({
   showAddForm = true,
 }: TarifarioAereoProps = {}) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const nombreUsuario =
     proveedorNombreOverride || user?.nombreuser || user?.email || "Proveedor";
   const isProveedor = !!user?.roles?.proveedor;
@@ -120,7 +122,7 @@ export default function TarifarioAereo({
     if (!form.origin || !form.destination || !form.kg45 || !form.carrier) {
       setMessage({
         type: "err",
-        text: "Completa los campos obligatorios: Origen, Destino, Tarifa 1-99kg y Carrier.",
+        text: t("proveedor.tarifarioAereo.requiredFields"),
       });
       return;
     }
@@ -178,13 +180,13 @@ export default function TarifarioAereo({
         hiddenForm.submit();
       });
 
-      setMessage({ type: "ok", text: "Tarifa agregada correctamente" });
+      setMessage({ type: "ok", text: t("proveedor.common.addSuccess") });
       setForm(emptyForm());
       setShowForm(false);
       await fetchRoutes();
       setTimeout(() => setMessage(null), 3000);
     } catch {
-      setMessage({ type: "err", text: "Error al enviar. Intenta nuevamente." });
+      setMessage({ type: "err", text: t("proveedor.common.addError") });
     } finally {
       setLoading(false);
     }
@@ -219,7 +221,7 @@ export default function TarifarioAereo({
   };
 
   const deleteRoute = async (rowIndex: number) => {
-    if (!window.confirm("¿Eliminar esta tarifa?")) return;
+    if (!window.confirm(t("proveedor.common.confirmDelete"))) return;
     try {
       setLoadingRoutes(true);
       const res = await fetch(
@@ -288,10 +290,10 @@ export default function TarifarioAereo({
         <h1
           style={{ fontSize: 22, fontWeight: 700, color: "#1f2937", margin: 0 }}
         >
-          Tarifario Aéreo
+          {t("proveedor.tarifarioAereo.title")}
         </h1>
         <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
-          Gestiona tus tarifas de carga aérea
+          {t("proveedor.tarifarioAereo.subtitle")}
         </p>
       </div>
 
@@ -343,7 +345,7 @@ export default function TarifarioAereo({
               e.currentTarget.style.backgroundColor = "#fafafa";
             }}
           >
-            + Nueva tarifa aérea
+            {t("proveedor.tarifarioAereo.newTariff")}
           </button>
         ) : (
           <div
@@ -371,7 +373,7 @@ export default function TarifarioAereo({
                   margin: 0,
                 }}
               >
-                Nueva tarifa
+                {t("proveedor.common.newTariff")}
               </h2>
               <button
                 onClick={() => {
@@ -403,7 +405,7 @@ export default function TarifarioAereo({
                 color: "#374151",
               }}
             >
-              Compañía: <strong>{nombreUsuario}</strong>
+              {t("proveedor.common.company")}: <strong>{nombreUsuario}</strong>
             </div>
 
             {/* Form grid */}
@@ -439,7 +441,7 @@ export default function TarifarioAereo({
                 marginBottom: 12,
               }}
             >
-              Tarifas por peso
+              {t("proveedor.tarifarioAereo.weightRates")}
             </p>
             <div
               style={{
@@ -491,7 +493,7 @@ export default function TarifarioAereo({
                 marginBottom: 12,
               }}
             >
-              Servicio
+              {t("proveedor.common.service")}
             </p>
             <div
               style={{
@@ -502,7 +504,7 @@ export default function TarifarioAereo({
               }}
             >
               <Field
-                label="Carrier *"
+                label="Carrier"
                 value={form.carrier}
                 onChange={(v) => update("carrier", v)}
                 placeholder="Ej: Lufthansa"
@@ -557,7 +559,7 @@ export default function TarifarioAereo({
                 marginBottom: 12,
               }}
             >
-              Comercial
+              {t("proveedor.common.commercial")}
             </p>
             <div
               style={{
@@ -628,7 +630,9 @@ export default function TarifarioAereo({
                 transition: "background-color 0.15s ease",
               }}
             >
-              {loading ? "Enviando..." : "Agregar tarifa"}
+              {loading
+                ? t("proveedor.common.sending")
+                : t("proveedor.common.addTariff")}
             </button>
           </div>
         ))}
@@ -651,7 +655,7 @@ export default function TarifarioAereo({
               margin: 0,
             }}
           >
-            Mis tarifas{" "}
+            {t("proveedor.common.myTariffs")}{" "}
             <span style={{ fontWeight: 400, color: "#9ca3af", fontSize: 13 }}>
               ({filtered.length})
             </span>
@@ -670,14 +674,16 @@ export default function TarifarioAereo({
               cursor: "pointer",
             }}
           >
-            {loadingRoutes ? "Cargando..." : "Actualizar"}
+            {loadingRoutes
+              ? t("proveedor.common.loading")
+              : t("proveedor.common.refresh")}
           </button>
         </div>
 
         {/* Search */}
         <input
           type="text"
-          placeholder="Buscar..."
+          placeholder={t("proveedor.common.search")}
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -708,9 +714,11 @@ export default function TarifarioAereo({
               color: "#9ca3af",
             }}
           >
-            <p style={{ fontSize: 15, marginBottom: 4 }}>No hay tarifas</p>
+            <p style={{ fontSize: 15, marginBottom: 4 }}>
+              {t("proveedor.tarifarioAereo.noTariffs")}
+            </p>
             <p style={{ fontSize: 13 }}>
-              Agrega tu primera tarifa aérea para comenzar
+              {t("proveedor.tarifarioAereo.noTariffsDesc")}
             </p>
           </div>
         ) : (
@@ -867,7 +875,7 @@ export default function TarifarioAereo({
                               (e.currentTarget.style.color = "#d1d5db")
                             }
                           >
-                            Eliminar
+                            {t("proveedor.common.delete")}
                           </button>
                         </td>
                       </tr>
@@ -891,7 +899,7 @@ export default function TarifarioAereo({
                 <PagBtn
                   disabled={page <= 1}
                   onClick={() => setPage(page - 1)}
-                  label="Anterior"
+                  label={t("proveedor.common.previous")}
                 />
                 <span style={{ fontSize: 13, color: "#6b7280" }}>
                   {page} / {totalPages}
@@ -899,7 +907,7 @@ export default function TarifarioAereo({
                 <PagBtn
                   disabled={page >= totalPages}
                   onClick={() => setPage(page + 1)}
-                  label="Siguiente"
+                  label={t("proveedor.common.next")}
                 />
               </div>
             )}

@@ -3727,7 +3727,7 @@ function QuoteAPITester({
             </div>
 
             {/* Opciones Adicionales */}
-            {tarifaAirFreight && (
+            {(tarifaAirFreight || sinTarifa) && (
               <div className="p-3 bg-light rounded border">
                 <h6 className="fw-bold mb-3">
                   <i className="bi bi-shield-check me-2"></i>

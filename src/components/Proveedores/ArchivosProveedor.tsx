@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../auth/AuthContext";
+import { t } from "i18next";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -46,10 +48,11 @@ interface ArchivosProveedorProps {
 }
 
 export default function ArchivosProveedor({
-  title = "Mis Archivos",
-  subtitle = "Sube y gestiona tus archivos Excel por categoría",
+  title = t("proveedor.archivos.misarchivos"),
+  subtitle = t("proveedor.archivos.subeygestiona"),
 }: ArchivosProveedorProps) {
   const { token } = useAuth();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Categoria>("AEREO");
   const [archivos, setArchivos] = useState<ArchivoItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -90,13 +93,13 @@ export default function ArchivosProveedor({
     if (!allowedTypes.includes(file.type)) {
       setMsg({
         type: "err",
-        text: "Solo se permiten archivos Excel (.xls, .xlsx, .csv)",
+        text: t("proveedor.archivos.uploadInvalidType"),
       });
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      setMsg({ type: "err", text: "El archivo excede 10MB" });
+      setMsg({ type: "err", text: t("proveedor.archivos.uploadSizeError") });
       return;
     }
 
@@ -130,10 +133,13 @@ export default function ArchivosProveedor({
         fetchArchivos();
         setTimeout(() => setMsg(null), 3000);
       } else {
-        setMsg({ type: "err", text: data.error || "Error al subir" });
+        setMsg({
+          type: "err",
+          text: data.error || t("proveedor.archivos.uploadError"),
+        });
       }
     } catch {
-      setMsg({ type: "err", text: "Error de conexión" });
+      setMsg({ type: "err", text: t("proveedor.archivos.uploadError") });
     } finally {
       setUploading(false);
     }
@@ -168,12 +174,17 @@ export default function ArchivosProveedor({
       link.click();
       document.body.removeChild(link);
     } catch {
-      setMsg({ type: "err", text: "Error al descargar" });
+      setMsg({ type: "err", text: t("proveedor.archivos.downloadError") });
     }
   };
 
   const deleteFile = async (archivo: ArchivoItem) => {
-    if (!window.confirm(`¿Eliminar "${archivo.nombreArchivo}"?`)) return;
+    if (
+      !window.confirm(
+        `${t("proveedor.archivos.confirmDelete")} "${archivo.nombreArchivo}"?`,
+      )
+    )
+      return;
     try {
       const res = await fetch(`/api/proveedor-archivos/${archivo.id}`, {
         method: "DELETE",
@@ -186,7 +197,7 @@ export default function ArchivosProveedor({
         setTimeout(() => setMsg(null), 3000);
       }
     } catch {
-      setMsg({ type: "err", text: "Error al eliminar" });
+      setMsg({ type: "err", text: t("proveedor.archivos.deleteError") });
     }
   };
 
@@ -286,7 +297,7 @@ export default function ArchivosProveedor({
         />
         {uploading ? (
           <p style={{ color: "#6b7280", fontSize: 14, margin: 0 }}>
-            Subiendo archivo...
+            {t("proveedor.archivos.uploading")}
           </p>
         ) : (
           <>
@@ -298,10 +309,10 @@ export default function ArchivosProveedor({
                 margin: "0 0 4px",
               }}
             >
-              Arrastra tu archivo Excel aquí
+              {t("proveedor.archivos.dropTitle")}
             </p>
             <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>
-              o haz clic para seleccionar — .xls, .xlsx, .csv (máx. 10MB)
+              {t("proveedor.archivos.dropSubtitle")}
             </p>
           </>
         )}
@@ -310,7 +321,7 @@ export default function ArchivosProveedor({
       {/* File list */}
       {loading ? (
         <p style={{ textAlign: "center", color: "#9ca3af", padding: 40 }}>
-          Cargando archivos...
+          {t("proveedor.archivos.loadingFiles")}
         </p>
       ) : archivos.length === 0 ? (
         <div
@@ -321,11 +332,9 @@ export default function ArchivosProveedor({
           }}
         >
           <p style={{ fontSize: 15, marginBottom: 4 }}>
-            No hay archivos en {activeTab.label}
+            {t("proveedor.archivos.noFiles")} {activeTab.label}
           </p>
-          <p style={{ fontSize: 13 }}>
-            Sube tu primer archivo Excel para comenzar
-          </p>
+          <p style={{ fontSize: 13 }}>{t("proveedor.archivos.noFilesDesc")}</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -383,7 +392,7 @@ export default function ArchivosProveedor({
                     cursor: "pointer",
                   }}
                 >
-                  Descargar
+                  {t("proveedor.archivos.download")}
                 </button>
                 <button
                   onClick={() => deleteFile(a)}
@@ -398,7 +407,7 @@ export default function ArchivosProveedor({
                     cursor: "pointer",
                   }}
                 >
-                  Eliminar
+                  {t("proveedor.archivos.delete")}
                 </button>
               </div>
             </div>
