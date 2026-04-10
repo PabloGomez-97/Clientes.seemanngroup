@@ -30,6 +30,8 @@ import {
   parseCSV,
   capitalize,
   parseFCL,
+  splitCombinedPOD,
+  getPODDisplayName,
   type QuoteFCLProps,
   type ClienteAsignado,
 } from "./Handlers/FCL/HandlerQuoteFCL";
@@ -68,6 +70,7 @@ function QuoteFCL({
     token,
     activeUsername,
     getMisClientes,
+    getTodosClientes,
     loading: authLoading,
   } = useAuth();
   const ejecutivo = user?.ejecutivo;
@@ -155,16 +158,23 @@ function QuoteFCL({
   const [sinTarifa, setSinTarifa] = useState(false);
 
   // Cargar clientes asignados al ejecutivo (solo en modo ejecutivo)
+  const isPricingRole = user?.roles?.pricing === true;
   useEffect(() => {
     const cargarClientes = async () => {
-      if (!isEjecutivoMode || user?.username !== "Ejecutivo") {
+      if (
+        !isEjecutivoMode ||
+        (user?.username !== "Ejecutivo" && !isPricingRole)
+      ) {
         setLoadingClientes(false);
         return;
       }
 
       try {
         setLoadingClientes(true);
-        const clientes = await getMisClientes();
+        // Pricing role obtiene TODOS los clientes, ejecutivo solo sus asignados
+        const clientes = isPricingRole
+          ? await getTodosClientes()
+          : await getMisClientes();
         const expanded = expandClientesPorEmpresa(clientes);
         setClientesAsignados(expanded);
 
@@ -182,7 +192,7 @@ function QuoteFCL({
     };
 
     cargarClientes();
-  }, [user, getMisClientes, isEjecutivoMode]);
+  }, [user, getMisClientes, getTodosClientes, isEjecutivoMode, isPricingRole]);
 
   // ============================================================================
   // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
@@ -389,26 +399,29 @@ function QuoteFCL({
       rutas
         .filter((r) => r.polNormalized === polSeleccionado.value)
         .forEach((r) => {
-          const normalized = normalize(r.pod);
-          if (!podMap.has(normalized)) {
-            podMap.set(normalized, r.pod);
+          if (!podMap.has(r.podNormalized)) {
+            podMap.set(r.podNormalized, getPODDisplayName(r.podNormalized));
           }
         });
 
       // Merge con PODs del sheet expandido (todas las combinaciones posibles)
       if (expandedRoutes) {
         expandedRoutes.pods.forEach((p) => {
-          if (!podMap.has(p.value)) {
-            podMap.set(p.value, p.label);
+          // Separar PODs combinados del expanded routes también
+          const parts = splitCombinedPOD(p.label);
+          for (const podNorm of parts) {
+            if (!podMap.has(podNorm)) {
+              podMap.set(podNorm, getPODDisplayName(podNorm));
+            }
           }
         });
       }
 
       // Crear opciones únicas y ordenadas
       const podsUnicos = Array.from(podMap.entries())
-        .map(([normalized, original]) => ({
+        .map(([normalized, displayName]) => ({
           value: normalized,
-          label: capitalize(original),
+          label: displayName,
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -1178,7 +1191,7 @@ function QuoteFCL({
 
             if (
               isEjecutivoMode &&
-              user?.username === "Ejecutivo" &&
+              (user?.username === "Ejecutivo" || isPricingRole) &&
               clienteSeleccionado
             ) {
               bodyPayload.usuarioId = clienteSeleccionado.username;
@@ -1257,11 +1270,13 @@ function QuoteFCL({
     const charges = [];
 
     // Parse transit time from rutaSeleccionada.tt (formats like "X-Y days" or "Y days" or Spanish "días").
-    const parseTransitDays = (transit?: string | number | null): number => {
-      // If missing or empty, return 999 per requirement
-      if (transit === undefined || transit === null) return 999;
+    const parseTransitDays = (
+      transit?: string | number | null,
+    ): number | null => {
+      // If missing or empty, return null (no transit time)
+      if (transit === undefined || transit === null) return null;
       const raw = String(transit);
-      if (raw.trim() === "") return 999;
+      if (raw.trim() === "") return null;
       if (typeof transit === "number") return Math.max(1, Math.floor(transit));
 
       const txt = raw.trim().toLowerCase();
@@ -1289,7 +1304,7 @@ function QuoteFCL({
         if (!isNaN(v)) return Math.max(1, v);
       }
 
-      return 999;
+      return null;
     };
 
     // Cobro de BL
@@ -1556,7 +1571,7 @@ function QuoteFCL({
       validUntil: sinTarifa
         ? oneWeekFromNow
         : parseValidUntilToISO(rutaSeleccionada.validUntil),
-      transitDays: sinTarifa ? 999 : parseTransitDays(rutaSeleccionada.tt),
+      transitDays: sinTarifa ? null : parseTransitDays(rutaSeleccionada.tt),
       project: {
         name: "FCL",
       },

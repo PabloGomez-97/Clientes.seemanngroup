@@ -151,8 +151,13 @@ export const parseCSV = (csvText: string): any[] => {
   return result;
 };
 
-export const normalizePOD = (pod: string): string => {
-  if (!pod) return "";
+/**
+ * Detecta si un POD es una combinación de puertos (e.g. "San Antonio - Valparaiso").
+ * Devuelve un array con los puertos individuales normalizados.
+ * Si es un solo puerto, devuelve un array con un solo elemento.
+ */
+export const splitCombinedPOD = (pod: string): string[] => {
+  if (!pod) return [""];
 
   const podLower = pod
     .normalize("NFD")
@@ -160,38 +165,33 @@ export const normalizePOD = (pod: string): string => {
     .toLowerCase()
     .trim();
 
-  // Definir mapeo de variantes a nombres canónicos
-  const podMapping: { [key: string]: string } = {
-    // Grupo: San Antonio - Valparaíso
-    "san antonio - valparaiso": "san antonio - valparaiso",
-    "san antonio / valparaiso": "san antonio - valparaiso",
-    "vap / sai": "san antonio - valparaiso",
-    "sai / vap": "san antonio - valparaiso",
-    "valparaiso - san antonio": "san antonio - valparaiso",
-    "valparaiso / san antonio": "san antonio - valparaiso",
-
-    // Puertos individuales (mantener por si acaso)
-    valparaiso: "valparaiso",
-    "san antonio": "san antonio",
-    iquique: "iquique",
-    "iquique via san antonio": "iquique via san antonio",
-    santos: "santos",
-    callao: "callao",
-    tbc: "tbc",
+  // Variantes combinadas que deben separarse
+  const combinedPatterns: { [key: string]: string[] } = {
+    "san antonio - valparaiso": ["san antonio", "valparaiso"],
+    "san antonio / valparaiso": ["san antonio", "valparaiso"],
+    "vap / sai": ["san antonio", "valparaiso"],
+    "sai / vap": ["san antonio", "valparaiso"],
+    "valparaiso - san antonio": ["san antonio", "valparaiso"],
+    "valparaiso / san antonio": ["san antonio", "valparaiso"],
   };
 
-  // Buscar coincidencia en el mapeo
-  if (podMapping[podLower]) {
-    return podMapping[podLower];
+  if (combinedPatterns[podLower]) {
+    return combinedPatterns[podLower];
   }
 
-  // Si no hay coincidencia específica, devolver normalizado estándar
-  return podLower;
+  // Puerto individual
+  return [podLower];
+};
+
+export const normalizePOD = (pod: string): string => {
+  if (!pod) return "";
+  // Para compatibilidad, devuelve el primer puerto del split
+  const parts = splitCombinedPOD(pod);
+  return parts[0];
 };
 
 export const getPODDisplayName = (podNormalized: string): string => {
   const displayNames: { [key: string]: string } = {
-    "san antonio - valparaiso": "San Antonio - Valparaiso",
     valparaiso: "Valparaiso",
     "san antonio": "San Antonio",
     iquique: "Iquique",
@@ -233,37 +233,37 @@ export const parseLCL = (data: any[]): RutaLCL[] => {
     ) {
       const ofWMNumber = extractPrice(ofWM);
 
-      rutas.push({
-        id: `LCL-${idCounter++}`,
-        pol: capitalize(
-          pol
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .trim(),
-        ),
-        polNormalized: normalize(pol),
-        pod: capitalize(
-          pod
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .trim(),
-        ),
-        podNormalized: normalizePOD(pod),
-        servicio: servicio ? servicio.toString().trim() : null,
-        ofWM: ofWMNumber,
-        ofWMString: ofWM.toString().trim(),
-        currency:
-          currency && currency.toString().toUpperCase() === "EUR"
-            ? "EUR"
-            : "USD",
-        frecuencia: frecuencia ? frecuencia.toString().trim() : null,
-        agente: agente ? agente.toString().trim() : null,
-        ttAprox: ttAprox ? ttAprox.toString().trim() : null,
-        operador: operador.toString().trim(),
-        operadorNormalized: normalize(operador),
-        validUntil: validUntil ? validUntil.toString().trim() : null,
-        row_number: i + 1,
-      });
+      // Separar PODs combinados (e.g. "San Antonio - Valparaiso") en entradas individuales
+      const podParts = splitCombinedPOD(pod);
+
+      for (const podNorm of podParts) {
+        rutas.push({
+          id: `LCL-${idCounter++}`,
+          pol: capitalize(
+            pol
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .trim(),
+          ),
+          polNormalized: normalize(pol),
+          pod: getPODDisplayName(podNorm),
+          podNormalized: podNorm,
+          servicio: servicio ? servicio.toString().trim() : null,
+          ofWM: ofWMNumber,
+          ofWMString: ofWM.toString().trim(),
+          currency:
+            currency && currency.toString().toUpperCase() === "EUR"
+              ? "EUR"
+              : "USD",
+          frecuencia: frecuencia ? frecuencia.toString().trim() : null,
+          agente: agente ? agente.toString().trim() : null,
+          ttAprox: ttAprox ? ttAprox.toString().trim() : null,
+          operador: operador.toString().trim(),
+          operadorNormalized: normalize(operador),
+          validUntil: validUntil ? validUntil.toString().trim() : null,
+          row_number: i + 1,
+        });
+      }
     }
   }
 

@@ -60,6 +60,7 @@ type AuthCtx = {
   logout: () => void;
   getEjecutivos: () => Promise<Ejecutivo[]>;
   getMisClientes: () => Promise<Cliente[]>;
+  getTodosClientes: () => Promise<Cliente[]>;
 };
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -201,6 +202,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return data.clientes || [];
   };
 
+  // Obtener TODOS los clientes del sistema (para rol pricing)
+  const getTodosClientes = async (): Promise<Cliente[]> => {
+    if (!token) {
+      throw new Error("No hay sesión activa");
+    }
+
+    const r = await fetch("/api/admin/users", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!r.ok) {
+      const errorData = await r.json().catch(() => ({}));
+      throw new Error(errorData.error || "Error al obtener clientes");
+    }
+
+    const data = await r.json();
+    // Filtrar solo clientes (excluir ejecutivos)
+    const allUsers = data.users || [];
+    return allUsers
+      .filter((u: any) => u.username !== "Ejecutivo")
+      .map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        username: u.username,
+        usernames: u.usernames,
+        nombreuser: u.nombreuser,
+        createdAt: u.createdAt,
+      }));
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -213,6 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         getEjecutivos,
         getMisClientes,
+        getTodosClientes,
       }}
     >
       {children}

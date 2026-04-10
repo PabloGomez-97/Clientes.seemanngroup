@@ -86,6 +86,7 @@ function QuoteAPITester({
     token,
     activeUsername,
     getMisClientes,
+    getTodosClientes,
     loading: authLoading,
   } = useAuth();
   const ejecutivo = user?.ejecutivo;
@@ -306,6 +307,7 @@ function QuoteAPITester({
   }, []);
 
   // Cargar clientes asignados al ejecutivo (solo en modo ejecutivo)
+  const isPricingRole = user?.roles?.pricing === true;
   useEffect(() => {
     if (!isEjecutivoMode) {
       setLoadingClientes(false);
@@ -313,14 +315,17 @@ function QuoteAPITester({
     }
 
     const cargarClientes = async () => {
-      if (user?.username !== "Ejecutivo") {
+      if (user?.username !== "Ejecutivo" && !isPricingRole) {
         setLoadingClientes(false);
         return;
       }
 
       try {
         setLoadingClientes(true);
-        const clientes = await getMisClientes();
+        // Pricing role obtiene TODOS los clientes, ejecutivo solo sus asignados
+        const clientes = isPricingRole
+          ? await getTodosClientes()
+          : await getMisClientes();
         const expanded = expandClientesPorEmpresa(clientes);
         setClientesAsignados(expanded);
 
@@ -338,7 +343,7 @@ function QuoteAPITester({
     };
 
     cargarClientes();
-  }, [user, getMisClientes, isEjecutivoMode]);
+  }, [user, getMisClientes, getTodosClientes, isEjecutivoMode, isPricingRole]);
 
   // Aplicar preselección cuando se cargan las rutas y hay datos pre-seleccionados
   useEffect(() => {
@@ -1827,11 +1832,13 @@ function QuoteAPITester({
     const charges = [];
 
     // Parse transitTime from rutaSeleccionada (formats like "X-Y DAYS" or "X días").
-    const parseTransitDays = (transit?: string | number | null): number => {
-      // If field is missing or an empty string, return 999 as requested
-      if (transit === undefined || transit === null) return 999;
+    const parseTransitDays = (
+      transit?: string | number | null,
+    ): number | null => {
+      // If field is missing or an empty string, return null (no transit time)
+      if (transit === undefined || transit === null) return null;
       const raw = String(transit);
-      if (raw.trim() === "") return 999;
+      if (raw.trim() === "") return null;
       if (typeof transit === "number") return Math.max(1, Math.floor(transit));
 
       const txt = raw.trim().toLowerCase();
@@ -1859,8 +1866,8 @@ function QuoteAPITester({
         if (!isNaN(v)) return Math.max(1, v);
       }
 
-      // Default to 5 if cannot parse
-      return 5;
+      // Default to null if cannot parse
+      return null;
     };
 
     // MODO NORMAL
@@ -2280,7 +2287,7 @@ function QuoteAPITester({
           ? oneWeekFromNow
           : parseValidUntilToISO(rutaSeleccionada.validUntil),
         transitDays: sinTarifa
-          ? 999
+          ? null
           : parseTransitDays(rutaSeleccionada.transitTime),
         project: {
           name: "AIR",
@@ -2744,7 +2751,7 @@ function QuoteAPITester({
           ? oneWeekFromNowOverall
           : parseValidUntilToISO(rutaSeleccionada.validUntil),
         transitDays: sinTarifa
-          ? 999
+          ? null
           : parseTransitDays(rutaSeleccionada.transitTime),
         customerReference: sinTarifa
           ? "Portal Created [AIR-OVERALL] - PENDIENTE TARIFA"

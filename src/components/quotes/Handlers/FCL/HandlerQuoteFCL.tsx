@@ -146,6 +146,52 @@ export const capitalize = (str: string): string => {
     .join(" ");
 };
 
+/**
+ * Detecta si un POD es una combinación de puertos (e.g. "San Antonio - Valparaiso").
+ * Devuelve un array con los puertos individuales normalizados.
+ * Si es un solo puerto, devuelve un array con un solo elemento.
+ */
+export const splitCombinedPOD = (pod: string): string[] => {
+  if (!pod) return [""];
+
+  const podLower = pod
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+  // Variantes combinadas que deben separarse
+  const combinedPatterns: { [key: string]: string[] } = {
+    "san antonio - valparaiso": ["san antonio", "valparaiso"],
+    "san antonio / valparaiso": ["san antonio", "valparaiso"],
+    "vap / sai": ["san antonio", "valparaiso"],
+    "sai / vap": ["san antonio", "valparaiso"],
+    "valparaiso - san antonio": ["san antonio", "valparaiso"],
+    "valparaiso / san antonio": ["san antonio", "valparaiso"],
+  };
+
+  if (combinedPatterns[podLower]) {
+    return combinedPatterns[podLower];
+  }
+
+  // Puerto individual
+  return [podLower];
+};
+
+export const getPODDisplayName = (podNormalized: string): string => {
+  const displayNames: { [key: string]: string } = {
+    valparaiso: "Valparaiso",
+    "san antonio": "San Antonio",
+    iquique: "Iquique",
+    "iquique via san antonio": "Iquique via San Antonio",
+    santos: "Santos",
+    callao: "Callao",
+    tbc: "Tbc",
+  };
+
+  return displayNames[podNormalized] || capitalize(podNormalized);
+};
+
 export const parseFCL = (data: any[]): RutaFCL[] => {
   const rutas: RutaFCL[] = [];
   let idCounter = 1;
@@ -171,36 +217,36 @@ export const parseFCL = (data: any[]): RutaFCL[] => {
       const parsedCurrency = parseCurrency(currency);
       const price = extractPrice(hq40);
 
-      rutas.push({
-        id: `FCL-${idCounter++}`,
-        pol: capitalize(
-          pol
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .trim(),
-        ),
-        polNormalized: normalize(pol),
-        pod: capitalize(
-          pod
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .trim(),
-        ),
-        podNormalized: normalize(pod),
-        gp20: gp20 ? gp20.toString().trim() : "N/A",
-        hq40: hq40 ? hq40.toString().trim() : "N/A",
-        nor40: nor40 ? nor40.toString().trim() : null,
-        carrier: carrier ? carrier.toString().trim() : "N/A",
-        carrierNormalized: normalize(carrier),
-        tt: tt ? tt.toString().trim() : null,
-        remarks: remarks ? remarks.toString().trim() : "",
-        company: company ? company.toString().trim() : "",
-        companyNormalized: normalize(company),
-        validUntil: validUntil ? validUntil.toString().trim() : null,
-        row_number: i + 1,
-        priceForComparison: price,
-        currency: parsedCurrency, // 🆕 Usar la moneda parseada desde columna [11]
-      });
+      // Separar PODs combinados (e.g. "San Antonio - Valparaiso") en entradas individuales
+      const podParts = splitCombinedPOD(pod);
+
+      for (const podNorm of podParts) {
+        rutas.push({
+          id: `FCL-${idCounter++}`,
+          pol: capitalize(
+            pol
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .trim(),
+          ),
+          polNormalized: normalize(pol),
+          pod: getPODDisplayName(podNorm),
+          podNormalized: podNorm,
+          gp20: gp20 ? gp20.toString().trim() : "N/A",
+          hq40: hq40 ? hq40.toString().trim() : "N/A",
+          nor40: nor40 ? nor40.toString().trim() : null,
+          carrier: carrier ? carrier.toString().trim() : "N/A",
+          carrierNormalized: normalize(carrier),
+          tt: tt ? tt.toString().trim() : null,
+          remarks: remarks ? remarks.toString().trim() : "",
+          company: company ? company.toString().trim() : "",
+          companyNormalized: normalize(company),
+          validUntil: validUntil ? validUntil.toString().trim() : null,
+          row_number: i + 1,
+          priceForComparison: price,
+          currency: parsedCurrency,
+        });
+      }
     }
   }
 

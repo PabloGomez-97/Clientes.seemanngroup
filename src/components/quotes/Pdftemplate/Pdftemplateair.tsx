@@ -492,91 +492,93 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
       </div>
 
       {/* ── Charges ── */}
-      <div style={{ marginBottom: "10px" }}>
-        <div
-          style={{
-            fontSize: "7pt",
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-            color: C.text,
-            marginBottom: "4px",
-          }}
-        >
-          Charges
-        </div>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={th}>Code</th>
-              <th style={{ ...th, width: "40%" }}>Description</th>
-              <th style={{ ...th, ...r }}>Qty</th>
-              <th style={{ ...th, ...cen }}>Unit</th>
-              <th style={{ ...th, ...r }}>Rate ({currency})</th>
-              <th style={{ ...th, ...r }}>Amount ({currency})</th>
-            </tr>
-          </thead>
-          <tbody>
-            {charges.map((ch, i) => (
-              <tr key={i}>
-                <td style={{ ...td, fontWeight: 600, fontSize: "8pt" }}>
-                  {ch.code}
-                </td>
-                <td style={td}>{ch.description}</td>
-                <td style={{ ...td, ...r }}>{fmt(ch.quantity)}</td>
-                <td style={{ ...td, ...cen }}>{ch.unit}</td>
-                <td style={{ ...td, ...r }}>{fmt(ch.rate)}</td>
-                <td style={{ ...td, ...r, fontWeight: 600 }}>
-                  {fmt(ch.amount)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {/* Total row */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "baseline",
-            gap: "8px",
-            padding: "8px 8px 0",
-            borderTop: `2px solid ${C.text}`,
-            marginTop: "2px",
-          }}
-        >
-          <span
+      {!isPendingQuote && (
+        <div style={{ marginBottom: "10px" }}>
+          <div
             style={{
               fontSize: "7pt",
-              color: C.sub,
-              fontWeight: 600,
-              textTransform: "uppercase",
-            }}
-          >
-            Total
-          </span>
-          <span
-            style={{
-              fontSize: "14pt",
               fontWeight: 700,
-              letterSpacing: "-0.3px",
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              color: C.text,
+              marginBottom: "4px",
             }}
           >
-            {currency} {fmt(totalCharges)}
-          </span>
+            Charges
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={th}>Code</th>
+                <th style={{ ...th, width: "40%" }}>Description</th>
+                <th style={{ ...th, ...r }}>Qty</th>
+                <th style={{ ...th, ...cen }}>Unit</th>
+                <th style={{ ...th, ...r }}>Rate ({currency})</th>
+                <th style={{ ...th, ...r }}>Amount ({currency})</th>
+              </tr>
+            </thead>
+            <tbody>
+              {charges.map((ch, i) => (
+                <tr key={i}>
+                  <td style={{ ...td, fontWeight: 600, fontSize: "8pt" }}>
+                    {ch.code}
+                  </td>
+                  <td style={td}>{ch.description}</td>
+                  <td style={{ ...td, ...r }}>{fmt(ch.quantity)}</td>
+                  <td style={{ ...td, ...cen }}>{ch.unit}</td>
+                  <td style={{ ...td, ...r }}>{fmt(ch.rate)}</td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(ch.amount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {/* Total row */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "baseline",
+              gap: "8px",
+              padding: "8px 8px 0",
+              borderTop: `2px solid ${C.text}`,
+              marginTop: "2px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "7pt",
+                color: C.sub,
+                fontWeight: 600,
+                textTransform: "uppercase",
+              }}
+            >
+              Total
+            </span>
+            <span
+              style={{
+                fontSize: "14pt",
+                fontWeight: 700,
+                letterSpacing: "-0.3px",
+              }}
+            >
+              {currency} {fmt(totalCharges)}
+            </span>
+          </div>
+          <div
+            style={{
+              textAlign: "right",
+              fontSize: "6.5pt",
+              color: C.sub,
+              marginTop: "2px",
+              paddingRight: "8px",
+            }}
+          >
+            * Airport Transfer: {currency} 0.15/kg — Minimum {currency} 50
+          </div>
         </div>
-        <div
-          style={{
-            textAlign: "right",
-            fontSize: "6.5pt",
-            color: C.sub,
-            marginTop: "2px",
-            paddingRight: "8px",
-          }}
-        >
-          * Airport Transfer: {currency} 0.15/kg — Minimum {currency} 50
-        </div>
-      </div>
+      )}
 
       {/* ── Tracking message ── */}
       <div

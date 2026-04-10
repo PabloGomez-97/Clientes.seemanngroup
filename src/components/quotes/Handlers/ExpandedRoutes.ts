@@ -31,6 +31,49 @@ const capitalize = (str: string): string => {
 };
 
 /**
+ * Detecta si un POD es una combinación de puertos (e.g. "San Antonio - Valparaiso").
+ * Devuelve un array con los puertos individuales normalizados.
+ */
+const splitCombinedPOD = (pod: string): string[] => {
+  if (!pod) return [""];
+
+  const podLower = pod
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+  const combinedPatterns: { [key: string]: string[] } = {
+    "san antonio - valparaiso": ["san antonio", "valparaiso"],
+    "san antonio / valparaiso": ["san antonio", "valparaiso"],
+    "vap / sai": ["san antonio", "valparaiso"],
+    "sai / vap": ["san antonio", "valparaiso"],
+    "valparaiso - san antonio": ["san antonio", "valparaiso"],
+    "valparaiso / san antonio": ["san antonio", "valparaiso"],
+  };
+
+  if (combinedPatterns[podLower]) {
+    return combinedPatterns[podLower];
+  }
+
+  return [podLower];
+};
+
+const getPODDisplayName = (podNormalized: string): string => {
+  const displayNames: { [key: string]: string } = {
+    valparaiso: "Valparaiso",
+    "san antonio": "San Antonio",
+    iquique: "Iquique",
+    "iquique via san antonio": "Iquique via San Antonio",
+    santos: "Santos",
+    callao: "Callao",
+    tbc: "Tbc",
+  };
+
+  return displayNames[podNormalized] || capitalize(podNormalized);
+};
+
+/**
  * Parsea el CSV del tercer sheet.
  * El CSV tiene columnas: [vacía], POL, POD
  * - Extrae todos los POL únicos (row[1]) y POD únicos (row[2])
@@ -87,9 +130,11 @@ export const parseExpandedRoutesCSV = (csvText: string): ExpandedRoutesData => {
     }
 
     if (podRaw) {
-      const norm = normalize(podRaw);
-      if (norm && !podMap.has(norm)) {
-        podMap.set(norm, capitalize(podRaw));
+      const parts = splitCombinedPOD(podRaw);
+      for (const norm of parts) {
+        if (norm && !podMap.has(norm)) {
+          podMap.set(norm, getPODDisplayName(norm));
+        }
       }
     }
   }

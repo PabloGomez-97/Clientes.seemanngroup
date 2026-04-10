@@ -31,6 +31,7 @@ import {
   capitalize,
   parseCSV,
   normalizePOD,
+  splitCombinedPOD,
   getPODDisplayName,
   getBillableWM,
   parseLCL,
@@ -74,6 +75,7 @@ function QuoteLCL({
     token: jwtToken,
     activeUsername,
     getMisClientes,
+    getTodosClientes,
     loading: authLoading,
   } = useAuth();
   const ejecutivo = user?.ejecutivo;
@@ -192,6 +194,7 @@ function QuoteLCL({
   const [sinTarifa, setSinTarifa] = useState(false);
 
   // ── Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) ──
+  const isPricingRole = user?.roles?.pricing === true;
   useEffect(() => {
     if (!isEjecutivoMode) {
       setLoadingClientes(false);
@@ -199,14 +202,17 @@ function QuoteLCL({
     }
 
     const cargarClientes = async () => {
-      if (user?.username !== "Ejecutivo") {
+      if (user?.username !== "Ejecutivo" && !isPricingRole) {
         setLoadingClientes(false);
         return;
       }
 
       try {
         setLoadingClientes(true);
-        const clientes = await getMisClientes();
+        // Pricing role obtiene TODOS los clientes, ejecutivo solo sus asignados
+        const clientes = isPricingRole
+          ? await getTodosClientes()
+          : await getMisClientes();
         const expanded = expandClientesPorEmpresa(clientes);
         setClientesAsignados(expanded);
 
@@ -224,7 +230,7 @@ function QuoteLCL({
     };
 
     cargarClientes();
-  }, [user, getMisClientes, isEjecutivoMode]);
+  }, [user, getMisClientes, getTodosClientes, isEjecutivoMode, isPricingRole]);
 
   // ============================================================================
   // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
@@ -599,9 +605,12 @@ function QuoteLCL({
       // Merge PODs de rutas expandidas
       if (expandedRoutes) {
         expandedRoutes.pods.forEach((p) => {
-          const key = normalizePOD(p.label);
-          if (!podMap.has(key)) {
-            podMap.set(key, getPODDisplayName(key));
+          // Separar PODs combinados del expanded routes también
+          const parts = splitCombinedPOD(p.label);
+          for (const podNorm of parts) {
+            if (!podMap.has(podNorm)) {
+              podMap.set(podNorm, getPODDisplayName(podNorm));
+            }
           }
         });
       }
@@ -1419,7 +1428,7 @@ function QuoteLCL({
 
             if (
               isEjecutivoMode &&
-              user?.username === "Ejecutivo" &&
+              (user?.username === "Ejecutivo" || isPricingRole) &&
               clienteSeleccionado
             ) {
               bodyPayload.usuarioId = clienteSeleccionado.username;
@@ -1498,11 +1507,13 @@ function QuoteLCL({
     const charges = [];
 
     // Parse transit time from rutaSeleccionada.ttAprox (accepts "X-Y days", "Y days", "X-Y días", etc.).
-    const parseTransitDays = (transit?: string | number | null): number => {
-      // If missing or empty, return 999 per requirement
-      if (transit === undefined || transit === null) return 999;
+    const parseTransitDays = (
+      transit?: string | number | null,
+    ): number | null => {
+      // If missing or empty, return null (no transit time)
+      if (transit === undefined || transit === null) return null;
       const raw = String(transit);
-      if (raw.trim() === "") return 999;
+      if (raw.trim() === "") return null;
       if (typeof transit === "number") return Math.max(1, Math.floor(transit));
 
       const txt = raw.trim().toLowerCase();
@@ -1530,7 +1541,7 @@ function QuoteLCL({
         if (!isNaN(v)) return Math.max(1, v);
       }
 
-      return 999;
+      return null;
     };
     const divisa = rutaSeleccionada.currency;
 
@@ -1831,7 +1842,9 @@ function QuoteLCL({
       validUntil: sinTarifa
         ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
         : parseValidUntilToISO(rutaSeleccionada.validUntil),
-      transitDays: sinTarifa ? 999 : parseTransitDays(rutaSeleccionada.ttAprox),
+      transitDays: sinTarifa
+        ? null
+        : parseTransitDays(rutaSeleccionada.ttAprox),
       project: {
         name: "LCL",
       },
@@ -1926,7 +1939,7 @@ function QuoteLCL({
       {/* SELECTOR DE CLIENTE (Solo para modo ejecutivo) */}
       {/* ============================================================================ */}
 
-      {isEjecutivoMode && user?.username === "Ejecutivo" && (
+      {isEjecutivoMode && (user?.username === "Ejecutivo" || isPricingRole) && (
         <div
           className="card shadow-sm mb-4"
           style={{
