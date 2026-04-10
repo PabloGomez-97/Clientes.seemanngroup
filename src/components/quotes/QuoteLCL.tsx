@@ -1008,20 +1008,16 @@ function QuoteLCL({
 
   const handlePolRecurrenteChange = (option: SelectOption | null) => {
     setPolSeleccionado(option);
-    if (!option) {
-      setPodSeleccionado(null);
-      setRutaSeleccionada(null);
-      setSinTarifa(false);
-    }
+    setPodSeleccionado(null);
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
   };
 
   const handlePolNRChange = (option: SelectOption | null) => {
     setPolNR(option);
-    if (!option) {
-      setPodNR(null);
-      setRutaSeleccionada(null);
-      setSinTarifa(false);
-    }
+    setPodNR(null);
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
   };
 
   const handlePodNRChange = (option: SelectOption | null) => {

@@ -1159,20 +1159,16 @@ function QuoteAPITester({
 
   const handleOriginRecurrenteChange = (option: SelectOption | null) => {
     setOriginSeleccionado(option);
-    if (!option) {
-      setDestinationSeleccionado(null);
-      setRutaSeleccionada(null);
-      setSinTarifa(false);
-    }
+    setDestinationSeleccionado(null);
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
   };
 
   const handleOriginNRChange = (option: SelectOption | null) => {
     setOriginNR(option);
-    if (!option) {
-      setDestNR(null);
-      setRutaSeleccionada(null);
-      setSinTarifa(false);
-    }
+    setDestNR(null);
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
   };
 
   const handleDestNRChange = (option: SelectOption | null) => {
