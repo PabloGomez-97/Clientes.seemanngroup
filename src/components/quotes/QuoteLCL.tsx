@@ -265,9 +265,9 @@ function QuoteLCL({
             polMap.set(r.polNormalized, r.pol);
           }
         });
-        // Merge POLs de rutas expandidas
+        // Merge POLs de rutas expandidas (usar la clave ya normalizada que proviene del sheet)
         expRoutes.pols.forEach((p) => {
-          const key = p.value.toLowerCase();
+          const key = p.value; // p.value ya viene normalizado desde ExpandedRoutes
           if (!polMap.has(key)) {
             polMap.set(key, p.label);
           }

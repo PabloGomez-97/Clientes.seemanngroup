@@ -191,14 +191,14 @@ export const normalizePOD = (pod: string): string => {
 
 export const getPODDisplayName = (podNormalized: string): string => {
   const displayNames: { [key: string]: string } = {
-    "san antonio - valparaiso": "SAN ANTONIO - VALPARAISO",
-    valparaiso: "VALPARAISO",
-    "san antonio": "SAN ANTONIO",
-    iquique: "IQUIQUE",
-    "iquique via san antonio": "IQUIQUE VIA SAN ANTONIO",
-    santos: "SANTOS",
-    callao: "CALLAO",
-    tbc: "TBC",
+    "san antonio - valparaiso": "San Antonio - Valparaiso",
+    valparaiso: "Valparaiso",
+    "san antonio": "San Antonio",
+    iquique: "Iquique",
+    "iquique via san antonio": "Iquique via San Antonio",
+    santos: "Santos",
+    callao: "Callao",
+    tbc: "Tbc",
   };
 
   return displayNames[podNormalized] || capitalize(podNormalized);
