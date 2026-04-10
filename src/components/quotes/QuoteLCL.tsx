@@ -146,9 +146,6 @@ function QuoteLCL({
   const [incoterm, setIncoterm] = useState<"EXW" | "FOB" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
 
-  // Delivery is derived from the selected POD and is not editable by the user
-  const deliveryToAddressDerived = podSeleccionado ? podSeleccionado.label : "";
-
   // Estado para tipo de acción (cotización u operación)
   const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
     "cotizacion",
@@ -192,6 +189,24 @@ function QuoteLCL({
     useState<ExpandedRoutesData | null>(null);
   // Indica si la ruta seleccionada NO tiene tarifa en el sheet LCL
   const [sinTarifa, setSinTarifa] = useState(false);
+
+  // ============================================================================
+  // ESTADOS PARA SELECTOR DUAL: RECURRENTES vs NO RECURRENTES
+  // ============================================================================
+  const [routeMode, setRouteMode] = useState<
+    "recurrente" | "noRecurrente" | null
+  >(null);
+  const [polNR, setPolNR] = useState<SelectOption | null>(null);
+  const [podNR, setPodNR] = useState<SelectOption | null>(null);
+  const [opcionesPOL_NR, setOpcionesPOL_NR] = useState<SelectOption[]>([]);
+  const [opcionesPOD_NR, setOpcionesPOD_NR] = useState<SelectOption[]>([]);
+
+  // Delivery is derived from the selected POD and is not editable by the user
+  const deliveryToAddressDerived = podSeleccionado
+    ? podSeleccionado.label
+    : podNR
+      ? podNR.label
+      : "";
 
   // ── Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) ──
   const isPricingRole = user?.roles?.pricing === true;
@@ -264,18 +279,11 @@ function QuoteLCL({
         const rutasParsed = parseLCL(data);
         setRutas(rutasParsed);
 
-        // Extraer POLs únicos (tarifa + expandidas)
+        // Extraer POLs únicos (solo rutas con tarifa)
         const polMap = new Map<string, string>();
         rutasParsed.forEach((r) => {
           if (!polMap.has(r.polNormalized)) {
             polMap.set(r.polNormalized, r.pol);
-          }
-        });
-        // Merge POLs de rutas expandidas (usar la clave ya normalizada que proviene del sheet)
-        expRoutes.pols.forEach((p) => {
-          const key = p.value; // p.value ya viene normalizado desde ExpandedRoutes
-          if (!polMap.has(key)) {
-            polMap.set(key, p.label);
           }
         });
         const polsUnicos = Array.from(polMap.entries())
@@ -285,6 +293,11 @@ function QuoteLCL({
           }))
           .sort((a, b) => a.label.localeCompare(b.label));
         setOpcionesPOL(polsUnicos);
+
+        // Opciones POL para rutas no recurrentes (solo del sheet expandido)
+        if (expRoutes) {
+          setOpcionesPOL_NR(expRoutes.pols);
+        }
 
         // Extraer operadores únicos
         const operadoresUnicos = Array.from(
@@ -587,7 +600,7 @@ function QuoteLCL({
 
   useEffect(() => {
     if (polSeleccionado) {
-      // Filtrar rutas por POL seleccionado
+      // Filtrar rutas por POL seleccionado (solo rutas con tarifa)
       const rutasParaPOL = rutas.filter(
         (r) => r.polNormalized === polSeleccionado.value,
       );
@@ -597,23 +610,9 @@ function QuoteLCL({
 
       rutasParaPOL.forEach((r) => {
         if (!podMap.has(r.podNormalized)) {
-          // Usar el nombre de display preferido basado en la normalización
           podMap.set(r.podNormalized, getPODDisplayName(r.podNormalized));
         }
       });
-
-      // Merge PODs de rutas expandidas
-      if (expandedRoutes) {
-        expandedRoutes.pods.forEach((p) => {
-          // Separar PODs combinados del expanded routes también
-          const parts = splitCombinedPOD(p.label);
-          for (const podNorm of parts) {
-            if (!podMap.has(podNorm)) {
-              podMap.set(podNorm, getPODDisplayName(podNorm));
-            }
-          }
-        });
-      }
 
       // Crear opciones únicas ordenadas alfabéticamente
       const podsUnicos = Array.from(podMap.entries())
@@ -633,7 +632,78 @@ function QuoteLCL({
       setRutaSeleccionada(null);
       setSinTarifa(false);
     }
-  }, [polSeleccionado, rutas, expandedRoutes]);
+  }, [polSeleccionado, rutas]);
+
+  // ============================================================================
+  // ACTUALIZAR PODs NO RECURRENTES CUANDO CAMBIA POL NR
+  // ============================================================================
+  useEffect(() => {
+    if (polNR && expandedRoutes) {
+      const podsForPol = expandedRoutes.rows
+        .filter((r) => r.polNorm === polNR.value)
+        .reduce((map, r) => {
+          if (!map.has(r.podNorm)) map.set(r.podNorm, r.podLabel);
+          return map;
+        }, new Map<string, string>());
+      const podsUnicos = Array.from(podsForPol.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      setOpcionesPOD_NR(podsUnicos);
+      setPodNR(null);
+    } else {
+      setOpcionesPOD_NR([]);
+      setPodNR(null);
+    }
+  }, [polNR, expandedRoutes]);
+
+  // Auto-activar sinTarifa cuando se selecciona ruta no recurrente
+  // Si la ruta coincide con una recurrente, se trata como recurrente (smart routing)
+  useEffect(() => {
+    if (!polNR || !podNR || loadingRutas) return;
+
+    // Smart routing: check if combination exists in recurring routes
+    const matchingRoutes = rutas.filter((r) => {
+      const validityState = getValidityClass(r.validUntil);
+      if (validityState === "expired") return false;
+      return (
+        r.polNormalized === polNR.value &&
+        r.podNormalized === podNR.value &&
+        operadoresActivos.has(r.operador)
+      );
+    });
+
+    if (matchingRoutes.length > 0) {
+      // This NR route is actually a recurring route — upgrade seamlessly
+      setPolSeleccionado({ value: polNR.value, label: polNR.label });
+      setPodSeleccionado({ value: podNR.value, label: podNR.label });
+      setRouteMode("recurrente");
+      setPolNR(null);
+      setPodNR(null);
+      setSinTarifa(false);
+      return;
+    }
+
+    const mockRuta: RutaLCL = {
+      id: "sin-tarifa-lcl",
+      pol: polNR.label,
+      polNormalized: polNR.value,
+      pod: podNR.label,
+      podNormalized: podNR.value,
+      servicio: null,
+      ofWM: 0,
+      ofWMString: "0",
+      currency: "USD",
+      frecuencia: null,
+      agente: null,
+      ttAprox: "X",
+      operador: "X",
+      operadorNormalized: "x",
+      validUntil: null,
+      row_number: -1,
+    };
+    setRutaSeleccionada(mockRuta);
+    setSinTarifa(true);
+  }, [polNR, podNR, loadingRutas, rutas, operadoresActivos]);
 
   // Cerrar Paso 1 y abrir Paso 2 cuando se selecciona una ruta
   useEffect(() => {
@@ -931,6 +1001,36 @@ function QuoteLCL({
       return matchPOL && matchPOD && matchOperador;
     })
     .sort((a, b) => a.ofWM - b.ofWM);
+
+  // ============================================================================
+  // HANDLERS PARA SELECTOR DUAL (RECURRENTES / NO RECURRENTES)
+  // ============================================================================
+
+  const handlePolRecurrenteChange = (option: SelectOption | null) => {
+    setPolSeleccionado(option);
+    if (!option) {
+      setPodSeleccionado(null);
+      setRutaSeleccionada(null);
+      setSinTarifa(false);
+    }
+  };
+
+  const handlePolNRChange = (option: SelectOption | null) => {
+    setPolNR(option);
+    if (!option) {
+      setPodNR(null);
+      setRutaSeleccionada(null);
+      setSinTarifa(false);
+    }
+  };
+
+  const handlePodNRChange = (option: SelectOption | null) => {
+    setPodNR(option);
+    if (!option) {
+      setRutaSeleccionada(null);
+      setSinTarifa(false);
+    }
+  };
 
   // ============================================================================
   // CALCULAR TARIFA OCEAN FREIGHT
@@ -2164,195 +2264,397 @@ function QuoteLCL({
               </div>
             ) : (
               <>
+                {/* ======== SELECTOR DE TIPO DE RUTA (CARD TOGGLE) ======== */}
                 <div className="row g-3 mb-4">
-                  <div className="col-md-6">
-                    <label className="qa-label">
-                      {t("Quotelcl.puertoorigen")}
-                    </label>
-                    <Select
-                      value={polSeleccionado}
-                      onChange={setPolSeleccionado}
-                      options={opcionesPOL}
-                      placeholder={t("Quotelcl.selectpuerto")}
-                      isClearable
-                      styles={{
-                        control: (base) => ({
-                          ...base,
-                          borderColor: "#e0e0e0",
-                          boxShadow: "none",
-                          "&:hover": { borderColor: "#b0b0b0" },
-                        }),
+                  {/* Card: Rutas con tarifa */}
+                  <div className="col-6">
+                    <div
+                      onClick={() => {
+                        setRouteMode("recurrente");
+                        setPolNR(null);
+                        setPodNR(null);
+                        setRutaSeleccionada(null);
+                        setSinTarifa(false);
                       }}
-                    />
+                      style={{
+                        cursor: "pointer",
+                        padding: "1rem",
+                        borderRadius: "0.5rem",
+                        border:
+                          routeMode === "recurrente"
+                            ? "2px solid var(--qa-primary)"
+                            : "1.5px solid #dee2e6",
+                        backgroundColor:
+                          routeMode === "recurrente"
+                            ? "rgba(255, 98, 0, 0.04)"
+                            : "white",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start mb-1">
+                        <div className="d-flex align-items-center gap-2">
+                          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
+                            Rutas Recurrentes
+                          </span>
+                          <span
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Esta ruta tiene tarifa vigente."
+                            style={{
+                              cursor: "help",
+                              color: "var(--qa-text-secondary)",
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                        </div>
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: "0.7rem",
+                            backgroundColor:
+                              routeMode === "recurrente"
+                                ? "var(--qa-primary)"
+                                : "#6c757d",
+                            color: "white",
+                          }}
+                        >
+                          Solicita Cotización
+                        </span>
+                      </div>
+                      <p
+                        className="mb-0"
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--qa-text-secondary)",
+                        }}
+                      >
+                        Rutas comunes entre los clientes
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="col-md-6">
-                    <label className="qa-label">
-                      {t("Quotelcl.puertodest")}
-                    </label>
-                    <Select
-                      value={podSeleccionado}
-                      onChange={setPodSeleccionado}
-                      options={opcionesPOD}
-                      placeholder={
-                        polSeleccionado
-                          ? t("Quotelcl.selectdest")
-                          : t("Quotelcl.primeropol")
-                      }
-                      isClearable
-                      isDisabled={!polSeleccionado}
-                      styles={{
-                        control: (base) => ({
-                          ...base,
-                          borderColor: "#e0e0e0",
-                          boxShadow: "none",
-                          "&:hover": { borderColor: "#b0b0b0" },
-                        }),
+                  {/* Card: Rutas sin tarifa */}
+                  <div className="col-6">
+                    <div
+                      onClick={() => {
+                        setRouteMode("noRecurrente");
+                        setPolSeleccionado(null);
+                        setPodSeleccionado(null);
+                        setRutaSeleccionada(null);
+                        setSinTarifa(false);
                       }}
-                    />
+                      style={{
+                        cursor: "pointer",
+                        padding: "1rem",
+                        borderRadius: "0.5rem",
+                        border:
+                          routeMode === "noRecurrente"
+                            ? "2px solid var(--qa-primary)"
+                            : "1.5px solid #dee2e6",
+                        backgroundColor:
+                          routeMode === "noRecurrente"
+                            ? "rgba(255, 98, 0, 0.04)"
+                            : "white",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start mb-1">
+                        <div className="d-flex align-items-center gap-2">
+                          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
+                            Rutas No Recurrentes
+                          </span>
+                          <span
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Rutas no encontradas en Recurrentes"
+                            style={{
+                              cursor: "help",
+                              color: "var(--qa-text-secondary)",
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                        </div>
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: "0.7rem",
+                            backgroundColor:
+                              routeMode === "noRecurrente"
+                                ? "var(--qa-primary)"
+                                : "#6c757d",
+                            color: "white",
+                          }}
+                        >
+                          Solicitar cotización
+                        </span>
+                      </div>
+                      <p
+                        className="mb-0"
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--qa-text-secondary)",
+                        }}
+                      >
+                        ¿No encuentras tu ruta? Encuéntrala aquí
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {polSeleccionado && podSeleccionado && (
-                  <div className="mt-4">
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h6 className="mb-0 fw-bold">
-                        {t("Quotelcl.rutasdisponibles")} (
-                        {rutasFiltradas.length})
-                      </h6>
-                      {isEjecutivoMode && rutasFiltradas.length > 0 && (
-                        <small className="text-muted">
-                          {t("Quotelcl.seleccionamejor")}
-                        </small>
-                      )}
+                {/* ======== RUTAS CON TARIFA ======== */}
+                {routeMode === "recurrente" && (
+                  <div className="mb-4">
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          {t("Quotelcl.puertoorigen")}
+                        </label>
+                        <Select
+                          value={polSeleccionado}
+                          onChange={handlePolRecurrenteChange}
+                          options={opcionesPOL}
+                          placeholder={t("Quotelcl.selectpuerto")}
+                          isClearable
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "#e0e0e0",
+                              boxShadow: "none",
+                              "&:hover": { borderColor: "#b0b0b0" },
+                            }),
+                          }}
+                        />
+                      </div>
+
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          {t("Quotelcl.puertodest")}
+                        </label>
+                        <Select
+                          value={podSeleccionado}
+                          onChange={setPodSeleccionado}
+                          options={opcionesPOD}
+                          placeholder={
+                            polSeleccionado
+                              ? t("Quotelcl.selectdest")
+                              : t("Quotelcl.primeropol")
+                          }
+                          isClearable
+                          isDisabled={!polSeleccionado}
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "#e0e0e0",
+                              boxShadow: "none",
+                              "&:hover": { borderColor: "#b0b0b0" },
+                            }),
+                          }}
+                        />
+                      </div>
                     </div>
 
-                    {rutasFiltradas.length > 0 && (
-                      <div className="qa-table-container">
-                        <table className="qa-table">
-                          <thead>
-                            <tr>
-                              <th style={{ width: "50px" }}></th>
-                              <th>{t("Quotelcl.operador")}</th>
-                              <th className="text-center">OF W/M</th>
-                              <th className="text-center">
-                                {t("Quotelcl.servicio")}
-                              </th>
-                              <th className="text-center">
-                                {t("Quotelcl.tt")}
-                              </th>
-                              <th className="text-center">
-                                {t("Quotelcl.frecuencia")}
-                              </th>
-                              <th className="text-center">
-                                {t("Quotelcl.agente")}
-                              </th>
-                              <th className="text-center">Validez</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {rutasFiltradas.map((ruta, index) => {
-                              const isSelected =
-                                rutaSeleccionada?.id === ruta.id;
+                    {polSeleccionado && podSeleccionado && (
+                      <div className="mt-4">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h6 className="mb-0 fw-bold">
+                            {t("Quotelcl.rutasdisponibles")} (
+                            {rutasFiltradas.length})
+                          </h6>
+                          {isEjecutivoMode && rutasFiltradas.length > 0 && (
+                            <small className="text-muted">
+                              {t("Quotelcl.seleccionamejor")}
+                            </small>
+                          )}
+                        </div>
 
-                              return (
-                                <tr
-                                  key={ruta.id}
-                                  onClick={() => {
-                                    if (ruta.ofWM === 0) {
-                                      setShowPriceZeroModal(true);
-                                      return;
-                                    }
-                                    setRutaSeleccionada(ruta);
-                                    setSinTarifa(false);
-                                    setError(null);
-                                    setResponse(null);
-                                  }}
-                                  className={isSelected ? "selected" : ""}
-                                >
-                                  <td className="text-center">
-                                    {isSelected ? (
-                                      <i
-                                        className="bi bi-check-circle-fill"
-                                        style={{ color: "var(--qa-primary)" }}
-                                      ></i>
-                                    ) : (
-                                      <i className="bi bi-circle text-muted"></i>
-                                    )}
-                                  </td>
-                                  <td>
-                                    <div className="d-flex align-items-center gap-2">
-                                      <img
-                                        src={`/logoscarrierlcl/${ruta.operador.toLowerCase().replace(/\s+/g, "_")}.png`}
-                                        alt={ruta.operador}
-                                        style={{
-                                          width: "24px",
-                                          height: "24px",
-                                          objectFit: "contain",
-                                        }}
-                                        onError={(e) => {
-                                          e.currentTarget.style.display =
-                                            "none";
-                                        }}
-                                      />
-                                      <span className="fw-medium">
-                                        {ruta.operador}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td className="text-center">
-                                    {ruta.ofWM > 0 ? (
-                                      <div className="fw-bold">
-                                        {ruta.currency}{" "}
-                                        {(ruta.ofWM * 1.35).toFixed(2)}
-                                      </div>
-                                    ) : (
-                                      <span className="text-muted">—</span>
-                                    )}
-                                  </td>
-                                  <td className="text-center text-muted small">
-                                    {ruta.servicio || "—"}
-                                  </td>
-                                  <td className="text-center text-muted small">
-                                    {ruta.ttAprox || "—"}
-                                  </td>
-                                  <td className="text-center text-muted small">
-                                    {ruta.frecuencia || "—"}
-                                  </td>
-                                  <td className="text-center text-muted small">
-                                    {ruta.agente || "—"}
-                                  </td>
-                                  <td className="text-center small">
-                                    {ruta.validUntil ? (
-                                      <span
-                                        style={{
-                                          color: "#198754",
-                                          fontWeight: 600,
-                                        }}
-                                      >
-                                        {ruta.validUntil}
-                                      </span>
-                                    ) : (
-                                      <span className="text-muted">
-                                        Sin validez
-                                      </span>
-                                    )}
-                                  </td>
+                        {rutasFiltradas.length > 0 && (
+                          <div className="qa-table-container">
+                            <table className="qa-table">
+                              <thead>
+                                <tr>
+                                  <th style={{ width: "50px" }}></th>
+                                  <th>{t("Quotelcl.operador")}</th>
+                                  <th className="text-center">OF W/M</th>
+                                  <th className="text-center">
+                                    {t("Quotelcl.servicio")}
+                                  </th>
+                                  <th className="text-center">
+                                    {t("Quotelcl.tt")}
+                                  </th>
+                                  <th className="text-center">
+                                    {t("Quotelcl.frecuencia")}
+                                  </th>
+                                  <th className="text-center">
+                                    {t("Quotelcl.agente")}
+                                  </th>
+                                  <th className="text-center">Validez</th>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                              </thead>
+                              <tbody>
+                                {rutasFiltradas.map((ruta, index) => {
+                                  const isSelected =
+                                    rutaSeleccionada?.id === ruta.id;
 
-                    {rutasFiltradas.length > 0 && (
-                      <div className="mt-3">
-                        <small className="qa-text-muted">
-                          {t("Quotelcl.tarifasreferenciales")}
-                        </small>
+                                  return (
+                                    <tr
+                                      key={ruta.id}
+                                      onClick={() => {
+                                        if (ruta.ofWM === 0) {
+                                          setShowPriceZeroModal(true);
+                                          return;
+                                        }
+                                        setRutaSeleccionada(ruta);
+                                        setSinTarifa(false);
+                                        setError(null);
+                                        setResponse(null);
+                                      }}
+                                      className={isSelected ? "selected" : ""}
+                                    >
+                                      <td className="text-center">
+                                        {isSelected ? (
+                                          <i
+                                            className="bi bi-check-circle-fill"
+                                            style={{
+                                              color: "var(--qa-primary)",
+                                            }}
+                                          ></i>
+                                        ) : (
+                                          <i className="bi bi-circle text-muted"></i>
+                                        )}
+                                      </td>
+                                      <td>
+                                        <div className="d-flex align-items-center gap-2">
+                                          <img
+                                            src={`/logoscarrierlcl/${ruta.operador.toLowerCase().replace(/\s+/g, "_")}.png`}
+                                            alt={ruta.operador}
+                                            style={{
+                                              width: "24px",
+                                              height: "24px",
+                                              objectFit: "contain",
+                                            }}
+                                            onError={(e) => {
+                                              e.currentTarget.style.display =
+                                                "none";
+                                            }}
+                                          />
+                                          <span className="fw-medium">
+                                            {ruta.operador}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="text-center">
+                                        {ruta.ofWM > 0 ? (
+                                          <div className="fw-bold">
+                                            {ruta.currency}{" "}
+                                            {(ruta.ofWM * 1.35).toFixed(2)}
+                                          </div>
+                                        ) : (
+                                          <span className="text-muted">—</span>
+                                        )}
+                                      </td>
+                                      <td className="text-center text-muted small">
+                                        {ruta.servicio || "—"}
+                                      </td>
+                                      <td className="text-center text-muted small">
+                                        {ruta.ttAprox || "—"}
+                                      </td>
+                                      <td className="text-center text-muted small">
+                                        {ruta.frecuencia || "—"}
+                                      </td>
+                                      <td className="text-center text-muted small">
+                                        {ruta.agente || "—"}
+                                      </td>
+                                      <td className="text-center small">
+                                        {ruta.validUntil ? (
+                                          <span
+                                            style={{
+                                              color: "#198754",
+                                              fontWeight: 600,
+                                            }}
+                                          >
+                                            {ruta.validUntil}
+                                          </span>
+                                        ) : (
+                                          <span className="text-muted">
+                                            Sin validez
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {rutasFiltradas.length > 0 && (
+                          <div className="mt-3">
+                            <small className="qa-text-muted">
+                              {t("Quotelcl.tarifasreferenciales")}
+                            </small>
+                          </div>
+                        )}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* ======== RUTAS SIN TARIFA ======== */}
+                {routeMode === "noRecurrente" && expandedRoutes && (
+                  <div>
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          {t("Quotelcl.puertoorigen")}
+                        </label>
+                        <Select
+                          value={polNR}
+                          onChange={handlePolNRChange}
+                          options={opcionesPOL_NR}
+                          placeholder={t("Quotelcl.selectpuerto")}
+                          isClearable
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "#e0e0e0",
+                              boxShadow: "none",
+                              "&:hover": { borderColor: "#b0b0b0" },
+                            }),
+                          }}
+                        />
+                      </div>
+
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          {t("Quotelcl.puertodest")}
+                        </label>
+                        <Select
+                          value={podNR}
+                          onChange={handlePodNRChange}
+                          options={opcionesPOD_NR}
+                          placeholder={
+                            polNR
+                              ? t("Quotelcl.selectdest")
+                              : t("Quotelcl.primeropol")
+                          }
+                          isClearable
+                          isDisabled={!polNR}
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "#e0e0e0",
+                              boxShadow: "none",
+                              "&:hover": { borderColor: "#b0b0b0" },
+                            }),
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </>

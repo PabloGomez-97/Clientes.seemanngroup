@@ -124,9 +124,6 @@ function QuoteFCL({
   const [incoterm, setIncoterm] = useState<"EXW" | "FOB" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
 
-  // Delivery is derived from the selected POD and is not editable by the user
-  const deliveryToAddressDerived = podSeleccionado ? podSeleccionado.label : "";
-
   const [opcionesPOL, setOpcionesPOL] = useState<SelectOption[]>([]);
   const [opcionesPOD, setOpcionesPOD] = useState<SelectOption[]>([]);
 
@@ -156,6 +153,24 @@ function QuoteFCL({
     useState<ExpandedRoutesData | null>(null);
   // Indica si la ruta seleccionada NO tiene tarifa en el sheet FCL
   const [sinTarifa, setSinTarifa] = useState(false);
+
+  // ============================================================================
+  // ESTADOS PARA SELECTOR DUAL: RECURRENTES vs NO RECURRENTES
+  // ============================================================================
+  const [routeMode, setRouteMode] = useState<
+    "recurrente" | "noRecurrente" | null
+  >(null);
+  const [polNR, setPolNR] = useState<SelectOption | null>(null);
+  const [podNR, setPodNR] = useState<SelectOption | null>(null);
+  const [opcionesPOL_NR, setOpcionesPOL_NR] = useState<SelectOption[]>([]);
+  const [opcionesPOD_NR, setOpcionesPOD_NR] = useState<SelectOption[]>([]);
+
+  // Delivery is derived from the selected POD and is not editable by the user
+  const deliveryToAddressDerived = podSeleccionado
+    ? podSeleccionado.label
+    : podNR
+      ? podNR.label
+      : "";
 
   // Cargar clientes asignados al ejecutivo (solo en modo ejecutivo)
   const isPricingRole = user?.roles?.pricing === true;
@@ -242,22 +257,13 @@ function QuoteFCL({
           setExpandedRoutes(expandedData);
         }
 
-        // Extraer POLs únicos de las tarifas FCL
+        // Extraer POLs únicos de las tarifas FCL (solo rutas con tarifa)
         const polMap = new Map<string, string>();
         rutasParsed.forEach((r) => {
           if (!polMap.has(r.polNormalized)) {
             polMap.set(r.polNormalized, r.pol);
           }
         });
-
-        // Merge con POLs del sheet expandido
-        if (expandedData) {
-          expandedData.pols.forEach((p) => {
-            if (!polMap.has(p.value)) {
-              polMap.set(p.value, p.label);
-            }
-          });
-        }
 
         const polsUnicos = Array.from(polMap.entries())
           .map(([normalized, original]) => ({
@@ -266,6 +272,11 @@ function QuoteFCL({
           }))
           .sort((a, b) => a.label.localeCompare(b.label));
         setOpcionesPOL(polsUnicos);
+
+        // Opciones POL para rutas no recurrentes (solo del sheet expandido)
+        if (expandedData) {
+          setOpcionesPOL_NR(expandedData.pols);
+        }
 
         // Extraer carriers únicos
         const carriersUnicos = Array.from(
@@ -393,7 +404,7 @@ function QuoteFCL({
 
   useEffect(() => {
     if (polSeleccionado) {
-      // Filtrar rutas por POL y crear un Map con valores normalizados
+      // Filtrar rutas por POL y crear un Map con valores normalizados (solo rutas con tarifa)
       const podMap = new Map<string, string>();
 
       rutas
@@ -403,19 +414,6 @@ function QuoteFCL({
             podMap.set(r.podNormalized, getPODDisplayName(r.podNormalized));
           }
         });
-
-      // Merge con PODs del sheet expandido (todas las combinaciones posibles)
-      if (expandedRoutes) {
-        expandedRoutes.pods.forEach((p) => {
-          // Separar PODs combinados del expanded routes también
-          const parts = splitCombinedPOD(p.label);
-          for (const podNorm of parts) {
-            if (!podMap.has(podNorm)) {
-              podMap.set(podNorm, getPODDisplayName(podNorm));
-            }
-          }
-        });
-      }
 
       // Crear opciones únicas y ordenadas
       const podsUnicos = Array.from(podMap.entries())
@@ -437,7 +435,88 @@ function QuoteFCL({
       setContainerSeleccionado(null);
       setSinTarifa(false);
     }
-  }, [polSeleccionado, rutas, expandedRoutes]);
+  }, [polSeleccionado, rutas]);
+
+  // ============================================================================
+  // ACTUALIZAR PODs NO RECURRENTES CUANDO CAMBIA POL NR
+  // ============================================================================
+  useEffect(() => {
+    if (polNR && expandedRoutes) {
+      const podsForPol = expandedRoutes.rows
+        .filter((r) => r.polNorm === polNR.value)
+        .reduce((map, r) => {
+          if (!map.has(r.podNorm)) map.set(r.podNorm, r.podLabel);
+          return map;
+        }, new Map<string, string>());
+      const podsUnicos = Array.from(podsForPol.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      setOpcionesPOD_NR(podsUnicos);
+      setPodNR(null);
+    } else {
+      setOpcionesPOD_NR([]);
+      setPodNR(null);
+    }
+  }, [polNR, expandedRoutes]);
+
+  // Auto-activar sinTarifa cuando se selecciona ruta no recurrente
+  // Si la ruta coincide con una recurrente, se trata como recurrente (smart routing)
+  useEffect(() => {
+    if (!polNR || !podNR || loadingRutas) return;
+
+    // Smart routing: check if combination exists in recurring routes
+    const matchingRoutes = rutas.filter((r) => {
+      const validityState = getValidityClass(r.validUntil);
+      if (validityState === "expired") return false;
+      return (
+        r.polNormalized === polNR.value &&
+        r.podNormalized === podNR.value &&
+        (!r.carrier || r.carrier === "N/A" || carriersActivos.has(r.carrier))
+      );
+    });
+
+    if (matchingRoutes.length > 0) {
+      // This NR route is actually a recurring route — upgrade seamlessly
+      setPolSeleccionado({ value: polNR.value, label: polNR.label });
+      setPodSeleccionado({ value: podNR.value, label: podNR.label });
+      setRouteMode("recurrente");
+      setPolNR(null);
+      setPodNR(null);
+      setSinTarifa(false);
+      return;
+    }
+
+    const mockRuta: RutaFCL = {
+      id: "FCL-PENDING",
+      pol: polNR.label,
+      polNormalized: polNR.value,
+      pod: podNR.label,
+      podNormalized: podNR.value,
+      gp20: "0",
+      hq40: "0",
+      nor40: "0",
+      carrier: "X",
+      carrierNormalized: "x",
+      tt: "X",
+      remarks: "",
+      company: "",
+      companyNormalized: "",
+      validUntil: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toLocaleDateString("es-CL"),
+      row_number: 0,
+      priceForComparison: 0,
+      currency: "USD",
+    };
+    setRutaSeleccionada(mockRuta);
+    setSinTarifa(true);
+    setContainerSeleccionado({
+      type: "40HQ",
+      packageTypeId: CONTAINER_MAPPING["40HQ"].id,
+      price: 0,
+      priceString: "0",
+    });
+  }, [polNR, podNR, loadingRutas, rutas, carriersActivos]);
 
   // Auto-activar sinTarifa cuando el POD elegido no tiene rutas disponibles
   useEffect(() => {
@@ -490,6 +569,15 @@ function QuoteFCL({
   const handleSectionToggle = (section: number) => {
     setOpenSection(openSection === section ? 0 : section);
   };
+
+  useEffect(() => {
+    const tooltipTriggerList = document.querySelectorAll(
+      '[data-bs-toggle="tooltip"]',
+    );
+    tooltipTriggerList.forEach((tooltipTriggerEl) => {
+      new (window as any).bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  }, []);
 
   // Cerrar Paso 1 cuando se selecciona un contenedor
   useEffect(() => {
@@ -722,6 +810,39 @@ function QuoteFCL({
       return matchPOL && matchPOD && matchCarrier;
     })
     .sort((a, b) => a.priceForComparison - b.priceForComparison);
+
+  // ============================================================================
+  // HANDLERS PARA SELECTOR DUAL (RECURRENTES / NO RECURRENTES)
+  // ============================================================================
+
+  const handlePolRecurrenteChange = (option: SelectOption | null) => {
+    setPolSeleccionado(option);
+    if (!option) {
+      setPodSeleccionado(null);
+      setRutaSeleccionada(null);
+      setContainerSeleccionado(null);
+      setSinTarifa(false);
+    }
+  };
+
+  const handlePolNRChange = (option: SelectOption | null) => {
+    setPolNR(option);
+    if (!option) {
+      setPodNR(null);
+      setRutaSeleccionada(null);
+      setContainerSeleccionado(null);
+      setSinTarifa(false);
+    }
+  };
+
+  const handlePodNRChange = (option: SelectOption | null) => {
+    setPodNR(option);
+    if (!option) {
+      setRutaSeleccionada(null);
+      setContainerSeleccionado(null);
+      setSinTarifa(false);
+    }
+  };
 
   // ============================================================================
   // FUNCIÓN PARA SELECCIONAR CONTENEDOR
@@ -1871,375 +1992,610 @@ function QuoteFCL({
               <div className="alert alert-danger">❌ {errorRutas}</div>
             ) : (
               <>
-                {/* Selectores de POL y POD */}
+                {/* ======== SELECTOR DE TIPO DE RUTA (CARD TOGGLE) ======== */}
                 <div className="row g-3 mb-4">
-                  <div className="col-md-6">
-                    <label className="qf-label">Puerto de Origen (POL)</label>
-                    <Select
-                      value={polSeleccionado}
-                      onChange={setPolSeleccionado}
-                      options={opcionesPOL}
-                      placeholder="Selecciona puerto de origen..."
-                      isClearable
-                      styles={{
-                        control: (base) => ({
-                          ...base,
-                          borderColor: "var(--qf-border-color)",
-                          "&:hover": { borderColor: "var(--qf-primary)" },
-                          boxShadow: "none",
-                        }),
-                        option: (base, state) => ({
-                          ...base,
-                          backgroundColor: state.isSelected
-                            ? "var(--qf-primary)"
-                            : state.isFocused
-                              ? "var(--qf-bg-light)"
-                              : "white",
-                        }),
+                  {/* Card: Rutas con tarifa */}
+                  <div className="col-6">
+                    <div
+                      onClick={() => {
+                        setRouteMode("recurrente");
+                        setPolNR(null);
+                        setPodNR(null);
+                        setRutaSeleccionada(null);
+                        setContainerSeleccionado(null);
+                        setSinTarifa(false);
                       }}
-                    />
+                      style={{
+                        cursor: "pointer",
+                        padding: "1rem",
+                        borderRadius: "0.5rem",
+                        border:
+                          routeMode === "recurrente"
+                            ? "2px solid var(--qf-primary)"
+                            : "1.5px solid #dee2e6",
+                        backgroundColor:
+                          routeMode === "recurrente"
+                            ? "rgba(255, 98, 0, 0.04)"
+                            : "white",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start mb-1">
+                        <div className="d-flex align-items-center gap-2">
+                          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
+                            Rutas Recurrentes
+                          </span>
+                          <span
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Esta ruta tiene tarifa vigente."
+                            style={{
+                              cursor: "help",
+                              color: "var(--qf-text-secondary)",
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                        </div>
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: "0.7rem",
+                            backgroundColor:
+                              routeMode === "recurrente"
+                                ? "var(--qf-primary)"
+                                : "#6c757d",
+                            color: "white",
+                          }}
+                        >
+                          Solicitar Cotización
+                        </span>
+                      </div>
+                      <p
+                        className="mb-0"
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--qf-text-secondary)",
+                        }}
+                      >
+                        Rutas comunes entre los clientes
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="col-md-6">
-                    <label className="qf-label">Puerto de Destino (POD)</label>
-                    <Select
-                      value={podSeleccionado}
-                      onChange={setPodSeleccionado}
-                      options={opcionesPOD}
-                      placeholder={
-                        polSeleccionado
-                          ? "Selecciona puerto de destino..."
-                          : "Selecciona origen primero"
-                      }
-                      isClearable
-                      isDisabled={!polSeleccionado}
-                      styles={{
-                        control: (base) => ({
-                          ...base,
-                          borderColor: "var(--qf-border-color)",
-                          "&:hover": { borderColor: "var(--qf-primary)" },
-                          backgroundColor: !polSeleccionado
-                            ? "var(--qf-bg-light)"
-                            : "white",
-                          boxShadow: "none",
-                        }),
-                        option: (base, state) => ({
-                          ...base,
-                          backgroundColor: state.isSelected
-                            ? "var(--qf-primary)"
-                            : state.isFocused
-                              ? "var(--qf-bg-light)"
-                              : "white",
-                        }),
+                  {/* Card: Rutas sin tarifa */}
+                  <div className="col-6">
+                    <div
+                      onClick={() => {
+                        setRouteMode("noRecurrente");
+                        setPolSeleccionado(null);
+                        setPodSeleccionado(null);
+                        setRutaSeleccionada(null);
+                        setContainerSeleccionado(null);
+                        setSinTarifa(false);
                       }}
-                    />
+                      style={{
+                        cursor: "pointer",
+                        padding: "1rem",
+                        borderRadius: "0.5rem",
+                        border:
+                          routeMode === "noRecurrente"
+                            ? "2px solid var(--qf-primary)"
+                            : "1.5px solid #dee2e6",
+                        backgroundColor:
+                          routeMode === "noRecurrente"
+                            ? "rgba(255, 98, 0, 0.04)"
+                            : "white",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start mb-1">
+                        <div className="d-flex align-items-center gap-2">
+                          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
+                            Rutas No Recurrentes
+                          </span>
+                          <span
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Esta ruta no cuenta con tarifa inmediata. Tu ejecutivo de cuenta te contactará con el precio a la brevedad."
+                            style={{
+                              cursor: "help",
+                              color: "var(--qf-text-secondary)",
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                        </div>
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: "0.7rem",
+                            backgroundColor:
+                              routeMode === "noRecurrente"
+                                ? "var(--qf-primary)"
+                                : "#6c757d",
+                            color: "white",
+                          }}
+                        >
+                          Solicitar cotización
+                        </span>
+                      </div>
+                      <p
+                        className="mb-0"
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--qf-text-secondary)",
+                        }}
+                      >
+                        ¿No encuentras tu ruta? Encuéntrala aquí
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Rutas Disponibles */}
-                {polSeleccionado && podSeleccionado && (
-                  <div className="mt-4">
-                    {/* Header mejorado */}
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h6 className="mb-0 d-flex align-items-center gap-2">
-                        <i className="bi bi-ship"></i>
-                        Rutas Disponibles
-                        <span className="badge bg-light text-dark border">
-                          {rutasFiltradas.length}
-                        </span>
-                      </h6>
+                {/* ======== RUTAS CON TARIFA ======== */}
+                {routeMode === "recurrente" && (
+                  <div className="mb-4">
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-6">
+                        <label className="qf-label">
+                          Puerto de Origen (POL)
+                        </label>
+                        <Select
+                          value={polSeleccionado}
+                          onChange={handlePolRecurrenteChange}
+                          options={opcionesPOL}
+                          placeholder="Selecciona puerto de origen..."
+                          isClearable
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "var(--qf-border-color)",
+                              "&:hover": { borderColor: "var(--qf-primary)" },
+                              boxShadow: "none",
+                            }),
+                            option: (base, state) => ({
+                              ...base,
+                              backgroundColor: state.isSelected
+                                ? "var(--qf-primary)"
+                                : state.isFocused
+                                  ? "var(--qf-bg-light)"
+                                  : "white",
+                            }),
+                          }}
+                        />
+                      </div>
 
-                      {rutasFiltradas.length > 0 && (
-                        <small className="text-muted">
-                          Selecciona la mejor opción para tu envío
-                        </small>
-                      )}
+                      <div className="col-md-6">
+                        <label className="qf-label">
+                          Puerto de Destino (POD)
+                        </label>
+                        <Select
+                          value={podSeleccionado}
+                          onChange={setPodSeleccionado}
+                          options={opcionesPOD}
+                          placeholder={
+                            polSeleccionado
+                              ? "Selecciona puerto de destino..."
+                              : "Selecciona origen primero"
+                          }
+                          isClearable
+                          isDisabled={!polSeleccionado}
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "var(--qf-border-color)",
+                              "&:hover": { borderColor: "var(--qf-primary)" },
+                              backgroundColor: !polSeleccionado
+                                ? "var(--qf-bg-light)"
+                                : "white",
+                              boxShadow: "none",
+                            }),
+                            option: (base, state) => ({
+                              ...base,
+                              backgroundColor: state.isSelected
+                                ? "var(--qf-primary)"
+                                : state.isFocused
+                                  ? "var(--qf-bg-light)"
+                                  : "white",
+                            }),
+                          }}
+                        />
+                      </div>
                     </div>
 
-                    {rutasFiltradas.length > 0 && (
-                      <div className="row g-3">
-                        {rutasFiltradas.map((ruta, index) => (
-                          <div key={ruta.id} className="col-md-6 col-lg-4">
-                            <div
-                              className={`qf-card h-100 position-relative`}
-                              style={{
-                                transition: "all 0.3s ease",
-                                transform:
-                                  rutaSeleccionada?.id === ruta.id
-                                    ? "translateY(-4px)"
-                                    : "none",
-                                borderColor:
-                                  rutaSeleccionada?.id === ruta.id
-                                    ? "var(--qf-primary)"
-                                    : "var(--qf-border-color)",
-                                borderWidth:
-                                  rutaSeleccionada?.id === ruta.id
-                                    ? "2px"
-                                    : "1px",
-                                boxShadow:
-                                  rutaSeleccionada?.id === ruta.id
-                                    ? "0 4px 12px rgba(255, 98, 0, 0.15)"
-                                    : "none",
-                              }}
-                            >
-                              {/* Badge de "Mejor Opción" (solo en modo ejecutivo) */}
-                              {isEjecutivoMode && index === 0 && (
+                    {/* Rutas Disponibles */}
+                    {polSeleccionado && podSeleccionado && (
+                      <div className="mt-4">
+                        {/* Header mejorado */}
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h6 className="mb-0 d-flex align-items-center gap-2">
+                            <i className="bi bi-ship"></i>
+                            Rutas Disponibles
+                            <span className="badge bg-light text-dark border">
+                              {rutasFiltradas.length}
+                            </span>
+                          </h6>
+
+                          {rutasFiltradas.length > 0 && (
+                            <small className="text-muted">
+                              Selecciona la mejor opción para tu envío
+                            </small>
+                          )}
+                        </div>
+
+                        {rutasFiltradas.length > 0 && (
+                          <div className="row g-3">
+                            {rutasFiltradas.map((ruta, index) => (
+                              <div key={ruta.id} className="col-md-6 col-lg-4">
                                 <div
-                                  className="position-absolute top-0 end-0 badge bg-warning text-dark"
+                                  className={`qf-card h-100 position-relative`}
                                   style={{
-                                    borderTopRightRadius: "0.375rem",
-                                    borderBottomLeftRadius: "0.375rem",
-                                    fontSize: "0.7rem",
-                                    zIndex: 1,
+                                    transition: "all 0.3s ease",
+                                    transform:
+                                      rutaSeleccionada?.id === ruta.id
+                                        ? "translateY(-4px)"
+                                        : "none",
+                                    borderColor:
+                                      rutaSeleccionada?.id === ruta.id
+                                        ? "var(--qf-primary)"
+                                        : "var(--qf-border-color)",
+                                    borderWidth:
+                                      rutaSeleccionada?.id === ruta.id
+                                        ? "2px"
+                                        : "1px",
+                                    boxShadow:
+                                      rutaSeleccionada?.id === ruta.id
+                                        ? "0 4px 12px rgba(255, 98, 0, 0.15)"
+                                        : "none",
                                   }}
                                 >
-                                  <i className="bi bi-star-fill"></i> Mejor
-                                  Opción
-                                </div>
-                              )}
-
-                              <div>
-                                {/* Header del carrier con logo */}
-                                <div className="d-flex justify-content-between align-items-start mb-3">
-                                  <div className="d-flex align-items-center gap-2">
-                                    {/* Logo del carrier */}
+                                  {/* Badge de "Mejor Opción" (solo en modo ejecutivo) */}
+                                  {isEjecutivoMode && index === 0 && (
                                     <div
-                                      className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
+                                      className="position-absolute top-0 end-0 badge bg-warning text-dark"
                                       style={{
-                                        width: "50px",
-                                        height: "50px",
-                                        minWidth: "50px",
-                                        overflow: "hidden",
+                                        borderTopRightRadius: "0.375rem",
+                                        borderBottomLeftRadius: "0.375rem",
+                                        fontSize: "0.7rem",
+                                        zIndex: 1,
                                       }}
                                     >
-                                      <img
-                                        src={`/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`}
-                                        alt={ruta.carrier}
-                                        style={{
-                                          maxWidth: "150%",
-                                          maxHeight: "150%",
-                                          objectFit: "contain",
-                                        }}
-                                        onError={(e) => {
-                                          const target = e.currentTarget;
-                                          target.style.display = "none";
-                                          const parent = target.parentElement;
-                                          if (parent) {
-                                            parent.innerHTML =
-                                              '<i class="bi bi-box-seam text-primary fs-4"></i>';
-                                          }
-                                        }}
-                                      />
+                                      <i className="bi bi-star-fill"></i> Mejor
+                                      Opción
                                     </div>
-
-                                    <div>
-                                      <span className="qf-badge qf-badge-primary">
-                                        {ruta.carrier}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  {rutaSeleccionada?.id === ruta.id && (
-                                    <span className="badge bg-success">
-                                      <i className="bi bi-check-circle-fill"></i>{" "}
-                                      Seleccionada
-                                    </span>
                                   )}
-                                </div>
 
-                                {/* Transit Time y Company */}
-                                {ruta.tt && (
-                                  <div className="mb-3">
-                                    <div
-                                      className="d-flex align-items-center gap-2 p-2 rounded"
-                                      style={{
-                                        backgroundColor: "var(--qf-bg-light)",
-                                      }}
-                                    >
-                                      <i
-                                        className="bi bi-clock"
-                                        style={{ color: "var(--qf-primary)" }}
-                                      ></i>
-                                      <div className="flex-grow-1">
-                                        <small
-                                          className="d-block"
+                                  <div>
+                                    {/* Header del carrier con logo */}
+                                    <div className="d-flex justify-content-between align-items-start mb-3">
+                                      <div className="d-flex align-items-center gap-2">
+                                        {/* Logo del carrier */}
+                                        <div
+                                          className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
                                           style={{
-                                            fontSize: "0.7rem",
-                                            color: "var(--qf-text-secondary)",
+                                            width: "50px",
+                                            height: "50px",
+                                            minWidth: "50px",
+                                            overflow: "hidden",
                                           }}
                                         >
-                                          Tiempo de tránsito
-                                        </small>
-                                        <small className="fw-semibold">
-                                          {ruta.tt}
-                                        </small>
+                                          <img
+                                            src={`/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`}
+                                            alt={ruta.carrier}
+                                            style={{
+                                              maxWidth: "150%",
+                                              maxHeight: "150%",
+                                              objectFit: "contain",
+                                            }}
+                                            onError={(e) => {
+                                              const target = e.currentTarget;
+                                              target.style.display = "none";
+                                              const parent =
+                                                target.parentElement;
+                                              if (parent) {
+                                                parent.innerHTML =
+                                                  '<i class="bi bi-box-seam text-primary fs-4"></i>';
+                                              }
+                                            }}
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <span className="qf-badge qf-badge-primary">
+                                            {ruta.carrier}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {rutaSeleccionada?.id === ruta.id && (
+                                        <span className="badge bg-success">
+                                          <i className="bi bi-check-circle-fill"></i>{" "}
+                                          Seleccionada
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Transit Time y Company */}
+                                    {ruta.tt && (
+                                      <div className="mb-3">
+                                        <div
+                                          className="d-flex align-items-center gap-2 p-2 rounded"
+                                          style={{
+                                            backgroundColor:
+                                              "var(--qf-bg-light)",
+                                          }}
+                                        >
+                                          <i
+                                            className="bi bi-clock"
+                                            style={{
+                                              color: "var(--qf-primary)",
+                                            }}
+                                          ></i>
+                                          <div className="flex-grow-1">
+                                            <small
+                                              className="d-block"
+                                              style={{
+                                                fontSize: "0.7rem",
+                                                color:
+                                                  "var(--qf-text-secondary)",
+                                              }}
+                                            >
+                                              Tiempo de tránsito
+                                            </small>
+                                            <small className="fw-semibold">
+                                              {ruta.tt}
+                                            </small>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {ruta.company && (
+                                      <p className="small text-muted mb-3">
+                                        <i className="bi bi-building"></i>{" "}
+                                        {ruta.company}
+                                      </p>
+                                    )}
+
+                                    {/* Validez */}
+                                    <div className="mb-3">
+                                      <div
+                                        className="d-flex align-items-center gap-2 p-2 rounded"
+                                        style={{
+                                          backgroundColor: ruta.validUntil
+                                            ? "rgba(25, 135, 84, 0.08)"
+                                            : "var(--qf-bg-light)",
+                                        }}
+                                      >
+                                        <i
+                                          className="bi bi-calendar-check"
+                                          style={{
+                                            color: ruta.validUntil
+                                              ? "#198754"
+                                              : "var(--qf-text-secondary)",
+                                          }}
+                                        ></i>
+                                        <div className="flex-grow-1">
+                                          <small
+                                            className="d-block"
+                                            style={{
+                                              fontSize: "0.7rem",
+                                              color: "var(--qf-text-secondary)",
+                                            }}
+                                          >
+                                            Validez
+                                          </small>
+                                          <small
+                                            className="fw-semibold"
+                                            style={{
+                                              color: ruta.validUntil
+                                                ? "#198754"
+                                                : "var(--qf-text-secondary)",
+                                            }}
+                                          >
+                                            {ruta.validUntil
+                                              ? `Válido hasta ${ruta.validUntil}`
+                                              : "Sin validez"}
+                                          </small>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                )}
 
-                                {ruta.company && (
-                                  <p className="small text-muted mb-3">
-                                    <i className="bi bi-building"></i>{" "}
-                                    {ruta.company}
-                                  </p>
-                                )}
+                                    {/* Botones de Contenedores */}
+                                    <div className="d-flex flex-column gap-2">
+                                      {/* 20GP */}
+                                      {ruta.gp20 &&
+                                        ruta.gp20 !== "N/A" &&
+                                        ruta.gp20 !== "-" && (
+                                          <button
+                                            type="button"
+                                            className={`qf-btn w-100 justify-content-between ${
+                                              rutaSeleccionada?.id ===
+                                                ruta.id &&
+                                              containerSeleccionado?.type ===
+                                                "20GP"
+                                                ? "qf-btn-primary"
+                                                : "qf-btn-outline"
+                                            }`}
+                                            onClick={() =>
+                                              handleSeleccionarContainer(
+                                                ruta,
+                                                "20GP",
+                                              )
+                                            }
+                                          >
+                                            <div className="d-flex justify-content-between align-items-center">
+                                              <span className="fw-bold">
+                                                <i className="bi bi-box me-2"></i>{" "}
+                                                20GP
+                                              </span>
+                                              <span className="badge bg-light text-dark">
+                                                {ruta.currency}{" "}
+                                                {(
+                                                  extractPrice(ruta.gp20) * 1.15
+                                                ).toFixed(0)}
+                                              </span>
+                                            </div>
+                                          </button>
+                                        )}
 
-                                {/* Validez */}
-                                <div className="mb-3">
-                                  <div
-                                    className="d-flex align-items-center gap-2 p-2 rounded"
-                                    style={{
-                                      backgroundColor: ruta.validUntil
-                                        ? "rgba(25, 135, 84, 0.08)"
-                                        : "var(--qf-bg-light)",
-                                    }}
-                                  >
-                                    <i
-                                      className="bi bi-calendar-check"
-                                      style={{
-                                        color: ruta.validUntil
-                                          ? "#198754"
-                                          : "var(--qf-text-secondary)",
-                                      }}
-                                    ></i>
-                                    <div className="flex-grow-1">
-                                      <small
-                                        className="d-block"
-                                        style={{
-                                          fontSize: "0.7rem",
-                                          color: "var(--qf-text-secondary)",
-                                        }}
-                                      >
-                                        Validez
-                                      </small>
-                                      <small
-                                        className="fw-semibold"
-                                        style={{
-                                          color: ruta.validUntil
-                                            ? "#198754"
-                                            : "var(--qf-text-secondary)",
-                                        }}
-                                      >
-                                        {ruta.validUntil
-                                          ? `Válido hasta ${ruta.validUntil}`
-                                          : "Sin validez"}
-                                      </small>
+                                      {/* 40HQ */}
+                                      {ruta.hq40 &&
+                                        ruta.hq40 !== "N/A" &&
+                                        ruta.hq40 !== "-" && (
+                                          <button
+                                            type="button"
+                                            className={`qf-btn w-100 justify-content-between ${
+                                              rutaSeleccionada?.id ===
+                                                ruta.id &&
+                                              containerSeleccionado?.type ===
+                                                "40HQ"
+                                                ? "qf-btn-primary"
+                                                : "qf-btn-outline"
+                                            }`}
+                                            onClick={() =>
+                                              handleSeleccionarContainer(
+                                                ruta,
+                                                "40HQ",
+                                              )
+                                            }
+                                          >
+                                            <div className="d-flex justify-content-between align-items-center">
+                                              <span className="fw-bold">
+                                                <i className="bi bi-box me-2"></i>{" "}
+                                                40HQ
+                                              </span>
+                                              <span className="badge bg-light text-dark">
+                                                {ruta.currency}{" "}
+                                                {(
+                                                  extractPrice(ruta.hq40) * 1.15
+                                                ).toFixed(0)}
+                                              </span>
+                                            </div>
+                                          </button>
+                                        )}
+
+                                      {/* 40NOR */}
+                                      {ruta.nor40 &&
+                                        ruta.nor40 !== "N/A" &&
+                                        ruta.nor40 !== "-" && (
+                                          <button
+                                            type="button"
+                                            className={`qf-btn w-100 justify-content-between ${
+                                              rutaSeleccionada?.id ===
+                                                ruta.id &&
+                                              containerSeleccionado?.type ===
+                                                "40NOR"
+                                                ? "qf-btn-primary"
+                                                : "qf-btn-outline"
+                                            }`}
+                                            onClick={() =>
+                                              handleSeleccionarContainer(
+                                                ruta,
+                                                "40NOR",
+                                              )
+                                            }
+                                          >
+                                            <div className="d-flex justify-content-between align-items-center">
+                                              <span className="fw-bold">
+                                                <i className="bi bi-box me-2"></i>{" "}
+                                                40NOR
+                                              </span>
+                                              <span className="badge bg-light text-dark">
+                                                {ruta.currency}{" "}
+                                                {(
+                                                  extractPrice(ruta.nor40) *
+                                                  1.15
+                                                ).toFixed(0)}
+                                              </span>
+                                            </div>
+                                          </button>
+                                        )}
                                     </div>
                                   </div>
                                 </div>
-
-                                {/* Botones de Contenedores */}
-                                <div className="d-flex flex-column gap-2">
-                                  {/* 20GP */}
-                                  {ruta.gp20 &&
-                                    ruta.gp20 !== "N/A" &&
-                                    ruta.gp20 !== "-" && (
-                                      <button
-                                        type="button"
-                                        className={`qf-btn w-100 justify-content-between ${
-                                          rutaSeleccionada?.id === ruta.id &&
-                                          containerSeleccionado?.type === "20GP"
-                                            ? "qf-btn-primary"
-                                            : "qf-btn-outline"
-                                        }`}
-                                        onClick={() =>
-                                          handleSeleccionarContainer(
-                                            ruta,
-                                            "20GP",
-                                          )
-                                        }
-                                      >
-                                        <div className="d-flex justify-content-between align-items-center">
-                                          <span className="fw-bold">
-                                            <i className="bi bi-box me-2"></i>{" "}
-                                            20GP
-                                          </span>
-                                          <span className="badge bg-light text-dark">
-                                            {ruta.currency}{" "}
-                                            {(
-                                              extractPrice(ruta.gp20) * 1.15
-                                            ).toFixed(0)}
-                                          </span>
-                                        </div>
-                                      </button>
-                                    )}
-
-                                  {/* 40HQ */}
-                                  {ruta.hq40 &&
-                                    ruta.hq40 !== "N/A" &&
-                                    ruta.hq40 !== "-" && (
-                                      <button
-                                        type="button"
-                                        className={`qf-btn w-100 justify-content-between ${
-                                          rutaSeleccionada?.id === ruta.id &&
-                                          containerSeleccionado?.type === "40HQ"
-                                            ? "qf-btn-primary"
-                                            : "qf-btn-outline"
-                                        }`}
-                                        onClick={() =>
-                                          handleSeleccionarContainer(
-                                            ruta,
-                                            "40HQ",
-                                          )
-                                        }
-                                      >
-                                        <div className="d-flex justify-content-between align-items-center">
-                                          <span className="fw-bold">
-                                            <i className="bi bi-box me-2"></i>{" "}
-                                            40HQ
-                                          </span>
-                                          <span className="badge bg-light text-dark">
-                                            {ruta.currency}{" "}
-                                            {(
-                                              extractPrice(ruta.hq40) * 1.15
-                                            ).toFixed(0)}
-                                          </span>
-                                        </div>
-                                      </button>
-                                    )}
-
-                                  {/* 40NOR */}
-                                  {ruta.nor40 &&
-                                    ruta.nor40 !== "N/A" &&
-                                    ruta.nor40 !== "-" && (
-                                      <button
-                                        type="button"
-                                        className={`qf-btn w-100 justify-content-between ${
-                                          rutaSeleccionada?.id === ruta.id &&
-                                          containerSeleccionado?.type ===
-                                            "40NOR"
-                                            ? "qf-btn-primary"
-                                            : "qf-btn-outline"
-                                        }`}
-                                        onClick={() =>
-                                          handleSeleccionarContainer(
-                                            ruta,
-                                            "40NOR",
-                                          )
-                                        }
-                                      >
-                                        <div className="d-flex justify-content-between align-items-center">
-                                          <span className="fw-bold">
-                                            <i className="bi bi-box me-2"></i>{" "}
-                                            40NOR
-                                          </span>
-                                          <span className="badge bg-light text-dark">
-                                            {ruta.currency}{" "}
-                                            {(
-                                              extractPrice(ruta.nor40) * 1.15
-                                            ).toFixed(0)}
-                                          </span>
-                                        </div>
-                                      </button>
-                                    )}
-                                </div>
                               </div>
-                            </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* ======== RUTAS SIN TARIFA ======== */}
+                {routeMode === "noRecurrente" && expandedRoutes && (
+                  <div>
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-6">
+                        <label className="qf-label">
+                          Puerto de Origen (POL)
+                        </label>
+                        <Select
+                          value={polNR}
+                          onChange={handlePolNRChange}
+                          options={opcionesPOL_NR}
+                          placeholder="Selecciona puerto de origen..."
+                          isClearable
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "var(--qf-border-color)",
+                              "&:hover": { borderColor: "var(--qf-primary)" },
+                              boxShadow: "none",
+                            }),
+                            option: (base, state) => ({
+                              ...base,
+                              backgroundColor: state.isSelected
+                                ? "var(--qf-primary)"
+                                : state.isFocused
+                                  ? "var(--qf-bg-light)"
+                                  : "white",
+                            }),
+                          }}
+                        />
+                      </div>
+
+                      <div className="col-md-6">
+                        <label className="qf-label">
+                          Puerto de Destino (POD)
+                        </label>
+                        <Select
+                          value={podNR}
+                          onChange={handlePodNRChange}
+                          options={opcionesPOD_NR}
+                          placeholder={
+                            polNR
+                              ? "Selecciona puerto de destino..."
+                              : "Selecciona origen primero"
+                          }
+                          isClearable
+                          isDisabled={!polNR}
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "var(--qf-border-color)",
+                              "&:hover": { borderColor: "var(--qf-primary)" },
+                              backgroundColor: !polNR
+                                ? "var(--qf-bg-light)"
+                                : "white",
+                              boxShadow: "none",
+                            }),
+                            option: (base, state) => ({
+                              ...base,
+                              backgroundColor: state.isSelected
+                                ? "var(--qf-primary)"
+                                : state.isFocused
+                                  ? "var(--qf-bg-light)"
+                                  : "white",
+                            }),
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </>

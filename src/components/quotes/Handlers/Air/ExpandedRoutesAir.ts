@@ -27,6 +27,7 @@ const capitalize = (str: string): string => {
 export interface ExpandedRoutesAirData {
   origins: Array<{ value: string; label: string }>;
   destinations: Array<{ value: string; label: string }>;
+  rows: Array<{ originNorm: string; destNorm: string; destLabel: string }>;
 }
 
 export const parseExpandedRoutesAirCSV = (
@@ -67,17 +68,18 @@ export const parseExpandedRoutesAirCSV = (
     const originRaw = fields[1]?.trim();
     const destRaw = fields[2]?.trim();
 
-    if (originRaw) {
-      const norm = normalize(originRaw);
-      if (norm && !originMap.has(norm)) {
-        originMap.set(norm, capitalize(originRaw));
+    const originNorm = originRaw ? normalize(originRaw) : "";
+
+    if (originRaw && originNorm) {
+      if (!originMap.has(originNorm)) {
+        originMap.set(originNorm, capitalize(originRaw));
       }
     }
 
     if (destRaw) {
-      const norm = normalize(destRaw);
-      if (norm && !destMap.has(norm)) {
-        destMap.set(norm, capitalize(destRaw));
+      const destNorm = normalize(destRaw);
+      if (destNorm && !destMap.has(destNorm)) {
+        destMap.set(destNorm, capitalize(destRaw));
       }
     }
   }
@@ -90,7 +92,15 @@ export const parseExpandedRoutesAirCSV = (
     .map(([value, label]) => ({ value, label }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
-  return { origins, destinations };
+  // Generate ALL combinations: every Origin × every Destination
+  const rows: Array<{ originNorm: string; destNorm: string; destLabel: string }> = [];
+  for (const origin of origins) {
+    for (const dest of destinations) {
+      rows.push({ originNorm: origin.value, destNorm: dest.value, destLabel: dest.label });
+    }
+  }
+
+  return { origins, destinations, rows };
 };
 
 export const fetchExpandedRoutesAir =

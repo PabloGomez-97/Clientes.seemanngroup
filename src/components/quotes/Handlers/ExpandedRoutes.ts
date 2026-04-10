@@ -82,6 +82,7 @@ const getPODDisplayName = (podNormalized: string): string => {
 export interface ExpandedRoutesData {
   pols: Array<{ value: string; label: string }>;
   pods: Array<{ value: string; label: string }>;
+  rows: Array<{ polNorm: string; podNorm: string; podLabel: string }>;
 }
 
 export const parseExpandedRoutesCSV = (csvText: string): ExpandedRoutesData => {
@@ -122,10 +123,11 @@ export const parseExpandedRoutesCSV = (csvText: string): ExpandedRoutesData => {
     const polRaw = fields[1]?.trim();
     const podRaw = fields[2]?.trim();
 
-    if (polRaw) {
-      const norm = normalize(polRaw);
-      if (norm && !polMap.has(norm)) {
-        polMap.set(norm, capitalize(polRaw));
+    const polNorm = polRaw ? normalize(polRaw) : "";
+
+    if (polRaw && polNorm) {
+      if (!polMap.has(polNorm)) {
+        polMap.set(polNorm, capitalize(polRaw));
       }
     }
 
@@ -147,7 +149,15 @@ export const parseExpandedRoutesCSV = (csvText: string): ExpandedRoutesData => {
     .map(([value, label]) => ({ value, label }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
-  return { pols, pods };
+  // Generate ALL combinations: every POL × every POD
+  const rows: Array<{ polNorm: string; podNorm: string; podLabel: string }> = [];
+  for (const pol of pols) {
+    for (const pod of pods) {
+      rows.push({ polNorm: pol.value, podNorm: pod.value, podLabel: pod.label });
+    }
+  }
+
+  return { pols, pods, rows };
 };
 
 /**

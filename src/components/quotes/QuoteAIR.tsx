@@ -44,7 +44,10 @@ import {
   calculateAduanaCharges,
   type SupportedCurrency,
 } from "../../types/agenciaAduana";
-import { fetchExpandedRoutesAir } from "./Handlers/Air/ExpandedRoutesAir";
+import {
+  fetchExpandedRoutesAir,
+  type ExpandedRoutesAirData,
+} from "./Handlers/Air/ExpandedRoutesAir";
 import "./QuoteAIR.css";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
@@ -175,11 +178,7 @@ function QuoteAPITester({
     null,
   );
 
-  // Delivery is derived from the selected Destination and is not editable by the user
-  const deliveryToAddressDerived = destinationSeleccionado
-    ? destinationSeleccionado.label
-    : "";
-
+  // Delivery computed after NR states below
   const [opcionesOrigin, setOpcionesOrigin] = useState<SelectOption[]>([]);
   const [opcionesDestination, setOpcionesDestination] = useState<
     SelectOption[]
@@ -195,6 +194,28 @@ function QuoteAPITester({
 
   // Estado para sinTarifa (ruta expandida sin tarifa en el sheet aéreo)
   const [sinTarifa, setSinTarifa] = useState(false);
+
+  // ============================================================================
+  // ESTADOS PARA RUTAS EXPANDIDAS Y SELECTOR DUAL
+  // ============================================================================
+  const [expandedRoutesAir, setExpandedRoutesAir] =
+    useState<ExpandedRoutesAirData | null>(null);
+  const [routeMode, setRouteMode] = useState<
+    "recurrente" | "noRecurrente" | null
+  >(null);
+  const [originNR, setOriginNR] = useState<SelectOption | null>(null);
+  const [destNR, setDestNR] = useState<SelectOption | null>(null);
+  const [opcionesOrigin_NR, setOpcionesOrigin_NR] = useState<SelectOption[]>(
+    [],
+  );
+  const [opcionesDest_NR, setOpcionesDest_NR] = useState<SelectOption[]>([]);
+
+  // Delivery is derived from the selected Destination and is not editable by the user
+  const deliveryToAddressDerived = destinationSeleccionado
+    ? destinationSeleccionado.label
+    : destNR
+      ? destNR.label
+      : "";
 
   // Estado para modal de precio 0
   const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
@@ -254,7 +275,7 @@ function QuoteAPITester({
         const rutasParsed = parseAEREO(data);
         setRutas(rutasParsed);
 
-        // Extraer origins únicos del sheet de tarifas
+        // Extraer origins únicos del sheet de tarifas (solo rutas con tarifa)
         const originsMap = new Map<string, string>();
         rutasParsed.forEach((r) => {
           const norm = normalize(r.origin);
@@ -263,22 +284,19 @@ function QuoteAPITester({
           }
         });
 
-        // Fetch de rutas expandidas (segundo sheet) y fusionar origins/destinations
-        try {
-          const expanded = await fetchExpandedRoutesAir();
-          expanded.origins.forEach((o) => {
-            if (!originsMap.has(o.value)) {
-              originsMap.set(o.value, o.label);
-            }
-          });
-        } catch (expandErr) {
-          console.warn("Error cargando rutas aéreas expandidas:", expandErr);
-        }
-
         const originsUnicos = Array.from(originsMap.entries())
           .map(([value, label]) => ({ value, label }))
           .sort((a, b) => a.label.localeCompare(b.label));
         setOpcionesOrigin(originsUnicos);
+
+        // Cargar y guardar rutas expandidas para selector no recurrente
+        try {
+          const expanded = await fetchExpandedRoutesAir();
+          setExpandedRoutesAir(expanded);
+          setOpcionesOrigin_NR(expanded.origins);
+        } catch (expandErr) {
+          console.warn("Error cargando rutas aéreas expandidas:", expandErr);
+        }
 
         // Extraer carriers únicos
         const carriersUnicos = Array.from(
@@ -739,7 +757,7 @@ function QuoteAPITester({
 
   useEffect(() => {
     if (originSeleccionado) {
-      // Destinations del sheet de tarifas
+      // Destinations del sheet de tarifas (solo rutas con tarifa)
       const destsMap = new Map<string, string>();
       rutas
         .filter((r) => r.originNormalized === originSeleccionado.value)
@@ -750,29 +768,10 @@ function QuoteAPITester({
           }
         });
 
-      // Fusionar destinations del sheet expandido (todas las destinations expandidas
-      // están disponibles para cualquier origin expandido)
-      fetchExpandedRoutesAir()
-        .then((expanded) => {
-          // Solo agregar destinations expandidas si el origin está en el sheet expandido
-          const originInExpanded = expanded.origins.some(
-            (o) => o.value === originSeleccionado.value,
-          );
-          if (originInExpanded) {
-            expanded.destinations.forEach((d) => {
-              if (!destsMap.has(d.value)) {
-                destsMap.set(d.value, d.label);
-              }
-            });
-          }
-        })
-        .catch(() => {})
-        .finally(() => {
-          const destinationsUnicos = Array.from(destsMap.entries())
-            .map(([value, label]) => ({ value, label }))
-            .sort((a, b) => a.label.localeCompare(b.label));
-          setOpcionesDestination(destinationsUnicos);
-        });
+      const destinationsUnicos = Array.from(destsMap.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      setOpcionesDestination(destinationsUnicos);
 
       setDestinationSeleccionado(null);
       setRutaSeleccionada(null);
@@ -784,6 +783,88 @@ function QuoteAPITester({
       setSinTarifa(false);
     }
   }, [originSeleccionado, rutas]);
+
+  // ============================================================================
+  // ACTUALIZAR DESTINATIONS NO RECURRENTES CUANDO CAMBIA ORIGIN NR
+  // ============================================================================
+  useEffect(() => {
+    if (originNR && expandedRoutesAir) {
+      const destsForOrigin = expandedRoutesAir.rows
+        .filter((r) => r.originNorm === originNR.value)
+        .reduce((map, r) => {
+          if (!map.has(r.destNorm)) map.set(r.destNorm, r.destLabel);
+          return map;
+        }, new Map<string, string>());
+      const destsUnicos = Array.from(destsForOrigin.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+      setOpcionesDest_NR(destsUnicos);
+      setDestNR(null);
+    } else {
+      setOpcionesDest_NR([]);
+      setDestNR(null);
+    }
+  }, [originNR, expandedRoutesAir]);
+
+  // Auto-activar sinTarifa cuando se selecciona ruta no recurrente aérea
+  // Si la ruta coincide con una recurrente, se trata como recurrente (smart routing)
+  useEffect(() => {
+    if (!originNR || !destNR || loadingRutas) return;
+
+    // Smart routing: check if combination exists in recurring routes
+    const matchingRoutes = rutas.filter((r) => {
+      const validityState = getValidityClass(r.validUntil);
+      if (validityState === "expired") return false;
+      return (
+        r.originNormalized === originNR.value &&
+        r.destinationNormalized === destNR.value &&
+        (!r.carrier || carriersActivos.has(r.carrier)) &&
+        monedasActivas.has(r.currency)
+      );
+    });
+
+    if (matchingRoutes.length > 0) {
+      // This NR route is actually a recurring route — upgrade seamlessly
+      setOriginSeleccionado({ value: originNR.value, label: originNR.label });
+      setDestinationSeleccionado({ value: destNR.value, label: destNR.label });
+      setRouteMode("recurrente");
+      setOriginNR(null);
+      setDestNR(null);
+      setSinTarifa(false);
+      return;
+    }
+
+    const mockRuta: RutaAerea = {
+      id: "AIR-PENDING",
+      origin: originNR.label,
+      originNormalized: originNR.value,
+      destination: destNR.label,
+      destinationNormalized: destNR.value,
+      kg45: null,
+      kg100: null,
+      kg300: null,
+      kg500: null,
+      kg1000: null,
+      carrier: "X",
+      carrierNormalized: "x",
+      frequency: null,
+      transitTime: "X",
+      routing: null,
+      remark1: null,
+      remark2: null,
+      validUntil: new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toLocaleDateString("es-CL"),
+      localCharges: 0,
+      gastosXKg: 0,
+      minGastosXKg: 0,
+      row_number: 0,
+      priceForComparison: 0,
+      currency: "USD",
+    };
+    setRutaSeleccionada(mockRuta);
+    setSinTarifa(true);
+  }, [originNR, destNR, loadingRutas, rutas, carriersActivos, monedasActivas]);
 
   // ============================================================================
   // Auto-activar sinTarifa cuando no hay rutas con tarifa para Origin+Destination
@@ -1071,6 +1152,36 @@ function QuoteAPITester({
       return matchOrigin && matchDestination && matchCarrier && matchMoneda;
     })
     .sort((a, b) => a.priceForComparison - b.priceForComparison);
+
+  // ============================================================================
+  // HANDLERS PARA SELECTOR DUAL (RECURRENTES / NO RECURRENTES)
+  // ============================================================================
+
+  const handleOriginRecurrenteChange = (option: SelectOption | null) => {
+    setOriginSeleccionado(option);
+    if (!option) {
+      setDestinationSeleccionado(null);
+      setRutaSeleccionada(null);
+      setSinTarifa(false);
+    }
+  };
+
+  const handleOriginNRChange = (option: SelectOption | null) => {
+    setOriginNR(option);
+    if (!option) {
+      setDestNR(null);
+      setRutaSeleccionada(null);
+      setSinTarifa(false);
+    }
+  };
+
+  const handleDestNRChange = (option: SelectOption | null) => {
+    setDestNR(option);
+    if (!option) {
+      setRutaSeleccionada(null);
+      setSinTarifa(false);
+    }
+  };
 
   // Cálculo del peso chargeable (para ambos modos)
   const getPesoChargeable = () => {
@@ -3131,218 +3242,428 @@ function QuoteAPITester({
               </div>
             ) : (
               <>
+                {/* ======== SELECTOR DE TIPO DE RUTA (CARD TOGGLE) ======== */}
                 <div className="row g-3 mb-4">
-                  <div className="col-md-6">
-                    <label className="qa-label">{t("QuoteAIR.Origen")}</label>
-                    <Select
-                      value={originSeleccionado}
-                      onChange={setOriginSeleccionado}
-                      options={opcionesOrigin}
-                      placeholder={t("QuoteAIR.seleccionaorigen")}
-                      isClearable
-                      classNamePrefix="qa-react-select"
-                      styles={{
-                        control: (base) => ({
-                          ...base,
-                          borderColor: "#e0e0e0",
-                          boxShadow: "none",
-                          "&:hover": { borderColor: "#b0b0b0" },
-                        }),
+                  {/* Card: Rutas con tarifa */}
+                  <div className="col-6">
+                    <div
+                      onClick={() => {
+                        setRouteMode("recurrente");
+                        setOriginNR(null);
+                        setDestNR(null);
+                        setRutaSeleccionada(null);
+                        setSinTarifa(false);
                       }}
-                    />
+                      style={{
+                        cursor: "pointer",
+                        padding: "1rem",
+                        borderRadius: "0.5rem",
+                        border:
+                          routeMode === "recurrente"
+                            ? "2px solid var(--qa-primary)"
+                            : "1.5px solid #dee2e6",
+                        backgroundColor:
+                          routeMode === "recurrente"
+                            ? "rgba(255, 98, 0, 0.04)"
+                            : "white",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start mb-1">
+                        <div className="d-flex align-items-center gap-2">
+                          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
+                            Rutas Recurrentes
+                          </span>
+                          <span
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Esta ruta tiene tarifa vigente."
+                            style={{
+                              cursor: "help",
+                              color: "var(--qa-text-secondary)",
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                        </div>
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: "0.7rem",
+                            backgroundColor:
+                              routeMode === "recurrente"
+                                ? "var(--qa-primary)"
+                                : "#6c757d",
+                            color: "white",
+                          }}
+                        >
+                          Solicitar Cotización
+                        </span>
+                      </div>
+                      <p
+                        className="mb-0"
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--qa-text-secondary)",
+                        }}
+                      >
+                        Rutas comunes entre los clientes
+                      </p>
+                    </div>
                   </div>
-                  <div className="col-md-6">
-                    <label className="qa-label">{t("QuoteAIR.Destino")}</label>
-                    <Select
-                      value={destinationSeleccionado}
-                      onChange={setDestinationSeleccionado}
-                      options={opcionesDestination}
-                      placeholder={
-                        originSeleccionado
-                          ? t("QuoteAIR.seleccionadestino")
-                          : t("QuoteAIR.seleccionaprimerorigen")
-                      }
-                      isClearable
-                      isDisabled={!originSeleccionado}
-                      styles={{
-                        control: (base) => ({
-                          ...base,
-                          borderColor: "#e0e0e0",
-                          boxShadow: "none",
-                          "&:hover": { borderColor: "#b0b0b0" },
-                        }),
+
+                  {/* Card: Rutas sin tarifa */}
+                  <div className="col-6">
+                    <div
+                      onClick={() => {
+                        setRouteMode("noRecurrente");
+                        setOriginSeleccionado(null);
+                        setDestinationSeleccionado(null);
+                        setRutaSeleccionada(null);
+                        setSinTarifa(false);
                       }}
-                    />
+                      style={{
+                        cursor: "pointer",
+                        padding: "1rem",
+                        borderRadius: "0.5rem",
+                        border:
+                          routeMode === "noRecurrente"
+                            ? "2px solid var(--qa-primary)"
+                            : "1.5px solid #dee2e6",
+                        backgroundColor:
+                          routeMode === "noRecurrente"
+                            ? "rgba(255, 98, 0, 0.04)"
+                            : "white",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <div className="d-flex justify-content-between align-items-start mb-1">
+                        <div className="d-flex align-items-center gap-2">
+                          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
+                            Rutas No Recurrentes
+                          </span>
+                          <span
+                            data-bs-toggle="tooltip"
+                            data-bs-placement="top"
+                            title="Rutas no encontradas en Recurrentes"
+                            style={{
+                              cursor: "help",
+                              color: "var(--qa-text-secondary)",
+                              fontSize: "0.85rem",
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                        </div>
+                        <span
+                          className="badge"
+                          style={{
+                            fontSize: "0.7rem",
+                            backgroundColor:
+                              routeMode === "noRecurrente"
+                                ? "var(--qa-primary)"
+                                : "#6c757d",
+                            color: "white",
+                          }}
+                        >
+                          Solicitar cotización
+                        </span>
+                      </div>
+                      <p
+                        className="mb-0"
+                        style={{
+                          fontSize: "0.78rem",
+                          color: "var(--qa-text-secondary)",
+                        }}
+                      >
+                        ¿No encuentras tu ruta? Encuéntrala aquí
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {originSeleccionado && destinationSeleccionado && (
-                  <div className="mt-4">
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h6 className="mb-0 fw-bold">
-                        {t("QuoteAIR.rutasdisponibles1")} (
-                        {rutasFiltradas.length})
-                      </h6>
-                      {rutasFiltradas.length > 0 && (
-                        <small className="text-muted">
-                          {t("QuoteAIR.seleccionamejor")}
-                        </small>
-                      )}
+                {/* ======== RUTAS CON TARIFA ======== */}
+                {routeMode === "recurrente" && (
+                  <div className="mb-4">
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          {t("QuoteAIR.Origen")}
+                        </label>
+                        <Select
+                          value={originSeleccionado}
+                          onChange={handleOriginRecurrenteChange}
+                          options={opcionesOrigin}
+                          placeholder={t("QuoteAIR.seleccionaorigen")}
+                          isClearable
+                          classNamePrefix="qa-react-select"
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "#e0e0e0",
+                              boxShadow: "none",
+                              "&:hover": { borderColor: "#b0b0b0" },
+                            }),
+                          }}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          {t("QuoteAIR.Destino")}
+                        </label>
+                        <Select
+                          value={destinationSeleccionado}
+                          onChange={setDestinationSeleccionado}
+                          options={opcionesDestination}
+                          placeholder={
+                            originSeleccionado
+                              ? t("QuoteAIR.seleccionadestino")
+                              : t("QuoteAIR.seleccionaprimerorigen")
+                          }
+                          isClearable
+                          isDisabled={!originSeleccionado}
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "#e0e0e0",
+                              boxShadow: "none",
+                              "&:hover": { borderColor: "#b0b0b0" },
+                            }),
+                          }}
+                        />
+                      </div>
                     </div>
 
-                    {rutasFiltradas.length === 0 ? (
-                      <div className="text-center py-4 bg-light rounded text-muted">
-                        <i className="bi bi-search fs-3 d-block mb-2"></i>
-                        <p className="mb-1">{t("QuoteAIR.norutas")}</p>
-                        <small>{t("QuoteAIR.intenta")}</small>
-                      </div>
-                    ) : (
-                      <div className="qa-table-container">
-                        <table className="qa-table">
-                          <thead>
-                            <tr>
-                              <th style={{ width: "50px" }}></th>
-                              <th>Carrier</th>
-                              <th className="text-center">1-99kg</th>
-                              <th className="text-center">100-299kg</th>
-                              <th className="text-center">300-499kg</th>
-                              <th className="text-center">500-999kg</th>
-                              <th className="text-center">+1000kg</th>
-                              <th className="text-center">
-                                {t("QuoteAIR.tiempoenruta")}
-                              </th>
-                              <th className="text-center">
-                                {t("QuoteAIR.valido")}
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {rutasFiltradas.map((ruta, index) => {
-                              const precioKg45 = extractPrice(ruta.kg45);
-                              const precioKg100 = extractPrice(ruta.kg100);
-                              const precioKg300 = extractPrice(ruta.kg300);
-                              const precioKg500 = extractPrice(ruta.kg500);
-                              const precioKg1000 = extractPrice(ruta.kg1000);
-                              const isSelected =
-                                rutaSeleccionada?.id === ruta.id;
+                    {originSeleccionado && destinationSeleccionado && (
+                      <div className="mt-4">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <h6 className="mb-0 fw-bold">
+                            {t("QuoteAIR.rutasdisponibles1")} (
+                            {rutasFiltradas.length})
+                          </h6>
+                          {rutasFiltradas.length > 0 && (
+                            <small className="text-muted">
+                              {t("QuoteAIR.seleccionamejor")}
+                            </small>
+                          )}
+                        </div>
 
-                              const validityState = getValidityClass(
-                                ruta.validUntil,
-                              );
-
-                              return (
-                                <tr
-                                  key={ruta.id}
-                                  onClick={() => {
-                                    if (ruta.priceForComparison === 0) {
-                                      setShowPriceZeroModal(true);
-                                      return;
-                                    }
-                                    setRutaSeleccionada(ruta);
-                                  }}
-                                  className={isSelected ? "selected" : ""}
-                                >
-                                  <td className="text-center">
-                                    {isSelected ? (
-                                      <i className="bi bi-check-circle-fill text-primary"></i>
-                                    ) : (
-                                      <i className="bi bi-circle text-muted"></i>
-                                    )}
-                                  </td>
-                                  <td>
-                                    <div className="d-flex align-items-center gap-2">
-                                      {ruta.carrier &&
-                                      ruta.carrier !== "Por Confirmar" ? (
-                                        <img
-                                          src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
-                                          alt={ruta.carrier}
-                                          style={{
-                                            width: "24px",
-                                            height: "24px",
-                                            objectFit: "contain",
-                                          }}
-                                          onError={(e) => {
-                                            e.currentTarget.style.display =
-                                              "none";
-                                          }}
-                                        />
-                                      ) : (
-                                        <i className="bi bi-airplane"></i>
-                                      )}
-                                      <span className="fw-medium">
-                                        {ruta.carrier ||
-                                          t("QuoteAIR.porconfirmar")}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  {[
-                                    precioKg45,
-                                    precioKg100,
-                                    precioKg300,
-                                    precioKg500,
-                                    precioKg1000,
-                                  ].map((price, idx) => (
-                                    <td key={idx} className="text-center">
-                                      {price > 0 ? (
-                                        <div>
-                                          <div className="fw-bold fs-7">
-                                            {ruta.currency}{" "}
-                                            {(price * 1.15).toFixed(2)}
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <span className="text-muted">—</span>
-                                      )}
-                                    </td>
-                                  ))}
-                                  <td className="text-center text-muted small">
-                                    {ruta.transitTime ? (
-                                      ruta.transitTime
-                                    ) : (
-                                      <OverlayTrigger
-                                        placement="top"
-                                        overlay={
-                                          <Tooltip id={`tt-transit-${ruta.id}`}>
-                                            To Be Confirmed
-                                          </Tooltip>
-                                        }
-                                      >
-                                        <span
-                                          style={{
-                                            textDecoration: "underline",
-                                            color: "var(--qa-primary)",
-                                            cursor: "help",
-                                          }}
-                                        >
-                                          TBC
-                                        </span>
-                                      </OverlayTrigger>
-                                    )}
-                                  </td>
-                                  <td className="text-center text-muted small">
-                                    {ruta.validUntil ? (
-                                      <span
-                                        className={`qa-validity ${
-                                          validityState === "valid"
-                                            ? "valid"
-                                            : validityState === "expired"
-                                              ? "expired"
-                                              : ""
-                                        }`}
-                                      >
-                                        {ruta.validUntil}
-                                      </span>
-                                    ) : (
-                                      "—"
-                                    )}
-                                  </td>
+                        {rutasFiltradas.length === 0 ? (
+                          <div className="text-center py-4 bg-light rounded text-muted">
+                            <i className="bi bi-search fs-3 d-block mb-2"></i>
+                            <p className="mb-1">{t("QuoteAIR.norutas")}</p>
+                            <small>{t("QuoteAIR.intenta")}</small>
+                          </div>
+                        ) : (
+                          <div className="qa-table-container">
+                            <table className="qa-table">
+                              <thead>
+                                <tr>
+                                  <th style={{ width: "50px" }}></th>
+                                  <th>Carrier</th>
+                                  <th className="text-center">1-99kg</th>
+                                  <th className="text-center">100-299kg</th>
+                                  <th className="text-center">300-499kg</th>
+                                  <th className="text-center">500-999kg</th>
+                                  <th className="text-center">+1000kg</th>
+                                  <th className="text-center">
+                                    {t("QuoteAIR.tiempoenruta")}
+                                  </th>
+                                  <th className="text-center">
+                                    {t("QuoteAIR.valido")}
+                                  </th>
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                              </thead>
+                              <tbody>
+                                {rutasFiltradas.map((ruta, index) => {
+                                  const precioKg45 = extractPrice(ruta.kg45);
+                                  const precioKg100 = extractPrice(ruta.kg100);
+                                  const precioKg300 = extractPrice(ruta.kg300);
+                                  const precioKg500 = extractPrice(ruta.kg500);
+                                  const precioKg1000 = extractPrice(
+                                    ruta.kg1000,
+                                  );
+                                  const isSelected =
+                                    rutaSeleccionada?.id === ruta.id;
+
+                                  const validityState = getValidityClass(
+                                    ruta.validUntil,
+                                  );
+
+                                  return (
+                                    <tr
+                                      key={ruta.id}
+                                      onClick={() => {
+                                        if (ruta.priceForComparison === 0) {
+                                          setShowPriceZeroModal(true);
+                                          return;
+                                        }
+                                        setRutaSeleccionada(ruta);
+                                      }}
+                                      className={isSelected ? "selected" : ""}
+                                    >
+                                      <td className="text-center">
+                                        {isSelected ? (
+                                          <i className="bi bi-check-circle-fill text-primary"></i>
+                                        ) : (
+                                          <i className="bi bi-circle text-muted"></i>
+                                        )}
+                                      </td>
+                                      <td>
+                                        <div className="d-flex align-items-center gap-2">
+                                          {ruta.carrier &&
+                                          ruta.carrier !== "Por Confirmar" ? (
+                                            <img
+                                              src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
+                                              alt={ruta.carrier}
+                                              style={{
+                                                width: "24px",
+                                                height: "24px",
+                                                objectFit: "contain",
+                                              }}
+                                              onError={(e) => {
+                                                e.currentTarget.style.display =
+                                                  "none";
+                                              }}
+                                            />
+                                          ) : (
+                                            <i className="bi bi-airplane"></i>
+                                          )}
+                                          <span className="fw-medium">
+                                            {ruta.carrier ||
+                                              t("QuoteAIR.porconfirmar")}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      {[
+                                        precioKg45,
+                                        precioKg100,
+                                        precioKg300,
+                                        precioKg500,
+                                        precioKg1000,
+                                      ].map((price, idx) => (
+                                        <td key={idx} className="text-center">
+                                          {price > 0 ? (
+                                            <div>
+                                              <div className="fw-bold fs-7">
+                                                {ruta.currency}{" "}
+                                                {(price * 1.15).toFixed(2)}
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <span className="text-muted">
+                                              —
+                                            </span>
+                                          )}
+                                        </td>
+                                      ))}
+                                      <td className="text-center text-muted small">
+                                        {ruta.transitTime ? (
+                                          ruta.transitTime
+                                        ) : (
+                                          <OverlayTrigger
+                                            placement="top"
+                                            overlay={
+                                              <Tooltip
+                                                id={`tt-transit-${ruta.id}`}
+                                              >
+                                                To Be Confirmed
+                                              </Tooltip>
+                                            }
+                                          >
+                                            <span
+                                              style={{
+                                                textDecoration: "underline",
+                                                color: "var(--qa-primary)",
+                                                cursor: "help",
+                                              }}
+                                            >
+                                              TBC
+                                            </span>
+                                          </OverlayTrigger>
+                                        )}
+                                      </td>
+                                      <td className="text-center text-muted small">
+                                        {ruta.validUntil ? (
+                                          <span
+                                            className={`qa-validity ${
+                                              validityState === "valid"
+                                                ? "valid"
+                                                : validityState === "expired"
+                                                  ? "expired"
+                                                  : ""
+                                            }`}
+                                          >
+                                            {ruta.validUntil}
+                                          </span>
+                                        ) : (
+                                          "—"
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* ======== RUTAS SIN TARIFA ======== */}
+                {routeMode === "noRecurrente" && expandedRoutesAir && (
+                  <div>
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          {t("QuoteAIR.Origen")}
+                        </label>
+                        <Select
+                          value={originNR}
+                          onChange={handleOriginNRChange}
+                          options={opcionesOrigin_NR}
+                          placeholder={t("QuoteAIR.seleccionaorigen")}
+                          isClearable
+                          classNamePrefix="qa-react-select"
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "#e0e0e0",
+                              boxShadow: "none",
+                              "&:hover": { borderColor: "#b0b0b0" },
+                            }),
+                          }}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          {t("QuoteAIR.Destino")}
+                        </label>
+                        <Select
+                          value={destNR}
+                          onChange={handleDestNRChange}
+                          options={opcionesDest_NR}
+                          placeholder={
+                            originNR
+                              ? t("QuoteAIR.seleccionadestino")
+                              : t("QuoteAIR.seleccionaprimerorigen")
+                          }
+                          isClearable
+                          isDisabled={!originNR}
+                          styles={{
+                            control: (base) => ({
+                              ...base,
+                              borderColor: "#e0e0e0",
+                              boxShadow: "none",
+                              "&:hover": { borderColor: "#b0b0b0" },
+                            }),
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </>
