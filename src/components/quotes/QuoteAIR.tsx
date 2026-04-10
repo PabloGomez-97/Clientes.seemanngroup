@@ -3254,38 +3254,24 @@ function QuoteAPITester({
                         setRutaSeleccionada(null);
                         setSinTarifa(false);
                       }}
-                      style={{
-                        cursor: "pointer",
-                        padding: "1rem",
-                        borderRadius: "0.5rem",
-                        border:
-                          routeMode === "recurrente"
-                            ? "2px solid var(--qa-primary)"
-                            : "1.5px solid #dee2e6",
-                        backgroundColor:
-                          routeMode === "recurrente"
-                            ? "rgba(255, 98, 0, 0.04)"
-                            : "white",
-                        transition: "all 0.2s ease",
-                      }}
+                      className={`route-card-toggle${routeMode === "recurrente" ? " selected" : ""}`}
                     >
                       <div className="d-flex justify-content-between align-items-start mb-1">
                         <div className="d-flex align-items-center gap-2">
                           <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
                             Rutas Recurrentes
                           </span>
-                          <span
+                          <i
+                            className="bi bi-question-circle-fill"
                             data-bs-toggle="tooltip"
                             data-bs-placement="top"
                             title="Esta ruta tiene tarifa vigente."
                             style={{
-                              cursor: "help",
-                              color: "var(--qa-text-secondary)",
+                              color: "#ff6200",
                               fontSize: "0.85rem",
+                              cursor: "help",
                             }}
-                          >
-                            ⓘ
-                          </span>
+                          ></i>
                         </div>
                         <span
                           className="badge"
@@ -3323,38 +3309,24 @@ function QuoteAPITester({
                         setRutaSeleccionada(null);
                         setSinTarifa(false);
                       }}
-                      style={{
-                        cursor: "pointer",
-                        padding: "1rem",
-                        borderRadius: "0.5rem",
-                        border:
-                          routeMode === "noRecurrente"
-                            ? "2px solid var(--qa-primary)"
-                            : "1.5px solid #dee2e6",
-                        backgroundColor:
-                          routeMode === "noRecurrente"
-                            ? "rgba(255, 98, 0, 0.04)"
-                            : "white",
-                        transition: "all 0.2s ease",
-                      }}
+                      className={`route-card-toggle${routeMode === "noRecurrente" ? " selected" : ""}`}
                     >
                       <div className="d-flex justify-content-between align-items-start mb-1">
                         <div className="d-flex align-items-center gap-2">
                           <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
                             Rutas No Recurrentes
                           </span>
-                          <span
+                          <i
+                            className="bi bi-question-circle-fill"
                             data-bs-toggle="tooltip"
                             data-bs-placement="top"
                             title="Rutas no encontradas en Recurrentes"
                             style={{
-                              cursor: "help",
-                              color: "var(--qa-text-secondary)",
+                              color: "#ff6200",
                               fontSize: "0.85rem",
+                              cursor: "help",
                             }}
-                          >
-                            ⓘ
-                          </span>
+                          ></i>
                         </div>
                         <span
                           className="badge"
