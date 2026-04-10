@@ -1788,7 +1788,7 @@ function QuoteFCL({
                 className="bi bi-geo-alt me-2"
                 style={{ color: "var(--qf-primary)" }}
               ></i>
-              Paso 1: Selecciona Ruta y Contenedor
+              Paso 1: Seleccionar Ruta
             </h3>
             {containerSeleccionado && (
               <span

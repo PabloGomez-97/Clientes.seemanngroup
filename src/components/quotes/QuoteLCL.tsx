@@ -2073,7 +2073,13 @@ function QuoteLCL({
           onClick={() => handleSectionToggle(1)}
         >
           <div className="d-flex align-items-center">
-            <h3>{t("Quotelcl.ruta")}</h3>
+            <h3>
+              <i
+                className="bi bi-geo-alt me-2"
+                style={{ color: "var(--qf-primary)" }}
+              ></i>
+              Paso 1: Seleccionar Ruta
+            </h3>
             {rutaSeleccionada && (
               <span
                 className="qa-badge ms-3"
