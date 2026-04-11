@@ -45,6 +45,7 @@ import {
   fetchExpandedRoutes,
   type ExpandedRoutesData,
 } from "./Handlers/ExpandedRoutes";
+import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
@@ -81,6 +82,8 @@ function QuoteLCL({
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
+  const { trackStart, trackStep, trackRouteSelected, trackComplete } =
+    useQuoteTracking("LCL");
 
   // ── Estados para selección de cliente (modo ejecutivo) ──
   const [clientesAsignados, setClientesAsignados] = useState<ClienteAsignado[]>(
@@ -210,6 +213,12 @@ function QuoteLCL({
 
   // ── Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) ──
   const isPricingRole = user?.roles?.pricing === true;
+
+  // Track quote start on mount
+  useEffect(() => {
+    trackStart();
+  }, [trackStart]);
+
   useEffect(() => {
     if (!isEjecutivoMode) {
       setLoadingClientes(false);
@@ -591,7 +600,11 @@ function QuoteLCL({
   };
 
   const handleSectionToggle = (section: number) => {
-    setOpenSection(openSection === section ? 0 : section);
+    const newSection = openSection === section ? 0 : section;
+    setOpenSection(newSection);
+    if (newSection === 3) {
+      trackStep({ step: "incoterm_charges", stepNumber: 3, totalSteps: 3 });
+    }
   };
 
   // ============================================================================
@@ -709,6 +722,12 @@ function QuoteLCL({
   useEffect(() => {
     if (rutaSeleccionada) {
       setOpenSection(2); // Abrir automáticamente el Paso 2
+      trackStep({ step: "commodity", stepNumber: 2, totalSteps: 3 });
+      trackRouteSelected(
+        polSeleccionado?.label || polNR?.label || "",
+        podSeleccionado?.label || podNR?.label || "",
+        { operador: rutaSeleccionada.operador },
+      );
     }
   }, [rutaSeleccionada]);
 
@@ -1201,6 +1220,15 @@ function QuoteLCL({
         ...(isEjecutivoMode && {
           clienteAfectado: clienteSeleccionado?.username || "",
         }),
+      });
+
+      // Registrar completación de cotización para behavior tracking
+      trackComplete({
+        pol: polSeleccionado?.label || "",
+        pod: podSeleccionado?.label || "",
+        operador: rutaSeleccionada?.operador || "",
+        incoterm,
+        tipo: tipoAccion,
       });
 
       // Generar PDF después de cotización exitosa

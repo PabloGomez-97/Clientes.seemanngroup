@@ -44,6 +44,7 @@ import {
   calculateAduanaCharges,
   type SupportedCurrency,
 } from "../../types/agenciaAduana";
+import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import {
   fetchExpandedRoutesAir,
   type ExpandedRoutesAirData,
@@ -95,6 +96,8 @@ function QuoteAPITester({
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
+  const { trackStart, trackStep, trackRouteSelected, trackComplete } =
+    useQuoteTracking("AIR");
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -248,6 +251,11 @@ function QuoteAPITester({
     [piecesData],
   );
 
+  // Track quote start on mount
+  useEffect(() => {
+    trackStart();
+  }, [trackStart]);
+
   // ============================================================================
   // CARGA DE DATOS DESDE GOOGLE SHEETS (CSV)
   // ============================================================================
@@ -396,6 +404,14 @@ function QuoteAPITester({
   useEffect(() => {
     if (rutaSeleccionada && openSection === 1) {
       setOpenSection(2);
+      trackStep({ step: "commodity", stepNumber: 2, totalSteps: 3 });
+    }
+    if (rutaSeleccionada) {
+      trackRouteSelected(
+        originSeleccionado?.label || destNR?.label || "",
+        destinationSeleccionado?.label || destNR?.label || "",
+        { carrier: rutaSeleccionada.carrier },
+      );
     }
   }, [rutaSeleccionada]);
 
@@ -478,7 +494,11 @@ function QuoteAPITester({
 
   // Función para manejar el toggle de secciones
   const handleSectionToggle = (section: number) => {
-    setOpenSection(openSection === section ? 0 : section);
+    const newSection = openSection === section ? 0 : section;
+    setOpenSection(newSection);
+    if (newSection === 3) {
+      trackStep({ step: "incoterm_charges", stepNumber: 3, totalSteps: 3 });
+    }
   };
 
   // ============================================================================
@@ -1500,6 +1520,15 @@ function QuoteAPITester({
           incoterm,
         },
         ...(isEjecutivoMode && { clienteAfectado: effectiveUsername }),
+      });
+
+      // Registrar completación de cotización para behavior tracking
+      trackComplete({
+        origen: originSeleccionado?.label || "",
+        destino: destinationSeleccionado?.label || "",
+        carrier: rutaSeleccionada?.carrier || "",
+        incoterm,
+        tipo: tipoAccion,
       });
 
       // Generar PDF después de cotización exitosa

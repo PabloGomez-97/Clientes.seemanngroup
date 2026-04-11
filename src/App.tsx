@@ -38,6 +38,7 @@ import Documentacion from "./components/administrador/Documentacion";
 import OPReporteriaClientes from "./components/administrador/OP-reporteriaclientes";
 import Auditoria from "./components/administrador/Auditoria";
 import AgenciaAduanas from "./components/administrador/AgenciaAduanas";
+import ComportamientoDeClientes from "./components/administrador/ComportamientoDeClientes";
 
 // Reportería Pages
 import ReporteriaDashboard from "./components/administrador/reporteria/pages/ReporteriaDashboard";
@@ -185,6 +186,10 @@ function App() {
           </Route>
           <Route path="auditoria" element={<Auditoria />} />
           <Route path="agencia-aduanas" element={<AgenciaAduanas />} />
+          <Route
+            path="comportamiento-clientes"
+            element={<ComportamientoDeClientes />}
+          />
           <Route path="settings" element={<SettingsAdmin />} />
         </Route>
 

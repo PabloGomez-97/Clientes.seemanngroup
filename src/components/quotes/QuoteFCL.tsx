@@ -41,6 +41,7 @@ import {
   fetchExpandedRoutes,
   type ExpandedRoutesData,
 } from "./Handlers/ExpandedRoutes";
+import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
@@ -76,6 +77,8 @@ function QuoteFCL({
   const ejecutivo = user?.ejecutivo;
   const { t } = useTranslation();
   const { registrarEvento } = useAuditLog();
+  const { trackStart, trackStep, trackRouteSelected, trackComplete } =
+    useQuoteTracking("FCL");
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -174,6 +177,12 @@ function QuoteFCL({
 
   // Cargar clientes asignados al ejecutivo (solo en modo ejecutivo)
   const isPricingRole = user?.roles?.pricing === true;
+
+  // Track quote start on mount
+  useEffect(() => {
+    trackStart();
+  }, [trackStart]);
+
   useEffect(() => {
     const cargarClientes = async () => {
       if (
@@ -567,7 +576,11 @@ function QuoteFCL({
   }, [polSeleccionado, podSeleccionado, rutas, carriersActivos, loadingRutas]);
 
   const handleSectionToggle = (section: number) => {
-    setOpenSection(openSection === section ? 0 : section);
+    const newSection = openSection === section ? 0 : section;
+    setOpenSection(newSection);
+    if (newSection === 2) {
+      trackStep({ step: "incoterm_charges", stepNumber: 2, totalSteps: 2 });
+    }
   };
 
   useEffect(() => {
@@ -583,6 +596,7 @@ function QuoteFCL({
   useEffect(() => {
     if (containerSeleccionado) {
       setOpenSection(2); // Cambiar al Paso 2
+      trackStep({ step: "incoterm_charges", stepNumber: 2, totalSteps: 2 });
     }
   }, [containerSeleccionado]);
 
@@ -879,6 +893,12 @@ function QuoteFCL({
     setSinTarifa(false);
     setError(null);
     setResponse(null);
+
+    trackRouteSelected(
+      polSeleccionado?.label || "",
+      podSeleccionado?.label || "",
+      { carrier: ruta.carrier, container: containerType },
+    );
   };
 
   // ============================================================================
@@ -1028,6 +1048,16 @@ function QuoteFCL({
         ...(isEjecutivoMode && {
           clienteAfectado: clienteSeleccionado?.username || "",
         }),
+      });
+
+      // Registrar completación de cotización para behavior tracking
+      trackComplete({
+        pol: polSeleccionado?.label || "",
+        pod: podSeleccionado?.label || "",
+        carrier: rutaSeleccionada?.carrier || "",
+        container: containerSeleccionado?.type || "",
+        incoterm,
+        tipo: tipoAccion,
       });
 
       // Generar PDF después de cotización exitosa

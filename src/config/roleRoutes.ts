@@ -51,6 +51,7 @@ export const EJECUTIVO_ROUTES: string[] = [
   '/admin/trackeos',
   '/admin/reporteriaclientes',
   '/admin/documentacion',
+  '/admin/comportamiento-clientes',
   '/admin/settings',
 ];
 

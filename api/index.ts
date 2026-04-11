@@ -1044,6 +1044,66 @@ AuditLogSchema.index({ usuario: 1, createdAt: -1 });
 const AuditLog = (mongoose.models.AuditLog || mongoose.model<IAuditLogDoc>('AuditLog', AuditLogSchema)) as AuditLogModel;
 
 // ============================================================
+// MODELO QUOTE BEHAVIOR TRACKING
+// ============================================================
+
+interface IQuoteTrackingEvent {
+  clientEmail: string;
+  clientUsername: string;
+  sessionId: string;
+  event: 'QUOTE_STARTED' | 'QUOTE_STEP_CHANGED' | 'QUOTE_ROUTE_SELECTED' | 'QUOTE_COMPLETED' | 'QUOTE_ABANDONED';
+  quoteType: 'AIR' | 'FCL' | 'LCL';
+  step?: { step: string; stepNumber: number; totalSteps: number };
+  route?: { origin: string; destination: string };
+  incoterm?: string;
+  container?: string;
+  metadata?: Record<string, unknown>;
+  timestamp: Date;
+}
+
+interface IQuoteTrackingEventDoc extends IQuoteTrackingEvent, mongoose.Document {
+  createdAt: Date;
+}
+
+type QuoteTrackingEventModel = mongoose.Model<IQuoteTrackingEventDoc>;
+
+const QuoteTrackingEventSchema = new mongoose.Schema<IQuoteTrackingEventDoc>(
+  {
+    clientEmail: { type: String, required: true, lowercase: true, trim: true },
+    clientUsername: { type: String, required: true, trim: true },
+    sessionId: { type: String, required: true },
+    event: {
+      type: String,
+      required: true,
+      enum: ['QUOTE_STARTED', 'QUOTE_STEP_CHANGED', 'QUOTE_ROUTE_SELECTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'],
+    },
+    quoteType: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL'] },
+    step: {
+      step: String,
+      stepNumber: Number,
+      totalSteps: Number,
+    },
+    route: {
+      origin: String,
+      destination: String,
+    },
+    incoterm: String,
+    container: String,
+    metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
+    timestamp: { type: Date, required: true },
+  },
+  { timestamps: true }
+);
+
+QuoteTrackingEventSchema.index({ clientEmail: 1, timestamp: -1 });
+QuoteTrackingEventSchema.index({ clientUsername: 1, timestamp: -1 });
+QuoteTrackingEventSchema.index({ sessionId: 1, timestamp: 1 });
+QuoteTrackingEventSchema.index({ event: 1, quoteType: 1 });
+QuoteTrackingEventSchema.index({ timestamp: -1 });
+
+const QuoteTrackingEvent = (mongoose.models.QuoteTrackingEvent || mongoose.model<IQuoteTrackingEventDoc>('QuoteTrackingEvent', QuoteTrackingEventSchema)) as QuoteTrackingEventModel;
+
+// ============================================================
 // MODELO AGENCIA DE ADUANAS - CONFIG (Singleton)
 // ============================================================
 import {
@@ -5167,6 +5227,415 @@ Sistema de Portal Clientes — Seemann Group
       } catch (e) {
         console.error('[agencia-aduana] Error PUT config:', e);
         return res.status(500).json({ error: 'Error al actualizar configuración' });
+      }
+    }
+
+    // ============================================================
+    // BEHAVIOR TRACKING — POST /api/behavior-tracking
+    // ============================================================
+    if (path === '/api/behavior-tracking' && method === 'POST') {
+      try {
+        const { clientEmail, clientUsername, sessionId, event, quoteType, step, route, incoterm, container, metadata, timestamp } = (req.body as any) || {};
+
+        if (!clientEmail || !sessionId || !event || !quoteType) {
+          return res.status(400).json({ error: 'clientEmail, sessionId, event y quoteType son requeridos' });
+        }
+
+        const validEvents = ['QUOTE_STARTED', 'QUOTE_STEP_CHANGED', 'QUOTE_ROUTE_SELECTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'];
+        if (!validEvents.includes(event)) {
+          return res.status(400).json({ error: `event debe ser uno de: ${validEvents.join(', ')}` });
+        }
+
+        const validTypes = ['AIR', 'FCL', 'LCL'];
+        if (!validTypes.includes(quoteType)) {
+          return res.status(400).json({ error: `quoteType debe ser uno de: ${validTypes.join(', ')}` });
+        }
+
+        await QuoteTrackingEvent.create({
+          clientEmail: String(clientEmail).toLowerCase().trim(),
+          clientUsername: String(clientUsername).trim(),
+          sessionId: String(sessionId),
+          event,
+          quoteType,
+          step: step || undefined,
+          route: route || undefined,
+          incoterm: incoterm || undefined,
+          container: container || undefined,
+          metadata: metadata || {},
+          timestamp: timestamp ? new Date(timestamp) : new Date(),
+        });
+
+        return res.status(201).json({ success: true });
+      } catch (error: any) {
+        console.error('[behavior-tracking] Error POST:', error);
+        return res.status(500).json({ error: 'Error al registrar evento' });
+      }
+    }
+
+    // ============================================================
+    // BEHAVIOR TRACKING — GET /api/behavior-tracking/clients
+    // Summary of all clients for an ejecutivo
+    // ============================================================
+    if (path === '/api/behavior-tracking/clients' && method === 'GET') {
+      try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) {
+          return res.status(401).json({ error: 'Token requerido' });
+        }
+        const decoded = verifyToken(authHeader.slice(7));
+        if (decoded.username !== 'Ejecutivo') {
+          return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        const ejecutivoUser = await User.findOne({ email: decoded.sub }).populate('ejecutivoId');
+        if (!ejecutivoUser) {
+          return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        let ejecutivoObjectId: any = null;
+        if (ejecutivoUser.ejecutivoId) {
+          ejecutivoObjectId = (ejecutivoUser.ejecutivoId as any)._id ?? ejecutivoUser.ejecutivoId;
+        } else {
+          const lookupEmail = String(ejecutivoUser.email).toLowerCase().trim();
+          const ej = await Ejecutivo.findOne({ email: lookupEmail });
+          if (ej) ejecutivoObjectId = ej._id;
+        }
+
+        if (!ejecutivoObjectId) {
+          return res.json({ clients: [] });
+        }
+
+        // Get clients assigned to this ejecutivo
+        const clients = await User.find(
+          { ejecutivoId: ejecutivoObjectId, username: { $ne: 'Ejecutivo' } },
+          { email: 1, username: 1, usernames: 1, nombreuser: 1 }
+        );
+
+        const clientEmails = clients.map(c => c.email.toLowerCase());
+        if (clientEmails.length === 0) {
+          return res.json({ clients: [] });
+        }
+
+        // Aggregate behavior data per client (session-based, not raw event counts)
+        const pipeline = [
+          { $match: { clientEmail: { $in: clientEmails } } },
+          // Stage 1: group events by session to determine per-session status
+          {
+            $group: {
+              _id: { email: '$clientEmail', sessionId: '$sessionId' },
+              hasStarted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_STARTED'] }, 1, 0] } },
+              hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
+              hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
+              lastActivity: { $max: '$timestamp' },
+              quoteType: { $first: '$quoteType' },
+            },
+          },
+          // Stage 2: roll up to client level counting sessions (not raw events)
+          {
+            $group: {
+              _id: '$_id.email',
+              totalEvents: { $sum: 1 },
+              quotesStarted: { $sum: '$hasStarted' },
+              quotesCompleted: { $sum: '$hasCompleted' },
+              quotesAbandoned: {
+                $sum: {
+                  $cond: [
+                    { $and: [{ $eq: ['$hasAbandoned', 1] }, { $eq: ['$hasCompleted', 0] }] },
+                    1, 0,
+                  ],
+                },
+              },
+              lastActivity: { $max: '$lastActivity' },
+              quoteTypes: { $addToSet: '$quoteType' },
+            },
+          },
+        ];
+
+        const behaviorStats = await QuoteTrackingEvent.aggregate(pipeline);
+        const statsMap = new Map(behaviorStats.map((s: any) => [s._id, s]));
+
+        const result = clients.map((c) => {
+          const stats = statsMap.get(c.email.toLowerCase()) || null;
+          return {
+            email: c.email,
+            username: c.username,
+            usernames: c.usernames,
+            nombreuser: c.nombreuser,
+            stats: stats
+              ? {
+                  totalEvents: stats.totalEvents,
+                  quotesStarted: stats.quotesStarted,
+                  quotesCompleted: stats.quotesCompleted,
+                  quotesAbandoned: stats.quotesAbandoned,
+                  completionRate:
+                    stats.quotesStarted > 0
+                      ? Math.round((stats.quotesCompleted / stats.quotesStarted) * 100)
+                      : 0,
+                  lastActivity: stats.lastActivity,
+                  quoteTypes: stats.quoteTypes,
+                }
+              : null,
+          };
+        });
+
+        return res.json({ clients: result });
+      } catch (error: any) {
+        console.error('[behavior-tracking] Error GET clients:', error);
+        return res.status(500).json({ error: 'Error al obtener clientes' });
+      }
+    }
+
+    // ============================================================
+    // BEHAVIOR TRACKING — GET /api/behavior-tracking/client/:email
+    // Timeline and sessions for a specific client
+    // ============================================================
+    if (path.startsWith('/api/behavior-tracking/client/') && method === 'GET') {
+      try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) {
+          return res.status(401).json({ error: 'Token requerido' });
+        }
+        const decoded = verifyToken(authHeader.slice(7));
+        if (decoded.username !== 'Ejecutivo') {
+          return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        const clientEmail = decodeURIComponent(path.split('/api/behavior-tracking/client/')[1] || '').toLowerCase().trim();
+        if (!clientEmail) {
+          return res.status(400).json({ error: 'Email de cliente requerido' });
+        }
+
+        const { desde, hasta, limit: limitStr } = req.query as Record<string, string>;
+        const limit = Math.min(500, Math.max(1, parseInt(limitStr || '200')));
+
+        const filter: any = { clientEmail };
+        if (desde || hasta) {
+          filter.timestamp = {};
+          if (desde) filter.timestamp.$gte = new Date(desde);
+          if (hasta) filter.timestamp.$lte = new Date(hasta + 'T23:59:59.999Z');
+        }
+
+        const events = await QuoteTrackingEvent.find(filter)
+          .sort({ timestamp: -1 })
+          .limit(limit)
+          .lean();
+
+        // Group events by session
+        const sessionsMap = new Map<string, any[]>();
+        for (const evt of events) {
+          const sid = (evt as any).sessionId;
+          if (!sessionsMap.has(sid)) sessionsMap.set(sid, []);
+          sessionsMap.get(sid)!.push(evt);
+        }
+
+        const sessions = Array.from(sessionsMap.entries()).map(([sessionId, evts]) => {
+          const sorted = evts.sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          const first = sorted[0] as any;
+          const last = sorted[sorted.length - 1] as any;
+          const completed = sorted.some((e: any) => e.event === 'QUOTE_COMPLETED');
+          const abandoned = sorted.some((e: any) => e.event === 'QUOTE_ABANDONED');
+          const routeEvent = sorted.find((e: any) => e.event === 'QUOTE_ROUTE_SELECTED');
+          const lastStep = [...sorted].reverse().find((e: any) => e.step?.stepNumber);
+
+          return {
+            sessionId,
+            quoteType: first.quoteType,
+            startedAt: first.timestamp,
+            endedAt: last.timestamp,
+            status: completed ? 'completed' : abandoned ? 'abandoned' : 'in_progress',
+            route: (routeEvent as any)?.route || null,
+            lastStep: (lastStep as any)?.step || null,
+            eventsCount: sorted.length,
+          };
+        });
+
+        // Summary stats
+        const summary = {
+          totalSessions: sessions.length,
+          completed: sessions.filter(s => s.status === 'completed').length,
+          abandoned: sessions.filter(s => s.status === 'abandoned').length,
+          byType: {
+            AIR: { started: 0, completed: 0, abandoned: 0 },
+            FCL: { started: 0, completed: 0, abandoned: 0 },
+            LCL: { started: 0, completed: 0, abandoned: 0 },
+          } as Record<string, { started: number; completed: number; abandoned: number }>,
+        };
+
+        for (const s of sessions) {
+          const t = summary.byType[s.quoteType];
+          if (t) {
+            t.started++;
+            if (s.status === 'completed') t.completed++;
+            if (s.status === 'abandoned') t.abandoned++;
+          }
+        }
+
+        return res.json({ sessions: sessions.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()), summary });
+      } catch (error: any) {
+        console.error('[behavior-tracking] Error GET client:', error);
+        return res.status(500).json({ error: 'Error al obtener datos del cliente' });
+      }
+    }
+
+    // ============================================================
+    // BEHAVIOR TRACKING — GET /api/behavior-tracking/analytics
+    // Aggregated analytics for the ejecutivo's clients
+    // ============================================================
+    if (path === '/api/behavior-tracking/analytics' && method === 'GET') {
+      try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) {
+          return res.status(401).json({ error: 'Token requerido' });
+        }
+        const decoded = verifyToken(authHeader.slice(7));
+        if (decoded.username !== 'Ejecutivo') {
+          return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        const ejecutivoUser = await User.findOne({ email: decoded.sub }).populate('ejecutivoId');
+        if (!ejecutivoUser) {
+          return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        let ejecutivoObjectId: any = null;
+        if (ejecutivoUser.ejecutivoId) {
+          ejecutivoObjectId = (ejecutivoUser.ejecutivoId as any)._id ?? ejecutivoUser.ejecutivoId;
+        } else {
+          const lookupEmail = String(ejecutivoUser.email).toLowerCase().trim();
+          const ej = await Ejecutivo.findOne({ email: lookupEmail });
+          if (ej) ejecutivoObjectId = ej._id;
+        }
+
+        if (!ejecutivoObjectId) {
+          return res.json({ abandonmentByStep: [], abandonmentByType: [], topRoutes: [], completionTrend: [] });
+        }
+
+        const clients = await User.find(
+          { ejecutivoId: ejecutivoObjectId, username: { $ne: 'Ejecutivo' } },
+          { email: 1 }
+        );
+        const clientEmails = clients.map(c => c.email.toLowerCase());
+
+        if (clientEmails.length === 0) {
+          return res.json({
+            abandonmentByStep: [],
+            abandonmentByType: [],
+            topRoutes: [],
+            completionTrend: [],
+          });
+        }
+
+        // 1. Abandonment by step (across all sessions)
+        const abandonmentByStep = await QuoteTrackingEvent.aggregate([
+          { $match: { clientEmail: { $in: clientEmails }, event: 'QUOTE_ABANDONED' } },
+          {
+            $group: {
+              _id: { quoteType: '$quoteType', step: '$step.step' },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { count: -1 } },
+          { $limit: 20 },
+        ]);
+
+        // 2. Abandonment by quote type
+        const abandonmentByType = await QuoteTrackingEvent.aggregate([
+          { $match: { clientEmail: { $in: clientEmails }, event: { $in: ['QUOTE_STARTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'] } } },
+          {
+            $group: {
+              _id: { quoteType: '$quoteType', event: '$event' },
+              count: { $sum: 1 },
+            },
+          },
+        ]);
+
+        // 3. Top routes (started, completed, abandoned)
+        const topRoutes = await QuoteTrackingEvent.aggregate([
+          { $match: { clientEmail: { $in: clientEmails }, event: 'QUOTE_ROUTE_SELECTED', 'route.origin': { $exists: true } } },
+          {
+            $group: {
+              _id: { origin: '$route.origin', destination: '$route.destination', quoteType: '$quoteType' },
+              count: { $sum: 1 },
+              sessions: { $addToSet: '$sessionId' },
+            },
+          },
+          { $sort: { count: -1 } },
+          { $limit: 15 },
+          {
+            $project: {
+              _id: 0,
+              origin: '$_id.origin',
+              destination: '$_id.destination',
+              quoteType: '$_id.quoteType',
+              count: 1,
+              uniqueSessions: { $size: '$sessions' },
+            },
+          },
+        ]);
+
+        // For each top route, check completion status of those sessions
+        const allRouteSessionIds = topRoutes.flatMap((r: any) => r.sessions || []);
+        const routeSessionStatuses = await QuoteTrackingEvent.aggregate([
+          { $match: { sessionId: { $in: allRouteSessionIds }, event: { $in: ['QUOTE_COMPLETED', 'QUOTE_ABANDONED'] } } },
+          { $group: { _id: { sessionId: '$sessionId', event: '$event' } } },
+        ]);
+        const sessionStatusMap = new Map<string, string>();
+        for (const rs of routeSessionStatuses) {
+          sessionStatusMap.set((rs as any)._id.sessionId, (rs as any)._id.event);
+        }
+
+        const topRoutesResult = topRoutes.map((r: any) => ({
+          origin: r.origin,
+          destination: r.destination,
+          quoteType: r.quoteType,
+          count: r.count,
+        }));
+
+        // 4. Completion trend (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const completionTrend = await QuoteTrackingEvent.aggregate([
+          {
+            $match: {
+              clientEmail: { $in: clientEmails },
+              event: { $in: ['QUOTE_STARTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'] },
+              timestamp: { $gte: thirtyDaysAgo },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+                event: '$event',
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { '_id.date': 1 } },
+        ]);
+
+        return res.json({
+          abandonmentByStep: abandonmentByStep.map((a: any) => ({
+            quoteType: a._id.quoteType,
+            step: a._id.step,
+            count: a.count,
+          })),
+          abandonmentByType: abandonmentByType.map((a: any) => ({
+            quoteType: a._id.quoteType,
+            event: a._id.event,
+            count: a.count,
+          })),
+          topRoutes: topRoutesResult,
+          completionTrend: completionTrend.map((c: any) => ({
+            date: c._id.date,
+            event: c._id.event,
+            count: c.count,
+          })),
+        });
+      } catch (error: any) {
+        console.error('[behavior-tracking] Error GET analytics:', error);
+        return res.status(500).json({ error: 'Error al obtener analytics' });
       }
     }
 

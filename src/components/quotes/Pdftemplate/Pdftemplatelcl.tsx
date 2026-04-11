@@ -577,7 +577,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
             }}
           >
             Su ejecutivo de ventas le proporcionará una cotización formal en un
-            plazo de 48 horas hábiles.
+            plazo de 48 horas hábiles para rutas no recurrentes
           </div>
         </div>
       )}

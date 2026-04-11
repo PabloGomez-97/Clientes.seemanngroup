@@ -122,6 +122,11 @@ function SidebarAdmin({
           name: "Documentos",
           icon: "fa fa-file-alt",
         },
+        {
+          path: "/admin/comportamiento-clientes",
+          name: "Comportamiento Clientes",
+          icon: "fa fa-users",
+        },
       ],
     },
     {
