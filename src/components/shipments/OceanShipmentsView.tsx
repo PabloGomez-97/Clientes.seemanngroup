@@ -586,8 +586,8 @@ function OceanShipmentsView({
         `Shipping orders: ${userOrders.length} para ${activeUsername} (ConsigneeName)`,
       );
 
-      // Step 2: For each order, check if it's an air shipment via /air-shipments/number
-      // If 404 = ocean shipment, keep it
+      // Step 2: For each order, fetch /api/shipping-orders/{id} to check modeOfTransportation
+      // "10 - Vessel" or "11 - Vessel, Containerized" = ocean shipment, keep it
       const BATCH_SIZE = 10;
       const oceanOrders: OceanShippingOrder[] = [];
       const seenIds = new Set<number>();
@@ -597,8 +597,9 @@ function OceanShipmentsView({
         const results = await Promise.allSettled(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           batch.map(async (order: any) => {
-            const resp = await linbisFetch(
-              `https://api.linbis.com/air-shipments/number?number=${encodeURIComponent(order.number)}`,
+            // Check modeOfTransportation to determine shipment type
+            const detailResp = await linbisFetch(
+              `https://api.linbis.com/api/shipping-orders/${order.id}`,
               {
                 method: "GET",
                 headers: {
@@ -609,10 +610,14 @@ function OceanShipmentsView({
               accessToken,
               refreshAccessToken,
             );
-            // 404 = not an air shipment = it's an ocean shipment
-            if (resp.status === 404) return order;
-            // If it responded OK, it's an air shipment, skip
-            return null;
+            if (!detailResp.ok) return null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const detail: any = await detailResp.json();
+            const mode: string = detail.modeOfTransportation?.name ?? "";
+            const isOcean =
+              mode === "10 - Vessel" || mode === "11 - Vessel, Containerized";
+            if (!isOcean) return null;
+            return order;
           }),
         );
 

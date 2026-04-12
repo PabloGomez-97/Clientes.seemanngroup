@@ -19,7 +19,6 @@ import {
   type AirShipment,
   InfoField,
   CommoditiesSection,
-  SubShipmentsList,
 } from "../shipments/Handlers/Handlersairshipments";
 import { MUNDOGAMING_DUMMY_SHIPMENTS } from "./Handlers/mundogamingDummyData";
 import { linbisFetch } from "../../services/linbisFetch";
@@ -37,17 +36,17 @@ interface TabDef {
 }
 
 interface AirShipmentDetailsResponse {
-  parentShipment?: {
-    number?: string | null;
-  };
-  airportOfDeparture?: {
-    code?: string;
-    name?: string;
-  };
   airportOfArrival?: {
     code?: string;
     name?: string;
   };
+}
+
+interface CargoDetailCacheEntry {
+  loading: boolean;
+  fetched: boolean;
+  cargoDescription: string | null;
+  hazardous: boolean | null;
 }
 
 function DetailTabs({ tabs }: { tabs: TabDef[] }) {
@@ -73,6 +72,126 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
         ))}
       </div>
       <div className="asv-tabs__panel">{current?.content}</div>
+    </div>
+  );
+}
+
+/* -- CargoTabContent: lazy-loads cargoDescription + hazardous on mount -- */
+interface CargoTabContentProps {
+  shipment: AirShipment;
+  cargoDetail: CargoDetailCacheEntry | undefined;
+  onMount: (
+    shipmentId: string | number | undefined,
+    number: string | undefined,
+  ) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getAllCommodities: (s: AirShipment) => any[];
+}
+
+function CargoTabContent({
+  shipment,
+  cargoDetail,
+  onMount,
+  getAllCommodities,
+}: CargoTabContentProps) {
+  useEffect(() => {
+    onMount(shipment.id, shipment.number);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shipment.id]);
+
+  return (
+    <div>
+      <div
+        className="asv-cards-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: "16px",
+          marginBottom: 16,
+        }}
+      >
+        <div className="asv-card">
+          <h4>Descripción Carga</h4>
+          <div className="asv-info-grid">
+            <InfoField
+              label="Descripción de Carga"
+              value={
+                cargoDetail?.loading
+                  ? "Cargando..."
+                  : (cargoDetail?.cargoDescription ?? null)
+              }
+              fullWidth
+            />
+            <InfoField
+              label="Tipo de Empaque"
+              value={(() => {
+                const comms = getAllCommodities(shipment);
+                const packageTypes = new Set<string>();
+                for (const c of comms) {
+                  if (c.packageType?.description) {
+                    packageTypes.add(c.packageType.description);
+                  }
+                }
+                return packageTypes.size > 0
+                  ? Array.from(packageTypes).join(", ")
+                  : null;
+              })()}
+            />
+          </div>
+        </div>
+        <div className="asv-card">
+          <h4>Medidas y Peso</h4>
+          <div className="asv-info-grid">
+            <InfoField
+              label="Piezas"
+              value={(() => {
+                const comms = getAllCommodities(shipment);
+                const total = comms.reduce(
+                  (sum: number, c: { pieces?: number }) =>
+                    sum + (c.pieces || 0),
+                  0,
+                );
+                return total > 0 ? total : null;
+              })()}
+            />
+            <InfoField
+              label="Peso Total"
+              value={(() => {
+                const comms = getAllCommodities(shipment);
+                const total = comms.reduce(
+                  (sum: number, c: { totalWeightValue?: number }) =>
+                    sum + (c.totalWeightValue || 0),
+                  0,
+                );
+                return total > 0 ? `${total} kg` : null;
+              })()}
+            />
+            <InfoField
+              label="Volumen Total"
+              value={(() => {
+                const comms = getAllCommodities(shipment);
+                const total = comms.reduce(
+                  (sum: number, c: { totalVolumeValue?: number }) =>
+                    sum + (c.totalVolumeValue || 0),
+                  0,
+                );
+                return total > 0 ? `${total} m³` : null;
+              })()}
+            />
+            <InfoField
+              label="¿Carga Peligrosa?"
+              value={
+                cargoDetail?.loading
+                  ? "Cargando..."
+                  : cargoDetail?.hazardous != null
+                    ? cargoDetail.hazardous
+                    : null
+              }
+            />
+            <CommoditiesSection commodities={shipment.commodities!} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -119,15 +238,15 @@ function AirShipmentsView({
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
 
-  // parentShipment.number by shipment.id (from air-shipments/details/{id})
-  const [parentShipmentNumbers, setParentShipmentNumbers] = useState<
+  // Arrival airport name by shipment id (lazy, fetched on accordion open)
+  const [airportNames, setAirportNames] = useState<
     Record<string | number, string>
   >({});
-  const parentShipmentLoadingIds = useRef<Set<string | number>>(new Set());
+  const arrivalAirportLoadingIds = useRef<Set<string | number>>(new Set());
 
-  // Airport names by shipment id (from air-shipments/details/{id})
-  const [airportNames, setAirportNames] = useState<
-    Record<string | number, { departure: string; arrival: string }>
+  // Cargo details (cargoDescription, hazardous) — lazy, fetched on Cargo tab open
+  const [cargoDetailsCache, setCargoDetailsCache] = useState<
+    Record<string | number, CargoDetailCacheEntry>
   >({});
 
   // Already-tracked AWBs (from ShipsGo)
@@ -296,7 +415,8 @@ function AirShipmentsView({
         `Shipping orders: ${userOrders.length} para ${activeUsername} (ConsigneeName)`,
       );
 
-      // Step 2: For each order, check if it's an air shipment via /air-shipments/number
+      // Step 2: For each order, fetch /api/shipping-orders/{id} to check modeOfTransportation
+      // and map the detail data directly to AirShipment shape — no /air-shipments/number needed
       const BATCH_SIZE = 10;
       const airShipments: AirShipment[] = [];
       const seenIds = new Set<number | string>();
@@ -306,8 +426,9 @@ function AirShipmentsView({
         const results = await Promise.allSettled(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           batch.map(async (order: any) => {
-            const resp = await linbisFetch(
-              `https://api.linbis.com/air-shipments/number?number=${encodeURIComponent(order.number)}`,
+            // Fetch detail to confirm mode and extract all needed data
+            const detailResp = await linbisFetch(
+              `https://api.linbis.com/api/shipping-orders/${order.id}`,
               {
                 method: "GET",
                 headers: {
@@ -318,15 +439,38 @@ function AirShipmentsView({
               accessToken,
               refreshAccessToken,
             );
-            // 404 = maritime shipment, skip
-            if (resp.status === 404) return null;
-            if (!resp.ok) return null;
-            const data = await resp.json();
+            if (!detailResp.ok) return null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const detail: any = await detailResp.json();
+            // Only process air shipments
+            if (detail.modeOfTransportation?.name !== "40 - Air") return null;
+
+            // Reshape ISO date strings into the {date, displayDate} object shape
+            // that formatDate/formatDateInline expect
+            const departure = detail.departureDate
+              ? {
+                  date: detail.departureDate,
+                  displayDate: detail.departureDate,
+                }
+              : null;
+            const arrival = detail.arrivalDate
+              ? { date: detail.arrivalDate, displayDate: detail.arrivalDate }
+              : null;
+
             return {
-              ...data,
-              executedAt: order.executedAt ?? null,
-              trackingNumber: order.trackingNumber ?? null,
-            };
+              id: detail.id,
+              number: detail.number,
+              customerReference: detail.customerReference ?? null,
+              waybillNumber: detail.waybillNumber ?? null,
+              carrier: detail.carrier ?? null,
+              notes: detail.notes ?? null,
+              trackingNumber:
+                detail.trackingNumber ?? order.trackingNumber ?? null,
+              executedAt: detail.executedAt ?? order.executedAt ?? null,
+              commodities: detail.commodities ?? [],
+              departure,
+              arrival,
+            } as AirShipment;
           }),
         );
 
@@ -366,14 +510,15 @@ function AirShipmentsView({
     }
   };
 
-  const fetchParentShipmentNumber = async (
+  // Fetches only the arrival airport name — triggered lazily when accordion opens
+  const fetchArrivalAirport = async (
     shipmentId: string | number | undefined,
   ) => {
     if (shipmentId === undefined || shipmentId === null || !accessToken) return;
-    if (parentShipmentNumbers[shipmentId]) return;
-    if (parentShipmentLoadingIds.current.has(shipmentId)) return;
+    if (airportNames[shipmentId] !== undefined) return;
+    if (arrivalAirportLoadingIds.current.has(shipmentId)) return;
 
-    parentShipmentLoadingIds.current.add(shipmentId);
+    arrivalAirportLoadingIds.current.add(shipmentId);
 
     try {
       const response = await linbisFetch(
@@ -389,38 +534,81 @@ function AirShipmentsView({
         refreshAccessToken,
       );
 
-      if (!response.ok) {
-        throw new Error(
-          `Error al obtener parentShipment.number (${response.status})`,
-        );
-      }
+      if (!response.ok) throw new Error(`Status ${response.status}`);
 
       const details: AirShipmentDetailsResponse = await response.json();
-      const parentNumber = details.parentShipment?.number?.trim();
-
-      setParentShipmentNumbers((prev) => ({
-        ...prev,
-        [shipmentId]:
-          parentNumber && parentNumber.length > 0 ? parentNumber : "-",
-      }));
-
-      const depName = details.airportOfDeparture?.name || "";
-      const depCode = details.airportOfDeparture?.code || "";
       const arrName = details.airportOfArrival?.name || "";
       const arrCode = details.airportOfArrival?.code || "";
 
       setAirportNames((prev) => ({
         ...prev,
+        [shipmentId]: arrName ? `${arrName} (${arrCode})` : "-",
+      }));
+    } catch {
+      setAirportNames((prev) => ({ ...prev, [shipmentId]: "-" }));
+    } finally {
+      arrivalAirportLoadingIds.current.delete(shipmentId);
+    }
+  };
+
+  // Fetches cargoDescription + hazardous — triggered lazily when "Información de Carga" tab opens
+  const fetchCargoDetails = async (
+    shipmentId: string | number | undefined,
+    shipmentNumber: string | undefined,
+  ) => {
+    if (!shipmentId || !shipmentNumber || !accessToken) return;
+    if (
+      cargoDetailsCache[shipmentId]?.fetched ||
+      cargoDetailsCache[shipmentId]?.loading
+    )
+      return;
+
+    setCargoDetailsCache((prev) => ({
+      ...prev,
+      [shipmentId]: {
+        loading: true,
+        fetched: false,
+        cargoDescription: null,
+        hazardous: null,
+      },
+    }));
+
+    try {
+      const resp = await linbisFetch(
+        `https://api.linbis.com/air-shipments/number?number=${encodeURIComponent(shipmentNumber)}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        },
+        accessToken,
+        refreshAccessToken,
+      );
+      if (!resp.ok) throw new Error(`Status ${resp.status}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await resp.json();
+      setCargoDetailsCache((prev) => ({
+        ...prev,
         [shipmentId]: {
-          departure: depName ? `${depName} (${depCode})` : "-",
-          arrival: arrName ? `${arrName} (${arrCode})` : "-",
+          loading: false,
+          fetched: true,
+          cargoDescription: data.cargoDescription ?? null,
+          hazardous:
+            typeof data.hazardous === "boolean" ? data.hazardous : null,
         },
       }));
-    } catch (err) {
-      console.error("No se pudo obtener parentShipment.number:", err);
-      setParentShipmentNumbers((prev) => ({ ...prev, [shipmentId]: "-" }));
-    } finally {
-      parentShipmentLoadingIds.current.delete(shipmentId);
+    } catch {
+      setCargoDetailsCache((prev) => ({
+        ...prev,
+        [shipmentId]: {
+          loading: false,
+          fetched: true,
+          cargoDescription: null,
+          hazardous: null,
+        },
+      }));
     }
   };
 
@@ -430,18 +618,14 @@ function AirShipmentsView({
       setExpandedShipmentId(null);
     } else {
       setExpandedShipmentId(shipmentId);
-      const s = displayedShipments.find((sh) => {
-        const id = sh.id || sh.number;
-        return id === shipmentId;
-      });
-      fetchParentShipmentNumber(s?.id);
+      fetchArrivalAirport(shipmentId);
     }
   };
 
   useEffect(() => {
-    setParentShipmentNumbers({});
     setAirportNames({});
-    parentShipmentLoadingIds.current.clear();
+    setCargoDetailsCache({});
+    arrivalAirportLoadingIds.current.clear();
     setTrackedAwbs(new Set());
   }, [activeUsername]);
 
@@ -621,40 +805,16 @@ function AirShipmentsView({
 
   const getTrackAwbNumber = (shipment: AirShipment | null) => {
     if (!shipment) return "";
-
-    // Use trackingNumber from the shipping-orders API
-    if (shipment.trackingNumber) return shipment.trackingNumber;
-
-    const shipmentId = shipment.id;
-    if (shipmentId !== undefined && shipmentId !== null) {
-      const parentNumber = parentShipmentNumbers[shipmentId];
-      if (
-        parentNumber &&
-        parentNumber !== "-" &&
-        parentNumber !== "Cargando..."
-      ) {
-        return parentNumber;
-      }
-    }
-
-    return shipment.number || "";
+    return shipment.trackingNumber || shipment.number || "";
   };
 
   const getDisplayedTrackAwbNumber = (shipment: AirShipment) => {
-    // Use trackingNumber from the shipping-orders API
-    if (shipment.trackingNumber) return shipment.trackingNumber;
-
-    if (shipment.id === undefined || shipment.id === null) return "-";
-    return parentShipmentNumbers[shipment.id] ?? "Cargando...";
+    return shipment.trackingNumber || shipment.number || "-";
   };
 
-  const isTrackAwbReady = (shipment: AirShipment) => {
-    if (shipment.trackingNumber) return true;
-    return getDisplayedTrackAwbNumber(shipment) !== "Cargando...";
-  };
+  const isTrackAwbReady = (_shipment: AirShipment) => true;
 
   const openTrackModal = (shipment: AirShipment) => {
-    fetchParentShipmentNumber(shipment.id);
     setTrackShipment(shipment);
     setTrackEmails([""]);
     setTrackError(null);
@@ -1320,10 +1480,9 @@ function AirShipmentsView({
                                     Aeropuerto de Carga
                                   </span>
                                   <span className="asv-route-card__value">
-                                    {shipment.id != null &&
-                                    airportNames[shipment.id]
-                                      ? airportNames[shipment.id].departure
-                                      : "Cargando..."}
+                                    {shipment.executedAt?.name
+                                      ? `${shipment.executedAt.name}${shipment.executedAt.code ? ` (${shipment.executedAt.code})` : ""}`
+                                      : "-"}
                                   </span>
                                   {shipment.departure?.displayDate && (
                                     <span className="asv-route-card__date">
@@ -1357,10 +1516,10 @@ function AirShipmentsView({
                                     Aeropuerto de Descarga
                                   </span>
                                   <span className="asv-route-card__value">
-                                    {shipment.id != null &&
-                                    airportNames[shipment.id]
-                                      ? airportNames[shipment.id].arrival
-                                      : "Cargando..."}
+                                    {shipment.id != null
+                                      ? (airportNames[shipment.id] ??
+                                        "Cargando...")
+                                      : "-"}
                                   </span>
                                   {shipment.arrival?.displayDate && (
                                     <span className="asv-route-card__date">
@@ -1552,140 +1711,16 @@ function AirShipmentsView({
                                         </svg>
                                       ),
                                       content: (
-                                        <div>
-                                          <div
-                                            className="asv-cards-grid"
-                                            style={{
-                                              display: "grid",
-                                              gridTemplateColumns:
-                                                "repeat(2, 1fr)",
-                                              gap: "16px",
-                                              marginBottom: 16,
-                                            }}
-                                          >
-                                            <div className="asv-card">
-                                              <h4>Descripción Carga</h4>
-                                              <div className="asv-info-grid">
-                                                <InfoField
-                                                  label="Descripción de Carga"
-                                                  value={
-                                                    shipment.cargoDescription
-                                                  }
-                                                  fullWidth
-                                                />
-                                                <InfoField
-                                                  label="Tipo de Empaque"
-                                                  value={(() => {
-                                                    const comms =
-                                                      getAllCommodities(
-                                                        shipment,
-                                                      );
-                                                    const packageTypes =
-                                                      new Set<string>();
-                                                    for (const c of comms) {
-                                                      if (
-                                                        c.packageType
-                                                          ?.description
-                                                      ) {
-                                                        packageTypes.add(
-                                                          c.packageType
-                                                            .description,
-                                                        );
-                                                      }
-                                                    }
-                                                    return packageTypes.size > 0
-                                                      ? Array.from(
-                                                          packageTypes,
-                                                        ).join(", ")
-                                                      : null;
-                                                  })()}
-                                                />
-                                              </div>
-                                            </div>
-                                            <div className="asv-card">
-                                              <h4>Medidas y Peso</h4>
-                                              <div className="asv-info-grid">
-                                                <InfoField
-                                                  label="Piezas"
-                                                  value={(() => {
-                                                    const comms =
-                                                      getAllCommodities(
-                                                        shipment,
-                                                      );
-                                                    const total = comms.reduce(
-                                                      (
-                                                        sum: number,
-                                                        c: { pieces?: number },
-                                                      ) =>
-                                                        sum + (c.pieces || 0),
-                                                      0,
-                                                    );
-                                                    return total > 0
-                                                      ? total
-                                                      : null;
-                                                  })()}
-                                                />
-                                                <InfoField
-                                                  label="Peso Total"
-                                                  value={(() => {
-                                                    const comms =
-                                                      getAllCommodities(
-                                                        shipment,
-                                                      );
-                                                    const total = comms.reduce(
-                                                      (
-                                                        sum: number,
-                                                        c: {
-                                                          totalWeightValue?: number;
-                                                        },
-                                                      ) =>
-                                                        sum +
-                                                        (c.totalWeightValue ||
-                                                          0),
-                                                      0,
-                                                    );
-                                                    return total > 0
-                                                      ? `${total} kg`
-                                                      : null;
-                                                  })()}
-                                                />
-                                                <InfoField
-                                                  label="Volumen Total"
-                                                  value={(() => {
-                                                    const comms =
-                                                      getAllCommodities(
-                                                        shipment,
-                                                      );
-                                                    const total = comms.reduce(
-                                                      (
-                                                        sum: number,
-                                                        c: {
-                                                          totalVolumeValue?: number;
-                                                        },
-                                                      ) =>
-                                                        sum +
-                                                        (c.totalVolumeValue ||
-                                                          0),
-                                                      0,
-                                                    );
-                                                    return total > 0
-                                                      ? `${total} m³`
-                                                      : null;
-                                                  })()}
-                                                />
-                                                <InfoField
-                                                  label="¿Carga Peligrosa?"
-                                                  value={shipment.hazardous}
-                                                />
-                                                <CommoditiesSection
-                                                  commodities={
-                                                    shipment.commodities!
-                                                  }
-                                                />
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
+                                        <CargoTabContent
+                                          shipment={shipment}
+                                          cargoDetail={
+                                            shipment.id != null
+                                              ? cargoDetailsCache[shipment.id]
+                                              : undefined
+                                          }
+                                          onMount={fetchCargoDetails}
+                                          getAllCommodities={getAllCommodities}
+                                        />
                                       ),
                                     },
                                     {
@@ -1707,18 +1742,6 @@ function AirShipmentsView({
                                       content: (
                                         <DocumentosSectionAir
                                           shipmentId={shipmentId}
-                                        />
-                                      ),
-                                    },
-                                    {
-                                      key: "subshipments",
-                                      label: `Cotización (${shipment.subShipments?.length || 0})`,
-                                      hidden:
-                                        !shipment.subShipments ||
-                                        shipment.subShipments.length === 0,
-                                      content: (
-                                        <SubShipmentsList
-                                          subShipments={shipment.subShipments!}
                                         />
                                       ),
                                     },
