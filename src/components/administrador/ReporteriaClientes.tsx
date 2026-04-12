@@ -1,7 +1,7 @@
 // src/components/administrador/ReporteriaClientes.tsx — Client portal view for ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useOutletContext, useParams } from "react-router-dom";
+import { useOutletContext, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { ClientOverrideProvider } from "../../contexts/ClientOverrideContext";
 import AirShipmentsView from "../shipments/AirShipmentsView";
@@ -87,6 +87,7 @@ function ReporteriaClientes() {
   const { token } = useAuth();
   const { t } = useTranslation();
   const { clientUsername } = useParams<{ clientUsername?: string }>();
+  const navigate = useNavigate();
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,35 +143,51 @@ function ReporteriaClientes() {
   }, [token]);
 
   // When a client is selected, show their portal view
-  const handleSelectClient = useCallback((cliente: Cliente) => {
-    setShowAllExw(false);
-    setSelectedClient(cliente);
-    setActiveTab("air");
-  }, []);
+  const handleSelectClient = useCallback(
+    (cliente: Cliente) => {
+      setShowAllExw(false);
+      setSelectedClient(cliente);
+      setActiveTab("air");
+      navigate(
+        `/admin/reporteriaclientes/${encodeURIComponent(cliente.username)}`,
+        { replace: true },
+      );
+    },
+    [navigate],
+  );
 
   const handleSelectAllExw = useCallback(() => {
     setSelectedClient(null);
     setShowAllExw(true);
   }, []);
 
-  // Go back to list
+  // Go back to list — only navigate; the useEffect below clears selectedClient
   const handleBack = () => {
-    setSelectedClient(null);
     setShowAllExw(false);
+    navigate("/admin/reporteriaclientes", { replace: true });
   };
 
-  // Auto-select client from URL param once list is loaded
+  // URL is the single source of truth for which client is open.
+  // Runs when clientUsername (URL param) or clientes list changes.
+  // Intentionally excludes selectedClient to avoid the re-select race condition
+  // that occurs when handleBack clears selectedClient while the URL hasn't updated yet.
   useEffect(() => {
-    if (!clientUsername || loading || clientes.length === 0) return;
-    if (selectedClient) return; // already selected
+    if (!clientUsername) {
+      setSelectedClient(null);
+      return;
+    }
+    if (loading || clientes.length === 0) return;
     const match = clientes.find(
       (c) => c.username.toLowerCase() === clientUsername.toLowerCase(),
     );
-    if (match) {
-      setSelectedClient(match);
-      setActiveTab("air");
-    }
-  }, [clientUsername, clientes, loading, selectedClient]);
+    if (!match) return;
+    setSelectedClient((prev) =>
+      prev?.username.toLowerCase() === match.username.toLowerCase()
+        ? prev
+        : match,
+    );
+    setActiveTab("air");
+  }, [clientUsername, clientes, loading]);
 
   // Filtered client list
   const filteredClients = useMemo(() => {

@@ -166,7 +166,7 @@ function App() {
           <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
           <Route path="op-trackeos" element={<ShipsGoTrackingAdminOP />} />
           <Route
-            path="op-reporteriaclientes"
+            path="op-reporteriaclientes/:clientUsername?"
             element={<OPReporteriaClientes />}
           />
           <Route path="pricing" element={<GestorTarifas />} />
