@@ -49,6 +49,12 @@ interface CargoDetailCacheEntry {
   hazardous: boolean | null;
 }
 
+interface QuoteNumberCacheEntry {
+  loading: boolean;
+  fetched: boolean;
+  quoteNumber: string | null;
+}
+
 function DetailTabs({ tabs }: { tabs: TabDef[] }) {
   const visible = tabs.filter((t) => !t.hidden);
   const [active, setActive] = useState(visible[0]?.key || "");
@@ -247,6 +253,11 @@ function AirShipmentsView({
   // Cargo details (cargoDescription, hazardous) — lazy, fetched on Cargo tab open
   const [cargoDetailsCache, setCargoDetailsCache] = useState<
     Record<string | number, CargoDetailCacheEntry>
+  >({});
+
+  // Quote number — lazy, fetched on accordion open
+  const [quoteNumberCache, setQuoteNumberCache] = useState<
+    Record<string | number, QuoteNumberCacheEntry>
   >({});
 
   // Already-tracked AWBs (from ShipsGo)
@@ -551,6 +562,65 @@ function AirShipmentsView({
     }
   };
 
+  // Fetches quote number — triggered lazily when accordion opens
+  const fetchQuoteNumber = async (
+    shipmentId: string | number | undefined,
+    customerReference: string | null | undefined,
+  ) => {
+    if (!shipmentId || !customerReference || !accessToken || !activeUsername)
+      return;
+    if (
+      quoteNumberCache[shipmentId]?.fetched ||
+      quoteNumberCache[shipmentId]?.loading
+    )
+      return;
+
+    setQuoteNumberCache((prev) => ({
+      ...prev,
+      [shipmentId]: { loading: true, fetched: false, quoteNumber: null },
+    }));
+
+    try {
+      const resp = await linbisFetch(
+        `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername)}&Page=1&ItemsPerPage=50&SortBy=newest`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        },
+        accessToken,
+        refreshAccessToken,
+      );
+      if (!resp.ok) throw new Error(`Status ${resp.status}`);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = await resp.json();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const items: any[] = data.items ?? data ?? [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const match = items.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) =>
+          q.customerReference?.trim().toLowerCase() ===
+          customerReference.trim().toLowerCase(),
+      );
+      setQuoteNumberCache((prev) => ({
+        ...prev,
+        [shipmentId]: {
+          loading: false,
+          fetched: true,
+          quoteNumber: match?.number ?? null,
+        },
+      }));
+    } catch {
+      setQuoteNumberCache((prev) => ({
+        ...prev,
+        [shipmentId]: { loading: false, fetched: true, quoteNumber: null },
+      }));
+    }
+  };
+
   // Fetches cargoDescription + hazardous — triggered lazily when "Información de Carga" tab opens
   const fetchCargoDetails = async (
     shipmentId: string | number | undefined,
@@ -619,12 +689,15 @@ function AirShipmentsView({
     } else {
       setExpandedShipmentId(shipmentId);
       fetchArrivalAirport(shipmentId);
+      const s = shipments.find((sh) => (sh.id || sh.number) === shipmentId);
+      if (s) fetchQuoteNumber(shipmentId, s.customerReference);
     }
   };
 
   useEffect(() => {
     setAirportNames({});
     setCargoDetailsCache({});
+    setQuoteNumberCache({});
     arrivalAirportLoadingIds.current.clear();
     setTrackedAwbs(new Set());
   }, [activeUsername]);
@@ -1578,6 +1651,20 @@ function AirShipmentsView({
                                                 label="Referencia Cliente"
                                                 value={
                                                   shipment.customerReference
+                                                }
+                                              />
+                                              <InfoField
+                                                label="Número de Cotización"
+                                                value={
+                                                  shipment.id != null
+                                                    ? quoteNumberCache[
+                                                        shipment.id
+                                                      ]?.loading
+                                                      ? "Cargando..."
+                                                      : (quoteNumberCache[
+                                                          shipment.id
+                                                        ]?.quoteNumber ?? null)
+                                                    : null
                                                 }
                                               />
                                               <InfoField
