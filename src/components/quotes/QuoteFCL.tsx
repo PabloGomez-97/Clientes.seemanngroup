@@ -1058,6 +1058,7 @@ function QuoteFCL({
         container: containerSeleccionado?.type || "",
         incoterm,
         tipo: tipoAccion,
+        isRecurring: !sinTarifa,
       });
 
       // Generar PDF después de cotización exitosa
@@ -1250,6 +1251,32 @@ function QuoteFCL({
         }
       } catch (e) {
         console.warn("[QuoteFCL] Error obteniendo quoteNumber:", e);
+      }
+
+      // Registrar número de cotización en behavior tracking y notificar si sin tarifa
+      if (quoteNumber) {
+        trackComplete({ quoteNumber, isRecurring: !sinTarifa });
+      }
+      if (sinTarifa && !isEjecutivoMode) {
+        fetch(`/api/send-no-rate-quote-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            quoteType: "FCL",
+            cargoDetails: {
+              pol: polSeleccionado?.label || "",
+              pod: podSeleccionado?.label || "",
+              carrier: rutaSeleccionada?.carrier || "",
+              containerType: containerSeleccionado?.type || "",
+              cantidadContenedores,
+              incoterm,
+            },
+          }),
+          keepalive: true,
+        }).catch(() => {});
       }
 
       // ── 2. Renderizar el PDF con quoteNumber real ──

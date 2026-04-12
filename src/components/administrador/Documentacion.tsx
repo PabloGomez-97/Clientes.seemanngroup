@@ -194,10 +194,10 @@ function Documentacion() {
       label: string;
       icon: string;
     }[] = [
-      { key: "air", label: t("home.sidebar.airOperations"), icon: "✈️" },
-      { key: "ocean", label: t("home.sidebar.oceanOperations"), icon: "🚢" },
-      { key: "ground", label: t("home.sidebar.groundOperations"), icon: "🚛" },
-      { key: "quotes", label: t("home.sidebar.quotes"), icon: "📋" },
+      { key: "air", label: t("home.sidebar.airOperations"), icon: "" },
+      { key: "ocean", label: t("home.sidebar.oceanOperations"), icon: "" },
+      { key: "ground", label: t("home.sidebar.groundOperations"), icon: "" },
+      { key: "quotes", label: t("home.sidebar.quotes"), icon: "" },
     ];
 
     return (

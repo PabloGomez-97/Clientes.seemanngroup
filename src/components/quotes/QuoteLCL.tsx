@@ -1229,6 +1229,7 @@ function QuoteLCL({
         operador: rutaSeleccionada?.operador || "",
         incoterm,
         tipo: tipoAccion,
+        isRecurring: !sinTarifa,
       });
 
       // Generar PDF después de cotización exitosa
@@ -1447,6 +1448,47 @@ function QuoteLCL({
         }
       } catch (e) {
         console.warn("[QuoteLCL] Error obteniendo quoteNumber:", e);
+      }
+
+      // Registrar número de cotización en behavior tracking y notificar si sin tarifa
+      if (quoteNumber) {
+        trackComplete({ quoteNumber, isRecurring: !sinTarifa });
+      }
+      if (sinTarifa && !isEjecutivoMode) {
+        const totalPeso = piecesData.reduce(
+          (sum: number, p: any) => sum + (Number(p.weight) || 0),
+          0,
+        );
+        const totalVol = piecesData.reduce(
+          (sum: number, p: any) => sum + (Number(p.volume) || 0),
+          0,
+        );
+        const piezasDesc = piecesData
+          .map(
+            (p: any, i: number) =>
+              `Pieza ${i + 1}: ${p.length || 0}×${p.width || 0}×${p.height || 0} cm / ${p.weight || 0} kg`,
+          )
+          .join("; ");
+        fetch(`/api/send-no-rate-quote-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwtToken}`,
+          },
+          body: JSON.stringify({
+            quoteType: "LCL",
+            cargoDetails: {
+              pol: polSeleccionado?.label || "",
+              pod: podSeleccionado?.label || "",
+              operador: rutaSeleccionada?.operador || "",
+              incoterm,
+              piezasDesc,
+              pesoTotal: totalPeso.toFixed(2),
+              volumenTotal: totalVol.toFixed(4),
+            },
+          }),
+          keepalive: true,
+        }).catch(() => {});
       }
 
       // ── 2. Renderizar el PDF con quoteNumber real ──

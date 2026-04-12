@@ -1529,6 +1529,7 @@ function QuoteAPITester({
         carrier: rutaSeleccionada?.carrier || "",
         incoterm,
         tipo: tipoAccion,
+        isRecurring: !sinTarifa,
       });
 
       // Generar PDF después de cotización exitosa
@@ -1775,6 +1776,48 @@ function QuoteAPITester({
         }
       } catch (e) {
         console.warn("[QuoteAIR] Error obteniendo quoteNumber:", e);
+      }
+
+      // Registrar número de cotización en behavior tracking y notificar si sin tarifa
+      if (quoteNumber) {
+        trackComplete({ quoteNumber, isRecurring: !sinTarifa });
+      }
+      if (sinTarifa && !isEjecutivoMode) {
+        const { totalRealWeight } = calculateTotals();
+        const totalVolume = piecesData.reduce(
+          (sum: number, piece: any) => sum + (piece.totalVolume || 0),
+          0,
+        );
+        const piezasDesc = piecesData
+          .map(
+            (p: any, i: number) =>
+              `Pieza ${i + 1}: ${p.length || 0}×${p.width || 0}×${p.height || 0} cm / ${p.weight || 0} kg`,
+          )
+          .join("; ");
+        const pkgType =
+          packageTypeOptions.find((opt) => opt.id === selectedPackageType)
+            ?.name || String(selectedPackageType || "—");
+        fetch(`/api/send-no-rate-quote-email`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            quoteType: "AIR",
+            cargoDetails: {
+              origen: originSeleccionado?.label || "",
+              destino: destinationSeleccionado?.label || "",
+              carrier: rutaSeleccionada?.carrier || "",
+              incoterm,
+              packageType: pkgType,
+              piezasDesc,
+              pesoTotal: totalRealWeight.toFixed(2),
+              volumenTotal: totalVolume.toFixed(4),
+            },
+          }),
+          keepalive: true,
+        }).catch(() => {});
       }
 
       // ── 2. Renderizar el PDF con quoteNumber real ──

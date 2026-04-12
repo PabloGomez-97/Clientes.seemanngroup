@@ -4245,6 +4245,102 @@ Sistema de Portal Clientes — Seemann Group
   }
 });
 
+// POST /api/send-no-rate-quote-email - Notificar al ejecutivo de cotización sin tarifa (ruta no recurrente)
+app.post('/api/send-no-rate-quote-email', auth, async (req, res) => {
+  try {
+    const currentUser = await User.findOne({ email: (req as any).user.sub }).populate('ejecutivoId');
+    if (!currentUser || !currentUser.ejecutivoId) {
+      return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+    }
+
+    const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
+    const ejecutivoNombre = (currentUser.ejecutivoId as any).nombre || 'Ejecutivo';
+    const clienteUsername = currentUser.username || currentUser.email;
+
+    const { quoteType, cargoDetails } = req.body as {
+      quoteType: 'AIR' | 'FCL' | 'LCL';
+      cargoDetails: Record<string, unknown>;
+    };
+
+    const subject = `Cotización sin tarifa — ${clienteUsername} (${quoteType})`;
+
+    const buildDetails = () => {
+      if (quoteType === 'AIR') {
+        const d = cargoDetails as any;
+        return `
+- Tipo de Servicio: Aéreo (AIR)
+- Origen: ${d.origen || '—'}
+- Destino: ${d.destino || '—'}
+- Carrier: ${d.carrier || '—'}
+- Incoterm: ${d.incoterm || '—'}
+- Tipo de bulto: ${d.packageType || '—'}
+- Piezas / carga: ${d.piezasDesc || '—'}
+- Peso total (kg): ${d.pesoTotal || '—'}
+- Volumen total (m³): ${d.volumenTotal || '—'}`;
+      }
+      if (quoteType === 'FCL') {
+        const d = cargoDetails as any;
+        return `
+- Tipo de Servicio: Marítimo FCL
+- POL (Origen): ${d.pol || '—'}
+- POD (Destino): ${d.pod || '—'}
+- Carrier: ${d.carrier || '—'}
+- Tipo de contenedor: ${d.containerType || '—'}
+- Cantidad de contenedores: ${d.cantidadContenedores || '—'}
+- Incoterm: ${d.incoterm || '—'}`;
+      }
+      // LCL
+      const d = cargoDetails as any;
+      return `
+- Tipo de Servicio: Marítimo LCL
+- POL (Origen): ${d.pol || '—'}
+- POD (Destino): ${d.pod || '—'}
+- Operador: ${d.operador || '—'}
+- Incoterm: ${d.incoterm || '—'}
+- Piezas / carga: ${d.piezasDesc || '—'}
+- Peso total (kg): ${d.pesoTotal || '—'}
+- Volumen total (m³): ${d.volumenTotal || '—'}`;
+    };
+
+    const textContent = `
+Estimado/a ${ejecutivoNombre},
+
+Tu cliente ${clienteUsername} ha generado una cotización en una ruta sin tarifa configurada y requiere tarificación manual.
+${buildDetails()}
+
+- Fecha de cotización: ${new Date().toLocaleString('es-CL')}
+
+Por favor, revisa esta solicitud a la brevedad para asistirle.
+
+Atentamente,
+Sistema de Portal Clientes — Seemann Group
+    `.trim();
+
+    const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+        to: [{ email: ejecutivoEmail }],
+        subject,
+        textContent,
+      }),
+    });
+
+    if (!brevoRes.ok) {
+      console.error('[no-rate-email] Brevo error:', await brevoRes.text());
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error en /api/send-no-rate-quote-email:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // ============================================================
 // RUTAS DE PDF DE COTIZACIONES
 // ============================================================
@@ -5146,6 +5242,10 @@ app.get('/api/behavior-tracking/client/:email', auth, async (req, res) => {
       const abandoned = sorted.some((e: any) => e.event === 'QUOTE_ABANDONED');
       const routeEvent = sorted.find((e: any) => e.event === 'QUOTE_ROUTE_SELECTED');
       const lastStep = [...sorted].reverse().find((e: any) => e.step?.stepNumber);
+      // Use the QUOTE_COMPLETED event that carries quoteNumber/isRecurring (sent after PDF generation)
+      const completedEvt = [...sorted].reverse().find((e: any) => e.event === 'QUOTE_COMPLETED');
+      const quoteNumberVal: string | null = completedEvt?.metadata?.quoteNumber || null;
+      const isRecurring: boolean = completedEvt ? completedEvt.metadata?.isRecurring !== false : true;
 
       return {
         sessionId,
@@ -5156,6 +5256,8 @@ app.get('/api/behavior-tracking/client/:email', auth, async (req, res) => {
         route: (routeEvent as any)?.route || null,
         lastStep: (lastStep as any)?.step || null,
         eventsCount: sorted.length,
+        isRecurring,
+        quoteNumber: quoteNumberVal,
       };
     });
 

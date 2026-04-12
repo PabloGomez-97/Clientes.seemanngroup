@@ -1,7 +1,7 @@
 // src/components/administrador/ComportamientoDeClientes.tsx
 // Behavior tracking dashboard – read-only view for ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 
 const FONT =
@@ -46,6 +46,8 @@ interface Session {
   route: { origin: string; destination: string } | null;
   lastStep: { step: string; stepNumber: number; totalSteps: number } | null;
   eventsCount: number;
+  isRecurring?: boolean;
+  quoteNumber?: string | null;
 }
 
 interface ClientDetail {
@@ -147,6 +149,7 @@ const typeColors: Record<string, string> = {
 export default function ComportamientoDeClientes() {
   useOutletContext<OutletContext>();
   const { token } = useAuth();
+  const navigate = useNavigate();
 
   const [clients, setClients] = useState<ClientBehavior[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,6 +167,11 @@ export default function ComportamientoDeClientes() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [view, setView] = useState<"clients" | "analytics">("clients");
+
+  // Modal for clickable summary cards
+  const [modalType, setModalType] = useState<
+    "iniciadas" | "completadas" | "abandonadas" | null
+  >(null);
 
   // ── Fetch client list ──
   useEffect(() => {
@@ -673,6 +681,36 @@ export default function ComportamientoDeClientes() {
                       )}
                     </div>
 
+                    {/* Recurring badge */}
+                    {session.status === "completed" && (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "2px 8px",
+                          borderRadius: 20,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          background:
+                            session.isRecurring === false
+                              ? "#fff7ed"
+                              : "#f0fdf4",
+                          color:
+                            session.isRecurring === false
+                              ? "#c2410c"
+                              : "#15803d",
+                          border:
+                            session.isRecurring === false
+                              ? "1px solid #fed7aa"
+                              : "1px solid #bbf7d0",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {session.isRecurring === false
+                          ? "No recurrente"
+                          : "Recurrente"}
+                      </span>
+                    )}
+
                     {/* Last step (if abandoned) */}
                     {session.status === "abandoned" && session.lastStep && (
                       <span style={{ fontSize: 12, color: "#9ca3af" }}>
@@ -708,6 +746,54 @@ export default function ComportamientoDeClientes() {
                       {statusLabels[session.status]}
                     </span>
 
+                    {/* Quote number + Ver Cotizaciones (completed only) */}
+                    {session.status === "completed" && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {session.quoteNumber && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: "#6b7280",
+                              fontWeight: 500,
+                            }}
+                          >
+                            #{session.quoteNumber}
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate("/admin/reporteriaclientes", {
+                              state: {
+                                clientEmail: selectedClient.email,
+                                clientUsername: selectedClient.username,
+                              },
+                            });
+                          }}
+                          style={{
+                            padding: "3px 10px",
+                            background: "#ff6200",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            fontFamily: FONT,
+                          }}
+                        >
+                          Ver cotización
+                        </button>
+                      </div>
+                    )}
+
                     {/* Date */}
                     <span
                       style={{ fontSize: 12, color: "#9ca3af", flexShrink: 0 }}
@@ -717,6 +803,113 @@ export default function ComportamientoDeClientes() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* ── Step legend ── */}
+          {clientDetail?.sessions && clientDetail.sessions.length > 0 && (
+            <div
+              style={{
+                marginTop: 20,
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "14px 18px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#64748b",
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                Guía de estados
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 8,
+                }}
+              >
+                {[
+                  {
+                    icon: "○",
+                    color: "#94a3b8",
+                    title: "Sin último paso",
+                    desc: "El cliente no ingresó una ruta de transporte",
+                  },
+                  {
+                    icon: "●",
+                    color: "#f59e0b",
+                    title: "Último paso: (2) Selección de ruta",
+                    desc: "Ingresó la ruta pero no continuó",
+                  },
+                  {
+                    icon: "●",
+                    color: "#3b82f6",
+                    title: "Último paso: (3) Detalles de carga",
+                    desc: "Ingresó datos de carga pero no finalizó",
+                  },
+                  {
+                    icon: "●",
+                    color: "#8b5cf6",
+                    title: "Último paso: (4) Incoterm y cargos",
+                    desc: "Abandonó en la última etapa",
+                  },
+                  {
+                    icon: "✓",
+                    color: "#10b981",
+                    title: "Recurrente",
+                    desc: "Ruta con tarifa configurada",
+                  },
+                  {
+                    icon: "!",
+                    color: "#f97316",
+                    title: "No recurrente",
+                    desc: "Ruta sin tarifa — requiere tarificación manual",
+                  },
+                ].map((item, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 8,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 13,
+                        color: item.color,
+                        fontWeight: 700,
+                        minWidth: 14,
+                        marginTop: 1,
+                      }}
+                    >
+                      {item.icon}
+                    </span>
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "#374151",
+                        }}
+                      >
+                        {item.title}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#6b7280" }}>
+                        {item.desc}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -1109,7 +1302,7 @@ export default function ComportamientoDeClientes() {
               margin: 0,
             }}
           >
-            Comportamiento de clientes
+            Customer Behavior Tracking
           </h1>
           <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0" }}>
             Seguimiento de cotizaciones de tus clientes
@@ -1146,16 +1339,22 @@ export default function ComportamientoDeClientes() {
         {sortedClients.length > uniqueAccountCount && (
           <SummaryCard label="Empresas" value={sortedClients.length} />
         )}
-        <SummaryCard label="Cotizaciones iniciadas" value={totalStarted} />
+        <SummaryCard
+          label="Cotizaciones iniciadas"
+          value={totalStarted}
+          onClick={() => setModalType("iniciadas")}
+        />
         <SummaryCard
           label="Completadas"
           value={totalCompleted}
           color="#10b981"
+          onClick={() => setModalType("completadas")}
         />
         <SummaryCard
           label="Abandonadas"
           value={totalAbandoned}
           color="#ef4444"
+          onClick={() => setModalType("abandonadas")}
         />
         <SummaryCard label="Tasa global" value={`${overallRate}%`} />
       </div>
@@ -1306,7 +1505,7 @@ export default function ComportamientoDeClientes() {
                       </strong>
                     </span>
                     <span>
-                      Completadas: {/* en el principio */}
+                      Completadas:{" "}
                       <strong style={{ color: "#10b981" }}>
                         {client.stats.quotesCompleted}
                       </strong>
@@ -1359,6 +1558,180 @@ export default function ComportamientoDeClientes() {
           ))}
         </div>
       )}
+
+      {/* ── Modal: clients who generated started/completed/abandoned quotes ── */}
+      {modalType && (
+        <div
+          onClick={() => setModalType(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: 14,
+              padding: "24px 28px",
+              width: "100%",
+              maxWidth: 520,
+              maxHeight: "80vh",
+              overflowY: "auto",
+              fontFamily: FONT,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            }}
+          >
+            {/* Modal header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 20,
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: "#1f2937",
+                  margin: 0,
+                }}
+              >
+                {modalType === "iniciadas"
+                  ? "Clientes con cotizaciones iniciadas"
+                  : modalType === "completadas"
+                    ? "Clientes con cotizaciones completadas"
+                    : "Clientes con cotizaciones abandonadas"}
+              </h2>
+              <button
+                onClick={() => setModalType(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 20,
+                  color: "#6b7280",
+                  lineHeight: 1,
+                  padding: 4,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* List */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {clients
+                .filter((c) => {
+                  if (!c.stats) return false;
+                  if (modalType === "iniciadas")
+                    return c.stats.quotesStarted > 0;
+                  if (modalType === "completadas")
+                    return c.stats.quotesCompleted > 0;
+                  return c.stats.quotesAbandoned > 0;
+                })
+                .sort((a, b) => {
+                  const getVal = (c: ClientBehavior) =>
+                    modalType === "iniciadas"
+                      ? c.stats!.quotesStarted
+                      : modalType === "completadas"
+                        ? c.stats!.quotesCompleted
+                        : c.stats!.quotesAbandoned;
+                  return getVal(b) - getVal(a);
+                })
+                .map((client) => {
+                  const val =
+                    modalType === "iniciadas"
+                      ? client.stats!.quotesStarted
+                      : modalType === "completadas"
+                        ? client.stats!.quotesCompleted
+                        : client.stats!.quotesAbandoned;
+                  const valColor =
+                    modalType === "completadas"
+                      ? "#10b981"
+                      : modalType === "abandonadas"
+                        ? "#ef4444"
+                        : "#1f2937";
+                  return (
+                    <div
+                      key={`${client.email}-${client.username}`}
+                      onClick={() => {
+                        setModalType(null);
+                        openClientDetail(client);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "10px 14px",
+                        borderRadius: 8,
+                        border: "1px solid #e5e7eb",
+                        cursor: "pointer",
+                        transition: "background 0.1s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = "#f9fafb")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "transparent")
+                      }
+                    >
+                      <div
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          background: "#232f3e",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: "#fff",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {client.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: "#1f2937",
+                          }}
+                        >
+                          {client.username}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#9ca3af" }}>
+                          {client.email}
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 700,
+                          color: valColor,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {val}
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1368,18 +1741,37 @@ function SummaryCard({
   label,
   value,
   color,
+  onClick,
 }: {
   label: string;
   value: number | string;
   color?: string;
+  onClick?: () => void;
 }) {
   return (
     <div
+      onClick={onClick}
       style={{
         background: "#fff",
         border: "1px solid #e5e7eb",
         borderRadius: 10,
         padding: "16px 18px",
+        cursor: onClick ? "pointer" : "default",
+        transition: onClick
+          ? "border-color 0.15s, box-shadow 0.15s"
+          : undefined,
+      }}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.currentTarget.style.borderColor = "rgba(255,98,0,0.35)";
+          e.currentTarget.style.boxShadow = "0 2px 8px rgba(255,98,0,0.08)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (onClick) {
+          e.currentTarget.style.borderColor = "#e5e7eb";
+          e.currentTarget.style.boxShadow = "none";
+        }
       }}
     >
       <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>
@@ -1395,6 +1787,11 @@ function SummaryCard({
       >
         {value}
       </div>
+      {onClick && (
+        <div style={{ fontSize: 10, color: "#d1d5db", marginTop: 4 }}>
+          Ver clientes →
+        </div>
+      )}
     </div>
   );
 }
