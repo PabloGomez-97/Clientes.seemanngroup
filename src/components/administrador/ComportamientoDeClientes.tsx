@@ -538,12 +538,10 @@ export default function ComportamientoDeClientes() {
                         justifyContent: "space-between",
                         fontSize: 13,
                         color: "#6b7280",
+                        marginTop: 4,
                       }}
                     >
-                      <span>Iniciadas: {data.started}</span>
-                      <span style={{ color: "#10b981" }}>
-                        Completadas: {data.completed}
-                      </span>
+                      <span>Completadas: {data.completed}</span>
                     </div>
                     <div
                       style={{
@@ -554,13 +552,12 @@ export default function ComportamientoDeClientes() {
                         marginTop: 4,
                       }}
                     >
-                      <span style={{ color: "#ef4444" }}>
-                        Abandonadas: {data.abandoned}
-                      </span>
+                      <span>Abandonadas: {data.abandoned}</span>
                       <span style={{ fontWeight: 600, color: "#374151" }}>
                         Tasa: {rate}%
                       </span>
                     </div>
+
                     {/* Mini bar */}
                     <div
                       style={{
@@ -1309,7 +1306,7 @@ export default function ComportamientoDeClientes() {
                       </strong>
                     </span>
                     <span>
-                      Completadas:{" "}
+                      Completadas: {/* en el principio */}
                       <strong style={{ color: "#10b981" }}>
                         {client.stats.quotesCompleted}
                       </strong>
