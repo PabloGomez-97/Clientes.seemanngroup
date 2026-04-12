@@ -1,5 +1,6 @@
 // Ejecutivo Tracking (own clients only) — Reuses ShipsGoTracking + CreateShipmentForm / CreateOceanShipmentForm
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import ShipsGoTracking from "../../Sidebar/Shipsgotracking";
 import CreateShipmentForm from "../../Sidebar/New-tracking";
@@ -36,6 +37,8 @@ interface CreateFormState {
 
 function ShipsGoTrackingAdmin() {
   const { token } = useAuth();
+  const { clientUsername } = useParams<{ clientUsername?: string }>();
+  const navigate = useNavigate();
 
   // Client list
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -151,16 +154,42 @@ function ShipsGoTrackingAdmin() {
     );
   }, [clientes, searchQuery]);
 
-  const handleSelectClient = useCallback((client: Cliente) => {
-    setSelectedClient(client);
-    setShowCreateForm(null);
-    setTrackingKey((k) => k + 1);
-  }, []);
+  const handleSelectClient = useCallback(
+    (client: Cliente) => {
+      setShowCreateForm(null);
+      setTrackingKey((k) => k + 1);
+      navigate(`/admin/trackeos/${encodeURIComponent(client.username)}`, {
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
   const handleBack = useCallback(() => {
-    setSelectedClient(null);
     setShowCreateForm(null);
-  }, []);
+    navigate("/admin/trackeos", { replace: true });
+  }, [navigate]);
+
+  // URL is the single source of truth for which client is open.
+  // Intentionally excludes selectedClient to avoid the re-select race condition.
+  useEffect(() => {
+    if (!clientUsername) {
+      setSelectedClient(null);
+      return;
+    }
+    if (clientsLoading || clientes.length === 0) return;
+    const match = clientes.find(
+      (c) =>
+        c.username.toLowerCase() ===
+        decodeURIComponent(clientUsername).toLowerCase(),
+    );
+    if (!match) return;
+    setSelectedClient((prev) =>
+      prev?.username.toLowerCase() === match.username.toLowerCase()
+        ? prev
+        : match,
+    );
+  }, [clientUsername, clientes, clientsLoading]);
 
   const handleNewTracking = useCallback(
     (type: "air" | "ocean", referenceUsername: string) => {

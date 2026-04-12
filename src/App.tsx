@@ -158,13 +158,22 @@ function App() {
             path="reporteriaclientes/:clientUsername?"
             element={<ReporteriaClientes />}
           />
-          <Route path="documentacion" element={<Documentacion />} />
+          <Route
+            path="documentacion/:clientUsername?"
+            element={<Documentacion />}
+          />
           <Route path="dashboard" element={<DashboardAdmin />} />
           <Route path="users" element={<UsersManagement />} />
           <Route path="reportexecutive" element={<ReportExecutive />} />
           <Route path="reportoperational" element={<Invoicesxejecutivo />} />
-          <Route path="trackeos" element={<ShipsGoTrackingAdmin />} />
-          <Route path="op-trackeos" element={<ShipsGoTrackingAdminOP />} />
+          <Route
+            path="trackeos/:clientUsername?"
+            element={<ShipsGoTrackingAdmin />}
+          />
+          <Route
+            path="op-trackeos/:clientUsername?"
+            element={<ShipsGoTrackingAdminOP />}
+          />
           <Route
             path="op-reporteriaclientes/:clientUsername?"
             element={<OPReporteriaClientes />}
@@ -190,7 +199,7 @@ function App() {
           <Route path="auditoria" element={<Auditoria />} />
           <Route path="agencia-aduanas" element={<AgenciaAduanas />} />
           <Route
-            path="comportamiento-clientes"
+            path="comportamiento-clientes/:clientUsername?"
             element={<ComportamientoDeClientes />}
           />
           <Route path="settings" element={<SettingsAdmin />} />

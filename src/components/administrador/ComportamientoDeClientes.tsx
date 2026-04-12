@@ -1,7 +1,7 @@
 // src/components/administrador/ComportamientoDeClientes.tsx
 // Behavior tracking dashboard – read-only view for ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { useOutletContext, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 
 const FONT =
@@ -150,6 +150,7 @@ export default function ComportamientoDeClientes() {
   useOutletContext<OutletContext>();
   const { token } = useAuth();
   const navigate = useNavigate();
+  const { clientUsername } = useParams<{ clientUsername?: string }>();
 
   const [clients, setClients] = useState<ClientBehavior[]>([]);
   const [loading, setLoading] = useState(true);
@@ -188,8 +189,8 @@ export default function ComportamientoDeClientes() {
         if (!resp.ok) throw new Error("Error al cargar datos");
         const data = await resp.json();
         setClients(data.clients || []);
-      } catch (e: any) {
-        setError(e.message);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Error desconocido");
       } finally {
         setLoading(false);
       }
@@ -226,6 +227,10 @@ export default function ComportamientoDeClientes() {
     async (client: ClientBehavior) => {
       setSelectedClient(client);
       setDetailLoading(true);
+      navigate(
+        `/admin/comportamiento-clientes/${encodeURIComponent(client.username)}`,
+        { replace: true },
+      );
       try {
         const resp = await fetch(
           `${API_BASE_URL}/api/behavior-tracking/client/${encodeURIComponent(client.email)}`,
@@ -239,13 +244,34 @@ export default function ComportamientoDeClientes() {
         setDetailLoading(false);
       }
     },
-    [token],
+    [token, navigate],
   );
 
   const handleBack = () => {
-    setSelectedClient(null);
     setClientDetail(null);
+    navigate("/admin/comportamiento-clientes", { replace: true });
   };
+
+  // URL is the single source of truth for which client is open.
+  // Intentionally excludes selectedClient to avoid the re-select race condition.
+  useEffect(() => {
+    if (!clientUsername) {
+      setSelectedClient(null);
+      setClientDetail(null);
+      return;
+    }
+    if (loading || clients.length === 0) return;
+    const decoded = decodeURIComponent(clientUsername).toLowerCase();
+    const match = clients.find((c) => c.username.toLowerCase() === decoded);
+    if (!match) return;
+    setSelectedClient((prev) => {
+      if (prev?.username.toLowerCase() === match.username.toLowerCase())
+        return prev;
+      // Fetch detail for newly selected client
+      openClientDetail(match);
+      return match;
+    });
+  }, [clientUsername, clients, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Filters ──
   const filteredClients = useMemo(() => {

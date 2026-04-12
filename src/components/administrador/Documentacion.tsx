@@ -1,7 +1,7 @@
 // src/components/administrador/Documentacion.tsx — Document management for ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { ClientOverrideProvider } from "../../contexts/ClientOverrideContext";
 import AirShipmentsView from "../shipments/AirShipmentsView";
@@ -60,6 +60,8 @@ function Documentacion() {
   useOutletContext<OutletContext>();
   const { token } = useAuth();
   const { t } = useTranslation();
+  const { clientUsername } = useParams<{ clientUsername?: string }>();
+  const navigate = useNavigate();
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,14 +107,41 @@ function Documentacion() {
     fetchClientes();
   }, [token]);
 
-  const handleSelectClient = useCallback((cliente: Cliente) => {
-    setSelectedClient(cliente);
-    setActiveTab("air");
-  }, []);
+  const handleSelectClient = useCallback(
+    (cliente: Cliente) => {
+      setActiveTab("air");
+      navigate(`/admin/documentacion/${encodeURIComponent(cliente.username)}`, {
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
   const handleBack = () => {
-    setSelectedClient(null);
+    navigate("/admin/documentacion", { replace: true });
   };
+
+  // URL is the single source of truth for which client is open.
+  // Intentionally excludes selectedClient to avoid the re-select race condition.
+  useEffect(() => {
+    if (!clientUsername) {
+      setSelectedClient(null);
+      return;
+    }
+    if (loading || clientes.length === 0) return;
+    const match = clientes.find(
+      (c) =>
+        c.username.toLowerCase() ===
+        decodeURIComponent(clientUsername).toLowerCase(),
+    );
+    if (!match) return;
+    setSelectedClient((prev) =>
+      prev?.username.toLowerCase() === match.username.toLowerCase()
+        ? prev
+        : match,
+    );
+    setActiveTab("air");
+  }, [clientUsername, clientes, loading]);
 
   const filteredClients = useMemo(() => {
     if (!searchQuery.trim()) return clientes;
