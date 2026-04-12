@@ -1653,20 +1653,83 @@ function AirShipmentsView({
                                                   shipment.customerReference
                                                 }
                                               />
-                                              <InfoField
-                                                label="Número de Cotización"
-                                                value={
+                                              {(() => {
+                                                const qnEntry =
                                                   shipment.id != null
                                                     ? quoteNumberCache[
                                                         shipment.id
-                                                      ]?.loading
-                                                      ? "Cargando..."
-                                                      : (quoteNumberCache[
-                                                          shipment.id
-                                                        ]?.quoteNumber ?? null)
-                                                    : null
-                                                }
-                                              />
+                                                      ]
+                                                    : undefined;
+                                                if (qnEntry?.loading)
+                                                  return (
+                                                    <InfoField
+                                                      label="Número de Cotización"
+                                                      value="Cargando..."
+                                                    />
+                                                  );
+                                                if (qnEntry?.quoteNumber)
+                                                  return (
+                                                    <div
+                                                      style={{
+                                                        marginBottom: "12px",
+                                                        flex: "1 1 48%",
+                                                        minWidth: "200px",
+                                                      }}
+                                                    >
+                                                      <div
+                                                        style={{
+                                                          fontSize: "0.7rem",
+                                                          fontWeight: "600",
+                                                          color: "#6b7280",
+                                                          textTransform:
+                                                            "uppercase",
+                                                          letterSpacing:
+                                                            "0.5px",
+                                                          marginBottom: "4px",
+                                                        }}
+                                                      >
+                                                        Número de Cotización
+                                                      </div>
+                                                      <div
+                                                        style={{
+                                                          fontSize: "0.875rem",
+                                                          color:
+                                                            "var(--primary-color, #ff6200)",
+                                                          cursor: "pointer",
+                                                          fontWeight: 600,
+                                                          wordBreak:
+                                                            "break-word",
+                                                        }}
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          const qn =
+                                                            qnEntry.quoteNumber!;
+                                                          if (
+                                                            reporteriaClientesContext
+                                                          ) {
+                                                            reporteriaClientesContext.openQuotesTab(
+                                                              qn,
+                                                            );
+                                                          } else {
+                                                            navigate(
+                                                              "/quotes",
+                                                              {
+                                                                state: {
+                                                                  quoteFilter:
+                                                                    qn,
+                                                                },
+                                                              },
+                                                            );
+                                                          }
+                                                        }}
+                                                        title="Ver cotización"
+                                                      >
+                                                        {qnEntry.quoteNumber}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                return null;
+                                              })()}
                                               <InfoField
                                                 label="Waybill"
                                                 value={shipment.waybillNumber}

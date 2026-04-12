@@ -1762,24 +1762,57 @@ function OceanShipmentsView({
                                                       >
                                                         {qnEntry.quoteNumber}
                                                       </div>
-                                                      <div
-                                                        style={{
-                                                          fontWeight: "600",
-                                                          padding: "8px 0 0",
-                                                          textTransform:
-                                                            "uppercase",
-                                                          letterSpacing:
-                                                            "0.5px",
-                                                          marginBottom: "4px",
-                                                        }}
-                                                      >
-                                                        <InfoField
-                                                          label="BL / HBLI"
-                                                          value={getHBLIFromShipment(
+                                                      {(() => {
+                                                        const hbliVal =
+                                                          getHBLIFromShipment(
                                                             shipment,
-                                                          )}
-                                                        />
-                                                      </div>
+                                                          );
+                                                        if (!hbliVal)
+                                                          return null;
+                                                        return (
+                                                          <div
+                                                            style={{
+                                                              marginBottom:
+                                                                "12px",
+                                                              flex: "1 1 48%",
+                                                              minWidth: "200px",
+                                                              paddingTop: "8px",
+                                                            }}
+                                                          >
+                                                            <div
+                                                              style={{
+                                                                fontSize:
+                                                                  "0.7rem",
+                                                                fontWeight:
+                                                                  "600",
+                                                                color:
+                                                                  "#6b7280",
+                                                                textTransform:
+                                                                  "uppercase",
+                                                                letterSpacing:
+                                                                  "0.5px",
+                                                                marginBottom:
+                                                                  "4px",
+                                                              }}
+                                                            >
+                                                              BL / HBLI
+                                                            </div>
+                                                            <div
+                                                              style={{
+                                                                fontSize:
+                                                                  "0.875rem",
+                                                                color:
+                                                                  "#ff6200",
+                                                                fontWeight: 600,
+                                                                wordBreak:
+                                                                  "break-word",
+                                                              }}
+                                                            >
+                                                              {hbliVal}
+                                                            </div>
+                                                          </div>
+                                                        );
+                                                      })()}
                                                     </div>
                                                   );
                                                 return null;
