@@ -73,7 +73,6 @@ interface HBLICacheEntry {
   loading: boolean;
   fetched: boolean;
   hbliNumber: string | null;
-  description: string | null;
   containerNumber: string | null;
 }
 
@@ -170,7 +169,7 @@ function OceanShipmentsView({
     new Set(),
   );
 
-  // HBLI cache
+  // HBLI cache (tracking number lookup via /commodities chain)
   const [hbliCache, setHbliCache] = useState<Record<string, HBLICacheEntry>>(
     {},
   );
@@ -263,7 +262,19 @@ function OceanShipmentsView({
     }
   };
 
-  /* -- HBLI fetch (lazy, triggered by tab click) ------------ */
+  /* -- Synchronous HBLI helper: reads from already-loaded charges[] --- */
+  const getHBLIFromShipment = (shipment: OceanShippingOrder): string | null => {
+    if (!Array.isArray(shipment.charges)) return null;
+    for (const charge of shipment.charges) {
+      const ref: string | undefined = charge.income?.reference;
+      if (typeof ref === "string" && ref.toUpperCase().startsWith("HBLI")) {
+        return ref;
+      }
+    }
+    return null;
+  };
+
+  /* -- HBLI fetch: finds container/tracking number via /commodities chain */
   const fetchHBLIForShipment = useCallback(
     async (sogNumber: string) => {
       if (!accessToken) return;
@@ -276,7 +287,6 @@ function OceanShipmentsView({
           loading: true,
           fetched: false,
           hbliNumber: null,
-          description: null,
           containerNumber: null,
         },
       }));
@@ -303,7 +313,6 @@ function OceanShipmentsView({
               loading: false,
               fetched: true,
               hbliNumber: null,
-              description: null,
               containerNumber: null,
             },
           }));
@@ -320,7 +329,6 @@ function OceanShipmentsView({
               loading: false,
               fetched: true,
               hbliNumber: null,
-              description: null,
               containerNumber: null,
             },
           }));
@@ -335,7 +343,6 @@ function OceanShipmentsView({
               loading: false,
               fetched: true,
               hbliNumber: null,
-              description: null,
               containerNumber: null,
             },
           }));
@@ -363,7 +370,6 @@ function OceanShipmentsView({
               loading: false,
               fetched: true,
               hbliNumber: null,
-              description: null,
               containerNumber: null,
             },
           }));
@@ -374,7 +380,7 @@ function OceanShipmentsView({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const items2: any[] = data2.items || [];
 
-        // Step 3: Find item whose number starts with HBLI
+        // Find item whose number starts with HBLI
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const hbliItem = items2.find(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -384,15 +390,12 @@ function OceanShipmentsView({
         );
 
         let hbliNumber: string | null = null;
-        let description: string | null = null;
         let containerNumber: string | null = null;
 
         if (hbliItem) {
           hbliNumber = hbliItem.number;
-          description = hbliItem.description || null;
-
-          // Try to extract container number from description
-          // Container format: 4 uppercase letters + 7 digits (e.g., CAIU8517096)
+          const description: string | null = hbliItem.description || null;
+          // Extract container number from description (4 letters + 7 digits)
           if (description) {
             const lines = description.split("\n");
             for (const line of lines) {
@@ -411,7 +414,6 @@ function OceanShipmentsView({
             loading: false,
             fetched: true,
             hbliNumber,
-            description,
             containerNumber,
           },
         }));
@@ -423,7 +425,6 @@ function OceanShipmentsView({
             loading: false,
             fetched: true,
             hbliNumber: null,
-            description: null,
             containerNumber: null,
           },
         }));
@@ -432,15 +433,23 @@ function OceanShipmentsView({
     [accessToken, refreshAccessToken, hbliCache],
   );
 
-  /* -- Quote number fetch (lazy, triggered by accordion) ---- */
+  /* -- Quote number fetch (lazy on accordion open) ---------- */
   const fetchQuoteNumberForShipment = useCallback(
-    async (sogNumber: string) => {
-      if (!accessToken) return;
+    async (sogNumber: string, customerReference: string | null | undefined) => {
+      if (!accessToken || !activeUsername) return;
       if (
         quoteNumberCache[sogNumber]?.fetched ||
         quoteNumberCache[sogNumber]?.loading
       )
         return;
+
+      if (!customerReference) {
+        setQuoteNumberCache((prev) => ({
+          ...prev,
+          [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
+        }));
+        return;
+      }
 
       setQuoteNumberCache((prev) => ({
         ...prev,
@@ -448,9 +457,8 @@ function OceanShipmentsView({
       }));
 
       try {
-        // Step 1: Get commodities for this SOG number to find trackingNumber
-        const resp1 = await linbisFetch(
-          `https://api.linbis.com/commodities?Number=${encodeURIComponent(sogNumber)}&PageNumber=1&PageSize=5`,
+        const resp = await linbisFetch(
+          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(activeUsername)}&Page=1&ItemsPerPage=50&SortBy=newest`,
           {
             method: "GET",
             headers: {
@@ -461,84 +469,34 @@ function OceanShipmentsView({
           accessToken,
           refreshAccessToken,
         );
-
-        if (!resp1.ok) {
-          setQuoteNumberCache((prev) => ({
-            ...prev,
-            [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
-          }));
-          return;
-        }
-
-        const data1 = await resp1.json();
+        if (!resp.ok) throw new Error(`Status ${resp.status}`);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const items1: any[] = data1.items || [];
-        // Find first trackingNumber
+        const data: any = await resp.json();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const trackingNumber = items1.find(
-          (i: any) => i.trackingNumber,
-        )?.trackingNumber;
-
-        if (!trackingNumber) {
-          setQuoteNumberCache((prev) => ({
-            ...prev,
-            [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
-          }));
-          return;
-        }
-
-        // Step 2: Search commodities by trackingNumber to find QUO moduleNumber
-        const resp2 = await linbisFetch(
-          `https://api.linbis.com/commodities/search/${encodeURIComponent(trackingNumber)}?pageNumber=1&pageSize=50`,
-          {
-            method: "GET",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json",
-            },
-          },
-          accessToken,
-          refreshAccessToken,
-        );
-
-        if (!resp2.ok) {
-          setQuoteNumberCache((prev) => ({
-            ...prev,
-            [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
-          }));
-          return;
-        }
-
-        const data2 = await resp2.json();
+        const items: any[] = data.items ?? data ?? [];
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const items2: any[] = data2.items || [];
-
-        // Find the first moduleNumber that starts with "QUO"
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const quoteItem = items2.find(
+        const match = items.find(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (item: any) =>
-            typeof item.moduleNumber === "string" &&
-            item.moduleNumber.toUpperCase().startsWith("QUO"),
+          (q: any) =>
+            q.customerReference?.trim().toLowerCase() ===
+            customerReference.trim().toLowerCase(),
         );
-
         setQuoteNumberCache((prev) => ({
           ...prev,
           [sogNumber]: {
             loading: false,
             fetched: true,
-            quoteNumber: quoteItem?.moduleNumber || null,
+            quoteNumber: match?.number ?? null,
           },
         }));
-      } catch (err) {
-        console.error("Error fetching quote number:", err);
+      } catch {
         setQuoteNumberCache((prev) => ({
           ...prev,
           [sogNumber]: { loading: false, fetched: true, quoteNumber: null },
         }));
       }
     },
-    [accessToken, refreshAccessToken, quoteNumberCache],
+    [accessToken, refreshAccessToken, quoteNumberCache, activeUsername],
   );
 
   /* -- API: Fetch ocean shipments via shipping-orders ------- */
@@ -597,7 +555,7 @@ function OceanShipmentsView({
         const results = await Promise.allSettled(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           batch.map(async (order: any) => {
-            // Check modeOfTransportation to determine shipment type
+            // Fetch detail to confirm mode and extract all needed data
             const detailResp = await linbisFetch(
               `https://api.linbis.com/api/shipping-orders/${order.id}`,
               {
@@ -617,7 +575,37 @@ function OceanShipmentsView({
             const isOcean =
               mode === "10 - Vessel" || mode === "11 - Vessel, Containerized";
             if (!isOcean) return null;
-            return order;
+            // Map full detail so charges/commodities/trackingNumber are available
+            return {
+              id: detail.id,
+              number: detail.number,
+              waybillNumber: detail.waybillNumber ?? null,
+              bookingNumber: detail.bookingNumber ?? null,
+              customerReference: detail.customerReference ?? null,
+              additionalCustomerReference:
+                detail.additionalCustomerReference ?? null,
+              departureDate: detail.departureDate ?? null,
+              arrivalDate: detail.arrivalDate ?? null,
+              cutOffDate: detail.cutOffDate ?? null,
+              cutOffDocsDate: detail.cutOffDocsDate ?? null,
+              notes: detail.notes ?? null,
+              operationFlow: detail.operationFlow ?? null,
+              modeOfTransportation: detail.modeOfTransportation?.name ?? null,
+              rateCategoryId: detail.rateCategoryId ?? null,
+              carrier: detail.carrier ?? null,
+              shipper: detail.shipper ?? null,
+              shipperAddress: detail.shipperAddress ?? null,
+              consignee: detail.consignee ?? null,
+              consigneeAddress: detail.consigneeAddress ?? null,
+              notifyParty: detail.notifyParty ?? null,
+              notifyPartyAddress: detail.notifyPartyAddress ?? null,
+              executedAt: detail.executedAt ?? null,
+              salesRep: detail.salesRep?.name ?? null,
+              trackingNumber: detail.trackingNumber ?? null,
+              totalCargo: detail.totalCargo ?? null,
+              commodities: detail.commodities ?? [],
+              charges: detail.charges ?? [],
+            } as OceanShippingOrder;
           }),
         );
 
@@ -767,7 +755,7 @@ function OceanShipmentsView({
       });
       if (s?.number) {
         fetchHBLIForShipment(s.number);
-        fetchQuoteNumberForShipment(s.number);
+        fetchQuoteNumberForShipment(s.number, s.customerReference);
       }
     }
   };
@@ -775,25 +763,16 @@ function OceanShipmentsView({
   /* -- Tracking helpers ------------------------------------- */
   const getTrackOceanNumber = (shipment: OceanShippingOrder | null) => {
     if (!shipment) return "";
-
-    // Use trackingNumber from the shipping-orders API
     if (shipment.trackingNumber) return shipment.trackingNumber;
-
-    // Check HBLI cache for container number
     const hbli = hbliCache[shipment.number];
     if (hbli?.containerNumber) return hbli.containerNumber;
-
-    // Fall back to booking or waybill number
     if (shipment.bookingNumber) return shipment.bookingNumber;
     if (shipment.waybillNumber) return shipment.waybillNumber;
-
     return "";
   };
 
   const getDisplayedTrackingNumber = (shipment: OceanShippingOrder) => {
-    // Use trackingNumber from the shipping-orders API
     if (shipment.trackingNumber) return shipment.trackingNumber;
-
     const hbli = hbliCache[shipment.number];
     if (hbli?.loading) return "Cargando...";
     if (hbli?.fetched && hbli.containerNumber) return hbli.containerNumber;
@@ -807,8 +786,7 @@ function OceanShipmentsView({
     if (shipment.trackingNumber) return true;
     const hbli = hbliCache[shipment.number];
     if (hbli?.loading) return false;
-    const num = getTrackOceanNumber(shipment);
-    return !!num;
+    return !!getTrackOceanNumber(shipment);
   };
 
   const isOceanShipmentAlreadyTracked = (
@@ -1784,6 +1762,24 @@ function OceanShipmentsView({
                                                       >
                                                         {qnEntry.quoteNumber}
                                                       </div>
+                                                      <div
+                                                        style={{
+                                                          fontWeight: "600",
+                                                          padding: "8px 0 0",
+                                                          textTransform:
+                                                            "uppercase",
+                                                          letterSpacing:
+                                                            "0.5px",
+                                                          marginBottom: "4px",
+                                                        }}
+                                                      >
+                                                        <InfoField
+                                                          label="BL / HBLI"
+                                                          value={getHBLIFromShipment(
+                                                            shipment,
+                                                          )}
+                                                        />
+                                                      </div>
                                                     </div>
                                                   );
                                                 return null;
@@ -1858,25 +1854,6 @@ function OceanShipmentsView({
                                                 label="ID Interno"
                                                 value={shipment.id}
                                               />
-                                              {(() => {
-                                                const hbli =
-                                                  hbliCache[shipment.number];
-                                                if (hbli?.loading) {
-                                                  return (
-                                                    <div
-                                                      style={{
-                                                        gridColumn: "1 / -1",
-                                                        textAlign: "center",
-                                                        padding: 8,
-                                                        color: "#9ca3af",
-                                                        fontSize: "0.8125rem",
-                                                      }}
-                                                    >
-                                                      Buscando BL (HBLI)...
-                                                    </div>
-                                                  );
-                                                }
-                                              })()}
                                             </div>
                                           </div>
                                           <div className="asv-card">
