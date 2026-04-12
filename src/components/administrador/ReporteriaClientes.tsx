@@ -1,7 +1,7 @@
 // src/components/administrador/ReporteriaClientes.tsx — Client portal view for ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { ClientOverrideProvider } from "../../contexts/ClientOverrideContext";
 import AirShipmentsView from "../shipments/AirShipmentsView";
@@ -86,6 +86,7 @@ function ReporteriaClientes() {
   useOutletContext<OutletContext>(); // validate outlet context exists
   const { token } = useAuth();
   const { t } = useTranslation();
+  const { clientUsername } = useParams<{ clientUsername?: string }>();
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,6 +158,19 @@ function ReporteriaClientes() {
     setSelectedClient(null);
     setShowAllExw(false);
   };
+
+  // Auto-select client from URL param once list is loaded
+  useEffect(() => {
+    if (!clientUsername || loading || clientes.length === 0) return;
+    if (selectedClient) return; // already selected
+    const match = clientes.find(
+      (c) => c.username.toLowerCase() === clientUsername.toLowerCase(),
+    );
+    if (match) {
+      setSelectedClient(match);
+      setActiveTab("air");
+    }
+  }, [clientUsername, clientes, loading, selectedClient]);
 
   // Filtered client list
   const filteredClients = useMemo(() => {

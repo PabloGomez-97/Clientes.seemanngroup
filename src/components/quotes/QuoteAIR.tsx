@@ -1503,24 +1503,22 @@ function QuoteAPITester({
       );
       setResponse(data);
 
-      // Registrar auditoría
-      registrarEvento({
-        accion: isEjecutivoMode
-          ? "COTIZACION_AIR_EJECUTIVO"
-          : "COTIZACION_AIR_CREADA",
-        categoria: "COTIZACION",
-        descripcion: isEjecutivoMode
-          ? `Cotización aérea creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${effectiveUsername}`
-          : `Cotización aérea creada: ${originSeleccionado?.label || ""} → ${destinationSeleccionado?.label || ""}`,
-        detalles: {
-          tipo: tipoAccion,
-          origen: originSeleccionado?.label || "",
-          destino: destinationSeleccionado?.label || "",
-          carrier: rutaSeleccionada?.carrier || "",
-          incoterm,
-        },
-        ...(isEjecutivoMode && { clienteAfectado: effectiveUsername }),
-      });
+      // Registrar auditoría (solo en modo ejecutivo)
+      if (isEjecutivoMode) {
+        registrarEvento({
+          accion: "COTIZACION_AIR_EJECUTIVO",
+          categoria: "COTIZACION",
+          descripcion: `Cotización aérea creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${effectiveUsername}`,
+          detalles: {
+            tipo: tipoAccion,
+            origen: originSeleccionado?.label || "",
+            destino: destinationSeleccionado?.label || "",
+            carrier: rutaSeleccionada?.carrier || "",
+            incoterm,
+          },
+          clienteAfectado: effectiveUsername,
+        });
+      }
 
       // Registrar completación de cotización para behavior tracking
       trackComplete({

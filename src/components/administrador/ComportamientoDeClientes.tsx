@@ -770,12 +770,9 @@ export default function ComportamientoDeClientes() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate("/admin/reporteriaclientes", {
-                              state: {
-                                clientEmail: selectedClient.email,
-                                clientUsername: selectedClient.username,
-                              },
-                            });
+                            navigate(
+                              `/admin/reporteriaclientes/${selectedClient.username}`,
+                            );
                           }}
                           style={{
                             padding: "3px 10px",

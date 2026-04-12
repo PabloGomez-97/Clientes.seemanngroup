@@ -154,7 +154,10 @@ function App() {
           <Route path="tusclientes" element={<Clientesejecutivos />} />
           <Route index element={<Navigate to="/admin/home" replace />} />
           <Route path="home" element={<HomeSwitch />} />
-          <Route path="reporteriaclientes" element={<ReporteriaClientes />} />
+          <Route
+            path="reporteriaclientes/:clientUsername?"
+            element={<ReporteriaClientes />}
+          />
           <Route path="documentacion" element={<Documentacion />} />
           <Route path="dashboard" element={<DashboardAdmin />} />
           <Route path="users" element={<UsersManagement />} />

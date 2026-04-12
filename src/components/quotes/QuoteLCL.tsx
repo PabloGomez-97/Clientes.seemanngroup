@@ -1201,26 +1201,22 @@ function QuoteLCL({
       );
       setResponse(data);
 
-      // Registrar auditoría
-      registrarEvento({
-        accion: isEjecutivoMode
-          ? "COTIZACION_LCL_EJECUTIVO"
-          : "COTIZACION_LCL_CREADA",
-        categoria: "COTIZACION",
-        descripcion: isEjecutivoMode
-          ? `Cotización LCL creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${clienteSeleccionado?.username || ""}`
-          : `Cotización LCL creada: ${polSeleccionado?.label || ""} → ${podSeleccionado?.label || ""}`,
-        detalles: {
-          tipo: tipoAccion,
-          pol: polSeleccionado?.label || "",
-          pod: podSeleccionado?.label || "",
-          operador: rutaSeleccionada?.operador || "",
-          incoterm,
-        },
-        ...(isEjecutivoMode && {
+      // Registrar auditoría (solo en modo ejecutivo)
+      if (isEjecutivoMode) {
+        registrarEvento({
+          accion: "COTIZACION_LCL_EJECUTIVO",
+          categoria: "COTIZACION",
+          descripcion: `Cotización LCL creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${clienteSeleccionado?.username || ""}`,
+          detalles: {
+            tipo: tipoAccion,
+            pol: polSeleccionado?.label || "",
+            pod: podSeleccionado?.label || "",
+            operador: rutaSeleccionada?.operador || "",
+            incoterm,
+          },
           clienteAfectado: clienteSeleccionado?.username || "",
-        }),
-      });
+        });
+      }
 
       // Registrar completación de cotización para behavior tracking
       trackComplete({

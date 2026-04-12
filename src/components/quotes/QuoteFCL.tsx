@@ -1027,28 +1027,24 @@ function QuoteFCL({
       );
       setResponse(data);
 
-      // Registrar auditoría
-      registrarEvento({
-        accion: isEjecutivoMode
-          ? "COTIZACION_FCL_EJECUTIVO"
-          : "COTIZACION_FCL_CREADA",
-        categoria: "COTIZACION",
-        descripcion: isEjecutivoMode
-          ? `Cotización FCL creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${clienteSeleccionado?.username || ""}`
-          : `Cotización FCL creada: ${polSeleccionado?.label || ""} → ${podSeleccionado?.label || ""}`,
-        detalles: {
-          tipo: tipoAccion,
-          pol: polSeleccionado?.label || "",
-          pod: podSeleccionado?.label || "",
-          carrier: rutaSeleccionada?.carrier || "",
-          container: containerSeleccionado?.type || "",
-          cantidad: cantidadContenedores,
-          incoterm,
-        },
-        ...(isEjecutivoMode && {
+      // Registrar auditoría (solo en modo ejecutivo)
+      if (isEjecutivoMode) {
+        registrarEvento({
+          accion: "COTIZACION_FCL_EJECUTIVO",
+          categoria: "COTIZACION",
+          descripcion: `Cotización FCL creada por ejecutivo ${ejecutivo?.nombre || ""} para cliente ${clienteSeleccionado?.username || ""}`,
+          detalles: {
+            tipo: tipoAccion,
+            pol: polSeleccionado?.label || "",
+            pod: podSeleccionado?.label || "",
+            carrier: rutaSeleccionada?.carrier || "",
+            container: containerSeleccionado?.type || "",
+            cantidad: cantidadContenedores,
+            incoterm,
+          },
           clienteAfectado: clienteSeleccionado?.username || "",
-        }),
-      });
+        });
+      }
 
       // Registrar completación de cotización para behavior tracking
       trackComplete({
