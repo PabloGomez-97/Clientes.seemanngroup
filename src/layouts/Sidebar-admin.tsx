@@ -111,21 +111,11 @@ function SidebarAdmin({
               path: "/admin/op-trackeos",
               name: "Rastreo de envíos",
             },
+            {
+              path: "/admin/documentacion",
+              name: "Documentos",
+            },
           ],
-        },
-      ],
-    },
-    {
-      items: [
-        {
-          path: "/admin/documentacion",
-          name: "Documentos",
-          icon: "fa fa-file-alt",
-        },
-        {
-          path: "/admin/comportamiento-clientes",
-          name: "Comportamiento Clientes",
-          icon: "fa fa-users",
         },
       ],
     },
@@ -149,6 +139,15 @@ function SidebarAdmin({
               name: "Documentos Proveedores",
             },
           ],
+        },
+      ],
+    },
+    {
+      items: [
+        {
+          path: "/admin/comportamiento-clientes",
+          name: "Comportamiento Clientes",
+          icon: "fa fa-users",
         },
       ],
     },
