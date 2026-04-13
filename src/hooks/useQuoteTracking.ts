@@ -124,6 +124,18 @@ export function useQuoteTracking(quoteType: QuoteType) {
       destination: string,
       metadata?: Record<string, unknown>,
     ) => {
+      // Auto-reset session if the previous quote was completed.
+      // This ensures that consecutive quotes within the same component
+      // mount are tracked as separate sessions.
+      if (completedRef.current) {
+        sessionId.current = generateSessionId();
+        startedRef.current = false;
+        completedRef.current = false;
+        lastStepRef.current = null;
+        // Start a new session automatically
+        send({ event: "QUOTE_STARTED", quoteType });
+        startedRef.current = true;
+      }
       send({
         event: "QUOTE_ROUTE_SELECTED",
         quoteType,

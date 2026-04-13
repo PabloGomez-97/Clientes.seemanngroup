@@ -525,6 +525,9 @@ function QuoteFCL({
       price: 0,
       priceString: "0",
     });
+    trackRouteSelected(polNR?.label || "", podNR?.label || "", {
+      carrier: "X",
+    });
   }, [polNR, podNR, loadingRutas, rutas, carriersActivos]);
 
   // Auto-activar sinTarifa cuando el POD elegido no tiene rutas disponibles
@@ -572,6 +575,11 @@ function QuoteFCL({
         price: 0,
         priceString: "0",
       });
+      trackRouteSelected(
+        polSeleccionado?.label || "",
+        podSeleccionado?.label || "",
+        { carrier: "X" },
+      );
     }
   }, [polSeleccionado, podSeleccionado, rutas, carriersActivos, loadingRutas]);
 
@@ -1048,8 +1056,10 @@ function QuoteFCL({
 
       // Registrar completación de cotización para behavior tracking
       trackComplete({
-        pol: polSeleccionado?.label || "",
-        pod: podSeleccionado?.label || "",
+        pol:
+          polSeleccionado?.label || polNR?.label || rutaSeleccionada?.pol || "",
+        pod:
+          podSeleccionado?.label || podNR?.label || rutaSeleccionada?.pod || "",
         carrier: rutaSeleccionada?.carrier || "",
         container: containerSeleccionado?.type || "",
         incoterm,
@@ -1263,8 +1273,16 @@ function QuoteFCL({
           body: JSON.stringify({
             quoteType: "FCL",
             cargoDetails: {
-              pol: polSeleccionado?.label || "",
-              pod: podSeleccionado?.label || "",
+              pol:
+                polSeleccionado?.label ||
+                polNR?.label ||
+                rutaSeleccionada?.pol ||
+                "",
+              pod:
+                podSeleccionado?.label ||
+                podNR?.label ||
+                rutaSeleccionada?.pod ||
+                "",
               carrier: rutaSeleccionada?.carrier || "",
               containerType: containerSeleccionado?.type || "",
               cantidadContenedores,

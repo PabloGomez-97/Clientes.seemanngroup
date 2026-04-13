@@ -408,8 +408,14 @@ function QuoteAPITester({
     }
     if (rutaSeleccionada) {
       trackRouteSelected(
-        originSeleccionado?.label || destNR?.label || "",
-        destinationSeleccionado?.label || destNR?.label || "",
+        originSeleccionado?.label ||
+          originNR?.label ||
+          rutaSeleccionada.origin ||
+          "",
+        destinationSeleccionado?.label ||
+          destNR?.label ||
+          rutaSeleccionada.destination ||
+          "",
         { carrier: rutaSeleccionada.carrier },
       );
     }
@@ -1522,8 +1528,16 @@ function QuoteAPITester({
 
       // Registrar completación de cotización para behavior tracking
       trackComplete({
-        origen: originSeleccionado?.label || "",
-        destino: destinationSeleccionado?.label || "",
+        origen:
+          originSeleccionado?.label ||
+          originNR?.label ||
+          rutaSeleccionada?.origin ||
+          "",
+        destino:
+          destinationSeleccionado?.label ||
+          destNR?.label ||
+          rutaSeleccionada?.destination ||
+          "",
         carrier: rutaSeleccionada?.carrier || "",
         incoterm,
         tipo: tipoAccion,
@@ -1804,8 +1818,16 @@ function QuoteAPITester({
           body: JSON.stringify({
             quoteType: "AIR",
             cargoDetails: {
-              origen: originSeleccionado?.label || "",
-              destino: destinationSeleccionado?.label || "",
+              origen:
+                originSeleccionado?.label ||
+                originNR?.label ||
+                rutaSeleccionada?.origin ||
+                "",
+              destino:
+                destinationSeleccionado?.label ||
+                destNR?.label ||
+                rutaSeleccionada?.destination ||
+                "",
               carrier: rutaSeleccionada?.carrier || "",
               incoterm,
               packageType: pkgType,
