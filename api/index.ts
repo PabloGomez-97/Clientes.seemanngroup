@@ -9,6 +9,7 @@ import { buildDocumentUploadEmailHTML, getDocumentUploadEmailSubject, type Docum
 import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuoteEmailData } from './emails/noRateQuoteEmailTemplate.js';
 import chatHandler from './chat.js';
 import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './services/r2Storage.js';
+import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from './services/r2DocumentStorage.js';
 
 /** =========================
  *  Entorno + JWT
@@ -625,7 +626,8 @@ interface IAirShipmentDocumento {
   nombreArchivo: string;
   tipoArchivo: string;
   tamanoBytes: number;
-  contenidoBase64: string;
+  contenidoBase64?: string;
+  r2Key?: string;
   subidoPor: string;   // email (currentUser.sub)
   usuarioId: string;   // username (currentUser.username)
 }
@@ -661,7 +663,8 @@ const AirShipmentDocumentoSchema = new mongoose.Schema<IAirShipmentDocumentoDoc>
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },
+    r2Key: { type: String },
     subidoPor: { type: String, required: true },
     usuarioId: { type: String, required: true, index: true },
   },
@@ -702,7 +705,8 @@ interface IOceanShipmentDocumento {
   nombreArchivo: string;
   tipoArchivo: string;
   tamanoBytes: number;
-  contenidoBase64: string;
+  contenidoBase64?: string;
+  r2Key?: string;
   subidoPor: string;
   usuarioId: string;
 }
@@ -741,7 +745,8 @@ const OceanShipmentDocumentoSchema = new mongoose.Schema<IOceanShipmentDocumento
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },
+    r2Key: { type: String },
     subidoPor: { type: String, required: true },
     usuarioId: { type: String, required: true, index: true },
   },
@@ -780,7 +785,8 @@ interface IGroundShipmentDocumento {
   nombreArchivo: string;
   tipoArchivo: string;
   tamanoBytes: number;
-  contenidoBase64: string;
+  contenidoBase64?: string;
+  r2Key?: string;
   subidoPor: string;
   usuarioId: string;
 }
@@ -818,7 +824,8 @@ const GroundShipmentDocumentoSchema = new mongoose.Schema<IGroundShipmentDocumen
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },
+    r2Key: { type: String },
     subidoPor: { type: String, required: true },
     usuarioId: { type: String, required: true, index: true },
   },
@@ -842,7 +849,8 @@ interface IDocumento {
   nombreArchivo: string;
   tipoArchivo: string;
   tamanoBytes: number;
-  contenidoBase64: string;
+  contenidoBase64?: string;
+  r2Key?: string;
   subidoPor: string;
   usuarioId: string;
 }
@@ -865,7 +873,8 @@ const DocumentoSchema = new mongoose.Schema<IDocumentoDoc>(
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },
+    r2Key: { type: String },
     subidoPor: { type: String, required: true },
     usuarioId: { type: String, required: true, index: true }
   },
@@ -3195,13 +3204,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           getRequestedDocumentOwnerUsername(req),
         );
 
+        // Upload to R2 instead of storing base64 in MongoDB
+        const base64Content = contenidoBase64.includes('base64,')
+          ? contenidoBase64.split('base64,')[1]
+          : contenidoBase64;
+        const fileBuffer = Buffer.from(base64Content, 'base64');
+        const docId = new mongoose.Types.ObjectId();
+        const r2Key = buildDocR2Key('documentos', ownerUsername, String(quoteId), docId.toString(), String(nombreArchivo));
+
+        await uploadDocument(r2Key, fileBuffer, mimeType);
+
         const nuevoDocumento = await Documento.create({
+          _id: docId,
           quoteId: String(quoteId),
           tipo,
           nombreArchivo: String(nombreArchivo),
           tipoArchivo: mimeType,
           tamanoBytes: fileSize,
-          contenidoBase64,
+          r2Key,
           subidoPor: currentUser.sub,
           usuarioId: ownerUsername
         });
@@ -3328,6 +3348,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         console.log(`[documentos] Descargando: ${documento._id}`);
 
+        // R2 path: proxy binary
+        if (documento.r2Key) {
+          try {
+            const docBuffer = await downloadDocumentBuffer(documento.r2Key);
+            res.setHeader('Content-Type', documento.tipoArchivo || 'application/octet-stream');
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(documento.nombreArchivo)}"`);
+            res.setHeader('Content-Length', docBuffer.length.toString());
+            return res.end(docBuffer);
+          } catch (r2Err: any) {
+            console.error('[documentos] Error al descargar de R2:', r2Err);
+            return res.status(500).json({ error: 'Error al descargar documento de almacenamiento' });
+          }
+        }
+
+        // Legacy path: base64 from MongoDB
         return res.json({
           success: true,
           documento: {
@@ -3381,6 +3416,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
           return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+        }
+
+        // Delete from R2 if stored there
+        if (documento.r2Key) {
+          try {
+            await deleteDocument(documento.r2Key);
+          } catch (r2Err) {
+            console.error('[documentos] Error al eliminar de R2:', r2Err);
+          }
         }
 
         await Documento.findByIdAndDelete(documentoId);
@@ -3466,13 +3510,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           getRequestedDocumentOwnerUsername(req),
         );
 
+        // Upload to R2 instead of storing base64 in MongoDB
+        const base64Content = contenidoBase64.includes('base64,')
+          ? contenidoBase64.split('base64,')[1]
+          : contenidoBase64;
+        const fileBuffer = Buffer.from(base64Content, 'base64');
+        const docId = new mongoose.Types.ObjectId();
+        const r2Key = buildDocR2Key('air', ownerUsername, String(shipmentId), docId.toString(), String(nombreArchivo));
+
+        await uploadDocument(r2Key, fileBuffer, mimeType);
+
         const nuevoDocumento = await AirShipmentDocumento.create({
+          _id: docId,
           shipmentId: String(shipmentId),
           tipo,
           nombreArchivo: String(nombreArchivo),
           tipoArchivo: mimeType,
           tamanoBytes: fileSize,
-          contenidoBase64,
+          r2Key,
           subidoPor: currentUser.sub,
           usuarioId: ownerUsername,
         });
@@ -3582,6 +3637,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
         }
 
+        // R2 path: proxy binary
+        if (documento.r2Key) {
+          try {
+            const docBuffer = await downloadDocumentBuffer(documento.r2Key);
+            res.setHeader('Content-Type', documento.tipoArchivo || 'application/octet-stream');
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(documento.nombreArchivo)}"`);
+            res.setHeader('Content-Length', docBuffer.length.toString());
+            return res.end(docBuffer);
+          } catch (r2Err: any) {
+            console.error('[air-documentos] Error al descargar de R2:', r2Err);
+            return res.status(500).json({ error: 'Error al descargar documento de almacenamiento' });
+          }
+        }
+
+        // Legacy path: base64 from MongoDB
         return res.json({
           success: true,
           documento: {
@@ -3630,6 +3700,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
           return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+        }
+
+        // Delete from R2 if stored there
+        if (documento.r2Key) {
+          try {
+            await deleteDocument(documento.r2Key);
+          } catch (r2Err) {
+            console.error('[air-documentos] Error al eliminar de R2:', r2Err);
+          }
         }
 
         await AirShipmentDocumento.findByIdAndDelete(documentoId);
@@ -3710,13 +3789,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           getRequestedDocumentOwnerUsername(req),
         );
 
+        // Upload to R2 instead of storing base64 in MongoDB
+        const base64Content = contenidoBase64.includes('base64,')
+          ? contenidoBase64.split('base64,')[1]
+          : contenidoBase64;
+        const fileBuffer = Buffer.from(base64Content, 'base64');
+        const docId = new mongoose.Types.ObjectId();
+        const r2Key = buildDocR2Key('ocean', ownerUsername, String(shipmentId), docId.toString(), String(nombreArchivo));
+
+        await uploadDocument(r2Key, fileBuffer, mimeType);
+
         const nuevoDocumento = await OceanShipmentDocumento.create({
+          _id: docId,
           shipmentId: String(shipmentId),
           tipo,
           nombreArchivo: String(nombreArchivo),
           tipoArchivo: mimeType,
           tamanoBytes: fileSize,
-          contenidoBase64,
+          r2Key,
           subidoPor: currentUser.sub,
           usuarioId: ownerUsername,
         });
@@ -3826,6 +3916,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
         }
 
+        // R2 path: proxy binary
+        if (documento.r2Key) {
+          try {
+            const docBuffer = await downloadDocumentBuffer(documento.r2Key);
+            res.setHeader('Content-Type', documento.tipoArchivo || 'application/octet-stream');
+            res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(documento.nombreArchivo)}"`);
+            res.setHeader('Content-Length', docBuffer.length.toString());
+            return res.end(docBuffer);
+          } catch (r2Err: any) {
+            console.error('[ocean-documentos] Error al descargar de R2:', r2Err);
+            return res.status(500).json({ error: 'Error al descargar documento de almacenamiento' });
+          }
+        }
+
+        // Legacy path: base64 from MongoDB
         return res.json({
           success: true,
           documento: {
@@ -3874,6 +3979,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
           return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+        }
+
+        // Delete from R2 if stored there
+        if (documento.r2Key) {
+          try {
+            await deleteDocument(documento.r2Key);
+          } catch (r2Err) {
+            console.error('[ocean-documentos] Error al eliminar de R2:', r2Err);
+          }
         }
 
         await OceanShipmentDocumento.findByIdAndDelete(documentoId);
@@ -3953,13 +4067,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           getRequestedDocumentOwnerUsername(req),
         );
 
+        // Upload to R2 instead of storing base64 in MongoDB
+        const base64Content = contenidoBase64.includes('base64,')
+          ? contenidoBase64.split('base64,')[1]
+          : contenidoBase64;
+        const fileBuffer = Buffer.from(base64Content, 'base64');
+        const docId = new mongoose.Types.ObjectId();
+        const r2Key = buildDocR2Key('ground', ownerUsername, String(shipmentId), docId.toString(), String(nombreArchivo));
+        await uploadDocument(r2Key, fileBuffer, mimeType);
+
         const nuevoDocumento = await GroundShipmentDocumento.create({
+          _id: docId,
           shipmentId: String(shipmentId),
           tipo,
           nombreArchivo: String(nombreArchivo),
           tipoArchivo: mimeType,
           tamanoBytes: fileSize,
-          contenidoBase64,
+          r2Key,
           subidoPor: currentUser.sub,
           usuarioId: ownerUsername,
         });
@@ -4069,6 +4193,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
         }
 
+        // R2 binary proxy
+        if (documento.r2Key) {
+          const buffer = await downloadDocumentBuffer(documento.r2Key);
+          res.setHeader('Content-Type', documento.tipoArchivo || 'application/octet-stream');
+          res.setHeader('Content-Disposition', `attachment; filename="${documento.nombreArchivo}"`);
+          return res.send(buffer);
+        }
+
+        // Legacy fallback for old documents stored in MongoDB
         return res.json({
           success: true,
           documento: {
@@ -4117,6 +4250,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
           return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+        }
+
+        // Delete from R2 if stored there
+        if (documento.r2Key) {
+          try {
+            await deleteDocument(documento.r2Key);
+          } catch (r2Err) {
+            console.error('[ground-documentos] Error al eliminar de R2:', r2Err);
+          }
         }
 
         await GroundShipmentDocumento.findByIdAndDelete(documentoId);

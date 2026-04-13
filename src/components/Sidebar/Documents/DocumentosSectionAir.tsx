@@ -293,14 +293,29 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
 
       if (!response.ok) throw new Error("Error al descargar documento");
 
-      const data = await response.json();
+      const contentType = response.headers.get("Content-Type") || "";
 
-      const link = document.createElement("a");
-      link.href = data.documento.contenidoBase64;
-      link.download = nombreArchivo;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (!contentType.includes("application/json")) {
+        // R2 binary response
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = nombreArchivo;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else {
+        // Legacy fallback (base64 from MongoDB)
+        const data = await response.json();
+        const link = document.createElement("a");
+        link.href = data.documento.contenidoBase64;
+        link.download = nombreArchivo;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } catch (err: any) {
       console.error("Error descargando documento:", err);
       setError(err.message || "Error al descargar documento");

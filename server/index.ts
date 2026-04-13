@@ -11,6 +11,7 @@ import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOv
 import { buildDocumentUploadEmailHTML, getDocumentUploadEmailSubject, type DocumentUploadEmailData } from '../api/emails/documentUploadEmailTemplate.ts';
 import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuoteEmailData } from '../api/emails/noRateQuoteEmailTemplate.ts';
 import { buildR2Key, getPublicUrl, uploadPDF, deletePDF, deleteAllUserPDFs, downloadPDFBuffer } from '../api/services/r2Storage.ts';
+import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from '../api/services/r2DocumentStorage.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -674,7 +675,8 @@ const AirShipmentDocumentoSchema = new mongoose.Schema(
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },
+    r2Key: { type: String },
 
     // trazabilidad/seguridad (igual que en quotes)
     subidoPor: { type: String, required: true }, // email o sub
@@ -740,7 +742,8 @@ const OceanShipmentDocumentoSchema = new mongoose.Schema(
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },
+    r2Key: { type: String },
     subidoPor: { type: String, required: true },
     usuarioId: { type: String, required: true, index: true },
   },
@@ -785,7 +788,8 @@ const GroundShipmentDocumentoSchema = new mongoose.Schema(
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },
+    r2Key: { type: String },
     subidoPor: { type: String, required: true },
     usuarioId: { type: String, required: true, index: true },
   },
@@ -808,7 +812,8 @@ interface IDocumento {
   nombreArchivo: string;
   tipoArchivo: string;
   tamanoBytes: number;
-  contenidoBase64: string;
+  contenidoBase64?: string;
+  r2Key?: string;
   subidoPor: string;
   usuarioId: string;
 }
@@ -831,7 +836,8 @@ const DocumentoSchema = new mongoose.Schema<IDocumentoDoc>(
     nombreArchivo: { type: String, required: true },
     tipoArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },
+    r2Key: { type: String },
     subidoPor: { type: String, required: true },
     usuarioId: { type: String, required: true, index: true }
   },
@@ -3108,13 +3114,24 @@ app.post('/api/documentos/upload', auth, async (req, res) => {
       getRequestedDocumentOwnerUsername(req),
     );
 
+    // Upload to R2 instead of storing base64 in MongoDB
+    const base64Content = contenidoBase64.includes('base64,')
+      ? contenidoBase64.split('base64,')[1]
+      : contenidoBase64;
+    const fileBuffer = Buffer.from(base64Content, 'base64');
+    const docId = new mongoose.Types.ObjectId();
+    const r2Key = buildDocR2Key('documentos', ownerUsername, String(quoteId), docId.toString(), String(nombreArchivo));
+
+    await uploadDocument(r2Key, fileBuffer, mimeType);
+
     const nuevoDocumento = await Documento.create({
+      _id: docId,
       quoteId: String(quoteId),
       tipo,
       nombreArchivo: String(nombreArchivo),
       tipoArchivo: mimeType,
       tamanoBytes: fileSize,
-      contenidoBase64,
+      r2Key,
       subidoPor: currentUser.sub,
       usuarioId: ownerUsername
     });
@@ -3236,6 +3253,21 @@ app.get('/api/documentos/download/:documentoId', auth, async (req, res) => {
 
     console.log(`[documentos] Descargando: ${documento._id}`);
 
+    // R2 path: proxy binary
+    if (documento.r2Key) {
+      try {
+        const docBuffer = await downloadDocumentBuffer(documento.r2Key);
+        res.setHeader('Content-Type', documento.tipoArchivo || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(documento.nombreArchivo)}"`);
+        res.setHeader('Content-Length', docBuffer.length.toString());
+        return res.end(docBuffer);
+      } catch (r2Err: any) {
+        console.error('[documentos] Error al descargar de R2:', r2Err);
+        return res.status(500).json({ error: 'Error al descargar documento de almacenamiento' });
+      }
+    }
+
+    // Legacy path: base64 from MongoDB
     return res.json({
       success: true,
       documento: {
@@ -3286,6 +3318,15 @@ app.delete('/api/documentos/:documentoId', auth, async (req, res) => {
 
     if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+    }
+
+    // Delete from R2 if stored there
+    if (documento.r2Key) {
+      try {
+        await deleteDocument(documento.r2Key);
+      } catch (r2Err) {
+        console.error('[documentos] Error al eliminar de R2:', r2Err);
+      }
     }
 
     await Documento.findByIdAndDelete(documentoId);
@@ -3364,13 +3405,24 @@ app.post('/api/air-shipments/documentos/upload', auth, async (req, res) => {
       getRequestedDocumentOwnerUsername(req),
     );
 
+    // Upload to R2 instead of storing base64 in MongoDB
+    const base64Content = contenidoBase64.includes('base64,')
+      ? contenidoBase64.split('base64,')[1]
+      : contenidoBase64;
+    const fileBuffer = Buffer.from(base64Content, 'base64');
+    const docId = new mongoose.Types.ObjectId();
+    const r2Key = buildDocR2Key('air', ownerUsername, String(shipmentId), docId.toString(), String(nombreArchivo));
+
+    await uploadDocument(r2Key, fileBuffer, mimeType);
+
     const nuevoDocumento = await AirShipmentDocumento.create({
+      _id: docId,
       shipmentId: String(shipmentId),
       tipo,
       nombreArchivo: String(nombreArchivo),
       tipoArchivo: mimeType,
       tamanoBytes: fileSize,
-      contenidoBase64,
+      r2Key,
       subidoPor: currentUser.sub,
       usuarioId: ownerUsername,
     });
@@ -3459,6 +3511,21 @@ app.get('/api/air-shipments/documentos/download/:documentoId', auth, async (req,
       return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
     }
 
+    // R2 path: proxy binary
+    if (documento.r2Key) {
+      try {
+        const docBuffer = await downloadDocumentBuffer(documento.r2Key);
+        res.setHeader('Content-Type', documento.tipoArchivo || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(documento.nombreArchivo)}"`);
+        res.setHeader('Content-Length', docBuffer.length.toString());
+        return res.end(docBuffer);
+      } catch (r2Err: any) {
+        console.error('[air-documentos] Error al descargar de R2:', r2Err);
+        return res.status(500).json({ error: 'Error al descargar documento de almacenamiento' });
+      }
+    }
+
+    // Legacy path: base64 from MongoDB
     return res.json({
       success: true,
       documento: {
@@ -3495,6 +3562,15 @@ app.delete('/api/air-shipments/documentos/:documentoId', auth, async (req, res) 
 
     if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+    }
+
+    // Delete from R2 if stored there
+    if (documento.r2Key) {
+      try {
+        await deleteDocument(documento.r2Key);
+      } catch (r2Err) {
+        console.error('[air-documentos] Error al eliminar de R2:', r2Err);
+      }
     }
 
     await AirShipmentDocumento.findByIdAndDelete(documentoId);
@@ -3569,13 +3645,24 @@ app.post('/api/ocean-shipments/documentos/upload', auth, async (req, res) => {
       getRequestedDocumentOwnerUsername(req),
     );
 
+    // Upload to R2 instead of storing base64 in MongoDB
+    const base64Content = contenidoBase64.includes('base64,')
+      ? contenidoBase64.split('base64,')[1]
+      : contenidoBase64;
+    const fileBuffer = Buffer.from(base64Content, 'base64');
+    const docId = new mongoose.Types.ObjectId();
+    const r2Key = buildDocR2Key('ocean', ownerUsername, String(shipmentId), docId.toString(), String(nombreArchivo));
+
+    await uploadDocument(r2Key, fileBuffer, mimeType);
+
     const nuevoDocumento = await OceanShipmentDocumento.create({
+      _id: docId,
       shipmentId: String(shipmentId),
       tipo,
       nombreArchivo: String(nombreArchivo),
       tipoArchivo: mimeType,
       tamanoBytes: fileSize,
-      contenidoBase64,
+      r2Key,
       subidoPor: currentUser.sub,
       usuarioId: ownerUsername,
     });
@@ -3664,6 +3751,21 @@ app.get('/api/ocean-shipments/documentos/download/:documentoId', auth, async (re
       return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
     }
 
+    // R2 path: proxy binary
+    if (documento.r2Key) {
+      try {
+        const docBuffer = await downloadDocumentBuffer(documento.r2Key);
+        res.setHeader('Content-Type', documento.tipoArchivo || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(documento.nombreArchivo)}"`);
+        res.setHeader('Content-Length', docBuffer.length.toString());
+        return res.end(docBuffer);
+      } catch (r2Err: any) {
+        console.error('[ocean-documentos] Error al descargar de R2:', r2Err);
+        return res.status(500).json({ error: 'Error al descargar documento de almacenamiento' });
+      }
+    }
+
+    // Legacy path: base64 from MongoDB
     return res.json({
       success: true,
       documento: {
@@ -3700,6 +3802,15 @@ app.delete('/api/ocean-shipments/documentos/:documentoId', auth, async (req, res
 
     if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+    }
+
+    // Delete from R2 if stored there
+    if (documento.r2Key) {
+      try {
+        await deleteDocument(documento.r2Key);
+      } catch (r2Err) {
+        console.error('[ocean-documentos] Error al eliminar de R2:', r2Err);
+      }
     }
 
     await OceanShipmentDocumento.findByIdAndDelete(documentoId);
@@ -3773,13 +3884,24 @@ app.post('/api/ground-shipments/documentos/upload', auth, async (req, res) => {
       getRequestedDocumentOwnerUsername(req),
     );
 
+    // Upload to R2 instead of storing base64 in MongoDB
+    const base64Content = contenidoBase64.includes('base64,')
+      ? contenidoBase64.split('base64,')[1]
+      : contenidoBase64;
+    const fileBuffer = Buffer.from(base64Content, 'base64');
+    const docId = new mongoose.Types.ObjectId();
+    const r2Key = buildDocR2Key('ground', ownerUsername, String(shipmentId), docId.toString(), String(nombreArchivo));
+
+    await uploadDocument(r2Key, fileBuffer, mimeType);
+
     const nuevoDocumento = await GroundShipmentDocumento.create({
+      _id: docId,
       shipmentId: String(shipmentId),
       tipo,
       nombreArchivo: String(nombreArchivo),
       tipoArchivo: mimeType,
       tamanoBytes: fileSize,
-      contenidoBase64,
+      r2Key,
       subidoPor: currentUser.sub,
       usuarioId: ownerUsername,
     });
@@ -3868,6 +3990,21 @@ app.get('/api/ground-shipments/documentos/download/:documentoId', auth, async (r
       return res.status(403).json({ error: 'No tienes permiso para descargar este documento' });
     }
 
+    // R2 path: proxy binary
+    if (documento.r2Key) {
+      try {
+        const docBuffer = await downloadDocumentBuffer(documento.r2Key);
+        res.setHeader('Content-Type', documento.tipoArchivo || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(documento.nombreArchivo)}"`);
+        res.setHeader('Content-Length', docBuffer.length.toString());
+        return res.end(docBuffer);
+      } catch (r2Err: any) {
+        console.error('[ground-documentos] Error al descargar de R2:', r2Err);
+        return res.status(500).json({ error: 'Error al descargar documento de almacenamiento' });
+      }
+    }
+
+    // Legacy path: base64 from MongoDB
     return res.json({
       success: true,
       documento: {
@@ -3904,6 +4041,15 @@ app.delete('/api/ground-shipments/documentos/:documentoId', auth, async (req, re
 
     if (!documentBelongsToOwnerScope(documento, ownerUsername)) {
       return res.status(403).json({ error: 'No tienes permiso para eliminar este documento' });
+    }
+
+    // Delete from R2 if stored there
+    if (documento.r2Key) {
+      try {
+        await deleteDocument(documento.r2Key);
+      } catch (r2Err) {
+        console.error('[ground-documentos] Error al eliminar de R2:', r2Err);
+      }
     }
 
     await GroundShipmentDocumento.findByIdAndDelete(documentoId);
