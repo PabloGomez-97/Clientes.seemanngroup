@@ -280,12 +280,11 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
 
     try {
       const response = await fetch(
-        `/api/air-shipments/documentos/download/${documentoId}`,
+        `/api/air-shipments/documentos/download/${documentoId}?ownerUsername=${encodeURIComponent(ownerUsername)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "X-Owner-Username": ownerUsername,
           },
         },
       );
@@ -331,13 +330,12 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
 
     try {
       const response = await fetch(
-        `/api/air-shipments/documentos/${documentoId}`,
+        `/api/air-shipments/documentos/${documentoId}?ownerUsername=${encodeURIComponent(ownerUsername)}`,
         {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "X-Owner-Username": ownerUsername,
           },
         },
       );

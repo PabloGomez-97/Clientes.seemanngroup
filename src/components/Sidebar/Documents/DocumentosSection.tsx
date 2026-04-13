@@ -258,13 +258,15 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
     if (!token) return;
 
     try {
-      const response = await fetch(`/api/documentos/download/${documentoId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "X-Owner-Username": ownerUsername,
+      const response = await fetch(
+        `/api/documentos/download/${documentoId}?ownerUsername=${encodeURIComponent(ownerUsername)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Error al descargar documento");
@@ -312,14 +314,16 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
     if (!confirmed) return;
 
     try {
-      const response = await fetch(`/api/documentos/${documentoId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "X-Owner-Username": ownerUsername,
+      const response = await fetch(
+        `/api/documentos/${documentoId}?ownerUsername=${encodeURIComponent(ownerUsername)}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Error al eliminar documento");

@@ -301,12 +301,11 @@ export const DocumentosSectionGround: React.FC<Props> = ({ shipmentId }) => {
 
     try {
       const response = await fetch(
-        `/api/ground-shipments/documentos/download/${documentoId}`,
+        `/api/ground-shipments/documentos/download/${documentoId}?ownerUsername=${encodeURIComponent(ownerUsername)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "X-Owner-Username": ownerUsername,
           },
         },
       );
@@ -354,13 +353,12 @@ export const DocumentosSectionGround: React.FC<Props> = ({ shipmentId }) => {
 
     try {
       const response = await fetch(
-        `/api/ground-shipments/documentos/${documentoId}`,
+        `/api/ground-shipments/documentos/${documentoId}?ownerUsername=${encodeURIComponent(ownerUsername)}`,
         {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "X-Owner-Username": ownerUsername,
           },
         },
       );
