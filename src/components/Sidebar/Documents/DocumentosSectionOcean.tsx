@@ -103,12 +103,11 @@ export const DocumentosSectionOcean: React.FC<Props> = ({ shipmentId }) => {
 
     try {
       const response = await fetch(
-        `/api/ocean-shipments/documentos/${shipmentId}`,
+        `/api/ocean-shipments/documentos/${shipmentId}?ownerUsername=${encodeURIComponent(ownerUsername)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "X-Owner-Username": ownerUsername,
           },
         },
       );

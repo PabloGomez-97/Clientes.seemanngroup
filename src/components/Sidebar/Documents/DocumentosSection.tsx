@@ -82,13 +82,15 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`/api/documentos/${quoteId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "X-Owner-Username": ownerUsername,
+      const response = await fetch(
+        `/api/documentos/${quoteId}?ownerUsername=${encodeURIComponent(ownerUsername)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Error al cargar documentos");

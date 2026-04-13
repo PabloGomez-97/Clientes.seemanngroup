@@ -95,12 +95,11 @@ export const DocumentosSectionAir: React.FC<Props> = ({ shipmentId }) => {
 
     try {
       const response = await fetch(
-        `/api/air-shipments/documentos/${shipmentId}`,
+        `/api/air-shipments/documentos/${shipmentId}?ownerUsername=${encodeURIComponent(ownerUsername)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "X-Owner-Username": ownerUsername,
           },
         },
       );

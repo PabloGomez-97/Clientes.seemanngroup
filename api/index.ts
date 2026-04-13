@@ -426,7 +426,7 @@ function getRequestedDocumentOwnerUsername(req: VercelRequest): string | undefin
     : req.query.ownerUsername;
   const bodyOwner = (req.body as any)?.ownerUsername;
 
-  for (const candidate of [headerOwner, queryOwner, bodyOwner]) {
+  for (const candidate of [queryOwner, headerOwner, bodyOwner]) {
     if (typeof candidate === 'string' && candidate.trim()) {
       return candidate.trim();
     }
