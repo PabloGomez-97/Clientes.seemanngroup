@@ -9,6 +9,7 @@ import chatHandler from '../api/chat.ts';
 import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData } from '../api/emails/oversizeEmailTemplate.ts';
 import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from '../api/emails/oversizeEmailTemplateOcean.ts';
 import { buildDocumentUploadEmailHTML, getDocumentUploadEmailSubject, type DocumentUploadEmailData } from '../api/emails/documentUploadEmailTemplate.ts';
+import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuoteEmailData } from '../api/emails/noRateQuoteEmailTemplate.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -4262,59 +4263,15 @@ app.post('/api/send-no-rate-quote-email', auth, async (req, res) => {
       cargoDetails: Record<string, unknown>;
     };
 
-    const subject = `Cotización sin tarifa — ${clienteUsername} (${quoteType})`;
-
-    const buildDetails = () => {
-      if (quoteType === 'AIR') {
-        const d = cargoDetails as any;
-        return `
-- Tipo de Servicio: Aéreo (AIR)
-- Origen: ${d.origen || '—'}
-- Destino: ${d.destino || '—'}
-- Carrier: ${d.carrier || '—'}
-- Incoterm: ${d.incoterm || '—'}
-- Tipo de bulto: ${d.packageType || '—'}
-- Piezas / carga: ${d.piezasDesc || '—'}
-- Peso total (kg): ${d.pesoTotal || '—'}
-- Volumen total (m³): ${d.volumenTotal || '—'}`;
-      }
-      if (quoteType === 'FCL') {
-        const d = cargoDetails as any;
-        return `
-- Tipo de Servicio: Marítimo FCL
-- POL (Origen): ${d.pol || '—'}
-- POD (Destino): ${d.pod || '—'}
-- Carrier: ${d.carrier || '—'}
-- Tipo de contenedor: ${d.containerType || '—'}
-- Cantidad de contenedores: ${d.cantidadContenedores || '—'}
-- Incoterm: ${d.incoterm || '—'}`;
-      }
-      // LCL
-      const d = cargoDetails as any;
-      return `
-- Tipo de Servicio: Marítimo LCL
-- POL (Origen): ${d.pol || '—'}
-- POD (Destino): ${d.pod || '—'}
-- Operador: ${d.operador || '—'}
-- Incoterm: ${d.incoterm || '—'}
-- Piezas / carga: ${d.piezasDesc || '—'}
-- Peso total (kg): ${d.pesoTotal || '—'}
-- Volumen total (m³): ${d.volumenTotal || '—'}`;
+    const emailData: NoRateQuoteEmailData = {
+      ejecutivoNombre,
+      clienteUsername,
+      quoteType,
+      cargoDetails,
     };
 
-    const textContent = `
-Estimado/a ${ejecutivoNombre},
-
-Tu cliente ${clienteUsername} ha generado una cotización en una ruta sin tarifa configurada y requiere tarificación manual.
-${buildDetails()}
-
-- Fecha de cotización: ${new Date().toLocaleString('es-CL')}
-
-Por favor, revisa esta solicitud a la brevedad para asistirle.
-
-Atentamente,
-Sistema de Portal Clientes — Seemann Group
-    `.trim();
+    const subject = getNoRateQuoteEmailSubject(emailData);
+    const htmlContent = buildNoRateQuoteEmailHTML(emailData);
 
     const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -4326,7 +4283,7 @@ Sistema de Portal Clientes — Seemann Group
         sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
         to: [{ email: ejecutivoEmail }],
         subject,
-        textContent,
+        htmlContent,
       }),
     });
 

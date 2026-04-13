@@ -1979,40 +1979,40 @@ function QuoteAPITester({
       root.unmount();
       document.body.removeChild(tempDiv);
 
-      // Enviar notificación por email al ejecutivo
-      try {
-        const total = sinTarifa
-          ? "PENDIENTE"
-          : rutaSeleccionada.currency + " " + totalCharges.toFixed(2);
-        const emailRes = await fetch("/api/send-operation-email", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ejecutivoEmail: ejecutivo?.email,
-            ejecutivoNombre: ejecutivo?.nombre,
-            clienteNombre: user?.nombreuser,
-            tipoServicio: "Aéreo",
-            origen: rutaSeleccionada.origin,
-            destino: rutaSeleccionada.destination,
-            carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.carrier,
-            precio: sinTarifa
-              ? 0
-              : (tarifaAirFreight?.precioConMarkup ?? 0) * chargeableWeight,
-            currency: rutaSeleccionada.currency,
-            total: total,
-            tipoAccion: tipoAccionParam,
-            quoteId: (apiResponse || response)?.quote?.id,
-          }),
-        });
-        if (!emailRes.ok) {
-          console.error("Error sending email");
+      // Enviar notificación por email al ejecutivo (solo si tiene tarifa; para rutas NR ya se envió el correo de sin tarifa)
+      if (!sinTarifa)
+        try {
+          const total =
+            rutaSeleccionada.currency + " " + totalCharges.toFixed(2);
+          const emailRes = await fetch("/api/send-operation-email", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              ejecutivoEmail: ejecutivo?.email,
+              ejecutivoNombre: ejecutivo?.nombre,
+              clienteNombre: user?.nombreuser,
+              tipoServicio: "Aéreo",
+              origen: rutaSeleccionada.origin,
+              destino: rutaSeleccionada.destination,
+              carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.carrier,
+              precio: sinTarifa
+                ? 0
+                : (tarifaAirFreight?.precioConMarkup ?? 0) * chargeableWeight,
+              currency: rutaSeleccionada.currency,
+              total: total,
+              tipoAccion: tipoAccionParam,
+              quoteId: (apiResponse || response)?.quote?.id,
+            }),
+          });
+          if (!emailRes.ok) {
+            console.error("Error sending email");
+          }
+        } catch (emailErr) {
+          console.error("Error enviando notificación por correo:", emailErr);
         }
-      } catch (emailErr) {
-        console.error("Error enviando notificación por correo:", emailErr);
-      }
     } catch (error) {
       console.error("Error generating PDF:", error);
     }

@@ -1625,37 +1625,38 @@ function QuoteLCL({
       root.unmount();
       document.body.removeChild(tempDiv);
 
-      // Enviar notificación por email al ejecutivo
-      try {
-        const emailResponse = await fetch("/api/send-operation-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwtToken}`,
-          },
-          body: JSON.stringify({
-            ejecutivoEmail: ejecutivo?.email,
-            ejecutivoNombre: ejecutivo?.nombre,
-            clienteNombre: isEjecutivoMode
-              ? clienteSeleccionado?.username
-              : user?.nombreuser,
-            tipoServicio: "Marítimo LCL",
-            origen: rutaSeleccionada.pol,
-            destino: rutaSeleccionada.pod,
-            carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.operador,
-            precio: sinTarifa ? 0 : (tarifaOceanFreight?.income ?? 0),
-            currency: rutaSeleccionada.currency,
-            total: sinTarifa ? "PENDIENTE" : total,
-            tipoAccion: tipoAccionParam,
-            quoteId: (apiResponse || response)?.quote?.id,
-          }),
-        });
-        if (!emailResponse.ok) {
-          console.error("Error sending email");
+      // Enviar notificación por email al ejecutivo (solo si tiene tarifa; para rutas NR ya se envió el correo de sin tarifa)
+      if (!sinTarifa)
+        try {
+          const emailResponse = await fetch("/api/send-operation-email", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwtToken}`,
+            },
+            body: JSON.stringify({
+              ejecutivoEmail: ejecutivo?.email,
+              ejecutivoNombre: ejecutivo?.nombre,
+              clienteNombre: isEjecutivoMode
+                ? clienteSeleccionado?.username
+                : user?.nombreuser,
+              tipoServicio: "Marítimo LCL",
+              origen: rutaSeleccionada.pol,
+              destino: rutaSeleccionada.pod,
+              carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.operador,
+              precio: sinTarifa ? 0 : (tarifaOceanFreight?.income ?? 0),
+              currency: rutaSeleccionada.currency,
+              total: sinTarifa ? "PENDIENTE" : total,
+              tipoAccion: tipoAccionParam,
+              quoteId: (apiResponse || response)?.quote?.id,
+            }),
+          });
+          if (!emailResponse.ok) {
+            console.error("Error sending email");
+          }
+        } catch (error) {
+          console.error("Error enviando notificación por correo:", error);
         }
-      } catch (error) {
-        console.error("Error enviando notificación por correo:", error);
-      }
     } catch (error) {
       console.error("Error generating PDF:", error);
     }
