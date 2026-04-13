@@ -10,6 +10,7 @@ import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData
 import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from '../api/emails/oversizeEmailTemplateOcean.ts';
 import { buildDocumentUploadEmailHTML, getDocumentUploadEmailSubject, type DocumentUploadEmailData } from '../api/emails/documentUploadEmailTemplate.ts';
 import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuoteEmailData } from '../api/emails/noRateQuoteEmailTemplate.ts';
+import { buildR2Key, getPublicUrl, uploadPDF, deletePDF, deleteAllUserPDFs, downloadPDFBuffer } from '../api/services/r2Storage.ts';
 
 /** =========================
  *  Entorno + JWT
@@ -889,7 +890,8 @@ interface IQuotePDF {
   quoteNumber: string;
   nombreArchivo: string;
   tamanoBytes: number;
-  contenidoBase64: string;
+  contenidoBase64?: string;          // Legacy – ya no se usa para nuevos PDFs
+  r2Key?: string;                    // Clave del objeto en Cloudflare R2
   tipoServicio: 'AIR' | 'FCL' | 'LCL' | 'INTERNACIONALIZACION';
   origen: string;
   destino: string;
@@ -909,7 +911,8 @@ const QuotePDFSchema = new mongoose.Schema<IQuotePDFDoc>(
     quoteNumber: { type: String, required: true, index: true },
     nombreArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },   // Legacy – opcional
+    r2Key: { type: String },             // Cloudflare R2 object key
     tipoServicio: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL', 'INTERNACIONALIZACION'] },
     origen: { type: String, default: '' },
     destino: { type: String, default: '' },
@@ -4302,7 +4305,7 @@ app.post('/api/send-no-rate-quote-email', auth, async (req, res) => {
 // RUTAS DE PDF DE COTIZACIONES
 // ============================================================
 
-// POST /api/quote-pdf/upload - Subir PDF de cotización
+// POST /api/quote-pdf/upload - Subir PDF de cotización (Cloudflare R2)
 app.post('/api/quote-pdf/upload', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user;
@@ -4313,11 +4316,6 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
 
     const { quoteNumber, nombreArchivo, contenidoBase64, tipoServicio, origen, destino } = req.body;
 
-    // Permitir que el cliente (front) envíe `usuarioId` y `subidoPor` cuando
-    // el usuario autenticado es el ejecutivo que actúa en nombre
-    // de un cliente. Esto evita cambiar el comportamiento para usuarios
-    // autenticados normales (clientes). Sólo se usará el override cuando
-    // ambos campos estén presentes y el username sea 'Ejecutivo'.
     const overrideUsuarioId = typeof (req.body.usuarioId) === 'string' ? String(req.body.usuarioId) : null;
     const overrideSubidoPor = typeof (req.body.subidoPor) === 'string' ? String(req.body.subidoPor) : null;
 
@@ -4337,33 +4335,44 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
       return res.status(400).json({ error: 'tipoServicio debe ser AIR, FCL, LCL o INTERNACIONALIZACION' });
     }
 
-    // Calcular tamaño del base64
+    // Extraer contenido base64 puro y convertir a Buffer
     const base64Content = contenidoBase64.includes('base64,')
       ? contenidoBase64.split('base64,')[1]
       : contenidoBase64;
-    const padding = (base64Content.match(/=/g) || []).length;
-    const fileSize = (base64Content.length * 3) / 4 - padding;
+    const pdfBuffer = Buffer.from(base64Content, 'base64');
+    const fileSize = pdfBuffer.length;
 
     if (fileSize > 10 * 1024 * 1024) {
       return res.status(400).json({ error: 'El PDF excede el tamaño máximo de 10MB' });
     }
 
-    // Si ya existe un PDF para esta cotización (para el usuario resuelto), actualizarlo
+    // Construir clave R2 y subir a Cloudflare R2
+    const r2Key = buildR2Key(resolvedUsuarioId!, quoteNumber);
+    await uploadPDF(r2Key, pdfBuffer, {
+      quoteNumber: String(quoteNumber),
+      usuarioId: resolvedUsuarioId!,
+      tipoServicio,
+    });
+
+    console.log(`[quote-pdf] PDF subido a R2: ${r2Key}`);
+
+    // Guardar/actualizar metadatos en MongoDB (sin contenidoBase64)
     const existente = await QuotePDF.findOne({
       quoteNumber: String(quoteNumber),
       usuarioId: resolvedUsuarioId
     });
 
     if (existente) {
-      existente.contenidoBase64 = contenidoBase64;
       existente.nombreArchivo = nombreArchivo;
       existente.tamanoBytes = fileSize;
       existente.tipoServicio = tipoServicio;
       existente.origen = origen || '';
       existente.destino = destino || '';
+      existente.r2Key = r2Key;
+      existente.contenidoBase64 = undefined;  // Limpiar legacy si existía
       await existente.save();
 
-      console.log(`[quote-pdf] PDF actualizado para cotización ${quoteNumber}`);
+      console.log(`[quote-pdf] Metadatos actualizados para cotización ${quoteNumber}`);
       return res.status(200).json({
         success: true,
         message: 'PDF de cotización actualizado',
@@ -4380,7 +4389,7 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
       quoteNumber: String(quoteNumber),
       nombreArchivo: String(nombreArchivo),
       tamanoBytes: fileSize,
-      contenidoBase64,
+      r2Key,
       tipoServicio,
       origen: origen || '',
       destino: destino || '',
@@ -4446,15 +4455,22 @@ app.get('/api/quote-pdf/list', auth, async (req, res) => {
   }
 });
 
-// DELETE /api/quote-pdf/cleanup - Eliminar todos los PDFs del usuario (para limpieza)
+// DELETE /api/quote-pdf/cleanup - Eliminar todos los PDFs del usuario (R2 + MongoDB)
 app.delete('/api/quote-pdf/cleanup', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user;
     if (!currentUser || !currentUser.username) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
+
+    // Eliminar archivos de R2
+    const r2Deleted = await deleteAllUserPDFs(currentUser.username);
+    console.log(`[quote-pdf] R2 limpieza: ${r2Deleted} archivos eliminados para ${currentUser.username}`);
+
+    // Eliminar metadatos de MongoDB
     const result = await QuotePDF.deleteMany({ usuarioId: currentUser.username });
-    console.log(`[quote-pdf] Limpieza: ${result.deletedCount} PDFs eliminados para ${currentUser.username}`);
+    console.log(`[quote-pdf] MongoDB limpieza: ${result.deletedCount} registros eliminados para ${currentUser.username}`);
+
     return res.json({ success: true, deletedCount: result.deletedCount });
   } catch (error: any) {
     console.error('[quote-pdf] Error en limpieza:', error);
@@ -4462,7 +4478,7 @@ app.delete('/api/quote-pdf/cleanup', auth, async (req, res) => {
   }
 });
 
-// GET /api/quote-pdf/download/:quoteNumber - Descargar PDF de cotización
+// GET /api/quote-pdf/download/:quoteNumber - Descargar PDF de cotización (proxy R2 + legacy MongoDB)
 app.get('/api/quote-pdf/download/:quoteNumber', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user;
@@ -4488,17 +4504,32 @@ app.get('/api/quote-pdf/download/:quoteNumber', auth, async (req, res) => {
 
     console.log(`[quote-pdf] Descargando PDF cotización ${quoteNumber}`);
 
-    return res.json({
-      success: true,
-      quotePdf: {
-        id: quotePdf._id,
-        quoteNumber: quotePdf.quoteNumber,
-        nombreArchivo: quotePdf.nombreArchivo,
-        tipoServicio: quotePdf.tipoServicio,
-        contenidoBase64: quotePdf.contenidoBase64,
-        tamanoMB: (quotePdf.tamanoBytes / 1024 / 1024).toFixed(2),
-      }
-    });
+    // Nuevo flujo R2: proxy del binario para evitar CORS del navegador
+    if (quotePdf.r2Key) {
+      const pdfBuffer = await downloadPDFBuffer(quotePdf.r2Key);
+      const filename = encodeURIComponent(quotePdf.nombreArchivo || `Cotizacion_${quoteNumber}.pdf`);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${filename}`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      return res.end(pdfBuffer);
+    }
+
+    // Fallback legacy: PDFs antiguos almacenados en MongoDB con contenidoBase64
+    if (quotePdf.contenidoBase64) {
+      return res.json({
+        success: true,
+        quotePdf: {
+          id: quotePdf._id,
+          quoteNumber: quotePdf.quoteNumber,
+          nombreArchivo: quotePdf.nombreArchivo,
+          tipoServicio: quotePdf.tipoServicio,
+          contenidoBase64: quotePdf.contenidoBase64,
+          tamanoMB: (quotePdf.tamanoBytes / 1024 / 1024).toFixed(2),
+        }
+      });
+    }
+
+    return res.status(404).json({ error: 'PDF no disponible' });
   } catch (error: any) {
     console.error('[quote-pdf] Error al descargar:', error);
     return res.status(500).json({ error: 'Error interno al descargar PDF' });

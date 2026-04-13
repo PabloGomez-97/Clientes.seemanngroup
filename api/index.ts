@@ -8,6 +8,7 @@ import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOv
 import { buildDocumentUploadEmailHTML, getDocumentUploadEmailSubject, type DocumentUploadEmailData } from './emails/documentUploadEmailTemplate.js';
 import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuoteEmailData } from './emails/noRateQuoteEmailTemplate.js';
 import chatHandler from './chat.js';
+import { buildR2Key, uploadPDF, downloadPDFBuffer, deleteAllUserPDFs } from './services/r2Storage.js';
 
 /** =========================
  *  Entorno + JWT
@@ -923,7 +924,8 @@ interface IQuotePDF {
   quoteNumber: string;
   nombreArchivo: string;
   tamanoBytes: number;
-  contenidoBase64: string;
+  contenidoBase64?: string;          // Legacy – ya no se usa para nuevos PDFs
+  r2Key?: string;                    // Clave del objeto en Cloudflare R2
   tipoServicio: 'AIR' | 'FCL' | 'LCL' | 'INTERNACIONALIZACION';
   origen: string;
   destino: string;
@@ -943,7 +945,8 @@ const QuotePDFSchema = new mongoose.Schema<IQuotePDFDoc>(
     quoteNumber: { type: String, required: true, index: true },
     nombreArchivo: { type: String, required: true },
     tamanoBytes: { type: Number, required: true },
-    contenidoBase64: { type: String, required: true },
+    contenidoBase64: { type: String },   // Legacy – opcional
+    r2Key: { type: String },             // Cloudflare R2 object key
     tipoServicio: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL', 'INTERNACIONALIZACION'] },
     origen: { type: String, default: '' },
     destino: { type: String, default: '' },
@@ -4547,7 +4550,7 @@ Sistema de Portal Clientes — Seemann Group
     // RUTAS DE PDF DE COTIZACIONES
     // ============================================================
 
-    // POST /api/quote-pdf/upload - Subir PDF de cotización
+    // POST /api/quote-pdf/upload - Subir PDF de cotización (Cloudflare R2)
     if (path === '/api/quote-pdf/upload' && method === 'POST') {
       try {
         const currentUser = requireAuth(req);
@@ -4558,9 +4561,6 @@ Sistema de Portal Clientes — Seemann Group
 
         const { quoteNumber, nombreArchivo, contenidoBase64, tipoServicio, origen, destino } = req.body;
 
-        // Permitir override desde el frontend cuando el ejecutivo
-        // genera el PDF en nombre de un cliente. Sólo se usará si ambos campos
-        // están presentes y el usuario autenticado tiene username === 'Ejecutivo'.
         const overrideUsuarioId = typeof (req.body.usuarioId) === 'string' ? String(req.body.usuarioId) : null;
         const overrideSubidoPor = typeof (req.body.subidoPor) === 'string' ? String(req.body.subidoPor) : null;
         const shouldUseOverride = currentUser.username === 'Ejecutivo' && overrideUsuarioId && overrideSubidoPor;
@@ -4577,34 +4577,44 @@ Sistema de Portal Clientes — Seemann Group
           return res.status(400).json({ error: 'tipoServicio debe ser AIR, FCL, LCL o INTERNACIONALIZACION' });
         }
 
-        // Calcular tamaño del base64
+        // Extraer contenido base64 puro y convertir a Buffer
         const base64Content = contenidoBase64.includes('base64,')
           ? contenidoBase64.split('base64,')[1]
           : contenidoBase64;
-        const padding = (base64Content.match(/=/g) || []).length;
-        const fileSize = (base64Content.length * 3) / 4 - padding;
+        const pdfBuffer = Buffer.from(base64Content, 'base64');
+        const fileSize = pdfBuffer.length;
 
-        // Límite de 10MB para PDFs de cotizaciones
         if (fileSize > 10 * 1024 * 1024) {
           return res.status(400).json({ error: 'El PDF excede el tamaño máximo de 10MB' });
         }
 
-        // Si ya existe un PDF para esta cotización (para el usuario resuelto), actualizarlo
+        // Construir clave R2 y subir a Cloudflare R2
+        const r2Key = buildR2Key(resolvedUsuarioId!, quoteNumber);
+        await uploadPDF(r2Key, pdfBuffer, {
+          quoteNumber: String(quoteNumber),
+          usuarioId: resolvedUsuarioId!,
+          tipoServicio,
+        });
+
+        console.log(`[quote-pdf] PDF subido a R2: ${r2Key}`);
+
+        // Guardar/actualizar metadatos en MongoDB (sin contenidoBase64)
         const existente = await QuotePDF.findOne({
           quoteNumber: String(quoteNumber),
           usuarioId: resolvedUsuarioId
         });
 
         if (existente) {
-          existente.contenidoBase64 = contenidoBase64;
           existente.nombreArchivo = nombreArchivo;
           existente.tamanoBytes = fileSize;
           existente.tipoServicio = tipoServicio;
           existente.origen = origen || '';
           existente.destino = destino || '';
+          existente.r2Key = r2Key;
+          existente.contenidoBase64 = undefined;  // Limpiar legacy si existía
           await existente.save();
 
-          console.log(`[quote-pdf] PDF actualizado para cotización ${quoteNumber}`);
+          console.log(`[quote-pdf] Metadatos actualizados para cotización ${quoteNumber}`);
           return res.status(200).json({
             success: true,
             message: 'PDF de cotización actualizado',
@@ -4621,7 +4631,7 @@ Sistema de Portal Clientes — Seemann Group
           quoteNumber: String(quoteNumber),
           nombreArchivo: String(nombreArchivo),
           tamanoBytes: fileSize,
-          contenidoBase64,
+          r2Key,
           tipoServicio,
           origen: origen || '',
           destino: destino || '',
@@ -4685,7 +4695,7 @@ Sistema de Portal Clientes — Seemann Group
       }
     }
 
-    // GET /api/quote-pdf/download/:quoteNumber - Descargar PDF de cotización
+    // GET /api/quote-pdf/download/:quoteNumber - Descargar PDF (proxy R2 + legacy MongoDB)
     if (path?.startsWith('/api/quote-pdf/download/') && method === 'GET') {
       try {
         const currentUser = requireAuth(req);
@@ -4711,17 +4721,32 @@ Sistema de Portal Clientes — Seemann Group
 
         console.log(`[quote-pdf] Descargando PDF cotización ${quoteNumber}`);
 
-        return res.json({
-          success: true,
-          quotePdf: {
-            id: quotePdf._id,
-            quoteNumber: quotePdf.quoteNumber,
-            nombreArchivo: quotePdf.nombreArchivo,
-            tipoServicio: quotePdf.tipoServicio,
-            contenidoBase64: quotePdf.contenidoBase64,
-            tamanoMB: (quotePdf.tamanoBytes / 1024 / 1024).toFixed(2),
-          }
-        });
+        // Nuevo flujo R2: proxy del binario para evitar CORS del navegador
+        if (quotePdf.r2Key) {
+          const pdfBuffer = await downloadPDFBuffer(quotePdf.r2Key);
+          const filename = encodeURIComponent(quotePdf.nombreArchivo || `Cotizacion_${quoteNumber}.pdf`);
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${filename}`);
+          res.setHeader('Content-Length', pdfBuffer.length);
+          return res.end(pdfBuffer);
+        }
+
+        // Fallback legacy: PDFs antiguos almacenados en MongoDB con contenidoBase64
+        if (quotePdf.contenidoBase64) {
+          return res.json({
+            success: true,
+            quotePdf: {
+              id: quotePdf._id,
+              quoteNumber: quotePdf.quoteNumber,
+              nombreArchivo: quotePdf.nombreArchivo,
+              tipoServicio: quotePdf.tipoServicio,
+              contenidoBase64: quotePdf.contenidoBase64,
+              tamanoMB: (quotePdf.tamanoBytes / 1024 / 1024).toFixed(2),
+            }
+          });
+        }
+
+        return res.status(404).json({ error: 'PDF no disponible' });
       } catch (error: any) {
         if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
           return res.status(401).json({ error: error.message });

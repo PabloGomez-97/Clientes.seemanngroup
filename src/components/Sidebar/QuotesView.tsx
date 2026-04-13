@@ -848,6 +848,29 @@ function QuotesView({
           },
         );
         if (!res.ok) throw new Error("PDF no encontrado");
+
+        const contentType = res.headers.get("Content-Type") || "";
+
+        // Nuevo flujo R2: el backend hace proxy del binario, sin CORS
+        if (contentType.includes("application/pdf")) {
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const disposition = res.headers.get("Content-Disposition") || "";
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i);
+          const filename = match
+            ? decodeURIComponent(match[1].replace(/"/g, ""))
+            : `Cotizacion_${quoteNumber}.pdf`;
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
+          return;
+        }
+
+        // Fallback legacy: contenidoBase64 (PDFs antiguos en MongoDB)
         const data = await res.json();
         if (data.success && data.quotePdf?.contenidoBase64) {
           const link = document.createElement("a");
