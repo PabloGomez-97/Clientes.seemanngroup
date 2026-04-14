@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useChatbot } from "../../hooks/useChatbot";
 import { useAuth } from "../../auth/AuthContext";
-import logoSeemann from "../../../public/logo.png";
+import { imgUrl } from "../../config/images";
 
 export default function ChatWidget() {
   const { user, activeUsername } = useAuth();
@@ -139,7 +139,7 @@ export default function ChatWidget() {
                 }}
               >
                 <img
-                  src={logoSeemann}
+                  src={imgUrl("/logo.png")}
                   alt="Seemann Group"
                   style={{
                     width: "24px",
@@ -372,7 +372,7 @@ export default function ChatWidget() {
                       }}
                     >
                       <img
-                        src={logoSeemann}
+                        src={imgUrl("/logo.png")}
                         alt="Bot"
                         style={{
                           width: "16px",
@@ -457,7 +457,7 @@ export default function ChatWidget() {
                     }}
                   >
                     <img
-                      src={logoSeemann}
+                      src={imgUrl("/logo.png")}
                       alt="Bot"
                       style={{
                         width: "16px",
