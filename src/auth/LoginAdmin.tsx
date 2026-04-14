@@ -1,30 +1,49 @@
 // src/auth/LoginAdmin.tsx
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCloudflare } from "@fortawesome/free-brands-svg-icons";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 const PRIMARY = "#ff6200";
 const DARK = "#1a1a1a";
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
 
 export default function LoginAdmin() {
   const { login, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [captchaRequired, setCaptchaRequired] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (captchaRequired && !turnstileToken) {
+      setErr("Por favor completa la verificación de seguridad.");
+      return;
+    }
+
     setErr(null);
     setLoading(true);
 
     try {
-      const loggedUser = await login(email, password);
+      const loggedUser = await login(
+        email,
+        password,
+        turnstileToken ?? undefined,
+      );
 
       if (loggedUser.username !== "Ejecutivo") {
         logout();
@@ -45,8 +64,17 @@ export default function LoginAdmin() {
       }
 
       navigate("/admin/home", { replace: true });
-    } catch (e: any) {
-      setErr(e.message || "No se pudo iniciar sesión");
+    } catch (e: unknown) {
+      const error = e as { message?: string; requiresCaptcha?: boolean };
+      if (error.requiresCaptcha) {
+        setCaptchaRequired(true);
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
+      } else {
+        setCaptchaRequired(false);
+        setTurnstileToken(null);
+      }
+      setErr((error as any).message || "No se pudo iniciar sesión");
       setLoading(false);
     }
   };
@@ -242,10 +270,34 @@ export default function LoginAdmin() {
                 />
               </div>
 
+              {/* Turnstile captcha (se muestra tras 3 intentos fallidos) */}
+              {captchaRequired && (
+                <div style={{ marginBottom: "20px" }}>
+                  <p
+                    style={{
+                      fontSize: "13px",
+                      color: "#555",
+                      marginBottom: "8px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Verificación de seguridad requerida
+                  </p>
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onError={() => setTurnstileToken(null)}
+                    onExpire={() => setTurnstileToken(null)}
+                    options={{ theme: "light" }}
+                  />
+                </div>
+              )}
+
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (captchaRequired && !turnstileToken)}
                 style={{
                   width: "100%",
                   padding: "11px 20px",
@@ -253,18 +305,26 @@ export default function LoginAdmin() {
                   fontWeight: "500",
                   fontFamily: FONT,
                   color: "#fff",
-                  backgroundColor: loading ? "#999" : DARK,
+                  backgroundColor:
+                    loading || (captchaRequired && !turnstileToken)
+                      ? "#999"
+                      : DARK,
                   border: "none",
                   borderRadius: "4px",
-                  cursor: loading ? "not-allowed" : "pointer",
+                  cursor:
+                    loading || (captchaRequired && !turnstileToken)
+                      ? "not-allowed"
+                      : "pointer",
                   transition: "background-color 0.15s ease",
                   letterSpacing: "0.2px",
                 }}
                 onMouseEnter={(e) => {
-                  if (!loading) e.currentTarget.style.backgroundColor = "#333";
+                  if (!loading && !(captchaRequired && !turnstileToken))
+                    e.currentTarget.style.backgroundColor = "#333";
                 }}
                 onMouseLeave={(e) => {
-                  if (!loading) e.currentTarget.style.backgroundColor = DARK;
+                  if (!loading && !(captchaRequired && !turnstileToken))
+                    e.currentTarget.style.backgroundColor = DARK;
                 }}
               >
                 {loading ? (
@@ -293,6 +353,24 @@ export default function LoginAdmin() {
                   "Ingresar al Panel"
                 )}
               </button>
+              {/* Cloudflare notice */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  marginTop: 12,
+                }}
+              >
+                <FontAwesomeIcon
+                  icon={faCloudflare}
+                  style={{ fontSize: 14, color: "#F38020" }}
+                />
+                <span style={{ fontSize: 12, color: "#F38020" }}>
+                  {t("home.login.protectedByCloudflare")}
+                </span>
+              </div>
             </form>
 
             {/* Divider + link */}

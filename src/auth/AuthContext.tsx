@@ -49,6 +49,7 @@ type AuthCtx = {
   login: (
     email: string,
     password: string,
+    turnstileToken?: string,
   ) => Promise<{
     email: string;
     username: string;
@@ -122,15 +123,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
   }, [token]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (
+    email: string,
+    password: string,
+    turnstileToken?: string,
+  ) => {
+    const body: Record<string, unknown> = { email, password };
+    if (turnstileToken) body.turnstileToken = turnstileToken;
     const r = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(body),
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
-      throw new Error(e.error || "No se pudo iniciar sesión");
+      const err = new Error(e.error || "No se pudo iniciar sesión") as Error & {
+        requiresCaptcha?: boolean;
+        failCount?: number;
+      };
+      err.requiresCaptcha = e.requiresCaptcha;
+      err.failCount = e.failCount;
+      throw err;
     }
     const data = await r.json();
     setToken(data.token);

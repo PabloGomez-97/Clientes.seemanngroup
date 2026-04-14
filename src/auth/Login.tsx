@@ -1,14 +1,18 @@
 // src/auth/Login.tsx
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
 import { Link, useNavigate } from "react-router-dom";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCloudflare } from "@fortawesome/free-brands-svg-icons";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 const PRIMARY = "#ff6200";
 const DARK = "#1a1a1a";
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
 
 export default function Login() {
   const { login } = useAuth();
@@ -19,6 +23,9 @@ export default function Login() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [captchaRequired, setCaptchaRequired] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const changeLanguage = (language: string) => {
     i18n.changeLanguage(language);
@@ -26,11 +33,21 @@ export default function Login() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (captchaRequired && !turnstileToken) {
+      setErr(t("home.login.captchaRequired"));
+      return;
+    }
+
     setErr(null);
     setLoading(true);
 
     try {
-      const loggedUser = await login(email, password);
+      const loggedUser = await login(
+        email,
+        password,
+        turnstileToken ?? undefined,
+      );
 
       if (loggedUser.username === "Ejecutivo") {
         // Redirigir automáticamente al portal correspondiente
@@ -42,7 +59,16 @@ export default function Login() {
         return;
       }
     } catch (e: unknown) {
-      const error = e as { message?: string };
+      const error = e as { message?: string; requiresCaptcha?: boolean };
+      if (error.requiresCaptcha) {
+        setCaptchaRequired(true);
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
+      } else {
+        // El captcha fue verificado o no era necesario: ocultar widget
+        setCaptchaRequired(false);
+        setTurnstileToken(null);
+      }
       setErr(error.message || t("home.login.loginError"));
       setLoading(false);
     }
@@ -375,10 +401,34 @@ export default function Login() {
               />
             </div>
 
+            {/* Turnstile captcha (se muestra tras 3 intentos fallidos) */}
+            {captchaRequired && (
+              <div style={{ marginBottom: "20px" }}>
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: "#555",
+                    marginBottom: "8px",
+                    fontWeight: "500",
+                  }}
+                >
+                  {t("home.login.captchaLabel")}
+                </p>
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={TURNSTILE_SITE_KEY}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onError={() => setTurnstileToken(null)}
+                  onExpire={() => setTurnstileToken(null)}
+                  options={{ theme: "light" }}
+                />
+              </div>
+            )}
+
             {/* Submit */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (captchaRequired && !turnstileToken)}
               style={{
                 width: "100%",
                 padding: "11px 20px",
@@ -386,18 +436,26 @@ export default function Login() {
                 fontWeight: "500",
                 fontFamily: FONT,
                 color: "#fff",
-                backgroundColor: loading ? "#ccc" : PRIMARY,
+                backgroundColor:
+                  loading || (captchaRequired && !turnstileToken)
+                    ? "#ccc"
+                    : PRIMARY,
                 border: "none",
                 borderRadius: "4px",
-                cursor: loading ? "not-allowed" : "pointer",
+                cursor:
+                  loading || (captchaRequired && !turnstileToken)
+                    ? "not-allowed"
+                    : "pointer",
                 transition: "background-color 0.15s ease",
                 letterSpacing: "0.2px",
               }}
               onMouseEnter={(e) => {
-                if (!loading) e.currentTarget.style.backgroundColor = "#e55800";
+                if (!loading && !(captchaRequired && !turnstileToken))
+                  e.currentTarget.style.backgroundColor = "#e55800";
               }}
               onMouseLeave={(e) => {
-                if (!loading) e.currentTarget.style.backgroundColor = PRIMARY;
+                if (!loading && !(captchaRequired && !turnstileToken))
+                  e.currentTarget.style.backgroundColor = PRIMARY;
               }}
             >
               {loading ? (
@@ -426,6 +484,25 @@ export default function Login() {
                 t("home.login.loginButton")
               )}
             </button>
+
+            {/* Cloudflare notice */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                marginTop: 12,
+              }}
+            >
+              <FontAwesomeIcon
+                icon={faCloudflare}
+                style={{ fontSize: 14, color: "#F38020" }}
+              />
+              <span style={{ fontSize: 12, color: "#F38020" }}>
+                {t("home.login.protectedByCloudflare")}
+              </span>
+            </div>
           </form>
 
           {/* Divider + links */}

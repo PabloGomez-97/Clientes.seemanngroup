@@ -1,14 +1,18 @@
 // src/auth/LoginProveedor.tsx
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCloudflare } from "@fortawesome/free-brands-svg-icons";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 const PRIMARY_RAW = "#ff6200";
 const DARK_RAW = "#1a1a1a";
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string;
 
 export default function LoginProveedor() {
   const { login, logout } = useAuth();
@@ -19,6 +23,9 @@ export default function LoginProveedor() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [captchaRequired, setCaptchaRequired] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
 
   const changeLanguage = (language: string) => {
     i18n.changeLanguage(language);
@@ -26,11 +33,21 @@ export default function LoginProveedor() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (captchaRequired && !turnstileToken) {
+      setErr(t("proveedor.login.captchaRequired"));
+      return;
+    }
+
     setErr(null);
     setLoading(true);
 
     try {
-      const loggedUser = await login(email, password);
+      const loggedUser = await login(
+        email,
+        password,
+        turnstileToken ?? undefined,
+      );
 
       // Verificar que el usuario sea un ejecutivo con rol proveedor
       if (loggedUser.username !== "Ejecutivo" || !loggedUser.roles?.proveedor) {
@@ -42,7 +59,15 @@ export default function LoginProveedor() {
 
       navigate("/proveedor/home", { replace: true });
     } catch (e: unknown) {
-      const error = e as { message?: string };
+      const error = e as { message?: string; requiresCaptcha?: boolean };
+      if (error.requiresCaptcha) {
+        setCaptchaRequired(true);
+        setTurnstileToken(null);
+        turnstileRef.current?.reset();
+      } else {
+        setCaptchaRequired(false);
+        setTurnstileToken(null);
+      }
       setErr(error.message || t("proveedor.login.loginError"));
       setLoading(false);
     }
@@ -347,10 +372,34 @@ export default function LoginProveedor() {
                 />
               </div>
 
+              {/* Turnstile captcha (se muestra tras 3 intentos fallidos) */}
+              {captchaRequired && (
+                <div style={{ marginBottom: "20px" }}>
+                  <p
+                    style={{
+                      fontSize: "13px",
+                      color: "#555",
+                      marginBottom: "8px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    {t("proveedor.login.captchaLabel")}
+                  </p>
+                  <Turnstile
+                    ref={turnstileRef}
+                    siteKey={TURNSTILE_SITE_KEY}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onError={() => setTurnstileToken(null)}
+                    onExpire={() => setTurnstileToken(null)}
+                    options={{ theme: "light" }}
+                  />
+                </div>
+              )}
+
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (captchaRequired && !turnstileToken)}
                 style={{
                   width: "100%",
                   padding: "11px 20px",
@@ -358,18 +407,25 @@ export default function LoginProveedor() {
                   fontWeight: "500",
                   fontFamily: FONT,
                   color: "#fff",
-                  backgroundColor: loading ? "#999" : DARK_RAW,
+                  backgroundColor:
+                    loading || (captchaRequired && !turnstileToken)
+                      ? "#999"
+                      : DARK_RAW,
                   border: "none",
                   borderRadius: "4px",
-                  cursor: loading ? "not-allowed" : "pointer",
+                  cursor:
+                    loading || (captchaRequired && !turnstileToken)
+                      ? "not-allowed"
+                      : "pointer",
                   transition: "background-color 0.15s ease",
                   letterSpacing: "0.2px",
                 }}
                 onMouseEnter={(e) => {
-                  if (!loading) e.currentTarget.style.backgroundColor = "#333";
+                  if (!loading && !(captchaRequired && !turnstileToken))
+                    e.currentTarget.style.backgroundColor = "#333";
                 }}
                 onMouseLeave={(e) => {
-                  if (!loading)
+                  if (!loading && !(captchaRequired && !turnstileToken))
                     e.currentTarget.style.backgroundColor = DARK_RAW;
                 }}
               >
@@ -399,6 +455,25 @@ export default function LoginProveedor() {
                   t("proveedor.login.loginButton")
                 )}
               </button>
+              {/* Cloudflare notice */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  marginTop: 12,
+                }}
+              >
+                <FontAwesomeIcon
+                  icon={faCloudflare}
+                  style={{ fontSize: 14, color: "#F38020" }}
+                />
+                <span style={{ fontSize: 12, color: "#F38020" }}>
+                  {t("proveedor.login.protectedByCloudflare") ||
+                    "Página protegida por Cloudflare"}
+                </span>
+              </div>
             </form>
 
             {/* Divider + links */}

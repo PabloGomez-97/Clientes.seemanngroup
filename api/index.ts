@@ -196,6 +196,8 @@ interface IUser {
   nombreuser: string;
   passwordHash: string;
   ejecutivoId?: mongoose.Types.ObjectId;
+  loginFailCount?: number;
+  loginCaptchaRequired?: boolean;
 }
 
 interface IUserDoc extends IUser, mongoose.Document {
@@ -213,11 +215,39 @@ const UserSchema = new mongoose.Schema<IUserDoc>(
     nombreuser: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
     ejecutivoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ejecutivo' },
+    loginFailCount: { type: Number, default: 0 },
+    loginCaptchaRequired: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
 const User = (mongoose.models.User || mongoose.model<IUserDoc>('User', UserSchema)) as UserModel;
+
+/** =========================
+ *  Turnstile verification
+ *  ========================= */
+async function verifyTurnstile(token: string, remoteip?: string): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (!secret) {
+    console.error('[turnstile] TURNSTILE_SECRET_KEY no configurada');
+    return false;
+  }
+  const params = new URLSearchParams({ secret, response: token });
+  if (remoteip) params.set('remoteip', remoteip);
+  try {
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+    if (!resp.ok) return false;
+    const data = (await resp.json()) as { success: boolean };
+    return data.success === true;
+  } catch (e) {
+    console.error('[turnstile] error al verificar:', e);
+    return false;
+  }
+}
 
 const normalizeCompanyName = (value: string): string =>
   String(value)
@@ -1250,7 +1280,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // POST /api/login
     if (path === '/api/login' && method === 'POST') {
-      const { email, password } = (req.body as any) || {};
+      const { email, password, turnstileToken } = (req.body as any) || {};
 
       if (!email || !password) {
         return res.status(400).json({ error: 'Faltan campos' });
@@ -1269,13 +1299,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ error: 'Usuario mal configurado' });
       }
 
+      // --- Verificación Turnstile ---
+      if (user.loginCaptchaRequired) {
+        if (!turnstileToken) {
+          return res.status(403).json({
+            error: 'Se requiere verificación de seguridad. Por favor completa el captcha.',
+            requiresCaptcha: true,
+          });
+        }
+        const remoteip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '');
+        const captchaOk = await verifyTurnstile(String(turnstileToken), remoteip);
+        if (!captchaOk) {
+          return res.status(400).json({
+            error: 'Verificación de seguridad inválida. Por favor, inténtalo de nuevo.',
+            requiresCaptcha: true,
+          });
+        }
+        // Token válido: reiniciar contador para dar ventana fresca de 3 intentos
+        user.loginFailCount = 0;
+        user.loginCaptchaRequired = false;
+        await User.updateOne(
+          { email: lookupEmail },
+          { $set: { loginFailCount: 0, loginCaptchaRequired: false } }
+        );
+      }
+
       const ok = bcrypt.compareSync(String(password), user.passwordHash);
       if (!ok) {
         console.log('[login] password incorrecto para', user.email);
-        return res.status(401).json({ error: 'Credenciales inválidas' });
+        const newFailCount = (user.loginFailCount ?? 0) + 1;
+        const newCaptchaRequired = newFailCount >= 3;
+        await User.updateOne(
+          { email: lookupEmail },
+          { $set: { loginFailCount: newFailCount, loginCaptchaRequired: newCaptchaRequired } }
+        );
+        return res.status(401).json({
+          error: 'Credenciales inválidas',
+          requiresCaptcha: newCaptchaRequired,
+          failCount: newFailCount,
+        });
       }
 
       const token = signToken({ sub: user.email, username: user.username });
+
+      // Login exitoso: reiniciar contador de fallos
+      await User.updateOne(
+        { email: lookupEmail },
+        { $set: { loginFailCount: 0, loginCaptchaRequired: false } }
+      );
       
       const ejecutivo = user.ejecutivoId as any;
 
