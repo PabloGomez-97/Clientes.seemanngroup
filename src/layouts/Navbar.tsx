@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
+import { imgUrl } from "../config/images";
 
 // Design tokens - AWS/Azure inspired
 const colors = {
@@ -97,7 +98,7 @@ function Navbar({ onLogout, toggleSidebar, isSidebarCollapsed }: NavbarProps) {
 
     const iniciales = partes[0][0].toLowerCase() + partes[1][0].toLowerCase();
 
-    return `/ejecutivos/${iniciales}.png`;
+    return imgUrl(`/ejecutivos/${iniciales}.png`);
   };
 
   const ejecutivoImage = getEjecutivoImage(ejecutivo?.nombre);

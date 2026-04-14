@@ -18,6 +18,7 @@ import ReactDOM from "react-dom/client";
 import { PieceAccordionLCL } from "./Handlers/LCL/PieceAccordionLCL.tsx";
 import { useTranslation } from "react-i18next";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
+import { imgUrl } from "../../config/images";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL } from "../../config/portCoordinates";
 import {
@@ -1482,8 +1483,8 @@ function QuoteLCL({
           body: JSON.stringify({
             quoteType: "LCL",
             cargoDetails: {
-              pol: polSeleccionado?.label || "",
-              pod: podSeleccionado?.label || "",
+              pol: polSeleccionado?.label || polNR?.label || "",
+              pod: podSeleccionado?.label || podNR?.label || "",
               operador: rutaSeleccionada?.operador || "",
               incoterm,
               piezasDesc,
@@ -2573,7 +2574,9 @@ function QuoteLCL({
                                       <td>
                                         <div className="d-flex align-items-center gap-2">
                                           <img
-                                            src={`/logoscarrierlcl/${ruta.operador.toLowerCase().replace(/\s+/g, "_")}.png`}
+                                            src={imgUrl(
+                                              `/logoscarrierlcl/${ruta.operador.toLowerCase().replace(/\s+/g, "_")}.png`,
+                                            )}
                                             alt={ruta.operador}
                                             style={{
                                               width: "24px",

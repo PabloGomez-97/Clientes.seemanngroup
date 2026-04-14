@@ -43,16 +43,23 @@ function buildDetailRows(quoteType: string, d: any): string {
     </tr>`;
 
   if (quoteType === 'AIR') {
-    return [
+    const rows = [
       row('Origen', d.origen),
       row('Destino', d.destino),
       row('Carrier', d.carrier),
       row('Incoterm', d.incoterm),
       row('Tipo de bulto', d.packageType),
-      row('Piezas / carga', d.piezasDesc),
-      row('Peso total (kg)', d.pesoTotal),
-      row('Volumen total (m³)', d.volumenTotal),
-    ].join('');
+    ];
+    if (d.isOverall) {
+      rows.push(row('Modo de ingreso', 'OVERALL (datos globales)'));
+      rows.push(row('Peso total (kg)', d.pesoTotal));
+      rows.push(row('Volumen total (m³)', d.volumenTotal));
+    } else {
+      rows.push(row('Piezas / carga', d.piezasDesc));
+      rows.push(row('Peso total (kg)', d.pesoTotal));
+      rows.push(row('Volumen total (m³)', d.volumenTotal));
+    }
+    return rows.join('');
   }
   if (quoteType === 'FCL') {
     return [

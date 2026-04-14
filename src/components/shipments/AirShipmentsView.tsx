@@ -3,6 +3,7 @@ import LoadingTips from "./LoadingTips";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
+import { imgUrl } from "../../config/images";
 import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
@@ -1075,7 +1076,7 @@ function AirShipmentsView({
         }}
       >
         <img
-          src="/imo.png"
+          src={imgUrl("/imo.png")}
           alt="Operaciones Aéreas"
           style={{
             width: "100%",

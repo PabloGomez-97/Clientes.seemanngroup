@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useTranslation } from "react-i18next";
+import { imgUrl } from "../../config/images";
 import type { BlogPost } from "../../services/contentful";
 import "../Sidebar/styles/Home.css";
 import { getRecentPosts } from "../../services/contentful";
@@ -286,7 +287,7 @@ export default function HomeProveedores() {
                   <div className="hal-stagenews-scene">
                     <div className="hal-carousel-item hal-carousel-item--left">
                       <picture>
-                        <img src="/oficinas.jpg" alt="Oficinas" />
+                        <img src={imgUrl("/oficinas.jpg")} alt="Oficinas" />
                       </picture>
                       <div className="hal-stagenews-content hal-stagenews-content--left">
                         <div>
@@ -420,7 +421,7 @@ export default function HomeProveedores() {
                   <div className="hal-image-with-tiles-container">
                     <div className="hal-picture-wrapper">
                       <img
-                        src="/confianza.png"
+                        src={imgUrl("/confianza.png")}
                         alt="Nuestra Compañía en Números"
                         className="hal-image-with-tiles-image"
                       />

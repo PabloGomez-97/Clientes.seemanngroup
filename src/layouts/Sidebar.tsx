@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import logoSeemann from "./logoseemann.png";
 import { handleSidebarNavigation } from "./sidebarNavigation";
+import { imgUrl } from "../config/images";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -227,7 +228,7 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
         >
           {isCollapsed && !isMobile ? (
             <img
-              src="/logo.png"
+              src={imgUrl("/logo.png")}
               alt="Seemann"
               style={{
                 width: "40px",

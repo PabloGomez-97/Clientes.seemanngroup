@@ -3,6 +3,7 @@ import { useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { canSeeSidebarItem } from "../config/roleRoutes";
+import { imgUrl } from "../config/images";
 import logoSeemann from "./logoseemann.png";
 import { handleSidebarNavigation } from "./sidebarNavigation";
 
@@ -311,7 +312,7 @@ function SidebarAdmin({
         >
           {isCollapsed && !isMobile ? (
             <img
-              src="/logo.png"
+              src={imgUrl("/logo.png")}
               alt="Seemann"
               style={{
                 width: "40px",

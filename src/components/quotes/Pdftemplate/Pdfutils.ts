@@ -11,10 +11,12 @@ const pdfOptions = {
   html2canvas: { 
     scale: 2,
     useCORS: true,
-    logging: false
+    logging: false,
+    scrollX: 0,
+    scrollY: 0,
   },
   pagebreak: {
-    mode: ['css']
+    mode: ['avoid-all', 'css']
   },
   jsPDF: { 
     unit: 'mm', 

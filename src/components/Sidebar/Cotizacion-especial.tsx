@@ -1,6 +1,7 @@
 // src/components/Sidebar/CotizacionEspecial.tsx
 import { useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { imgUrl } from "../../config/images";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -19,7 +20,7 @@ export default function CotizacionEspecial() {
     const partes = nombre.trim().split(" ");
     if (partes.length < 2) return null;
     const iniciales = partes[0][0].toLowerCase() + partes[1][0].toLowerCase();
-    return `/ejecutivos/${iniciales}.png`;
+    return imgUrl(`/ejecutivos/${iniciales}.png`);
   };
   const ejecutivoImage = getEjecutivoImage(ejecutivo?.nombre);
 
@@ -102,7 +103,7 @@ export default function CotizacionEspecial() {
           }}
         >
           <img
-            src="/imo.png"
+            src={imgUrl("/imo.png")}
             alt="Carga especial"
             style={{
               width: "100%",

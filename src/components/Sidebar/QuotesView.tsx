@@ -3,6 +3,7 @@ import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { useTranslation } from "react-i18next";
+import { imgUrl } from "../../config/images";
 import LoadingTips from "../shipments/LoadingTips";
 import { DocumentosSection } from "./Documents/DocumentosSection";
 import { linbisFetch } from "../../services/linbisFetch";
@@ -923,7 +924,7 @@ function QuotesView({
         }}
       >
         <img
-          src="/imo.png"
+          src={imgUrl("/imo.png")}
           alt="Cotizaciones"
           style={{
             width: "100%",

@@ -3,6 +3,7 @@ import LoadingTips from "./LoadingTips";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
+import { imgUrl } from "../../config/images";
 import {
   type GroundShipment,
   InfoField,
@@ -474,7 +475,7 @@ function GroundShipmentsView({
         }}
       >
         <img
-          src="/imo.png"
+          src={imgUrl("/imo.png")}
           alt="Operaciones Terrestres"
           style={{
             width: "100%",

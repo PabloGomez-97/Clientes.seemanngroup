@@ -1,4 +1,5 @@
 import React from "react";
+import { imgUrl } from "../../../config/images";
 
 interface PDFTemplateFCLProps {
   quoteNumber: string;
@@ -75,7 +76,6 @@ export const PDFTemplateFCL: React.FC<PDFTemplateFCLProps> = ({
 
   const page: React.CSSProperties = {
     width: "210mm",
-    minHeight: "297mm",
     padding: "12mm 14mm",
     boxSizing: "border-box",
     backgroundColor: C.white,
@@ -135,7 +135,7 @@ export const PDFTemplateFCL: React.FC<PDFTemplateFCLProps> = ({
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <img
-            src="/logo.png"
+            src={imgUrl("/logo.png")}
             alt="Seemann"
             style={{ width: "48px", height: "48px", objectFit: "contain" }}
           />

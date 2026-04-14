@@ -16,6 +16,7 @@ import ReactDOM from "react-dom/client";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL } from "../../config/portCoordinates";
+import { imgUrl } from "../../config/images";
 import {
   GOOGLE_SHEET_CSV_URL,
   type OutletContext,
@@ -2332,7 +2333,9 @@ function QuoteFCL({
                                           }}
                                         >
                                           <img
-                                            src={`/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`}
+                                            src={imgUrl(
+                                              `/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`,
+                                            )}
                                             alt={ruta.carrier}
                                             style={{
                                               maxWidth: "150%",

@@ -16,6 +16,7 @@ import {
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
 import * as bootstrap from "bootstrap";
+import { imgUrl } from "../../config/images";
 import {
   GOOGLE_SHEET_CSV_URL,
   type RutaAerea,
@@ -1803,20 +1804,35 @@ function QuoteAPITester({
         trackComplete({ quoteNumber, isRecurring: !sinTarifa });
       }
       if (sinTarifa && !isEjecutivoMode) {
-        const { totalRealWeight } = calculateTotals();
-        const totalVolume = piecesData.reduce(
-          (sum: number, piece: any) => sum + (piece.totalVolume || 0),
-          0,
-        );
-        const piezasDesc = piecesData
-          .map(
-            (p: any, i: number) =>
-              `Pieza ${i + 1}: ${p.length || 0}×${p.width || 0}×${p.height || 0} cm / ${p.weight || 0} kg`,
-          )
-          .join("; ");
         const pkgType =
           packageTypeOptions.find((opt) => opt.id === selectedPackageType)
             ?.name || String(selectedPackageType || "—");
+
+        let pesoTotalEmail: number;
+        let volumenTotalEmail: number;
+        let piezasDescEmail: string;
+
+        if (overallDimsAndWeight) {
+          // Modo OVERALL: usar los valores manuales ingresados por el usuario
+          pesoTotalEmail = manualWeight;
+          volumenTotalEmail = manualVolume;
+          piezasDescEmail = "Modo OVERALL (datos globales)";
+        } else {
+          // Modo por piezas: calcular desde piecesData
+          const { totalRealWeight } = calculateTotals();
+          pesoTotalEmail = totalRealWeight;
+          volumenTotalEmail = piecesData.reduce(
+            (sum: number, piece: any) => sum + (piece.totalVolume || 0),
+            0,
+          );
+          piezasDescEmail = piecesData
+            .map(
+              (p: any, i: number) =>
+                `Pieza ${i + 1}: ${p.length || 0}×${p.width || 0}×${p.height || 0} cm / ${p.weight || 0} kg`,
+            )
+            .join("; ");
+        }
+
         fetch(`/api/send-no-rate-quote-email`, {
           method: "POST",
           headers: {
@@ -1839,9 +1855,10 @@ function QuoteAPITester({
               carrier: rutaSeleccionada?.carrier || "",
               incoterm,
               packageType: pkgType,
-              piezasDesc,
-              pesoTotal: totalRealWeight.toFixed(2),
-              volumenTotal: totalVolume.toFixed(4),
+              piezasDesc: piezasDescEmail,
+              pesoTotal: pesoTotalEmail.toFixed(2),
+              volumenTotal: volumenTotalEmail.toFixed(4),
+              isOverall: overallDimsAndWeight,
             },
           }),
           keepalive: true,
@@ -3583,7 +3600,9 @@ function QuoteAPITester({
                                           {ruta.carrier &&
                                           ruta.carrier !== "Por Confirmar" ? (
                                             <img
-                                              src={`/logoscarrierair/${ruta.carrier.toLowerCase()}.png`}
+                                              src={imgUrl(
+                                                `/logoscarrierair/${ruta.carrier.toLowerCase()}.png`,
+                                              )}
                                               alt={ruta.carrier}
                                               style={{
                                                 width: "24px",

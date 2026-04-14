@@ -4,6 +4,7 @@ import TarifarioAereo from "../Proveedores/TarifarioAereo";
 import TarifarioFCL from "../Proveedores/TarifarioFCL";
 import TarifarioLCL from "../Proveedores/TarifarioLCL";
 import "../administrador/PricingTabs.css";
+import { imgUrl } from "../../config/images";
 
 function TarifarioCompleto() {
   const [activeKey, setActiveKey] = useState<string>("air");
@@ -15,7 +16,7 @@ function TarifarioCompleto() {
         <div className="header-content">
           <div className="header-left">
             <img
-              src="/logocompleto.png"
+              src={imgUrl("/logocompleto.png")}
               alt="Seemann Group Logo"
               className="header-logo"
             />

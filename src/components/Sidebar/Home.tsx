@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { es, enUS } from "date-fns/locale";
+import { imgUrl } from "../../config/images";
 import { getRecentPosts } from "../../services/contentful";
 import type { BlogPost } from "../../services/contentful";
 import "./styles/Home.css";
@@ -391,7 +392,7 @@ const Home: React.FC = () => {
                   <div className="hal-stagenews-scene">
                     <div className="hal-carousel-item hal-carousel-item--left">
                       <picture>
-                        <img src="/oficinas.jpg" alt="Oficinas" />
+                        <img src={imgUrl("/oficinas.jpg")} alt="Oficinas" />
                       </picture>
                       <div className="hal-stagenews-content hal-stagenews-content--left">
                         <div>
@@ -525,7 +526,7 @@ const Home: React.FC = () => {
                   <div className="hal-image-with-tiles-container">
                     <div className="hal-picture-wrapper">
                       <img
-                        src="/confianza.png"
+                        src={imgUrl("/confianza.png")}
                         alt="Nuestra Compañía en Números"
                         className="hal-image-with-tiles-image"
                       />

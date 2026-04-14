@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import logoSeemann from "./logoseemann.png";
 import { handleSidebarNavigation } from "./sidebarNavigation";
+import { imgUrl } from "../config/images";
 
 interface SidebarProveedorProps {
   isCollapsed: boolean;
@@ -180,7 +181,7 @@ function SidebarProveedor({
         >
           {isCollapsed && !isMobile ? (
             <img
-              src="/logo.png"
+              src={imgUrl("/logo.png")}
               alt="Seemann"
               style={{
                 width: "40px",

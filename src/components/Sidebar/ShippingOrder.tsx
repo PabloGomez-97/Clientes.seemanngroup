@@ -3,6 +3,7 @@ import { useOutletContext, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { useReporteriaClientesContext } from "../../contexts/ReporteriaClientesContext";
+import { imgUrl } from "../../config/images";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { useTrackingEmailPreferences } from "../../hooks/useTrackingEmailPreferences";
 import TrackingEmailSuggestions from "../tracking/TrackingEmailSuggestions";
@@ -944,7 +945,7 @@ function ShippingOrderView() {
         }}
       >
         <img
-          src="/imo.png"
+          src={imgUrl("/imo.png")}
           alt="Carga especial"
           style={{
             width: "100%",

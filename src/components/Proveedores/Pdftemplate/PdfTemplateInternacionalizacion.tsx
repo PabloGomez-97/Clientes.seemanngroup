@@ -1,4 +1,5 @@
 import React from "react";
+import { imgUrl } from "../../../config/images";
 
 interface Charge {
   code: string;
@@ -118,7 +119,7 @@ export const PDFTemplateInternacionalizacion: React.FC<
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <img
-            src="/logo.png"
+            src={imgUrl("/logo.png")}
             alt="Seemann"
             style={{ width: "48px", height: "48px", objectFit: "contain" }}
           />

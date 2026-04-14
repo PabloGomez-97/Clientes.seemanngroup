@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
+import { imgUrl } from "../config/images";
 
 // Design tokens - AWS/Azure inspired (same as client Navbar)
 const colors = {
@@ -62,7 +63,9 @@ function NavbarAdmin({
     if (!nombre) return null;
     const partes = nombre.trim().split(" ");
     if (partes.length < 2) return null;
-    return `/ejecutivos/${partes[0][0].toLowerCase()}${partes[1][0].toLowerCase()}.png`;
+    return imgUrl(
+      `/ejecutivos/${partes[0][0].toLowerCase()}${partes[1][0].toLowerCase()}.png`,
+    );
   };
   const userImage = getUserImage(user?.nombreuser);
 
