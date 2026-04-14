@@ -143,6 +143,365 @@ const typeColors: Record<string, string> = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
+// INDIVIDUAL CLIENT ANALYTICS PANEL
+// ══════════════════════════════════════════════════════════════════════════════
+
+function ClientAnalyticsPanel({ detail }: { detail: ClientDetail }) {
+  const { summary, sessions } = detail;
+  const completed = summary.completed;
+  const abandoned = summary.abandoned;
+  const inProgress = summary.totalSessions - completed - abandoned;
+  const total = summary.totalSessions || 1;
+
+  const completionRate = Math.round((completed / total) * 100);
+
+  // Donut chart geometry
+  const R = 48;
+  const CX = 60;
+  const CY = 60;
+  const circumference = 2 * Math.PI * R;
+
+  function segmentOffset(startFraction: number) {
+    return circumference * (1 - startFraction);
+  }
+  function segmentDash(fraction: number) {
+    return `${circumference * fraction} ${circumference * (1 - fraction)}`;
+  }
+
+  const completedFrac = completed / total;
+  const abandonedFrac = abandoned / total;
+  const inProgressFrac = inProgress / total;
+
+  // Step abandonment — count how many abandoned sessions had each lastStep
+  const stepAbandonment: Record<string, number> = {};
+  sessions.forEach((s) => {
+    if (s.status === "abandoned" && s.lastStep?.step) {
+      stepAbandonment[s.lastStep.step] =
+        (stepAbandonment[s.lastStep.step] || 0) + 1;
+    }
+  });
+  const stepEntries = Object.entries(stepAbandonment).sort(
+    (a, b) => b[1] - a[1],
+  );
+  const maxStepCount = stepEntries.length > 0 ? stepEntries[0][1] : 1;
+
+  const DONUT_COLORS = {
+    completed: "#10b981",
+    abandoned: "#ef4444",
+    in_progress: "#f59e0b",
+  };
+
+  // rotation offsets for donut segments
+  // we rotate the SVG so that completed starts at top (-90deg)
+  const startAngles = {
+    completed: 0,
+    abandoned: completedFrac,
+    in_progress: completedFrac + abandonedFrac,
+  };
+
+  return (
+    <div
+      style={{
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 12,
+        padding: "20px 24px",
+        marginBottom: 20,
+      }}
+    >
+      <h3
+        style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: "#1f2937",
+          margin: "0 0 20px",
+        }}
+      >
+        Análisis individual
+      </h3>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: 24,
+        }}
+      >
+        {/* ── Donut chart: status breakdown ── */}
+        <div>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#6b7280",
+              marginBottom: 12,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Distribución de cotizaciones
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <svg width={120} height={120} viewBox="0 0 120 120">
+              {/* background track */}
+              <circle
+                cx={CX}
+                cy={CY}
+                r={R}
+                fill="none"
+                stroke="#f3f4f6"
+                strokeWidth={14}
+              />
+              {/* completed segment */}
+              <circle
+                cx={CX}
+                cy={CY}
+                r={R}
+                fill="none"
+                stroke={DONUT_COLORS.completed}
+                strokeWidth={14}
+                strokeDasharray={segmentDash(completedFrac)}
+                strokeDashoffset={segmentOffset(startAngles.completed)}
+                transform={`rotate(-90 ${CX} ${CY})`}
+                strokeLinecap="butt"
+              />
+              {/* abandoned segment */}
+              <circle
+                cx={CX}
+                cy={CY}
+                r={R}
+                fill="none"
+                stroke={DONUT_COLORS.abandoned}
+                strokeWidth={14}
+                strokeDasharray={segmentDash(abandonedFrac)}
+                strokeDashoffset={segmentOffset(startAngles.abandoned)}
+                transform={`rotate(-90 ${CX} ${CY})`}
+                strokeLinecap="butt"
+              />
+              {/* in_progress segment */}
+              <circle
+                cx={CX}
+                cy={CY}
+                r={R}
+                fill="none"
+                stroke={DONUT_COLORS.in_progress}
+                strokeWidth={14}
+                strokeDasharray={segmentDash(inProgressFrac)}
+                strokeDashoffset={segmentOffset(startAngles.in_progress)}
+                transform={`rotate(-90 ${CX} ${CY})`}
+                strokeLinecap="butt"
+              />
+              {/* center text */}
+              <text
+                x={CX}
+                y={CY - 6}
+                textAnchor="middle"
+                fontSize={20}
+                fontWeight={700}
+                fill="#1f2937"
+              >
+                {completionRate}%
+              </text>
+              <text
+                x={CX}
+                y={CY + 12}
+                textAnchor="middle"
+                fontSize={9}
+                fill="#6b7280"
+              >
+                completación
+              </text>
+            </svg>
+
+            {/* Legend */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[
+                {
+                  color: DONUT_COLORS.completed,
+                  label: "Completas",
+                  count: completed,
+                },
+                {
+                  color: DONUT_COLORS.abandoned,
+                  label: "Abandonadas",
+                  count: abandoned,
+                },
+                {
+                  color: DONUT_COLORS.in_progress,
+                  label: "En progreso",
+                  count: inProgress,
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  style={{ display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  <span
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      background: item.color,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span style={{ fontSize: 12, color: "#374151" }}>
+                    {item.label}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#1f2937",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Bar chart: step abandonment ── */}
+        <div>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#6b7280",
+              marginBottom: 12,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Paso con más abandonos
+          </div>
+          {stepEntries.length === 0 ? (
+            <div style={{ fontSize: 13, color: "#9ca3af", paddingTop: 12 }}>
+              Sin abandonos registrados.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {stepEntries.map(([step, count]) => {
+                const barPct = (count / maxStepCount) * 100;
+                return (
+                  <div key={step}>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 3,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: "#374151" }}>
+                        {stepLabels[step] || step}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#1f2937",
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 8,
+                        background: "#f3f4f6",
+                        borderRadius: 4,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: `${barPct}%`,
+                          height: "100%",
+                          background: "#ef4444",
+                          borderRadius: 4,
+                          transition: "width 0.4s ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── KPI cards ── */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#6b7280",
+              marginBottom: 2,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            Indicadores clave
+          </div>
+          {[
+            {
+              label: "Total sesiones",
+              value: summary.totalSessions,
+              color: "#6b7280",
+            },
+            {
+              label: "Tasa de completación",
+              value: `${completionRate}%`,
+              color: "#10b981",
+            },
+            {
+              label: "Tasa de abandono",
+              value: `${Math.round((abandoned / total) * 100)}%`,
+              color: "#ef4444",
+            },
+          ].map((kpi) => (
+            <div
+              key={kpi.label}
+              style={{
+                background: "#f8fafc",
+                borderRadius: 8,
+                padding: "10px 14px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: 12, color: "#6b7280" }}>
+                {kpi.label}
+              </span>
+              <span
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: kpi.color,
+                }}
+              >
+                {kpi.value}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -173,6 +532,16 @@ export default function ComportamientoDeClientes() {
   const [modalType, setModalType] = useState<
     "iniciadas" | "completadas" | "abandonadas" | null
   >(null);
+
+  // Session history filters (client detail)
+  const [sessionTab, setSessionTab] = useState<
+    "all" | "completed" | "abandoned"
+  >("all");
+  const [routeFilter, setRouteFilter] = useState("");
+  const [sessionPage, setSessionPage] = useState(1);
+
+  // Individual client analytics panel
+  const [showClientAnalytics, setShowClientAnalytics] = useState(false);
 
   // ── Fetch client list ──
   useEffect(() => {
@@ -227,6 +596,10 @@ export default function ComportamientoDeClientes() {
     async (client: ClientBehavior) => {
       setSelectedClient(client);
       setDetailLoading(true);
+      setSessionTab("all");
+      setRouteFilter("");
+      setSessionPage(1);
+      setShowClientAnalytics(false);
       navigate(
         `/admin/comportamiento-clientes/${encodeURIComponent(client.username)}`,
         { replace: true },
@@ -435,6 +808,7 @@ export default function ComportamientoDeClientes() {
             alignItems: "center",
             gap: 16,
             marginBottom: 24,
+            flexWrap: "wrap",
           }}
         >
           <div
@@ -454,7 +828,7 @@ export default function ComportamientoDeClientes() {
           >
             {selectedClient.username.charAt(0).toUpperCase()}
           </div>
-          <div>
+          <div style={{ flex: 1 }}>
             <h1
               style={{
                 fontSize: 20,
@@ -470,6 +844,23 @@ export default function ComportamientoDeClientes() {
               {selectedClient.nombreuser && ` — ${selectedClient.nombreuser}`}
             </p>
           </div>
+          <button
+            onClick={() => setShowClientAnalytics((v) => !v)}
+            style={{
+              padding: "8px 16px",
+              background: showClientAnalytics ? "#232f3e" : "none",
+              border: "1px solid #e5e7eb",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 500,
+              color: showClientAnalytics ? "#fff" : "#374151",
+              fontFamily: FONT,
+              flexShrink: 0,
+            }}
+          >
+            {showClientAnalytics ? "Ocultar análisis" : "Ver análisis"}
+          </button>
         </div>
 
         {/* Summary cards */}
@@ -619,8 +1010,95 @@ export default function ComportamientoDeClientes() {
           </div>
         )}
 
+        {/* ── Individual analytics panel ── */}
+        {showClientAnalytics && clientDetail?.summary && (
+          <ClientAnalyticsPanel detail={clientDetail} />
+        )}
+
         {/* Sessions timeline */}
         <div>
+          {/* Tabs + route filter row */}
+          {clientDetail?.sessions && clientDetail.sessions.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              {/* Tabs */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 4,
+                  background: "#f3f4f6",
+                  borderRadius: 8,
+                  padding: 3,
+                }}
+              >
+                {(
+                  [
+                    { key: "all", label: "Todas" },
+                    { key: "completed", label: "Completas" },
+                    { key: "abandoned", label: "Abandonadas" },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => {
+                      setSessionTab(tab.key);
+                      setSessionPage(1);
+                    }}
+                    style={{
+                      padding: "5px 14px",
+                      borderRadius: 6,
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      fontFamily: FONT,
+                      background:
+                        sessionTab === tab.key ? "#fff" : "transparent",
+                      color: sessionTab === tab.key ? "#1f2937" : "#6b7280",
+                      boxShadow:
+                        sessionTab === tab.key
+                          ? "0 1px 3px rgba(0,0,0,0.08)"
+                          : "none",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Route filter */}
+              <input
+                type="text"
+                value={routeFilter}
+                onChange={(e) => {
+                  setRouteFilter(e.target.value);
+                  setSessionPage(1);
+                }}
+                placeholder="Filtrar por ruta..."
+                style={{
+                  padding: "6px 12px",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontFamily: FONT,
+                  outline: "none",
+                  width: 200,
+                  transition: "border-color 0.15s",
+                }}
+                onFocus={(e) => (e.currentTarget.style.borderColor = "#ff6200")}
+                onBlur={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
+              />
+            </div>
+          )}
+
           <h3
             style={{
               fontSize: 14,
@@ -655,178 +1133,263 @@ export default function ComportamientoDeClientes() {
               Este cliente aún no tiene actividad de cotización registrada.
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {clientDetail.sessions.map((session) => {
-                const sc =
-                  statusColors[session.status] || statusColors.in_progress;
-                return (
-                  <div
-                    key={session.sessionId}
-                    style={{
-                      background: "#fff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 10,
-                      padding: "14px 18px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 14,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    {/* Type badge */}
-                    <span
+            (() => {
+              const filtered = clientDetail.sessions.filter((s) => {
+                const tabMatch =
+                  sessionTab === "all" ||
+                  (sessionTab === "completed" && s.status === "completed") ||
+                  (sessionTab === "abandoned" && s.status === "abandoned");
+                const routeMatch =
+                  !routeFilter.trim() ||
+                  (s.route
+                    ? `${s.route.origin} ${s.route.destination}`
+                        .toLowerCase()
+                        .includes(routeFilter.toLowerCase())
+                    : false);
+                return tabMatch && routeMatch;
+              });
+              const PAGE_SIZE = 6;
+              const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+              const paginated = filtered.slice(0, sessionPage * PAGE_SIZE);
+              return (
+                <>
+                  {filtered.length === 0 ? (
+                    <div
                       style={{
-                        padding: "3px 10px",
-                        borderRadius: 4,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: "#fff",
-                        background: typeColors[session.quoteType] || "#6b7280",
-                        flexShrink: 0,
+                        textAlign: "center",
+                        padding: 40,
+                        color: "#8d99a8",
+                        fontSize: 13,
                       }}
                     >
-                      {session.quoteType}
-                    </span>
-
-                    {/* Route */}
-                    <div style={{ flex: 1, minWidth: 120 }}>
-                      {session.route ? (
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 500,
-                            color: "#1f2937",
-                          }}
-                        >
-                          {session.route.origin} → {session.route.destination}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 13, color: "#9ca3af" }}>
-                          Sin ruta seleccionada
-                        </span>
-                      )}
+                      Sin resultados para los filtros seleccionados.
                     </div>
-
-                    {/* Recurring badge */}
-                    {session.status === "completed" && (
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "2px 8px",
-                          borderRadius: 20,
-                          fontSize: 10,
-                          fontWeight: 600,
-                          background:
-                            session.isRecurring === false
-                              ? "#fff7ed"
-                              : "#f0fdf4",
-                          color:
-                            session.isRecurring === false
-                              ? "#c2410c"
-                              : "#15803d",
-                          border:
-                            session.isRecurring === false
-                              ? "1px solid #fed7aa"
-                              : "1px solid #bbf7d0",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {session.isRecurring === false
-                          ? "No recurrente"
-                          : "Recurrente"}
-                      </span>
-                    )}
-
-                    {/* Last step (if abandoned) */}
-                    {session.status === "abandoned" && session.lastStep && (
-                      <span style={{ fontSize: 12, color: "#9ca3af" }}>
-                        Último paso:{" "}
-                        {stepLabels[session.lastStep.step] ||
-                          session.lastStep.step}
-                      </span>
-                    )}
-
-                    {/* Status */}
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "3px 10px",
-                        borderRadius: 20,
-                        fontSize: 11,
-                        fontWeight: 500,
-                        background: sc.bg,
-                        color: sc.text,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: "50%",
-                          background: sc.dot,
-                        }}
-                      />
-                      {statusLabels[session.status]}
-                    </span>
-
-                    {/* Quote number + Ver Cotizaciones (completed only) */}
-                    {session.status === "completed" && (
+                  ) : (
+                    <>
                       <div
                         style={{
                           display: "flex",
-                          alignItems: "center",
+                          flexDirection: "column",
                           gap: 8,
-                          flexShrink: 0,
                         }}
                       >
-                        {session.quoteNumber && (
-                          <span
+                        {paginated.map((session) => {
+                          const sc =
+                            statusColors[session.status] ||
+                            statusColors.in_progress;
+                          return (
+                            <div
+                              key={session.sessionId}
+                              style={{
+                                background: "#fff",
+                                border: "1px solid #e5e7eb",
+                                borderRadius: 10,
+                                padding: "14px 18px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 14,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              {/* Type badge */}
+                              <span
+                                style={{
+                                  padding: "3px 10px",
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "#fff",
+                                  background:
+                                    typeColors[session.quoteType] || "#6b7280",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {session.quoteType}
+                              </span>
+
+                              {/* Route */}
+                              <div style={{ flex: 1, minWidth: 120 }}>
+                                {session.route ? (
+                                  <span
+                                    style={{
+                                      fontSize: 13,
+                                      fontWeight: 500,
+                                      color: "#1f2937",
+                                    }}
+                                  >
+                                    {session.route.origin} →{" "}
+                                    {session.route.destination}
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      fontSize: 13,
+                                      color: "#9ca3af",
+                                    }}
+                                  >
+                                    Sin ruta seleccionada
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Recurring badge */}
+                              {session.status === "completed" && (
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "2px 8px",
+                                    borderRadius: 20,
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    background:
+                                      session.isRecurring === false
+                                        ? "#fff7ed"
+                                        : "#f0fdf4",
+                                    color:
+                                      session.isRecurring === false
+                                        ? "#c2410c"
+                                        : "#15803d",
+                                    border:
+                                      session.isRecurring === false
+                                        ? "1px solid #fed7aa"
+                                        : "1px solid #bbf7d0",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {session.isRecurring === false
+                                    ? "No recurrente"
+                                    : "Recurrente"}
+                                </span>
+                              )}
+
+                              {/* Last step (if abandoned) */}
+                              {session.status === "abandoned" &&
+                                session.lastStep && (
+                                  <span
+                                    style={{
+                                      fontSize: 12,
+                                      color: "#9ca3af",
+                                    }}
+                                  >
+                                    Último paso:{" "}
+                                    {stepLabels[session.lastStep.step] ||
+                                      session.lastStep.step}
+                                  </span>
+                                )}
+
+                              {/* Status */}
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  padding: "3px 10px",
+                                  borderRadius: 20,
+                                  fontSize: 11,
+                                  fontWeight: 500,
+                                  background: sc.bg,
+                                  color: sc.text,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: "50%",
+                                    background: sc.dot,
+                                  }}
+                                />
+                                {statusLabels[session.status]}
+                              </span>
+
+                              {/* Quote number + Ver Cotizaciones (completed only) */}
+                              {session.status === "completed" && (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 8,
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {session.quoteNumber && (
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        color: "#6b7280",
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      #{session.quoteNumber}
+                                    </span>
+                                  )}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(
+                                        `/admin/reporteriaclientes/${selectedClient.username}`,
+                                      );
+                                    }}
+                                    style={{
+                                      padding: "3px 10px",
+                                      background: "#ff6200",
+                                      color: "#fff",
+                                      border: "none",
+                                      borderRadius: 6,
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      cursor: "pointer",
+                                      fontFamily: FONT,
+                                    }}
+                                  >
+                                    Ver cotización
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* Date */}
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  color: "#9ca3af",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {formatDate(session.startedAt)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Load more */}
+                      {sessionPage < totalPages && (
+                        <div style={{ textAlign: "center", marginTop: 16 }}>
+                          <button
+                            onClick={() => setSessionPage((p) => p + 1)}
                             style={{
-                              fontSize: 11,
-                              color: "#6b7280",
+                              padding: "8px 24px",
+                              background: "none",
+                              border: "1px solid #e5e7eb",
+                              borderRadius: 8,
+                              cursor: "pointer",
+                              fontSize: 13,
                               fontWeight: 500,
+                              color: "#374151",
+                              fontFamily: FONT,
                             }}
                           >
-                            #{session.quoteNumber}
-                          </span>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(
-                              `/admin/reporteriaclientes/${selectedClient.username}`,
-                            );
-                          }}
-                          style={{
-                            padding: "3px 10px",
-                            background: "#ff6200",
-                            color: "#fff",
-                            border: "none",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            fontFamily: FONT,
-                          }}
-                        >
-                          Ver cotización
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Date */}
-                    <span
-                      style={{ fontSize: 12, color: "#9ca3af", flexShrink: 0 }}
-                    >
-                      {formatDate(session.startedAt)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                            Ver más ({filtered.length - sessionPage * PAGE_SIZE}{" "}
+                            restantes)
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              );
+            })()
           )}
 
           {/* ── Step legend ── */}

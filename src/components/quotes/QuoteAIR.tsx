@@ -2025,6 +2025,8 @@ function QuoteAPITester({
             origen: rutaSeleccionada.origin,
             destino: rutaSeleccionada.destination,
             carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.carrier,
+            description: description || "Cargamento Aéreo",
+            chargeableWeight: chargeableWeight,
             precio: sinTarifa
               ? 0
               : (tarifaAirFreight?.precioConMarkup ?? 0) * chargeableWeight,

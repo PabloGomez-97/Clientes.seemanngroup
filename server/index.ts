@@ -10,6 +10,10 @@ import { buildOversizeEmailHTML, getOversizeEmailSubject, type OversizeEmailData
 import { buildOceanOversizeEmailHTML, getOceanOversizeEmailSubject, type OceanOversizeEmailData } from '../api/emails/oversizeEmailTemplateOcean.ts';
 import { buildDocumentUploadEmailHTML, getDocumentUploadEmailSubject, type DocumentUploadEmailData } from '../api/emails/documentUploadEmailTemplate.ts';
 import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuoteEmailData } from '../api/emails/noRateQuoteEmailTemplate.ts';
+import { buildAirQuoteEmailHTML, getAirQuoteEmailSubject, type AirQuoteEmailData } from '../api/emails/airQuoteEmailTemplate.ts';
+import { buildFclQuoteEmailHTML, getFclQuoteEmailSubject, type FclQuoteEmailData } from '../api/emails/fclQuoteEmailTemplate.ts';
+import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData } from '../api/emails/lclQuoteEmailTemplate.ts';
+import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from '../api/emails/specialQuoteEmailTemplate.ts';
 import { buildR2Key, getPublicUrl, uploadPDF, deletePDF, deleteAllUserPDFs, downloadPDFBuffer } from '../api/services/r2Storage.ts';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from '../api/services/r2DocumentStorage.ts';
 
@@ -4293,7 +4297,6 @@ app.post('/api/send-oversize-email-ocean', auth, async (req, res) => {
 app.post('/api/send-operation-email', auth, async (req, res) => {
   try {
     console.log('Endpoint /api/send-operation-email hit');
-    // Obtener el usuario actual con su ejecutivo poblado
     const currentUser = await User.findOne({ email: (req as any).user.sub }).populate('ejecutivoId');
     console.log('Current user:', currentUser?.email, 'Ejecutivo:', (currentUser?.ejecutivoId as any)?.email);
     if (!currentUser || !currentUser.ejecutivoId) {
@@ -4301,110 +4304,100 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
     }
 
     const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
-    const { 
-      tipoServicio = 'Aéreo', 
-      origen, 
-      destino, 
-      carrier, 
-      precio, 
-      currency, 
-      total, 
+    const ejecutivoNombre = (currentUser.ejecutivoId as any).nombre || 'Ejecutivo';
+    const clienteUsername = currentUser.username || currentUser.email;
+
+    const {
+      tipoServicio = 'Aéreo',
+      origen,
+      destino,
+      carrier,
+      currency,
+      total,
       tipoAccion,
-      quoteId,
-      // Campos legacy para compatibilidad
-      origin, 
-      destination, 
-      description, 
-      chargeableWeight, 
-      date 
+      tipo,
+      // Aéreo específico
+      description,
+      chargeableWeight,
+      // FCL específico
+      containerType,
+      cantidadContenedores,
+      incoterm,
     } = req.body;
-    
-    console.log('Email data:', req.body);
 
-    // Construir el mensaje en español
-    const tipoTexto = tipoAccion === 'operacion' ? 'operación' : 'cotización';
-    const subject = `Nueva ${tipoTexto} ${tipoServicio} generada por cliente`;
-    
-    let textContent = '';
+    const tipoAccionResolved = (tipoAccion || tipo) as 'cotizacion' | 'operacion' | undefined;
+
+    let subject: string;
+    let htmlContent: string;
+
     if (tipoServicio === 'Marítimo FCL') {
-      textContent = `
-Estimado ejecutivo,
-
-El cliente ${currentUser.username} ha generado una nueva ${tipoTexto} con los siguientes detalles:
-
-- Tipo de Servicio: ${tipoServicio}
-- Origen (POL): ${origen || 'No especificado'}
-- Destino (POD): ${destino || 'No especificado'}
-- Carrier: ${carrier || 'No especificado'}
-- Precio: ${currency || 'USD'} ${precio || 'No especificado'}
-- Total: ${total || 'No especificado'}
-- Fecha de generación: ${new Date().toLocaleString('es-ES')}
-
-${tipoAccion === 'operacion' ? 'Esta operación está pendiente de proceso.' : 'Esta cotización está lista para revisión.'}
-
-Atentamente,
-Sistema de Cotizaciones Seemann Group
-      `.trim();
+      const emailData: FclQuoteEmailData = {
+        ejecutivoNombre,
+        clienteUsername,
+        clienteNombre: currentUser.nombreuser,
+        pol: origen || '',
+        pod: destino || '',
+        carrier: carrier || '',
+        containerType: containerType || undefined,
+        cantidadContenedores: cantidadContenedores || undefined,
+        incoterm: incoterm || undefined,
+        currency: currency || 'USD',
+        total: total || '',
+        tipoAccion: tipoAccionResolved,
+      };
+      subject = getFclQuoteEmailSubject(emailData);
+      htmlContent = buildFclQuoteEmailHTML(emailData);
     } else if (tipoServicio === 'Marítimo LCL') {
-      textContent = `
-Estimado ejecutivo,
-
-El cliente ${currentUser.username} ha generado una nueva ${tipoTexto} con los siguientes detalles:
-
-- Tipo de Servicio: ${tipoServicio}
-- Origen (POL): ${origen || 'No especificado'}
-- Destino (POD): ${destino || 'No especificado'}
-- Carrier: ${carrier || 'No especificado'}
-- Precio: ${currency || 'USD'} ${precio || 'No especificado'}
-- Total: ${total || 'No especificado'}
-- Fecha de generación: ${new Date().toLocaleString('es-ES')}
-
-${tipoAccion === 'operacion' ? 'Esta operación está pendiente de proceso.' : 'Esta cotización está lista para revisión.'}
-
-Atentamente,
-Sistema de Cotizaciones Seemann Group
-      `.trim();
+      const emailData: LclQuoteEmailData = {
+        ejecutivoNombre,
+        clienteUsername,
+        clienteNombre: currentUser.nombreuser,
+        pol: origen || '',
+        pod: destino || '',
+        operador: carrier || '',
+        incoterm: incoterm || undefined,
+        currency: currency || 'USD',
+        total: total || '',
+        tipoAccion: tipoAccionResolved,
+      };
+      subject = getLclQuoteEmailSubject(emailData);
+      htmlContent = buildLclQuoteEmailHTML(emailData);
     } else {
-      // Aéreo (legacy)
-      textContent = `
-Estimado ejecutivo,
-
-El cliente ${currentUser.username} ha generado una nueva ${tipoTexto} con los siguientes detalles:
-
-- Tipo de Servicio: ${tipoServicio}
-- Origen: ${origen || origin || 'No especificado'}
-- Destino: ${destino || destination || 'No especificado'}
-- Descripción de la carga: ${description || 'No especificada'}
-- Peso chargeable: ${chargeableWeight || 'No especificado'} kg
-- Total: ${total || 'No especificado'}
-- Fecha de generación: ${date || new Date().toLocaleString('es-ES')}
-
-${tipoAccion === 'operacion' ? 'Esta operación está pendiente de proceso.' : 'Esta cotización está lista para revisión.'}
-
-Atentamente,
-Sistema de Cotizaciones Seemann Group
-      `.trim();
+      // Aéreo
+      const emailData: AirQuoteEmailData = {
+        ejecutivoNombre,
+        clienteUsername,
+        clienteNombre: currentUser.nombreuser,
+        origen: origen || '',
+        destino: destino || '',
+        carrier: carrier || '',
+        descripcionCarga: description || '',
+        pesoChargeable: chargeableWeight || '',
+        currency: currency || 'USD',
+        total: total || '',
+        tipoAccion: tipoAccionResolved,
+      };
+      subject = getAirQuoteEmailSubject(emailData);
+      htmlContent = buildAirQuoteEmailHTML(emailData);
     }
 
-    // Enviar correo usando Brevo API
     const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         'api-key': process.env.BREVO_API_KEY!,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        sender: { name: `Nueva ${tipoTexto.charAt(0).toUpperCase() + tipoTexto.slice(1)}`, email: 'noreply@sphereglobal.io' },
+        sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
         to: [{ email: ejecutivoEmail }],
         subject,
-        textContent
-      })
+        htmlContent,
+      }),
     });
 
     if (!brevoResponse.ok) {
       const errorText = await brevoResponse.text();
       console.error('Error enviando correo con Brevo:', errorText);
-      // No devolver error al cliente, solo loggear
     }
 
     res.json({ success: true, message: 'Notificación enviada al ejecutivo' });
@@ -4426,19 +4419,14 @@ app.post('/api/send-special-quote-email', auth, async (req, res) => {
     const ejecutivoNombre = (currentUser.ejecutivoId as any).nombre || 'Ejecutivo';
     const clienteUsername = currentUser.username || currentUser.email;
 
-    const subject = `Solicitud de cotización especial — ${clienteUsername}`;
-    const textContent = `
-Estimado/a ${ejecutivoNombre},
+    const emailData: SpecialQuoteEmailData = {
+      ejecutivoNombre,
+      clienteUsername,
+      clienteEmail: currentUser.email,
+    };
 
-Tu cliente ${clienteUsername} necesita una cotización de carácter especial y ha solicitado que lo contactes a la brevedad posible.
-
-Por favor, comunícate con él/ella para asistirle con su requerimiento.
-
-Fecha de solicitud: ${new Date().toLocaleString('es-CL')}
-
-Atentamente,
-Sistema de Portal Clientes — Seemann Group
-    `.trim();
+    const subject = getSpecialQuoteEmailSubject(emailData);
+    const htmlContent = buildSpecialQuoteEmailHTML(emailData);
 
     const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -4450,7 +4438,7 @@ Sistema de Portal Clientes — Seemann Group
         sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
         to: [{ email: ejecutivoEmail }],
         subject,
-        textContent,
+        htmlContent,
       }),
     });
 

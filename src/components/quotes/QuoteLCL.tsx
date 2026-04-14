@@ -1656,6 +1656,7 @@ function QuoteLCL({
             origen: rutaSeleccionada.pol,
             destino: rutaSeleccionada.pod,
             carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.operador,
+            incoterm: incoterm || undefined,
             precio: sinTarifa ? 0 : (tarifaOceanFreight?.income ?? 0),
             currency: rutaSeleccionada.currency,
             total: sinTarifa ? "PENDIENTE" : total,

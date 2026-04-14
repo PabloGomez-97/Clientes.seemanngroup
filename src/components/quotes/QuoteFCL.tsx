@@ -1443,6 +1443,9 @@ function QuoteFCL({
             origen: rutaSeleccionada.pol,
             destino: rutaSeleccionada.pod,
             carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.carrier,
+            containerType: containerSeleccionado?.type,
+            cantidadContenedores: cantidadContenedores,
+            incoterm: incoterm || undefined,
             precio: sinTarifa
               ? 0
               : containerSeleccionado.price * cantidadContenedores,
