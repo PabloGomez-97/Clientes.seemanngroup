@@ -51,6 +51,11 @@ const Home: React.FC = () => {
     },
   ];
 
+  const resolveImage = (p?: string): string => {
+    if (!p) return "";
+    return p.startsWith("http") ? p : imgUrl(p);
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -83,7 +88,10 @@ const Home: React.FC = () => {
                       <div className="hal-stage-teaser-img-txt-scene">
                         <div className="hal-stage-teaser-img-txt-wrapper">
                           <div className="hal-picture-wrapper">
-                            <img src={slide.image} alt={`Slide ${index + 1}`} />
+                            <img
+                              src={resolveImage(slide.image)}
+                              alt={`Slide ${index + 1}`}
+                            />
                           </div>
                         </div>
                         <div className="hal-stage-teaser-img-txt-content hal-textcolor--light-desktop">
@@ -468,7 +476,7 @@ const Home: React.FC = () => {
                         <div
                           className="hal-teaser-img"
                           style={{
-                            backgroundImage: `url(/insights${i}.png)`,
+                            backgroundImage: `url(${imgUrl(`/insights${i}.png`)})`,
                           }}
                         ></div>
                         <div className="hal-meta">
