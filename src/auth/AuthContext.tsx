@@ -194,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ✅ NUEVA FUNCIÓN: Obtener clientes asignados al ejecutivo autenticado
-  const getMisClientes = async (): Promise<Cliente[]> => {
+  const getMisClientes = useCallback(async (): Promise<Cliente[]> => {
     if (!token) {
       throw new Error("No hay sesión activa");
     }
@@ -213,10 +213,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const data = await r.json();
     return data.clientes || [];
-  };
+  }, [token]);
 
   // Obtener TODOS los clientes del sistema (para rol pricing)
-  const getTodosClientes = async (): Promise<Cliente[]> => {
+  const getTodosClientes = useCallback(async (): Promise<Cliente[]> => {
     if (!token) {
       throw new Error("No hay sesión activa");
     }
@@ -246,7 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         nombreuser: u.nombreuser,
         createdAt: u.createdAt,
       }));
-  };
+  }, [token]);
 
   return (
     <AuthContext.Provider

@@ -297,7 +297,7 @@ function UsersManagement() {
             username: "Ejecutivo",
             usernames: ["Ejecutivo"],
             nombreuser,
-            password,
+            password: "Seemann@2026",
           }),
         });
 
@@ -359,7 +359,7 @@ function UsersManagement() {
           username: cleanUsernames[0],
           usernames: cleanUsernames,
           nombreuser,
-          password,
+          password: "Seemann@2026",
           ejecutivoId: ejecutivoId || undefined,
         }),
       });
@@ -1903,46 +1903,41 @@ function UsersManagement() {
                   </div>
                 )}
 
-                <div style={{ marginBottom: "16px" }}>
-                  <label
-                    style={{
-                      display: "block",
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      color: "#374151",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    Contraseña {editingUserId ? "" : "*"}
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required={!editingUserId}
-                    placeholder={
-                      editingUserId
-                        ? "Dejar en blanco para no cambiar"
-                        : "Mínimo 6 caracteres"
-                    }
-                    minLength={password ? 6 : undefined}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      fontSize: "15px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "8px",
-                      outline: "none",
-                      transition: "border-color 0.2s",
-                    }}
-                    onFocus={(e) =>
-                      (e.currentTarget.style.borderColor = "#3b82f6")
-                    }
-                    onBlur={(e) =>
-                      (e.currentTarget.style.borderColor = "#d1d5db")
-                    }
-                  />
-                  {editingUserId && (
+                {editingUserId && (
+                  <div style={{ marginBottom: "16px" }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: "14px",
+                        fontWeight: "600",
+                        color: "#374151",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Contraseña
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Dejar en blanco para no cambiar"
+                      minLength={password ? 6 : undefined}
+                      style={{
+                        width: "100%",
+                        padding: "10px 14px",
+                        fontSize: "15px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "8px",
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                      }}
+                      onFocus={(e) =>
+                        (e.currentTarget.style.borderColor = "#3b82f6")
+                      }
+                      onBlur={(e) =>
+                        (e.currentTarget.style.borderColor = "#d1d5db")
+                      }
+                    />
                     <p
                       style={{
                         fontSize: "12px",
@@ -1953,8 +1948,8 @@ function UsersManagement() {
                     >
                       Solo completa si deseas cambiar la contraseña
                     </p>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {!isEditingEjecutivo &&
                   !(!editingUserId && accountType === "ejecutivo") && (

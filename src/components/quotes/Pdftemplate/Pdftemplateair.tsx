@@ -622,6 +622,17 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
             Su ejecutivo de ventas le proporcionará una cotización formal en un
             plazo de 48 horas hábiles para rutas no recurrentes
           </div>
+          <div
+            style={{
+              color: "#6b7280",
+              fontSize: "8.5pt",
+              marginTop: "6px",
+              fontStyle: "italic",
+            }}
+          >
+            Esta cotización no es formal y no quedará registrada en Mis
+            Cotizaciones.
+          </div>
         </div>
       )}
       {/* ── Terms ── */}

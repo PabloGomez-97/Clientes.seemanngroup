@@ -14,7 +14,7 @@ const pdfOptions = {
     logging: false
   },
   pagebreak: {
-    mode: ['css', 'legacy']
+    mode: ['css']
   },
   jsPDF: { 
     unit: 'mm', 
@@ -59,6 +59,19 @@ export const generatePDFBase64 = async (element: HTMLElement): Promise<string> =
     console.error('Error generating PDF base64:', error);
     throw new Error('Failed to generate PDF base64');
   }
+};
+
+/**
+ * Descarga un PDF directamente desde un data URI base64 sin re-renderizar con html2pdf.
+ * Úsalo en lugar de generatePDF() cuando ya tienes el base64 del paso anterior.
+ */
+export const downloadPDFFromBase64 = (base64DataUrl: string, filename: string): void => {
+  const a = document.createElement('a');
+  a.href = base64DataUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 };
 
 export const formatDateForFilename = (date: Date): string => {

@@ -11,6 +11,7 @@ import * as bootstrap from "bootstrap";
 import {
   generatePDF,
   generatePDFBase64,
+  downloadPDFFromBase64,
   formatDateForFilename,
 } from "./Pdftemplate/Pdfutils";
 import ReactDOM from "react-dom/client";
@@ -96,8 +97,8 @@ function QuoteLCL({
 
   // ── Username efectivo: en modo ejecutivo usa el cliente seleccionado ──
   const effectiveUsername = isEjecutivoMode
-    ? clienteSeleccionado?.username
-    : activeUsername;
+    ? clienteSeleccionado?.username || user?.username || ""
+    : activeUsername || "";
   const salesRepName = isEjecutivoMode
     ? user?.nombreuser || user?.username || ""
     : ejecutivo?.nombre?.trim() || "";
@@ -1405,42 +1406,49 @@ function QuoteLCL({
           previousMaxId,
           ")...",
         );
-        await new Promise((r) => setTimeout(r, 2000));
-
-        const linbisRes = await linbisFetch(
-          `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername || "")}`,
-          {
-            headers: {
-              Accept: "application/json",
+        // Polling con backoff: intenta hasta 3 veces (500ms → 1000ms → 1000ms)
+        const pollDelays = [500, 1000, 1000];
+        for (
+          let attempt = 0;
+          attempt < pollDelays.length && !quoteNumber;
+          attempt++
+        ) {
+          await new Promise((r) => setTimeout(r, pollDelays[attempt]));
+          const linbisRes = await linbisFetch(
+            `https://api.linbis.com/Quotes?ConsigneeName=${encodeURIComponent(effectiveUsername || "")}`,
+            {
+              headers: {
+                Accept: "application/json",
+              },
             },
-          },
-          accessToken,
-          refreshAccessToken,
-        );
-
-        if (linbisRes.ok) {
-          const linbisData = await linbisRes.json();
-          if (Array.isArray(linbisData) && linbisData.length > 0) {
-            const newestQuote = linbisData.reduce(
-              (max: any, q: any) =>
-                (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
-              linbisData[0],
-            );
-            console.log(
-              `[QuoteLCL] Cotización con ID más alto: number=${newestQuote.number}, id=${newestQuote.id}`,
-            );
-            if (Number(newestQuote.id) > (previousMaxId || 0)) {
-              quoteNumber = newestQuote.number;
+            accessToken,
+            refreshAccessToken,
+          );
+          if (linbisRes.ok) {
+            const linbisData = await linbisRes.json();
+            if (Array.isArray(linbisData) && linbisData.length > 0) {
+              const newestQuote = linbisData.reduce(
+                (max: any, q: any) =>
+                  (Number(q.id) || 0) > (Number(max.id) || 0) ? q : max,
+                linbisData[0],
+              );
               console.log(
-                `✅ [QuoteLCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
+                `[QuoteLCL] Intento ${attempt + 1}: number=${newestQuote.number}, id=${newestQuote.id}`,
               );
-            } else {
-              console.warn(
-                "[QuoteLCL] No se encontró cotización con id mayor a",
-                previousMaxId,
-              );
+              if (Number(newestQuote.id) > (previousMaxId || 0)) {
+                quoteNumber = newestQuote.number;
+                console.log(
+                  `✅ [QuoteLCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
+                );
+              }
             }
           }
+        }
+        if (!quoteNumber) {
+          console.warn(
+            "[QuoteLCL] No se encontró cotización con id mayor a",
+            previousMaxId,
+          );
         }
       } catch (e) {
         console.warn("[QuoteLCL] Error obteniendo quoteNumber:", e);
@@ -1576,8 +1584,8 @@ function QuoteLCL({
 
         const pdfBase64 = await generatePDFBase64(pdfElement);
 
-        // Subir el PDF a MongoDB
-        if (pdfBase64 && quoteNumber) {
+        // Subir el PDF a MongoDB (solo para rutas recurrentes con tarifa)
+        if (pdfBase64 && quoteNumber && !sinTarifa) {
           try {
             const bodyPayload: any = {
               quoteNumber,
@@ -1616,8 +1624,12 @@ function QuoteLCL({
           }
         }
 
-        // ── 4. Descargar el PDF localmente (ÚLTIMO) ──
-        await generatePDF({ filename, element: pdfElement });
+        // ── 4. Descargar el PDF localmente (reutiliza el base64 ya generado, sin re-renderizar html2pdf) ──
+        if (pdfBase64) {
+          downloadPDFFromBase64(pdfBase64, filename);
+        } else {
+          await generatePDF({ filename, element: pdfElement });
+        }
         console.log("[QuoteLCL] PDF descargado localmente");
       }
 
@@ -1625,38 +1637,35 @@ function QuoteLCL({
       root.unmount();
       document.body.removeChild(tempDiv);
 
-      // Enviar notificación por email al ejecutivo (solo si tiene tarifa; para rutas NR ya se envió el correo de sin tarifa)
-      if (!sinTarifa)
-        try {
-          const emailResponse = await fetch("/api/send-operation-email", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${jwtToken}`,
-            },
-            body: JSON.stringify({
-              ejecutivoEmail: ejecutivo?.email,
-              ejecutivoNombre: ejecutivo?.nombre,
-              clienteNombre: isEjecutivoMode
-                ? clienteSeleccionado?.username
-                : user?.nombreuser,
-              tipoServicio: "Marítimo LCL",
-              origen: rutaSeleccionada.pol,
-              destino: rutaSeleccionada.pod,
-              carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.operador,
-              precio: sinTarifa ? 0 : (tarifaOceanFreight?.income ?? 0),
-              currency: rutaSeleccionada.currency,
-              total: sinTarifa ? "PENDIENTE" : total,
-              tipoAccion: tipoAccionParam,
-              quoteId: (apiResponse || response)?.quote?.id,
-            }),
-          });
-          if (!emailResponse.ok) {
-            console.error("Error sending email");
-          }
-        } catch (error) {
+      // Enviar notificación por email al ejecutivo (fire-and-forget: no bloquea el spinner)
+      if (!sinTarifa) {
+        fetch("/api/send-operation-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${jwtToken}`,
+          },
+          body: JSON.stringify({
+            ejecutivoEmail: ejecutivo?.email,
+            ejecutivoNombre: ejecutivo?.nombre,
+            clienteNombre: isEjecutivoMode
+              ? clienteSeleccionado?.username
+              : user?.nombreuser,
+            tipoServicio: "Marítimo LCL",
+            origen: rutaSeleccionada.pol,
+            destino: rutaSeleccionada.pod,
+            carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.operador,
+            precio: sinTarifa ? 0 : (tarifaOceanFreight?.income ?? 0),
+            currency: rutaSeleccionada.currency,
+            total: sinTarifa ? "PENDIENTE" : total,
+            tipoAccion: tipoAccionParam,
+            quoteId: (apiResponse || response)?.quote?.id,
+          }),
+          keepalive: true,
+        }).catch((error) => {
           console.error("Error enviando notificación por correo:", error);
-        }
+        });
+      }
     } catch (error) {
       console.error("Error generating PDF:", error);
     }
