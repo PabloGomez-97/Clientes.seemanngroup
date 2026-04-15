@@ -10,6 +10,7 @@ import {
   generatePDFBase64,
   downloadPDFFromBase64,
   formatDateForFilename,
+  preloadLogoAsDataUrl,
 } from "./Pdftemplate/Pdfutils";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
@@ -1296,6 +1297,10 @@ function QuoteFCL({
               containerType: containerSeleccionado?.type || "",
               cantidadContenedores,
               incoterm,
+              pickupFromAddress:
+                incoterm === "EXW" ? pickupFromAddress : undefined,
+              deliveryToAddress:
+                incoterm === "EXW" ? deliveryToAddressDerived : undefined,
             },
           }),
           keepalive: true,
@@ -1308,6 +1313,7 @@ function QuoteFCL({
       tempDiv.style.left = "-9999px";
       document.body.appendChild(tempDiv);
 
+      const logoDataUrl = await preloadLogoAsDataUrl(imgUrl("/logo.png"));
       const root = ReactDOM.createRoot(tempDiv);
 
       await new Promise<void>((resolve) => {
@@ -1360,6 +1366,7 @@ function QuoteFCL({
                 ? undefined
                 : capitalize(rutaSeleccionada.company || "") || undefined
             }
+            logoSrc={logoDataUrl}
           />,
         );
 
@@ -1379,8 +1386,8 @@ function QuoteFCL({
 
         const pdfBase64 = await generatePDFBase64(pdfElement);
 
-        // Subir el PDF a MongoDB (solo para rutas recurrentes con tarifa)
-        if (pdfBase64 && quoteNumber && !sinTarifa) {
+        // Subir el PDF a MongoDB (rutas recurrentes y no recurrentes)
+        if (pdfBase64 && quoteNumber) {
           try {
             const bodyPayload: any = {
               quoteNumber,
@@ -1451,6 +1458,10 @@ function QuoteFCL({
             containerType: containerSeleccionado?.type,
             cantidadContenedores: cantidadContenedores,
             incoterm: incoterm || undefined,
+            pickupFromAddress:
+              incoterm === "EXW" ? pickupFromAddress : undefined,
+            deliveryToAddress:
+              incoterm === "EXW" ? deliveryToAddressDerived : undefined,
             precio: sinTarifa
               ? 0
               : containerSeleccionado.price * cantidadContenedores,

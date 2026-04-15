@@ -15,6 +15,9 @@ export interface AirQuoteEmailData {
   currency: string;
   total: string;
   tipoAccion?: 'cotizacion' | 'operacion';
+  incoterm?: string;
+  pickupFromAddress?: string;
+  deliveryToAddress?: string;
 }
 
 const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
@@ -52,6 +55,11 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
       <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:190px;border-bottom:1px solid ${C.border};">${label}</td>
       <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.text};border-bottom:1px solid ${C.border};">${value || '—'}</td>
     </tr>`;
+
+  const incotermRow = data.incoterm ? row('Incoterm', data.incoterm) : '';
+  const exwRows = (data.incoterm === 'EXW' && (data.pickupFromAddress || data.deliveryToAddress))
+    ? `${data.pickupFromAddress ? row('Dirección de recogida', data.pickupFromAddress) : ''}${data.deliveryToAddress ? row('Dirección de entrega', data.deliveryToAddress) : ''}`
+    : '';
 
   return `
 <!DOCTYPE html>
@@ -128,6 +136,8 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
                 ${row('Origen', data.origen)}
                 ${row('Destino', data.destino)}
                 ${row('Carrier', data.carrier)}
+                ${incotermRow}
+                ${exwRows}
                 ${row('Descripción de la carga', data.descripcionCarga)}
                 ${row('Peso chargeable', pesoDisplay)}
                 ${row('Total', `${data.total}`)}

@@ -12,6 +12,7 @@ import {
   generatePDFBase64,
   downloadPDFFromBase64,
   formatDateForFilename,
+  preloadLogoAsDataUrl,
 } from "./Pdftemplate/Pdfutils";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
@@ -1446,7 +1447,7 @@ function QuoteAPITester({
 
     if (
       incoterm === "EXW" &&
-      (!pickupFromAddress || !destinationSeleccionado)
+      (!pickupFromAddress || (!destinationSeleccionado && !destNR))
     ) {
       setError(
         "Debes completar la dirección de Pickup y seleccionar Destination para el Incoterm EXW",
@@ -1856,6 +1857,10 @@ function QuoteAPITester({
                 "",
               carrier: rutaSeleccionada?.carrier || "",
               incoterm,
+              pickupFromAddress:
+                incoterm === "EXW" ? pickupFromAddress : undefined,
+              deliveryToAddress:
+                incoterm === "EXW" ? deliveryToAddressDerived : undefined,
               packageType: pkgType,
               piezasDesc: piezasDescEmail,
               pesoTotal: pesoTotalEmail.toFixed(2),
@@ -1873,6 +1878,7 @@ function QuoteAPITester({
       tempDiv.style.left = "-9999px";
       document.body.appendChild(tempDiv);
 
+      const logoDataUrl = await preloadLogoAsDataUrl(imgUrl("/logo.png"));
       const root = ReactDOM.createRoot(tempDiv);
 
       await new Promise<void>((resolve) => {
@@ -1942,6 +1948,7 @@ function QuoteAPITester({
                 ? undefined
                 : capitalize(rutaSeleccionada.company || "") || undefined
             }
+            logoSrc={logoDataUrl}
           />,
         );
 
@@ -1966,8 +1973,8 @@ function QuoteAPITester({
         const pdfBase64 = await generatePDFBase64(pdfElement);
         console.log("[QuoteAIR] Base64 generado, longitud:", pdfBase64?.length);
 
-        // Subir el PDF a MongoDB (solo para rutas recurrentes con tarifa)
-        if (pdfBase64 && quoteNumber && !sinTarifa) {
+        // Subir el PDF a MongoDB (rutas recurrentes y no recurrentes)
+        if (pdfBase64 && quoteNumber) {
           try {
             const bodyPayload: any = {
               quoteNumber,
@@ -2034,6 +2041,11 @@ function QuoteAPITester({
             carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.carrier,
             description: description || "Cargamento Aéreo",
             chargeableWeight: chargeableWeight,
+            incoterm: incoterm || undefined,
+            pickupFromAddress:
+              incoterm === "EXW" ? pickupFromAddress : undefined,
+            deliveryToAddress:
+              incoterm === "EXW" ? deliveryToAddressDerived : undefined,
             precio: sinTarifa
               ? 0
               : (tarifaAirFreight?.precioConMarkup ?? 0) * chargeableWeight,

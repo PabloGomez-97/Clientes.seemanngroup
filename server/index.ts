@@ -4323,6 +4323,9 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       containerType,
       cantidadContenedores,
       incoterm,
+      // EXW específico
+      pickupFromAddress,
+      deliveryToAddress,
     } = req.body;
 
     const tipoAccionResolved = (tipoAccion || tipo) as 'cotizacion' | 'operacion' | undefined;
@@ -4344,6 +4347,8 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         currency: currency || 'USD',
         total: total || '',
         tipoAccion: tipoAccionResolved,
+        pickupFromAddress: incoterm === 'EXW' ? (pickupFromAddress || undefined) : undefined,
+        deliveryToAddress: incoterm === 'EXW' ? (deliveryToAddress || undefined) : undefined,
       };
       subject = getFclQuoteEmailSubject(emailData);
       htmlContent = buildFclQuoteEmailHTML(emailData);
@@ -4359,6 +4364,8 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         currency: currency || 'USD',
         total: total || '',
         tipoAccion: tipoAccionResolved,
+        pickupFromAddress: incoterm === 'EXW' ? (pickupFromAddress || undefined) : undefined,
+        deliveryToAddress: incoterm === 'EXW' ? (deliveryToAddress || undefined) : undefined,
       };
       subject = getLclQuoteEmailSubject(emailData);
       htmlContent = buildLclQuoteEmailHTML(emailData);
@@ -4376,6 +4383,9 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         currency: currency || 'USD',
         total: total || '',
         tipoAccion: tipoAccionResolved,
+        incoterm: incoterm || undefined,
+        pickupFromAddress: incoterm === 'EXW' ? (pickupFromAddress || undefined) : undefined,
+        deliveryToAddress: incoterm === 'EXW' ? (deliveryToAddress || undefined) : undefined,
       };
       subject = getAirQuoteEmailSubject(emailData);
       htmlContent = buildAirQuoteEmailHTML(emailData);

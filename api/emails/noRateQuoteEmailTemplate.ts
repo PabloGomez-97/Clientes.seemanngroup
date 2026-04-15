@@ -59,20 +59,29 @@ function buildDetailRows(quoteType: string, d: any): string {
       rows.push(row('Peso total (kg)', d.pesoTotal));
       rows.push(row('Volumen total (m³)', d.volumenTotal));
     }
+    if (d.incoterm === 'EXW') {
+      if (d.pickupFromAddress) rows.push(row('Dirección de recogida', d.pickupFromAddress as string));
+      if (d.deliveryToAddress) rows.push(row('Dirección de entrega', d.deliveryToAddress as string));
+    }
     return rows.join('');
   }
   if (quoteType === 'FCL') {
-    return [
+    const rows = [
       row('POL (Origen)', d.pol),
       row('POD (Destino)', d.pod),
       row('Carrier', d.carrier),
       row('Tipo de contenedor', d.containerType),
       row('Cantidad de contenedores', d.cantidadContenedores),
       row('Incoterm', d.incoterm),
-    ].join('');
+    ];
+    if (d.incoterm === 'EXW') {
+      if (d.pickupFromAddress) rows.push(row('Dirección de recogida', d.pickupFromAddress as string));
+      if (d.deliveryToAddress) rows.push(row('Dirección de entrega', d.deliveryToAddress as string));
+    }
+    return rows.join('');
   }
   // LCL
-  return [
+  const rows = [
     row('POL (Origen)', d.pol),
     row('POD (Destino)', d.pod),
     row('Operador', d.operador),
@@ -80,7 +89,12 @@ function buildDetailRows(quoteType: string, d: any): string {
     row('Piezas / carga', d.piezasDesc),
     row('Peso total (kg)', d.pesoTotal),
     row('Volumen total (m³)', d.volumenTotal),
-  ].join('');
+  ];
+  if (d.incoterm === 'EXW') {
+    if (d.pickupFromAddress) rows.push(row('Dirección de recogida', d.pickupFromAddress as string));
+    if (d.deliveryToAddress) rows.push(row('Dirección de entrega', d.deliveryToAddress as string));
+  }
+  return rows.join('');
 }
 
 export function getNoRateQuoteEmailSubject(data: NoRateQuoteEmailData): string {

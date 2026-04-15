@@ -14,6 +14,8 @@ export interface LclQuoteEmailData {
   currency: string;
   total: string;
   tipoAccion?: 'cotizacion' | 'operacion';
+  pickupFromAddress?: string;
+  deliveryToAddress?: string;
 }
 
 const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
@@ -49,6 +51,9 @@ export function buildLclQuoteEmailHTML(data: LclQuoteEmailData): string {
     </tr>`;
 
   const incotermRow = data.incoterm ? row('Incoterm', data.incoterm) : '';
+  const exwRows = (data.incoterm === 'EXW' && (data.pickupFromAddress || data.deliveryToAddress))
+    ? `${data.pickupFromAddress ? row('Dirección de recogida', data.pickupFromAddress) : ''}${data.deliveryToAddress ? row('Dirección de entrega', data.deliveryToAddress) : ''}`
+    : '';
 
   return `
 <!DOCTYPE html>
@@ -125,6 +130,7 @@ export function buildLclQuoteEmailHTML(data: LclQuoteEmailData): string {
                 ${row('POD (Destino)', data.pod)}
                 ${row('Operador', data.operador)}
                 ${incotermRow}
+                ${exwRows}
                 ${row('Total', `${data.total}`)}
                 <tr>
                   <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:190px;">Fecha de generación</td>

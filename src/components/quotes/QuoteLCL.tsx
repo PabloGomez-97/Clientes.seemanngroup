@@ -13,6 +13,7 @@ import {
   generatePDFBase64,
   downloadPDFFromBase64,
   formatDateForFilename,
+  preloadLogoAsDataUrl,
 } from "./Pdftemplate/Pdfutils";
 import ReactDOM from "react-dom/client";
 import { PieceAccordionLCL } from "./Handlers/LCL/PieceAccordionLCL.tsx";
@@ -1487,6 +1488,10 @@ function QuoteLCL({
               pod: podSeleccionado?.label || podNR?.label || "",
               operador: rutaSeleccionada?.operador || "",
               incoterm,
+              pickupFromAddress:
+                incoterm === "EXW" ? pickupFromAddress : undefined,
+              deliveryToAddress:
+                incoterm === "EXW" ? deliveryToAddressDerived : undefined,
               piezasDesc,
               pesoTotal: totalPeso.toFixed(2),
               volumenTotal: totalVol.toFixed(4),
@@ -1502,6 +1507,7 @@ function QuoteLCL({
       tempDiv.style.left = "-9999px";
       document.body.appendChild(tempDiv);
 
+      const logoDataUrl = await preloadLogoAsDataUrl(imgUrl("/logo.png"));
       const root = ReactDOM.createRoot(tempDiv);
 
       await new Promise<void>((resolve) => {
@@ -1571,6 +1577,7 @@ function QuoteLCL({
                 ? undefined
                 : capitalize(rutaSeleccionada.operador || "") || undefined
             }
+            logoSrc={logoDataUrl}
           />,
         );
 
@@ -1590,8 +1597,8 @@ function QuoteLCL({
 
         const pdfBase64 = await generatePDFBase64(pdfElement);
 
-        // Subir el PDF a MongoDB (solo para rutas recurrentes con tarifa)
-        if (pdfBase64 && quoteNumber && !sinTarifa) {
+        // Subir el PDF a MongoDB (rutas recurrentes y no recurrentes)
+        if (pdfBase64 && quoteNumber) {
           try {
             const bodyPayload: any = {
               quoteNumber,
@@ -1662,6 +1669,10 @@ function QuoteLCL({
             destino: rutaSeleccionada.pod,
             carrier: sinTarifa ? "PENDIENTE" : rutaSeleccionada.operador,
             incoterm: incoterm || undefined,
+            pickupFromAddress:
+              incoterm === "EXW" ? pickupFromAddress : undefined,
+            deliveryToAddress:
+              incoterm === "EXW" ? deliveryToAddressDerived : undefined,
             precio: sinTarifa ? 0 : (tarifaOceanFreight?.income ?? 0),
             currency: rutaSeleccionada.currency,
             total: sinTarifa ? "PENDIENTE" : total,

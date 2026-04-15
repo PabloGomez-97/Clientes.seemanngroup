@@ -53,6 +53,7 @@ interface PDFTemplateAIRProps {
   validUntil?: string;
   isPendingQuote?: boolean;
   company?: string;
+  logoSrc?: string;
 }
 
 const fmt = (num: number): string => {
@@ -95,6 +96,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   validUntil,
   isPendingQuote = false,
   company,
+  logoSrc,
 }) => {
   const C = {
     text: "#111",
@@ -168,7 +170,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <img
-            src={imgUrl("/logo.png")}
+            src={logoSrc || imgUrl("/logo.png")}
             alt="Seemann"
             style={{ width: "48px", height: "48px", objectFit: "contain" }}
           />

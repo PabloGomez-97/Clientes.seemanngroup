@@ -4554,6 +4554,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           containerType,
           cantidadContenedores,
           incoterm,
+          // EXW específico
+          pickupFromAddress,
+          deliveryToAddress,
         } = req.body;
 
         const tipoAccionResolved = (tipoAccion || tipo) as 'cotizacion' | 'operacion' | undefined;
@@ -4572,6 +4575,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             containerType: containerType || undefined,
             cantidadContenedores: cantidadContenedores || undefined,
             incoterm: incoterm || undefined,
+            pickupFromAddress: incoterm === 'EXW' ? pickupFromAddress : undefined,
+            deliveryToAddress: incoterm === 'EXW' ? deliveryToAddress : undefined,
             currency: currency || 'USD',
             total: total || '',
             tipoAccion: tipoAccionResolved,
@@ -4587,6 +4592,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             pod: destino || '',
             operador: carrier || '',
             incoterm: incoterm || undefined,
+            pickupFromAddress: incoterm === 'EXW' ? pickupFromAddress : undefined,
+            deliveryToAddress: incoterm === 'EXW' ? deliveryToAddress : undefined,
             currency: currency || 'USD',
             total: total || '',
             tipoAccion: tipoAccionResolved,
@@ -4604,6 +4611,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             carrier: carrier || '',
             descripcionCarga: description || '',
             pesoChargeable: chargeableWeight || '',
+            incoterm: incoterm || undefined,
+            pickupFromAddress: incoterm === 'EXW' ? pickupFromAddress : undefined,
+            deliveryToAddress: incoterm === 'EXW' ? deliveryToAddress : undefined,
             currency: currency || 'USD',
             total: total || '',
             tipoAccion: tipoAccionResolved,

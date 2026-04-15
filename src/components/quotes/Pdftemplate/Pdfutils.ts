@@ -82,3 +82,24 @@ export const formatDateForFilename = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}${month}${day}`;
 };
+
+/**
+ * Obtiene la URL de la imagen del logo para usar en PDFs.
+ * Intenta convertirla a data URL para evitar problemas de CORS con html2canvas.
+ * Si falla, retorna la URL original como fallback.
+ */
+export const preloadLogoAsDataUrl = async (url: string): Promise<string> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return url;
+    const blob = await response.blob();
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(url);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return url;
+  }
+};
