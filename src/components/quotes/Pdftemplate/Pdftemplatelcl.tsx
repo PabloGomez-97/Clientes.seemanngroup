@@ -39,6 +39,7 @@ interface PDFTemplateLCLProps {
   service?: string;
   validUntil?: string;
   isPendingQuote?: boolean;
+  company?: string;
 }
 
 const fmt = (num: number): string => {
@@ -80,6 +81,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
   service,
   validUntil,
   isPendingQuote = false,
+  company,
 }) => {
   const C = {
     text: "#111",
@@ -262,7 +264,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
               paddingLeft: "12px",
             }}
           >
-            <div style={label}>Carrier / Operator</div>
+            <div style={label}>Origin Forwarder</div>
             <div style={val}>{carrier}</div>
           </div>
         )}
@@ -642,7 +644,10 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
         }}
       >
         <span>Seemann Cloud · portalclientes.seemanngroup.com</span>
-        <span>{quoteNumber || "Draft"}</span>
+        <span>
+          {quoteNumber || "Draft"}
+          {company ? ` - ${company}` : ""}
+        </span>
         <span>Page 1 of 1</span>
       </div>
     </div>

@@ -52,6 +52,7 @@ interface PDFTemplateAIRProps {
   routing?: string;
   validUntil?: string;
   isPendingQuote?: boolean;
+  company?: string;
 }
 
 const fmt = (num: number): string => {
@@ -93,6 +94,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   routing,
   validUntil,
   isPendingQuote = false,
+  company,
 }) => {
   const C = {
     text: "#111",
@@ -684,7 +686,10 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
         }}
       >
         <span>Seemann Cloud · portalclientes.seemanngroup.com</span>
-        <span>{quoteNumber || "Draft"}</span>
+        <span>
+          {quoteNumber || "Draft"}
+          {company ? ` - ${company}` : ""}
+        </span>
         <span>Page 1 of 1</span>
       </div>
     </div>

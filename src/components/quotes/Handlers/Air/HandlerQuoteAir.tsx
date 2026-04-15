@@ -23,6 +23,7 @@ export interface RutaAerea {
   remark1: string | null;
   remark2: string | null;
   validUntil: string | null;
+  company: string | null;
 
   // FCA charges (from CSV columns 17, 18, 19)
   localCharges: number;
@@ -174,6 +175,7 @@ export const parseAEREO = (data: any[]): RutaAerea[] => {
     const remark2 = row[13];
     const currency = row[14];
     const validUntil = row[15];
+    const company = row[16];
     const localChargesRaw = row[17];
     const gastosXKgRaw = row[18];
     const minGastosXKgRaw = row[19];
@@ -227,6 +229,7 @@ export const parseAEREO = (data: any[]): RutaAerea[] => {
         remark1: remark1 ? remark1.toString().trim() : null,
         remark2: remark2 ? remark2.toString().trim() : null,
         validUntil: validUntil ? validUntil.toString().trim() : null,
+        company: company ? company.toString().trim() : null,
         localCharges: extractPrice(
           localChargesRaw ? localChargesRaw.toString().trim() : null,
         ),

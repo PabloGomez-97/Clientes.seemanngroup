@@ -889,6 +889,7 @@ function QuoteAPITester({
       row_number: 0,
       priceForComparison: 0,
       currency: "USD",
+      company: null,
     };
     setRutaSeleccionada(mockRuta);
     setSinTarifa(true);
@@ -938,6 +939,7 @@ function QuoteAPITester({
         row_number: 0,
         priceForComparison: 0,
         currency: "USD",
+        company: null,
       };
       setRutaSeleccionada(mockRuta);
       setSinTarifa(true);
@@ -1935,6 +1937,11 @@ function QuoteAPITester({
             }
             validUntil={rutaSeleccionada.validUntil || undefined}
             isPendingQuote={sinTarifa}
+            company={
+              sinTarifa
+                ? undefined
+                : capitalize(rutaSeleccionada.company || "") || undefined
+            }
           />,
         );
 

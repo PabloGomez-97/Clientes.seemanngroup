@@ -1566,6 +1566,11 @@ function QuoteLCL({
                 : rutaSeleccionada.validUntil || undefined
             }
             isPendingQuote={sinTarifa}
+            company={
+              sinTarifa
+                ? undefined
+                : capitalize(rutaSeleccionada.operador || "") || undefined
+            }
           />,
         );
 
