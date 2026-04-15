@@ -170,7 +170,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
       >
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <img
-            src={logoSrc || imgUrl("/logo.png")}
+            src={logoSrc || "/logo.png"}
             alt="Seemann"
             style={{ width: "48px", height: "48px", objectFit: "contain" }}
           />

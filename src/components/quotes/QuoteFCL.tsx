@@ -10,7 +10,6 @@ import {
   generatePDFBase64,
   downloadPDFFromBase64,
   formatDateForFilename,
-  preloadLogoAsDataUrl,
 } from "./Pdftemplate/Pdfutils";
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
@@ -1313,7 +1312,7 @@ function QuoteFCL({
       tempDiv.style.left = "-9999px";
       document.body.appendChild(tempDiv);
 
-      const logoDataUrl = await preloadLogoAsDataUrl(imgUrl("/logo.png"));
+      const logoDataUrl = "/logo.png";
       const root = ReactDOM.createRoot(tempDiv);
 
       await new Promise<void>((resolve) => {
