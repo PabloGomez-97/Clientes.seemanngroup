@@ -3288,9 +3288,11 @@ function QuoteAPITester({
                 className="bi bi-geo-alt me-2"
                 style={{ color: "var(--qa-primary)" }}
               ></i>
-              Paso 1: Seleccionar Ruta
+              {openSection !== 1 && rutaSeleccionada
+                ? "Ruta Seleccionada"
+                : "Paso 1: Seleccionar Ruta"}
             </h3>
-            {rutaSeleccionada && (
+            {openSection !== 1 && rutaSeleccionada && (
               <span
                 className="qa-badge ms-3"
                 style={{
@@ -3300,7 +3302,7 @@ function QuoteAPITester({
                 }}
               >
                 <i className="bi bi-check-circle-fill me-1"></i>
-                Completado
+                Listo
               </span>
             )}
           </div>
@@ -3332,12 +3334,105 @@ function QuoteAPITester({
                 )}
               </button>
             )}
-            <i
-              className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
-              style={{ color: "var(--qa-text-secondary)" }}
-            ></i>
+            {openSection !== 1 && rutaSeleccionada ? (
+              <span
+                style={{
+                  color: "var(--qa-primary)",
+                  fontSize: "0.85rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Cambiar
+              </span>
+            ) : (
+              <i
+                className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
+                style={{ color: "var(--qa-text-secondary)" }}
+              ></i>
+            )}
           </div>
         </div>
+
+        {openSection !== 1 &&
+          rutaSeleccionada &&
+          (() => {
+            const originCode =
+              getAirportByOrigin(rutaSeleccionada.originNormalized)?.iata ||
+              rutaSeleccionada.originNormalized.toUpperCase().substring(0, 3);
+            const destCode =
+              getAirportByOrigin(rutaSeleccionada.destinationNormalized)
+                ?.iata ||
+              rutaSeleccionada.destinationNormalized
+                .toUpperCase()
+                .substring(0, 3);
+            const originLabel =
+              originSeleccionado?.label ||
+              originNR?.label ||
+              rutaSeleccionada.origin;
+            const destLabel =
+              destinationSeleccionado?.label ||
+              destNR?.label ||
+              rutaSeleccionada.destination;
+            return (
+              <div className="qa-route-summary">
+                <div className="qa-route-summary-cards">
+                  <div className="qa-route-summary-card">
+                    <small>Origen</small>
+                    <div className="qa-route-summary-iata">{originCode}</div>
+                    <div className="qa-route-summary-city">{originLabel}</div>
+                  </div>
+                  <div className="qa-route-summary-arrow">
+                    <i className="bi bi-arrow-right"></i>
+                  </div>
+                  <div className="qa-route-summary-card">
+                    <small>Destino</small>
+                    <div className="qa-route-summary-iata">{destCode}</div>
+                    <div className="qa-route-summary-city">{destLabel}</div>
+                  </div>
+                </div>
+                <div className="qa-route-summary-meta">
+                  {rutaSeleccionada.carrier &&
+                    rutaSeleccionada.carrier !== "X" && (
+                      <span className="qa-route-carrier-badge">
+                        {rutaSeleccionada.carrier &&
+                        rutaSeleccionada.carrier !== "Por Confirmar" ? (
+                          <img
+                            src={imgUrl(
+                              `/logoscarrierair/${rutaSeleccionada.carrier.toLowerCase()}.png`,
+                            )}
+                            alt={rutaSeleccionada.carrier}
+                            style={{
+                              width: "16px",
+                              height: "16px",
+                              objectFit: "contain",
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                        ) : null}
+                        {rutaSeleccionada.carrier}
+                      </span>
+                    )}
+                  {rutaSeleccionada.validUntil &&
+                    rutaSeleccionada.validUntil !== "X" && (
+                      <span className="qa-route-meta-pill">
+                        <i className="bi bi-calendar3"></i>
+                        Válido hasta {rutaSeleccionada.validUntil}
+                      </span>
+                    )}
+                  {rutaSeleccionada.transitTime &&
+                    rutaSeleccionada.transitTime !== "X" && (
+                      <span className="qa-route-meta-pill">
+                        <i className="bi bi-clock"></i>
+                        {rutaSeleccionada.transitTime} días tránsito
+                      </span>
+                    )}
+                </div>
+              </div>
+            );
+          })()}
 
         {openSection === 1 && (
           <div className="mt-4">
@@ -3787,8 +3882,13 @@ function QuoteAPITester({
         <div className="qa-card">
           <div className="qa-card-header">
             <div>
-              <h3>{t("QuoteAIR.datoscargamento")}</h3>
-              <p className="qa-subtitle">{t("QuoteAIR.configuredetalles")}</p>
+              <h3>
+                <i
+                  className="bi bi-geo-alt me-2"
+                  style={{ color: "var(--qa-primary)" }}
+                ></i>
+                Paso 2: Datos del Cargamento
+              </h3>
             </div>
           </div>
 
@@ -3893,16 +3993,25 @@ function QuoteAPITester({
           {!overallDimsAndWeight && (
             <div>
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h4 className="fs-6 fw-bold mb-0">
-                  <i className="bi bi-boxes me-2"></i>
-                  {t("QuoteAIR.detalles")}
-                </h4>
-                <span className="qa-badge">
-                  {piecesData.length}{" "}
-                  {piecesData.length === 1
-                    ? t("QuoteAIR.pieza")
-                    : t("QuoteAIR.piezas")}
-                </span>
+                <h4 className="fs-6 fw-bold mb-0">Detalles de las Piezas</h4>
+
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    className="qa-btn qa-btn-outline qa-btn-sm"
+                    onClick={() => handleDuplicatePiece()}
+                  >
+                    <i className="bi bi-files"></i>
+                    Duplicar Pieza
+                  </button>
+                  <button
+                    type="button"
+                    className="qa-btn qa-btn-primary qa-btn-sm"
+                    onClick={handleAddPiece}
+                  >
+                    <i className="bi bi-plus-lg"></i>Agregar Pieza
+                  </button>
+                </div>
               </div>
 
               <div className="mb-3">
@@ -3926,24 +4035,50 @@ function QuoteAPITester({
                 ))}
               </div>
 
-              <div className="d-flex justify-content-end">
-                <button
-                  type="button"
-                  className="qa-btn qa-btn-outline qa-btn-sm me-2"
-                  onClick={() => handleDuplicatePiece()}
-                >
-                  <i className="bi bi-files"></i>
-                  Duplicar pieza
-                </button>
-                <button
-                  type="button"
-                  className="qa-btn qa-btn-primary"
-                  onClick={handleAddPiece}
-                >
-                  <i className="bi bi-plus-lg"></i>
-                  {t("QuoteAIR.agregarpieza")}
-                </button>
-              </div>
+              {/* Totals summary bar */}
+              {(() => {
+                const {
+                  totalRealWeight,
+                  totalVolumetricWeight,
+                  chargeableWeight,
+                } = calculateTotals();
+                const totalVolume = piecesData.reduce(
+                  (sum, p) => sum + (p.volume || 0),
+                  0,
+                );
+                return (
+                  <div className="qa-totals-bar">
+                    <div className="qa-totals-bar-item">
+                      <span className="qa-totals-bar-value">
+                        {totalVolume.toFixed(3)} m³
+                      </span>
+                      <span className="qa-totals-bar-label">Volumen total</span>
+                    </div>
+                    <div className="qa-totals-bar-item">
+                      <span className="qa-totals-bar-value">
+                        {totalRealWeight.toFixed(2)} kg
+                      </span>
+                      <span className="qa-totals-bar-label">Peso real</span>
+                    </div>
+                    <div className="qa-totals-bar-item">
+                      <span className="qa-totals-bar-value">
+                        {totalVolumetricWeight.toFixed(2)} kg
+                      </span>
+                      <span className="qa-totals-bar-label">
+                        Peso volumétrico{" "}
+                      </span>
+                    </div>
+                    <div className="qa-totals-bar-item">
+                      <span className="qa-totals-bar-value">
+                        {chargeableWeight.toFixed(2)} kg
+                      </span>
+                      <span className="qa-totals-bar-label">
+                        Peso chargeable
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Alertas de restricciones */}
               <div className="mt-4">
