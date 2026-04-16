@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -145,6 +145,9 @@ function QuoteFCL({
 
   // Estado para controlar el accordion del Paso 1
   const [openSection, setOpenSection] = useState<number>(1);
+  const [step2Completed, setStep2Completed] = useState<boolean>(false);
+  const [step3Completed, setStep3Completed] = useState<boolean>(false);
+  const [openSection4, setOpenSection4] = useState<boolean>(false);
 
   // Estado para el tipo de acción: cotización u operación
   const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
@@ -585,11 +588,28 @@ function QuoteFCL({
     }
   }, [polSeleccionado, podSeleccionado, rutas, carriersActivos, loadingRutas]);
 
+  // Puede pasar al Paso 3 si hay incoterm seleccionado
+  const canProceedToStep3 = useMemo(() => {
+    if (!incoterm) return false;
+    if (incoterm === "EXW" && !pickupFromAddress) return false;
+    return true;
+  }, [incoterm, pickupFromAddress]);
+
+  // Puede pasar al Paso 4 siempre que haya llegado al Paso 3
+  const canProceedToStep4 = true;
+
+  useEffect(() => {
+    if (step2Completed && !canProceedToStep3) {
+      setStep2Completed(false);
+      setOpenSection(2);
+    }
+  }, [canProceedToStep3, step2Completed]);
+
   const handleSectionToggle = (section: number) => {
     const newSection = openSection === section ? 0 : section;
     setOpenSection(newSection);
     if (newSection === 2) {
-      trackStep({ step: "incoterm_charges", stepNumber: 2, totalSteps: 2 });
+      trackStep({ step: "incoterm_charges", stepNumber: 2, totalSteps: 3 });
     }
   };
 
@@ -605,8 +625,8 @@ function QuoteFCL({
   // Cerrar Paso 1 cuando se selecciona un contenedor
   useEffect(() => {
     if (containerSeleccionado) {
-      setOpenSection(2); // Cambiar al Paso 2
-      trackStep({ step: "incoterm_charges", stepNumber: 2, totalSteps: 2 });
+      setOpenSection(2);
+      trackStep({ step: "incoterm_charges", stepNumber: 2, totalSteps: 3 });
     }
   }, [containerSeleccionado]);
 
@@ -2673,388 +2693,518 @@ function QuoteFCL({
           </div>
         )}
 
-        {/* Resumen colapsado cuando está cerrado */}
-        {openSection !== 1 && containerSeleccionado && rutaSeleccionada && (
-          <div
-            style={{ padding: "1rem", backgroundColor: "var(--qf-bg-light)" }}
-          >
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <small className="text-muted d-block">Ruta seleccionada:</small>
-                <strong>
-                  {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
-                </strong>
-                {!sinTarifa && (
-                  <>
-                    <span className="ms-3 text-muted">|</span>
-                    <span className="qf-badge qf-badge-primary ms-2">
-                      {rutaSeleccionada.carrier}
-                    </span>
-                  </>
-                )}
-              </div>
-              <div className="d-flex align-items-center gap-3">
-                <div>
-                  <small className="text-muted d-block">Contenedor:</small>
-                  <strong>{containerSeleccionado.type}</strong>
-                </div>
-                {!sinTarifa && (
-                  <div>
-                    <span
-                      className="badge bg-success"
-                      style={{ fontSize: "0.9rem" }}
-                    >
-                      {rutaSeleccionada.currency}{" "}
-                      {(containerSeleccionado.price * 1.15).toFixed(2)}
-                    </span>
+        {/* Resumen colapsado cuando está cerrado (estilo QuoteAIR) */}
+        {openSection !== 1 &&
+          containerSeleccionado &&
+          rutaSeleccionada &&
+          (() => {
+            const originCode = (
+              (rutaSeleccionada.polNormalized || rutaSeleccionada.pol) + ""
+            )
+              .toString()
+              .slice(0, 3)
+              .toUpperCase();
+            const destCode = (
+              (rutaSeleccionada.podNormalized || rutaSeleccionada.pod) + ""
+            )
+              .toString()
+              .slice(0, 3)
+              .toUpperCase();
+            const originLabel = rutaSeleccionada.pol;
+            const destLabel = rutaSeleccionada.pod;
+
+            return (
+              <div className="qa-route-summary">
+                <div className="qa-route-summary-cards">
+                  <div className="qa-route-summary-card">
+                    <small>Origen</small>
+                    <div className="qa-route-summary-iata">{originCode}</div>
+                    <div className="qa-route-summary-city">{originLabel}</div>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* ============================================================================ */}
-      {/* SECCIÓN 2: DETALLES DE LA RUTA */}
-      {/* ============================================================================ */}
-
-      {/* Detalles de la ruta seleccionada */}
-      {rutaSeleccionada && containerSeleccionado && (
-        <>
-          {/* Nuevos campos: Cantidad, Incoterm y Direcciones - CARD 1: DATOS */}
-          <div className="qf-card mt-4">
-            <div className="qf-card-header">
-              <h3>Datos del Cargamento</h3>
-            </div>
-
-            {/* Selector de contenedor cuando sinTarifa */}
-            {sinTarifa && (
-              <div className="mb-3">
-                <label className="qf-label">
-                  <i
-                    className="bi bi-box me-2"
-                    style={{ color: "var(--qf-primary)" }}
-                  ></i>
-                  Tipo de Contenedor
-                </label>
-                <div className="d-flex gap-2">
-                  {(["20GP", "40HQ", "40NOR"] as ContainerType[]).map((ct) => (
-                    <button
-                      key={ct}
-                      type="button"
-                      className={`qf-btn ${containerSeleccionado.type === ct ? "qf-btn-primary" : "qf-btn-outline"}`}
-                      onClick={() =>
-                        setContainerSeleccionado({
-                          type: ct,
-                          packageTypeId: CONTAINER_MAPPING[ct].id,
-                          price: 0,
-                          priceString: "0",
-                        })
-                      }
-                    >
-                      {ct}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="row g-3">
-              {/* Incoterm */}
-              <div className="col-12 mb-3">
-                <label className="qf-label">
-                  <i
-                    className="bi bi-flag me-2"
-                    style={{ color: "var(--qf-primary)" }}
-                  ></i>
-                  Incoterm
-                  <span
-                    className="qf-badge ms-2"
-                    style={{ fontSize: "0.7rem", fontWeight: 400 }}
-                  >
-                    Obligatorio
-                  </span>
-                </label>
-                <select
-                  className="qf-select"
-                  value={incoterm}
-                  onChange={(e) =>
-                    setIncoterm(e.target.value as "EXW" | "FOB" | "")
-                  }
-                  style={{ maxWidth: 400 }}
-                >
-                  <option value="">Seleccione un Incoterm</option>
-                  <option value="EXW">Ex Works [EXW]</option>
-                  <option value="FOB">FOB</option>
-                </select>
-              </div>
-
-              {/* Campos condicionales solo para EXW */}
-              {incoterm === "EXW" && (
-                <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
-                  <div>
-                    <label className="qa-label">
-                      <i className="bi bi-geo-alt me-1"></i>
-                      {t("QuoteAIR.pickup")}
-                    </label>
-                    <CotizadorAddressMap
-                      value={pickupFromAddress}
-                      onChange={setPickupFromAddress}
-                      placeholder="Ingrese dirección de recogida"
-                      rows={2}
-                      destinationCoords={
-                        polSeleccionado
-                          ? (() => {
-                              const port = getPortByPOL(polSeleccionado.value);
-                              if (!port) return null;
-                              return {
-                                lat: port.lat,
-                                lng: port.lng,
-                                name: port.name,
-                                code: port.unlocode,
-                              } as DestinationCoords;
-                            })()
-                          : null
-                      }
-                    />
+                  <div className="qa-route-summary-arrow">
+                    <i className="bi bi-arrow-right"></i>
                   </div>
-                  <div>
-                    <label className="qa-label">
-                      <i className="bi bi-geo-alt me-1"></i>
-                      {t("QuoteAIR.delivery")}
-                    </label>
-                    <textarea
-                      className="qa-input"
-                      value={deliveryToAddressDerived}
-                      readOnly
-                      disabled
-                      rows={2}
-                    />
+
+                  <div className="qa-route-summary-card">
+                    <small>Destino</small>
+                    <div className="qa-route-summary-iata">{destCode}</div>
+                    <div className="qa-route-summary-city">{destLabel}</div>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Cantidad de Contenedores */}
-            <div className="col-md-4">
-              <label className="qf-label">Cantidad de Contenedores</label>
-              <input
-                type="number"
-                className="qf-input"
-                value={cantidadContenedores}
-                onChange={(e) =>
-                  setCantidadContenedores(
-                    Math.max(1, Math.floor(Number(e.target.value) || 1)),
-                  )
-                }
-                min="1"
-                step="1"
-              />
-              <small className="text-muted">
-                Ingrese la cantidad de contenedores que desea cotizar
-              </small>
-            </div>
-          </div>
-
-          {/* CARD 2: REVISIÓN / RESUMEN */}
-          <div className="qf-card mt-4">
-            <div className="qf-card-header">
-              <h3>Revisión</h3>
-            </div>
-
-            <div className="qf-grid-2 mb-4">
-              {/* COLUMNA 1: Resumen del Cargamento (Info Ruta/Contenedor) */}
-              <div
-                className="p-3 rounded border"
-                style={{ backgroundColor: "var(--qf-bg-light)" }}
-              >
-                <h6 className="fw-bold mb-3">
-                  <i className="bi bi-box-seam me-2"></i>Resumen del Cargamento
-                </h6>
-
-                <div className="d-flex flex-column gap-3 small">
-                  <div>
-                    <span className="text-muted d-block">Ruta:</span>
-                    <div className="fw-bold d-flex align-items-center gap-2">
-                      <span>{rutaSeleccionada.pol}</span>
-                      <i className="bi bi-arrow-right text-primary"></i>
-                      <span>{rutaSeleccionada.pod}</span>
-                    </div>
-                  </div>
-
-                  <div className="row g-2">
-                    <div className="col-6">
-                      <span className="text-muted d-block">Carrier:</span>
-                      <strong>
-                        {sinTarifa ? "X" : rutaSeleccionada.carrier}
-                      </strong>
-                    </div>
-                    <div className="col-6">
-                      <span className="text-muted d-block">
-                        Tiempo Tránsito:
+                <div className="qa-route-summary-meta">
+                  {rutaSeleccionada.carrier &&
+                    rutaSeleccionada.carrier !== "X" && (
+                      <span className="qa-route-meta-pill">
+                        <i className="bi bi-ship"></i>
+                        {rutaSeleccionada.carrier}
                       </span>
-                      <strong>
-                        {sinTarifa ? "X" : rutaSeleccionada.tt || "N/A"}
-                      </strong>
-                    </div>
-                  </div>
+                    )}
 
-                  <div className="border-top my-1"></div>
+                  {rutaSeleccionada.validUntil &&
+                    rutaSeleccionada.validUntil !== "X" && (
+                      <span className="qa-route-meta-pill">
+                        <i className="bi bi-calendar3"></i>
+                        Válido hasta {rutaSeleccionada.validUntil}
+                      </span>
+                    )}
 
-                  <div className="row g-2">
-                    <div className="col-6">
-                      <span className="text-muted d-block">Contenedor:</span>
-                      <strong>{containerSeleccionado.type}</strong>
-                    </div>
-                    <div className="col-6">
-                      <span className="text-muted d-block">Cantidad:</span>
-                      <strong>{cantidadContenedores} u.</strong>
-                    </div>
-                  </div>
+                  {rutaSeleccionada.tt && rutaSeleccionada.tt !== "X" && (
+                    <span className="qa-route-meta-pill">
+                      <i className="bi bi-clock"></i>
+                      {rutaSeleccionada.tt} días tránsito
+                    </span>
+                  )}
 
-                  {incoterm && (
-                    <div className="mt-2 text-primary fw-bold text-center p-1 border border-primary rounded bg-white">
-                      Incoterm: {incoterm}
-                    </div>
+                  {sinTarifa && (
+                    <span className="qa-route-meta-pill">Sin tarifa</span>
                   )}
                 </div>
               </div>
+            );
+          })()}
+      </div>
 
-              {/* COLUMNA 2: Opciones Adicionales */}
-              <div
-                className="p-3 rounded border"
-                style={{ backgroundColor: "var(--qf-bg-light)" }}
-              >
-                <h6 className="fw-bold mb-3">
-                  <i className="bi bi-shield-check me-2"></i>Opciones
-                  Adicionales
-                </h6>
+      {/* ============================================================================ */}
+      {/* SECCIÓN 2: DATOS DEL CARGAMENTO */}
+      {/* ============================================================================ */}
 
-                <div className="d-flex flex-column gap-2 small">
-                  {/* Seguro opcional */}
-                  <div className="mt-2">
-                    <div
-                      className="qa-switch-container"
-                      style={{
-                        width: "fit-content",
-                        padding: "0.4rem 0.8rem",
-                      }}
+      {rutaSeleccionada && containerSeleccionado && (
+        <div className="qf-card mt-4">
+          <div
+            className={`qf-card-header ${openSection === 2 ? "open" : ""}`}
+            onClick={() => handleSectionToggle(2)}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-box-seam me-2"
+                  style={{ color: "var(--qf-primary)" }}
+                ></i>
+                Paso 2: Datos del Cargamento
+              </h3>
+              {step2Completed && (
+                <span
+                  className="qf-badge ms-3"
+                  style={{
+                    backgroundColor: "#d1e7dd",
+                    color: "#0f5132",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Completado
+                </span>
+              )}
+            </div>
+            <i
+              className={`bi bi-chevron-${openSection === 2 ? "up" : "down"}`}
+              style={{ color: "var(--qf-text-secondary)" }}
+            ></i>
+          </div>
+
+          {/* Resumen colapsado Paso 2 (pills neutrales, estilo QuoteAIR) */}
+          {openSection !== 2 && step2Completed && (
+            <div className="qa-route-summary">
+              <div className="qa-route-summary-meta">
+                {incoterm && (
+                  <span className="qa-route-meta-pill">
+                    <i className="bi bi-flag me-1"></i>
+                    Incoterm: {incoterm}
+                  </span>
+                )}
+
+                <span className="qa-route-meta-pill">
+                  <i className="bi bi-boxes me-1"></i>
+                  {cantidadContenedores} × {containerSeleccionado.type}
+                </span>
+
+                {seguroActivo && (
+                  <span className="qa-route-meta-pill">
+                    <i className="bi bi-shield-check me-1"></i>
+                    Seguro activo
+                  </span>
+                )}
+
+                {gastolocal && (
+                  <span className="qa-route-meta-pill">
+                    <i className="bi bi-receipt me-1"></i>
+                    THC + Apertura
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {openSection === 2 && (
+            <div>
+              {/* Selector de contenedor cuando sinTarifa */}
+              {sinTarifa && (
+                <div className="mb-3">
+                  <label className="qf-label">
+                    <i
+                      className="bi bi-box me-2"
+                      style={{ color: "var(--qf-primary)" }}
+                    ></i>
+                    Tipo de Contenedor
+                  </label>
+                  <div className="d-flex gap-2">
+                    {(["20GP", "40HQ", "40NOR"] as ContainerType[]).map(
+                      (ct) => (
+                        <button
+                          key={ct}
+                          type="button"
+                          className={`qf-btn ${containerSeleccionado.type === ct ? "qf-btn-primary" : "qf-btn-outline"}`}
+                          onClick={() =>
+                            setContainerSeleccionado({
+                              type: ct,
+                              packageTypeId: CONTAINER_MAPPING[ct].id,
+                              price: 0,
+                              priceString: "0",
+                            })
+                          }
+                        >
+                          {ct}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="row g-3">
+                {/* Incoterm */}
+                <div className="col-12 mb-3">
+                  <label className="qf-label">
+                    <i className="bi bi-flag me-2"></i>
+                    Incoterm
+                    <span
+                      className="qf-badge ms-2"
+                      style={{ fontSize: "0.7rem", fontWeight: 400 }}
                     >
-                      <input
-                        className="qf-switch-input"
-                        type="checkbox"
-                        id="seguroCheckbox"
-                        checked={seguroActivo}
-                        onChange={(e) => setSeguroActivo(e.target.checked)}
-                      />
-                      <label
-                        className="qf-label mb-0 ms-2 small"
-                        htmlFor="seguroCheckbox"
-                        style={{ cursor: "pointer" }}
-                      >
-                        Agregar Seguro
+                      Obligatorio
+                    </span>
+                  </label>
+                  <select
+                    className="qf-select"
+                    value={incoterm}
+                    onChange={(e) =>
+                      setIncoterm(e.target.value as "EXW" | "FOB" | "")
+                    }
+                    style={{ maxWidth: 400 }}
+                  >
+                    <option value="">Seleccione un Incoterm</option>
+                    <option value="EXW">Ex Works [EXW]</option>
+                    <option value="FOB">FOB</option>
+                  </select>
+                </div>
+
+                {/* Campos condicionales solo para EXW */}
+                {incoterm === "EXW" && (
+                  <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
+                    <div>
+                      <label className="qa-label">
+                        <i className="bi bi-geo-alt me-1"></i>
+                        {t("QuoteAIR.pickup")}
                       </label>
+                      <CotizadorAddressMap
+                        value={pickupFromAddress}
+                        onChange={setPickupFromAddress}
+                        placeholder="Ingrese dirección de recogida"
+                        rows={2}
+                        destinationCoords={
+                          polSeleccionado
+                            ? (() => {
+                                const port = getPortByPOL(
+                                  polSeleccionado.value,
+                                );
+                                if (!port) return null;
+                                return {
+                                  lat: port.lat,
+                                  lng: port.lng,
+                                  name: port.name,
+                                  code: port.unlocode,
+                                } as DestinationCoords;
+                              })()
+                            : null
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="qa-label">
+                        <i className="bi bi-geo-alt me-1"></i>
+                        {t("QuoteAIR.delivery")}
+                      </label>
+                      <textarea
+                        className="qa-input"
+                        value={deliveryToAddressDerived}
+                        readOnly
+                        disabled
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Cantidad de Contenedores */}
+              <div className="col-md-4">
+                <label className="qf-label">Cantidad de Contenedores</label>
+                <input
+                  type="number"
+                  className="qf-input"
+                  value={cantidadContenedores}
+                  onChange={(e) =>
+                    setCantidadContenedores(
+                      Math.max(1, Math.floor(Number(e.target.value) || 1)),
+                    )
+                  }
+                  min="1"
+                  step="1"
+                />
+                <small className="text-muted">
+                  Ingrese la cantidad de contenedores que desea cotizar
+                </small>
+              </div>
+
+              {/* Botón Siguiente */}
+              <div className="d-flex justify-content-end mt-4 pt-3 border-top">
+                <button
+                  className="qa-btn qa-btn-primary"
+                  disabled={!canProceedToStep3}
+                  onClick={() => {
+                    setStep2Completed(true);
+                    setOpenSection(3);
+                    trackStep({
+                      step: "review",
+                      stepNumber: 3,
+                      totalSteps: 3,
+                    });
+                  }}
+                >
+                  Siguiente
+                  <i className="bi bi-arrow-right ms-2"></i>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================================ */}
+      {/* SECCIÓN 3: REVISIÓN */}
+      {/* ============================================================================ */}
+
+      {rutaSeleccionada && containerSeleccionado && step2Completed && (
+        <div className="qf-card mt-4">
+          <div
+            className={`qf-card-header ${openSection === 3 ? "open" : ""}`}
+            onClick={() => setOpenSection(openSection === 3 ? 0 : 3)}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-clipboard-check me-2"
+                  style={{ color: "var(--qf-primary)" }}
+                ></i>
+                Paso 3: Revisión de Piezas y Costos
+              </h3>
+              {step3Completed && (
+                <span
+                  className="qf-badge ms-3"
+                  style={{
+                    backgroundColor: "#d1e7dd",
+                    color: "#0f5132",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Completado
+                </span>
+              )}
+            </div>
+            <i
+              className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
+              style={{ color: "var(--qf-text-secondary)" }}
+            ></i>
+          </div>
+
+          {openSection === 3 && (
+            <div>
+              <div className="qf-grid-2 mb-4">
+                {/* COLUMNA 1: Resumen del Cargamento */}
+                <div
+                  className="p-3 rounded border"
+                  style={{ backgroundColor: "var(--qf-bg-light)" }}
+                >
+                  <h6 className="fw-bold mb-3">
+                    <i className="bi bi-box-seam me-2"></i>Resumen del
+                    Cargamento
+                  </h6>
+
+                  <div className="d-flex flex-column gap-3 small">
+                    <div>
+                      <span className="text-muted d-block">Ruta:</span>
+                      <div className="fw-bold d-flex align-items-center gap-2">
+                        <span>{rutaSeleccionada.pol}</span>
+                        <i className="bi bi-arrow-right text-primary"></i>
+                        <span>{rutaSeleccionada.pod}</span>
+                      </div>
                     </div>
 
-                    {/* Input para Valor de Mercadería - Solo visible si seguro está activo */}
-                    {seguroActivo && (
-                      <div className="mb-2">
-                        <label
-                          htmlFor="valorMercaderia"
-                          className="qf-label small"
-                        >
-                          Valor Mercadería ({rutaSeleccionada.currency}){" "}
-                          <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="qf-input py-1"
-                          id="valorMercaderia"
-                          placeholder="Ej: 10000"
-                          value={valorMercaderia}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === "" || /^[\d,\.]+$/.test(value)) {
-                              setValorMercaderia(value);
-                            }
-                          }}
-                        />
-                        <p className="qa-text-muted mt-1 mb-0">
-                          Existirá un recargo adicional en base al valor de la
-                          mercadería
-                        </p>
+                    <div className="row g-2">
+                      <div className="col-6">
+                        <span className="text-muted d-block">Carrier:</span>
+                        <strong>
+                          {sinTarifa ? "X" : rutaSeleccionada.carrier}
+                        </strong>
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted d-block">
+                          Tiempo Tránsito:
+                        </span>
+                        <strong>
+                          {sinTarifa ? "X" : rutaSeleccionada.tt || "N/A"}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="border-top my-1"></div>
+
+                    <div className="row g-2">
+                      <div className="col-6">
+                        <span className="text-muted d-block">Contenedor:</span>
+                        <strong>{containerSeleccionado.type}</strong>
+                      </div>
+                      <div className="col-6">
+                        <span className="text-muted d-block">Cantidad:</span>
+                        <strong>{cantidadContenedores} u.</strong>
+                      </div>
+                    </div>
+
+                    {incoterm && (
+                      <div className="mt-2 text-primary fw-bold text-center p-1 border border-primary rounded bg-white">
+                        Incoterm: {incoterm}
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Gastos Locales (THC + Apertura) */}
-                  <div className="mt-2">
+                {/* COLUMNA 2: Opciones Adicionales */}
+                <div
+                  className="p-3 rounded border"
+                  style={{ backgroundColor: "var(--qf-bg-light)" }}
+                >
+                  <h6 className="fw-bold mb-3">
+                    <i className="bi bi-shield-check me-2"></i>Opciones
+                    Adicionales
+                  </h6>
+
+                  <div className="d-flex flex-column gap-2 small">
+                    {/* Seguro opcional */}
+                    <div className="mt-2">
+                      <div
+                        className="qa-switch-container"
+                        style={{
+                          width: "fit-content",
+                          padding: "0.4rem 0.8rem",
+                        }}
+                      >
+                        <input
+                          className="qf-switch-input"
+                          type="checkbox"
+                          id="seguroCheckbox"
+                          checked={seguroActivo}
+                          onChange={(e) => setSeguroActivo(e.target.checked)}
+                        />
+                        <label
+                          className="qf-label mb-0 ms-2 small"
+                          htmlFor="seguroCheckbox"
+                          style={{ cursor: "pointer" }}
+                        >
+                          Agregar Seguro
+                        </label>
+                      </div>
+
+                      {seguroActivo && (
+                        <div className="mb-2">
+                          <label
+                            htmlFor="valorMercaderia"
+                            className="qf-label small"
+                          >
+                            Valor Mercadería ({rutaSeleccionada.currency}){" "}
+                            <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            className="qf-input py-1"
+                            id="valorMercaderia"
+                            placeholder="Ej: 10000"
+                            value={valorMercaderia}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === "" || /^[\d,\.]+$/.test(value)) {
+                                setValorMercaderia(value);
+                              }
+                            }}
+                          />
+                          <p className="qa-text-muted mt-1 mb-0">
+                            Existirá un recargo adicional en base al valor de la
+                            mercadería
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Gastos Locales (THC + Apertura) */}
+                    <div className="mt-2">
+                      <div
+                        className="qa-switch-container"
+                        style={{
+                          width: "fit-content",
+                          padding: "0.4rem 0.8rem",
+                        }}
+                      >
+                        <input
+                          className="qf-switch-input"
+                          type="checkbox"
+                          id="gastolocalCheckbox"
+                          checked={gastolocal}
+                          onChange={(e) => setGastolocal(e.target.checked)}
+                        />
+                        <label
+                          className="qf-label mb-0 ms-2 small"
+                          htmlFor="gastolocalCheckbox"
+                          style={{ cursor: "pointer" }}
+                        >
+                          Agregar Gastos Locales (THC + Apertura)
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Nota informativa */}
                     <div
-                      className="qa-switch-container"
+                      className="mt-2 p-2 rounded"
                       style={{
-                        width: "fit-content",
-                        padding: "0.4rem 0.8rem",
+                        backgroundColor: "rgba(255, 98, 0, 0.05)",
+                        border: "1px solid rgba(255, 98, 0, 0.15)",
                       }}
                     >
-                      <input
-                        className="qf-switch-input"
-                        type="checkbox"
-                        id="gastolocalCheckbox"
-                        checked={gastolocal}
-                        onChange={(e) => setGastolocal(e.target.checked)}
-                      />
-                      <label
-                        className="qf-label mb-0 ms-2 small"
-                        htmlFor="gastolocalCheckbox"
-                        style={{ cursor: "pointer" }}
-                      >
-                        Agregar Gastos Locales (THC + Apertura)
-                      </label>
+                      <small className="text-muted">
+                        <i className="bi bi-info-circle me-1"></i>
+                        {t("QuoteAIR.desglose")}
+                      </small>
                     </div>
-                  </div>
-
-                  {/* Nota informativa */}
-                  <div
-                    className="mt-2 p-2 rounded"
-                    style={{
-                      backgroundColor: "rgba(255, 98, 0, 0.05)",
-                      border: "1px solid rgba(255, 98, 0, 0.15)",
-                    }}
-                  >
-                    <small className="text-muted">
-                      <i className="bi bi-info-circle me-1"></i>
-                      {t("QuoteAIR.desglose")}
-                    </small>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-          {/* SECCIÓN 2: GENERAR COTIZACIÓN */}
-          <div className="row g-3">
-            <div className="col-md-12">
-              <div
-                className="h-100 p-4 rounded border"
-                style={{
-                  backgroundColor: "transparent",
-                  borderColor: "var(--qf-border-color)",
-                  transition: "all 0.2s",
-                }}
-              >
-                <div className="mb-3">
-                  <i
-                    className="bi bi-file-earmark-pdf"
-                    style={{ fontSize: "2rem", color: "var(--qf-primary)" }}
-                  ></i>
-                </div>
-                <h5 className="mb-2" style={{ fontWeight: 600 }}>
-                  {t("QuoteAIR.generarcotizacion")}
-                </h5>
-                <p className="text-muted small mb-4">
-                  {t("QuoteAIR.cotizaciongenerada")}
-                </p>
 
+              {/* Botón Generar Cotización */}
+              <div className="d-flex justify-content-end mt-4 pt-3 border-top">
                 <button
+                  className="qa-btn qa-btn-primary"
                   onClick={() => {
                     setTipoAccion("cotizacion");
                     testAPI("cotizacion");
@@ -3068,79 +3218,18 @@ function QuoteFCL({
                     !incoterm ||
                     (incoterm === "EXW" && !pickupFromAddress)
                   }
-                  className="qa-btn qa-btn-primary w-100 mt-auto"
                 >
                   {loading ? (
                     <span className="spinner-border spinner-border-sm"></span>
                   ) : (
                     t("QuoteAIR.generarcotizacion")
                   )}
+                  <i className="bi bi-arrow-right ms-2"></i>
                 </button>
               </div>
             </div>
-
-            {/*<div className="col-md-6">
-                <div
-                  className="h-100 p-4 rounded border text-center"
-                  style={{
-                    backgroundColor: "transparent",
-                    borderColor: "var(--qf-border-color)",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  <div className="mb-3">
-                    <i
-                      className="bi bi-gear"
-                      style={{ fontSize: "2rem", color: "var(--qf-primary)" }}
-                    ></i>
-                  </div>
-                  <h5 className="mb-2" style={{ fontWeight: 600 }}>
-                    {t("QuoteAIR.generaroperacion")}
-                  </h5>
-                  <p className="text-muted small mb-4">
-                    <strong className="text-muted">
-                      {t("QuoteAIR.accionirreversible")}
-                    </strong>{" "}
-                    {t("QuoteAIR.operaciongenerada")}
-                  </p>
-
-                  <button
-                    onClick={() => {
-                      setTipoAccion("operacion");
-                      testAPI("operacion");
-                    }}
-                    disabled={
-                      loading ||
-                      authLoading ||
-                      !accessToken ||
-                      !rutaSeleccionada ||
-                      !containerSeleccionado ||
-                      !incoterm ||
-                      (incoterm === "EXW" && !pickupFromAddress)
-                    }
-                    className="qf-btn qf-btn-outline w-100"
-                    style={{
-                      color: "var(--qf-primary)",
-                      borderColor: "var(--qf-primary)",
-                    }}
-                  >
-                    {loading ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        ></span>
-                        {t("QuoteAIR.generandocotizacion")}
-                      </>
-                    ) : (
-                      <>{t("QuoteAIR.generaroperacion")}</>
-                    )}
-                  </button>
-                </div>
-              </div>*/}
-          </div>
-        </>
+          )}
+        </div>
       )}
 
       {/* ============================================================================ */}
@@ -3162,14 +3251,18 @@ function QuoteFCL({
 
       {/* Respuesta exitosa */}
       {response && (
-        <div className="qf-card mb-4" style={{ borderColor: "#28a745" }}>
-          <div className="qf-card-header bg-success text-white">
-            <h5 className="mb-0">
-              ✅ Tu cotización se ha generado exitosamente
-            </h5>
-          </div>
-          <div style={{ padding: "1.5rem" }}>
-            <div className="alert alert-success mb-0">
+        <div
+          className="qa-alert qa-alert-success mb-4"
+          style={{
+            backgroundColor: "#d4edda",
+            color: "#155724",
+            borderColor: "#c3e6cb",
+          }}
+        >
+          <i className="bi bi-check-circle-fill"></i>
+          <div>
+            <strong>Tu cotización se ha generado exitosamente</strong>
+            <div className="mt-1">
               En unos momentos se descargará automáticamente el PDF de la
               cotización.
             </div>

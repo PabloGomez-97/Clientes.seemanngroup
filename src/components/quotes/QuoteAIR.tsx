@@ -143,6 +143,9 @@ function QuoteAPITester({
   const [openAccordions, setOpenAccordions] = useState<string[]>(["1"]);
   const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
   const [openSection, setOpenSection] = useState<number>(1);
+  const [step2Completed, setStep2Completed] = useState<boolean>(false);
+  const [step3Completed, setStep3Completed] = useState<boolean>(false);
+  const [openSection4, setOpenSection4] = useState<boolean>(false);
 
   // Estado para el tipo de acción: cotización u operación
   const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
@@ -501,6 +504,52 @@ function QuoteAPITester({
   };
 
   // Función para manejar el toggle de secciones
+  const canProceedToStep3 = useMemo(() => {
+    // Must have incoterm selected and no validation errors
+    if (!incoterm) return false;
+    if (weightError || dimensionError) return false;
+
+    if (overallDimsAndWeight) {
+      return manualWeight > 0 && manualVolume > 0;
+    }
+
+    const piecesHaveData = piecesData.some(
+      (p) => p.weight > 0 || (p.length > 0 && p.width > 0 && p.height > 0),
+    );
+    return piecesHaveData;
+  }, [
+    incoterm,
+    overallDimsAndWeight,
+    manualWeight,
+    manualVolume,
+    piecesData,
+    weightError,
+    dimensionError,
+  ]);
+
+  useEffect(() => {
+    if (step2Completed && !canProceedToStep3) {
+      // if user edited Section 2 making it invalid again, revert completion
+      setStep2Completed(false);
+      setOpenSection(2);
+    }
+  }, [canProceedToStep3, step2Completed]);
+
+  const canProceedToStep4 = useMemo(() => {
+    // For proceeding to Section 4 require no validation errors
+    if (weightError || dimensionError) return false;
+    return true;
+  }, [weightError, dimensionError]);
+
+  useEffect(() => {
+    if (step3Completed && !canProceedToStep4) {
+      // if user edited Section 3 making it invalid again, revert completion
+      setStep3Completed(false);
+      setOpenSection4(false);
+      setOpenSection(3);
+    }
+  }, [canProceedToStep4, step3Completed]);
+
   const handleSectionToggle = (section: number) => {
     const newSection = openSection === section ? 0 : section;
     setOpenSection(newSection);
@@ -3289,7 +3338,7 @@ function QuoteAPITester({
                 style={{ color: "var(--qa-primary)" }}
               ></i>
               {openSection !== 1 && rutaSeleccionada
-                ? "Ruta Seleccionada"
+                ? "Paso 1: Seleccionar Ruta"
                 : "Paso 1: Seleccionar Ruta"}
             </h3>
             {openSection !== 1 && rutaSeleccionada && (
@@ -3302,7 +3351,7 @@ function QuoteAPITester({
                 }}
               >
                 <i className="bi bi-check-circle-fill me-1"></i>
-                Listo
+                Completado
               </span>
             )}
           </div>
@@ -3880,173 +3929,104 @@ function QuoteAPITester({
 
       {rutaSeleccionada && (
         <div className="qa-card">
-          <div className="qa-card-header">
-            <div>
+          <div
+            className={`qa-card-header ${openSection === 2 ? "open" : ""}`}
+            onClick={() => handleSectionToggle(2)}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="d-flex align-items-center">
               <h3>
                 <i
-                  className="bi bi-geo-alt me-2"
+                  className="bi bi-box-seam me-2"
                   style={{ color: "var(--qa-primary)" }}
                 ></i>
-                Paso 2: Datos del Cargamento
+                {openSection !== 2 &&
+                (incoterm || piecesData.some((p) => p.weight > 0))
+                  ? "Paso 2: Datos del Cargamento"
+                  : "Paso 2: Datos del Cargamento"}
               </h3>
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <div className="qa-switch-container">
-              <input
-                className="qa-switch-input"
-                type="checkbox"
-                id="overallSwitch"
-                checked={overallDimsAndWeight}
-                onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
-              />
-              <label
-                className="qa-label mb-0"
-                htmlFor="overallSwitch"
-                style={{ cursor: "pointer", flexGrow: 1 }}
-              >
-                <div className="d-flex align-items-center">
-                  <i
-                    className="bi bi-calculator me-2"
-                    style={{ fontSize: "1.2rem" }}
-                  ></i>
-                  <div>
-                    <span className="d-block text-dark">
-                      {t("QuoteAIR.overall")}
-                    </span>
-                    <small className="text-muted fw-normal">
-                      {t("QuoteAIR.ingresomanual")}
-                    </small>
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <div className="qa-form-group mb-4">
-            <label className="qa-label">
-              <i className="bi bi-flag me-2"></i>
-              Incoterm <span className="text-danger">*</span>
-            </label>
-            <select
-              className="qa-select"
-              value={incoterm}
-              onChange={(e) =>
-                setIncoterm(e.target.value as "EXW" | "FCA" | "")
-              }
-              style={{ maxWidth: "300px" }}
-            >
-              <option value="">{t("QuoteAIR.incoterm")}</option>
-              <option value="EXW">Ex Works [EXW]</option>
-              <option value="FCA">Free Carrier [FCA]</option>
-            </select>
-          </div>
-
-          {incoterm === "EXW" && (
-            <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
-              <div>
-                <label className="qa-label">
-                  <i className="bi bi-geo-alt me-1"></i>
-                  {t("QuoteAIR.pickup")}
-                </label>
-                <CotizadorAddressMap
-                  value={pickupFromAddress}
-                  onChange={setPickupFromAddress}
-                  placeholder="Ingrese dirección de recogida"
-                  rows={2}
-                  destinationCoords={
-                    originSeleccionado
-                      ? (() => {
-                          const ap = getAirportByOrigin(
-                            originSeleccionado.value,
-                          );
-                          if (!ap) return null;
-                          return {
-                            lat: ap.lat,
-                            lng: ap.lng,
-                            name: ap.name,
-                            code: ap.iata,
-                          } as DestinationCoords;
-                        })()
-                      : null
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="qa-label">
-                  <i className="bi bi-geo-alt me-1"></i>
-                  {t("QuoteAIR.delivery")}
-                </label>
-                <textarea
-                  className="qa-input"
-                  value={deliveryToAddressDerived}
-                  readOnly
-                  disabled
-                  rows={2}
-                />
-              </div>
-            </div>
-          )}
-
-          {!overallDimsAndWeight && (
-            <div>
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <h4 className="fs-6 fw-bold mb-0">Detalles de las Piezas</h4>
-
-                <div className="d-flex align-items-center gap-2">
-                  <button
-                    type="button"
-                    className="qa-btn qa-btn-outline qa-btn-sm"
-                    onClick={() => handleDuplicatePiece()}
+              {openSection !== 2 &&
+                (incoterm || piecesData.some((p) => p.weight > 0)) && (
+                  <span
+                    className="qa-badge ms-3"
+                    style={{
+                      backgroundColor: "#d1e7dd",
+                      color: "#0f5132",
+                      borderColor: "transparent",
+                    }}
                   >
-                    <i className="bi bi-files"></i>
-                    Duplicar Pieza
-                  </button>
-                  <button
-                    type="button"
-                    className="qa-btn qa-btn-primary qa-btn-sm"
-                    onClick={handleAddPiece}
-                  >
-                    <i className="bi bi-plus-lg"></i>Agregar Pieza
-                  </button>
-                </div>
-              </div>
+                    <i className="bi bi-check-circle-fill me-1"></i>
+                    Completado
+                  </span>
+                )}
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              {openSection !== 2 &&
+              (incoterm || piecesData.some((p) => p.weight > 0)) ? (
+                <span
+                  style={{
+                    color: "var(--qa-primary)",
+                    fontSize: "0.85rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cambiar
+                </span>
+              ) : (
+                <i
+                  className={`bi bi-chevron-${openSection === 2 ? "up" : "down"}`}
+                  style={{ color: "var(--qa-text-secondary)" }}
+                ></i>
+              )}
+            </div>
+          </div>
 
-              <div className="mb-3">
-                {piecesData.map((piece, index) => (
-                  <PieceAccordion
-                    key={piece.id}
-                    piece={piece}
-                    index={index}
-                    isOpen={openAccordions.includes(piece.id)}
-                    onToggle={() => handleToggleAccordion(piece.id)}
-                    onRemove={() => handleRemovePiece(piece.id)}
-                    onUpdate={(field, value) =>
-                      handleUpdatePiece(piece.id, field, value)
-                    }
-                    packageTypes={packageTypeOptions.map((opt) => ({
-                      id: String(opt.id),
-                      name: opt.name,
-                    }))}
-                    canRemove={piecesData.length > 1}
-                  />
-                ))}
-              </div>
-
-              {/* Totals summary bar */}
-              {(() => {
-                const {
-                  totalRealWeight,
-                  totalVolumetricWeight,
-                  chargeableWeight,
-                } = calculateTotals();
-                const totalVolume = piecesData.reduce(
-                  (sum, p) => sum + (p.volume || 0),
-                  0,
-                );
+          {/* Collapsed summary: totals bar */}
+          {openSection !== 2 &&
+            (() => {
+              const {
+                totalRealWeight,
+                totalVolumetricWeight,
+                chargeableWeight,
+              } = calculateTotals();
+              const totalVolume = piecesData.reduce(
+                (sum, p) => sum + (p.volume || 0),
+                0,
+              );
+              if (overallDimsAndWeight) {
                 return (
+                  <div className="qa-route-summary">
+                    <div className="qa-totals-bar">
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {manualVolume.toFixed(3)} m³
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Volumen total
+                        </span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {manualWeight.toFixed(2)} kg
+                        </span>
+                        <span className="qa-totals-bar-label">Peso total</span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {pesoChargeable.toFixed(2)} kg
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Peso chargeable
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="qa-route-summary">
                   <div className="qa-totals-bar">
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
@@ -4065,7 +4045,7 @@ function QuoteAPITester({
                         {totalVolumetricWeight.toFixed(2)} kg
                       </span>
                       <span className="qa-totals-bar-label">
-                        Peso volumétrico{" "}
+                        Peso volumétrico
                       </span>
                     </div>
                     <div className="qa-totals-bar-item">
@@ -4077,102 +4057,342 @@ function QuoteAPITester({
                       </span>
                     </div>
                   </div>
-                );
-              })()}
+                </div>
+              );
+            })()}
 
-              {/* Alertas de restricciones */}
-              <div className="mt-4">
-                {oversizeError && (
-                  <div className="qa-alert qa-alert-warning">
-                    <i className="bi bi-exclamation-triangle-fill"></i>
-                    <div>
-                      <strong>{t("QuoteAIR.cargaoversize")}:</strong>{" "}
-                      {oversizeError}
+          {openSection === 2 && (
+            <>
+              <div className="mb-4">
+                <div className="qa-switch-container">
+                  <input
+                    className="qa-switch-input"
+                    type="checkbox"
+                    id="overallSwitch"
+                    checked={overallDimsAndWeight}
+                    onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
+                  />
+                  <label
+                    className="qa-label mb-0"
+                    htmlFor="overallSwitch"
+                    style={{ cursor: "pointer", flexGrow: 1 }}
+                  >
+                    <div className="d-flex align-items-center">
+                      <i
+                        className="bi bi-calculator me-2"
+                        style={{ fontSize: "1.2rem" }}
+                      ></i>
+                      <div>
+                        <span className="d-block text-dark">
+                          {t("QuoteAIR.overall")}
+                        </span>
+                        <small className="text-muted fw-normal">
+                          {t("QuoteAIR.ingresomanual")}
+                        </small>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {heightError && (
-                  <div className="qa-alert qa-alert-danger">
-                    <i className="bi bi-x-circle-fill"></i>
-                    <div>
-                      <strong>{t("QuoteAIR.noaptaparaereo")}:</strong>{" "}
-                      {heightError}
-                    </div>
-                  </div>
-                )}
-                {cargoFlightWarning && (
-                  <div className="qa-alert qa-alert-warning">
-                    <i className="bi bi-airplane-fill"></i>
-                    <div>
-                      <strong>
-                        {t("QuoteAIR.vueloscarguerosrequeridos")}:
-                      </strong>{" "}
-                      {cargoFlightWarning}
-                    </div>
-                  </div>
-                )}
-                {lowHeightWarning && (
-                  <div className="qa-alert qa-alert-warning">
-                    <i className="bi bi-info-circle-fill"></i>
-                    <div>
-                      <strong>{t("QuoteAIR.verificacion")}</strong>{" "}
-                      {lowHeightWarning}
-                    </div>
-                  </div>
-                )}
+                  </label>
+                </div>
               </div>
-            </div>
-          )}
 
-          {overallDimsAndWeight && (
-            <div className="qa-grid-2 mt-3 p-3 bg-light rounded border">
-              <div>
+              <div className="qa-form-group mb-4">
                 <label className="qa-label">
-                  <i className="bi bi-box-seam me-1"></i>
-                  {t("QuoteAIR.pesototal")}
+                  <i className="bi bi-flag me-2"></i>
+                  Incoterm
+                  <span
+                    className="qf-badge ms-2"
+                    style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                  >
+                    Obligatorio
+                  </span>
                 </label>
-                <input
-                  type="number"
-                  className={`qa-input ${weightError ? "is-invalid" : ""}`} // Keep is-invalid for helper text if needed, or style it
-                  value={manualWeight}
-                  onChange={(e) => {
-                    const newManualWeight = Number(e.target.value);
-                    setManualWeight(newManualWeight);
-                    if (newManualWeight > 2000) {
-                      setWeightError("El peso total no puede exceder 2000 kg");
-                    } else {
-                      setWeightError(null);
-                    }
+                <select
+                  className="qa-select"
+                  value={incoterm}
+                  onChange={(e) =>
+                    setIncoterm(e.target.value as "EXW" | "FCA" | "")
+                  }
+                  style={{ maxWidth: "300px" }}
+                >
+                  <option value="">{t("QuoteAIR.incoterm")}</option>
+                  <option value="EXW">Ex Works [EXW]</option>
+                  <option value="FCA">Free Carrier [FCA]</option>
+                </select>
+              </div>
+
+              {incoterm === "EXW" && (
+                <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
+                  <div>
+                    <label className="qa-label">
+                      <i className="bi bi-geo-alt me-1"></i>
+                      {t("QuoteAIR.pickup")}
+                    </label>
+                    <CotizadorAddressMap
+                      value={pickupFromAddress}
+                      onChange={setPickupFromAddress}
+                      placeholder="Ingrese dirección de recogida"
+                      rows={2}
+                      destinationCoords={
+                        originSeleccionado
+                          ? (() => {
+                              const ap = getAirportByOrigin(
+                                originSeleccionado.value,
+                              );
+                              if (!ap) return null;
+                              return {
+                                lat: ap.lat,
+                                lng: ap.lng,
+                                name: ap.name,
+                                code: ap.iata,
+                              } as DestinationCoords;
+                            })()
+                          : null
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="qa-label">
+                      <i className="bi bi-geo-alt me-1"></i>
+                      {t("QuoteAIR.delivery")}
+                    </label>
+                    <textarea
+                      className="qa-input"
+                      value={deliveryToAddressDerived}
+                      readOnly
+                      disabled
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {!overallDimsAndWeight && (
+                <div>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h4 className="fs-6 fw-bold mb-0">
+                      Detalles de las Piezas
+                    </h4>
+
+                    <div className="d-flex align-items-center gap-2">
+                      <button
+                        type="button"
+                        className="qa-btn qa-btn-outline qa-btn-sm"
+                        onClick={() => handleDuplicatePiece()}
+                      >
+                        <i className="bi bi-files"></i>
+                        Duplicar Pieza
+                      </button>
+                      <button
+                        type="button"
+                        className="qa-btn qa-btn-primary qa-btn-sm"
+                        onClick={handleAddPiece}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar Pieza
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    {piecesData.map((piece, index) => (
+                      <PieceAccordion
+                        key={piece.id}
+                        piece={piece}
+                        index={index}
+                        isOpen={openAccordions.includes(piece.id)}
+                        onToggle={() => handleToggleAccordion(piece.id)}
+                        onRemove={() => handleRemovePiece(piece.id)}
+                        onUpdate={(field, value) =>
+                          handleUpdatePiece(piece.id, field, value)
+                        }
+                        packageTypes={packageTypeOptions.map((opt) => ({
+                          id: String(opt.id),
+                          name: opt.name,
+                        }))}
+                        canRemove={piecesData.length > 1}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Totals summary bar */}
+                  {(() => {
+                    const {
+                      totalRealWeight,
+                      totalVolumetricWeight,
+                      chargeableWeight,
+                    } = calculateTotals();
+                    const totalVolume = piecesData.reduce(
+                      (sum, p) => sum + (p.volume || 0),
+                      0,
+                    );
+                    return (
+                      <div className="qa-totals-bar">
+                        <div className="qa-totals-bar-item">
+                          <span className="qa-totals-bar-value">
+                            {totalVolume.toFixed(3)} m³
+                          </span>
+                          <span className="qa-totals-bar-label">
+                            Volumen total
+                          </span>
+                        </div>
+                        <div className="qa-totals-bar-item">
+                          <span className="qa-totals-bar-value">
+                            {totalRealWeight.toFixed(2)} kg
+                          </span>
+                          <span className="qa-totals-bar-label">Peso real</span>
+                        </div>
+                        <div className="qa-totals-bar-item">
+                          <span className="qa-totals-bar-value">
+                            {totalVolumetricWeight.toFixed(2)} kg
+                          </span>
+                          <span className="qa-totals-bar-label">
+                            Peso volumétrico{" "}
+                          </span>
+                        </div>
+                        <div className="qa-totals-bar-item">
+                          <span className="qa-totals-bar-value">
+                            {chargeableWeight.toFixed(2)} kg
+                          </span>
+                          <span className="qa-totals-bar-label">
+                            Peso chargeable
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Alertas de restricciones */}
+                  <div className="mt-4">
+                    {oversizeError && (
+                      <div className="qa-alert qa-alert-warning">
+                        <i className="bi bi-exclamation-triangle-fill"></i>
+                        <div>
+                          <strong>{t("QuoteAIR.cargaoversize")}:</strong>{" "}
+                          {oversizeError}
+                        </div>
+                      </div>
+                    )}
+                    {heightError && (
+                      <div className="qa-alert qa-alert-danger">
+                        <i className="bi bi-x-circle-fill"></i>
+                        <div>
+                          <strong>{t("QuoteAIR.noaptaparaereo")}:</strong>{" "}
+                          {heightError}
+                        </div>
+                      </div>
+                    )}
+                    {cargoFlightWarning && (
+                      <div className="qa-alert qa-alert-warning">
+                        <i className="bi bi-airplane-fill"></i>
+                        <div>
+                          <strong>
+                            {t("QuoteAIR.vueloscarguerosrequeridos")}:
+                          </strong>{" "}
+                          {cargoFlightWarning}
+                        </div>
+                      </div>
+                    )}
+                    {lowHeightWarning && (
+                      <div className="qa-alert qa-alert-warning">
+                        <i className="bi bi-info-circle-fill"></i>
+                        <div>
+                          <strong>{t("QuoteAIR.verificacion")}</strong>{" "}
+                          {lowHeightWarning}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {overallDimsAndWeight && (
+                <div className="qa-grid-2 mt-3 p-3 bg-light rounded border">
+                  <div>
+                    <label className="qa-label">
+                      <i className="bi bi-box-seam me-1"></i>
+                      {t("QuoteAIR.pesototal")}
+                    </label>
+                    <input
+                      type="number"
+                      className={`qa-input ${weightError ? "is-invalid" : ""}`}
+                      value={manualWeight}
+                      onChange={(e) => {
+                        const newManualWeight = Number(e.target.value);
+                        setManualWeight(newManualWeight);
+                        if (newManualWeight > 2000) {
+                          setWeightError(
+                            "El peso total no puede exceder 2000 kg",
+                          );
+                        } else {
+                          setWeightError(null);
+                        }
+                      }}
+                      min="0"
+                      step="0.01"
+                    />
+                    <small className="text-muted d-block mt-1">
+                      {t("QuoteAIR.descripcionpeso")}
+                    </small>
+                    {weightError && (
+                      <div className="text-danger small mt-1">
+                        {weightError}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="qa-label">
+                      <i className="bi bi-rulers me-1"></i>
+                      {t("QuoteAIR.volumentotal")}
+                    </label>
+                    <input
+                      type="number"
+                      className="qa-input"
+                      value={manualVolume}
+                      onChange={(e) => setManualVolume(Number(e.target.value))}
+                      min="0"
+                      step="0.0001"
+                    />
+                    <small className="text-muted d-block mt-1">
+                      {t("QuoteAIR.descripcionvolumen")}
+                    </small>
+                  </div>
+                </div>
+              )}
+
+              {/* Alerta de rango de peso sin precio */}
+              {weightRangeValidation &&
+                !weightRangeValidation.tienePrecio &&
+                rutaSeleccionada &&
+                !sinTarifa && (
+                  <WeightRangeAlert
+                    validation={weightRangeValidation}
+                    pesoChargeable={pesoChargeable}
+                  />
+                )}
+
+              {/* Botón Siguiente */}
+              <div className="d-flex justify-content-end mt-4">
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-primary"
+                  disabled={!canProceedToStep3}
+                  onClick={() => {
+                    if (!canProceedToStep3) return;
+                    setStep2Completed(true);
+                    setOpenSection(3);
+                    trackStep({
+                      step: "incoterm_charges",
+                      stepNumber: 3,
+                      totalSteps: 3,
+                    });
                   }}
-                  min="0"
-                  step="0.01"
-                />
-                <small className="text-muted d-block mt-1">
-                  {t("QuoteAIR.descripcionpeso")}
-                </small>
-                {weightError && (
-                  <div className="text-danger small mt-1">{weightError}</div>
-                )}
+                >
+                  Siguiente
+                  <i className="bi bi-arrow-right ms-1"></i>
+                </button>
               </div>
-
-              <div>
-                <label className="qa-label">
-                  <i className="bi bi-rulers me-1"></i>
-                  {t("QuoteAIR.volumentotal")}
-                </label>
-                <input
-                  type="number"
-                  className="qa-input"
-                  value={manualVolume}
-                  onChange={(e) => setManualVolume(Number(e.target.value))}
-                  min="0"
-                  step="0.0001"
-                />
-                <small className="text-muted d-block mt-1">
-                  {t("QuoteAIR.descripcionvolumen")}
-                </small>
-              </div>
-            </div>
+            </>
           )}
         </div>
       )}
@@ -4181,345 +4401,320 @@ function QuoteAPITester({
       {/* SECCIÓN 3: REVISIÓN DE PIEZAS Y COSTOS */}
       {/* ============================================================================ */}
 
-      {rutaSeleccionada && (
+      {rutaSeleccionada && step2Completed && (
         <div className="qa-card">
-          <div className="qa-card-header">
-            <h3>{t("QuoteAIR.revision")}</h3>
+          <div
+            className={`qa-card-header ${openSection === 3 ? "open" : ""}`}
+            onClick={() => handleSectionToggle(3)}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-clipboard-check me-2"
+                  style={{ color: "var(--qa-primary)" }}
+                ></i>
+                Paso 3: Revisión de Piezas y Costos
+              </h3>
+            </div>
+            <i
+              className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
+              style={{ color: "var(--qa-text-secondary)" }}
+            ></i>
           </div>
 
-          {/* Alerta de rango de peso sin precio */}
-          {weightRangeValidation &&
-            !weightRangeValidation.tienePrecio &&
-            rutaSeleccionada &&
-            !sinTarifa && (
-              <WeightRangeAlert
-                validation={weightRangeValidation}
-                pesoChargeable={pesoChargeable}
-              />
-            )}
+          {openSection !== 3 && (
+            <div className="qa-route-summary">
+              <span className="qa-text-muted" style={{ fontSize: "0.85rem" }}>
+                <i className="bi bi-info-circle me-1"></i>
+                Expande para ver el resumen de costos y generar la cotización.
+              </span>
+            </div>
+          )}
 
-          <div className="qa-grid-2 mb-4">
-            {/* Resumen de Pesos/Volumen */}
-            <div className="p-3 bg-light rounded border">
-              <h6 className="fw-bold mb-3">
-                <i className="bi bi-box-seam me-2"></i>
-                {t("QuoteAIR.resumen")}
-              </h6>
-              {!overallDimsAndWeight ? (
-                (() => {
-                  const {
-                    totalRealWeight: totalWeight,
-                    totalVolumetricWeight: totalVolumeWeight,
-                  } = calculateTotals();
-                  const totalVolume = piecesData.reduce(
-                    (sum, piece) => sum + piece.totalVolume,
-                    0,
-                  );
-                  return (
+          {openSection === 3 && (
+            <>
+              <div className="qa-grid-2 mb-4">
+                {/* Resumen de Pesos/Volumen */}
+                <div className="p-3 bg-light rounded border">
+                  <h6 className="fw-bold mb-3">
+                    <i className="bi bi-box-seam me-2"></i>
+                    {t("QuoteAIR.resumen")}
+                  </h6>
+                  {!overallDimsAndWeight ? (
+                    (() => {
+                      const {
+                        totalRealWeight: totalWeight,
+                        totalVolumetricWeight: totalVolumeWeight,
+                      } = calculateTotals();
+                      const totalVolume = piecesData.reduce(
+                        (sum, piece) => sum + piece.totalVolume,
+                        0,
+                      );
+                      return (
+                        <div className="row g-2 small">
+                          <div className="col-6 text-muted">
+                            {t("QuoteAIR.volumenpieza")}:
+                          </div>
+                          <div className="col-6 text-end fw-bold">
+                            {(piecesData[0]?.volume ?? 0).toFixed(4)} m³
+                          </div>
+
+                          <div className="col-6 text-muted">
+                            {t("QuoteAIR.volumenvolpieza")}:
+                          </div>
+                          <div className="col-6 text-end fw-bold">
+                            {(piecesData[0]?.volumeWeight ?? 0).toFixed(2)} kg
+                          </div>
+
+                          <div className="col-12 border-top my-2"></div>
+
+                          <div className="col-6 text-muted">
+                            {t("QuoteAIR.volumentotal1")}:
+                          </div>
+                          <div className="col-6 text-end fw-bold">
+                            {totalVolume.toFixed(4)} m³
+                          </div>
+
+                          <div className="col-6 text-muted">
+                            {t("QuoteAIR.pesototal1")}:
+                          </div>
+                          <div className="col-6 text-end fw-bold">
+                            {totalWeight.toFixed(2)} kg
+                          </div>
+
+                          <div className="col-6 text-muted">
+                            {t("QuoteAIR.pesovoltotal")}:
+                          </div>
+                          <div className="col-6 text-end fw-bold">
+                            {totalVolumeWeight.toFixed(2)} kg
+                          </div>
+
+                          <div className="col-6 text-dark fw-bold">
+                            {t("QuoteAIR.pesochargeable")}:
+                          </div>
+                          <div className="col-6 text-end fw-bolder text-primary fs-6">
+                            {pesoChargeable.toFixed(2)} kg
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : (
                     <div className="row g-2 small">
-                      <div className="col-6 text-muted">
-                        {t("QuoteAIR.volumenpieza")}:
-                      </div>
-                      <div className="col-6 text-end fw-bold">
-                        {(piecesData[0]?.volume ?? 0).toFixed(4)} m³
-                      </div>
-
-                      <div className="col-6 text-muted">
-                        {t("QuoteAIR.volumenvolpieza")}:
-                      </div>
-                      <div className="col-6 text-end fw-bold">
-                        {(piecesData[0]?.volumeWeight ?? 0).toFixed(2)} kg
-                      </div>
-
-                      <div className="col-12 border-top my-2"></div>
-
                       <div className="col-6 text-muted">
                         {t("QuoteAIR.volumentotal1")}:
                       </div>
                       <div className="col-6 text-end fw-bold">
-                        {totalVolume.toFixed(4)} m³
+                        {manualVolume.toFixed(4)} m³
                       </div>
 
                       <div className="col-6 text-muted">
                         {t("QuoteAIR.pesototal1")}:
                       </div>
                       <div className="col-6 text-end fw-bold">
-                        {totalWeight.toFixed(2)} kg
+                        {manualWeight.toFixed(2)} kg
                       </div>
 
-                      <div className="col-6 text-muted">
-                        {t("QuoteAIR.pesovoltotal")}:
-                      </div>
-                      <div className="col-6 text-end fw-bold">
-                        {totalVolumeWeight.toFixed(2)} kg
-                      </div>
+                      <div className="col-12 border-top my-2"></div>
 
                       <div className="col-6 text-dark fw-bold">
-                        {t("QuoteAIR.pesochargeable")}:
+                        {t("QuoteAIR.chargeable")}:
                       </div>
                       <div className="col-6 text-end fw-bolder text-primary fs-6">
                         {pesoChargeable.toFixed(2)} kg
                       </div>
-                    </div>
-                  );
-                })()
-              ) : (
-                <div className="row g-2 small">
-                  <div className="col-6 text-muted">
-                    {t("QuoteAIR.volumentotal1")}:
-                  </div>
-                  <div className="col-6 text-end fw-bold">
-                    {manualVolume.toFixed(4)} m³
-                  </div>
 
-                  <div className="col-6 text-muted">
-                    {t("QuoteAIR.pesototal1")}:
-                  </div>
-                  <div className="col-6 text-end fw-bold">
-                    {manualWeight.toFixed(2)} kg
-                  </div>
-
-                  <div className="col-12 border-top my-2"></div>
-
-                  <div className="col-6 text-dark fw-bold">
-                    {t("QuoteAIR.chargeable")}:
-                  </div>
-                  <div className="col-6 text-end fw-bolder text-primary fs-6">
-                    {pesoChargeable.toFixed(2)} kg
-                  </div>
-
-                  <div
-                    className="col-12 text-muted fst-italic mt-1"
-                    style={{ fontSize: "0.75rem" }}
-                  >
-                    ({t("QuoteAIR.cobropor")} {manualWeight.toFixed(2)} kg vs{" "}
-                    {(manualVolume * 167).toFixed(2)} kg)
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Opciones Adicionales */}
-            {(tarifaAirFreight || sinTarifa) && (
-              <div className="p-3 bg-light rounded border">
-                <h6 className="fw-bold mb-3">
-                  <i className="bi bi-shield-check me-2"></i>
-                  {t("QuoteAIR.resumencargos")}
-                </h6>
-
-                <div className="d-flex flex-column gap-2 small">
-                  {/* Seguro opcional */}
-                  <div className="mt-2">
-                    <div
-                      className="qa-switch-container"
-                      style={{
-                        width: "fit-content",
-                        padding: "0.4rem 0.8rem",
-                      }}
-                    >
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="seguroCheckbox"
-                        checked={seguroActivo}
-                        onChange={(e) => handleToggleSeguro(e.target.checked)}
-                      />
-                      <label
-                        className="form-check-label small"
-                        htmlFor="seguroCheckbox"
+                      <div
+                        className="col-12 text-muted fst-italic mt-1"
+                        style={{ fontSize: "0.75rem" }}
                       >
-                        {t("QuoteAIR.agregar")}
-                      </label>
+                        ({t("QuoteAIR.cobropor")} {manualWeight.toFixed(2)} kg
+                        vs {(manualVolume * 167).toFixed(2)} kg)
+                      </div>
                     </div>
-                    {seguroActivo && (
-                      <div className="mt-2 ps-4">
-                        <label htmlFor="valorMercaderia" className="qa-label">
-                          {t("Quotelcl.valormercaderia")} (
-                          {rutaSeleccionada.currency}){" "}
-                          <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="qa-input"
-                          id="valorMercaderia"
-                          placeholder="Ej: 10000 o 10000,50"
-                          value={valorMercaderia}
-                          disabled={aduanaMaster === true}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === "" || /^[\d,\.]+$/.test(value)) {
-                              handleValorMercaderiaChange(value);
-                            }
-                          }}
+                  )}
+                </div>
+
+                {/* Opciones Adicionales */}
+                {(tarifaAirFreight || sinTarifa) && (
+                  <div className="p-3 bg-light rounded border">
+                    <h6 className="fw-bold mb-3">
+                      <i className="bi bi-shield-check me-2"></i>
+                      {t("QuoteAIR.resumencargos")}
+                    </h6>
+
+                    <div className="d-flex flex-column gap-2 small">
+                      {/* Seguro opcional */}
+                      <div className="mt-2">
+                        <div
+                          className="qa-switch-container"
                           style={{
-                            maxWidth: "300px",
-                            backgroundColor:
-                              aduanaMaster === true ? "#f0f0f0" : undefined,
-                            cursor:
-                              aduanaMaster === true ? "not-allowed" : undefined,
+                            width: "fit-content",
+                            padding: "0.4rem 0.8rem",
                           }}
-                        />
-                        {aduanaMaster === true && (
-                          <small className="text-muted ms-1">
-                            <i className="bi bi-lock-fill me-1"></i>
-                            {t("QuoteAIR.sincronizadoConAduana")}
-                          </small>
+                        >
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id="seguroCheckbox"
+                            checked={seguroActivo}
+                            onChange={(e) =>
+                              handleToggleSeguro(e.target.checked)
+                            }
+                          />
+                          <label
+                            className="form-check-label small"
+                            htmlFor="seguroCheckbox"
+                          >
+                            {t("QuoteAIR.agregar")}
+                          </label>
+                        </div>
+                        {seguroActivo && (
+                          <div className="mt-2 ps-4">
+                            <label
+                              htmlFor="valorMercaderia"
+                              className="qa-label"
+                            >
+                              {t("Quotelcl.valormercaderia")} (
+                              {rutaSeleccionada.currency}){" "}
+                              <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="qa-input"
+                              id="valorMercaderia"
+                              placeholder="Ej: 10000 o 10000,50"
+                              value={valorMercaderia}
+                              disabled={aduanaMaster === true}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === "" || /^[\d,\.]+$/.test(value)) {
+                                  handleValorMercaderiaChange(value);
+                                }
+                              }}
+                              style={{
+                                maxWidth: "300px",
+                                backgroundColor:
+                                  aduanaMaster === true ? "#f0f0f0" : undefined,
+                                cursor:
+                                  aduanaMaster === true
+                                    ? "not-allowed"
+                                    : undefined,
+                              }}
+                            />
+                            {aduanaMaster === true && (
+                              <small className="text-muted ms-1">
+                                <i className="bi bi-lock-fill me-1"></i>
+                                {t("QuoteAIR.sincronizadoConAduana")}
+                              </small>
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
-                  </div>
 
-                  {/* Gastos Locales - Desconsolidación (cargo fijo) */}
-                  <div className="mt-2">
-                    <div
-                      className="qa-switch-container"
-                      style={{
-                        width: "fit-content",
-                        padding: "0.4rem 0.8rem",
-                      }}
-                    >
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        id="gastolocalCheckbox"
-                        checked={gastolocal}
-                        onChange={(e) => setGastolocal(e.target.checked)}
+                      {/* Gastos Locales - Desconsolidación (cargo fijo) */}
+                      <div className="mt-2">
+                        <div
+                          className="qa-switch-container"
+                          style={{
+                            width: "fit-content",
+                            padding: "0.4rem 0.8rem",
+                          }}
+                        >
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id="gastolocalCheckbox"
+                            checked={gastolocal}
+                            onChange={(e) => setGastolocal(e.target.checked)}
+                          />
+                          <label
+                            className="form-check-label small"
+                            htmlFor="gastolocalCheckbox"
+                          >
+                            {t("QuoteAIR.desconsolidacion")}
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Agencia de Aduanas y Nacionalización */}
+                      <AduanaSection
+                        activo={aduanaActivo}
+                        onToggle={handleToggleAduana}
+                        valorProducto={valorProductoAduana}
+                        onValorProductoChange={(value) =>
+                          handleValorProductoAduanaChange(value)
+                        }
+                        costoTransporte={calculateCostoTransporteBase()}
+                        seguroActivo={seguroActivo}
+                        seguroMonto={calculateSeguro()}
+                        currency={
+                          (rutaSeleccionada.currency ||
+                            "USD") as SupportedCurrency
+                        }
+                        config={aduanaConfig}
+                        configLoading={aduanaConfigLoading}
+                        valorProductoDisabled={aduanaMaster === false}
                       />
-                      <label
-                        className="form-check-label small"
-                        htmlFor="gastolocalCheckbox"
+
+                      {/* Nota informativa */}
+                      <div
+                        className="mt-2 p-2 rounded"
+                        style={{
+                          backgroundColor: "rgba(255, 98, 0, 0.05)",
+                          border: "1px solid rgba(255, 98, 0, 0.15)",
+                        }}
                       >
-                        {t("QuoteAIR.desconsolidacion")}
-                      </label>
+                        <small className="text-muted">
+                          <i className="bi bi-info-circle me-1"></i>
+                          {t("QuoteAIR.desglose")}
+                        </small>
+                      </div>
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Agencia de Aduanas y Nacionalización */}
-                  <AduanaSection
-                    activo={aduanaActivo}
-                    onToggle={handleToggleAduana}
-                    valorProducto={valorProductoAduana}
-                    onValorProductoChange={(value) =>
-                      handleValorProductoAduanaChange(value)
-                    }
-                    costoTransporte={calculateCostoTransporteBase()}
-                    seguroActivo={seguroActivo}
-                    seguroMonto={calculateSeguro()}
-                    currency={
-                      (rutaSeleccionada.currency || "USD") as SupportedCurrency
-                    }
-                    config={aduanaConfig}
-                    configLoading={aduanaConfigLoading}
-                    valorProductoDisabled={aduanaMaster === false}
-                  />
-
-                  {/* Nota informativa */}
-                  <div
-                    className="mt-2 p-2 rounded"
-                    style={{
-                      backgroundColor: "rgba(255, 98, 0, 0.05)",
-                      border: "1px solid rgba(255, 98, 0, 0.15)",
-                    }}
-                  >
-                    <small className="text-muted">
-                      <i className="bi bi-info-circle me-1"></i>
-                      {t("QuoteAIR.desglose")}
-                    </small>
+              {(weightError || dimensionError) && (
+                <div className="qa-alert qa-alert-warning mt-3">
+                  <i className="bi bi-exclamation-triangle-fill"></i>
+                  <div>
+                    <strong>{t("QuoteAIR.correccion")}</strong>{" "}
+                    {weightError || dimensionError}
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          {(weightError || dimensionError) && (
-            <div className="qa-alert qa-alert-warning mt-3">
-              <i className="bi bi-exclamation-triangle-fill"></i>
-              <div>
-                <strong>{t("QuoteAIR.correccion")}</strong>{" "}
-                {weightError || dimensionError}
+              <div className="d-flex justify-content-end mt-4">
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-primary"
+                  onClick={() => {
+                    setTipoAccion("cotizacion");
+                    testAPI("cotizacion");
+                  }}
+                  disabled={
+                    loading ||
+                    authLoading ||
+                    !accessToken ||
+                    weightError !== null ||
+                    dimensionError !== null ||
+                    oversizeError !== null ||
+                    heightError !== null ||
+                    (weightRangeError && !sinTarifa) ||
+                    !rutaSeleccionada
+                  }
+                >
+                  {loading ? (
+                    <span className="spinner-border spinner-border-sm"></span>
+                  ) : (
+                    t("QuoteAIR.generarcotizacion")
+                  )}
+                  <i className="bi bi-arrow-right ms-1"></i>
+                </button>
               </div>
-            </div>
+            </>
           )}
-        </div>
-      )}
-
-      {/* Sección de acciones */}
-      {rutaSeleccionada && (
-        <div className="qa-grid-1 mb-5">
-          <div
-            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError || (weightRangeError && !sinTarifa) ? "opacity-50" : ""}`}
-          >
-            <div className="mb-3 text-dark">
-              <i
-                className="bi bi-file-earmark-pdf fs-1"
-                style={{ fontSize: "2rem", color: "var(--qf-primary)" }}
-              ></i>
-            </div>
-            <h5 className="fw-bold">{t("QuoteAIR.generarcotizacion")}</h5>
-            <p className="text-muted small mb-4">
-              {t("QuoteAIR.cotizaciongenerada")}
-            </p>
-            <button
-              onClick={() => {
-                setTipoAccion("cotizacion");
-                testAPI("cotizacion");
-              }}
-              disabled={
-                loading ||
-                authLoading ||
-                !accessToken ||
-                weightError !== null ||
-                dimensionError !== null ||
-                oversizeError !== null ||
-                heightError !== null ||
-                (weightRangeError && !sinTarifa) ||
-                !rutaSeleccionada
-              }
-              className="qa-btn qa-btn-primary w-100 mt-auto"
-            >
-              {loading ? (
-                <span className="spinner-border spinner-border-sm"></span>
-              ) : (
-                t("QuoteAIR.generarcotizacion")
-              )}
-            </button>
-          </div>
-
-          {/* <div
-            className={`qa-card h-100 d-flex flex-column ${!accessToken || weightError || dimensionError || oversizeError || heightError || weightRangeError ? "opacity-50" : ""}`}
-          >
-            <div className="mb-3 text-dark">
-              <i className="bi bi-gear fs-1"></i>
-            </div>
-            <h5 className="fw-bold">{t("QuoteAIR.generaroperacion")}</h5>
-            <p className="text-muted small mb-4">
-              {t("QuoteAIR.operaciongenerada")}
-            </p>
-            <button
-              onClick={() => {
-                setTipoAccion("operacion");
-                testAPI("operacion");
-              }}
-              disabled={
-                loading ||
-                authLoading ||
-                !accessToken ||
-                weightError !== null ||
-                dimensionError !== null ||
-                oversizeError !== null ||
-                heightError !== null ||
-                weightRangeError ||
-                !rutaSeleccionada
-              }
-              className="qa-btn qa-btn-primary w-100 mt-auto"
-            >
-              {loading ? (
-                <span className="spinner-border spinner-border-sm"></span>
-              ) : (
-                t("QuoteAIR.generaroperacion")
-              )}
-            </button>
-          </div> */}
         </div>
       )}
 
@@ -4679,8 +4874,11 @@ function QuoteAPITester({
         >
           <i className="bi bi-check-circle-fill"></i>
           <div>
-            <strong>{t("QuoteAIR.exito")}</strong>
-            <div className="mt-1">{t("QuoteAIR.generarpdf")}</div>
+            <strong>Tu cotización se ha generado exitosamente</strong>
+            <div className="mt-1">
+              En unos momentos se descargará automáticamente el PDF de la
+              cotización.
+            </div>
           </div>
         </div>
       )}

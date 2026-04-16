@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -177,6 +177,9 @@ function QuoteLCL({
   const [openAccordions, setOpenAccordions] = useState<string[]>(["1"]);
   const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
   const [openSection, setOpenSection] = useState<number>(1); // Controla qué paso está abierto
+  const [step2Completed, setStep2Completed] = useState<boolean>(false);
+  const [step3Completed, setStep3Completed] = useState<boolean>(false);
+  const [openSection4, setOpenSection4] = useState<boolean>(false);
 
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
@@ -600,6 +603,31 @@ function QuoteLCL({
       chargeableVolume,
     };
   };
+
+  const canProceedToStep3 = useMemo(() => {
+    if (!incoterm) return false;
+    if (incoterm === "EXW" && !pickupFromAddress) return false;
+    return true;
+  }, [incoterm, pickupFromAddress]);
+
+  useEffect(() => {
+    if (step2Completed && !canProceedToStep3) {
+      setStep2Completed(false);
+      setOpenSection(2);
+    }
+  }, [canProceedToStep3, step2Completed]);
+
+  const canProceedToStep4 = useMemo(() => {
+    return true;
+  }, []);
+
+  useEffect(() => {
+    if (step3Completed && !canProceedToStep4) {
+      setStep3Completed(false);
+      setOpenSection4(false);
+      setOpenSection(3);
+    }
+  }, [canProceedToStep4, step3Completed]);
 
   const handleSectionToggle = (section: number) => {
     const newSection = openSection === section ? 0 : section;
@@ -2278,7 +2306,8 @@ function QuoteLCL({
                   borderColor: "transparent",
                 }}
               >
-                {t("Quotelcl.completado")}
+                <i className="bi bi-check-circle-fill me-1"></i>
+                Completado
               </span>
             )}
           </div>
@@ -2726,50 +2755,76 @@ function QuoteLCL({
         )}
 
         {/* Resumen colapsado cuando está cerrado */}
-        {openSection !== 1 && rutaSeleccionada && (
-          <div
-            style={{
-              padding: "0.75rem 1.5rem",
-              backgroundColor: "var(--qa-bg-light)",
-              borderTop: "1px solid var(--qa-border-color)",
-            }}
-          >
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <small className="qa-text-muted d-block">
-                  {t("Quotelcl.rutaselect")}
-                </small>
-                <strong>
-                  {rutaSeleccionada.pol} → {rutaSeleccionada.pod}
-                </strong>
-                {!sinTarifa && (
-                  <>
-                    <span className="ms-3 qa-text-muted">|</span>
-                    <span className="qa-badge qa-badge-primary ms-2">
-                      {rutaSeleccionada.operador}
+        {openSection !== 1 &&
+          rutaSeleccionada &&
+          (() => {
+            const polCode = (
+              rutaSeleccionada.polNormalized ||
+              rutaSeleccionada.pol ||
+              ""
+            )
+              .toUpperCase()
+              .substring(0, 5);
+            const podCode = (
+              rutaSeleccionada.podNormalized ||
+              rutaSeleccionada.pod ||
+              ""
+            )
+              .toUpperCase()
+              .substring(0, 5);
+            const polLabel =
+              polSeleccionado?.label || polNR?.label || rutaSeleccionada.pol;
+            const podLabel =
+              podSeleccionado?.label || podNR?.label || rutaSeleccionada.pod;
+            return (
+              <div className="qa-route-summary">
+                <div className="qa-route-summary-cards">
+                  <div className="qa-route-summary-card">
+                    <small>Origen</small>
+                    <div className="qa-route-summary-iata">{polCode}</div>
+                    <div className="qa-route-summary-city">{polLabel}</div>
+                  </div>
+                  <div className="qa-route-summary-arrow">
+                    <i className="bi bi-arrow-right"></i>
+                  </div>
+                  <div className="qa-route-summary-card">
+                    <small>Destino</small>
+                    <div className="qa-route-summary-iata">{podCode}</div>
+                    <div className="qa-route-summary-city">{podLabel}</div>
+                  </div>
+                </div>
+                <div className="qa-route-summary-meta">
+                  {!sinTarifa &&
+                    rutaSeleccionada.operador &&
+                    rutaSeleccionada.operador !== "X" && (
+                      <span className="qa-route-meta-pill">
+                        <i className="bi bi-building"></i>
+                        {rutaSeleccionada.operador}
+                      </span>
+                    )}
+                  {!sinTarifa && rutaSeleccionada.validUntil && (
+                    <span className="qa-route-meta-pill">
+                      <i className="bi bi-calendar3"></i>
+                      Válido hasta {rutaSeleccionada.validUntil}
                     </span>
-                  </>
-                )}
+                  )}
+                  {!sinTarifa &&
+                    rutaSeleccionada.ttAprox &&
+                    rutaSeleccionada.ttAprox !== "X" && (
+                      <span className="qa-route-meta-pill">
+                        <i className="bi bi-clock"></i>
+                        {rutaSeleccionada.ttAprox} días tránsito
+                      </span>
+                    )}
+                  {sinTarifa && (
+                    <span className="qa-route-meta-pill">
+                      Ruta No Recurrente
+                    </span>
+                  )}
+                </div>
               </div>
-              <div>
-                {sinTarifa ? null : (
-                  <span
-                    className="qa-badge"
-                    style={{
-                      fontSize: "0.9rem",
-                      backgroundColor: "rgba(255, 98, 0, 0.1)",
-                      color: "var(--qa-primary)",
-                      borderColor: "rgba(255, 98, 0, 0.2)",
-                    }}
-                  >
-                    {rutaSeleccionada.currency}{" "}
-                    {(rutaSeleccionada.ofWM * 1.35).toFixed(2)}/W/M
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+            );
+          })()}
       </div>
 
       {/* ============================================================================ */}
@@ -2779,472 +2834,557 @@ function QuoteLCL({
       {rutaSeleccionada && (
         <>
           <div className="qa-card">
-            <div className="qa-card-header">
-              <div>
-                <h3>{t("Quotelcl.datoscommodity")}</h3>
-                <p className="qa-subtitle">{t("Quotelcl.subtitle")}</p>
-              </div>
-            </div>
-
-            <div className="row g-3">
-              <div className="col-12 mb-3">
-                <label className="qa-label">
-                  Incoterm <span className="text-danger">*</span>
-                </label>
-                <select
-                  className="qa-select"
-                  value={incoterm}
-                  onChange={(e) =>
-                    setIncoterm(e.target.value as "EXW" | "FOB" | "")
-                  }
-                  style={{ maxWidth: "300px" }}
-                >
-                  <option value="">{t("Quotelcl.selectincoterm")}</option>
-                  <option value="EXW">Ex Works [EXW]</option>
-                  <option value="FOB">FOB</option>
-                </select>
-              </div>
-
-              {/* Campos condicionales solo para EXW */}
-              {incoterm === "EXW" && (
-                <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
-                  <div>
-                    <label className="qa-label">
-                      <i className="bi bi-geo-alt me-1"></i>
-                      {t("Quotelcl.pickup")}
-                    </label>
-                    <CotizadorAddressMap
-                      value={pickupFromAddress}
-                      onChange={setPickupFromAddress}
-                      placeholder="Ingrese dirección de recogida"
-                      rows={2}
-                      destinationCoords={
-                        polSeleccionado
-                          ? (() => {
-                              const port = getPortByPOL(polSeleccionado.value);
-                              if (!port) return null;
-                              return {
-                                lat: port.lat,
-                                lng: port.lng,
-                                name: port.name,
-                                code: port.unlocode,
-                              } as DestinationCoords;
-                            })()
-                          : null
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="qa-label">
-                      <i className="bi bi-geo-alt me-1"></i>
-                      {t("Quotelcl.delivery")}
-                    </label>
-                    <textarea
-                      className="qa-input"
-                      value={deliveryToAddressDerived}
-                      readOnly
-                      disabled
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="col-12">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h4 className="fs-6 fw-bold mb-0">
-                    {t("Quotelcl.detalles")}
-                  </h4>
-                  <span className="qa-badge">
-                    {piecesData.length}{" "}
-                    {piecesData.length === 1 ? "pieza" : "piezas"}
+            <div
+              className={`qa-card-header ${openSection === 2 ? "open" : ""}`}
+              onClick={() => handleSectionToggle(2)}
+              style={{ cursor: "pointer" }}
+            >
+              <div className="d-flex align-items-center">
+                <h3>
+                  <i
+                    className="bi bi-box-seam me-2"
+                    style={{ color: "var(--qf-primary)" }}
+                  ></i>
+                  Paso 2: Datos del Cargamento
+                </h3>
+                {step2Completed && (
+                  <span
+                    className="qa-badge ms-3"
+                    style={{
+                      backgroundColor: "#d1e7dd",
+                      color: "#0f5132",
+                      borderColor: "transparent",
+                    }}
+                  >
+                    <i className="bi bi-check-circle-fill me-1"></i>
+                    Completado
                   </span>
-                </div>
-
-                <div className="mb-3">
-                  {piecesData.map((piece, index) => (
-                    <PieceAccordionLCL
-                      key={piece.id}
-                      piece={piece}
-                      index={index}
-                      isOpen={openAccordions.includes(piece.id)}
-                      onToggle={() => handleToggleAccordion(piece.id)}
-                      onRemove={() => handleRemovePiece(piece.id)}
-                      onUpdate={(field, value) =>
-                        handleUpdatePiece(piece.id, field, value)
-                      }
-                      packageTypes={packageTypeOptions.map((opt) => ({
-                        id: String(opt.id),
-                        name: opt.name,
-                      }))}
-                      canRemove={piecesData.length > 1}
-                    />
-                  ))}
-                </div>
-
-                <div className="d-flex justify-content-end">
-                  <button
-                    type="button"
-                    className="qa-btn qa-btn-outline qa-btn-sm me-2"
-                    onClick={() => handleDuplicatePiece()}
-                  >
-                    <i className="bi bi-files"></i>
-                    Duplicar pieza
-                  </button>
-                  <button
-                    type="button"
-                    className="qa-btn qa-btn-primary"
-                    onClick={handleAddPiece}
-                  >
-                    <i className="bi bi-plus-lg"></i>
-                    {t("Quotelcl.agregarpieza")}
-                  </button>
-                </div>
-
-                {/* Alertas de restricciones de dimensiones marítimas */}
-                {oversizeErrorLCL && (
-                  <div className="mt-4">
-                    {oversizeLargo && (
-                      <div className="qa-alert qa-alert-warning">
-                        <i className="bi bi-exclamation-triangle-fill"></i>
-                        <div>
-                          <strong>{t("OversizeNotifyLCL.largoExcede")}:</strong>{" "}
-                          {t("OversizeNotifyLCL.largoMsg")}
-                        </div>
-                      </div>
-                    )}
-                    {oversizeAncho && (
-                      <div className="qa-alert qa-alert-warning">
-                        <i className="bi bi-exclamation-triangle-fill"></i>
-                        <div>
-                          <strong>{t("OversizeNotifyLCL.anchoExcede")}:</strong>{" "}
-                          {t("OversizeNotifyLCL.anchoMsg")}
-                        </div>
-                      </div>
-                    )}
-                    {oversizeAlto && (
-                      <div className="qa-alert qa-alert-danger">
-                        <i className="bi bi-x-circle-fill"></i>
-                        <div>
-                          <strong>{t("OversizeNotifyLCL.altoExcede")}:</strong>{" "}
-                          {t("OversizeNotifyLCL.altoMsg")}
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 )}
               </div>
+              <i
+                className={`bi bi-chevron-${openSection === 2 ? "up" : "down"}`}
+                style={{ color: "var(--qa-text-secondary)" }}
+              ></i>
             </div>
-          </div>
 
-          <div className="qa-card">
-            {/* Cálculos */}
-            <div className="row g-3">
-              <div className="col-md-6">
-                <div
-                  className="p-3 rounded border d-flex flex-column h-100"
-                  style={{ backgroundColor: "var(--qa-bg-light)" }}
-                >
-                  <h4 className="fs-6 fw-bold mb-3">{t("Quotelcl.resumen")}</h4>
-                  <div className="qa-grid-4" style={{ fontSize: "0.9rem" }}>
-                    <div>
-                      <span className="qa-text-muted d-block">
-                        {t("Quotelcl.pesototal1")}
-                      </span>
-                      <strong>
-                        {totalWeightKg.toFixed(2)} kg (
-                        {totalWeightTons.toFixed(4)} t)
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="qa-text-muted d-block">
-                        {t("Quotelcl.volumentotal1")}
-                      </span>
-                      <strong>{totalVolume.toFixed(4)} m³</strong>
-                    </div>
-                    <div>
-                      <span className="qa-text-muted d-block">
-                        {t("Quotelcl.chargeable")}
-                      </span>
-                      <strong>{chargeableVolume.toFixed(4)}</strong>
-                    </div>
-                    <div>
-                      <span className="qa-text-muted d-block">
-                        {t("Quotelcl.cobropor")}
-                      </span>
+            {openSection !== 2 && (
+              <div className="qa-route-summary">
+                <div className="qa-totals-bar">
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {totalVolume.toFixed(4)} m³
+                    </span>
+                    <span className="qa-totals-bar-label">Volumen total</span>
+                  </div>
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {totalWeightKg.toFixed(2)} kg
+                    </span>
+                    <span className="qa-totals-bar-label">Peso total</span>
+                  </div>
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {chargeableVolume.toFixed(4)}
+                    </span>
+                    <span className="qa-totals-bar-label">
+                      Chargeable (W/M)
+                    </span>
+                  </div>
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
                       <strong>
                         {totalWeightTons > totalVolume
                           ? t("Quotelcl.peso")
                           : t("Quotelcl.volumen")}
                       </strong>
-                    </div>
+                    </span>
+                    <span className="qa-totals-bar-label">Cobro por</span>
                   </div>
                 </div>
               </div>
+            )}
 
-              {tarifaOceanFreight && (
-                <div className="col-md-6">
-                  <div
-                    className="p-3 rounded border"
-                    style={{ backgroundColor: "var(--qa-bg-light)" }}
-                  >
-                    <h4 className="fs-6 fw-bold mb-3">
-                      <i className="bi bi-shield-check me-2"></i>
-                      {t("Quotelcl.opcional")}
-                    </h4>
+            {openSection === 2 && (
+              <div>
+                <div className="row g-3">
+                  <div className="col-12 mb-3">
+                    <label className="qa-label">
+                      Incoterm <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className="qa-select"
+                      value={incoterm}
+                      onChange={(e) =>
+                        setIncoterm(e.target.value as "EXW" | "FOB" | "")
+                      }
+                      style={{ maxWidth: "300px" }}
+                    >
+                      <option value="">{t("Quotelcl.selectincoterm")}</option>
+                      <option value="EXW">Ex Works [EXW]</option>
+                      <option value="FOB">FOB</option>
+                    </select>
+                  </div>
 
-                    <div className="d-flex flex-column gap-2 small">
-                      {/* Seguro opcional */}
-                      <div className="d-flex flex-column gap-2 small">
-                        <div
-                          className="qa-switch-container"
-                          style={{
-                            width: "fit-content",
-                            padding: "0.4rem 0.8rem",
-                          }}
-                        >
-                          <input
-                            className="qa-switch-input"
-                            type="checkbox"
-                            id="seguroCheckbox"
-                            checked={seguroActivo}
-                            onChange={(e) => setSeguroActivo(e.target.checked)}
-                          />
-                          <label
-                            className="form-check-label small"
-                            htmlFor="seguroCheckbox"
-                            style={{ cursor: "pointer" }}
-                          >
-                            {t("Quotelcl.agregar")}
-                          </label>
-                        </div>
-
-                        {seguroActivo && (
-                          <div className="mt-2 ps-4">
-                            <label
-                              htmlFor="valorMercaderia"
-                              className="qa-label"
-                            >
-                              {t("Quotelcl.valormercaderia")} (
-                              {rutaSeleccionada.currency}){" "}
-                              <span className="text-danger">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              className="qa-input"
-                              id="valorMercaderia"
-                              placeholder="Ej: 10000 o 10000,50"
-                              value={valorMercaderia}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                if (value === "" || /^[\d,\.]+$/.test(value)) {
-                                  setValorMercaderia(value);
-                                }
-                              }}
-                              style={{ maxWidth: "300px" }}
-                            />
-                          </div>
-                        )}
-                        {/* Gastos Locales + Apertura */}
-                        <div className="mt-3">
-                          <div
-                            className="qa-switch-container"
-                            style={{
-                              width: "fit-content",
-                              padding: "0.4rem 0.8rem",
-                            }}
-                          >
-                            <input
-                              className="qa-switch-input"
-                              type="checkbox"
-                              id="gastolocalCheckbox"
-                              checked={gastolocal}
-                              onChange={(e) => setGastolocal(e.target.checked)}
-                            />
-                            <label
-                              className="form-check-label small"
-                              htmlFor="gastolocalCheckbox"
-                              style={{ cursor: "pointer" }}
-                            >
-                              Agregar Gastos Locales (Desconsolidación +
-                              Apertura)
-                            </label>
-                          </div>
-                        </div>
+                  {/* Campos condicionales solo para EXW */}
+                  {incoterm === "EXW" && (
+                    <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
+                      <div>
+                        <label className="qa-label">
+                          <i className="bi bi-geo-alt me-1"></i>
+                          {t("Quotelcl.pickup")}
+                        </label>
+                        <CotizadorAddressMap
+                          value={pickupFromAddress}
+                          onChange={setPickupFromAddress}
+                          placeholder="Ingrese dirección de recogida"
+                          rows={2}
+                          destinationCoords={
+                            polSeleccionado
+                              ? (() => {
+                                  const port = getPortByPOL(
+                                    polSeleccionado.value,
+                                  );
+                                  if (!port) return null;
+                                  return {
+                                    lat: port.lat,
+                                    lng: port.lng,
+                                    name: port.name,
+                                    code: port.unlocode,
+                                  } as DestinationCoords;
+                                })()
+                              : null
+                          }
+                        />
                       </div>
-
-                      {hasNotApilable &&
-                        incoterm === "EXW" &&
-                        calculateNoApilable() > 0 && (
-                          <div
-                            className="d-flex align-items-center gap-1 mt-2 pt-2"
-                            style={{
-                              borderTop: "1px solid var(--qa-border-color)",
-                            }}
-                          >
-                            <i
-                              className="bi bi-info-circle small opacity-50"
-                              data-bs-toggle="tooltip"
-                              data-bs-placement="top"
-                              title={t("Quotelcl.tooltipnoapilable")}
-                              style={{ cursor: "pointer" }}
-                            ></i>
-                            <p className="mb-0 small">
-                              Existirá un recargo adicional por piezas no
-                              apilables.
-                            </p>
-                          </div>
-                        )}
-
-                      {seguroActivo && !valorMercaderia && (
-                        <div className="qa-alert qa-alert-warning">
-                          <small>{t("Pieceaccordionlcl.segurocargo")}</small>
-                        </div>
-                      )}
-
-                      {/* Nota informativa */}
-                      <div
-                        className="mt-2 p-2 rounded"
-                        style={{
-                          backgroundColor: "rgba(255, 98, 0, 0.05)",
-                          border: "1px solid rgba(255, 98, 0, 0.15)",
-                        }}
-                      >
-                        <small className="text-muted">
-                          <i className="bi bi-info-circle me-1"></i>
-                          {t("QuoteAIR.desglose")}
-                        </small>
+                      <div>
+                        <label className="qa-label">
+                          <i className="bi bi-geo-alt me-1"></i>
+                          {t("Quotelcl.delivery")}
+                        </label>
+                        <textarea
+                          className="qa-input"
+                          value={deliveryToAddressDerived}
+                          readOnly
+                          disabled
+                          rows={2}
+                        />
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ============================================================================ */}
-      {/* PASO 3: GENERAR COTIZACIÓN */}
-      {/* ============================================================================ */}
-
-      {rutaSeleccionada && (tarifaOceanFreight || sinTarifa) && (
-        <>
-          <div className="row g-3">
-            <div className="col-md-12">
-              <div
-                className="h-100 p-4 rounded border"
-                style={{
-                  backgroundColor: "transparent",
-                  borderColor: "var(--qf-border-color)",
-                  transition: "all 0.2s",
-                }}
-              >
-                <div className="mb-3">
-                  <i
-                    className="bi bi-file-earmark-pdf"
-                    style={{ fontSize: "2rem", color: "var(--qf-primary)" }}
-                  ></i>
-                </div>
-                <h5 className="mb-2" style={{ fontWeight: 600 }}>
-                  {t("QuoteAIR.generarcotizacion")}
-                </h5>
-                <p className="text-muted small mb-4">
-                  {t("QuoteAIR.cotizaciongenerada")}
-                </p>
-                <button
-                  onClick={() => {
-                    setTipoAccion("cotizacion");
-                    testAPI("cotizacion");
-                  }}
-                  disabled={
-                    loading ||
-                    authLoading ||
-                    !accessToken ||
-                    !incoterm ||
-                    oversizeErrorLCL ||
-                    (incoterm === "EXW" && !pickupFromAddress)
-                  }
-                  className="qa-btn qa-btn-primary w-100"
-                >
-                  {loading ? (
-                    <span className="spinner-border spinner-border-sm"></span>
-                  ) : (
-                    t("QuoteAIR.generarcotizacion")
                   )}
-                </button>
-              </div>
-            </div>
 
-            {/* Generar Operación */}
-            {/*<div
-                style={{
-                  border: "1px solid var(--qa-border-color)",
-                  borderRadius: "var(--qa-radius)",
-                  padding: "1.5rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.5rem",
-                }}
-              >
-                <h4 className="fs-6 fw-bold mb-1">
-                  {t("QuoteAIR.generaroperacion")}
-                </h4>
-                <p className="qa-text-muted small mb-3">
-                  <strong>{t("QuoteAIR.accionirreversible")}</strong>{" "}
-                  {t("QuoteAIR.operaciongenerada")}
-                </p>
-                <div style={{ marginTop: "auto" }}>
-                  <button
-                    onClick={() => {
-                      setTipoAccion("operacion");
-                      testAPI("operacion");
-                    }}
-                    disabled={
-                      loading ||
-                      authLoading ||
-                      !accessToken ||
-                      !incoterm ||
-                      oversizeErrorLCL ||
-                      (incoterm === "EXW" && !pickupFromAddress)
-                    }
-                    className="qa-btn qa-btn-outline w-100"
-                  >
-                    {loading ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        ></span>
-                        {t("QuoteAIR.generandocotizacion")}
-                      </>
-                    ) : (
-                      <>{t("QuoteAIR.generaroperacion")}</>
+                  <div className="col-12">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h4 className="fs-6 fw-bold mb-0">
+                        Detalles de las Piezas
+                      </h4>
+
+                      <div className="d-flex align-items-center gap-2">
+                        <button
+                          type="button"
+                          className="qa-btn qa-btn-outline qa-btn-sm"
+                          onClick={() => handleDuplicatePiece()}
+                        >
+                          <i className="bi bi-files"></i>
+                          Duplicar Pieza
+                        </button>
+                        <button
+                          type="button"
+                          className="qa-btn qa-btn-primary qa-btn-sm"
+                          onClick={handleAddPiece}
+                        >
+                          <i className="bi bi-plus-lg"></i>Agregar Pieza
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      {piecesData.map((piece, index) => (
+                        <PieceAccordionLCL
+                          key={piece.id}
+                          piece={piece}
+                          index={index}
+                          isOpen={openAccordions.includes(piece.id)}
+                          onToggle={() => handleToggleAccordion(piece.id)}
+                          onRemove={() => handleRemovePiece(piece.id)}
+                          onUpdate={(field, value) =>
+                            handleUpdatePiece(piece.id, field, value)
+                          }
+                          packageTypes={packageTypeOptions.map((opt) => ({
+                            id: String(opt.id),
+                            name: opt.name,
+                          }))}
+                          canRemove={piecesData.length > 1}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="qa-totals-bar">
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {totalVolume.toFixed(4)} m³
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Volumen total
+                        </span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {totalWeightTons.toFixed(4)} t
+                        </span>
+                        <span className="qa-totals-bar-label">Peso total</span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {chargeableVolume.toFixed(4)}
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Chargeable (W/M)
+                        </span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          <strong>
+                            {totalWeightTons > totalVolume
+                              ? t("Quotelcl.peso")
+                              : t("Quotelcl.volumen")}
+                          </strong>
+                        </span>
+                        <span className="qa-totals-bar-label">Cobro por</span>
+                      </div>
+                    </div>
+
+                    {/* Alertas de restricciones de dimensiones marítimas */}
+                    {oversizeErrorLCL && (
+                      <div className="mt-4">
+                        {oversizeLargo && (
+                          <div className="qa-alert qa-alert-warning">
+                            <i className="bi bi-exclamation-triangle-fill"></i>
+                            <div>
+                              <strong>
+                                {t("OversizeNotifyLCL.largoExcede")}:
+                              </strong>{" "}
+                              {t("OversizeNotifyLCL.largoMsg")}
+                            </div>
+                          </div>
+                        )}
+                        {oversizeAncho && (
+                          <div className="qa-alert qa-alert-warning">
+                            <i className="bi bi-exclamation-triangle-fill"></i>
+                            <div>
+                              <strong>
+                                {t("OversizeNotifyLCL.anchoExcede")}:
+                              </strong>{" "}
+                              {t("OversizeNotifyLCL.anchoMsg")}
+                            </div>
+                          </div>
+                        )}
+                        {oversizeAlto && (
+                          <div className="qa-alert qa-alert-danger">
+                            <i className="bi bi-x-circle-fill"></i>
+                            <div>
+                              <strong>
+                                {t("OversizeNotifyLCL.altoExcede")}:
+                              </strong>{" "}
+                              {t("OversizeNotifyLCL.altoMsg")}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
+                  </div>
+                </div>
+
+                {/* Botón Siguiente Paso 2 */}
+                <div className="d-flex justify-content-end mt-4">
+                  <button
+                    type="button"
+                    className="qa-btn qa-btn-primary"
+                    disabled={!canProceedToStep3}
+                    onClick={() => {
+                      if (!canProceedToStep3) return;
+                      setStep2Completed(true);
+                      setOpenSection(3);
+                      trackStep({
+                        step: "incoterm_charges",
+                        stepNumber: 3,
+                        totalSteps: 3,
+                      });
+                    }}
+                  >
+                    Siguiente
+                    <i className="bi bi-arrow-right ms-1"></i>
                   </button>
                 </div>
-              </div>*/}
+              </div>
+            )}
           </div>
 
-          {!accessToken && (
-            <div className="qa-alert qa-alert-danger">
-              <i className="bi bi-exclamation-circle-fill mt-1"></i>
-              No hay token de acceso. Asegúrate de estar autenticado.
-            </div>
-          )}
+          {step2Completed && (
+            <div className="qa-card">
+              <div
+                className={`qa-card-header ${openSection === 3 ? "open" : ""}`}
+                onClick={() => handleSectionToggle(3)}
+                style={{ cursor: "pointer" }}
+              >
+                <div className="d-flex align-items-center">
+                  <h3>
+                    <i
+                      className="bi bi-clipboard-check me-2"
+                      style={{ color: "var(--qf-primary)" }}
+                    ></i>
+                    Paso 3: Revisión de Piezas y Costos
+                  </h3>
+                  {step3Completed && (
+                    <span
+                      className="qa-badge ms-3"
+                      style={{
+                        backgroundColor: "#d1e7dd",
+                        color: "#0f5132",
+                        borderColor: "transparent",
+                      }}
+                    >
+                      <i className="bi bi-check-circle-fill me-1"></i>
+                      Completado
+                    </span>
+                  )}
+                </div>
+                <i
+                  className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
+                  style={{ color: "var(--qa-text-secondary)" }}
+                ></i>
+              </div>
 
-          {!incoterm && rutaSeleccionada && (
-            <div className="qa-alert qa-alert-warning">
-              <i className="bi bi-info-circle mt-1"></i>
-              {t("Pieceaccordionlcl.ingresoinco")}
-            </div>
-          )}
+              {openSection !== 3 && (
+                <div className="qa-route-summary">
+                  <span
+                    className="qa-text-muted"
+                    style={{ fontSize: "0.85rem" }}
+                  >
+                    <i className="bi bi-info-circle me-1"></i>
+                    Expande para ver el resumen de costos.
+                  </span>
+                </div>
+              )}
 
-          {incoterm === "EXW" && !pickupFromAddress && (
-            <div className="qa-alert qa-alert-warning">
-              <i className="bi bi-exclamation-triangle mt-1"></i>
-              {t("Pieceaccordionlcl.debescompl")}
+              {openSection === 3 && (
+                <>
+                  {/* Cálculos */}
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <div
+                        className="p-3 rounded border d-flex flex-column h-100"
+                        style={{ backgroundColor: "var(--qa-bg-light)" }}
+                      >
+                        <h4 className="fs-6 fw-bold mb-3">
+                          {t("Quotelcl.resumen")}
+                        </h4>
+                        <div
+                          className="qa-grid-4"
+                          style={{ fontSize: "0.9rem" }}
+                        >
+                          <div>
+                            <span className="qa-text-muted d-block">
+                              {t("Quotelcl.pesototal1")}
+                            </span>
+                            <strong>
+                              {totalWeightKg.toFixed(2)} kg (
+                              {totalWeightTons.toFixed(4)} t)
+                            </strong>
+                          </div>
+                          <div>
+                            <span className="qa-text-muted d-block">
+                              {t("Quotelcl.volumentotal1")}
+                            </span>
+                            <strong>{totalVolume.toFixed(4)} m³</strong>
+                          </div>
+                          <div>
+                            <span className="qa-text-muted d-block">
+                              {t("Quotelcl.chargeable")}
+                            </span>
+                            <strong>{chargeableVolume.toFixed(4)}</strong>
+                          </div>
+                          <div>
+                            <span className="qa-text-muted d-block">
+                              {t("Quotelcl.cobropor")}
+                            </span>
+                            <strong>
+                              {totalWeightTons > totalVolume
+                                ? t("Quotelcl.peso")
+                                : t("Quotelcl.volumen")}
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {tarifaOceanFreight && (
+                      <div className="col-md-6">
+                        <div
+                          className="p-3 rounded border"
+                          style={{ backgroundColor: "var(--qa-bg-light)" }}
+                        >
+                          <h4 className="fs-6 fw-bold mb-3">
+                            <i className="bi bi-shield-check me-2"></i>
+                            {t("Quotelcl.opcional")}
+                          </h4>
+
+                          <div className="d-flex flex-column gap-2 small">
+                            {/* Seguro opcional */}
+                            <div className="d-flex flex-column gap-2 small">
+                              <div
+                                className="qa-switch-container"
+                                style={{
+                                  width: "fit-content",
+                                  padding: "0.4rem 0.8rem",
+                                }}
+                              >
+                                <input
+                                  className="qa-switch-input"
+                                  type="checkbox"
+                                  id="seguroCheckbox"
+                                  checked={seguroActivo}
+                                  onChange={(e) =>
+                                    setSeguroActivo(e.target.checked)
+                                  }
+                                />
+                                <label
+                                  className="form-check-label small"
+                                  htmlFor="seguroCheckbox"
+                                  style={{ cursor: "pointer" }}
+                                >
+                                  {t("Quotelcl.agregar")}
+                                </label>
+                              </div>
+
+                              {seguroActivo && (
+                                <div className="mt-2 ps-4">
+                                  <label
+                                    htmlFor="valorMercaderia"
+                                    className="qa-label"
+                                  >
+                                    {t("Quotelcl.valormercaderia")} (
+                                    {rutaSeleccionada.currency}){" "}
+                                    <span className="text-danger">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="qa-input"
+                                    id="valorMercaderia"
+                                    placeholder="Ej: 10000 o 10000,50"
+                                    value={valorMercaderia}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      if (
+                                        value === "" ||
+                                        /^[\d,\.]+$/.test(value)
+                                      ) {
+                                        setValorMercaderia(value);
+                                      }
+                                    }}
+                                    style={{ maxWidth: "300px" }}
+                                  />
+                                </div>
+                              )}
+                              {/* Gastos Locales + Apertura */}
+                              <div className="mt-3">
+                                <div
+                                  className="qa-switch-container"
+                                  style={{
+                                    width: "fit-content",
+                                    padding: "0.4rem 0.8rem",
+                                  }}
+                                >
+                                  <input
+                                    className="qa-switch-input"
+                                    type="checkbox"
+                                    id="gastolocalCheckbox"
+                                    checked={gastolocal}
+                                    onChange={(e) =>
+                                      setGastolocal(e.target.checked)
+                                    }
+                                  />
+                                  <label
+                                    className="form-check-label small"
+                                    htmlFor="gastolocalCheckbox"
+                                    style={{ cursor: "pointer" }}
+                                  >
+                                    Agregar Gastos Locales (Desconsolidación +
+                                    Apertura)
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+
+                            {hasNotApilable &&
+                              incoterm === "EXW" &&
+                              calculateNoApilable() > 0 && (
+                                <div
+                                  className="d-flex align-items-center gap-1 mt-2 pt-2"
+                                  style={{
+                                    borderTop:
+                                      "1px solid var(--qa-border-color)",
+                                  }}
+                                >
+                                  <i
+                                    className="bi bi-info-circle small opacity-50"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title={t("Quotelcl.tooltipnoapilable")}
+                                    style={{ cursor: "pointer" }}
+                                  ></i>
+                                  <p className="mb-0 small">
+                                    Existirá un recargo adicional por piezas no
+                                    apilables.
+                                  </p>
+                                </div>
+                              )}
+
+                            {/* Nota informativa */}
+                            <div
+                              className="mt-2 p-2 rounded"
+                              style={{
+                                backgroundColor: "rgba(255, 98, 0, 0.05)",
+                                border: "1px solid rgba(255, 98, 0, 0.15)",
+                              }}
+                            >
+                              <small className="text-muted">
+                                <i className="bi bi-info-circle me-1"></i>
+                                {t("QuoteAIR.desglose")}
+                              </small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Botón Siguiente Paso 3 */}
+                  <div className="d-flex justify-content-end mt-4">
+                    <button
+                      onClick={() => {
+                        setTipoAccion("cotizacion");
+                        testAPI("cotizacion");
+                      }}
+                      disabled={
+                        loading ||
+                        authLoading ||
+                        !accessToken ||
+                        !incoterm ||
+                        oversizeErrorLCL ||
+                        (incoterm === "EXW" && !pickupFromAddress)
+                      }
+                      className="qa-btn qa-btn-primary"
+                    >
+                      {loading ? (
+                        <span className="spinner-border spinner-border-sm"></span>
+                      ) : (
+                        t("QuoteAIR.generarcotizacion")
+                      )}
+                      <i className="bi bi-arrow-right ms-1"></i>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </>
@@ -3367,10 +3507,6 @@ function QuoteLCL({
       {error && (
         <div className="qa-alert qa-alert-danger">
           <div>
-            <strong>
-              Haz permanecido mucho tiempo inactivo, por favor actualiza la
-              página.
-            </strong>
             <pre
               style={{
                 backgroundColor: "transparent",
@@ -3387,13 +3523,21 @@ function QuoteLCL({
       )}
 
       {response && (
-        <div className="qa-alert qa-alert-success">
+        <div
+          className="qa-alert qa-alert-success mb-4"
+          style={{
+            backgroundColor: "#d4edda",
+            color: "#155724",
+            borderColor: "#c3e6cb",
+          }}
+        >
+          <i className="bi bi-check-circle-fill"></i>
           <div>
             <strong>Tu cotización se ha generado exitosamente</strong>
-            <p className="mb-0 mt-1 small">
+            <div className="mt-1">
               En unos momentos se descargará automáticamente el PDF de la
               cotización.
-            </p>
+            </div>
           </div>
         </div>
       )}
