@@ -1951,8 +1951,8 @@ function QuoteLCL({
 
       charges.push({
         service: {
-          id: 121133,
-          code: "A",
+          id: 130247,
+          code: "A[",
         },
         income: {
           quantity: 1,
