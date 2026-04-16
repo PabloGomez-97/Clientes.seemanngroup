@@ -1599,7 +1599,8 @@ export default function HomeOperaciones() {
                             color: "var(--ops-text)",
                           }}
                         >
-                          {i === 0 ? "🥇 " : `${i + 1}. `}{route}
+                          {i === 0 ? "🥇 " : `${i + 1}. `}
+                          {route}
                         </span>
                         <span
                           style={{ fontWeight: 700, color: "var(--ops-cyan)" }}
@@ -1673,7 +1674,8 @@ export default function HomeOperaciones() {
                             color: "var(--ops-text)",
                           }}
                         >
-                          {i === 0 ? "🥇 " : `${i + 1}. `}{airline}
+                          {i === 0 ? "🥇 " : `${i + 1}. `}
+                          {airline}
                         </span>
                         <span
                           style={{ fontWeight: 700, color: "var(--ops-cyan)" }}
@@ -1747,7 +1749,8 @@ export default function HomeOperaciones() {
                             color: "var(--ops-text)",
                           }}
                         >
-                          {i === 0 ? "🥇 " : `${i + 1}. `}{route}
+                          {i === 0 ? "🥇 " : `${i + 1}. `}
+                          {route}
                         </span>
                         <span
                           style={{ fontWeight: 700, color: "var(--ops-blue)" }}
@@ -1821,7 +1824,8 @@ export default function HomeOperaciones() {
                             color: "var(--ops-text)",
                           }}
                         >
-                          {i === 0 ? "🥇 " : `${i + 1}. `}{carrier}
+                          {i === 0 ? "🥇 " : `${i + 1}. `}
+                          {carrier}
                         </span>
                         <span
                           style={{ fontWeight: 700, color: "var(--ops-blue)" }}
@@ -2692,10 +2696,14 @@ function ListModal({
                               {formatDate(s.created_at)}
                             </td>
                             <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                              {formatDate(s.route?.port_of_loading.date_of_loading)}
+                              {formatDate(
+                                s.route?.port_of_loading.date_of_loading,
+                              )}
                             </td>
                             <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                              {formatDate(s.route?.port_of_discharge.date_of_discharge)}
+                              {formatDate(
+                                s.route?.port_of_discharge.date_of_discharge,
+                              )}
                             </td>
                           </tr>
                         );

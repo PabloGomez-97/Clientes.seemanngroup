@@ -2105,10 +2105,14 @@ function EjListModal({
                             {formatDate(s.created_at)}
                           </td>
                           <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                            {formatDate(s.route?.port_of_loading.date_of_loading)}
+                            {formatDate(
+                              s.route?.port_of_loading.date_of_loading,
+                            )}
                           </td>
                           <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                            {formatDate(s.route?.port_of_discharge.date_of_discharge)}
+                            {formatDate(
+                              s.route?.port_of_discharge.date_of_discharge,
+                            )}
                           </td>
                         </tr>
                       );
