@@ -539,6 +539,59 @@ export default function HomeOperaciones() {
     [allOcean],
   );
 
+  // Route & carrier statistics
+  const airRouteStats = useMemo(() => {
+    const map: Record<string, number> = {};
+    allAir.forEach((s) => {
+      const o = s.route?.origin.location.iata;
+      const d = s.route?.destination.location.iata;
+      if (o && d) {
+        const key = `${o} → ${d}`;
+        map[key] = (map[key] || 0) + 1;
+      }
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [allAir]);
+
+  const airAirlineStats = useMemo(() => {
+    const map: Record<string, number> = {};
+    allAir.forEach((s) => {
+      const name = s.airline?.name;
+      if (name) map[name] = (map[name] || 0) + 1;
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [allAir]);
+
+  const oceanRouteStats = useMemo(() => {
+    const map: Record<string, number> = {};
+    allOcean.forEach((s) => {
+      const o = s.route?.port_of_loading.location.name;
+      const d = s.route?.port_of_discharge.location.name;
+      if (o && d) {
+        const key = `${o} → ${d}`;
+        map[key] = (map[key] || 0) + 1;
+      }
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [allOcean]);
+
+  const oceanCarrierStats = useMemo(() => {
+    const map: Record<string, number> = {};
+    allOcean.forEach((s) => {
+      const name = s.carrier?.name;
+      if (name) map[name] = (map[name] || 0) + 1;
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+  }, [allOcean]);
+
   // ── Donut segments ──────────────────────────────────────────────────────
   const airDonutSegments = useMemo(
     () => [
@@ -1310,6 +1363,8 @@ export default function HomeOperaciones() {
                   <th>Cliente</th>
                   <th>Progreso</th>
                   <th>Creado</th>
+                  <th>ETD</th>
+                  <th>ETA</th>
                 </tr>
               </thead>
               <tbody>
@@ -1374,6 +1429,12 @@ export default function HomeOperaciones() {
                       <td style={{ fontSize: 11, color: "#8b92a5" }}>
                         {formatDate(s.created_at)}
                       </td>
+                      <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                        {formatDate(s.route?.origin.date_of_dep)}
+                      </td>
+                      <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                        {formatDate(s.route?.destination.date_of_rcf)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -1396,6 +1457,8 @@ export default function HomeOperaciones() {
                 <th>Cliente</th>
                 <th>Progreso</th>
                 <th>Creado</th>
+                <th>ETD</th>
+                <th>ETA</th>
               </tr>
             </thead>
             <tbody>
@@ -1460,12 +1523,336 @@ export default function HomeOperaciones() {
                     <td style={{ fontSize: 11, color: "#8b92a5" }}>
                       {formatDate(s.created_at)}
                     </td>
+                    <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                      {formatDate(s.route?.port_of_loading.date_of_loading)}
+                    </td>
+                    <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                      {formatDate(s.route?.port_of_discharge.date_of_discharge)}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         )}
+      </div>
+
+      {/* ── Reportería de Movimientos ─────────────────────────────────────── */}
+      <div className="ops-panel" style={{ marginBottom: 24 }}>
+        <h3 className="ops-section-title" style={{ marginBottom: 16 }}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--ops-purple)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+          Reportería de Movimientos
+        </h3>
+        <div className="ops-grid-2">
+          {/* Rutas Aéreas más usadas */}
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 10,
+              border: "1px solid var(--ops-border)",
+              background: "#fafbfc",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--ops-cyan)",
+                marginBottom: 10,
+              }}
+            >
+              ✈ Rutas Aéreas más usadas
+            </div>
+            {airRouteStats.length === 0 ? (
+              <div className="ops-empty">Sin datos.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {airRouteStats.map(([route, count], i) => {
+                  const maxCount = airRouteStats[0][1];
+                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                  return (
+                    <div key={route}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: 11,
+                          marginBottom: 3,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: i === 0 ? 700 : 500,
+                            color: "var(--ops-text)",
+                          }}
+                        >
+                          {i === 0 ? "🥇 " : `${i + 1}. `}{route}
+                        </span>
+                        <span
+                          style={{ fontWeight: 700, color: "var(--ops-cyan)" }}
+                        >
+                          {count}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 4,
+                          borderRadius: 2,
+                          background: "#e2e8f0",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${pct}%`,
+                            background: "var(--ops-cyan)",
+                            borderRadius: 2,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Aerolíneas más usadas */}
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 10,
+              border: "1px solid var(--ops-border)",
+              background: "#fafbfc",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--ops-cyan)",
+                marginBottom: 10,
+              }}
+            >
+              ✈ Aerolíneas más usadas
+            </div>
+            {airAirlineStats.length === 0 ? (
+              <div className="ops-empty">Sin datos.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {airAirlineStats.map(([airline, count], i) => {
+                  const maxCount = airAirlineStats[0][1];
+                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                  return (
+                    <div key={airline}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: 11,
+                          marginBottom: 3,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: i === 0 ? 700 : 500,
+                            color: "var(--ops-text)",
+                          }}
+                        >
+                          {i === 0 ? "🥇 " : `${i + 1}. `}{airline}
+                        </span>
+                        <span
+                          style={{ fontWeight: 700, color: "var(--ops-cyan)" }}
+                        >
+                          {count}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 4,
+                          borderRadius: 2,
+                          background: "#e2e8f0",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${pct}%`,
+                            background: "var(--ops-cyan)",
+                            borderRadius: 2,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Rutas Marítimas más usadas */}
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 10,
+              border: "1px solid var(--ops-border)",
+              background: "#fafbfc",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--ops-blue)",
+                marginBottom: 10,
+              }}
+            >
+              🚢 Rutas Marítimas más usadas
+            </div>
+            {oceanRouteStats.length === 0 ? (
+              <div className="ops-empty">Sin datos.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {oceanRouteStats.map(([route, count], i) => {
+                  const maxCount = oceanRouteStats[0][1];
+                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                  return (
+                    <div key={route}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: 11,
+                          marginBottom: 3,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: i === 0 ? 700 : 500,
+                            color: "var(--ops-text)",
+                          }}
+                        >
+                          {i === 0 ? "🥇 " : `${i + 1}. `}{route}
+                        </span>
+                        <span
+                          style={{ fontWeight: 700, color: "var(--ops-blue)" }}
+                        >
+                          {count}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 4,
+                          borderRadius: 2,
+                          background: "#e2e8f0",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${pct}%`,
+                            background: "var(--ops-blue)",
+                            borderRadius: 2,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Navieras más usadas */}
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 10,
+              border: "1px solid var(--ops-border)",
+              background: "#fafbfc",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--ops-blue)",
+                marginBottom: 10,
+              }}
+            >
+              🚢 Navieras más usadas
+            </div>
+            {oceanCarrierStats.length === 0 ? (
+              <div className="ops-empty">Sin datos.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {oceanCarrierStats.map(([carrier, count], i) => {
+                  const maxCount = oceanCarrierStats[0][1];
+                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                  return (
+                    <div key={carrier}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: 11,
+                          marginBottom: 3,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontWeight: i === 0 ? 700 : 500,
+                            color: "var(--ops-text)",
+                          }}
+                        >
+                          {i === 0 ? "🥇 " : `${i + 1}. `}{carrier}
+                        </span>
+                        <span
+                          style={{ fontWeight: 700, color: "var(--ops-blue)" }}
+                        >
+                          {count}
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          height: 4,
+                          borderRadius: 2,
+                          background: "#e2e8f0",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${pct}%`,
+                            background: "var(--ops-blue)",
+                            borderRadius: 2,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── Bottom row: Client Ranking ─────────────────────────────────────── */}
@@ -2131,6 +2518,8 @@ function ListModal({
                         <th>Cliente</th>
                         <th>Progreso</th>
                         <th>Creado</th>
+                        <th>ETD</th>
+                        <th>ETA</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2197,6 +2586,12 @@ function ListModal({
                             <td style={{ fontSize: 11, color: "#8b92a5" }}>
                               {formatDate(s.created_at)}
                             </td>
+                            <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                              {formatDate(s.route?.origin.date_of_dep)}
+                            </td>
+                            <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                              {formatDate(s.route?.destination.date_of_rcf)}
+                            </td>
                           </tr>
                         );
                       })}
@@ -2224,6 +2619,8 @@ function ListModal({
                         <th>Cliente</th>
                         <th>Progreso</th>
                         <th>Creado</th>
+                        <th>ETD</th>
+                        <th>ETA</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2293,6 +2690,12 @@ function ListModal({
                             </td>
                             <td style={{ fontSize: 11, color: "#8b92a5" }}>
                               {formatDate(s.created_at)}
+                            </td>
+                            <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                              {formatDate(s.route?.port_of_loading.date_of_loading)}
+                            </td>
+                            <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                              {formatDate(s.route?.port_of_discharge.date_of_discharge)}
                             </td>
                           </tr>
                         );

@@ -1354,6 +1354,8 @@ export default function HomeEjecutivo() {
                   <th>Cliente</th>
                   <th>Progreso</th>
                   <th>Creado</th>
+                  <th>ETD</th>
+                  <th>ETA</th>
                 </tr>
               </thead>
               <tbody>
@@ -1418,6 +1420,12 @@ export default function HomeEjecutivo() {
                       <td style={{ fontSize: 11, color: "#8b92a5" }}>
                         {formatDate(s.created_at)}
                       </td>
+                      <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                        {formatDate(s.route?.origin.date_of_dep)}
+                      </td>
+                      <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                        {formatDate(s.route?.destination.date_of_rcf)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -1440,6 +1448,8 @@ export default function HomeEjecutivo() {
                 <th>Cliente</th>
                 <th>Progreso</th>
                 <th>Creado</th>
+                <th>ETD</th>
+                <th>ETA</th>
               </tr>
             </thead>
             <tbody>
@@ -1503,6 +1513,12 @@ export default function HomeEjecutivo() {
                     </td>
                     <td style={{ fontSize: 11, color: "#8b92a5" }}>
                       {formatDate(s.created_at)}
+                    </td>
+                    <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                      {formatDate(s.route?.port_of_loading.date_of_loading)}
+                    </td>
+                    <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                      {formatDate(s.route?.port_of_discharge.date_of_discharge)}
                     </td>
                   </tr>
                 );
@@ -1917,6 +1933,8 @@ function EjListModal({
                       <th>Cliente</th>
                       <th>Progreso</th>
                       <th>Creado</th>
+                      <th>ETD</th>
+                      <th>ETA</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1983,6 +2001,12 @@ function EjListModal({
                           <td style={{ fontSize: 11, color: "#8b92a5" }}>
                             {formatDate(s.created_at)}
                           </td>
+                          <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                            {formatDate(s.route?.origin.date_of_dep)}
+                          </td>
+                          <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                            {formatDate(s.route?.destination.date_of_rcf)}
+                          </td>
                         </tr>
                       );
                     })}
@@ -2009,6 +2033,8 @@ function EjListModal({
                       <th>Cliente</th>
                       <th>Progreso</th>
                       <th>Creado</th>
+                      <th>ETD</th>
+                      <th>ETA</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2077,6 +2103,12 @@ function EjListModal({
                           </td>
                           <td style={{ fontSize: 11, color: "#8b92a5" }}>
                             {formatDate(s.created_at)}
+                          </td>
+                          <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                            {formatDate(s.route?.port_of_loading.date_of_loading)}
+                          </td>
+                          <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                            {formatDate(s.route?.port_of_discharge.date_of_discharge)}
                           </td>
                         </tr>
                       );
