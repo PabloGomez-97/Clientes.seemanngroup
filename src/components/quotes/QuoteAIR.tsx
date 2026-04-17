@@ -1281,11 +1281,6 @@ function QuoteAPITester({
       : "kg"
     : "kg";
 
-  // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
-  const tarifaAirFreight = rutaSeleccionada
-    ? seleccionarTarifaPorPeso(rutaSeleccionada, pesoChargeable)
-    : null;
-
   // Validar si el peso chargeable cae en un rango con precio disponible
   const weightRangeValidation = rutaSeleccionada
     ? getWeightRangeValidation(rutaSeleccionada, pesoChargeable)
@@ -1294,6 +1289,19 @@ function QuoteAPITester({
   // Error de rango de peso: true cuando la ruta no tiene precio en el rango actual
   const weightRangeError =
     weightRangeValidation !== null && !weightRangeValidation.tienePrecio;
+
+  // Peso efectivo para Air Freight: cuando el peso no cae en un rango con precio disponible
+  // y existe un rango superior con precio, el Air Freight se cobra por el peso mínimo de ese rango.
+  // Todos los demás cargos siempre usan el peso real ingresado por el usuario (pesoChargeable).
+  const pesoAirFreight =
+    weightRangeError && weightRangeValidation?.pesoMinimoRequerido != null
+      ? weightRangeValidation.pesoMinimoRequerido
+      : pesoChargeable;
+
+  // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
+  const tarifaAirFreight = rutaSeleccionada
+    ? seleccionarTarifaPorPeso(rutaSeleccionada, pesoAirFreight)
+    : null;
 
   //calculo de exw
   const calculateEXWRate = (weightKg: number, volumeWeightKg: number) => {
@@ -1332,7 +1340,7 @@ function QuoteAPITester({
         : 0) + // EXW
       30 + // AWB
       Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-      (tarifaAirFreight?.precioConMarkup ?? 0) * pesoChargeable + // Air Freight
+      (tarifaAirFreight?.precioConMarkup ?? 0) * pesoAirFreight + // Air Freight (cobrado por peso mínimo si aplica)
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
             ? rutaSeleccionada.localCharges * FCA_MARKUP
@@ -1393,7 +1401,7 @@ function QuoteAPITester({
         : 0) +
       30 + // AWB
       Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
-      (tarifaAirFreight?.precioConMarkup ?? 0) * pesoChargeable + // Air Freight
+      (tarifaAirFreight?.precioConMarkup ?? 0) * pesoAirFreight + // Air Freight (cobrado por peso mínimo si aplica)
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
             ? rutaSeleccionada.localCharges * FCA_MARKUP
@@ -1457,13 +1465,15 @@ function QuoteAPITester({
       return;
     }
 
-    // Validar que el peso chargeable tenga precio en la ruta seleccionada
-    if (weightRangeError && !sinTarifa) {
+    // Bloquear solo cuando no existe ningún rango superior con precio disponible
+    if (
+      weightRangeError &&
+      !sinTarifa &&
+      weightRangeValidation?.pesoMinimoRequerido == null
+    ) {
       setError(
         `Esta ruta no tiene tarifa para el rango ${weightRangeValidation?.rangoActual}. ` +
-          (weightRangeValidation?.pesoMinimoRequerido
-            ? `Necesitas un mínimo de ${weightRangeValidation.pesoMinimoRequerido} kg.`
-            : "No hay rangos disponibles para esta ruta."),
+          "No hay rangos de peso disponibles superiores. Contacta a tu ejecutivo comercial.",
       );
       return;
     }
@@ -1687,7 +1697,7 @@ function QuoteAPITester({
         amount: airportTransferAmount,
       });
 
-      // Air Freight - Usar el mismo cálculo que pesoChargeable
+      // Air Freight - se cobra por pesoAirFreight cuando el peso real no cae en un rango disponible
       const chargeableWeight = overallDimsAndWeight
         ? Math.max(manualWeight, manualVolume * 167)
         : calculateTotals().chargeableWeight;
@@ -1695,10 +1705,10 @@ function QuoteAPITester({
       pdfCharges.push({
         code: "AF",
         description: "AIR FREIGHT",
-        quantity: chargeableWeight,
+        quantity: pesoChargeable,
         unit: "kg",
         rate: tarifaAirFreight?.precioConMarkup ?? 0,
-        amount: (tarifaAirFreight?.precioConMarkup ?? 0) * chargeableWeight,
+        amount: (tarifaAirFreight?.precioConMarkup ?? 0) * pesoAirFreight,
       });
 
       // FCA Local Charges (solo si incoterm es FCA y la ruta tiene localCharges)
@@ -1998,6 +2008,9 @@ function QuoteAPITester({
                 : capitalize(rutaSeleccionada.company || "") || undefined
             }
             logoSrc={logoDataUrl}
+            airFreightMinWeight={
+              pesoAirFreight !== pesoChargeable ? pesoAirFreight : undefined
+            }
           />,
         );
 
@@ -2306,11 +2319,11 @@ function QuoteAPITester({
           code: "AF",
         },
         income: {
-          quantity: pesoChargeable,
+          quantity: pesoAirFreight,
           unit: "AIR FREIGHT",
           rate: afPrecioConMarkup,
-          amount: pesoChargeable * afPrecioConMarkup,
-          showamount: pesoChargeable * afPrecioConMarkup,
+          amount: pesoAirFreight * afPrecioConMarkup,
+          showamount: pesoAirFreight * afPrecioConMarkup,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -2321,14 +2334,14 @@ function QuoteAPITester({
           },
           reference: "Amount to Air Freight",
           showOnDocument: true,
-          notes: `AIR FREIGHT charge - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg + 15%`,
+          notes: `AIR FREIGHT charge - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg + 15%${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
         },
         expense: {
-          quantity: pesoChargeable,
+          quantity: pesoAirFreight,
           unit: "AIR FREIGHT",
           rate: afPrecio,
-          amount: pesoChargeable * afPrecio,
-          showamount: pesoChargeable * afPrecio,
+          amount: pesoAirFreight * afPrecio,
+          showamount: pesoAirFreight * afPrecio,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -2339,7 +2352,7 @@ function QuoteAPITester({
           },
           reference: "TEST-REF-AIRFREIGHT",
           showOnDocument: true,
-          notes: `AIR FREIGHT expense - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg`,
+          notes: `AIR FREIGHT expense - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/kg${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
         },
       });
 
@@ -2805,11 +2818,11 @@ function QuoteAPITester({
           code: "AF",
         },
         income: {
-          quantity: pesoChargeable,
+          quantity: pesoAirFreight,
           unit: chargeableUnit === "kg" ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
           rate: afPrecioConMarkup,
-          amount: pesoChargeable * afPrecioConMarkup,
-          showamount: pesoChargeable * afPrecioConMarkup,
+          amount: pesoAirFreight * afPrecioConMarkup,
+          showamount: pesoAirFreight * afPrecioConMarkup,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -2820,14 +2833,14 @@ function QuoteAPITester({
           },
           reference: "Amount to AIRFREIGHT to OVERALL",
           showOnDocument: true,
-          notes: `AIR FREIGHT charge (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} + 15% - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
+          notes: `AIR FREIGHT charge (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} + 15% - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
         },
         expense: {
-          quantity: pesoChargeable,
+          quantity: pesoAirFreight,
           unit: chargeableUnit === "kg" ? "AIR FREIGHT" : "AIR FREIGHT (CBM)",
           rate: afPrecio,
-          amount: pesoChargeable * afPrecio,
-          showamount: pesoChargeable * afPrecio,
+          amount: pesoAirFreight * afPrecio,
+          showamount: pesoAirFreight * afPrecio,
           payment: "Prepaid",
           billApplyTo: "Other",
           billTo: {
@@ -2838,7 +2851,7 @@ function QuoteAPITester({
           },
           reference: "Amount to AIRFREIGHT to OVERALL",
           showOnDocument: true,
-          notes: `AIR FREIGHT expense (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}`,
+          notes: `AIR FREIGHT expense (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
         },
       });
 
@@ -4396,6 +4409,7 @@ function QuoteAPITester({
                   <WeightRangeAlert
                     validation={weightRangeValidation}
                     pesoChargeable={pesoChargeable}
+                    pesoAirFreight={pesoAirFreight}
                   />
                 )}
 
@@ -4729,7 +4743,9 @@ function QuoteAPITester({
                     dimensionError !== null ||
                     oversizeError !== null ||
                     heightError !== null ||
-                    (weightRangeError && !sinTarifa) ||
+                    (weightRangeError &&
+                      !sinTarifa &&
+                      weightRangeValidation?.pesoMinimoRequerido == null) ||
                     !rutaSeleccionada
                   }
                 >

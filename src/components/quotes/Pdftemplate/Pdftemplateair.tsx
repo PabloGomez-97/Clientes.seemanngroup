@@ -54,6 +54,8 @@ interface PDFTemplateAIRProps {
   isPendingQuote?: boolean;
   company?: string;
   logoSrc?: string;
+  /** When set, indicates Air Freight was rated at this minimum weight instead of the actual chargeable weight */
+  airFreightMinWeight?: number;
 }
 
 const fmt = (num: number): string => {
@@ -97,6 +99,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   isPendingQuote = false,
   company,
   logoSrc,
+  airFreightMinWeight,
 }) => {
   const C = {
     text: "#111",
@@ -603,6 +606,36 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
         tracking system to monitor your shipment status, ETA, and location
         updates.
       </div>
+
+      {/* ── Air Freight minimum-range billing notice ── */}
+      {airFreightMinWeight !== undefined && !isPendingQuote && (
+        <div
+          role="note"
+          style={{
+            backgroundColor: "#FDF2E9",
+            border: "1px solid #F5CBA7",
+            borderLeft: "4px solid #D35400",
+            borderRadius: "4px",
+            padding: "8px 12px",
+            marginBottom: "12px",
+            fontSize: "7.5pt",
+            color: "#6E2C00",
+            lineHeight: 1.5,
+          }}
+        >
+          <strong
+            style={{ color: "#D35400", display: "block", marginBottom: "4px" }}
+          >
+            ⓘ Air Freight — Minimum Billable Weight Notice
+          </strong>
+          The chargeable weight you declared ({fmt(chargeableWeight)} kg) does
+          not fall within a rated weight bracket for this route. In accordance
+          with airline tariff rules, Air Freight has been assessed at the
+          minimum weight of the next available bracket ({airFreightMinWeight}{" "}
+          kg). All other charges (Handling, AWB, Airport Transfer, etc.) remain
+          based on your declared weight of {fmt(chargeableWeight)} kg.
+        </div>
+      )}
       {/* ── Mensaje 48hrs para cotizaciones sin tarifa ── */}
       {isPendingQuote && (
         <div

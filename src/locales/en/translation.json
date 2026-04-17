@@ -337,6 +337,10 @@
   "WeightRangeAlert": {
     "sinPrecioEnRango": "No rate available for this weight range",
     "pesoActualEnRango": "Your current chargeable weight is {{peso}} kg, which falls in the {{rango}} range. This route has no pricing available for that range.",
+    "airFreightPesoMinimo": "Air Freight charged at minimum weight of the next available range",
+    "infoAjustePeso": "Your cargo is {{peso}} kg (range {{rango}}), but this route has no rate for that range. In accordance with airline tariff rules Air Freight will be charged at the minimum weight of the next available range: {{pesoMinimo}} kg ({{rangoSiguiente}}).",
+    "calculoAirFreight": "Air Freight: charged at {{pesoAirFreight}} kg (minimum weight for the range)",
+    "otrosCargosNormal": "Handling, AWB, Airport Transfer and other charges: calculated based on {{peso}} kg.",
     "sugerencia": "You need a minimum of {{pesoMinimo}} kg (range {{rangoSiguiente}}) to quote this route.",
     "ajustarPeso": "Adjust your cargo weight or select another route that has a rate for your current range.",
     "sinRangoDisponible": "No higher weight ranges are available for this route. Please contact your account executive.",
