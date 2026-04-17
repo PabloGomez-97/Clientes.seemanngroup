@@ -186,7 +186,7 @@ export function buildNoRateQuoteEmailHTML(data: NoRateQuoteEmailData): string {
                 ${data.quoteNumber ? `
                 <tr>
                   <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;border-bottom:1px solid ${C.border};">N° de cotización</td>
-                  <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.text};border-bottom:1px solid ${C.border};">${data.quoteNumber}</td>
+                  <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.primary};border-bottom:1px solid ${C.border};">${data.quoteNumber}</td>
                 </tr>` : ''}
                 ${buildDetailRows(data.quoteType, data.cargoDetails)}
                 <tr>

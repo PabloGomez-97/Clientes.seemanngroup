@@ -62,8 +62,13 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
   const exwRows = (data.incoterm === 'EXW' && (data.pickupFromAddress || data.deliveryToAddress))
     ? `${data.pickupFromAddress ? row('Dirección de recogida', data.pickupFromAddress) : ''}${data.deliveryToAddress ? row('Dirección de entrega', data.deliveryToAddress) : ''}`
     : '';
-  const agenteRow = data.agente ? row('Agente', data.agente) : '';
-  const quoteNumberRow = data.quoteNumber ? row('N° de cotización', data.quoteNumber) : '';
+  const highlightedRow = (label: string, value: string | undefined | null) => `
+    <tr>
+      <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:190px;border-bottom:1px solid ${C.border};">${label}</td>
+      <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.primary};border-bottom:1px solid ${C.border};">${value || '—'}</td>
+    </tr>`;
+  const agenteRow = data.agente ? highlightedRow('Agente', data.agente) : '';
+  const quoteNumberRow = data.quoteNumber ? highlightedRow('N° de cotización', data.quoteNumber) : '';
 
   return `
 <!DOCTYPE html>
