@@ -4557,6 +4557,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // EXW específico
           pickupFromAddress,
           deliveryToAddress,
+          // Agente y número de cotización
+          agente,
+          quoteNumber,
         } = req.body;
 
         const tipoAccionResolved = (tipoAccion || tipo) as 'cotizacion' | 'operacion' | undefined;
@@ -4580,6 +4583,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             currency: currency || 'USD',
             total: total || '',
             tipoAccion: tipoAccionResolved,
+            agente: agente || undefined,
+            quoteNumber: quoteNumber || undefined,
           };
           subject = getFclQuoteEmailSubject(emailData);
           htmlContent = buildFclQuoteEmailHTML(emailData);
@@ -4597,6 +4602,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             currency: currency || 'USD',
             total: total || '',
             tipoAccion: tipoAccionResolved,
+            agente: agente || undefined,
+            quoteNumber: quoteNumber || undefined,
           };
           subject = getLclQuoteEmailSubject(emailData);
           htmlContent = buildLclQuoteEmailHTML(emailData);
@@ -4617,6 +4624,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             currency: currency || 'USD',
             total: total || '',
             tipoAccion: tipoAccionResolved,
+            agente: agente || undefined,
+            quoteNumber: quoteNumber || undefined,
           };
           subject = getAirQuoteEmailSubject(emailData);
           htmlContent = buildAirQuoteEmailHTML(emailData);
@@ -4714,9 +4723,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ejecutivoNombre = (currentUser.ejecutivoId as any).nombre || 'Ejecutivo';
         const clienteUsername = currentUser.username || currentUser.email;
 
-        const { quoteType, cargoDetails } = req.body as {
+        const { quoteType, cargoDetails, quoteNumber: noRateQuoteNumber } = req.body as {
           quoteType: 'AIR' | 'FCL' | 'LCL';
           cargoDetails: Record<string, unknown>;
+          quoteNumber?: string;
         };
 
         const emailData: NoRateQuoteEmailData = {
@@ -4724,6 +4734,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           clienteUsername,
           quoteType,
           cargoDetails,
+          quoteNumber: noRateQuoteNumber || undefined,
         };
 
         const subject = getNoRateQuoteEmailSubject(emailData);

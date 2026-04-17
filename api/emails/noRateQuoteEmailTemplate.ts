@@ -8,6 +8,7 @@ export interface NoRateQuoteEmailData {
   clienteUsername: string;
   quoteType: 'AIR' | 'FCL' | 'LCL';
   cargoDetails: Record<string, unknown>;
+  quoteNumber?: string;
 }
 
 const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
@@ -182,6 +183,11 @@ export function buildNoRateQuoteEmailHTML(data: NoRateQuoteEmailData): string {
 
               <!-- Details table -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${C.border};border-radius:4px;overflow:hidden;margin-bottom:20px;">
+                ${data.quoteNumber ? `
+                <tr>
+                  <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;border-bottom:1px solid ${C.border};">N° de cotización</td>
+                  <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.text};border-bottom:1px solid ${C.border};">${data.quoteNumber}</td>
+                </tr>` : ''}
                 ${buildDetailRows(data.quoteType, data.cargoDetails)}
                 <tr>
                   <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;">Fecha de cotización</td>

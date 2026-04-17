@@ -4326,6 +4326,9 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       // EXW específico
       pickupFromAddress,
       deliveryToAddress,
+      // Agente y número de cotización
+      agente,
+      quoteNumber,
     } = req.body;
 
     const tipoAccionResolved = (tipoAccion || tipo) as 'cotizacion' | 'operacion' | undefined;
@@ -4349,6 +4352,8 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         tipoAccion: tipoAccionResolved,
         pickupFromAddress: incoterm === 'EXW' ? (pickupFromAddress || undefined) : undefined,
         deliveryToAddress: incoterm === 'EXW' ? (deliveryToAddress || undefined) : undefined,
+        agente: agente || undefined,
+        quoteNumber: quoteNumber || undefined,
       };
       subject = getFclQuoteEmailSubject(emailData);
       htmlContent = buildFclQuoteEmailHTML(emailData);
@@ -4366,6 +4371,8 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         tipoAccion: tipoAccionResolved,
         pickupFromAddress: incoterm === 'EXW' ? (pickupFromAddress || undefined) : undefined,
         deliveryToAddress: incoterm === 'EXW' ? (deliveryToAddress || undefined) : undefined,
+        agente: agente || undefined,
+        quoteNumber: quoteNumber || undefined,
       };
       subject = getLclQuoteEmailSubject(emailData);
       htmlContent = buildLclQuoteEmailHTML(emailData);
@@ -4386,6 +4393,8 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         incoterm: incoterm || undefined,
         pickupFromAddress: incoterm === 'EXW' ? (pickupFromAddress || undefined) : undefined,
         deliveryToAddress: incoterm === 'EXW' ? (deliveryToAddress || undefined) : undefined,
+        agente: agente || undefined,
+        quoteNumber: quoteNumber || undefined,
       };
       subject = getAirQuoteEmailSubject(emailData);
       htmlContent = buildAirQuoteEmailHTML(emailData);
@@ -4479,13 +4488,16 @@ app.post('/api/send-no-rate-quote-email', auth, async (req, res) => {
     const { quoteType, cargoDetails } = req.body as {
       quoteType: 'AIR' | 'FCL' | 'LCL';
       cargoDetails: Record<string, unknown>;
+      quoteNumber?: string;
     };
+    const noRateQuoteNumber: string | undefined = req.body.quoteNumber;
 
     const emailData: NoRateQuoteEmailData = {
       ejecutivoNombre,
       clienteUsername,
       quoteType,
       cargoDetails,
+      quoteNumber: noRateQuoteNumber || undefined,
     };
 
     const subject = getNoRateQuoteEmailSubject(emailData);

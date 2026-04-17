@@ -1523,6 +1523,7 @@ function QuoteLCL({
               pesoTotal: totalPeso.toFixed(2),
               volumenTotal: totalVol.toFixed(4),
             },
+            quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
         }).catch(() => {});
@@ -1705,6 +1706,8 @@ function QuoteLCL({
             total: sinTarifa ? "PENDIENTE" : total,
             tipoAccion: tipoAccionParam,
             quoteId: (apiResponse || response)?.quote?.id,
+            agente: rutaSeleccionada.operador || undefined,
+            quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
         }).catch((error) => {
@@ -2582,6 +2585,9 @@ function QuoteLCL({
                                     {t("Quotelcl.agente")}
                                   </th>
                                   <th className="text-center">Validez</th>
+                                  {isEjecutivoMode && (
+                                    <th className="text-center">Agente</th>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
@@ -2676,6 +2682,14 @@ function QuoteLCL({
                                           </span>
                                         )}
                                       </td>
+                                      {isEjecutivoMode && (
+                                        <td
+                                          className="text-center small fw-semibold"
+                                          style={{ color: "#ff6200" }}
+                                        >
+                                          {ruta.operador || "—"}
+                                        </td>
+                                      )}
                                     </tr>
                                   );
                                 })}
@@ -2814,6 +2828,22 @@ function QuoteLCL({
                       <span className="qa-route-meta-pill">
                         <i className="bi bi-clock"></i>
                         {rutaSeleccionada.ttAprox} días tránsito
+                      </span>
+                    )}
+                  {!sinTarifa &&
+                    isEjecutivoMode &&
+                    rutaSeleccionada.operador && (
+                      <span
+                        className="qa-route-meta-pill"
+                        style={{
+                          backgroundColor: "rgba(255, 98, 0, 0.12)",
+                          color: "#ff6200",
+                          borderColor: "rgba(255, 98, 0, 0.3)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <i className="bi bi-building"></i>
+                        Agente: {rutaSeleccionada.operador}
                       </span>
                     )}
                   {sinTarifa && (

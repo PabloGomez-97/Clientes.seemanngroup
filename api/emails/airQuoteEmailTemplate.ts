@@ -18,6 +18,8 @@ export interface AirQuoteEmailData {
   incoterm?: string;
   pickupFromAddress?: string;
   deliveryToAddress?: string;
+  agente?: string;
+  quoteNumber?: string;
 }
 
 const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
@@ -60,6 +62,8 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
   const exwRows = (data.incoterm === 'EXW' && (data.pickupFromAddress || data.deliveryToAddress))
     ? `${data.pickupFromAddress ? row('Dirección de recogida', data.pickupFromAddress) : ''}${data.deliveryToAddress ? row('Dirección de entrega', data.deliveryToAddress) : ''}`
     : '';
+  const agenteRow = data.agente ? row('Agente', data.agente) : '';
+  const quoteNumberRow = data.quoteNumber ? row('N° de cotización', data.quoteNumber) : '';
 
   return `
 <!DOCTYPE html>
@@ -133,9 +137,11 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
 
               <!-- Details table -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${C.border};border-radius:4px;overflow:hidden;margin-bottom:20px;">
+                ${quoteNumberRow}
                 ${row('Origen', data.origen)}
                 ${row('Destino', data.destino)}
                 ${row('Carrier', data.carrier)}
+                ${agenteRow}
                 ${incotermRow}
                 ${exwRows}
                 ${row('Descripción de la carga', data.descripcionCarga)}

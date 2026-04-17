@@ -1915,6 +1915,7 @@ function QuoteAPITester({
               volumenTotal: volumenTotalEmail.toFixed(4),
               isOverall: overallDimsAndWeight,
             },
+            quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
         }).catch(() => {});
@@ -2101,6 +2102,8 @@ function QuoteAPITester({
             total: total,
             tipoAccion: tipoAccionParam,
             quoteId: (apiResponse || response)?.quote?.id,
+            agente: rutaSeleccionada.company || undefined,
+            quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
         }).catch((emailErr) => {
@@ -3478,6 +3481,20 @@ function QuoteAPITester({
                         {rutaSeleccionada.transitTime} días tránsito
                       </span>
                     )}
+                  {isEjecutivoMode && rutaSeleccionada.company && (
+                    <span
+                      className="qa-route-meta-pill"
+                      style={{
+                        backgroundColor: "rgba(255, 98, 0, 0.12)",
+                        color: "#ff6200",
+                        borderColor: "rgba(255, 98, 0, 0.3)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <i className="bi bi-building"></i>
+                      Agente: {rutaSeleccionada.company}
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -3722,6 +3739,9 @@ function QuoteAPITester({
                                   <th className="text-center">
                                     {t("QuoteAIR.valido")}
                                   </th>
+                                  {isEjecutivoMode && (
+                                    <th className="text-center">Agente</th>
+                                  )}
                                 </tr>
                               </thead>
                               <tbody>
@@ -3852,6 +3872,14 @@ function QuoteAPITester({
                                           "—"
                                         )}
                                       </td>
+                                      {isEjecutivoMode && (
+                                        <td
+                                          className="text-center small fw-semibold"
+                                          style={{ color: "#ff6200" }}
+                                        >
+                                          {ruta.company || "—"}
+                                        </td>
+                                      )}
                                     </tr>
                                   );
                                 })}

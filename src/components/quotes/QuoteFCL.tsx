@@ -1321,6 +1321,7 @@ function QuoteFCL({
               deliveryToAddress:
                 incoterm === "EXW" ? deliveryToAddressDerived : undefined,
             },
+            quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
         }).catch(() => {});
@@ -1488,6 +1489,8 @@ function QuoteFCL({
             total: total,
             tipoAccion: tipoAccionParam,
             quoteId: (apiResponse || response)?.quote?.id,
+            agente: rutaSeleccionada.company || undefined,
+            quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
         }).catch((error) => {
@@ -2443,10 +2446,13 @@ function QuoteFCL({
                                       </div>
                                     )}
 
-                                    {ruta.company && (
-                                      <p className="small text-muted mb-3">
-                                        <i className="bi bi-building"></i>{" "}
-                                        {ruta.company}
+                                    {isEjecutivoMode && ruta.company && (
+                                      <p
+                                        className="small mb-3 fw-semibold"
+                                        style={{ color: "#ff6200" }}
+                                      >
+                                        <i className="bi bi-building me-1"></i>
+                                        Agente: {ruta.company}
                                       </p>
                                     )}
 
@@ -2754,6 +2760,21 @@ function QuoteFCL({
                     <span className="qa-route-meta-pill">
                       <i className="bi bi-clock"></i>
                       {rutaSeleccionada.tt} días tránsito
+                    </span>
+                  )}
+
+                  {isEjecutivoMode && rutaSeleccionada.company && (
+                    <span
+                      className="qa-route-meta-pill"
+                      style={{
+                        backgroundColor: "rgba(255, 98, 0, 0.12)",
+                        color: "#ff6200",
+                        borderColor: "rgba(255, 98, 0, 0.3)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <i className="bi bi-building"></i>
+                      Agente: {rutaSeleccionada.company}
                     </span>
                   )}
 

@@ -16,6 +16,8 @@ export interface LclQuoteEmailData {
   tipoAccion?: 'cotizacion' | 'operacion';
   pickupFromAddress?: string;
   deliveryToAddress?: string;
+  agente?: string;
+  quoteNumber?: string;
 }
 
 const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
@@ -54,6 +56,8 @@ export function buildLclQuoteEmailHTML(data: LclQuoteEmailData): string {
   const exwRows = (data.incoterm === 'EXW' && (data.pickupFromAddress || data.deliveryToAddress))
     ? `${data.pickupFromAddress ? row('Dirección de recogida', data.pickupFromAddress) : ''}${data.deliveryToAddress ? row('Dirección de entrega', data.deliveryToAddress) : ''}`
     : '';
+  const agenteRow = data.agente ? row('Agente', data.agente) : '';
+  const quoteNumberRow = data.quoteNumber ? row('N° de cotización', data.quoteNumber) : '';
 
   return `
 <!DOCTYPE html>
@@ -126,9 +130,11 @@ export function buildLclQuoteEmailHTML(data: LclQuoteEmailData): string {
 
               <!-- Details table -->
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${C.border};border-radius:4px;overflow:hidden;margin-bottom:20px;">
+                ${quoteNumberRow}
                 ${row('POL (Origen)', data.pol)}
                 ${row('POD (Destino)', data.pod)}
                 ${row('Operador', data.operador)}
+                ${agenteRow}
                 ${incotermRow}
                 ${exwRows}
                 ${row('Total', `${data.total}`)}
