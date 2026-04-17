@@ -344,7 +344,8 @@
     "sugerencia": "You need a minimum of {{pesoMinimo}} kg (range {{rangoSiguiente}}) to quote this route.",
     "ajustarPeso": "Adjust your cargo weight or select another route that has a rate for your current range.",
     "sinRangoDisponible": "No higher weight ranges are available for this route. Please contact your account executive.",
-    "rangosDisponibles": "Route ranges"
+    "rangosDisponibles": "Route ranges",
+    "segundoaviso": "All other charges (Handling, AWB, Airport Transfer, etc.) remain based on your declared weight of {{peso}} kg."
   },
   "Quotelcl": {
     "title": "LCL Quote",

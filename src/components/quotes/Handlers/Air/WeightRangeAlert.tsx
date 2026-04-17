@@ -72,6 +72,13 @@ export const WeightRangeAlert: React.FC<WeightRangeAlertProps> = ({
                 })}
               </p>
             </div>
+            <div className="p-2">
+              <p className="mb-2 small" style={{ color: "#1f618d" }}>
+                {t("WeightRangeAlert.segundoaviso", {
+                  peso: pesoChargeable.toFixed(2),
+                })}
+              </p>
+            </div>
 
             {/* Visualización de rangos disponibles */}
             <div className="mt-3">
