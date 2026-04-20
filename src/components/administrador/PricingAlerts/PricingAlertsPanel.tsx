@@ -158,7 +158,7 @@ export default function PricingAlertsPanel() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  const styles: Record<string, React.CSSProperties> = {
+  const styles = {
     page: {
       padding: "24px",
       fontFamily:
