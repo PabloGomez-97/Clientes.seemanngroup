@@ -475,7 +475,6 @@ function OceanShipmentsView({
         const data: any = await resp.json();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const items: any[] = data.items ?? data ?? [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const match = items.find(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (q: any) =>
@@ -660,6 +659,7 @@ function OceanShipmentsView({
     // MundoGaming dummy account
     if (activeUsername === "MundoGaming") {
       const mapped: OceanShippingOrder[] =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS.map((s: any) => ({
           id: s.id || 0,
           number: s.number || "",
@@ -1073,6 +1073,7 @@ function OceanShipmentsView({
     // MundoGaming dummy
     if (activeUsername === "MundoGaming") {
       const mapped: OceanShippingOrder[] =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         MUNDOGAMING_DUMMY_OCEAN_SHIPMENTS.map((s: any) => ({
           id: s.id || 0,
           number: s.number || "",
