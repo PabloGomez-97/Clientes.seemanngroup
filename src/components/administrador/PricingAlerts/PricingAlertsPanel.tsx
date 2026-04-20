@@ -277,7 +277,7 @@ export default function PricingAlertsPanel() {
     label: string,
     count: number,
     color: string,
-    icon: string,
+    icon: React.ReactNode,
   ) => (
     <div
       style={{
@@ -354,10 +354,30 @@ export default function PricingAlertsPanel() {
             marginBottom: "20px",
           }}
         >
-          {statCard("Total próximas", data.totals.all, "#ff6200", "⚠️")}
-          {statCard("Aéreo", data.totals.air, "#3b82f6", "✈️")}
-          {statCard("FCL", data.totals.fcl, "#0ea5e9", "🚢")}
-          {statCard("LCL", data.totals.lcl, "#8b5cf6", "📦")}
+          {statCard(
+            "Total próximas",
+            data.totals.all,
+            "#000000",
+            <i className="bi bi-exclamation-triangle-fill"></i>,
+          )}
+          {statCard(
+            "Aéreo",
+            data.totals.air,
+            "#000000",
+            <i className="bi bi-airplane-fill"></i>,
+          )}
+          {statCard(
+            "FCL",
+            data.totals.fcl,
+            "#000000",
+            <i className="bi bi-box-seam-fill"></i>,
+          )}
+          {statCard(
+            "LCL",
+            data.totals.lcl,
+            "#000000",
+            <i className="bi bi-box-fill"></i>,
+          )}
         </div>
       )}
 
@@ -422,9 +442,9 @@ export default function PricingAlertsPanel() {
           >
             {(["air", "fcl", "lcl"] as const).map((tab) => {
               const labels = {
-                air: `✈ Aéreo (${data.air.length})`,
-                fcl: `🚢 FCL (${data.fcl.length})`,
-                lcl: `📦 LCL (${data.lcl.length})`,
+                air: `Aéreo (${data.air.length})`,
+                fcl: `FCL (${data.fcl.length})`,
+                lcl: `LCL (${data.lcl.length})`,
               };
               return (
                 <button
@@ -694,9 +714,9 @@ export default function PricingAlertsPanel() {
                 }
                 style={styles.select}
               >
-                <option value="air">✈ Aéreo</option>
-                <option value="fcl">🚢 FCL (Marítimo)</option>
-                <option value="lcl">📦 LCL (Consolidado)</option>
+                <option value="air">Aéreo</option>
+                <option value="fcl">FCL (Marítimo)</option>
+                <option value="lcl">LCL (Consolidado)</option>
               </select>
             </div>
 
