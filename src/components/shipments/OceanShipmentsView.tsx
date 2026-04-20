@@ -602,7 +602,14 @@ function OceanShipmentsView({
               notifyPartyAddress: detail.notifyPartyAddress ?? null,
               executedAt: detail.executedAt ?? null,
               salesRep: detail.salesRep?.name ?? null,
-              trackingNumber: detail.trackingNumber ?? null,
+              trackingNumber:
+                detail.trackingNumber ||
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (detail.commodities as any[])?.find(
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  (c: any) => c.trackingNumber,
+                )?.trackingNumber ||
+                null,
               totalCargo: detail.totalCargo ?? null,
               commodities: detail.commodities ?? [],
               charges: detail.charges ?? [],
