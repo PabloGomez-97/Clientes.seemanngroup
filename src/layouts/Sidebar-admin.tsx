@@ -201,6 +201,11 @@ function SidebarAdmin({
               name: "Agencia de Aduanas",
               badge: { text: "CHIEF", type: "admin" as const },
             },
+            {
+              path: "/admin/alertas-pricing",
+              name: "Alertas de Tarifas",
+              badge: { text: "PRICING", type: "admin" as const },
+            },
           ],
         },
       ],
