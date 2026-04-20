@@ -37,6 +37,7 @@ export const PRICING_ROUTES: string[] = [
   '/admin/pricing',
   '/admin/tarifario-completo',
   '/admin/documentos-proveedores',
+  '/admin/alertas-pricing',
   '/admin/settings',
 ];
 

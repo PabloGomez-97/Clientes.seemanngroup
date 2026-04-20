@@ -811,7 +811,7 @@ export default function PricingAlertsPanel() {
               ? " más los correos adicionales ingresados"
               : ""}
             . El envío automático se realiza diariamente a las 9:00 AM (hora
-            Chile) mediante el cron job.
+            Chile).
           </p>
 
           {/* Send result feedback */}

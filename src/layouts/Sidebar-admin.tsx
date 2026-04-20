@@ -77,6 +77,7 @@ function SidebarAdmin({
 
   const menuSections: MenuSection[] = [
     {
+      title: "Inicio",
       items: [{ path: "/admin/home", name: "Inicio", icon: "fa fa-home" }],
     },
 
@@ -121,38 +122,30 @@ function SidebarAdmin({
       ],
     },
     {
+      title: "Tarifario",
       items: [
         {
-          name: "Tarifas",
-          icon: "fa fa-dollar-sign",
-          badge: { text: "Pricing", type: "admin" as const },
-          subItems: [
-            {
-              path: "/admin/pricing",
-              name: "Gestionar Tarifas",
-            },
-            {
-              path: "/admin/tarifario-completo",
-              name: "Tarifario Completo",
-            },
-            {
-              path: "/admin/documentos-proveedores",
-              name: "Documentos Proveedores",
-            },
-          ],
+          path: "/admin/pricing",
+          name: "Gestionar Tarifas",
+          icon: "fa fa-tags",
+        },
+        {
+          path: "/admin/tarifario-completo",
+          name: "Tarifario Completo",
+          icon: "fa fa-table",
+        },
+        {
+          path: "/admin/documentos-proveedores",
+          name: "Documentos Proveedores",
+          icon: "fa fa-file-alt",
+        },
+        {
+          path: "/admin/alertas-pricing",
+          name: "Alertas de Tarifas",
+          icon: "fa fa-exclamation-triangle",
         },
       ],
     },
-    {
-      items: [
-        {
-          path: "/admin/comportamiento-clientes",
-          name: "Comportamiento Clientes",
-          icon: "fa fa-users",
-        },
-      ],
-    },
-
     {
       title: "Reportes",
       items: [
@@ -174,6 +167,10 @@ function SidebarAdmin({
               path: "/admin/reportoperational",
               name: "Facturaciones Ejecutivo",
               badge: { text: "CHIEF", type: "admin" as const },
+            },
+            {
+              path: "/admin/comportamiento-clientes",
+              name: "Comportamiento Clientes",
             },
           ],
         },
@@ -200,11 +197,6 @@ function SidebarAdmin({
               path: "/admin/agencia-aduanas",
               name: "Agencia de Aduanas",
               badge: { text: "CHIEF", type: "admin" as const },
-            },
-            {
-              path: "/admin/alertas-pricing",
-              name: "Alertas de Tarifas",
-              badge: { text: "PRICING", type: "admin" as const },
             },
           ],
         },
