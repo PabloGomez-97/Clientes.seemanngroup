@@ -20,11 +20,12 @@ const serviceTypes = [
     icon: "fa fa-plane",
     title: "Aéreo",
     badge: "AIR",
-    desc: "Simula una cotización de flete aéreo para tu cliente.",
+    desc: "Simula una cotización aérea ingresando manualmente la tarifa base.",
     features: [
-      "Rutas recurrentes y no recurrentes",
+      "Rutas no recurrentes del cotizador actual",
+      "Ingreso manual de Air Freight con expense automático",
       "Seguro, gastos locales y aduana opcionales",
-      "Genera PDF profesional al instante",
+      "Validez máxima de 5 días",
     ],
     btn: "Simular Flete Aéreo",
   },
@@ -33,11 +34,11 @@ const serviceTypes = [
     icon: "fa fa-ship",
     title: "Marítimo FCL",
     badge: "FCL",
-    desc: "Simula una cotización de contenedor completo para tu cliente.",
+    desc: "Simula una cotización FCL ingresando manualmente la tarifa del contenedor.",
     features: [
       "20GP, 40HQ y 40NOR disponibles",
-      "Rutas recurrentes y no recurrentes",
-      "Genera PDF profesional al instante",
+      "Rutas no recurrentes del cotizador actual",
+      "Validez máxima de 5 días",
     ],
     btn: "Simular FCL",
   },
@@ -46,11 +47,11 @@ const serviceTypes = [
     icon: "fa fa-cubes",
     title: "Marítimo LCL",
     badge: "LCL",
-    desc: "Simula una cotización de carga consolidada para tu cliente.",
+    desc: "Simula una cotización LCL ingresando manualmente el Ocean Freight.",
     features: [
       "Cálculo automático W/M chargeable",
-      "Rutas recurrentes y no recurrentes",
-      "Genera PDF profesional al instante",
+      "Rutas no recurrentes del cotizador actual",
+      "Validez máxima de 5 días",
     ],
     btn: "Simular LCL",
   },
@@ -155,6 +156,7 @@ const SimuladorCotizaciones: React.FC = () => {
               key="aereo"
               preselectedOrigin={preselectedData?.origin}
               preselectedDestination={preselectedData?.destination}
+              isSimulationMode
             />
           )}
           {tipoCotizacion === "FCL" && (
@@ -162,6 +164,7 @@ const SimuladorCotizaciones: React.FC = () => {
               key="fcl"
               preselectedPOL={preselectedData?.origin}
               preselectedPOD={preselectedData?.destination}
+              isSimulationMode
             />
           )}
           {tipoCotizacion === "LCL" && (
@@ -169,6 +172,7 @@ const SimuladorCotizaciones: React.FC = () => {
               key="lcl"
               preselectedPOL={preselectedData?.origin}
               preselectedPOD={preselectedData?.destination}
+              isSimulationMode
             />
           )}
         </div>

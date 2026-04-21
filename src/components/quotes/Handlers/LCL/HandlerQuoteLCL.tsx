@@ -14,6 +14,7 @@ export interface QuoteLCLProps {
   preselectedPOL?: { value: string; label: string } | null;
   preselectedPOD?: { value: string; label: string } | null;
   isEjecutivoMode?: boolean;
+  isSimulationMode?: boolean;
 }
 
 export interface PieceData {

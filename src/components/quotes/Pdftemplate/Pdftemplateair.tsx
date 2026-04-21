@@ -313,7 +313,9 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
             }}
           >
             <div style={label}>Transit</div>
-            <div style={val}>{transitTime} days</div>
+            <div style={val}>
+              {transitTime === "-" ? transitTime : `${transitTime} days`}
+            </div>
           </div>
         )}
         {frequency && (

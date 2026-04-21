@@ -286,6 +286,7 @@ export interface QuoteAIRProps {
   preselectedOrigin?: { value: string; label: string } | null;
   preselectedDestination?: { value: string; label: string } | null;
   isEjecutivoMode?: boolean;
+  isSimulationMode?: boolean;
 }
 
 // ============================================================================

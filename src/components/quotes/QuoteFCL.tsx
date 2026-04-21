@@ -44,6 +44,14 @@ import {
   type ExpandedRoutesData,
 } from "./Handlers/ExpandedRoutes";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
+import {
+  SIMULATION_MISSING_VALUE,
+  getSimulationIncomeRate,
+  getSimulationValidUntilDisplay,
+  getSimulationValidUntilISO,
+  parseSimulationRateInput,
+  roundSimulationAmount,
+} from "./Handlers/simulationQuote";
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
@@ -66,6 +74,7 @@ function QuoteFCL({
   preselectedPOL,
   preselectedPOD,
   isEjecutivoMode = false,
+  isSimulationMode = false,
 }: QuoteFCLProps = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const {
@@ -167,11 +176,12 @@ function QuoteFCL({
   // ============================================================================
   const [routeMode, setRouteMode] = useState<
     "recurrente" | "noRecurrente" | null
-  >(null);
+  >(isSimulationMode ? "noRecurrente" : null);
   const [polNR, setPolNR] = useState<SelectOption | null>(null);
   const [podNR, setPodNR] = useState<SelectOption | null>(null);
   const [opcionesPOL_NR, setOpcionesPOL_NR] = useState<SelectOption[]>([]);
   const [opcionesPOD_NR, setOpcionesPOD_NR] = useState<SelectOption[]>([]);
+  const [simulatedContainerRate, setSimulatedContainerRate] = useState("");
 
   // Delivery is derived from the selected POD and is not editable by the user
   const deliveryToAddressDerived = podSeleccionado
@@ -179,6 +189,10 @@ function QuoteFCL({
     : podNR
       ? podNR.label
       : "";
+  const routeInfoPlaceholder = isSimulationMode
+    ? SIMULATION_MISSING_VALUE
+    : "X";
+  const showPendingQuote = sinTarifa && !isSimulationMode;
 
   // Cargar clientes asignados al ejecutivo (solo en modo ejecutivo)
   const isPricingRole = user?.roles?.pricing === true;
@@ -187,6 +201,11 @@ function QuoteFCL({
   useEffect(() => {
     trackStart();
   }, [trackStart]);
+
+  useEffect(() => {
+    if (!isSimulationMode) return;
+    setRouteMode("noRecurrente");
+  }, [isSimulationMode]);
 
   useEffect(() => {
     const cargarClientes = async () => {
@@ -323,8 +342,21 @@ function QuoteFCL({
 
   // Aplicar preselección cuando se cargan las rutas y hay datos pre-seleccionados
   useEffect(() => {
-    if (!loadingRutas && opcionesPOL.length > 0 && preselectedPOL) {
-      // Buscar el POL en las opciones disponibles
+    if (loadingRutas || !preselectedPOL) return;
+
+    if (isSimulationMode) {
+      if (opcionesPOL_NR.length === 0) return;
+      const polOption = opcionesPOL_NR.find(
+        (opt) => opt.value === preselectedPOL.value,
+      );
+      if (polOption) {
+        setRouteMode("noRecurrente");
+        setPolNR(polOption);
+      }
+      return;
+    }
+
+    if (opcionesPOL.length > 0) {
       const polOption = opcionesPOL.find(
         (opt) => opt.value === preselectedPOL.value,
       );
@@ -332,10 +364,29 @@ function QuoteFCL({
         setPolSeleccionado(polOption);
       }
     }
-  }, [loadingRutas, opcionesPOL, preselectedPOL]);
+  }, [
+    loadingRutas,
+    opcionesPOL,
+    opcionesPOL_NR,
+    preselectedPOL,
+    isSimulationMode,
+  ]);
 
   // Aplicar POD pre-seleccionado cuando cambia el POL y hay opciones de POD
   useEffect(() => {
+    if (!preselectedPOD) return;
+
+    if (isSimulationMode) {
+      if (!polNR || opcionesPOD_NR.length === 0) return;
+      const podOption = opcionesPOD_NR.find(
+        (opt) => opt.value === preselectedPOD.value,
+      );
+      if (podOption) {
+        setPodNR(podOption);
+      }
+      return;
+    }
+
     if (polSeleccionado && preselectedPOD && opcionesPOD.length > 0) {
       const podOption = opcionesPOD.find(
         (opt) => opt.value === preselectedPOD.value,
@@ -344,7 +395,24 @@ function QuoteFCL({
         setPodSeleccionado(podOption);
       }
     }
-  }, [polSeleccionado, opcionesPOD, preselectedPOD]);
+  }, [
+    polSeleccionado,
+    polNR,
+    opcionesPOD,
+    opcionesPOD_NR,
+    preselectedPOD,
+    isSimulationMode,
+  ]);
+
+  useEffect(() => {
+    if (!isSimulationMode) return;
+    setSimulatedContainerRate("");
+  }, [
+    isSimulationMode,
+    polNR?.value,
+    podNR?.value,
+    containerSeleccionado?.type,
+  ]);
 
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
@@ -478,26 +546,26 @@ function QuoteFCL({
   useEffect(() => {
     if (!polNR || !podNR || loadingRutas) return;
 
-    // Smart routing: check if combination exists in recurring routes
-    const matchingRoutes = rutas.filter((r) => {
-      const validityState = getValidityClass(r.validUntil);
-      if (validityState === "expired") return false;
-      return (
-        r.polNormalized === polNR.value &&
-        r.podNormalized === podNR.value &&
-        (!r.carrier || r.carrier === "N/A" || carriersActivos.has(r.carrier))
-      );
-    });
+    if (!isSimulationMode) {
+      const matchingRoutes = rutas.filter((r) => {
+        const validityState = getValidityClass(r.validUntil);
+        if (validityState === "expired") return false;
+        return (
+          r.polNormalized === polNR.value &&
+          r.podNormalized === podNR.value &&
+          (!r.carrier || r.carrier === "N/A" || carriersActivos.has(r.carrier))
+        );
+      });
 
-    if (matchingRoutes.length > 0) {
-      // This NR route is actually a recurring route — upgrade seamlessly
-      setPolSeleccionado({ value: polNR.value, label: polNR.label });
-      setPodSeleccionado({ value: podNR.value, label: podNR.label });
-      setRouteMode("recurrente");
-      setPolNR(null);
-      setPodNR(null);
-      setSinTarifa(false);
-      return;
+      if (matchingRoutes.length > 0) {
+        setPolSeleccionado({ value: polNR.value, label: polNR.label });
+        setPodSeleccionado({ value: podNR.value, label: podNR.label });
+        setRouteMode("recurrente");
+        setPolNR(null);
+        setPodNR(null);
+        setSinTarifa(false);
+        return;
+      }
     }
 
     const mockRuta: RutaFCL = {
@@ -509,15 +577,17 @@ function QuoteFCL({
       gp20: "0",
       hq40: "0",
       nor40: "0",
-      carrier: "X",
-      carrierNormalized: "x",
-      tt: "X",
+      carrier: "",
+      carrierNormalized: "",
+      tt: null,
       remarks: "",
       company: "",
       companyNormalized: "",
-      validUntil: new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000,
-      ).toLocaleDateString("es-CL"),
+      validUntil: isSimulationMode
+        ? getSimulationValidUntilDisplay()
+        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(
+            "es-CL",
+          ),
       row_number: 0,
       priceForComparison: 0,
       currency: "USD",
@@ -531,12 +601,21 @@ function QuoteFCL({
       priceString: "0",
     });
     trackRouteSelected(polNR?.label || "", podNR?.label || "", {
-      carrier: "X",
+      carrier: routeInfoPlaceholder,
     });
-  }, [polNR, podNR, loadingRutas, rutas, carriersActivos]);
+  }, [
+    polNR,
+    podNR,
+    loadingRutas,
+    rutas,
+    carriersActivos,
+    isSimulationMode,
+    routeInfoPlaceholder,
+  ]);
 
   // Auto-activar sinTarifa cuando el POD elegido no tiene rutas disponibles
   useEffect(() => {
+    if (isSimulationMode) return;
     if (!polSeleccionado || !podSeleccionado || loadingRutas) return;
 
     const hayRutas = rutas.some((r) => {
@@ -559,9 +638,9 @@ function QuoteFCL({
         gp20: "0",
         hq40: "0",
         nor40: "0",
-        carrier: "X",
-        carrierNormalized: "x",
-        tt: "X",
+        carrier: "",
+        carrierNormalized: "",
+        tt: null,
         remarks: "",
         company: "",
         companyNormalized: "",
@@ -583,10 +662,18 @@ function QuoteFCL({
       trackRouteSelected(
         polSeleccionado?.label || "",
         podSeleccionado?.label || "",
-        { carrier: "X" },
+        { carrier: routeInfoPlaceholder },
       );
     }
-  }, [polSeleccionado, podSeleccionado, rutas, carriersActivos, loadingRutas]);
+  }, [
+    polSeleccionado,
+    podSeleccionado,
+    rutas,
+    carriersActivos,
+    loadingRutas,
+    isSimulationMode,
+    routeInfoPlaceholder,
+  ]);
 
   // Puede pasar al Paso 3 si hay incoterm seleccionado
   const canProceedToStep3 = useMemo(() => {
@@ -943,6 +1030,47 @@ function QuoteFCL({
     return ratePerContainer * cantidad;
   };
 
+  const simulatedContainerExpenseRate = useMemo(
+    () =>
+      roundSimulationAmount(parseSimulationRateInput(simulatedContainerRate)),
+    [simulatedContainerRate],
+  );
+
+  const simulatedContainerIncomeRate = useMemo(
+    () => getSimulationIncomeRate(simulatedContainerExpenseRate),
+    [simulatedContainerExpenseRate],
+  );
+
+  const oceanFreightValues = useMemo(() => {
+    const incomeRate = isSimulationMode
+      ? simulatedContainerIncomeRate
+      : roundSimulationAmount((containerSeleccionado?.price ?? 0) * 1.15);
+    const expenseRate = isSimulationMode
+      ? simulatedContainerExpenseRate
+      : (containerSeleccionado?.price ?? 0);
+
+    return {
+      incomeRate,
+      expenseRate,
+      incomeAmount: roundSimulationAmount(incomeRate * cantidadContenedores),
+      expenseAmount: roundSimulationAmount(expenseRate * cantidadContenedores),
+      currency: rutaSeleccionada?.currency ?? "USD",
+    };
+  }, [
+    isSimulationMode,
+    simulatedContainerExpenseRate,
+    simulatedContainerIncomeRate,
+    containerSeleccionado?.price,
+    cantidadContenedores,
+    rutaSeleccionada?.currency,
+  ]);
+
+  const hasSimulationContainerRate =
+    !isSimulationMode || simulatedContainerExpenseRate > 0;
+  const oceanFreightBaseForOptionals = isSimulationMode
+    ? oceanFreightValues.expenseAmount
+    : oceanFreightValues.incomeAmount;
+
   // ============================================================================
   // FUNCIÓN PARA CALCULAR EL SEGURO (TOTAL * 1.1 * 0.002) CON MÍNIMO DE 25
   // ============================================================================
@@ -962,7 +1090,7 @@ function QuoteFCL({
       (incoterm === "EXW"
         ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores)
         : 0) + // EXW
-      containerSeleccionado.price * 1.15 * cantidadContenedores; // Ocean Freight
+      oceanFreightBaseForOptionals; // Ocean Freight
 
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
   };
@@ -984,6 +1112,13 @@ function QuoteFCL({
     if (!rutaSeleccionada || !containerSeleccionado) {
       setError(
         "Debes seleccionar una ruta y un contenedor antes de generar la cotización",
+      );
+      return;
+    }
+
+    if (isSimulationMode && !hasSimulationContainerRate) {
+      setError(
+        "Debes ingresar la tarifa manual del contenedor antes de generar la cotización",
       );
       return;
     }
@@ -1111,19 +1246,19 @@ function QuoteFCL({
       const thcAmount = gastolocal ? thcRate * cantidadContenedores : 0;
       const aperturaAmount = gastolocal ? 53.55 : 0;
 
-      const totalAmount = sinTarifa
+      const totalAmount = showPendingQuote
         ? 0
         : 60 + // BL
           45 + // Handling
           (incoterm === "EXW"
             ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores)
             : 0) + // EXW
-          containerSeleccionado.price * 1.15 * cantidadContenedores + // Ocean Freight
+          oceanFreightValues.incomeAmount + // Ocean Freight
           (seguroActivo ? calculateSeguro() : 0) + // Seguro
           thcAmount +
           aperturaAmount; // Gastos Locales
 
-      const total = sinTarifa
+      const total = showPendingQuote
         ? "PENDIENTE"
         : rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
 
@@ -1179,14 +1314,13 @@ function QuoteFCL({
 
       // Ocean Freight
       const oceanFreightRate = containerSeleccionado.price;
-      const oceanFreightIncome = oceanFreightRate * 1.15;
       pdfCharges.push({
         code: "OF",
         description: "OCEAN FREIGHT",
         quantity: cantidadContenedores,
         unit: "Container",
-        rate: oceanFreightIncome / cantidadContenedores,
-        amount: oceanFreightIncome * cantidadContenedores,
+        rate: oceanFreightValues.incomeRate,
+        amount: oceanFreightValues.incomeAmount,
       });
 
       // Seguro (si está activo)
@@ -1224,7 +1358,7 @@ function QuoteFCL({
       }
 
       // Calcular total
-      const finalPdfCharges = sinTarifa
+      const finalPdfCharges = showPendingQuote
         ? pdfCharges.map((ch) => ({ ...ch, rate: 0, amount: 0 }))
         : pdfCharges;
       const totalCharges = finalPdfCharges.reduce(
@@ -1370,19 +1504,27 @@ function QuoteFCL({
             charges={finalPdfCharges}
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
-            carrier={sinTarifa ? "X" : rutaSeleccionada.carrier}
-            transitTime={sinTarifa ? "X" : (rutaSeleccionada?.tt ?? undefined)}
-            remarks={sinTarifa ? "" : rutaSeleccionada.remarks}
-            validUntil={
-              sinTarifa
-                ? new Date(
-                    Date.now() + 7 * 24 * 60 * 60 * 1000,
-                  ).toLocaleDateString()
-                : rutaSeleccionada.validUntil || undefined
+            carrier={
+              sinTarifa ? routeInfoPlaceholder : rutaSeleccionada.carrier
             }
-            isPendingQuote={sinTarifa}
-            company={
+            transitTime={
               sinTarifa
+                ? routeInfoPlaceholder
+                : (rutaSeleccionada?.tt ?? undefined)
+            }
+            remarks={showPendingQuote ? "" : rutaSeleccionada.remarks}
+            validUntil={
+              isSimulationMode
+                ? getSimulationValidUntilDisplay()
+                : sinTarifa
+                  ? new Date(
+                      Date.now() + 7 * 24 * 60 * 60 * 1000,
+                    ).toLocaleDateString()
+                  : rutaSeleccionada.validUntil || undefined
+            }
+            isPendingQuote={showPendingQuote}
+            company={
+              showPendingQuote
                 ? undefined
                 : capitalize(rutaSeleccionada.company || "") || undefined
             }
@@ -1482,9 +1624,7 @@ function QuoteFCL({
               incoterm === "EXW" ? pickupFromAddress : undefined,
             deliveryToAddress:
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
-            precio: sinTarifa
-              ? 0
-              : containerSeleccionado.price * cantidadContenedores,
+            precio: sinTarifa ? 0 : oceanFreightValues.incomeAmount,
             currency: rutaSeleccionada.currency,
             total: total,
             tipoAccion: tipoAccionParam,
@@ -1644,8 +1784,8 @@ function QuoteFCL({
     }
 
     // Cobro de Ocean Freight
-    const oceanFreightRate = containerSeleccionado.price;
-    const oceanFreightIncome = oceanFreightRate * 1.15;
+    const oceanFreightRate = oceanFreightValues.expenseRate;
+    const oceanFreightIncome = oceanFreightValues.incomeRate;
     charges.push({
       service: {
         id: 163,
@@ -1654,8 +1794,8 @@ function QuoteFCL({
       income: {
         quantity: cantidadContenedores,
         unit: "Container",
-        rate: oceanFreightIncome / cantidadContenedores,
-        amount: oceanFreightIncome * cantidadContenedores,
+        rate: oceanFreightIncome,
+        amount: oceanFreightValues.incomeAmount,
         payment: "Prepaid",
         billApplyTo: "Other",
         billTo: {
@@ -1672,7 +1812,7 @@ function QuoteFCL({
         quantity: cantidadContenedores,
         unit: "Container",
         rate: oceanFreightRate,
-        amount: oceanFreightRate * cantidadContenedores,
+        amount: oceanFreightValues.expenseAmount,
         payment: "Collect",
         billApplyTo: "Other",
         currency: {
@@ -1785,7 +1925,7 @@ function QuoteFCL({
     }
 
     // Si sinTarifa, poner todos los montos en 0
-    const finalCharges = sinTarifa
+    const finalCharges = showPendingQuote
       ? charges.map((ch: any) => ({
           ...ch,
           income: {
@@ -1808,16 +1948,20 @@ function QuoteFCL({
 
     return {
       date: new Date().toISOString(),
-      validUntil: sinTarifa
-        ? oneWeekFromNow
-        : parseValidUntilToISO(rutaSeleccionada.validUntil),
+      validUntil: isSimulationMode
+        ? getSimulationValidUntilISO()
+        : sinTarifa
+          ? oneWeekFromNow
+          : parseValidUntilToISO(rutaSeleccionada.validUntil),
       transitDays: sinTarifa ? null : parseTransitDays(rutaSeleccionada.tt),
       project: {
         name: "FCL",
       },
-      customerReference: sinTarifa
-        ? "Portal Created [FCL] - PENDIENTE TARIFA"
-        : "Portal Created [FCL]",
+      customerReference: isSimulationMode
+        ? "Portal Created [FCL] - SIMULADOR"
+        : sinTarifa
+          ? "Portal Created [FCL] - PENDIENTE TARIFA"
+          : "Portal Created [FCL]",
       contact: {
         name: effectiveUsername,
       },
@@ -1825,7 +1969,7 @@ function QuoteFCL({
         name: rutaSeleccionada.pol,
       },
       carrierBroker: {
-        name: sinTarifa ? "X" : rutaSeleccionada.carrier,
+        name: sinTarifa ? routeInfoPlaceholder : rutaSeleccionada.carrier,
       },
       destination: {
         name: rutaSeleccionada.pod,
@@ -1852,7 +1996,9 @@ function QuoteFCL({
         name: effectiveUsername,
       },
       issuingCompany: {
-        name: sinTarifa ? "X" : rutaSeleccionada?.carrier || "",
+        name: sinTarifa
+          ? routeInfoPlaceholder
+          : rutaSeleccionada?.carrier || "",
       },
       serviceType: {
         name: "FCL",
@@ -2114,63 +2260,67 @@ function QuoteFCL({
                 {/* ======== SELECTOR DE TIPO DE RUTA (CARD TOGGLE) ======== */}
                 <div className="row g-3 mb-4">
                   {/* Card: Rutas con tarifa */}
-                  <div className="col-6">
-                    <div
-                      onClick={() => {
-                        setRouteMode("recurrente");
-                        setPolNR(null);
-                        setPodNR(null);
-                        setRutaSeleccionada(null);
-                        setContainerSeleccionado(null);
-                        setSinTarifa(false);
-                      }}
-                      className={`route-card-toggle${routeMode === "recurrente" ? " selected" : ""}`}
-                    >
-                      <div className="d-flex justify-content-between align-items-start mb-1">
-                        <div className="d-flex align-items-center gap-2">
-                          <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
-                            Rutas Recurrentes
-                          </span>
-                          <i
-                            className="bi bi-question-circle-fill"
-                            data-bs-toggle="tooltip"
-                            data-bs-placement="top"
-                            title="Esta ruta tiene tarifa vigente."
+                  {!isSimulationMode && (
+                    <div className="col-6">
+                      <div
+                        onClick={() => {
+                          setRouteMode("recurrente");
+                          setPolNR(null);
+                          setPodNR(null);
+                          setRutaSeleccionada(null);
+                          setContainerSeleccionado(null);
+                          setSinTarifa(false);
+                        }}
+                        className={`route-card-toggle${routeMode === "recurrente" ? " selected" : ""}`}
+                      >
+                        <div className="d-flex justify-content-between align-items-start mb-1">
+                          <div className="d-flex align-items-center gap-2">
+                            <span
+                              style={{ fontWeight: 600, fontSize: "0.9rem" }}
+                            >
+                              Rutas Recurrentes
+                            </span>
+                            <i
+                              className="bi bi-question-circle-fill"
+                              data-bs-toggle="tooltip"
+                              data-bs-placement="top"
+                              title="Esta ruta tiene tarifa vigente."
+                              style={{
+                                color: "#ff6200",
+                                fontSize: "0.85rem",
+                                cursor: "help",
+                              }}
+                            ></i>
+                          </div>
+                          <span
+                            className="badge"
                             style={{
-                              color: "#ff6200",
-                              fontSize: "0.85rem",
-                              cursor: "help",
+                              fontSize: "0.7rem",
+                              backgroundColor:
+                                routeMode === "recurrente"
+                                  ? "var(--qf-primary)"
+                                  : "#6c757d",
+                              color: "white",
                             }}
-                          ></i>
+                          >
+                            Solicitar Cotización
+                          </span>
                         </div>
-                        <span
-                          className="badge"
+                        <p
+                          className="mb-0"
                           style={{
-                            fontSize: "0.7rem",
-                            backgroundColor:
-                              routeMode === "recurrente"
-                                ? "var(--qf-primary)"
-                                : "#6c757d",
-                            color: "white",
+                            fontSize: "0.78rem",
+                            color: "var(--qf-text-secondary)",
                           }}
                         >
-                          Solicitar Cotización
-                        </span>
+                          Rutas comunes entre los clientes
+                        </p>
                       </div>
-                      <p
-                        className="mb-0"
-                        style={{
-                          fontSize: "0.78rem",
-                          color: "var(--qf-text-secondary)",
-                        }}
-                      >
-                        Rutas comunes entre los clientes
-                      </p>
                     </div>
-                  </div>
+                  )}
 
                   {/* Card: Rutas sin tarifa */}
-                  <div className="col-6">
+                  <div className={isSimulationMode ? "col-12" : "col-6"}>
                     <div
                       onClick={() => {
                         setRouteMode("noRecurrente");
@@ -2191,7 +2341,11 @@ function QuoteFCL({
                             className="bi bi-question-circle-fill"
                             data-bs-toggle="tooltip"
                             data-bs-placement="top"
-                            title="Esta ruta no cuenta con tarifa inmediata. Tu ejecutivo de cuenta te contactará con el precio a la brevedad."
+                            title={
+                              isSimulationMode
+                                ? "El simulador utiliza únicamente rutas no recurrentes."
+                                : "Esta ruta no cuenta con tarifa inmediata. Tu ejecutivo de cuenta te contactará con el precio a la brevedad."
+                            }
                             style={{
                               color: "#ff6200",
                               fontSize: "0.85rem",
@@ -2210,7 +2364,9 @@ function QuoteFCL({
                             color: "white",
                           }}
                         >
-                          Solicitar cotización
+                          {isSimulationMode
+                            ? "Simular cotización"
+                            : "Solicitar cotización"}
                         </span>
                       </div>
                       <p
@@ -2220,14 +2376,16 @@ function QuoteFCL({
                           color: "var(--qf-text-secondary)",
                         }}
                       >
-                        ¿No encuentras tu ruta? Encuéntrala aquí
+                        {isSimulationMode
+                          ? "Selecciona la ruta, define el contenedor y luego ingresa la tarifa manual."
+                          : "¿No encuentras tu ruta? Encuéntrala aquí"}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* ======== RUTAS CON TARIFA ======== */}
-                {routeMode === "recurrente" && (
+                {!isSimulationMode && routeMode === "recurrente" && (
                   <div className="mb-4">
                     <div className="row g-3 mb-4">
                       <div className="col-md-6">
@@ -3079,7 +3237,9 @@ function QuoteFCL({
                       <div className="col-6">
                         <span className="text-muted d-block">Carrier:</span>
                         <strong>
-                          {sinTarifa ? "X" : rutaSeleccionada.carrier}
+                          {sinTarifa
+                            ? routeInfoPlaceholder
+                            : rutaSeleccionada.carrier || routeInfoPlaceholder}
                         </strong>
                       </div>
                       <div className="col-6">
@@ -3087,7 +3247,9 @@ function QuoteFCL({
                           Tiempo Tránsito:
                         </span>
                         <strong>
-                          {sinTarifa ? "X" : rutaSeleccionada.tt || "N/A"}
+                          {sinTarifa
+                            ? routeInfoPlaceholder
+                            : rutaSeleccionada.tt || routeInfoPlaceholder}
                         </strong>
                       </div>
                     </div>
@@ -3124,6 +3286,96 @@ function QuoteFCL({
                   </h6>
 
                   <div className="d-flex flex-column gap-2 small">
+                    {isSimulationMode && (
+                      <div
+                        className="p-3 rounded border bg-white"
+                        style={{ borderColor: "rgba(255, 98, 0, 0.2)" }}
+                      >
+                        <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                          <div>
+                            <div className="fw-bold">Contenedor Simulado</div>
+                            <small className="text-muted">
+                              Ingresa el valor base del contenedor. El income se
+                              calcula automáticamente con +15%.
+                            </small>
+                          </div>
+                          <span
+                            className="badge"
+                            style={{
+                              backgroundColor: "rgba(255, 98, 0, 0.12)",
+                              color: "#ff6200",
+                            }}
+                          >
+                            Válida 5 días
+                          </span>
+                        </div>
+
+                        <div className="row g-3 align-items-end">
+                          <div className="col-md-4">
+                            <label className="qf-label small mb-1">
+                              Expense rate ({rutaSeleccionada.currency})
+                            </label>
+                            <input
+                              type="text"
+                              className="qf-input py-1"
+                              value={simulatedContainerRate}
+                              placeholder="Ej: 1450"
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === "" || /^[\d,\.]+$/.test(value)) {
+                                  setSimulatedContainerRate(value);
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="qf-label small mb-1">
+                              Income rate ({rutaSeleccionada.currency})
+                            </label>
+                            <input
+                              type="text"
+                              className="qf-input py-1"
+                              value={simulatedContainerIncomeRate.toFixed(2)}
+                              readOnly
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="qf-label small mb-1">
+                              Tipo / cantidad
+                            </label>
+                            <input
+                              type="text"
+                              className="qf-input py-1"
+                              value={`${containerSeleccionado.type} x ${cantidadContenedores}`}
+                              readOnly
+                            />
+                          </div>
+                        </div>
+
+                        <div className="row g-2 small mt-2">
+                          <div className="col-6 text-muted">Total income:</div>
+                          <div className="col-6 text-end fw-bold">
+                            {rutaSeleccionada.currency}{" "}
+                            {oceanFreightValues.incomeAmount.toFixed(2)}
+                          </div>
+                          <div className="col-6 text-muted">
+                            Base expense para recargos:
+                          </div>
+                          <div className="col-6 text-end fw-bold text-primary">
+                            {rutaSeleccionada.currency}{" "}
+                            {oceanFreightValues.expenseAmount.toFixed(2)}
+                          </div>
+                        </div>
+
+                        {!hasSimulationContainerRate && (
+                          <small className="text-danger d-block mt-2">
+                            Debes ingresar la tarifa manual del contenedor para
+                            continuar con la simulación.
+                          </small>
+                        )}
+                      </div>
+                    )}
+
                     {/* Seguro opcional */}
                     <div className="mt-2">
                       <div
@@ -3237,6 +3489,7 @@ function QuoteFCL({
                     !rutaSeleccionada ||
                     !containerSeleccionado ||
                     !incoterm ||
+                    (isSimulationMode && !hasSimulationContainerRate) ||
                     (incoterm === "EXW" && !pickupFromAddress)
                   }
                 >

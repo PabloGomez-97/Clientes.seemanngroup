@@ -266,4 +266,5 @@ export interface QuoteFCLProps {
   preselectedPOL?: { value: string; label: string } | null;
   preselectedPOD?: { value: string; label: string } | null;
   isEjecutivoMode?: boolean;
+  isSimulationMode?: boolean;
 }

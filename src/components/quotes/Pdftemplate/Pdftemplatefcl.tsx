@@ -279,7 +279,9 @@ export const PDFTemplateFCL: React.FC<PDFTemplateFCLProps> = ({
             }}
           >
             <div style={label}>Transit</div>
-            <div style={val}>{transitTime} days</div>
+            <div style={val}>
+              {transitTime === "-" ? transitTime : `${transitTime} days`}
+            </div>
           </div>
         )}
       </div>
