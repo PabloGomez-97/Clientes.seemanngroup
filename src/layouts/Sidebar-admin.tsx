@@ -77,7 +77,6 @@ function SidebarAdmin({
 
   const menuSections: MenuSection[] = [
     {
-      title: "Portal",
       items: [{ path: "/admin/home", name: "Inicio", icon: "fa fa-home" }],
     },
 
