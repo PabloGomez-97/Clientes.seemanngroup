@@ -3,7 +3,6 @@ import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesAIR";
-import * as XLSX from "xlsx";
 import Select from "react-select";
 import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { PDFTemplateAIR } from "./Pdftemplate/Pdftemplateair";
@@ -65,11 +64,7 @@ import {
   roundSimulationAmount,
 } from "./Handlers/simulationQuote";
 
-// ============================================================================
 // MARKUP CONFIGURABLE PARA COBROS FCA (Local Charges & Gastos x kg)
-// Modificar este valor para ajustar el porcentaje de markup sobre los cobros FCA.
-// Ejemplo: 1.20 = 20% adicional, 1.30 = 30% adicional
-// ============================================================================
 const FCA_MARKUP = 1.2;
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
@@ -111,6 +106,7 @@ function QuoteAPITester({
     useQuoteTracking("AIR");
 
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -489,7 +485,6 @@ function QuoteAPITester({
     }
   }, [
     rutaSeleccionada,
-    openSection,
     trackRouteSelected,
     trackStep,
     originSeleccionado?.label,
@@ -824,6 +819,7 @@ function QuoteAPITester({
   const handleUpdatePiece = (
     id: string,
     field: keyof PieceData,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     value: any,
   ) => {
     setPiecesData((prev) =>

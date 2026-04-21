@@ -1,9 +1,9 @@
 ﻿import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import CotizadorAereo from "./QuoteAIR-ejecutivo";
-import CotizadorFCL from "./QuoteFCL-ejecutivo";
-import CotizadorLCL from "./QuoteLCL-ejecutivo";
-import "../Sidebar/styles/Cotizador.css";
+import CotizadorAereo from "../QuoteAIR-ejecutivo";
+import CotizadorFCL from "../QuoteFCL-ejecutivo";
+import CotizadorLCL from "../QuoteLCL-ejecutivo";
+import "../../Sidebar/styles/Cotizador.css";
 
 type TipoCotizacion = "AEREO" | "FCL" | "LCL" | null;
 
