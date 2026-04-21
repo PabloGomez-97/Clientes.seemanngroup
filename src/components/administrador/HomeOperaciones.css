@@ -928,6 +928,124 @@
   margin-top: 0;
 }
 
+/* ── Delay banner (compact) ───────────────────────────────── */
+.ops-delay-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 3px solid var(--ops-red);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ops-delay-banner:hover {
+  background: #fee2e2;
+}
+
+.ops-delay-banner__icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.ops-delay-banner__msg {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ops-red);
+  flex: 1;
+}
+
+.ops-delay-banner__meta {
+  font-size: 11px;
+  color: #ef4444;
+}
+
+.ops-delay-banner__cta {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ops-red);
+  white-space: nowrap;
+}
+
+/* ── Section wrapper ──────────────────────────────────────── */
+.ops-section {
+  margin-bottom: 28px;
+}
+
+.ops-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+/* ── Reportería grid ──────────────────────────────────────── */
+.ops-report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ops-report-stat {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--ops-border);
+  background: var(--ops-bg);
+}
+
+.ops-report-stat__label {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ops-report-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ops-report-item__name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--ops-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ops-report-item__bar-wrap {
+  width: 60px;
+  height: 3px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ops-report-item__bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.ops-report-item__count {
+  font-weight: 700;
+  min-width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 /* Responsive */
 @media (max-width: 700px) {
   .ops-list-overlay {

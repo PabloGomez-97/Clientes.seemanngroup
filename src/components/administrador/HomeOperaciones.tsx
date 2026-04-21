@@ -49,21 +49,6 @@ interface ClientUser {
   createdAt: string;
 }
 
-interface DelayedShipmentInfo {
-  type: "air" | "ocean";
-  id: number;
-  reference: string;
-  identifier: string; // AWB or container number
-  carrier: string;
-  origin: string;
-  originCountry: string;
-  destination: string;
-  destinationCountry: string;
-  eta: string;
-  progress: number;
-  updatedAt: string;
-}
-
 interface ClientShipmentCount {
   username: string;
   nombreuser?: string;
@@ -162,11 +147,6 @@ function getToday(): string {
     month: "long",
     year: "numeric",
   });
-}
-
-function daysLate(eta: string): number {
-  const diff = Date.now() - new Date(eta).getTime();
-  return Math.max(0, Math.ceil(diff / 86400000));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -326,7 +306,6 @@ export default function HomeOperaciones() {
   const [clients, setClients] = useState<ClientUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [shipmentTab, setShipmentTab] = useState<"air" | "ocean">("air");
 
   // Modal state
@@ -383,7 +362,6 @@ export default function HomeOperaciones() {
               : [];
           setClients(arr.filter((u: ClientUser) => u.username !== "Ejecutivo"));
         }
-        setLastRefresh(new Date());
       } catch {
         /* silent */
       } finally {
@@ -430,47 +408,6 @@ export default function HomeOperaciones() {
   const totalCompleted = airCompleted.length + oceanCompleted.length;
   const totalDelayed = airDelayed.length + oceanDelayed.length;
   const totalTrackings = allAir.length + allOcean.length;
-
-  // Build delayed shipment list for the alerts panel
-  const delayedShipments = useMemo<DelayedShipmentInfo[]>(() => {
-    const items: DelayedShipmentInfo[] = [];
-    airDelayed.forEach((s) => {
-      items.push({
-        type: "air",
-        id: s.id,
-        reference: s.reference || "—",
-        identifier: s.awb_number,
-        carrier: s.airline?.name || "—",
-        origin: s.route?.origin.location.iata || "—",
-        originCountry: s.route?.origin.location.country.code || "",
-        destination: s.route?.destination.location.iata || "—",
-        destinationCountry: s.route?.destination.location.country.code || "",
-        eta: s.route?.destination.date_of_rcf || "",
-        progress: s.route?.transit_percentage ?? 0,
-        updatedAt: s.updated_at,
-      });
-    });
-    oceanDelayed.forEach((s) => {
-      items.push({
-        type: "ocean",
-        id: s.id,
-        reference: s.reference || "—",
-        identifier: s.container_number || s.booking_number || "—",
-        carrier: s.carrier?.name || "—",
-        origin: s.route?.port_of_loading.location.name || "—",
-        originCountry: s.route?.port_of_loading.location.country?.code || "",
-        destination: s.route?.port_of_discharge.location.name || "—",
-        destinationCountry:
-          s.route?.port_of_discharge.location.country?.code || "",
-        eta: s.route?.port_of_discharge.date_of_discharge || "",
-        progress: s.route?.transit_percentage ?? 0,
-        updatedAt: s.updated_at,
-      });
-    });
-    // Sort by most days late first
-    items.sort((a, b) => daysLate(b.eta) - daysLate(a.eta));
-    return items;
-  }, [airDelayed, oceanDelayed]);
 
   // Air status distribution
   const airStatusDist = useMemo(() => {
@@ -1029,127 +966,39 @@ export default function HomeOperaciones() {
         </div>
       </div>
 
-      {/* ── Alerts Panel (only if there are delays) ──────────────────────── */}
+      {/* ── Delay Banner ──────────────────────────────────────────────────── */}
       {totalDelayed > 0 && (
         <div
-          className={`ops-alerts ${totalDelayed > 0 ? "ops-alerts--critical" : ""}`}
+          className="ops-delay-banner"
+          onClick={() => {
+            setListModal("kpi-delayed");
+            setListModalTab("all");
+          }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 14,
-            }}
-          >
-            <h3 className="ops-section-title" style={{ margin: 0 }}>
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#dc2626"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-              Alertas de Retraso — {totalDelayed} envío
-              {totalDelayed !== 1 ? "s" : ""} con retraso en tránsito
-            </h3>
-            <button
-              className="ops-view-all"
-              onClick={() => navigate("/admin/op-trackeos")}
-            >
-              Ver todos los seguimientos →
-            </button>
-          </div>
-          <div className="ops-alert-list">
-            {delayedShipments.map((ds) => (
-              <div key={`${ds.type}-${ds.id}`} className="ops-alert-item">
-                <div className="ops-alert-item__icon">
-                  {ds.type === "air" ? (
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#dc2626"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-                    </svg>
-                  ) : (
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#dc2626"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1" />
-                      <path d="M4 18l-1-5h18l-1 5" />
-                      <path d="M12 2v7" />
-                      <path d="M7 9h10" />
-                    </svg>
-                  )}
-                </div>
-                <div className="ops-alert-item__body">
-                  <div className="ops-alert-item__title">
-                    {ds.identifier} — {ds.carrier}
-                  </div>
-                  <div className="ops-alert-item__meta">
-                    <span>
-                      Cliente: <strong>{ds.reference}</strong>
-                    </span>
-                    <span>
-                      {ds.originCountry && (
-                        <img
-                          src={getFlagUrl(ds.originCountry)}
-                          alt=""
-                          className="ops-flag"
-                        />
-                      )}
-                      {ds.origin} →{" "}
-                      {ds.destinationCountry && (
-                        <img
-                          src={getFlagUrl(ds.destinationCountry)}
-                          alt=""
-                          className="ops-flag"
-                        />
-                      )}
-                      {ds.destination}
-                    </span>
-                    {ds.eta && <span>ETA: {formatDate(ds.eta)}</span>}
-                    <span>Progreso: {ds.progress}%</span>
-                  </div>
-                </div>
-                <span
-                  className={`ops-alert-item__badge ${ds.type === "air" ? "ops-alert-item__badge--air" : "ops-alert-item__badge--ocean"}`}
-                >
-                  {ds.type === "air" ? "✈ Aéreo" : "🚢 Marítimo"}
-                </span>
-                {ds.eta && (
-                  <span className="ops-alert-item__badge ops-alert-item__badge--delay">
-                    {daysLate(ds.eta)}d retraso
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+          <span className="ops-delay-banner__icon">⚠</span>
+          <span className="ops-delay-banner__msg">
+            <strong>{totalDelayed}</strong> envío
+            {totalDelayed !== 1 ? "s" : ""} con retraso activo
+          </span>
+          <span className="ops-delay-banner__meta">
+            {airDelayed.length > 0 &&
+              `${airDelayed.length} aéreo${airDelayed.length !== 1 ? "s" : ""}`}
+            {airDelayed.length > 0 && oceanDelayed.length > 0 && " · "}
+            {oceanDelayed.length > 0 &&
+              `${oceanDelayed.length} marítimo${oceanDelayed.length !== 1 ? "s" : ""}`}
+          </span>
+          <span className="ops-delay-banner__cta">Ver detalles →</span>
         </div>
       )}
 
-      {/* ── Status Distribution + Quick Actions ──────────────────────────── */}
-      <div className="ops-grid-2">
+      {/* ── Distribución de Seguimientos ─────────────────────────────────── */}
+      <div className="ops-section">
+        <div className="ops-section-header">
+          <h3 className="ops-section-title" style={{ margin: 0 }}>
+            Distribución de Seguimientos
+          </h3>
+        </div>
+        <div className="ops-grid-2">
         {/* Air status donut & bars */}
         <div className="ops-panel">
           <h3 className="ops-section-title">
@@ -1293,30 +1142,12 @@ export default function HomeOperaciones() {
           </div>
         </div>
       </div>
+      </div>
 
-      {/* ── Recent Shipments Table ────────────────────────────────────────── */}
-      <div className="ops-panel" style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 4,
-          }}
-        >
+      {/* ── Últimos Movimientos ────────────────────────────────────────────── */}
+      <div className="ops-section">
+        <div className="ops-section-header">
           <h3 className="ops-section-title" style={{ margin: 0 }}>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--ops-text)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-            </svg>
             Últimos Movimientos
           </h3>
           <button
@@ -1329,7 +1160,7 @@ export default function HomeOperaciones() {
             Ver todos →
           </button>
         </div>
-
+        <div className="ops-panel">
         {/* Tabs */}
         <div className="ops-tabs">
           <button
@@ -1358,12 +1189,9 @@ export default function HomeOperaciones() {
                   <th>Estado</th>
                   <th>AWB</th>
                   <th>Aerolínea</th>
-                  <th>Origen</th>
-                  <th>Destino</th>
+                  <th>Ruta</th>
                   <th>Cliente</th>
                   <th>Progreso</th>
-                  <th>Creado</th>
-                  <th>ETD</th>
                   <th>ETA</th>
                 </tr>
               </thead>
@@ -1406,8 +1234,7 @@ export default function HomeOperaciones() {
                           />
                         )}
                         {s.route?.origin.location.iata || "—"}
-                      </td>
-                      <td>
+                        {" → "}
                         {s.route?.destination.location.country.code && (
                           <img
                             src={getFlagUrl(
@@ -1425,12 +1252,6 @@ export default function HomeOperaciones() {
                           value={s.route?.transit_percentage ?? 0}
                           color={delayed ? "#dc2626" : "#0891b2"}
                         />
-                      </td>
-                      <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                        {formatDate(s.created_at)}
-                      </td>
-                      <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                        {formatDate(s.route?.origin.date_of_dep)}
                       </td>
                       <td style={{ fontSize: 11, color: "#8b92a5" }}>
                         {formatDate(s.route?.destination.date_of_rcf)}
@@ -1452,12 +1273,9 @@ export default function HomeOperaciones() {
                 <th>Estado</th>
                 <th>Container / Booking</th>
                 <th>Naviera</th>
-                <th>Origen</th>
-                <th>Destino</th>
+                <th>Ruta</th>
                 <th>Cliente</th>
                 <th>Progreso</th>
-                <th>Creado</th>
-                <th>ETD</th>
                 <th>ETA</th>
               </tr>
             </thead>
@@ -1500,8 +1318,7 @@ export default function HomeOperaciones() {
                         />
                       )}
                       {s.route?.port_of_loading.location.name || "—"}
-                    </td>
-                    <td>
+                      {" → "}
                       {s.route?.port_of_discharge.location.country?.code && (
                         <img
                           src={getFlagUrl(
@@ -1521,12 +1338,6 @@ export default function HomeOperaciones() {
                       />
                     </td>
                     <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                      {formatDate(s.created_at)}
-                    </td>
-                    <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                      {formatDate(s.route?.port_of_loading.date_of_loading)}
-                    </td>
-                    <td style={{ fontSize: 11, color: "#8b92a5" }}>
                       {formatDate(s.route?.port_of_discharge.date_of_discharge)}
                     </td>
                   </tr>
@@ -1536,325 +1347,98 @@ export default function HomeOperaciones() {
           </table>
         )}
       </div>
+      </div>
 
       {/* ── Reportería de Movimientos ─────────────────────────────────────── */}
-      <div className="ops-panel" style={{ marginBottom: 24 }}>
-        <h3 className="ops-section-title" style={{ marginBottom: 16 }}>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--ops-purple)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="20" x2="18" y2="10" />
-            <line x1="12" y1="20" x2="12" y2="4" />
-            <line x1="6" y1="20" x2="6" y2="14" />
-          </svg>
-          Reportería de Movimientos
-        </h3>
-        <div className="ops-grid-2">
-          {/* Rutas Aéreas más usadas */}
-          <div
-            style={{
-              padding: "14px 16px",
-              borderRadius: 10,
-              border: "1px solid var(--ops-border)",
-              background: "#fafbfc",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "var(--ops-cyan)",
-                marginBottom: 10,
-              }}
-            >
-              ✈ Rutas Aéreas más usadas
-            </div>
-            {airRouteStats.length === 0 ? (
-              <div className="ops-empty">Sin datos.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {airRouteStats.map(([route, count], i) => {
-                  const maxCount = airRouteStats[0][1];
-                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+      <div className="ops-section">
+        <div className="ops-section-header">
+          <h3 className="ops-section-title" style={{ margin: 0 }}>Reportería de Movimientos</h3>
+        </div>
+        <div className="ops-panel">
+          <div className="ops-report-grid">
+            {/* Rutas Aéreas más usadas */}
+            <div className="ops-report-stat">
+              <div className="ops-report-stat__label" style={{ color: "var(--ops-cyan)" }}>✈ Rutas Aéreas más usadas</div>
+              {airRouteStats.length === 0 ? (
+                <div className="ops-empty">Sin datos.</div>
+              ) : (
+                airRouteStats.map(([route, count], i) => {
+                  const pct = airRouteStats[0][1] > 0 ? (count / airRouteStats[0][1]) * 100 : 0;
                   return (
-                    <div key={route}>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: 11,
-                          marginBottom: 3,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: i === 0 ? 700 : 500,
-                            color: "var(--ops-text)",
-                          }}
-                        >
-                          {i === 0 ? "🥇 " : `${i + 1}. `}
-                          {route}
-                        </span>
-                        <span
-                          style={{ fontWeight: 700, color: "var(--ops-cyan)" }}
-                        >
-                          {count}
-                        </span>
+                    <div key={route} className="ops-report-item">
+                      <span className="ops-report-item__name">{i === 0 ? "🥇 " : `${i + 1}. `}{route}</span>
+                      <div className="ops-report-item__bar-wrap">
+                        <div className="ops-report-item__bar" style={{ width: `${pct}%`, background: "var(--ops-cyan)" }} />
                       </div>
-                      <div
-                        style={{
-                          height: 4,
-                          borderRadius: 2,
-                          background: "#e2e8f0",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            width: `${pct}%`,
-                            background: "var(--ops-cyan)",
-                            borderRadius: 2,
-                          }}
-                        />
-                      </div>
+                      <span className="ops-report-item__count" style={{ color: "var(--ops-cyan)" }}>{count}</span>
                     </div>
                   );
-                })}
-              </div>
-            )}
-          </div>
+                })
+              )}
+            </div>
 
-          {/* Aerolíneas más usadas */}
-          <div
-            style={{
-              padding: "14px 16px",
-              borderRadius: 10,
-              border: "1px solid var(--ops-border)",
-              background: "#fafbfc",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "var(--ops-cyan)",
-                marginBottom: 10,
-              }}
-            >
-              ✈ Aerolíneas más usadas
-            </div>
-            {airAirlineStats.length === 0 ? (
-              <div className="ops-empty">Sin datos.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {airAirlineStats.map(([airline, count], i) => {
-                  const maxCount = airAirlineStats[0][1];
-                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+            {/* Aerolíneas más usadas */}
+            <div className="ops-report-stat">
+              <div className="ops-report-stat__label" style={{ color: "var(--ops-cyan)" }}>✈ Aerolíneas más usadas</div>
+              {airAirlineStats.length === 0 ? (
+                <div className="ops-empty">Sin datos.</div>
+              ) : (
+                airAirlineStats.map(([airline, count], i) => {
+                  const pct = airAirlineStats[0][1] > 0 ? (count / airAirlineStats[0][1]) * 100 : 0;
                   return (
-                    <div key={airline}>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: 11,
-                          marginBottom: 3,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: i === 0 ? 700 : 500,
-                            color: "var(--ops-text)",
-                          }}
-                        >
-                          {i === 0 ? "🥇 " : `${i + 1}. `}
-                          {airline}
-                        </span>
-                        <span
-                          style={{ fontWeight: 700, color: "var(--ops-cyan)" }}
-                        >
-                          {count}
-                        </span>
+                    <div key={airline} className="ops-report-item">
+                      <span className="ops-report-item__name">{i === 0 ? "🥇 " : `${i + 1}. `}{airline}</span>
+                      <div className="ops-report-item__bar-wrap">
+                        <div className="ops-report-item__bar" style={{ width: `${pct}%`, background: "var(--ops-cyan)" }} />
                       </div>
-                      <div
-                        style={{
-                          height: 4,
-                          borderRadius: 2,
-                          background: "#e2e8f0",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            width: `${pct}%`,
-                            background: "var(--ops-cyan)",
-                            borderRadius: 2,
-                          }}
-                        />
-                      </div>
+                      <span className="ops-report-item__count" style={{ color: "var(--ops-cyan)" }}>{count}</span>
                     </div>
                   );
-                })}
-              </div>
-            )}
-          </div>
+                })
+              )}
+            </div>
 
-          {/* Rutas Marítimas más usadas */}
-          <div
-            style={{
-              padding: "14px 16px",
-              borderRadius: 10,
-              border: "1px solid var(--ops-border)",
-              background: "#fafbfc",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "var(--ops-blue)",
-                marginBottom: 10,
-              }}
-            >
-              🚢 Rutas Marítimas más usadas
-            </div>
-            {oceanRouteStats.length === 0 ? (
-              <div className="ops-empty">Sin datos.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {oceanRouteStats.map(([route, count], i) => {
-                  const maxCount = oceanRouteStats[0][1];
-                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+            {/* Rutas Marítimas más usadas */}
+            <div className="ops-report-stat">
+              <div className="ops-report-stat__label" style={{ color: "var(--ops-blue)" }}>🚢 Rutas Marítimas más usadas</div>
+              {oceanRouteStats.length === 0 ? (
+                <div className="ops-empty">Sin datos.</div>
+              ) : (
+                oceanRouteStats.map(([route, count], i) => {
+                  const pct = oceanRouteStats[0][1] > 0 ? (count / oceanRouteStats[0][1]) * 100 : 0;
                   return (
-                    <div key={route}>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: 11,
-                          marginBottom: 3,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: i === 0 ? 700 : 500,
-                            color: "var(--ops-text)",
-                          }}
-                        >
-                          {i === 0 ? "🥇 " : `${i + 1}. `}
-                          {route}
-                        </span>
-                        <span
-                          style={{ fontWeight: 700, color: "var(--ops-blue)" }}
-                        >
-                          {count}
-                        </span>
+                    <div key={route} className="ops-report-item">
+                      <span className="ops-report-item__name">{i === 0 ? "🥇 " : `${i + 1}. `}{route}</span>
+                      <div className="ops-report-item__bar-wrap">
+                        <div className="ops-report-item__bar" style={{ width: `${pct}%`, background: "var(--ops-blue)" }} />
                       </div>
-                      <div
-                        style={{
-                          height: 4,
-                          borderRadius: 2,
-                          background: "#e2e8f0",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            width: `${pct}%`,
-                            background: "var(--ops-blue)",
-                            borderRadius: 2,
-                          }}
-                        />
-                      </div>
+                      <span className="ops-report-item__count" style={{ color: "var(--ops-blue)" }}>{count}</span>
                     </div>
                   );
-                })}
-              </div>
-            )}
-          </div>
+                })
+              )}
+            </div>
 
-          {/* Navieras más usadas */}
-          <div
-            style={{
-              padding: "14px 16px",
-              borderRadius: 10,
-              border: "1px solid var(--ops-border)",
-              background: "#fafbfc",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "var(--ops-blue)",
-                marginBottom: 10,
-              }}
-            >
-              🚢 Navieras más usadas
-            </div>
-            {oceanCarrierStats.length === 0 ? (
-              <div className="ops-empty">Sin datos.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {oceanCarrierStats.map(([carrier, count], i) => {
-                  const maxCount = oceanCarrierStats[0][1];
-                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+            {/* Navieras más usadas */}
+            <div className="ops-report-stat">
+              <div className="ops-report-stat__label" style={{ color: "var(--ops-blue)" }}>🚢 Navieras más usadas</div>
+              {oceanCarrierStats.length === 0 ? (
+                <div className="ops-empty">Sin datos.</div>
+              ) : (
+                oceanCarrierStats.map(([carrier, count], i) => {
+                  const pct = oceanCarrierStats[0][1] > 0 ? (count / oceanCarrierStats[0][1]) * 100 : 0;
                   return (
-                    <div key={carrier}>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: 11,
-                          marginBottom: 3,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: i === 0 ? 700 : 500,
-                            color: "var(--ops-text)",
-                          }}
-                        >
-                          {i === 0 ? "🥇 " : `${i + 1}. `}
-                          {carrier}
-                        </span>
-                        <span
-                          style={{ fontWeight: 700, color: "var(--ops-blue)" }}
-                        >
-                          {count}
-                        </span>
+                    <div key={carrier} className="ops-report-item">
+                      <span className="ops-report-item__name">{i === 0 ? "🥇 " : `${i + 1}. `}{carrier}</span>
+                      <div className="ops-report-item__bar-wrap">
+                        <div className="ops-report-item__bar" style={{ width: `${pct}%`, background: "var(--ops-blue)" }} />
                       </div>
-                      <div
-                        style={{
-                          height: 4,
-                          borderRadius: 2,
-                          background: "#e2e8f0",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            width: `${pct}%`,
-                            background: "var(--ops-blue)",
-                            borderRadius: 2,
-                          }}
-                        />
-                      </div>
+                      <span className="ops-report-item__count" style={{ color: "var(--ops-blue)" }}>{count}</span>
                     </div>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1863,14 +1447,7 @@ export default function HomeOperaciones() {
       <div className="ops-grid-3">
         {/* Client Ranking */}
         <div className="ops-panel">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 14,
-            }}
-          >
+          <div className="ops-section-header" style={{ marginBottom: 14 }}>
             <h3 className="ops-section-title" style={{ margin: 0 }}>
               <svg
                 width="16"
