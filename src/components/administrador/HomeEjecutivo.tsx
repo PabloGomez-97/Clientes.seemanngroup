@@ -423,7 +423,6 @@ export default function HomeEjecutivo() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   // Linbis data
   const [linbisAir, setLinbisAir] = useState<LinbisAirShipment[]>([]);
@@ -513,8 +512,6 @@ export default function HomeEjecutivo() {
             ),
           );
         }
-
-        setLastRefresh(new Date());
       } catch {
         /* silent */
       } finally {
@@ -761,45 +758,6 @@ export default function HomeEjecutivo() {
   );
 
   const totalDelayed = airDelayed.length + oceanDelayed.length;
-
-  // Delayed alerts
-  const delayedShipments = useMemo(() => {
-    const items: {
-      type: "air" | "ocean";
-      id: number;
-      reference: string;
-      identifier: string;
-      carrier: string;
-      origin: string;
-      destination: string;
-      progress: number;
-    }[] = [];
-    airDelayed.forEach((s) => {
-      items.push({
-        type: "air",
-        id: s.id,
-        reference: s.reference || "—",
-        identifier: s.awb_number,
-        carrier: s.airline?.name || "—",
-        origin: s.route?.origin.location.iata || "—",
-        destination: s.route?.destination.location.iata || "—",
-        progress: s.route?.transit_percentage ?? 0,
-      });
-    });
-    oceanDelayed.forEach((s) => {
-      items.push({
-        type: "ocean",
-        id: s.id,
-        reference: s.reference || "—",
-        identifier: s.container_number || s.booking_number || "—",
-        carrier: s.carrier?.name || "—",
-        origin: s.route?.port_of_loading.location.name || "—",
-        destination: s.route?.port_of_discharge.location.name || "—",
-        progress: s.route?.transit_percentage ?? 0,
-      });
-    });
-    return items;
-  }, [airDelayed, oceanDelayed]);
 
   // Client stats (aggregated)
   const clientStats = useMemo<ClientStats[]>(() => {
@@ -1090,18 +1048,35 @@ export default function HomeEjecutivo() {
         </div>
       </div>
 
-      {/* ── Comportamiento de Clientes ────────────────────────────────── */}
-      <div style={{ marginBottom: 24 }}>
-        {/* Section header */}
+      {/* ── Delay Banner (solo cuando hay retrasos) ─────────────────────── */}
+      {totalDelayed > 0 && (
         <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 14,
+          className="ej-delay-banner"
+          onClick={() => {
+            setListModal("kpi-delayed");
+            setListModalTab("all");
           }}
         >
-          <h3 className="ej-section-title">
+          <span className="ej-delay-banner__icon">⚠</span>
+          <span className="ej-delay-banner__msg">
+            <strong>{totalDelayed}</strong> envío
+            {totalDelayed !== 1 ? "s" : ""} con retraso activo
+          </span>
+          <span className="ej-delay-banner__meta">
+            {airDelayed.length > 0 &&
+              `${airDelayed.length} aéreo${airDelayed.length !== 1 ? "s" : ""}`}
+            {airDelayed.length > 0 && oceanDelayed.length > 0 && " · "}
+            {oceanDelayed.length > 0 &&
+              `${oceanDelayed.length} marítimo${oceanDelayed.length !== 1 ? "s" : ""}`}
+          </span>
+          <span className="ej-delay-banner__cta">Ver detalles →</span>
+        </div>
+      )}
+
+      {/* ── Comportamiento de Clientes ─────────────────────────────────── */}
+      <div className="ej-section">
+        <div className="ej-section-header">
+          <h3 className="ej-section-title" style={{ margin: 0 }}>
             <svg
               width="18"
               height="18"
@@ -1127,554 +1102,308 @@ export default function HomeEjecutivo() {
           </button>
         </div>
 
-        {/* KPI Cards */}
         {behaviorLoading ? (
-          <div className="ej-kpi-grid">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
+          <div className="ej-panel">
+            <div
+              className="ej-skeleton"
+              style={{ width: "100%", height: 72, borderRadius: 8 }}
+            />
           </div>
         ) : behaviorStats ? (
-          <>
-            <div className="ej-kpi-grid">
-              {/* Cuentas activas */}
-              <div
-                className="ej-kpi ej-kpi--white ej-kpi--clickable"
-                onClick={() => navigate("/admin/comportamiento-clientes")}
-              >
-                <div className="ej-kpi__header">
-                  <span className="ej-kpi__label">Cuentas Activas</span>
-                  <div
-                    className="ej-kpi__icon"
-                    style={{ background: "var(--ej-purple-bg)" }}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="var(--primary-light)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                    </svg>
-                  </div>
-                </div>
-                <div
-                  className="ej-kpi__value"
-                  style={{ color: "var(--primary-light)" }}
-                >
+          <div className="ej-panel">
+            <div className="ej-behavior-stats">
+              <div className="ej-behavior-stat">
+                <span className="ej-behavior-stat__value">
                   {behaviorStats.uniqueAccountCount}
-                </div>
-                <div className="ej-kpi__sub">con actividad registrada</div>
+                </span>
+                <span className="ej-behavior-stat__label">Cuentas Activas</span>
               </div>
-
-              {/* Cotizaciones iniciadas */}
-              <div className="ej-kpi ej-kpi--white">
-                <div className="ej-kpi__header">
-                  <span className="ej-kpi__label">Cot. Iniciadas</span>
-                  <div
-                    className="ej-kpi__icon"
-                    style={{ background: "var(--ej-purple-bg)" }}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="var(--primary-light)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="12" y1="18" x2="12" y2="12" />
-                      <line x1="9" y1="15" x2="15" y2="15" />
-                    </svg>
-                  </div>
-                </div>
-                <div
-                  className="ej-kpi__value"
-                  style={{ color: "var(--primary-light)" }}
-                >
+              <div className="ej-behavior-stat">
+                <span className="ej-behavior-stat__value">
                   {behaviorStats.totalStarted}
-                </div>
-                <div className="ej-kpi__sub">procesos iniciados</div>
+                </span>
+                <span className="ej-behavior-stat__label">
+                  Cotizaciones Iniciadas
+                </span>
               </div>
-
-              {/* Completadas */}
-              <div className="ej-kpi ej-kpi--white">
-                <div className="ej-kpi__header">
-                  <span className="ej-kpi__label">Completadas</span>
-                  <div
-                    className="ej-kpi__icon"
-                    style={{ background: "var(--ej-purple-bg)" }}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="var(--primary-light)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                </div>
-                <div
-                  className="ej-kpi__value"
-                  style={{ color: "var(--primary-light)" }}
+              <div className="ej-behavior-stat">
+                <span
+                  className="ej-behavior-stat__value"
+                  style={{ color: "var(--ej-green)" }}
                 >
                   {behaviorStats.totalCompleted}
-                </div>
-                <div className="ej-kpi__sub">cotizaciones finalizadas</div>
+                </span>
+                <span className="ej-behavior-stat__label">
+                  Cotizaciones Completadas
+                </span>
               </div>
-
-              {/* Abandonadas */}
-              <div className="ej-kpi ej-kpi--white">
-                <div className="ej-kpi__header">
-                  <span className="ej-kpi__label">Abandonadas</span>
-                  <div
-                    className="ej-kpi__icon"
-                    style={{ background: "var(--ej-purple-bg)" }}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="var(--primary-light)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="15" y1="9" x2="9" y2="15" />
-                      <line x1="9" y1="9" x2="15" y2="15" />
-                    </svg>
-                  </div>
-                </div>
-                <div
-                  className="ej-kpi__value"
-                  style={{ color: "var(--primary-light)" }}
+              <div className="ej-behavior-stat">
+                <span
+                  className="ej-behavior-stat__value"
+                  style={{ color: "var(--ej-red)" }}
                 >
                   {behaviorStats.totalAbandoned}
-                </div>
-                <div className="ej-kpi__sub">sin completar</div>
+                </span>
+                <span className="ej-behavior-stat__label">
+                  Cotizaciones Abandonadas
+                </span>
               </div>
-
-              {/* Tasa global */}
-              <div className="ej-kpi ej-kpi--white">
-                <div className="ej-kpi__header">
-                  <span className="ej-kpi__label">Tasa Completación</span>
-                  <div
-                    className="ej-kpi__icon"
-                    style={{ background: "var(--ej-purple-bg)" }}
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="var(--primary-light)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <line x1="18" y1="20" x2="18" y2="10" />
-                      <line x1="12" y1="20" x2="12" y2="4" />
-                      <line x1="6" y1="20" x2="6" y2="14" />
-                    </svg>
-                  </div>
-                </div>
-                <div
-                  className="ej-kpi__value"
-                  style={{ color: "var(--primary-light)" }}
-                >
-                  {behaviorStats.overallRate}%
-                </div>
-                <div className="ej-kpi__sub">promedio global</div>
-              </div>
-            </div>
-
-            {/* Abandono por tipo de cotización */}
-            {behaviorByType.length > 0 && (
-              <div className="ej-panel" style={{ marginTop: 12 }}>
-                <h4
-                  className="ej-section-title"
-                  style={{ marginBottom: 14, fontSize: 13 }}
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="var(--ej-text-muted)"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="18" y1="20" x2="18" y2="10" />
-                    <line x1="12" y1="20" x2="12" y2="4" />
-                    <line x1="6" y1="20" x2="6" y2="14" />
-                  </svg>
-                  Abandono por tipo de cotización
-                </h4>
-                <div
+              <div className="ej-behavior-stat">
+                <span
+                  className="ej-behavior-stat__value"
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: 12,
+                    color:
+                      behaviorStats.overallRate >= 70
+                        ? "var(--ej-green)"
+                        : behaviorStats.overallRate >= 40
+                          ? "var(--ej-amber)"
+                          : "var(--ej-red)",
                   }}
                 >
-                  {behaviorByType.map(
-                    ({ type, started, completed, abandoned }) => (
-                      <div
-                        key={type}
+                  {behaviorStats.overallRate}%
+                </span>
+                <span className="ej-behavior-stat__label">
+                  Tasa global x Cotización
+                </span>
+              </div>
+            </div>
+            {behaviorByType.length > 0 && (
+              <div className="ej-behavior-types">
+                {behaviorByType.map(
+                  ({ type, started, completed, abandoned }) => (
+                    <div key={type} className="ej-behavior-type">
+                      <span
+                        className="ej-behavior-type__badge"
                         style={{
-                          background: "var(--ej-bg)",
-                          borderRadius: 10,
-                          padding: "14px 16px",
-                          border: "1px solid var(--ej-border)",
+                          background: BEHAVIOR_TYPE_COLORS[type] || "#6b7280",
                         }}
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            marginBottom: 10,
-                          }}
-                        >
+                        {type}
+                      </span>
+                      <div className="ej-behavior-type__rows">
+                        <div className="ej-behavior-type__row">
+                          <span className="ej-behavior-type__row-label">
+                            Iniciadas
+                          </span>
+                          <span className="ej-behavior-type__row-value">
+                            {started}
+                          </span>
+                        </div>
+                        <div className="ej-behavior-type__row">
+                          <span className="ej-behavior-type__row-label">
+                            Completadas
+                          </span>
                           <span
-                            style={{
-                              padding: "2px 8px",
-                              borderRadius: 4,
-                              fontSize: 11,
-                              fontWeight: 600,
-                              color: "#fff",
-                              background:
-                                BEHAVIOR_TYPE_COLORS[type] || "#6b7280",
-                            }}
+                            className="ej-behavior-type__row-value"
+                            style={{ color: "var(--ej-green)" }}
                           >
-                            {type}
+                            {completed}
                           </span>
                         </div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "var(--ej-text-muted)",
-                            marginBottom: 6,
-                          }}
-                        >
-                          Tasa de abandono
-                        </div>
-                        {/* Counts */}
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: 11,
-                            color: "var(--ej-text-muted)",
-                          }}
-                        >
-                          <span>
-                            Iniciadas:{" "}
-                            <strong style={{ color: "var(--ej-text)" }}>
-                              {started}
-                            </strong>
+                        <div className="ej-behavior-type__row">
+                          <span className="ej-behavior-type__row-label">
+                            Abandonadas
                           </span>
-                          <span>
-                            Completas:{" "}
-                            <strong style={{ color: "var(--ej-green)" }}>
-                              {completed}
-                            </strong>
-                          </span>
-                          <span>
-                            Abandonadas:{" "}
-                            <strong style={{ color: "var(--ej-red)" }}>
-                              {abandoned}
-                            </strong>
+                          <span
+                            className="ej-behavior-type__row-value"
+                            style={{ color: "var(--ej-red)" }}
+                          >
+                            {abandoned}
                           </span>
                         </div>
                       </div>
-                    ),
-                  )}
-                </div>
+                    </div>
+                  ),
+                )}
               </div>
             )}
-          </>
+          </div>
         ) : null}
       </div>
 
-      {/* ── KPI Cards ────────────────────────────────────────────────── */}
-      {/* Section header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 14,
-        }}
-      >
-        <h3 className="ej-section-title">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--ej-purple)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      <hr />
+      {/* ── Operaciones de Clientes ─────────────────────────────────────── */}
+      <div className="ej-section">
+        <div className="ej-section-header">
+          <h3 className="ej-section-title" style={{ margin: 0 }}>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--ej-purple)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <polyline points="23 21 23 15 20 12 17 15 17 21" />
+              <line x1="20" y1="12" x2="20" y2="9" />
+            </svg>
+            Operaciones de Clientes
+          </h3>
+          <button
+            className="ej-view-all"
+            onClick={() => navigate("/admin/reporteriaclientes")}
           >
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <polyline points="23 21 23 15 20 12 17 15 17 21" />
-            <line x1="20" y1="12" x2="20" y2="9" />
-          </svg>
-          Operaciones de Clientes
-        </h3>
-        <button
-          className="ej-view-all"
-          onClick={() => navigate("/admin/reporteriaclientes")}
-        >
-          Ver análisis completo →
-        </button>
-      </div>
-      <div className="ej-kpi-grid">
-        {/* Clients */}
-        <div
-          className="ej-kpi ej-kpi--orange ej-kpi--clickable"
-          onClick={() => setListModal("all-clients")}
-        >
-          <div className="ej-kpi__header">
-            <span className="ej-kpi__label">Mis Clientes</span>
-            <div
-              className="ej-kpi__icon"
-              style={{ background: "var(--ej-orange-bg)" }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--ej-orange)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-          </div>
-          <div className="ej-kpi__value" style={{ color: "var(--ej-orange)" }}>
-            {clientes.length}
-          </div>
-          <div className="ej-kpi__sub">
-            {newThisMonth > 0 ? `+${newThisMonth} este mes` : "Cartera activa"}
-          </div>
+            Ver análisis completo →
+          </button>
         </div>
-
-        {/* ShipsGo Trackings */}
-        <div
-          className="ej-kpi ej-kpi--green ej-kpi--clickable"
-          onClick={() => {
-            setListModal("all-trackings");
-            setListModalTab("all");
-          }}
-        >
-          <div className="ej-kpi__header">
-            <span className="ej-kpi__label">Seguimientos</span>
-            <div
-              className="ej-kpi__icon"
-              style={{ background: "var(--ej-green-bg)" }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--ej-green)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
-            </div>
-          </div>
-          <div className="ej-kpi__value" style={{ color: "var(--ej-green)" }}>
-            {trackingAir.length + trackingOcean.length}
-          </div>
-          <div className="ej-kpi__sub">
-            {trackingAir.length} aéreos · {trackingOcean.length} marítimos
-          </div>
-        </div>
-
-        {/* Active (in transit) */}
-        <div
-          className="ej-kpi ej-kpi--amber ej-kpi--clickable"
-          onClick={() => {
-            setListModal("kpi-trackings");
-            setListModalTab("all");
-          }}
-        >
-          <div className="ej-kpi__header">
-            <span className="ej-kpi__label">En Movimiento</span>
-            <div
-              className="ej-kpi__icon"
-              style={{ background: "var(--ej-amber-bg)" }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--ej-amber)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-          </div>
-          <div className="ej-kpi__value" style={{ color: "var(--ej-amber)" }}>
-            {airInTransit.length + oceanInTransit.length}
-          </div>
-          <div className="ej-kpi__sub">
-            {airInTransit.length} aéreos · {oceanInTransit.length} marítimos
-          </div>
-        </div>
-
-        {/* Delays */}
-        <div
-          className="ej-kpi ej-kpi--red ej-kpi--clickable"
-          onClick={() => {
-            setListModal("kpi-delayed");
-            setListModalTab("all");
-          }}
-        >
-          <div className="ej-kpi__header">
-            <span className="ej-kpi__label">Retrasos Activos</span>
-            <div
-              className="ej-kpi__icon"
-              style={{ background: "var(--ej-red-bg)" }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--ej-red)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </div>
-          </div>
-          <div className="ej-kpi__value" style={{ color: "var(--ej-red)" }}>
-            {totalDelayed}
-          </div>
-          <div className="ej-kpi__sub">
-            {airDelayed.length} aéreos · {oceanDelayed.length} marítimos
-          </div>
-        </div>
-      </div>
-
-      {/* ── Alerts Panel (only if there are delays) ──────────────────── */}
-      {totalDelayed > 0 && (
-        <div
-          className={`ej-alerts ${totalDelayed > 0 ? "ej-alerts--critical" : ""}`}
-        >
+        <div className="ej-kpi-grid ej-kpi-grid--4">
+          {/* Clients */}
           <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 14,
+            className="ej-kpi ej-kpi--orange ej-kpi--clickable"
+            onClick={() => setListModal("all-clients")}
+          >
+            <div className="ej-kpi__header">
+              <span className="ej-kpi__label">Mis Clientes</span>
+              <div
+                className="ej-kpi__icon"
+                style={{ background: "var(--ej-orange-bg)" }}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--ej-orange)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+            </div>
+            <div
+              className="ej-kpi__value"
+              style={{ color: "var(--ej-orange)" }}
+            >
+              {clientes.length}
+            </div>
+            <div className="ej-kpi__sub">
+              {newThisMonth > 0
+                ? `+${newThisMonth} este mes`
+                : "Cartera activa"}
+            </div>
+          </div>
+
+          {/* ShipsGo Trackings */}
+          <div
+            className="ej-kpi ej-kpi--green ej-kpi--clickable"
+            onClick={() => {
+              setListModal("all-trackings");
+              setListModalTab("all");
             }}
           >
-            <h3 className="ej-section-title" style={{ margin: 0 }}>
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--ej-red)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-              Alertas de Retraso ({totalDelayed})
-            </h3>
-          </div>
-          <div className="ej-alert-list">
-            {delayedShipments.map((d) => (
+            <div className="ej-kpi__header">
+              <span className="ej-kpi__label">Seguimientos</span>
               <div
-                key={`${d.type}-${d.id}`}
-                className="ej-alert-item"
-                onClick={() => {
-                  const ship =
-                    d.type === "air"
-                      ? trackingAir.find((s) => s.id === d.id)
-                      : trackingOcean.find((s) => s.id === d.id);
-                  if (d.type === "air" && ship)
-                    setSelectedAir(ship as AirShipment);
-                  if (d.type === "ocean" && ship)
-                    setSelectedOcean(ship as OceanShipment);
-                }}
+                className="ej-kpi__icon"
+                style={{ background: "var(--ej-green-bg)" }}
               >
-                <div className="ej-alert-item__icon">
-                  <span style={{ fontSize: 16 }}>
-                    {d.type === "air" ? "✈" : "🚢"}
-                  </span>
-                </div>
-                <div className="ej-alert-item__body">
-                  <div className="ej-alert-item__title">
-                    {d.identifier} — {d.carrier}
-                  </div>
-                  <div className="ej-alert-item__meta">
-                    <span>
-                      {d.origin} → {d.destination}
-                    </span>
-                    <span>Cliente: {d.reference}</span>
-                    <span>Progreso: {Math.round(d.progress)}%</span>
-                  </div>
-                </div>
-                <span
-                  className={`ej-alert-item__badge ej-alert-item__badge--${d.type}`}
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--ej-green)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
-                  {d.type === "air" ? "✈ Aéreo" : "🚢 Marítimo"}
-                </span>
-                <span className="ej-alert-item__badge ej-alert-item__badge--delay">
-                  ⚠ Retraso
-                </span>
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
               </div>
-            ))}
+            </div>
+            <div className="ej-kpi__value" style={{ color: "var(--ej-green)" }}>
+              {trackingAir.length + trackingOcean.length}
+            </div>
+            <div className="ej-kpi__sub">
+              {trackingAir.length} aéreos · {trackingOcean.length} marítimos
+            </div>
+          </div>
+
+          {/* Active (in transit) */}
+          <div
+            className="ej-kpi ej-kpi--amber ej-kpi--clickable"
+            onClick={() => {
+              setListModal("kpi-trackings");
+              setListModalTab("all");
+            }}
+          >
+            <div className="ej-kpi__header">
+              <span className="ej-kpi__label">En Movimiento</span>
+              <div
+                className="ej-kpi__icon"
+                style={{ background: "var(--ej-amber-bg)" }}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--ej-amber)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+            </div>
+            <div className="ej-kpi__value" style={{ color: "var(--ej-amber)" }}>
+              {airInTransit.length + oceanInTransit.length}
+            </div>
+            <div className="ej-kpi__sub">
+              {airInTransit.length} aéreos · {oceanInTransit.length} marítimos
+            </div>
+          </div>
+
+          {/* Delays */}
+          <div
+            className="ej-kpi ej-kpi--red ej-kpi--clickable"
+            onClick={() => {
+              setListModal("kpi-delayed");
+              setListModalTab("all");
+            }}
+          >
+            <div className="ej-kpi__header">
+              <span className="ej-kpi__label">Retrasos Activos</span>
+              <div
+                className="ej-kpi__icon"
+                style={{ background: "var(--ej-red-bg)" }}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--ej-red)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+            </div>
+            <div className="ej-kpi__value" style={{ color: "var(--ej-red)" }}>
+              {totalDelayed}
+            </div>
+            <div className="ej-kpi__sub">
+              {airDelayed.length} aéreos · {oceanDelayed.length} marítimos
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* ── Distribución de Seguimientos ──────────────────────────────── */}
       {/* ShipsGo Tracking Distribution */}
@@ -1826,12 +1555,9 @@ export default function HomeEjecutivo() {
                   <th>Estado</th>
                   <th>AWB</th>
                   <th>Aerolínea</th>
-                  <th>Origen</th>
-                  <th>Destino</th>
+                  <th>Ruta</th>
                   <th>Cliente</th>
                   <th>Progreso</th>
-                  <th>Creado</th>
-                  <th>ETD</th>
                   <th>ETA</th>
                 </tr>
               </thead>
@@ -1874,8 +1600,7 @@ export default function HomeEjecutivo() {
                           />
                         )}
                         {s.route?.origin.location.iata || "—"}
-                      </td>
-                      <td>
+                        {" → "}
                         {s.route?.destination.location.country.code && (
                           <img
                             src={getFlagUrl(
@@ -1893,12 +1618,6 @@ export default function HomeEjecutivo() {
                           value={s.route?.transit_percentage ?? 0}
                           color={delayed ? "#dc2626" : "#0891b2"}
                         />
-                      </td>
-                      <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                        {formatDate(s.created_at)}
-                      </td>
-                      <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                        {formatDate(s.route?.origin.date_of_dep)}
                       </td>
                       <td style={{ fontSize: 11, color: "#8b92a5" }}>
                         {formatDate(s.route?.destination.date_of_rcf)}
@@ -1920,12 +1639,9 @@ export default function HomeEjecutivo() {
                 <th>Estado</th>
                 <th>Container / Booking</th>
                 <th>Naviera</th>
-                <th>Origen</th>
-                <th>Destino</th>
+                <th>Ruta</th>
                 <th>Cliente</th>
                 <th>Progreso</th>
-                <th>Creado</th>
-                <th>ETD</th>
                 <th>ETA</th>
               </tr>
             </thead>
@@ -1968,8 +1684,7 @@ export default function HomeEjecutivo() {
                         />
                       )}
                       {s.route?.port_of_loading.location.name || "—"}
-                    </td>
-                    <td>
+                      {" → "}
                       {s.route?.port_of_discharge.location.country?.code && (
                         <img
                           src={getFlagUrl(
@@ -1989,12 +1704,6 @@ export default function HomeEjecutivo() {
                       />
                     </td>
                     <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                      {formatDate(s.created_at)}
-                    </td>
-                    <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                      {formatDate(s.route?.port_of_loading.date_of_loading)}
-                    </td>
-                    <td style={{ fontSize: 11, color: "#8b92a5" }}>
                       {formatDate(s.route?.port_of_discharge.date_of_discharge)}
                     </td>
                   </tr>
@@ -2005,18 +1714,11 @@ export default function HomeEjecutivo() {
         )}
       </div>
 
-      {/* ── Client Portfolio + Health ─────────────────────────────────── */}
-      <div className="ej-grid-2">
+      {/* ── Cartera de Clientes + Distribución ──────────────────────────── */}
+      <div className="ej-grid-client">
         {/* Client Portfolio */}
         <div className="ej-panel">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 14,
-            }}
-          >
+          <div className="ej-section-header" style={{ marginBottom: 14 }}>
             <h3 className="ej-section-title" style={{ margin: 0 }}>
               Cartera de Clientes
             </h3>
@@ -2074,63 +1776,75 @@ export default function HomeEjecutivo() {
           </div>
         </div>
 
-        {/* Health + Summary */}
+        {/* Distribución de Seguimientos */}
         <div className="ej-panel">
-          <h3 className="ej-section-title">Resumen Ejecutivo</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <MiniStat
-              label="Clientes"
-              value={clientes.length}
-              color="var(--ej-orange)"
-            />
-            <MiniStat
-              label="Seguimientos Activos"
-              value={airInTransit.length + oceanInTransit.length}
-              color="var(--ej-amber)"
-            />
-
-            {/* Health */}
+          <h3 className="ej-section-title">Distribución</h3>
+          <div style={{ marginBottom: 20 }}>
             <div
               style={{
-                padding: "14px",
-                borderRadius: 10,
-                background:
-                  totalDelayed === 0
-                    ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)"
-                    : totalDelayed <= 3
-                      ? "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
-                      : "linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)",
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--ej-cyan)",
+                marginBottom: 8,
                 textAlign: "center",
-                marginTop: 4,
               }}
             >
-              <div style={{ fontSize: 22, marginBottom: 4 }}>
-                {totalDelayed === 0 ? "✅" : totalDelayed <= 3 ? "⚠️" : "🚨"}
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "var(--ej-text)",
-                }}
-              >
-                {totalDelayed === 0
-                  ? "Sin Retrasos"
-                  : totalDelayed <= 3
-                    ? "Retrasos Moderados"
-                    : "Atención Requerida"}
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--ej-text-muted)",
-                  marginTop: 2,
-                }}
-              >
-                {totalDelayed === 0
-                  ? "Todas las cargas están en tiempo"
-                  : `${totalDelayed} envío${totalDelayed !== 1 ? "s" : ""} con retraso activo`}
-              </div>
+              ✈ Aéreos
+            </div>
+            <DonutChart segments={airDonut} size={90} />
+            <div className="ej-status-grid" style={{ marginTop: 8 }}>
+              <StatusBar
+                label="En Tránsito"
+                count={airStatusDist["EN_ROUTE"] || 0}
+                total={trackingAir.length}
+                color="#0891b2"
+              />
+              <StatusBar
+                label="Aterrizado"
+                count={airStatusDist["LANDED"] || 0}
+                total={trackingAir.length}
+                color="#059669"
+              />
+              <StatusBar
+                label="Entregado"
+                count={airStatusDist["DELIVERED"] || 0}
+                total={trackingAir.length}
+                color="#22c55e"
+              />
+            </div>
+          </div>
+          <div>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--ej-blue)",
+                marginBottom: 8,
+                textAlign: "center",
+              }}
+            >
+              🚢 Marítimos
+            </div>
+            <DonutChart segments={oceanDonut} size={90} />
+            <div className="ej-status-grid" style={{ marginTop: 8 }}>
+              <StatusBar
+                label="Navegando"
+                count={oceanStatusDist["SAILING"] || 0}
+                total={trackingOcean.length}
+                color="#2563eb"
+              />
+              <StatusBar
+                label="Arribado"
+                count={oceanStatusDist["ARRIVED"] || 0}
+                total={trackingOcean.length}
+                color="#059669"
+              />
+              <StatusBar
+                label="Descargado"
+                count={oceanStatusDist["DISCHARGED"] || 0}
+                total={trackingOcean.length}
+                color="#22c55e"
+              />
             </div>
           </div>
         </div>
