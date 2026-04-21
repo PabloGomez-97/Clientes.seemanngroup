@@ -399,10 +399,10 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                           textDecoration: "none",
                           color: isItemActive ? colors.text : colors.textMuted,
                           padding:
-                            isCollapsed && !isMobile ? "14px 0" : "15px 20px",
+                            isCollapsed && !isMobile ? "15px 0" : "15px 8px",
                           justifyContent:
                             isCollapsed && !isMobile ? "center" : "flex-start",
-                          gap: isCollapsed && !isMobile ? "0" : "14px",
+                          gap: isCollapsed && !isMobile ? "0" : "8px",
                           cursor: "pointer",
                           transition: "all 0.12s ease",
                           backgroundColor: isItemActive
@@ -413,8 +413,8 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                           borderLeft: isItemActive
                             ? `3px solid ${colors.accent}`
                             : "3px solid transparent",
-                          fontSize: "14px",
-                          fontWeight: isItemActive ? "500" : "400",
+                          fontSize: "13px",
+                          fontWeight: isItemActive ? "bold" : "normal",
                           marginLeft: "0",
                           marginRight: "0",
                           borderRadius: "0",
@@ -423,8 +423,12 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                         <i
                           className={item.icon}
                           style={{
-                            fontSize: "18px",
-                            width: "22px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "24px",
+                            height: "24px",
+                            fontSize: "15px",
                             textAlign: "center",
                             opacity: isItemActive ? 1 : 0.75,
                             flexShrink: 0,
@@ -436,8 +440,8 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                             <span
                               style={{
                                 flex: 1,
-                                fontSize: "14px",
-                                fontWeight: isItemActive ? "500" : "400",
+                                fontSize: "13px",
+                                fontWeight: isItemActive ? "bold" : "normal",
                               }}
                             >
                               {item.name}
@@ -508,8 +512,10 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                                     }
                                     onMouseLeave={() => setHoveredItem(null)}
                                     style={{
-                                      display: "block",
-                                      padding: "10px 20px 10px 56px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                      padding: "13px 12px 13px 36px",
                                       cursor: "pointer",
                                       transition: "all 0.12s ease",
                                       backgroundColor: isSubActive
@@ -520,8 +526,10 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                                       color: isSubActive
                                         ? colors.text
                                         : colors.textMuted,
-                                      fontSize: "14px",
-                                      fontWeight: isSubActive ? "500" : "400",
+                                      fontSize: "13px",
+                                      fontWeight: isSubActive
+                                        ? "bold"
+                                        : "normal",
                                       position: "relative",
                                       marginLeft: "0",
                                       marginRight: "0",
@@ -529,22 +537,9 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
                                       textDecoration: "none",
                                     }}
                                   >
-                                    <span
-                                      style={{
-                                        position: "absolute",
-                                        left: "40px",
-                                        top: "50%",
-                                        transform: "translateY(-50%)",
-                                        width: "5px",
-                                        height: "5px",
-                                        borderRadius: "50%",
-                                        backgroundColor: isSubActive
-                                          ? colors.accent
-                                          : colors.textMuted,
-                                        opacity: isSubActive ? 1 : 0.5,
-                                      }}
-                                    />
-                                    {subItem.name}
+                                    <span style={{ flex: 1 }}>
+                                      {subItem.name}
+                                    </span>
                                   </a>
                                 </li>
                               );

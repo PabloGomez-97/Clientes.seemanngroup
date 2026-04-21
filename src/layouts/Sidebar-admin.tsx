@@ -77,7 +77,7 @@ function SidebarAdmin({
 
   const menuSections: MenuSection[] = [
     {
-      title: "Inicio",
+      title: "Portal",
       items: [{ path: "/admin/home", name: "Inicio", icon: "fa fa-home" }],
     },
 
@@ -86,7 +86,7 @@ function SidebarAdmin({
         {
           path: "/admin/cotizador-administrador",
           name: "Cotizador",
-          icon: "fa fa-calculator",
+          icon: "bi bi-currency-dollar",
         },
         {
           path: "/admin/simulador-cotizaciones",
@@ -419,11 +419,11 @@ function SidebarAdmin({
                           display: "flex",
                           textDecoration: "none",
                           padding:
-                            isCollapsed && !isMobile ? "14px 0" : "15px 20px",
+                            isCollapsed && !isMobile ? "15px 0" : "15px 8px",
                           alignItems: "center",
                           justifyContent:
                             isCollapsed && !isMobile ? "center" : "flex-start",
-                          gap: isCollapsed && !isMobile ? "0" : "14px",
+                          gap: isCollapsed && !isMobile ? "0" : "8px",
                           cursor: "pointer",
                           transition: "all 0.12s ease",
                           backgroundColor: isItemActive
@@ -435,18 +435,23 @@ function SidebarAdmin({
                             ? `3px solid ${colors.accent}`
                             : "3px solid transparent",
                           color: isItemActive ? colors.text : colors.textMuted,
-                          fontSize: "14px",
-                          fontWeight: isItemActive ? "500" : "400",
+                          fontSize: "13px",
+                          fontWeight: isItemActive ? "bold" : "normal",
                           marginLeft: "0",
                           marginRight: "0",
                           borderRadius: "0",
                         }}
                       >
+                        {/* Sección de iconos */}
                         <i
                           className={item.icon}
                           style={{
-                            fontSize: "18px",
-                            width: "22px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: "24px",
+                            height: "24px",
+                            fontSize: "15px",
                             textAlign: "center",
                             opacity: isItemActive ? 1 : 0.75,
                             flexShrink: 0,
@@ -458,8 +463,9 @@ function SidebarAdmin({
                             <span
                               style={{
                                 flex: 1,
-                                fontSize: "14px",
-                                fontWeight: isItemActive ? "500" : "400",
+                                fontSize:
+                                  "13px" /* tamaño del texto del sidebar */,
+                                fontWeight: isItemActive ? "bold" : "normal",
                               }}
                             >
                               {item.name}
@@ -471,7 +477,7 @@ function SidebarAdmin({
                                   padding: "2px 6px",
                                   borderRadius: "3px",
                                   fontSize: "9px",
-                                  fontWeight: "600",
+                                  fontWeight: "bold",
                                   backgroundColor:
                                     item.badge.type === "new"
                                       ? colors.accent
@@ -539,7 +545,7 @@ function SidebarAdmin({
                                         display: "flex",
                                         alignItems: "center",
                                         gap: "8px",
-                                        padding: "10px 20px 10px 56px",
+                                        padding: "13px 12px 13px 36px",
                                         cursor: "pointer",
                                         transition: "all 0.12s ease",
                                         backgroundColor: isSubActive
@@ -550,8 +556,11 @@ function SidebarAdmin({
                                         color: isSubActive
                                           ? colors.text
                                           : colors.textMuted,
-                                        fontSize: "14px",
-                                        fontWeight: isSubActive ? "500" : "400",
+                                        fontSize:
+                                          "13px" /* tamaño del texto del subitem del sidebar */,
+                                        fontWeight: isSubActive
+                                          ? "bold"
+                                          : "normal",
                                         position: "relative",
                                         marginLeft: "0",
                                         marginRight: "0",
@@ -559,21 +568,7 @@ function SidebarAdmin({
                                         textDecoration: "none",
                                       }}
                                     >
-                                      <span
-                                        style={{
-                                          position: "absolute",
-                                          left: "40px",
-                                          top: "50%",
-                                          transform: "translateY(-50%)",
-                                          width: "5px",
-                                          height: "5px",
-                                          borderRadius: "50%",
-                                          backgroundColor: isSubActive
-                                            ? colors.accent
-                                            : colors.textMuted,
-                                          opacity: isSubActive ? 1 : 0.5,
-                                        }}
-                                      />
+                                      {/* indicator removed for a minimal look */}
                                       <span style={{ flex: 1 }}>
                                         {subItem.name}
                                       </span>
@@ -582,8 +577,9 @@ function SidebarAdmin({
                                           style={{
                                             padding: "2px 6px",
                                             borderRadius: "3px",
-                                            fontSize: "9px",
-                                            fontWeight: "600",
+                                            fontSize:
+                                              "9px" /* tamaño del texto del badge */,
+                                            fontWeight: "bold",
                                             backgroundColor:
                                               "rgba(255, 255, 255, 0.15)",
                                             color: colors.text,
