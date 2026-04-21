@@ -20,10 +20,11 @@ const serviceTypes = [
     icon: "fa fa-plane",
     title: "Aéreo",
     badge: "AIR",
-    desc: "Simula una cotización aérea ingresando manualmente la tarifa base.",
+    desc: "Simula una cotización aérea por piezas o en modo OVERALL, ingresando manualmente la tarifa base.",
     features: [
       "Rutas no recurrentes del cotizador actual",
-      "Ingreso manual de Air Freight con expense automático",
+      "Ingreso manual de Air Freight con income automático",
+      "Modo OVERALL disponible para peso y volumen total",
       "Seguro, gastos locales y aduana opcionales",
       "Validez máxima de 5 días",
     ],

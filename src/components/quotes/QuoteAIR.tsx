@@ -3009,7 +3009,7 @@ function QuoteAPITester({
           reference: "Amount to AIRFREIGHT to OVERALL",
           showOnDocument: true,
           notes: isSimulationMode
-            ? `AIR FREIGHT expense (Overall) - Tarifa simulada autom\u00e1tica: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`
+            ? `AIR FREIGHT expense (Overall) - Tarifa base simulada: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`
             : `AIR FREIGHT expense (Overall) - Tarifa: ${afMoneda} ${afPrecio.toFixed(2)}/${chargeableUnit} - Cobrado por ${chargeableUnit === "kg" ? "peso" : "volumen"}${pesoAirFreight !== pesoChargeable ? ` (cobrado por ${pesoAirFreight}kg, peso m\u00ednimo del rango)` : ""}`,
         },
       });
@@ -3192,7 +3192,7 @@ function QuoteAPITester({
       }
 
       // Si sinTarifa, poner todos los montos en 0
-      const finalChargesOverall = sinTarifa
+      const finalChargesOverall = showPendingQuote
         ? charges.map((ch: any) => ({
             ...ch,
             income: {
@@ -3215,15 +3215,19 @@ function QuoteAPITester({
 
       return {
         date: new Date().toISOString(),
-        validUntil: sinTarifa
-          ? oneWeekFromNowOverall
-          : parseValidUntilToISO(rutaSeleccionada.validUntil),
+        validUntil: isSimulationMode
+          ? getSimulationValidUntilISO()
+          : sinTarifa
+            ? oneWeekFromNowOverall
+            : parseValidUntilToISO(rutaSeleccionada.validUntil),
         transitDays: sinTarifa
           ? null
           : parseTransitDays(rutaSeleccionada.transitTime),
-        customerReference: sinTarifa
-          ? "Portal Created [AIR-OVERALL] - PENDIENTE TARIFA"
-          : "Portal-Created [AIR-OVERALL]",
+        customerReference: isSimulationMode
+          ? "Portal Created [AIR-OVERALL] - SIMULADOR"
+          : sinTarifa
+            ? "Portal Created [AIR-OVERALL] - PENDIENTE TARIFA"
+            : "Portal-Created [AIR-OVERALL]",
         contact: {
           name: effectiveUsername,
         },
