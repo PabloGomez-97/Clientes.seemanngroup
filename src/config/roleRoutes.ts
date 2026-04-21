@@ -34,6 +34,7 @@ export interface RolesConfig {
 export const PRICING_ROUTES: string[] = [
   '/admin/home',
   '/admin/cotizador-administrador',
+  '/admin/simulador-cotizaciones',
   '/admin/pricing',
   '/admin/tarifario-completo',
   '/admin/documentos-proveedores',
@@ -48,6 +49,7 @@ export const PRICING_ROUTES: string[] = [
 export const EJECUTIVO_ROUTES: string[] = [
   '/admin/home',
   '/admin/cotizador-administrador',
+  '/admin/simulador-cotizaciones',
   '/admin/tusclientes',
   '/admin/trackeos',
   '/admin/reporteriaclientes',
@@ -63,6 +65,7 @@ export const EJECUTIVO_ROUTES: string[] = [
 export const OPERACIONES_ROUTES: string[] = [
   '/admin/home',
   '/admin/cotizador-administrador',
+  '/admin/simulador-cotizaciones',
   '/admin/op-reporteriaclientes',
   '/admin/op-trackeos',
   '/admin/settings',

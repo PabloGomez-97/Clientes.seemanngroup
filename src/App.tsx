@@ -23,6 +23,7 @@ import SettingsAdmin from "./components/administrador/Administracion-Cuentas/cli
 import ReporteriaLayout from "./components/administrador/reporteria/ReporteriaLayout";
 import ReportExecutive from "./components/administrador/Facturaciones-Ejecutivos/Reporteriaexecutivo";
 import Cotizadoradministrador from "./components/administrador/Cotizador-administrador";
+import SimuladorCotizaciones from "./components/administrador/SimuladorCotizaciones";
 import Clientesejecutivos from "./components/administrador/Administracion-Cuentas/clientes-ejecutivos";
 import ShipsGoTrackingAdmin from "./components/administrador/Shipsgo/gettrackingshipsgo-admin";
 import ShipsGoTrackingAdminOP from "./components/administrador/Shipsgo/OP-trackeo";
@@ -151,6 +152,10 @@ function App() {
           <Route
             path="cotizador-administrador"
             element={<Cotizadoradministrador />}
+          />
+          <Route
+            path="simulador-cotizaciones"
+            element={<SimuladorCotizaciones />}
           />
           <Route path="tusclientes" element={<Clientesejecutivos />} />
           <Route index element={<Navigate to="/admin/home" replace />} />

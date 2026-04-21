@@ -88,6 +88,11 @@ function SidebarAdmin({
           name: "Cotizador",
           icon: "fa fa-calculator",
         },
+        {
+          path: "/admin/simulador-cotizaciones",
+          name: "Simulador de Cotizaciones",
+          icon: "fa fa-flask",
+        },
       ],
     },
 

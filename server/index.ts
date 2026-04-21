@@ -4536,6 +4536,131 @@ app.post('/api/send-no-rate-quote-email', auth, async (req, res) => {
 });
 
 // ============================================================
+// RUTA: SIMULADOR DE COTIZACIONES
+// ============================================================
+
+// POST /api/send-simulated-quote-email - Enviar notificación de simulación al propio ejecutivo
+app.post('/api/send-simulated-quote-email', auth, async (req, res) => {
+  try {
+    const authUser = (req as any).user;
+    const me = await User.findOne({ email: authUser.sub });
+    if (!me) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const ejDoc = await Ejecutivo.findOne({ email: me.email });
+    const ejecutivoEmail = ejDoc?.email || me.email;
+    const ejecutivoNombre = ejDoc?.nombre || me.nombreuser || me.username;
+
+    const {
+      tipoServicio,
+      clienteUsername,
+      clienteNombre,
+      carrier,
+      currency,
+      total,
+      incoterm,
+      pickupFromAddress,
+      deliveryToAddress,
+      quoteNumber,
+      origen,
+      destino,
+      description,
+      chargeableWeight,
+      containerType,
+      cantidadContenedores,
+    } = req.body as any;
+
+    let subject: string;
+    let htmlContent: string;
+
+    if (tipoServicio === 'Marítimo FCL') {
+      const emailData: FclQuoteEmailData = {
+        ejecutivoNombre,
+        clienteUsername: clienteUsername || me.username,
+        clienteNombre: clienteNombre || undefined,
+        pol: origen || '',
+        pod: destino || '',
+        carrier: carrier || '',
+        containerType: containerType || undefined,
+        cantidadContenedores: cantidadContenedores || undefined,
+        incoterm: incoterm || undefined,
+        pickupFromAddress: incoterm === 'EXW' ? pickupFromAddress : undefined,
+        deliveryToAddress: incoterm === 'EXW' ? deliveryToAddress : undefined,
+        currency: currency || 'USD',
+        total: total || '',
+        tipoAccion: 'cotizacion',
+        quoteNumber: quoteNumber || undefined,
+      };
+      subject = `Se ha simulado una cotización FCL — ${clienteUsername || me.username}`;
+      htmlContent = buildFclQuoteEmailHTML(emailData);
+    } else if (tipoServicio === 'Marítimo LCL') {
+      const emailData: LclQuoteEmailData = {
+        ejecutivoNombre,
+        clienteUsername: clienteUsername || me.username,
+        clienteNombre: clienteNombre || undefined,
+        pol: origen || '',
+        pod: destino || '',
+        operador: carrier || '',
+        incoterm: incoterm || undefined,
+        pickupFromAddress: incoterm === 'EXW' ? pickupFromAddress : undefined,
+        deliveryToAddress: incoterm === 'EXW' ? deliveryToAddress : undefined,
+        currency: currency || 'USD',
+        total: total || '',
+        tipoAccion: 'cotizacion',
+        quoteNumber: quoteNumber || undefined,
+      };
+      subject = `Se ha simulado una cotización LCL — ${clienteUsername || me.username}`;
+      htmlContent = buildLclQuoteEmailHTML(emailData);
+    } else {
+      const emailData: AirQuoteEmailData = {
+        ejecutivoNombre,
+        clienteUsername: clienteUsername || me.username,
+        clienteNombre: clienteNombre || undefined,
+        origen: origen || '',
+        destino: destino || '',
+        carrier: carrier || '',
+        descripcionCarga: description || '',
+        pesoChargeable: chargeableWeight ? String(chargeableWeight) : '',
+        incoterm: incoterm || undefined,
+        pickupFromAddress: incoterm === 'EXW' ? pickupFromAddress : undefined,
+        deliveryToAddress: incoterm === 'EXW' ? deliveryToAddress : undefined,
+        currency: currency || 'USD',
+        total: total || '',
+        tipoAccion: 'cotizacion',
+        quoteNumber: quoteNumber || undefined,
+      };
+      subject = `Se ha simulado una cotización aérea — ${clienteUsername || me.username}`;
+      htmlContent = buildAirQuoteEmailHTML(emailData);
+    }
+
+    const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY!,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+        to: [{ email: ejecutivoEmail }],
+        subject,
+        htmlContent,
+      }),
+    });
+
+    if (!brevoResponse.ok) {
+      const errText = await brevoResponse.text();
+      console.error('[simulated-quote-email] Brevo error:', errText);
+    }
+
+    res.json({ success: true, message: 'Notificación de simulación enviada' });
+  } catch (err) {
+    console.error('[simulated-quote-email] Error:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ============================================================
 // RUTAS DE PDF DE COTIZACIONES
 // ============================================================
 
