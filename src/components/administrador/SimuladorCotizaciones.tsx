@@ -23,8 +23,7 @@ const serviceTypes = [
     desc: "Simula una cotización aérea por piezas o en modo OVERALL, ingresando manualmente la tarifa base.",
     features: [
       "Rutas no recurrentes del cotizador actual",
-      "Ingreso manual de Air Freight con income automático",
-      "Modo OVERALL disponible para peso y volumen total",
+      "Ingreso manual de Air Freight",
       "Seguro, gastos locales y aduana opcionales",
       "Validez máxima de 5 días",
     ],
@@ -37,6 +36,7 @@ const serviceTypes = [
     badge: "FCL",
     desc: "Simula una cotización FCL ingresando manualmente la tarifa del contenedor.",
     features: [
+      "Ingreso manual del valor del contenedor",
       "20GP, 40HQ y 40NOR disponibles",
       "Rutas no recurrentes del cotizador actual",
       "Validez máxima de 5 días",
@@ -50,6 +50,7 @@ const serviceTypes = [
     badge: "LCL",
     desc: "Simula una cotización LCL ingresando manualmente el Ocean Freight.",
     features: [
+      "Ingreso manual de Ocean Freight",
       "Cálculo automático W/M chargeable",
       "Rutas no recurrentes del cotizador actual",
       "Validez máxima de 5 días",
