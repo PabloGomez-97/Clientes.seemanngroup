@@ -17,12 +17,11 @@ import ProveedorLayout from "./layouts/ProveedorLayout";
 import Home from "./components/Sidebar/Home";
 
 // Admin Views
-import DashboardAdmin from "./components/administrador/dashboard-admin";
 import UsersManagement from "./components/administrador/Administracion-Cuentas/users-management";
 import SettingsAdmin from "./components/administrador/Administracion-Cuentas/clientes-ejecutivos";
 import ReporteriaLayout from "./components/administrador/reporteria/ReporteriaLayout";
 import ReportExecutive from "./components/administrador/Facturaciones-Ejecutivos/Reporteriaexecutivo";
-import Cotizadoradministrador from "./components/administrador/Cotizador-administrador";
+import Cotizadoradministrador from "./components/administrador/Cotizador-Administrador/Cotizador-administrador";
 import SimuladorCotizaciones from "./components/administrador/Simulador-Cotizador/SimuladorCotizaciones";
 import Clientesejecutivos from "./components/administrador/Administracion-Cuentas/clientes-ejecutivos";
 import ShipsGoTrackingAdmin from "./components/administrador/Shipsgo/gettrackingshipsgo-admin";
@@ -39,7 +38,7 @@ import Documentacion from "./components/administrador/Documentacion";
 import OPReporteriaClientes from "./components/administrador/OP-reporteriaclientes";
 import Auditoria from "./components/administrador/Auditoria";
 import AgenciaAduanas from "./components/administrador/AgenciaAduanas";
-import ComportamientoDeClientes from "./components/administrador/ComportamientoDeClientes";
+import ComportamientoDeClientes from "./components/administrador/CustomerBehaviorTracking/ComportamientoDeClientes";
 import PricingAlertsPanel from "./components/administrador/PricingAlerts/PricingAlertsPanel";
 
 // Reportería Pages
@@ -168,7 +167,6 @@ function App() {
             path="documentacion/:clientUsername?"
             element={<Documentacion />}
           />
-          <Route path="dashboard" element={<DashboardAdmin />} />
           <Route path="users" element={<UsersManagement />} />
           <Route path="reportexecutive" element={<ReportExecutive />} />
           <Route path="reportoperational" element={<Invoicesxejecutivo />} />

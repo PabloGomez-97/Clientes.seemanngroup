@@ -2,7 +2,7 @@
 // Behavior tracking dashboard – read-only view for ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useOutletContext, useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../../auth/AuthContext";
+import { useAuth } from "../../../auth/AuthContext";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';

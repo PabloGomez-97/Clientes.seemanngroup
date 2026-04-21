@@ -1,5 +1,5 @@
-﻿import QuoteAPITester from "../quotes/QuoteAIR";
-import type { QuoteAIRProps } from "../quotes/Handlers/Air/HandlerQuoteAir";
+﻿import QuoteAPITester from "../../quotes/QuoteAIR";
+import type { QuoteAIRProps } from "../../quotes/Handlers/Air/HandlerQuoteAir";
 
 /**
  * QuoteAIR-ejecutivo.tsx

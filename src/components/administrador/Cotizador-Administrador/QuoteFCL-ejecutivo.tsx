@@ -1,5 +1,5 @@
-﻿import QuoteFCL from "../quotes/QuoteFCL";
-import type { QuoteFCLProps } from "../quotes/Handlers/FCL/HandlerQuoteFCL";
+﻿import QuoteFCL from "../../quotes/QuoteFCL";
+import type { QuoteFCLProps } from "../../quotes/Handlers/FCL/HandlerQuoteFCL";
 
 /**
  * QuoteFCL-ejecutivo.tsx
