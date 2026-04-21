@@ -92,6 +92,11 @@ function SidebarAdmin({
           name: "Simulador de Cotizaciones",
           icon: "fa fa-flask",
         },
+        {
+          path: "/admin/comportamiento-clientes",
+          name: "Comportamiento de Clientes",
+          icon: "fa fa-chart-line",
+        },
       ],
     },
 
@@ -171,10 +176,6 @@ function SidebarAdmin({
               path: "/admin/reportoperational",
               name: "Facturaciones Ejecutivo",
               badge: { text: "CHIEF", type: "admin" as const },
-            },
-            {
-              path: "/admin/comportamiento-clientes",
-              name: "Comportamiento Clientes",
             },
           ],
         },

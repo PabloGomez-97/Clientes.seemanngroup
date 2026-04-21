@@ -19,6 +19,19 @@ import OceanShipmentDetail from "../Sidebar/shipsgo/OceanShipmentDetail";
 import "../Sidebar/styles/Shipsgotracking.css";
 import "./HomeEjecutivo.css";
 
+// ── Behavior-tracking API base (same server as ComportamientoDeClientes) ──
+const BEHAVIOR_API =
+  import.meta.env.MODE === "development"
+    ? "http://localhost:4000"
+    : "https://portalclientes.seemanngroup.com";
+
+// Colors for AIR / FCL / LCL badges (mirrors ComportamientoDeClientes)
+const BEHAVIOR_TYPE_COLORS: Record<string, string> = {
+  AIR: "#3b82f6",
+  FCL: "#8b5cf6",
+  LCL: "#06b6d4",
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════════════════
@@ -106,6 +119,20 @@ interface LinbisQuote {
   totalCharge_IncomeDisplayValue?: string;
   customerReference?: string;
   [key: string]: unknown;
+}
+
+// Behavior tracking — aggregated KPI stats
+interface BehaviorStats {
+  uniqueAccountCount: number;
+  totalStarted: number;
+  totalCompleted: number;
+  totalAbandoned: number;
+  overallRate: number;
+}
+
+// Behavior tracking — analytics (subset we use)
+interface BehaviorAnalytics {
+  abandonmentByType: { quoteType: string; event: string; count: number }[];
 }
 
 // Client + stats with aggregated data
@@ -406,6 +433,14 @@ export default function HomeEjecutivo() {
   const [linbisLoading, setLinbisLoading] = useState(true);
   const [linbisRefreshing, setLinbisRefreshing] = useState(false);
 
+  // Behavior tracking
+  const [behaviorStats, setBehaviorStats] = useState<BehaviorStats | null>(
+    null,
+  );
+  const [behaviorAnalytics, setBehaviorAnalytics] =
+    useState<BehaviorAnalytics | null>(null);
+  const [behaviorLoading, setBehaviorLoading] = useState(true);
+
   // ShipsGo data
   const [trackingAir, setTrackingAir] = useState<AirShipment[]>([]);
   const [trackingOcean, setTrackingOcean] = useState<OceanShipment[]>([]);
@@ -623,6 +658,69 @@ export default function HomeEjecutivo() {
     const id = setInterval(() => fetchCoreData(true), 5 * 60 * 1000);
     return () => clearInterval(id);
   }, [fetchCoreData]);
+
+  // ── fetchBehaviorData: carga datos de Comportamiento de Clientes ──────────
+  const fetchBehaviorData = useCallback(async () => {
+    if (!token) return;
+    setBehaviorLoading(true);
+    try {
+      const [clientsRes, analyticsRes] = await Promise.allSettled([
+        fetch(`${BEHAVIOR_API}/api/behavior-tracking/clients`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then((r) => (r.ok ? r.json() : null)),
+        fetch(`${BEHAVIOR_API}/api/behavior-tracking/analytics`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then((r) => (r.ok ? r.json() : null)),
+      ]);
+
+      if (clientsRes.status === "fulfilled" && clientsRes.value) {
+        const clients: Array<{
+          email: string;
+          stats?: {
+            quotesStarted?: number;
+            quotesCompleted?: number;
+            quotesAbandoned?: number;
+          };
+        }> = clientsRes.value.clients || [];
+        const totalStarted = clients.reduce(
+          (s, c) => s + (c.stats?.quotesStarted || 0),
+          0,
+        );
+        const totalCompleted = clients.reduce(
+          (s, c) => s + (c.stats?.quotesCompleted || 0),
+          0,
+        );
+        const totalAbandoned = clients.reduce(
+          (s, c) => s + (c.stats?.quotesAbandoned || 0),
+          0,
+        );
+        const uniqueAccountCount = new Set(clients.map((c) => c.email)).size;
+        const overallRate =
+          totalStarted > 0
+            ? Math.round((totalCompleted / totalStarted) * 100)
+            : 0;
+        setBehaviorStats({
+          uniqueAccountCount,
+          totalStarted,
+          totalCompleted,
+          totalAbandoned,
+          overallRate,
+        });
+      }
+
+      if (analyticsRes.status === "fulfilled" && analyticsRes.value) {
+        setBehaviorAnalytics(analyticsRes.value);
+      }
+    } catch {
+      /* silent */
+    } finally {
+      setBehaviorLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchBehaviorData();
+  }, [fetchBehaviorData]);
 
   // ═══════════════════════════════════════════════════════════════════════
   // Computed values
@@ -852,6 +950,27 @@ export default function HomeEjecutivo() {
     [oceanInTransit, oceanCompleted, oceanDelayed],
   );
 
+  // Abandonment by type — derived from behaviorAnalytics
+  const behaviorByType = useMemo(() => {
+    if (!behaviorAnalytics?.abandonmentByType) return [];
+    return (["AIR", "FCL", "LCL"] as const)
+      .map((type) => {
+        const events = behaviorAnalytics.abandonmentByType.filter(
+          (e) => e.quoteType === type,
+        );
+        const started =
+          events.find((e) => e.event === "QUOTE_STARTED")?.count || 0;
+        const completed =
+          events.find((e) => e.event === "QUOTE_COMPLETED")?.count || 0;
+        const abandoned =
+          events.find((e) => e.event === "QUOTE_ABANDONED")?.count || 0;
+        const abandonRate =
+          started > 0 ? Math.round((abandoned / started) * 100) : 0;
+        return { type, started, completed, abandoned, abandonRate };
+      })
+      .filter((t) => t.started > 0);
+  }, [behaviorAnalytics]);
+
   // Greeting
   const greeting = (() => {
     const hour = new Date().getHours();
@@ -971,7 +1090,365 @@ export default function HomeEjecutivo() {
         </div>
       </div>
 
+      {/* ── Comportamiento de Clientes ────────────────────────────────── */}
+      <div style={{ marginBottom: 24 }}>
+        {/* Section header */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 14,
+          }}
+        >
+          <h3 className="ej-section-title">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--primary-color)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <polyline points="23 21 23 15 20 12 17 15 17 21" />
+              <line x1="20" y1="12" x2="20" y2="9" />
+            </svg>
+            Comportamiento de Clientes
+          </h3>
+          <button
+            className="ej-view-all"
+            onClick={() => navigate("/admin/comportamiento-clientes")}
+          >
+            Ver análisis completo →
+          </button>
+        </div>
+
+        {/* KPI Cards */}
+        {behaviorLoading ? (
+          <div className="ej-kpi-grid">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        ) : behaviorStats ? (
+          <>
+            <div className="ej-kpi-grid">
+              {/* Cuentas activas */}
+              <div
+                className="ej-kpi ej-kpi--white ej-kpi--clickable"
+                onClick={() => navigate("/admin/comportamiento-clientes")}
+              >
+                <div className="ej-kpi__header">
+                  <span className="ej-kpi__label">Cuentas Activas</span>
+                  <div
+                    className="ej-kpi__icon"
+                    style={{ background: "var(--ej-purple-bg)" }}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="var(--primary-light)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                    </svg>
+                  </div>
+                </div>
+                <div
+                  className="ej-kpi__value"
+                  style={{ color: "var(--primary-light)" }}
+                >
+                  {behaviorStats.uniqueAccountCount}
+                </div>
+                <div className="ej-kpi__sub">con actividad registrada</div>
+              </div>
+
+              {/* Cotizaciones iniciadas */}
+              <div className="ej-kpi ej-kpi--white">
+                <div className="ej-kpi__header">
+                  <span className="ej-kpi__label">Cot. Iniciadas</span>
+                  <div
+                    className="ej-kpi__icon"
+                    style={{ background: "var(--ej-purple-bg)" }}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="var(--primary-light)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="12" y1="18" x2="12" y2="12" />
+                      <line x1="9" y1="15" x2="15" y2="15" />
+                    </svg>
+                  </div>
+                </div>
+                <div
+                  className="ej-kpi__value"
+                  style={{ color: "var(--primary-light)" }}
+                >
+                  {behaviorStats.totalStarted}
+                </div>
+                <div className="ej-kpi__sub">procesos iniciados</div>
+              </div>
+
+              {/* Completadas */}
+              <div className="ej-kpi ej-kpi--white">
+                <div className="ej-kpi__header">
+                  <span className="ej-kpi__label">Completadas</span>
+                  <div
+                    className="ej-kpi__icon"
+                    style={{ background: "var(--ej-purple-bg)" }}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="var(--primary-light)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                </div>
+                <div
+                  className="ej-kpi__value"
+                  style={{ color: "var(--primary-light)" }}
+                >
+                  {behaviorStats.totalCompleted}
+                </div>
+                <div className="ej-kpi__sub">cotizaciones finalizadas</div>
+              </div>
+
+              {/* Abandonadas */}
+              <div className="ej-kpi ej-kpi--white">
+                <div className="ej-kpi__header">
+                  <span className="ej-kpi__label">Abandonadas</span>
+                  <div
+                    className="ej-kpi__icon"
+                    style={{ background: "var(--ej-purple-bg)" }}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="var(--primary-light)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="15" y1="9" x2="9" y2="15" />
+                      <line x1="9" y1="9" x2="15" y2="15" />
+                    </svg>
+                  </div>
+                </div>
+                <div
+                  className="ej-kpi__value"
+                  style={{ color: "var(--primary-light)" }}
+                >
+                  {behaviorStats.totalAbandoned}
+                </div>
+                <div className="ej-kpi__sub">sin completar</div>
+              </div>
+
+              {/* Tasa global */}
+              <div className="ej-kpi ej-kpi--white">
+                <div className="ej-kpi__header">
+                  <span className="ej-kpi__label">Tasa Completación</span>
+                  <div
+                    className="ej-kpi__icon"
+                    style={{ background: "var(--ej-purple-bg)" }}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="var(--primary-light)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="18" y1="20" x2="18" y2="10" />
+                      <line x1="12" y1="20" x2="12" y2="4" />
+                      <line x1="6" y1="20" x2="6" y2="14" />
+                    </svg>
+                  </div>
+                </div>
+                <div
+                  className="ej-kpi__value"
+                  style={{ color: "var(--primary-light)" }}
+                >
+                  {behaviorStats.overallRate}%
+                </div>
+                <div className="ej-kpi__sub">promedio global</div>
+              </div>
+            </div>
+
+            {/* Abandono por tipo de cotización */}
+            {behaviorByType.length > 0 && (
+              <div className="ej-panel" style={{ marginTop: 12 }}>
+                <h4
+                  className="ej-section-title"
+                  style={{ marginBottom: 14, fontSize: 13 }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="var(--ej-text-muted)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
+                  Abandono por tipo de cotización
+                </h4>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: 12,
+                  }}
+                >
+                  {behaviorByType.map(
+                    ({ type, started, completed, abandoned }) => (
+                      <div
+                        key={type}
+                        style={{
+                          background: "var(--ej-bg)",
+                          borderRadius: 10,
+                          padding: "14px 16px",
+                          border: "1px solid var(--ej-border)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            marginBottom: 10,
+                          }}
+                        >
+                          <span
+                            style={{
+                              padding: "2px 8px",
+                              borderRadius: 4,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: "#fff",
+                              background:
+                                BEHAVIOR_TYPE_COLORS[type] || "#6b7280",
+                            }}
+                          >
+                            {type}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "var(--ej-text-muted)",
+                            marginBottom: 6,
+                          }}
+                        >
+                          Tasa de abandono
+                        </div>
+                        {/* Counts */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: 11,
+                            color: "var(--ej-text-muted)",
+                          }}
+                        >
+                          <span>
+                            Iniciadas:{" "}
+                            <strong style={{ color: "var(--ej-text)" }}>
+                              {started}
+                            </strong>
+                          </span>
+                          <span>
+                            Completas:{" "}
+                            <strong style={{ color: "var(--ej-green)" }}>
+                              {completed}
+                            </strong>
+                          </span>
+                          <span>
+                            Abandonadas:{" "}
+                            <strong style={{ color: "var(--ej-red)" }}>
+                              {abandoned}
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        ) : null}
+      </div>
+
       {/* ── KPI Cards ────────────────────────────────────────────────── */}
+      {/* Section header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 14,
+        }}
+      >
+        <h3 className="ej-section-title">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--ej-purple)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <polyline points="23 21 23 15 20 12 17 15 17 21" />
+            <line x1="20" y1="12" x2="20" y2="9" />
+          </svg>
+          Operaciones de Clientes
+        </h3>
+        <button
+          className="ej-view-all"
+          onClick={() => navigate("/admin/reporteriaclientes")}
+        >
+          Ver análisis completo →
+        </button>
+      </div>
       <div className="ej-kpi-grid">
         {/* Clients */}
         <div
