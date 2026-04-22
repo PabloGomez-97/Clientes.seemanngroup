@@ -27,7 +27,7 @@ const serviceTypes = [
       "Seguro, gastos locales y aduana opcionales",
       "Validez máxima de 5 días",
     ],
-    btn: "Simular Flete Aéreo",
+    btn: "Cotizar Aéreo",
   },
   {
     key: "FCL" as const,
@@ -41,7 +41,7 @@ const serviceTypes = [
       "Rutas no recurrentes del cotizador actual",
       "Validez máxima de 5 días",
     ],
-    btn: "Simular FCL",
+    btn: "Cotizar FCL",
   },
   {
     key: "LCL" as const,
@@ -55,7 +55,7 @@ const serviceTypes = [
       "Rutas no recurrentes del cotizador actual",
       "Validez máxima de 5 días",
     ],
-    btn: "Simular LCL",
+    btn: "Cotizar LCL",
   },
 ];
 
@@ -131,6 +131,16 @@ const SimuladorCotizaciones: React.FC = () => {
                 </div>
               ),
             )}
+          </div>
+          <div className="cotizador-header">
+            <p>
+              El simulador es una herramienta especificamente para poder hacer
+              un estimativo del valor de una cotización. Se le solicitará al
+              ejecutivo ingresar manualmente la tarifa base (Air Freight, valor
+              del contenedor o Ocean Freight) y el sistema calculará los cargos
+              adicionales (seguro, gastos locales, aduana, W/M chargeable, etc.)
+              para generar una cotización completa. Su validez es de 5 días.
+            </p>
           </div>
         </div>
       </div>

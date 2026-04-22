@@ -106,7 +106,8 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.8125rem;
-  white-space: nowrap;
+  /* Allow text to wrap instead of forcing horizontal scroll */
+  white-space: normal;
 }
 
 /* Header */
@@ -122,6 +123,7 @@
   border-bottom: 2px solid #e5e7eb;
   background: #fafafa;
   user-select: none;
+  white-space: nowrap;
 }
 .osv-th--center {
   text-align: center;

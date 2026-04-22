@@ -135,17 +135,29 @@
   border-radius: 4px;
   background: #fff;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Keep the table + footer inside the viewport so opening accordions
+     doesn't create a vertical page scrollbar. Adjust the offset if
+     your banner/header is larger/smaller. */
+  max-height: calc(100vh - 260px);
+  min-height: 0;
 }
 
 .qv-table-scroll {
   overflow-x: auto;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0; /* important for flex children to allow proper scrolling */
+  -webkit-overflow-scrolling: touch;
 }
 
 .qv-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.8125rem;
-  white-space: nowrap;
+  /* Allow text to wrap instead of forcing horizontal scroll */
+  white-space: normal;
 }
 
 /* Header */
@@ -161,6 +173,10 @@
   border-bottom: 2px solid #e5e7eb;
   background: #fafafa;
   user-select: none;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  white-space: nowrap;
 }
 
 .qv-th--center {
@@ -252,6 +268,9 @@
 .qv-accordion-content {
   padding: 20px 24px 24px;
   animation: qv-slideDown 0.2s ease-out;
+  /* prevent accordion expansion from increasing page height; let it scroll inside table */
+  max-height: calc(100vh - 340px);
+  overflow-y: auto;
 }
 
 @keyframes qv-slideDown {
