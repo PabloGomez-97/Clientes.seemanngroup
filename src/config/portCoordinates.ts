@@ -538,6 +538,7 @@ export const portCoordinates: Record<string, PortCoords> = {
   inchon: { lat: 37.4588, lng: 126.6022, name: "Port of Incheon", unlocode: "KRINC" },
   indianapolis: { lat: 39.7355, lng: -86.1688, name: "Indianapolis (Inland Port)", unlocode: "USIND" },
   indore: { lat: 22.7566, lng: 75.8711, name: "ICD Indore", unlocode: "INIDR" },
+  iquique: { lat: -20.2305, lng: -70.1358, name: "Port of Iquique", unlocode: "CLIQQ" },
   iskenderun: { lat: 36.5911, lng: 36.1822, name: "Port of Iskenderun", unlocode: "TRISK" },
   itajai: { lat: -26.9066, lng: -48.6522, name: "Porto de Itajaí", unlocode: "BRITJ" },
   izmir: { lat: 38.4388, lng: 27.1522, name: "Port of Izmir", unlocode: "TRIZM" },

@@ -21,6 +21,7 @@ import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import { imgUrl } from "../../config/images";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL } from "../../config/portCoordinates";
+import "flag-icons/css/flag-icons.min.css";
 import {
   type PieceData,
   type OutletContext,
@@ -2647,6 +2648,7 @@ function QuoteLCL({
                           options={opcionesPOL}
                           placeholder={t("Quotelcl.selectpuerto")}
                           isClearable
+                          menuPlacement="top"
                           styles={{
                             control: (base) => ({
                               ...base,
@@ -2672,6 +2674,7 @@ function QuoteLCL({
                               : t("Quotelcl.primeropol")
                           }
                           isClearable
+                          menuPlacement="top"
                           isDisabled={!polSeleccionado}
                           styles={{
                             control: (base) => ({
@@ -2859,6 +2862,7 @@ function QuoteLCL({
                           options={opcionesPOL_NR}
                           placeholder={t("Quotelcl.selectpuerto")}
                           isClearable
+                          menuPlacement="top"
                           styles={{
                             control: (base) => ({
                               ...base,
@@ -2884,6 +2888,7 @@ function QuoteLCL({
                               : t("Quotelcl.primeropol")
                           }
                           isClearable
+                          menuPlacement="top"
                           isDisabled={!polNR}
                           styles={{
                             control: (base) => ({
@@ -2907,6 +2912,8 @@ function QuoteLCL({
         {openSection !== 1 &&
           rutaSeleccionada &&
           (() => {
+            const polPort = getPortByPOL(rutaSeleccionada.polNormalized);
+            const podPort = getPortByPOL(rutaSeleccionada.podNormalized);
             const polCode = (
               rutaSeleccionada.polNormalized ||
               rutaSeleccionada.pol ||
@@ -2921,6 +2928,12 @@ function QuoteLCL({
             )
               .toUpperCase()
               .substring(0, 5);
+            const polCountryCode = polPort?.unlocode
+              ?.substring(0, 2)
+              .toLowerCase();
+            const podCountryCode = podPort?.unlocode
+              ?.substring(0, 2)
+              .toLowerCase();
             const polLabel =
               polSeleccionado?.label || polNR?.label || rutaSeleccionada.pol;
             const podLabel =
@@ -2928,18 +2941,52 @@ function QuoteLCL({
             return (
               <div className="qa-route-summary">
                 <div className="qa-route-summary-cards">
-                  <div className="qa-route-summary-card">
-                    <small>Origen</small>
-                    <div className="qa-route-summary-iata">{polCode}</div>
-                    <div className="qa-route-summary-city">{polLabel}</div>
+                  <div
+                    className="qa-route-summary-card"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <small>Origen</small>
+                      <div className="qa-route-summary-iata">{polCode}</div>
+                      <div className="qa-route-summary-city">{polLabel}</div>
+                    </div>
+                    {polCountryCode && (
+                      <span
+                        className={`fi fi-${polCountryCode}`}
+                        style={{ fontSize: "2.2em", flexShrink: 0 }}
+                      />
+                    )}
                   </div>
                   <div className="qa-route-summary-arrow">
                     <i className="bi bi-arrow-right"></i>
                   </div>
-                  <div className="qa-route-summary-card">
-                    <small>Destino</small>
-                    <div className="qa-route-summary-iata">{podCode}</div>
-                    <div className="qa-route-summary-city">{podLabel}</div>
+                  <div
+                    className="qa-route-summary-card"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <small>Destino</small>
+                      <div className="qa-route-summary-iata">{podCode}</div>
+                      <div className="qa-route-summary-city">{podLabel}</div>
+                    </div>
+                    {podCountryCode && (
+                      <span
+                        className={`fi fi-${podCountryCode}`}
+                        style={{ fontSize: "2.2em", flexShrink: 0 }}
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="qa-route-summary-meta">

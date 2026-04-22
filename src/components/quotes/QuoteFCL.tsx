@@ -38,6 +38,7 @@ import {
   type ClienteAsignado,
 } from "./Handlers/FCL/HandlerQuoteFCL";
 import "./QuoteFCL.css";
+import "flag-icons/css/flag-icons.min.css";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   fetchExpandedRoutes,
@@ -2398,6 +2399,7 @@ function QuoteFCL({
                           options={opcionesPOL}
                           placeholder="Selecciona puerto de origen..."
                           isClearable
+                          menuPlacement="top"
                           styles={{
                             control: (base) => ({
                               ...base,
@@ -2432,6 +2434,7 @@ function QuoteFCL({
                           }
                           isClearable
                           isDisabled={!polSeleccionado}
+                          menuPlacement="top"
                           styles={{
                             control: (base) => ({
                               ...base,
@@ -2794,6 +2797,7 @@ function QuoteFCL({
                           options={opcionesPOL_NR}
                           placeholder="Selecciona puerto de origen..."
                           isClearable
+                          menuPlacement="top"
                           styles={{
                             control: (base) => ({
                               ...base,
@@ -2827,6 +2831,7 @@ function QuoteFCL({
                               : "Selecciona origen primero"
                           }
                           isClearable
+                          menuPlacement="top"
                           isDisabled={!polNR}
                           styles={{
                             control: (base) => ({
@@ -2862,6 +2867,8 @@ function QuoteFCL({
           containerSeleccionado &&
           rutaSeleccionada &&
           (() => {
+            const originPort = getPortByPOL(rutaSeleccionada.polNormalized);
+            const destPort = getPortByPOL(rutaSeleccionada.podNormalized);
             const originCode = (
               (rutaSeleccionada.polNormalized || rutaSeleccionada.pol) + ""
             )
@@ -2874,26 +2881,66 @@ function QuoteFCL({
               .toString()
               .slice(0, 3)
               .toUpperCase();
+            const originCountryCode = originPort?.unlocode
+              ?.substring(0, 2)
+              .toLowerCase();
+            const destCountryCode = destPort?.unlocode
+              ?.substring(0, 2)
+              .toLowerCase();
             const originLabel = rutaSeleccionada.pol;
             const destLabel = rutaSeleccionada.pod;
 
             return (
               <div className="qa-route-summary">
                 <div className="qa-route-summary-cards">
-                  <div className="qa-route-summary-card">
-                    <small>Origen</small>
-                    <div className="qa-route-summary-iata">{originCode}</div>
-                    <div className="qa-route-summary-city">{originLabel}</div>
+                  <div
+                    className="qa-route-summary-card"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <small>Origen</small>
+                      <div className="qa-route-summary-iata">{originCode}</div>
+                      <div className="qa-route-summary-city">{originLabel}</div>
+                    </div>
+                    {originCountryCode && (
+                      <span
+                        className={`fi fi-${originCountryCode}`}
+                        style={{ fontSize: "2.2em", flexShrink: 0 }}
+                      />
+                    )}
                   </div>
 
                   <div className="qa-route-summary-arrow">
                     <i className="bi bi-arrow-right"></i>
                   </div>
 
-                  <div className="qa-route-summary-card">
-                    <small>Destino</small>
-                    <div className="qa-route-summary-iata">{destCode}</div>
-                    <div className="qa-route-summary-city">{destLabel}</div>
+                  <div
+                    className="qa-route-summary-card"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <small>Destino</small>
+                      <div className="qa-route-summary-iata">{destCode}</div>
+                      <div className="qa-route-summary-city">{destLabel}</div>
+                    </div>
+                    {destCountryCode && (
+                      <span
+                        className={`fi fi-${destCountryCode}`}
+                        style={{ fontSize: "2.2em", flexShrink: 0 }}
+                      />
+                    )}
                   </div>
                 </div>
 

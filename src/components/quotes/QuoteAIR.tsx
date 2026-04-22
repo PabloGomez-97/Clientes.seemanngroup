@@ -51,6 +51,7 @@ import {
   type ExpandedRoutesAirData,
 } from "./Handlers/Air/ExpandedRoutesAir";
 import "./QuoteAIR.css";
+import "flag-icons/css/flag-icons.min.css";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getAirportByOrigin } from "../../config/airportCoordinates";
@@ -3583,15 +3584,22 @@ function QuoteAPITester({
         {openSection !== 1 &&
           rutaSeleccionada &&
           (() => {
+            const originAirport = getAirportByOrigin(
+              rutaSeleccionada.originNormalized,
+            );
+            const destAirport = getAirportByOrigin(
+              rutaSeleccionada.destinationNormalized,
+            );
             const originCode =
-              getAirportByOrigin(rutaSeleccionada.originNormalized)?.iata ||
+              originAirport?.iata ||
               rutaSeleccionada.originNormalized.toUpperCase().substring(0, 3);
             const destCode =
-              getAirportByOrigin(rutaSeleccionada.destinationNormalized)
-                ?.iata ||
+              destAirport?.iata ||
               rutaSeleccionada.destinationNormalized
                 .toUpperCase()
                 .substring(0, 3);
+            const originCountryCode = originAirport?.countryCode?.toLowerCase();
+            const destCountryCode = destAirport?.countryCode?.toLowerCase();
             const originLabel =
               originSeleccionado?.label ||
               originNR?.label ||
@@ -3603,18 +3611,52 @@ function QuoteAPITester({
             return (
               <div className="qa-route-summary">
                 <div className="qa-route-summary-cards">
-                  <div className="qa-route-summary-card">
-                    <small>Origen</small>
-                    <div className="qa-route-summary-iata">{originCode}</div>
-                    <div className="qa-route-summary-city">{originLabel}</div>
+                  <div
+                    className="qa-route-summary-card"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <small>Origen</small>
+                      <div className="qa-route-summary-iata">{originCode}</div>
+                      <div className="qa-route-summary-city">{originLabel}</div>
+                    </div>
+                    {originCountryCode && (
+                      <span
+                        className={`fi fi-${originCountryCode}`}
+                        style={{ fontSize: "2.2em", flexShrink: 0 }}
+                      />
+                    )}
                   </div>
                   <div className="qa-route-summary-arrow">
                     <i className="bi bi-arrow-right"></i>
                   </div>
-                  <div className="qa-route-summary-card">
-                    <small>Destino</small>
-                    <div className="qa-route-summary-iata">{destCode}</div>
-                    <div className="qa-route-summary-city">{destLabel}</div>
+                  <div
+                    className="qa-route-summary-card"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <small>Destino</small>
+                      <div className="qa-route-summary-iata">{destCode}</div>
+                      <div className="qa-route-summary-city">{destLabel}</div>
+                    </div>
+                    {destCountryCode && (
+                      <span
+                        className={`fi fi-${destCountryCode}`}
+                        style={{ fontSize: "2.2em", flexShrink: 0 }}
+                      />
+                    )}
                   </div>
                 </div>
                 <div className="qa-route-summary-meta">
@@ -3850,6 +3892,7 @@ function QuoteAPITester({
                           placeholder={t("QuoteAIR.seleccionaorigen")}
                           isClearable
                           classNamePrefix="qa-react-select"
+                          menuPlacement="top"
                           styles={{
                             control: (base) => ({
                               ...base,
@@ -3875,6 +3918,7 @@ function QuoteAPITester({
                           }
                           isClearable
                           isDisabled={!originSeleccionado}
+                          menuPlacement="top"
                           styles={{
                             control: (base) => ({
                               ...base,
@@ -4093,6 +4137,7 @@ function QuoteAPITester({
                           placeholder={t("QuoteAIR.seleccionaorigen")}
                           isClearable
                           classNamePrefix="qa-react-select"
+                          menuPlacement="top"
                           styles={{
                             control: (base) => ({
                               ...base,
@@ -4118,6 +4163,7 @@ function QuoteAPITester({
                           }
                           isClearable
                           isDisabled={!originNR}
+                          menuPlacement="top"
                           styles={{
                             control: (base) => ({
                               ...base,

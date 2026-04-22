@@ -795,6 +795,13 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     iata: "PEK",
     countryCode: "CN"
   },
+  beijing: {
+    lat: 40.0754,
+    lng: 116.5925,
+    name: "Beijing Capital International Airport",
+    iata: "BEI",
+    countryCode: "CN"
+  },
   perth: {
     lat: -31.9338,
     lng: 115.9688,
