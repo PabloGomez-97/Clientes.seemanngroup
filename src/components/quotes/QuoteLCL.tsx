@@ -3104,10 +3104,10 @@ function QuoteLCL({
                           placeholder="Ingrese dirección de recogida"
                           rows={2}
                           destinationCoords={
-                            polSeleccionado
+                            (polSeleccionado ?? polNR)
                               ? (() => {
                                   const port = getPortByPOL(
-                                    polSeleccionado.value,
+                                    (polSeleccionado ?? polNR)!.value,
                                   );
                                   if (!port) return null;
                                   return {

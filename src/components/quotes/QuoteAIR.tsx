@@ -4347,10 +4347,10 @@ function QuoteAPITester({
                       placeholder="Ingrese dirección de recogida"
                       rows={2}
                       destinationCoords={
-                        originSeleccionado
+                        (originSeleccionado ?? originNR)
                           ? (() => {
                               const ap = getAirportByOrigin(
-                                originSeleccionado.value,
+                                (originSeleccionado ?? originNR)!.value,
                               );
                               if (!ap) return null;
                               return {
