@@ -4664,56 +4664,86 @@ function QuoteAPITester({
               )}
 
               {overallDimsAndWeight && (
-                <div className="qa-grid-2 mt-3 p-3 bg-light rounded border">
-                  <div>
-                    <label className="qa-label">
-                      <i className="bi bi-box-seam me-1"></i>
-                      {t("QuoteAIR.pesototal")}
-                    </label>
-                    <input
-                      type="number"
-                      className={`qa-input ${weightError ? "is-invalid" : ""}`}
-                      value={manualWeight}
-                      onChange={(e) => {
-                        const newManualWeight = Number(e.target.value);
-                        setManualWeight(newManualWeight);
-                        if (newManualWeight > 2000) {
-                          setWeightError(
-                            "El peso total no puede exceder 2000 kg",
-                          );
-                        } else {
-                          setWeightError(null);
-                        }
-                      }}
-                      min="0"
-                      step="0.01"
-                    />
-                    <small className="text-muted d-block mt-1">
-                      {t("QuoteAIR.descripcionpeso")}
-                    </small>
-                    {weightError && (
-                      <div className="text-danger small mt-1">
-                        {weightError}
-                      </div>
-                    )}
-                  </div>
+                <div className="col-12">
+                  <div className="qa-grid-2 mt-3 p-3 bg-light rounded border">
+                    <div>
+                      <label className="qa-label">
+                        <i className="bi bi-box-seam me-1"></i>
+                        {t("QuoteAIR.pesototal")}
+                      </label>
+                      <input
+                        type="number"
+                        className={`qa-input ${weightError ? "is-invalid" : ""}`}
+                        value={manualWeight}
+                        onChange={(e) => {
+                          const newManualWeight = Number(e.target.value);
+                          setManualWeight(newManualWeight);
+                          if (newManualWeight > 2000) {
+                            setWeightError(
+                              "El peso total no puede exceder 2000 kg",
+                            );
+                          } else {
+                            setWeightError(null);
+                          }
+                        }}
+                        min="0"
+                        step="0.01"
+                      />
+                      <small className="text-muted d-block mt-1">
+                        {t("QuoteAIR.descripcionpeso")}
+                      </small>
+                      {weightError && (
+                        <div className="text-danger small mt-1">
+                          {weightError}
+                        </div>
+                      )}
+                    </div>
 
-                  <div>
-                    <label className="qa-label">
-                      <i className="bi bi-rulers me-1"></i>
-                      {t("QuoteAIR.volumentotal")}
-                    </label>
-                    <input
-                      type="number"
-                      className="qa-input"
-                      value={manualVolume}
-                      onChange={(e) => setManualVolume(Number(e.target.value))}
-                      min="0"
-                      step="0.0001"
-                    />
-                    <small className="text-muted d-block mt-1">
-                      {t("QuoteAIR.descripcionvolumen")}
-                    </small>
+                    <div>
+                      <label className="qa-label">
+                        <i className="bi bi-rulers me-1"></i>
+                        {t("QuoteAIR.volumentotal")}
+                      </label>
+                      <input
+                        type="number"
+                        className="qa-input"
+                        value={manualVolume}
+                        onChange={(e) =>
+                          setManualVolume(Number(e.target.value))
+                        }
+                        min="0"
+                        step="0.0001"
+                      />
+                      <small className="text-muted d-block mt-1">
+                        {t("QuoteAIR.descripcionvolumen")}
+                      </small>
+                    </div>
+                  </div>
+                  <div className="qa-route-summary">
+                    <div className="qa-totals-bar">
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {manualVolume.toFixed(3)} m³
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Volumen total
+                        </span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {manualWeight.toFixed(2)} kg
+                        </span>
+                        <span className="qa-totals-bar-label">Peso total</span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {pesoChargeable.toFixed(2)} kg
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Peso chargeable
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
