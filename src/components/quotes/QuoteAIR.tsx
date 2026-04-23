@@ -3481,21 +3481,27 @@ function QuoteAPITester({
         salesRep: {
           name: salesRepName,
         },
-        commodities: [
-          {
-            commodityType: "Standard",
-            packageType: {
-              id: selectedPackageType,
-            },
-            pieces: overallPiecesCount,
-            description: description,
-            overallDimsAndWeight: true,
-            totalWeightValue: manualWeight,
-            totalWeightUOM: "kg",
-            totalVolumeValue: manualVolume,
-            totalVolumeUOM: "m3",
+        commodities: overallPiecesData.map((piece) => ({
+          commodityType: "Standard",
+          packageType: {
+            id: selectedPackageType,
           },
-        ],
+          pieces: 1,
+          description: description,
+          overallDimsAndWeight: true,
+          weightPerUnitValue: piece.weight,
+          weightPerUnitUOM: "kg",
+          totalWeightValue: piece.weight,
+          totalWeightUOM: "kg",
+          volumeValue: piece.volume,
+          volumeUOM: "m3",
+          totalVolumeValue: piece.volume,
+          totalVolumeUOM: "m3",
+          volumeWeightValue: piece.volumeWeight,
+          volumeWeightUOM: "kg",
+          totalVolumeWeightValue: piece.volumeWeight,
+          totalVolumeWeightUOM: "kg",
+        })),
         charges: finalChargesOverall,
       };
     }

@@ -2520,21 +2520,23 @@ function QuoteLCL({
         name: salesRepName,
       },
       commodities: overallDimsAndWeight
-        ? [
-            {
-              commodityType: "Standard",
-              packageType: {
-                id: selectedPackageType,
-              },
-              pieces: overallPiecesCount,
-              description: description,
-              overallDimsAndWeight: true,
-              totalWeightValue: manualWeight,
-              totalWeightUOM: "kg",
-              totalVolumeValue: manualVolume,
-              totalVolumeUOM: "m3",
+        ? overallPiecesData.map((piece) => ({
+            commodityType: "Standard",
+            packageType: {
+              id: selectedPackageType,
             },
-          ]
+            pieces: 1,
+            description: description,
+            overallDimsAndWeight: true,
+            weightPerUnitValue: piece.weight,
+            weightPerUnitUOM: "kg",
+            totalWeightValue: piece.weight,
+            totalWeightUOM: "kg",
+            volumeValue: piece.volume,
+            volumeUOM: "m3",
+            totalVolumeValue: piece.volume,
+            totalVolumeUOM: "m3",
+          }))
         : piecesData.map((piece) => ({
             commodityType: "Standard",
             packageType: {
