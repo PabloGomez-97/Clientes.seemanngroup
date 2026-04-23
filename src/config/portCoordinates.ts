@@ -657,6 +657,7 @@ export const portCoordinates: Record<string, PortCoords> = {
   salzburg: { lat: 47.8122, lng: 13.0166, name: "Salzburg (Inland Port)", unlocode: "ATSZG" },
   san_antonio: { lat: -33.5866, lng: -71.6144, name: "Puerto de San Antonio (Chile)", unlocode: "CLSAI" },
   san_francisco: { lat: 37.7511, lng: -122.3822, name: "Port of San Francisco", unlocode: "USSFO" },
+  san_vicente: { lat: -33.0382, lng: -71.6262, name: "Port of San Vicente", unlocode: "CLVAP" },
   sanshan: { lat: 23.0122, lng: 113.2544, name: "Sanshan Port", unlocode: "CNSAN" },
   sanshui: { lat: 23.1666, lng: 112.8722, name: "Sanshui Port", unlocode: "CNSNI" },
   santo_domingo: { lat: 18.4711, lng: -69.8822, name: "Puerto de Santo Domingo", unlocode: "DOSDQ" },

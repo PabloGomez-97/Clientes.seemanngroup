@@ -27,6 +27,7 @@ interface PDFTemplateFCLProps {
   currency: string;
   carrier?: string;
   transitTime?: string;
+  freeTime?: string;
   remarks?: string;
   validUntil?: string;
   isPendingQuote?: boolean;
@@ -61,6 +62,7 @@ export const PDFTemplateFCL: React.FC<PDFTemplateFCLProps> = ({
   currency,
   carrier,
   transitTime,
+  freeTime,
   remarks,
   validUntil,
   isPendingQuote = false,
@@ -282,6 +284,17 @@ export const PDFTemplateFCL: React.FC<PDFTemplateFCLProps> = ({
             <div style={val}>
               {transitTime === "-" ? transitTime : `${transitTime} days`}
             </div>
+          </div>
+        )}
+        {freeTime && (
+          <div
+            style={{
+              borderLeft: `1px solid ${C.line}`,
+              paddingLeft: "12px",
+            }}
+          >
+            <div style={label}>Free Time</div>
+            <div style={val}>{freeTime}</div>
           </div>
         )}
       </div>

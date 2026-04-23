@@ -19,6 +19,7 @@ export interface RutaFCL {
   carrier: string;
   carrierNormalized: string;
   tt: string | null;
+  freeTime: string | null;
   remarks: string;
   company: string;
   companyNormalized: string;
@@ -208,6 +209,7 @@ export const parseFCL = (data: any[]): RutaFCL[] => {
     const carrier = row[6];
     const tt = row[7];
     const remarks = row[8];
+    const freeTime = row[9];
     const company = row[10];
     const currency = row[11];
     const validUntil = row[12];
@@ -238,6 +240,7 @@ export const parseFCL = (data: any[]): RutaFCL[] => {
           carrier: carrier ? carrier.toString().trim() : "N/A",
           carrierNormalized: normalize(carrier),
           tt: tt ? tt.toString().trim() : null,
+          freeTime: freeTime ? freeTime.toString().trim() : null,
           remarks: remarks ? remarks.toString().trim() : "",
           company: company ? company.toString().trim() : "",
           companyNormalized: normalize(company),

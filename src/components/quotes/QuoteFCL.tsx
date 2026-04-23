@@ -581,6 +581,7 @@ function QuoteFCL({
       carrier: "",
       carrierNormalized: "",
       tt: null,
+      freeTime: null,
       remarks: "",
       company: "",
       companyNormalized: "",
@@ -642,6 +643,7 @@ function QuoteFCL({
         carrier: "",
         carrierNormalized: "",
         tt: null,
+        freeTime: null,
         remarks: "",
         company: "",
         companyNormalized: "",
@@ -1512,6 +1514,13 @@ function QuoteFCL({
               sinTarifa
                 ? routeInfoPlaceholder
                 : (rutaSeleccionada?.tt ?? undefined)
+            }
+            freeTime={
+              sinTarifa
+                ? routeInfoPlaceholder
+                : rutaSeleccionada?.freeTime
+                  ? `${rutaSeleccionada.freeTime} Días`
+                  : undefined
             }
             remarks={showPendingQuote ? "" : rutaSeleccionada.remarks}
             validUntil={
@@ -2504,22 +2513,6 @@ function QuoteFCL({
                                         : "none",
                                   }}
                                 >
-                                  {/* Badge de "Mejor Opción" (solo en modo ejecutivo) */}
-                                  {isEjecutivoMode && index === 0 && (
-                                    <div
-                                      className="position-absolute top-0 end-0 badge bg-warning text-dark"
-                                      style={{
-                                        borderTopRightRadius: "0.375rem",
-                                        borderBottomLeftRadius: "0.375rem",
-                                        fontSize: "0.7rem",
-                                        zIndex: 1,
-                                      }}
-                                    >
-                                      <i className="bi bi-star-fill"></i> Mejor
-                                      Opción
-                                    </div>
-                                  )}
-
                                   <div>
                                     {/* Header del carrier con logo */}
                                     <div className="d-flex justify-content-between align-items-start mb-3">
@@ -2572,38 +2565,76 @@ function QuoteFCL({
                                       )}
                                     </div>
 
-                                    {/* Transit Time y Company */}
-                                    {ruta.tt && (
-                                      <div className="mb-3">
-                                        <div
-                                          className="d-flex align-items-center gap-2 p-2 rounded"
-                                          style={{
-                                            backgroundColor:
-                                              "var(--qf-bg-light)",
-                                          }}
-                                        >
-                                          <i
-                                            className="bi bi-clock"
-                                            style={{
-                                              color: "var(--qf-primary)",
-                                            }}
-                                          ></i>
-                                          <div className="flex-grow-1">
-                                            <small
-                                              className="d-block"
+                                    {/* Transit Time y Free Time */}
+                                    {(ruta.tt || ruta.freeTime) && (
+                                      <div className="row g-2 mb-3">
+                                        {ruta.tt && (
+                                          <div className="col-12 col-md-6">
+                                            <div
+                                              className="d-flex align-items-center gap-2 p-2 rounded h-100"
                                               style={{
-                                                fontSize: "0.7rem",
-                                                color:
-                                                  "var(--qf-text-secondary)",
+                                                backgroundColor:
+                                                  "var(--qf-bg-light)",
                                               }}
                                             >
-                                              Tiempo de tránsito
-                                            </small>
-                                            <small className="fw-semibold">
-                                              {ruta.tt}
-                                            </small>
+                                              <i
+                                                className="bi bi-clock"
+                                                style={{
+                                                  color: "var(--qf-primary)",
+                                                }}
+                                              ></i>
+                                              <div className="flex-grow-1">
+                                                <small
+                                                  className="d-block"
+                                                  style={{
+                                                    fontSize: "0.7rem",
+                                                    color:
+                                                      "var(--qf-text-secondary)",
+                                                  }}
+                                                >
+                                                  Tiempo de tránsito
+                                                </small>
+                                                <small className="fw-semibold">
+                                                  {ruta.tt}
+                                                </small>
+                                              </div>
+                                            </div>
                                           </div>
-                                        </div>
+                                        )}
+
+                                        {ruta.freeTime && (
+                                          <div className="col-12 col-md-6">
+                                            <div
+                                              className="d-flex align-items-center gap-2 p-2 rounded h-100"
+                                              style={{
+                                                backgroundColor:
+                                                  "var(--qf-bg-light)",
+                                              }}
+                                            >
+                                              <i
+                                                className="bi bi-hourglass-split"
+                                                style={{
+                                                  color: "var(--qf-primary)",
+                                                }}
+                                              ></i>
+                                              <div className="flex-grow-1">
+                                                <small
+                                                  className="d-block"
+                                                  style={{
+                                                    fontSize: "0.7rem",
+                                                    color:
+                                                      "var(--qf-text-secondary)",
+                                                  }}
+                                                >
+                                                  Free Time
+                                                </small>
+                                                <small className="fw-semibold">
+                                                  {ruta.freeTime} Días
+                                                </small>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
                                     )}
 
@@ -2964,9 +2995,17 @@ function QuoteFCL({
                   {rutaSeleccionada.tt && rutaSeleccionada.tt !== "X" && (
                     <span className="qa-route-meta-pill">
                       <i className="bi bi-clock"></i>
-                      {rutaSeleccionada.tt} días tránsito
+                      {rutaSeleccionada.tt} Días Tránsito
                     </span>
                   )}
+
+                  {rutaSeleccionada.freeTime &&
+                    rutaSeleccionada.freeTime !== "X" && (
+                      <span className="qa-route-meta-pill">
+                        <i className="bi bi-hourglass-split"></i>
+                        Free Time: {rutaSeleccionada.freeTime} Días
+                      </span>
+                    )}
 
                   {isEjecutivoMode && rutaSeleccionada.company && (
                     <span
@@ -3281,7 +3320,7 @@ function QuoteFCL({
                     </div>
 
                     <div className="row g-2">
-                      <div className="col-6">
+                      <div className="col-4">
                         <span className="text-muted d-block">Carrier:</span>
                         <strong>
                           {sinTarifa
@@ -3289,14 +3328,25 @@ function QuoteFCL({
                             : rutaSeleccionada.carrier || routeInfoPlaceholder}
                         </strong>
                       </div>
-                      <div className="col-6">
+                      <div className="col-4">
                         <span className="text-muted d-block">
                           Tiempo Tránsito:
                         </span>
                         <strong>
                           {sinTarifa
                             ? routeInfoPlaceholder
-                            : rutaSeleccionada.tt || routeInfoPlaceholder}
+                            : rutaSeleccionada.tt || routeInfoPlaceholder}{" "}
+                          Días
+                        </strong>
+                      </div>
+                      <div className="col-4">
+                        <span className="text-muted d-block">Free Time:</span>
+                        <strong>
+                          {sinTarifa
+                            ? routeInfoPlaceholder
+                            : rutaSeleccionada.freeTime ||
+                              routeInfoPlaceholder}{" "}
+                          Días
                         </strong>
                       </div>
                     </div>
@@ -3353,7 +3403,7 @@ function QuoteFCL({
                               color: "#ff6200",
                             }}
                           >
-                            Válida 5 días
+                            Válida 5 Días
                           </span>
                         </div>
 
