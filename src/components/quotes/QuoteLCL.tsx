@@ -3370,7 +3370,7 @@ function QuoteLCL({
                     </div>
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
-                          {chargeableVolume.toFixed(4)} {lclChargeableUnit}
+                        {chargeableVolume.toFixed(4)} {lclChargeableUnit}
                       </span>
                       <span className="qa-totals-bar-label">
                         Chargeable (W/M)
@@ -3378,7 +3378,7 @@ function QuoteLCL({
                     </div>
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
-                          <strong>{lclChargeableBillingBasis}</strong>
+                        <strong>{lclChargeableBillingBasis}</strong>
                       </span>
                       <span className="qa-totals-bar-label">Cobro por</span>
                     </div>
@@ -3399,7 +3399,7 @@ function QuoteLCL({
                     </div>
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
-                          {chargeableVolume.toFixed(4)} {lclChargeableUnit}
+                        {chargeableVolume.toFixed(4)} {lclChargeableUnit}
                       </span>
                       <span className="qa-totals-bar-label">
                         Chargeable (W/M)
@@ -3407,7 +3407,7 @@ function QuoteLCL({
                     </div>
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
-                          <strong>{lclChargeableBillingBasis}</strong>
+                        <strong>{lclChargeableBillingBasis}</strong>
                       </span>
                       <span className="qa-totals-bar-label">Cobro por</span>
                     </div>
@@ -3691,7 +3691,8 @@ function QuoteLCL({
                         </div>
                         <div className="qa-totals-bar-item">
                           <span className="qa-totals-bar-value">
-                            {chargeableVolumeFromPieces.toFixed(4)} {lclChargeableUnit}
+                            {chargeableVolumeFromPieces.toFixed(4)}{" "}
+                            {lclChargeableUnit}
                           </span>
                           <span className="qa-totals-bar-label">
                             Chargeable (W/M)

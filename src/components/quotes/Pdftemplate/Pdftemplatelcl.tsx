@@ -437,7 +437,9 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
                 overallPiecesData.map((piece) => (
                   <tr key={piece.id}>
                     <td style={{ ...td, ...cen, fontWeight: 600 }}>1</td>
-                    <td style={td}>{piece.packageTypeName || packageTypeName}</td>
+                    <td style={td}>
+                      {piece.packageTypeName || packageTypeName}
+                    </td>
                     <td style={td}>{piece.description || description}</td>
                     <td style={{ ...td, ...r, fontWeight: 600 }}>
                       {fmt(piece.weight)}
