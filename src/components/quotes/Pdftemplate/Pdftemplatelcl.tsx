@@ -10,6 +10,18 @@ interface OverallPieceDataLCL {
   wmChargeable: number;
 }
 
+interface PieceDataLCL {
+  id: string;
+  packageTypeName: string;
+  description: string;
+  length: number;
+  width: number;
+  height: number;
+  weight: number;
+  volume: number;
+  wmChargeable: number;
+}
+
 interface PDFTemplateLCLProps {
   quoteNumber: string;
   customerName: string;
@@ -43,6 +55,7 @@ interface PDFTemplateLCLProps {
   totalCharges: number;
   currency: string;
   overallMode?: boolean;
+  piecesData?: PieceDataLCL[];
   overallPiecesData?: OverallPieceDataLCL[];
   wmChargeableUnit?: string;
   carrier?: string;
@@ -89,6 +102,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
   totalCharges,
   currency,
   overallMode = false,
+  piecesData,
   overallPiecesData,
   wmChargeableUnit = "m³",
   carrier,
@@ -468,6 +482,27 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
                   </td>
                 </tr>
               )
+            ) : piecesData && piecesData.length > 0 ? (
+              piecesData.map((piece) => (
+                <tr key={piece.id}>
+                  <td style={{ ...td, ...cen, fontWeight: 600 }}>1</td>
+                  <td style={td}>{piece.packageTypeName || packageTypeName}</td>
+                  <td style={td}>
+                    {fmt(piece.length)} × {fmt(piece.width)} ×{" "}
+                    {fmt(piece.height)}
+                  </td>
+                  <td style={td}>{piece.description || description}</td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(piece.weight)}
+                  </td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(piece.volume)}
+                  </td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(piece.wmChargeable)}
+                  </td>
+                </tr>
+              ))
             ) : (
               <tr>
                 <td style={{ ...td, ...cen, fontWeight: 600 }}>{pieces}</td>

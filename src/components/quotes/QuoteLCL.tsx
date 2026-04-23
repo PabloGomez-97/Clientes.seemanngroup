@@ -1885,6 +1885,27 @@ function QuoteLCL({
       const root = ReactDOM.createRoot(tempDiv);
 
       await new Promise<void>((resolve) => {
+        const pdfPiecesData = !overallDimsAndWeight
+          ? piecesData.map((piece) => {
+              const piecePackageType = packageTypeOptions.find(
+                (opt) => opt.id === Number(piece.packageType),
+              );
+
+              return {
+                id: piece.id,
+                packageTypeName: piecePackageType?.code
+                  ? `${piecePackageType.code} - ${piecePackageType.name}`
+                  : piecePackageType?.name || packageTypeName,
+                description: piece.description || description,
+                length: piece.length,
+                width: piece.width,
+                height: piece.height,
+                weight: piece.weight,
+                volume: piece.volume,
+                wmChargeable: piece.wmChargeable,
+              };
+            })
+          : undefined;
         const overallPdfPieces = overallDimsAndWeight
           ? overallPiecesData.map((piece) => ({
               id: piece.id,
@@ -1940,6 +1961,7 @@ function QuoteLCL({
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
             overallMode={overallDimsAndWeight}
+            piecesData={pdfPiecesData}
             overallPiecesData={overallPdfPieces}
             wmChargeableUnit={lclChargeableUnit}
             carrier={
