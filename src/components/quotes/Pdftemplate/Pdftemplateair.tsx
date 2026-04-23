@@ -3,6 +3,7 @@ import { imgUrl } from "../../../config/images";
 
 interface PieceData {
   id: string;
+  packageTypeName?: string;
   length: number;
   width: number;
   height: number;
@@ -485,7 +486,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
               piecesData.map((piece) => (
                 <tr key={piece.id}>
                   <td style={{ ...td, ...cen, fontWeight: 600 }}>1</td>
-                  <td style={td}>{packageTypeName}</td>
+                  <td style={td}>{piece.packageTypeName || packageTypeName}</td>
                   <td style={td}>
                     {fmt(piece.length)} × {fmt(piece.width)} ×{" "}
                     {fmt(piece.height)}

@@ -71,6 +71,8 @@ import {
 
 // MARKUP CONFIGURABLE PARA COBROS FCA (Local Charges & Gastos x kg)
 const FCA_MARKUP = 1.2;
+const DEFAULT_OVERALL_AIR_DESCRIPTION = "Cargamento Aéreo";
+const DEFAULT_OVERALL_AIR_PACKAGE_TYPE = "97";
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
@@ -93,13 +95,39 @@ function createOverallPieceAir(
   id: string,
   weight = 0,
   volume = 0,
+  description = "",
+  packageType = DEFAULT_OVERALL_AIR_PACKAGE_TYPE,
 ): OverallPieceDataAir {
   return {
     id,
+    packageType,
+    description,
     weight,
     volume,
     volumeWeight: volume * 167,
   };
+}
+
+function getAirPackageTypeName(packageTypeId?: string): string {
+  const packageType = packageTypeOptions.find(
+    (opt) => String(opt.id) === packageTypeId,
+  );
+
+  return packageType?.name || "CARGA GENERAL";
+}
+
+function summarizeAirPackageTypes(packageTypeIds: string[]): string {
+  const names = Array.from(
+    new Set(
+      packageTypeIds
+        .filter(Boolean)
+        .map((packageTypeId) => getAirPackageTypeName(packageTypeId)),
+    ),
+  );
+
+  if (names.length === 1) return names[0];
+  if (names.length > 1) return "Varios";
+  return "CARGA GENERAL";
 }
 
 function isOverallPieceCompleteAir(piece: OverallPieceDataAir): boolean {
@@ -124,10 +152,13 @@ function calculateOverallTotalsAir(pieces: OverallPieceDataAir[]) {
 
 function buildOverallPiecesSummaryAir(pieces: OverallPieceDataAir[]): string {
   return pieces
-    .map(
-      (piece, index) =>
-        `Pieza ${index + 1}: ${piece.volume.toFixed(4)} m3 / ${piece.weight.toFixed(2)} kg`,
-    )
+    .map((piece, index) => {
+      const packageTypeName = getAirPackageTypeName(piece.packageType);
+      const effectiveDescription =
+        piece.description.trim() || DEFAULT_OVERALL_AIR_DESCRIPTION;
+
+      return `Pieza ${index + 1}: ${packageTypeName} / ${effectiveDescription} / ${piece.volume.toFixed(4)} m3 / ${piece.weight.toFixed(2)} kg`;
+    })
     .join("; ");
 }
 
@@ -169,13 +200,14 @@ function QuoteAPITester({
 
   // Estados para el commodity
   const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
-  const [description, setDescription] = useState("Cargamento Aéreo");
+  const [description, setDescription] = useState(
+    DEFAULT_OVERALL_AIR_DESCRIPTION,
+  );
   const [incoterm, setIncoterm] = useState<"EXW" | "FCA" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
   const [overallPiecesData, setOverallPiecesData] = useState<
     OverallPieceDataAir[]
   >([createOverallPieceAir("1", 100, 0.48)]);
-  const [selectedPackageType, setSelectedPackageType] = useState(97);
   const [piecesData, setPiecesData] = useState<PieceData[]>([
     {
       id: "1",
@@ -955,7 +987,13 @@ function QuoteAPITester({
       const sourcePiece = prev[idx];
       const inserted = [
         ...prev.slice(0, idx + 1),
-        createOverallPieceAir("", sourcePiece.weight, sourcePiece.volume),
+        createOverallPieceAir(
+          "",
+          sourcePiece.weight,
+          sourcePiece.volume,
+          sourcePiece.description,
+          sourcePiece.packageType,
+        ),
         ...prev.slice(idx + 1),
       ];
       const renumbered = inserted.map((piece, index) => ({
@@ -1008,16 +1046,29 @@ function QuoteAPITester({
 
   const handleUpdateOverallPiece = (
     id: string,
-    field: "weight" | "volume",
-    value: number,
+    field: "description" | "packageType" | "weight" | "volume",
+    value: string | number,
   ) => {
     setOverallPiecesData((prev) =>
       prev.map((piece) => {
         if (piece.id !== id) return piece;
 
-        const nextWeight = field === "weight" ? value : piece.weight;
-        const nextVolume = field === "volume" ? value : piece.volume;
-        return createOverallPieceAir(piece.id, nextWeight, nextVolume);
+        if (field === "description" || field === "packageType") {
+          return {
+            ...piece,
+            [field]: typeof value === "string" ? value : String(value),
+          };
+        }
+
+        const nextWeight = field === "weight" ? Number(value) : piece.weight;
+        const nextVolume = field === "volume" ? Number(value) : piece.volume;
+        return createOverallPieceAir(
+          piece.id,
+          nextWeight,
+          nextVolume,
+          piece.description,
+          piece.packageType,
+        );
       }),
     );
   };
@@ -1820,10 +1871,12 @@ function QuoteAPITester({
         return;
       }
 
-      // Modo overall: validar que se haya seleccionado un packageType
-      if (!selectedPackageType) {
+      const overallPiecesWithoutPackageType = overallPiecesData.filter(
+        (piece) => !piece.packageType,
+      );
+      if (overallPiecesWithoutPackageType.length > 0) {
         setError(
-          "Debes seleccionar un Tipo de Paquete antes de generar la cotización",
+          "Debes seleccionar un Tipo de Paquete para todas las piezas OVERALL antes de generar la cotización",
         );
         return;
       }
@@ -1950,11 +2003,13 @@ function QuoteAPITester({
     try {
       if (!rutaSeleccionada || !hasAirFreightCharge) return;
 
-      // Obtener el nombre del packageType
-      const packageType = packageTypeOptions.find(
-        (opt) => opt.id === selectedPackageType,
-      );
-      const packageTypeName = packageType ? packageType.name : "CARGA GENERAL";
+      const packageTypeName = overallDimsAndWeight
+        ? summarizeAirPackageTypes(
+            overallPiecesData.map((piece) => piece.packageType),
+          )
+        : summarizeAirPackageTypes(
+            piecesData.map((piece) => piece.packageType),
+          );
 
       // Preparar los charges para el PDF
       const pdfCharges: Array<{
@@ -2191,9 +2246,13 @@ function QuoteAPITester({
         trackComplete({ quoteNumber, isRecurring: !sinTarifa });
       }
       if (sinTarifa && !isEjecutivoMode) {
-        const pkgType =
-          packageTypeOptions.find((opt) => opt.id === selectedPackageType)
-            ?.name || String(selectedPackageType || "—");
+        const pkgType = overallDimsAndWeight
+          ? summarizeAirPackageTypes(
+              overallPiecesData.map((piece) => piece.packageType),
+            )
+          : summarizeAirPackageTypes(
+              piecesData.map((piece) => piece.packageType),
+            );
 
         let pesoTotalEmail: number;
         let volumenTotalEmail: number;
@@ -2271,11 +2330,17 @@ function QuoteAPITester({
           (sum, piece) => sum + piece.totalVolume,
           0,
         );
+        const pdfPiecesData = !overallDimsAndWeight
+          ? piecesData.map((piece) => ({
+              ...piece,
+              packageTypeName: getAirPackageTypeName(piece.packageType),
+            }))
+          : undefined;
         const overallPdfPieces = overallDimsAndWeight
           ? overallPiecesData.map((piece) => ({
               id: piece.id,
-              packageTypeName,
-              description,
+              packageTypeName: getAirPackageTypeName(piece.packageType),
+              description: piece.description,
               weight: piece.weight,
               volume: piece.volume,
               chargeableWeight: Math.max(piece.weight, piece.volumeWeight),
@@ -2330,7 +2395,7 @@ function QuoteAPITester({
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
             overallMode={overallDimsAndWeight}
-            piecesData={overallDimsAndWeight ? [] : piecesData}
+            piecesData={pdfPiecesData}
             overallPiecesData={overallPdfPieces}
             carrier={
               sinTarifa
@@ -3484,10 +3549,11 @@ function QuoteAPITester({
         commodities: overallPiecesData.map((piece) => ({
           commodityType: "Standard",
           packageType: {
-            id: selectedPackageType,
+            id: piece.packageType,
           },
           pieces: 1,
-          description: description,
+          description:
+            piece.description.trim() || DEFAULT_OVERALL_AIR_DESCRIPTION,
           overallDimsAndWeight: true,
           weightPerUnitValue: piece.weight,
           weightPerUnitUOM: "kg",
@@ -4911,6 +4977,10 @@ function QuoteAPITester({
                         isOpen={openOverallAccordions.includes(piece.id)}
                         onToggle={() => handleToggleOverallAccordion(piece.id)}
                         onRemove={() => handleRemoveOverallPiece(piece.id)}
+                        packageTypes={packageTypeOptions.map((opt) => ({
+                          id: String(opt.id),
+                          name: opt.name,
+                        }))}
                         onUpdate={(field, value) =>
                           handleUpdateOverallPiece(piece.id, field, value)
                         }
