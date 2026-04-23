@@ -16,6 +16,10 @@ import {
 } from "./Pdftemplate/Pdfutils";
 import ReactDOM from "react-dom/client";
 import { PieceAccordionLCL } from "./Handlers/LCL/PieceAccordionLCL.tsx";
+import {
+  OverallPieceAccordionLCL,
+  type OverallPieceDataLCL,
+} from "./Handlers/LCL/OverallPieceAccordionLCL.tsx";
 import { useTranslation } from "react-i18next";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import { imgUrl } from "../../config/images";
@@ -73,6 +77,35 @@ function expandClientesPorEmpresa(
     }
   }
   return expanded;
+}
+
+function createOverallPieceLCL(
+  id: string,
+  weight = 0,
+  volume = 0,
+): OverallPieceDataLCL {
+  const weightTons = weight / 1000;
+
+  return {
+    id,
+    weight,
+    volume,
+    weightTons,
+    wmChargeable: getBillableWM(weightTons, volume),
+  };
+}
+
+function isOverallPieceCompleteLCL(piece: OverallPieceDataLCL): boolean {
+  return piece.weight > 0 && piece.volume > 0;
+}
+
+function buildOverallPiecesSummaryLCL(pieces: OverallPieceDataLCL[]): string {
+  return pieces
+    .map(
+      (piece, index) =>
+        `Pieza ${index + 1}: ${piece.volume.toFixed(4)} m3 / ${piece.weight.toFixed(2)} kg`,
+    )
+    .join("; ");
 }
 
 function QuoteLCL({
@@ -159,8 +192,9 @@ function QuoteLCL({
 
   // Estado para modo OVERALL (peso y volumen globales sin desglose por pieza)
   const [overallDimsAndWeight, setOverallDimsAndWeight] = useState(false);
-  const [manualWeight, setManualWeight] = useState(1000); // kg
-  const [manualVolume, setManualVolume] = useState(1.0); // m³
+  const [overallPiecesData, setOverallPiecesData] = useState<
+    OverallPieceDataLCL[]
+  >([createOverallPieceLCL("1", 1000, 1.0)]);
 
   // Estados para incoterm y direcciones
   const [incoterm, setIncoterm] = useState<"EXW" | "FOB" | "">("");
@@ -190,6 +224,9 @@ function QuoteLCL({
     },
   ]);
   const [openAccordions, setOpenAccordions] = useState<string[]>(["1"]);
+  const [openOverallAccordions, setOpenOverallAccordions] = useState<string[]>([
+    "1",
+  ]);
   const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
   const [openSection, setOpenSection] = useState<number>(1); // Controla qué paso está abierto
   const [step2Completed, setStep2Completed] = useState<boolean>(false);
@@ -225,6 +262,19 @@ function QuoteLCL({
   const [opcionesPOD_NR, setOpcionesPOD_NR] = useState<SelectOption[]>([]);
   const [simulatedOceanFreightRate, setSimulatedOceanFreightRate] =
     useState("");
+  const overallPiecesCount = overallPiecesData.length;
+  const overallCompletedPiecesCount = useMemo(
+    () => overallPiecesData.filter(isOverallPieceCompleteLCL).length,
+    [overallPiecesData],
+  );
+  const manualWeight = useMemo(
+    () => overallPiecesData.reduce((sum, piece) => sum + piece.weight, 0),
+    [overallPiecesData],
+  );
+  const manualVolume = useMemo(
+    () => overallPiecesData.reduce((sum, piece) => sum + piece.volume, 0),
+    [overallPiecesData],
+  );
 
   // Delivery is derived from the selected POD and is not editable by the user
   const deliveryToAddressDerived = podSeleccionado
@@ -653,6 +703,112 @@ function QuoteLCL({
     );
   };
 
+  const handleAddOverallPiece = () => {
+    if (overallPiecesData.length >= 10) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+
+    const newId = (overallPiecesData.length + 1).toString();
+    setOverallPiecesData((prev) => [...prev, createOverallPieceLCL(newId)]);
+    setOpenOverallAccordions((prev) => {
+      const newOpen = [...prev, newId];
+      return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+    });
+  };
+
+  const handleDuplicateOverallPiece = (fromId?: string) => {
+    if (overallPiecesData.length >= 10) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+
+    setOverallPiecesData((prev) => {
+      if (prev.length === 0) return prev;
+
+      let sourceId: string | undefined = fromId;
+      if (!sourceId) {
+        sourceId =
+          openOverallAccordions.length > 0
+            ? openOverallAccordions[openOverallAccordions.length - 1]
+            : undefined;
+      }
+      if (!sourceId) {
+        sourceId = prev[prev.length - 1].id;
+      }
+
+      const sourceIndex = prev.findIndex((piece) => piece.id === sourceId);
+      const idx = sourceIndex === -1 ? prev.length - 1 : sourceIndex;
+      const sourcePiece = prev[idx];
+      const inserted = [
+        ...prev.slice(0, idx + 1),
+        createOverallPieceLCL("", sourcePiece.weight, sourcePiece.volume),
+        ...prev.slice(idx + 1),
+      ];
+      const renumbered = inserted.map((piece, index) => ({
+        ...piece,
+        id: (index + 1).toString(),
+      }));
+      const newId = (idx + 2).toString();
+
+      setOpenOverallAccordions((prevOpen) => {
+        const newOpen = [...prevOpen, newId];
+        return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+      });
+
+      return renumbered;
+    });
+  };
+
+  const handleRemoveOverallPiece = (id: string) => {
+    const filtered = overallPiecesData.filter((piece) => piece.id !== id);
+    const renumbered = filtered.map((piece, index) => ({
+      ...piece,
+      id: (index + 1).toString(),
+    }));
+
+    setOverallPiecesData(renumbered);
+    setOpenOverallAccordions((prev) => {
+      const remaining = prev.filter((openId) => openId !== id);
+      if (remaining.length > 0) {
+        return remaining.filter((openId) =>
+          renumbered.some((piece) => piece.id === openId),
+        );
+      }
+
+      return renumbered[0] ? [renumbered[0].id] : [];
+    });
+  };
+
+  const handleToggleOverallAccordion = (id: string) => {
+    setOpenOverallAccordions((prev) => {
+      const isOpen = prev.includes(id);
+
+      if (isOpen) {
+        return prev.filter((openId) => openId !== id);
+      }
+
+      const newOpen = [...prev, id];
+      return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+    });
+  };
+
+  const handleUpdateOverallPiece = (
+    id: string,
+    field: "weight" | "volume",
+    value: number,
+  ) => {
+    setOverallPiecesData((prev) =>
+      prev.map((piece) => {
+        if (piece.id !== id) return piece;
+
+        const nextWeight = field === "weight" ? value : piece.weight;
+        const nextVolume = field === "volume" ? value : piece.volume;
+        return createOverallPieceLCL(piece.id, nextWeight, nextVolume);
+      }),
+    );
+  };
+
   // Calcular totales de todas las piezas
   const calculateTotals = () => {
     const totalWeightKg = piecesData.reduce(
@@ -677,13 +833,20 @@ function QuoteLCL({
   const canProceedToStep3 = useMemo(() => {
     if (!incoterm) return false;
     if (incoterm === "EXW" && !pickupFromAddress) return false;
-    if (overallDimsAndWeight && (manualWeight <= 0 || manualVolume <= 0))
+    if (
+      overallDimsAndWeight &&
+      (manualWeight <= 0 ||
+        manualVolume <= 0 ||
+        overallCompletedPiecesCount !== overallPiecesData.length)
+    )
       return false;
     return true;
   }, [
     incoterm,
     pickupFromAddress,
     overallDimsAndWeight,
+    overallCompletedPiecesCount,
+    overallPiecesData.length,
     manualWeight,
     manualVolume,
   ]);
@@ -920,6 +1083,9 @@ function QuoteLCL({
     ? getBillableWM(manualWeight / 1000, manualVolume)
     : chargeableVolumeFromPieces;
   const totalVolumeWeight = chargeableVolume;
+  const lclChargeableUnit = totalWeightTons > totalVolume ? "t" : "m³";
+  const lclChargeableBillingBasis =
+    totalWeightTons > totalVolume ? t("Quotelcl.peso") : t("Quotelcl.volumen");
 
   // Verificar si hay alguna pieza no apilable (solo aplica en modo por piezas)
   const hasNotApilable =
@@ -1235,11 +1401,11 @@ function QuoteLCL({
 
   // ============================================================================
   // FUNCIÓN PARA CALCULAR EXW SEGÚN NÚMERO DE PIEZAS
-  // En modo OVERALL se usa 1 pieza virtual
+  // En modo OVERALL se usa la cantidad real de piezas overall completas
   // ============================================================================
 
   const calculateEXWRate = (): number => {
-    if (overallDimsAndWeight) return 170; // 1 pieza virtual en modo OVERALL
+    if (overallDimsAndWeight) return 170 * overallCompletedPiecesCount;
     return 170 * piecesData.length;
   };
 
@@ -1319,6 +1485,16 @@ function QuoteLCL({
         return;
       }
     } else {
+      const overallPiecesIncompletas = overallPiecesData.filter(
+        (piece) => !isOverallPieceCompleteLCL(piece),
+      );
+      if (overallPiecesIncompletas.length > 0) {
+        setError(
+          "Debes completar el peso y el volumen de todas las piezas OVERALL antes de generar la cotización",
+        );
+        return;
+      }
+
       if (!selectedPackageType) {
         setError(
           "Debes seleccionar un Tipo de Paquete antes de generar la cotización",
@@ -1458,7 +1634,9 @@ function QuoteLCL({
         (opt) => opt.id === selectedPackageType,
       );
       const packageTypeName = packageType
-        ? `${packageType.code} - ${packageType.name}`
+        ? packageType.code
+          ? `${packageType.code} - ${packageType.name}`
+          : packageType.name
         : "Standard";
 
       // Preparar los charges para el PDF
@@ -1497,7 +1675,9 @@ function QuoteLCL({
         pdfCharges.push({
           code: "EC",
           description: "EXW CHARGES",
-          quantity: piecesData.length,
+          quantity: overallDimsAndWeight
+            ? overallPiecesCount
+            : piecesData.length,
           unit: "Piece",
           rate: 170,
           amount: exwRate,
@@ -1650,7 +1830,7 @@ function QuoteLCL({
         if (overallDimsAndWeight) {
           pesoTotalEmail = manualWeight;
           volumenTotalEmail = manualVolume;
-          piezasDescEmail = "Modo OVERALL (datos globales)";
+          piezasDescEmail = buildOverallPiecesSummaryLCL(overallPiecesData);
         } else {
           pesoTotalEmail = piecesData.reduce(
             (sum: number, p: any) => sum + (Number(p.weight) || 0),
@@ -1705,6 +1885,17 @@ function QuoteLCL({
       const root = ReactDOM.createRoot(tempDiv);
 
       await new Promise<void>((resolve) => {
+        const overallPdfPieces = overallDimsAndWeight
+          ? overallPiecesData.map((piece) => ({
+              id: piece.id,
+              packageTypeName,
+              description,
+              weight: piece.weight,
+              volume: piece.volume,
+              wmChargeable: piece.wmChargeable,
+            }))
+          : undefined;
+
         root.render(
           <PDFTemplateLCL
             quoteNumber={quoteNumber}
@@ -1732,7 +1923,9 @@ function QuoteLCL({
                 : undefined
             }
             salesRep={salesRepName}
-            pieces={overallDimsAndWeight ? 1 : piecesData.length}
+            pieces={
+              overallDimsAndWeight ? overallPiecesCount : piecesData.length
+            }
             packageTypeName={packageTypeName}
             length={overallDimsAndWeight ? 0 : piecesData[0]?.length || 0}
             width={overallDimsAndWeight ? 0 : piecesData[0]?.width || 0}
@@ -1746,6 +1939,9 @@ function QuoteLCL({
             charges={finalPdfCharges}
             totalCharges={totalCharges}
             currency={rutaSeleccionada.currency}
+            overallMode={overallDimsAndWeight}
+            overallPiecesData={overallPdfPieces}
+            wmChargeableUnit={lclChargeableUnit}
             carrier={
               sinTarifa
                 ? routeInfoPlaceholder
@@ -2006,7 +2202,9 @@ function QuoteLCL({
     // Cobro de EXW (solo si incoterm es EXW)
     if (incoterm === "EXW") {
       const exwRate = calculateEXWRate();
-      const exwPieces = overallDimsAndWeight ? 1 : piecesData.length;
+      const exwPieces = overallDimsAndWeight
+        ? overallPiecesCount
+        : piecesData.length;
       charges.push({
         service: {
           id: 271,
@@ -2306,7 +2504,7 @@ function QuoteLCL({
               packageType: {
                 id: selectedPackageType,
               },
-              pieces: 1,
+              pieces: overallPiecesCount,
               description: description,
               overallDimsAndWeight: true,
               totalWeightValue: manualWeight,
@@ -3172,7 +3370,7 @@ function QuoteLCL({
                     </div>
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
-                        {chargeableVolume.toFixed(4)}
+                          {chargeableVolume.toFixed(4)} {lclChargeableUnit}
                       </span>
                       <span className="qa-totals-bar-label">
                         Chargeable (W/M)
@@ -3180,11 +3378,7 @@ function QuoteLCL({
                     </div>
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
-                        <strong>
-                          {totalWeightTons > totalVolume
-                            ? t("Quotelcl.peso")
-                            : t("Quotelcl.volumen")}
-                        </strong>
+                          <strong>{lclChargeableBillingBasis}</strong>
                       </span>
                       <span className="qa-totals-bar-label">Cobro por</span>
                     </div>
@@ -3205,7 +3399,7 @@ function QuoteLCL({
                     </div>
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
-                        {chargeableVolume.toFixed(4)}
+                          {chargeableVolume.toFixed(4)} {lclChargeableUnit}
                       </span>
                       <span className="qa-totals-bar-label">
                         Chargeable (W/M)
@@ -3213,11 +3407,7 @@ function QuoteLCL({
                     </div>
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
-                        <strong>
-                          {totalWeightTons > totalVolume
-                            ? t("Quotelcl.peso")
-                            : t("Quotelcl.volumen")}
-                        </strong>
+                          <strong>{lclChargeableBillingBasis}</strong>
                       </span>
                       <span className="qa-totals-bar-label">Cobro por</span>
                     </div>
@@ -3501,7 +3691,7 @@ function QuoteLCL({
                         </div>
                         <div className="qa-totals-bar-item">
                           <span className="qa-totals-bar-value">
-                            {chargeableVolumeFromPieces.toFixed(4)}
+                            {chargeableVolumeFromPieces.toFixed(4)} {lclChargeableUnit}
                           </span>
                           <span className="qa-totals-bar-label">
                             Chargeable (W/M)
@@ -3509,11 +3699,7 @@ function QuoteLCL({
                         </div>
                         <div className="qa-totals-bar-item">
                           <span className="qa-totals-bar-value">
-                            <strong>
-                              {totalWeightTonsFromPieces > totalVolumeFromPieces
-                                ? t("Quotelcl.peso")
-                                : t("Quotelcl.volumen")}
-                            </strong>
+                            <strong>{lclChargeableBillingBasis}</strong>
                           </span>
                           <span className="qa-totals-bar-label">Cobro por</span>
                         </div>
@@ -3563,49 +3749,57 @@ function QuoteLCL({
                   {/* Inputs OVERALL: peso y volumen totales */}
                   {overallDimsAndWeight && (
                     <div className="col-12">
-                      <div className="qa-grid-2 mt-2 p-3 bg-light rounded border">
-                        <div>
-                          <label className="qa-label">
-                            <i className="bi bi-box-seam me-1"></i>
-                            Peso total (kg)
-                          </label>
-                          <input
-                            type="number"
-                            className="qa-input"
-                            value={manualWeight}
-                            onChange={(e) =>
-                              setManualWeight(Number(e.target.value))
-                            }
-                            min="0"
-                            step="0.01"
-                          />
-                          <small className="text-muted d-block mt-1">
-                            Peso bruto total de todos los bultos
-                          </small>
+                      <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h4 className="fs-6 fw-bold mb-0">
+                          Detalles de las Piezas
+                        </h4>
+
+                        <div className="d-flex align-items-center gap-2">
+                          <button
+                            type="button"
+                            className="qa-btn qa-btn-outline qa-btn-sm"
+                            onClick={() => handleDuplicateOverallPiece()}
+                          >
+                            <i className="bi bi-files"></i>
+                            Duplicar Pieza
+                          </button>
+                          <button
+                            type="button"
+                            className="qa-btn qa-btn-primary qa-btn-sm"
+                            onClick={handleAddOverallPiece}
+                          >
+                            <i className="bi bi-plus-lg"></i>Agregar Pieza
+                          </button>
                         </div>
-                        <div>
-                          <label className="qa-label">
-                            <i className="bi bi-rulers me-1"></i>
-                            Volumen total (m³)
-                          </label>
-                          <input
-                            type="number"
-                            className="qa-input"
-                            value={manualVolume}
-                            onChange={(e) =>
-                              setManualVolume(Number(e.target.value))
+                      </div>
+
+                      <div className="mb-3">
+                        {overallPiecesData.map((piece, index) => (
+                          <OverallPieceAccordionLCL
+                            key={piece.id}
+                            piece={piece}
+                            index={index}
+                            isOpen={openOverallAccordions.includes(piece.id)}
+                            onToggle={() =>
+                              handleToggleOverallAccordion(piece.id)
                             }
-                            min="0"
-                            step="0.0001"
+                            onRemove={() => handleRemoveOverallPiece(piece.id)}
+                            onUpdate={(field, value) =>
+                              handleUpdateOverallPiece(piece.id, field, value)
+                            }
+                            canRemove={overallPiecesData.length > 1}
                           />
-                          <small className="text-muted d-block mt-1">
-                            Volumen total de todos los bultos
-                          </small>
-                        </div>
+                        ))}
                       </div>
 
                       {/* Totals bar en modo OVERALL */}
                       <div className="qa-totals-bar mt-3">
+                        <div className="qa-totals-bar-item">
+                          <span className="qa-totals-bar-value">
+                            {overallPiecesCount}
+                          </span>
+                          <span className="qa-totals-bar-label">Piezas</span>
+                        </div>
                         <div className="qa-totals-bar-item">
                           <span className="qa-totals-bar-value">
                             {manualVolume.toFixed(4)} m³
@@ -3624,7 +3818,7 @@ function QuoteLCL({
                         </div>
                         <div className="qa-totals-bar-item">
                           <span className="qa-totals-bar-value">
-                            {chargeableVolume.toFixed(4)}
+                            {chargeableVolume.toFixed(4)} {lclChargeableUnit}
                           </span>
                           <span className="qa-totals-bar-label">
                             Chargeable (W/M)
@@ -3632,11 +3826,7 @@ function QuoteLCL({
                         </div>
                         <div className="qa-totals-bar-item">
                           <span className="qa-totals-bar-value">
-                            <strong>
-                              {totalWeightTons > totalVolume
-                                ? t("Quotelcl.peso")
-                                : t("Quotelcl.volumen")}
-                            </strong>
+                            <strong>{lclChargeableBillingBasis}</strong>
                           </span>
                           <span className="qa-totals-bar-label">Cobro por</span>
                         </div>
@@ -3774,17 +3964,15 @@ function QuoteLCL({
                             <span className="qa-text-muted d-block">
                               {t("Quotelcl.chargeable")}
                             </span>
-                            <strong>{chargeableVolume.toFixed(4)}</strong>
+                            <strong>
+                              {chargeableVolume.toFixed(4)} {lclChargeableUnit}
+                            </strong>
                           </div>
                           <div>
                             <span className="qa-text-muted d-block">
                               {t("Quotelcl.cobropor")}
                             </span>
-                            <strong>
-                              {totalWeightTons > totalVolume
-                                ? t("Quotelcl.peso")
-                                : t("Quotelcl.volumen")}
-                            </strong>
+                            <strong>{lclChargeableBillingBasis}</strong>
                           </div>
                         </div>
                       </div>

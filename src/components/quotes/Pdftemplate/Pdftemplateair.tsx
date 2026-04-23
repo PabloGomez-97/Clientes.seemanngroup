@@ -12,6 +12,15 @@ interface PieceData {
   volumeWeight: number;
 }
 
+interface OverallPieceData {
+  id: string;
+  packageTypeName: string;
+  description: string;
+  weight: number;
+  volume: number;
+  chargeableWeight: number;
+}
+
 interface PDFTemplateAIRProps {
   quoteNumber: string;
   customerName: string;
@@ -46,6 +55,7 @@ interface PDFTemplateAIRProps {
   currency: string;
   overallMode: boolean;
   piecesData?: PieceData[];
+  overallPiecesData?: OverallPieceData[];
   carrier?: string;
   transitTime?: string;
   frequency?: string;
@@ -91,6 +101,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   currency,
   overallMode,
   piecesData,
+  overallPiecesData,
   carrier,
   transitTime,
   frequency,
@@ -434,20 +445,39 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
           </thead>
           <tbody>
             {overallMode ? (
-              <tr>
-                <td style={{ ...td, ...cen, fontWeight: 600 }}>{pieces}</td>
-                <td style={td}>{packageTypeName}</td>
-                <td style={td}>{description}</td>
-                <td style={{ ...td, ...r, fontWeight: 600 }}>
-                  {fmt(totalWeight)}
-                </td>
-                <td style={{ ...td, ...r, fontWeight: 600 }}>
-                  {fmt(totalVolume)}
-                </td>
-                <td style={{ ...td, ...r, fontWeight: 600 }}>
-                  {fmt(chargeableWeight)}
-                </td>
-              </tr>
+              overallPiecesData && overallPiecesData.length > 0 ? (
+                overallPiecesData.map((piece) => (
+                  <tr key={piece.id}>
+                    <td style={{ ...td, ...cen, fontWeight: 600 }}>1</td>
+                    <td style={td}>{piece.packageTypeName || packageTypeName}</td>
+                    <td style={td}>{piece.description || description}</td>
+                    <td style={{ ...td, ...r, fontWeight: 600 }}>
+                      {fmt(piece.weight)}
+                    </td>
+                    <td style={{ ...td, ...r, fontWeight: 600 }}>
+                      {fmt(piece.volume)}
+                    </td>
+                    <td style={{ ...td, ...r, fontWeight: 600 }}>
+                      {fmt(piece.chargeableWeight)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td style={{ ...td, ...cen, fontWeight: 600 }}>{pieces}</td>
+                  <td style={td}>{packageTypeName}</td>
+                  <td style={td}>{description}</td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(totalWeight)}
+                  </td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(totalVolume)}
+                  </td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(chargeableWeight)}
+                  </td>
+                </tr>
+              )
             ) : (
               piecesData &&
               piecesData.map((piece) => (

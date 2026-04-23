@@ -1,6 +1,15 @@
 import React from "react";
 import { imgUrl } from "../../../config/images";
 
+interface OverallPieceDataLCL {
+  id: string;
+  packageTypeName: string;
+  description: string;
+  weight: number;
+  volume: number;
+  wmChargeable: number;
+}
+
 interface PDFTemplateLCLProps {
   quoteNumber: string;
   customerName: string;
@@ -33,6 +42,9 @@ interface PDFTemplateLCLProps {
   }>;
   totalCharges: number;
   currency: string;
+  overallMode?: boolean;
+  overallPiecesData?: OverallPieceDataLCL[];
+  wmChargeableUnit?: string;
   carrier?: string;
   transitTime?: string;
   frequency?: string;
@@ -76,6 +88,9 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
   charges,
   totalCharges,
   currency,
+  overallMode = false,
+  overallPiecesData,
+  wmChargeableUnit = "m³",
   carrier,
   transitTime,
   frequency,
@@ -409,31 +424,67 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
             <tr>
               <th style={{ ...th, ...cen }}>Pcs</th>
               <th style={th}>Package</th>
-              <th style={th}>Dimensions (cm)</th>
+              {!overallMode && <th style={th}>Dimensions (cm)</th>}
               <th style={th}>Description</th>
               <th style={{ ...th, ...r }}>Weight ({weightUnit})</th>
               <th style={{ ...th, ...r }}>Volume ({volumeUnit})</th>
-              <th style={{ ...th, ...r }}>W/M ({weightUnit})</th>
+              <th style={{ ...th, ...r }}>W/M ({wmChargeableUnit})</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style={{ ...td, ...cen, fontWeight: 600 }}>{pieces}</td>
-              <td style={td}>{packageTypeName}</td>
-              <td style={td}>
-                {fmt(length)} × {fmt(width)} × {fmt(height)}
-              </td>
-              <td style={td}>{description}</td>
-              <td style={{ ...td, ...r, fontWeight: 600 }}>
-                {fmt(totalWeight)}
-              </td>
-              <td style={{ ...td, ...r, fontWeight: 600 }}>
-                {fmt(totalVolume)}
-              </td>
-              <td style={{ ...td, ...r, fontWeight: 600 }}>
-                {fmt(totalVolumeWeight)}
-              </td>
-            </tr>
+            {overallMode ? (
+              overallPiecesData && overallPiecesData.length > 0 ? (
+                overallPiecesData.map((piece) => (
+                  <tr key={piece.id}>
+                    <td style={{ ...td, ...cen, fontWeight: 600 }}>1</td>
+                    <td style={td}>{piece.packageTypeName || packageTypeName}</td>
+                    <td style={td}>{piece.description || description}</td>
+                    <td style={{ ...td, ...r, fontWeight: 600 }}>
+                      {fmt(piece.weight)}
+                    </td>
+                    <td style={{ ...td, ...r, fontWeight: 600 }}>
+                      {fmt(piece.volume)}
+                    </td>
+                    <td style={{ ...td, ...r, fontWeight: 600 }}>
+                      {fmt(piece.wmChargeable)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td style={{ ...td, ...cen, fontWeight: 600 }}>{pieces}</td>
+                  <td style={td}>{packageTypeName}</td>
+                  <td style={td}>{description}</td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(totalWeight)}
+                  </td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(totalVolume)}
+                  </td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmt(totalVolumeWeight)}
+                  </td>
+                </tr>
+              )
+            ) : (
+              <tr>
+                <td style={{ ...td, ...cen, fontWeight: 600 }}>{pieces}</td>
+                <td style={td}>{packageTypeName}</td>
+                <td style={td}>
+                  {fmt(length)} × {fmt(width)} × {fmt(height)}
+                </td>
+                <td style={td}>{description}</td>
+                <td style={{ ...td, ...r, fontWeight: 600 }}>
+                  {fmt(totalWeight)}
+                </td>
+                <td style={{ ...td, ...r, fontWeight: 600 }}>
+                  {fmt(totalVolume)}
+                </td>
+                <td style={{ ...td, ...r, fontWeight: 600 }}>
+                  {fmt(totalVolumeWeight)}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
         {/* Summary strip */}
@@ -459,7 +510,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
           </span>
           <span>
             <strong>Chargeable (W/M):</strong> {fmt(totalVolumeWeight)}{" "}
-            {weightUnit}
+            {wmChargeableUnit}
           </span>
         </div>
       </div>

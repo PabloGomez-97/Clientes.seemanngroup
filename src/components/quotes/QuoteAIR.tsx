@@ -34,6 +34,10 @@ import {
   type ClienteAsignado,
 } from "./Handlers/Air/HandlerQuoteAir";
 import { PieceAccordion } from "./Handlers/Air/PieceAccordion";
+import {
+  OverallPieceAccordionAir,
+  type OverallPieceDataAir,
+} from "./Handlers/Air/OverallPieceAccordionAir";
 import { WeightRangeAlert } from "./Handlers/Air/WeightRangeAlert";
 import {
   OversizeNotifyExecutive,
@@ -85,6 +89,48 @@ function expandClientesPorEmpresa(
   return expanded;
 }
 
+function createOverallPieceAir(
+  id: string,
+  weight = 0,
+  volume = 0,
+): OverallPieceDataAir {
+  return {
+    id,
+    weight,
+    volume,
+    volumeWeight: volume * 167,
+  };
+}
+
+function isOverallPieceCompleteAir(piece: OverallPieceDataAir): boolean {
+  return piece.weight > 0 && piece.volume > 0;
+}
+
+function calculateOverallTotalsAir(pieces: OverallPieceDataAir[]) {
+  const totalWeight = pieces.reduce((sum, piece) => sum + piece.weight, 0);
+  const totalVolume = pieces.reduce((sum, piece) => sum + piece.volume, 0);
+  const totalVolumetricWeight = pieces.reduce(
+    (sum, piece) => sum + piece.volumeWeight,
+    0,
+  );
+
+  return {
+    totalWeight,
+    totalVolume,
+    totalVolumetricWeight,
+    chargeableWeight: Math.max(totalWeight, totalVolumetricWeight),
+  };
+}
+
+function buildOverallPiecesSummaryAir(pieces: OverallPieceDataAir[]): string {
+  return pieces
+    .map(
+      (piece, index) =>
+        `Pieza ${index + 1}: ${piece.volume.toFixed(4)} m3 / ${piece.weight.toFixed(2)} kg`,
+    )
+    .join("; ");
+}
+
 function QuoteAPITester({
   preselectedOrigin,
   preselectedDestination,
@@ -126,8 +172,9 @@ function QuoteAPITester({
   const [description, setDescription] = useState("Cargamento Aéreo");
   const [incoterm, setIncoterm] = useState<"EXW" | "FCA" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
-  const [manualVolume, setManualVolume] = useState(0.48);
-  const [manualWeight, setManualWeight] = useState(100);
+  const [overallPiecesData, setOverallPiecesData] = useState<
+    OverallPieceDataAir[]
+  >([createOverallPieceAir("1", 100, 0.48)]);
   const [selectedPackageType, setSelectedPackageType] = useState(97);
   const [piecesData, setPiecesData] = useState<PieceData[]>([
     {
@@ -147,6 +194,9 @@ function QuoteAPITester({
     },
   ]);
   const [openAccordions, setOpenAccordions] = useState<string[]>(["1"]);
+  const [openOverallAccordions, setOpenOverallAccordions] = useState<string[]>([
+    "1",
+  ]);
   const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
   const [openSection, setOpenSection] = useState<number>(1);
   const [step2Completed, setStep2Completed] = useState<boolean>(false);
@@ -266,6 +316,35 @@ function QuoteAPITester({
     () => piecesData.some((piece) => piece.noApilable),
     [piecesData],
   );
+  const overallTotals = useMemo(
+    () => calculateOverallTotalsAir(overallPiecesData),
+    [overallPiecesData],
+  );
+  const overallPiecesCount = overallPiecesData.length;
+  const overallCompletedPiecesCount = useMemo(
+    () => overallPiecesData.filter(isOverallPieceCompleteAir).length,
+    [overallPiecesData],
+  );
+  const manualWeight = overallTotals.totalWeight;
+  const manualVolume = overallTotals.totalVolume;
+  const pesoVolumetricoOverall = overallTotals.totalVolumetricWeight;
+  const hasCargoStep2Data = overallDimsAndWeight
+    ? overallPiecesData.some((piece) => piece.weight > 0 || piece.volume > 0)
+    : piecesData.some((piece) => piece.weight > 0);
+
+  useEffect(() => {
+    if (!overallDimsAndWeight) {
+      setWeightError(null);
+      return;
+    }
+
+    if (manualWeight > 2000) {
+      setWeightError("El peso total no puede exceder 2000 kg");
+      return;
+    }
+
+    setWeightError(null);
+  }, [overallDimsAndWeight, manualWeight]);
 
   // Track quote start on mount
   useEffect(() => {
@@ -570,7 +649,12 @@ function QuoteAPITester({
     if (weightError || dimensionError) return false;
 
     if (overallDimsAndWeight) {
-      return manualWeight > 0 && manualVolume > 0;
+      return (
+        overallPiecesData.length > 0 &&
+        overallCompletedPiecesCount === overallPiecesData.length &&
+        manualWeight > 0 &&
+        manualVolume > 0
+      );
     }
 
     const piecesHaveData = piecesData.some(
@@ -580,6 +664,8 @@ function QuoteAPITester({
   }, [
     incoterm,
     overallDimsAndWeight,
+    overallCompletedPiecesCount,
+    overallPiecesData.length,
     manualWeight,
     manualVolume,
     piecesData,
@@ -827,6 +913,112 @@ function QuoteAPITester({
       prev.map((piece) =>
         piece.id === id ? { ...piece, [field]: value } : piece,
       ),
+    );
+  };
+
+  const handleAddOverallPiece = () => {
+    if (overallPiecesData.length >= 10) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+
+    const newId = (overallPiecesData.length + 1).toString();
+    setOverallPiecesData((prev) => [...prev, createOverallPieceAir(newId)]);
+    setOpenOverallAccordions((prev) => {
+      const newOpen = [...prev, newId];
+      return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+    });
+  };
+
+  const handleDuplicateOverallPiece = (fromId?: string) => {
+    if (overallPiecesData.length >= 10) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+
+    setOverallPiecesData((prev) => {
+      if (prev.length === 0) return prev;
+
+      let sourceId: string | undefined = fromId;
+      if (!sourceId) {
+        sourceId =
+          openOverallAccordions.length > 0
+            ? openOverallAccordions[openOverallAccordions.length - 1]
+            : undefined;
+      }
+      if (!sourceId) {
+        sourceId = prev[prev.length - 1].id;
+      }
+
+      const sourceIndex = prev.findIndex((piece) => piece.id === sourceId);
+      const idx = sourceIndex === -1 ? prev.length - 1 : sourceIndex;
+      const sourcePiece = prev[idx];
+      const inserted = [
+        ...prev.slice(0, idx + 1),
+        createOverallPieceAir("", sourcePiece.weight, sourcePiece.volume),
+        ...prev.slice(idx + 1),
+      ];
+      const renumbered = inserted.map((piece, index) => ({
+        ...piece,
+        id: (index + 1).toString(),
+      }));
+      const newId = (idx + 2).toString();
+
+      setOpenOverallAccordions((prevOpen) => {
+        const newOpen = [...prevOpen, newId];
+        return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+      });
+
+      return renumbered;
+    });
+  };
+
+  const handleRemoveOverallPiece = (id: string) => {
+    const filtered = overallPiecesData.filter((piece) => piece.id !== id);
+    const renumbered = filtered.map((piece, index) => ({
+      ...piece,
+      id: (index + 1).toString(),
+    }));
+
+    setOverallPiecesData(renumbered);
+    setOpenOverallAccordions((prev) => {
+      const remaining = prev.filter((openId) => openId !== id);
+      if (remaining.length > 0) {
+        return remaining.filter((openId) =>
+          renumbered.some((piece) => piece.id === openId),
+        );
+      }
+
+      return renumbered[0] ? [renumbered[0].id] : [];
+    });
+  };
+
+  const handleToggleOverallAccordion = (id: string) => {
+    setOpenOverallAccordions((prev) => {
+      const isOpen = prev.includes(id);
+
+      if (isOpen) {
+        return prev.filter((openId) => openId !== id);
+      }
+
+      const newOpen = [...prev, id];
+      return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+    });
+  };
+
+  const handleUpdateOverallPiece = (
+    id: string,
+    field: "weight" | "volume",
+    value: number,
+  ) => {
+    setOverallPiecesData((prev) =>
+      prev.map((piece) => {
+        if (piece.id !== id) return piece;
+
+        const nextWeight = field === "weight" ? value : piece.weight;
+        const nextVolume = field === "volume" ? value : piece.volume;
+        return createOverallPieceAir(piece.id, nextWeight, nextVolume);
+      }),
     );
   };
 
@@ -1337,8 +1529,7 @@ function QuoteAPITester({
   // Cálculo del peso chargeable (para ambos modos)
   const getPesoChargeable = () => {
     if (overallDimsAndWeight) {
-      const pesoVolumetricoOverall = manualVolume * 167;
-      return Math.max(manualWeight, pesoVolumetricoOverall);
+      return overallTotals.chargeableWeight;
     } else {
       const { chargeableWeight } = calculateTotals();
       return chargeableWeight;
@@ -1346,9 +1537,6 @@ function QuoteAPITester({
   };
 
   const pesoChargeable = getPesoChargeable();
-
-  // Calcular peso volumétrico para determinar la unidad de cobro en modo Overall
-  const pesoVolumetricoOverall = overallDimsAndWeight ? manualVolume * 167 : 0;
 
   // Determinar si se cobra por peso o volumen en modo Overall
   const chargeableUnit = overallDimsAndWeight
@@ -1622,6 +1810,16 @@ function QuoteAPITester({
         return;
       }
     } else {
+      const overallPiecesIncompletas = overallPiecesData.filter(
+        (piece) => !isOverallPieceCompleteAir(piece),
+      );
+      if (overallPiecesIncompletas.length > 0) {
+        setError(
+          "Debes completar el peso y el volumen de todas las piezas OVERALL antes de generar la cotización",
+        );
+        return;
+      }
+
       // Modo overall: validar que se haya seleccionado un packageType
       if (!selectedPackageType) {
         setError(
@@ -2002,10 +2200,9 @@ function QuoteAPITester({
         let piezasDescEmail: string;
 
         if (overallDimsAndWeight) {
-          // Modo OVERALL: usar los valores manuales ingresados por el usuario
           pesoTotalEmail = manualWeight;
           volumenTotalEmail = manualVolume;
-          piezasDescEmail = "Modo OVERALL (datos globales)";
+          piezasDescEmail = buildOverallPiecesSummaryAir(overallPiecesData);
         } else {
           // Modo por piezas: calcular desde piecesData
           const { totalRealWeight } = calculateTotals();
@@ -2074,6 +2271,16 @@ function QuoteAPITester({
           (sum, piece) => sum + piece.totalVolume,
           0,
         );
+        const overallPdfPieces = overallDimsAndWeight
+          ? overallPiecesData.map((piece) => ({
+              id: piece.id,
+              packageTypeName,
+              description,
+              weight: piece.weight,
+              volume: piece.volume,
+              chargeableWeight: Math.max(piece.weight, piece.volumeWeight),
+            }))
+          : undefined;
 
         root.render(
           <PDFTemplateAIR
@@ -2102,7 +2309,9 @@ function QuoteAPITester({
               incoterm === "EXW" ? deliveryToAddressDerived : undefined
             }
             salesRep={salesRepName}
-            pieces={piecesData.length}
+            pieces={
+              overallDimsAndWeight ? overallPiecesCount : piecesData.length
+            }
             packageTypeName={packageTypeName}
             length={overallDimsAndWeight ? 0 : piecesData[0]?.length || 0}
             width={overallDimsAndWeight ? 0 : piecesData[0]?.width || 0}
@@ -2112,7 +2321,9 @@ function QuoteAPITester({
             totalVolume={
               overallDimsAndWeight ? manualVolume : totalVolumePieces
             }
-            chargeableWeight={chargeableWeight}
+            chargeableWeight={
+              overallDimsAndWeight ? pesoChargeable : chargeableWeight
+            }
             weightUnit="kg"
             volumeUnit="m³"
             charges={finalPdfCharges}
@@ -2120,6 +2331,7 @@ function QuoteAPITester({
             currency={rutaSeleccionada.currency}
             overallMode={overallDimsAndWeight}
             piecesData={overallDimsAndWeight ? [] : piecesData}
+            overallPiecesData={overallPdfPieces}
             carrier={
               sinTarifa
                 ? routeInfoPlaceholder
@@ -3275,7 +3487,7 @@ function QuoteAPITester({
             packageType: {
               id: selectedPackageType,
             },
-            pieces: 1,
+            pieces: overallPiecesCount,
             description: description,
             overallDimsAndWeight: true,
             totalWeightValue: manualWeight,
@@ -4200,29 +4412,26 @@ function QuoteAPITester({
                   className="bi bi-box-seam me-2"
                   style={{ color: "var(--qa-primary)" }}
                 ></i>
-                {openSection !== 2 &&
-                (incoterm || piecesData.some((p) => p.weight > 0))
+                {openSection !== 2 && (incoterm || hasCargoStep2Data)
                   ? "Paso 2: Datos del Cargamento"
                   : "Paso 2: Datos del Cargamento"}
               </h3>
-              {openSection !== 2 &&
-                (incoterm || piecesData.some((p) => p.weight > 0)) && (
-                  <span
-                    className="qa-badge ms-3"
-                    style={{
-                      backgroundColor: "#d1e7dd",
-                      color: "#0f5132",
-                      borderColor: "transparent",
-                    }}
-                  >
-                    <i className="bi bi-check-circle-fill me-1"></i>
-                    Completado
-                  </span>
-                )}
+              {openSection !== 2 && (incoterm || hasCargoStep2Data) && (
+                <span
+                  className="qa-badge ms-3"
+                  style={{
+                    backgroundColor: "#d1e7dd",
+                    color: "#0f5132",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Completado
+                </span>
+              )}
             </div>
             <div className="d-flex align-items-center gap-2">
-              {openSection !== 2 &&
-              (incoterm || piecesData.some((p) => p.weight > 0)) ? (
+              {openSection !== 2 && (incoterm || hasCargoStep2Data) ? (
                 <button
                   type="button"
                   className="qa-btn qa-btn-sm qa-btn-outline"
@@ -4665,62 +4874,53 @@ function QuoteAPITester({
 
               {overallDimsAndWeight && (
                 <div className="col-12">
-                  <div className="qa-grid-2 mt-3 p-3 bg-light rounded border">
-                    <div>
-                      <label className="qa-label">
-                        <i className="bi bi-box-seam me-1"></i>
-                        {t("QuoteAIR.pesototal")}
-                      </label>
-                      <input
-                        type="number"
-                        className={`qa-input ${weightError ? "is-invalid" : ""}`}
-                        value={manualWeight}
-                        onChange={(e) => {
-                          const newManualWeight = Number(e.target.value);
-                          setManualWeight(newManualWeight);
-                          if (newManualWeight > 2000) {
-                            setWeightError(
-                              "El peso total no puede exceder 2000 kg",
-                            );
-                          } else {
-                            setWeightError(null);
-                          }
-                        }}
-                        min="0"
-                        step="0.01"
-                      />
-                      <small className="text-muted d-block mt-1">
-                        {t("QuoteAIR.descripcionpeso")}
-                      </small>
-                      {weightError && (
-                        <div className="text-danger small mt-1">
-                          {weightError}
-                        </div>
-                      )}
-                    </div>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h4 className="fs-6 fw-bold mb-0">Detalles de Piezas</h4>
 
-                    <div>
-                      <label className="qa-label">
-                        <i className="bi bi-rulers me-1"></i>
-                        {t("QuoteAIR.volumentotal")}
-                      </label>
-                      <input
-                        type="number"
-                        className="qa-input"
-                        value={manualVolume}
-                        onChange={(e) =>
-                          setManualVolume(Number(e.target.value))
-                        }
-                        min="0"
-                        step="0.0001"
-                      />
-                      <small className="text-muted d-block mt-1">
-                        {t("QuoteAIR.descripcionvolumen")}
-                      </small>
+                    <div className="d-flex align-items-center gap-2">
+                      <button
+                        type="button"
+                        className="qa-btn qa-btn-outline qa-btn-sm"
+                        onClick={() => handleDuplicateOverallPiece()}
+                      >
+                        <i className="bi bi-files"></i>
+                        Duplicar Pieza
+                      </button>
+                      <button
+                        type="button"
+                        className="qa-btn qa-btn-primary qa-btn-sm"
+                        onClick={handleAddOverallPiece}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar Pieza
+                      </button>
                     </div>
                   </div>
+
+                  <div className="mb-3">
+                    {overallPiecesData.map((piece, index) => (
+                      <OverallPieceAccordionAir
+                        key={piece.id}
+                        piece={piece}
+                        index={index}
+                        isOpen={openOverallAccordions.includes(piece.id)}
+                        onToggle={() => handleToggleOverallAccordion(piece.id)}
+                        onRemove={() => handleRemoveOverallPiece(piece.id)}
+                        onUpdate={(field, value) =>
+                          handleUpdateOverallPiece(piece.id, field, value)
+                        }
+                        canRemove={overallPiecesData.length > 1}
+                      />
+                    ))}
+                  </div>
+
                   <div className="qa-route-summary">
                     <div className="qa-totals-bar">
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {overallPiecesCount}
+                        </span>
+                        <span className="qa-totals-bar-label">Piezas</span>
+                      </div>
                       <div className="qa-totals-bar-item">
                         <span className="qa-totals-bar-value">
                           {manualVolume.toFixed(3)} m³
@@ -4737,6 +4937,14 @@ function QuoteAPITester({
                       </div>
                       <div className="qa-totals-bar-item">
                         <span className="qa-totals-bar-value">
+                          {pesoVolumetricoOverall.toFixed(2)} kg
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Peso volumétrico
+                        </span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
                           {pesoChargeable.toFixed(2)} kg
                         </span>
                         <span className="qa-totals-bar-label">
@@ -4745,6 +4953,16 @@ function QuoteAPITester({
                       </div>
                     </div>
                   </div>
+
+                  {weightError && (
+                    <div className="qa-alert qa-alert-warning mt-3">
+                      <i className="bi bi-exclamation-triangle-fill"></i>
+                      <div>
+                        <strong>{t("QuoteAIR.correccion")}</strong>{" "}
+                        {weightError}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
