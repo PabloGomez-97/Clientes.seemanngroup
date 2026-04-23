@@ -3118,10 +3118,114 @@ function QuoteLCL({
 
             {openSection === 2 && (
               <div>
+                {isSimulationMode && (
+                  <div
+                    className="p-3 rounded border"
+                    style={{
+                      borderColor: "rgba(255, 98, 0, 0.2)",
+                      backgroundColor: "rgba(255, 98, 0, 0.03)", // Un 3% de opacidad del naranja
+                    }}
+                  >
+                    <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                      <div>
+                        <div className="fw-bold">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="#ffc107"
+                            style={{ flexShrink: 0 }}
+                          >
+                            <path d="M12 3L1 21h22L12 3z" />
+                            <rect
+                              x="11"
+                              y="9"
+                              width="2"
+                              height="6"
+                              fill="white"
+                            />
+                            <circle cx="12" cy="18" r="1.2" fill="white" />
+                          </svg>{" "}
+                          Ocean Freight Simulado
+                          <span
+                            className="qf-badge ms-2"
+                            style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                          >
+                            Obligatorio
+                          </span>
+                        </div>
+                        <small className="text-muted">
+                          Ingresa el rate base por W/M. El valor venta se
+                          calcula automáticamente con +15%.
+                        </small>
+                      </div>
+                      <span
+                        className="badge"
+                        style={{
+                          backgroundColor: "rgba(255, 98, 0, 0.12)",
+                          color: "#ff6200",
+                        }}
+                      >
+                        Válida 5 días
+                      </span>
+                    </div>
+
+                    <div className="row g-3 align-items-end">
+                      <div className="col-md-6">
+                        <label className="qa-label small mb-1">
+                          Costo rate ({rutaSeleccionada.currency})
+                        </label>
+                        <input
+                          type="text"
+                          className="qa-input"
+                          value={simulatedOceanFreightRate}
+                          placeholder="Ej: 85"
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "" || /^[\d,\.]+$/.test(value)) {
+                              setSimulatedOceanFreightRate(value);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="qa-label small mb-1">
+                          Venta rate ({rutaSeleccionada.currency})
+                        </label>
+                        <input
+                          type="text"
+                          className="qa-input"
+                          value={simulatedOceanFreightIncomeRate.toFixed(2)}
+                          disabled
+                          style={{
+                            backgroundColor: "#e9ecef",
+                            cursor: "not-allowed",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {!hasSimulationOceanRate && (
+                      <small className="text-danger d-block mt-2">
+                        Debes ingresar la tarifa manual de Ocean Freight para
+                        continuar con la simulación.
+                      </small>
+                    )}
+                  </div>
+                )}
+                <hr className="my-4" />
                 <div className="row g-3">
                   <div className="col-12 mb-3">
                     <label className="qa-label">
-                      Incoterm <span className="text-danger">*</span>
+                      <i className="bi bi-flag me-2"></i>
+                      Incoterm
+                      <span
+                        className="qf-badge ms-2"
+                        style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                      >
+                        Obligatorio
+                      </span>
                     </label>
                     <select
                       className="qa-select"
@@ -3133,7 +3237,7 @@ function QuoteLCL({
                     >
                       <option value="">{t("Quotelcl.selectincoterm")}</option>
                       <option value="EXW">Ex Works [EXW]</option>
-                      <option value="FOB">FOB</option>
+                      <option value="FOB">Free On Board [FOB]</option>
                     </select>
                   </div>
 
@@ -3441,107 +3545,6 @@ function QuoteLCL({
                           </h4>
 
                           <div className="d-flex flex-column gap-2 small">
-                            {isSimulationMode && (
-                              <div
-                                className="p-3 rounded border bg-white"
-                                style={{ borderColor: "rgba(255, 98, 0, 0.2)" }}
-                              >
-                                <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
-                                  <div>
-                                    <div className="fw-bold">
-                                      Ocean Freight Simulado
-                                    </div>
-                                    <small className="text-muted">
-                                      Ingresa el rate base por W/M. El income se
-                                      calcula automáticamente con +15%.
-                                    </small>
-                                  </div>
-                                  <span
-                                    className="badge"
-                                    style={{
-                                      backgroundColor: "rgba(255, 98, 0, 0.12)",
-                                      color: "#ff6200",
-                                    }}
-                                  >
-                                    Válida 5 días
-                                  </span>
-                                </div>
-
-                                <div className="row g-3 align-items-end">
-                                  <div className="col-md-4">
-                                    <label className="qa-label small mb-1">
-                                      Expense rate ({rutaSeleccionada.currency})
-                                    </label>
-                                    <input
-                                      type="text"
-                                      className="qa-input"
-                                      value={simulatedOceanFreightRate}
-                                      placeholder="Ej: 85"
-                                      onChange={(e) => {
-                                        const value = e.target.value;
-                                        if (
-                                          value === "" ||
-                                          /^[\d,\.]+$/.test(value)
-                                        ) {
-                                          setSimulatedOceanFreightRate(value);
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                  <div className="col-md-4">
-                                    <label className="qa-label small mb-1">
-                                      Income rate ({rutaSeleccionada.currency})
-                                    </label>
-                                    <input
-                                      type="text"
-                                      className="qa-input"
-                                      value={simulatedOceanFreightIncomeRate.toFixed(
-                                        2,
-                                      )}
-                                      readOnly
-                                    />
-                                  </div>
-                                  <div className="col-md-4">
-                                    <label className="qa-label small mb-1">
-                                      W/M cobrables
-                                    </label>
-                                    <input
-                                      type="text"
-                                      className="qa-input"
-                                      value={chargeableVolume.toFixed(4)}
-                                      readOnly
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="row g-2 small mt-2">
-                                  <div className="col-6 text-muted">
-                                    Total income:
-                                  </div>
-                                  <div className="col-6 text-end fw-bold">
-                                    {rutaSeleccionada.currency}{" "}
-                                    {tarifaOceanFreight?.income.toFixed(2) ??
-                                      "0.00"}
-                                  </div>
-                                  <div className="col-6 text-muted">
-                                    Base expense para recargos:
-                                  </div>
-                                  <div className="col-6 text-end fw-bold text-primary">
-                                    {rutaSeleccionada.currency}{" "}
-                                    {tarifaOceanFreight?.expense.toFixed(2) ??
-                                      "0.00"}
-                                  </div>
-                                </div>
-
-                                {!hasSimulationOceanRate && (
-                                  <small className="text-danger d-block mt-2">
-                                    Debes ingresar la tarifa manual de Ocean
-                                    Freight para continuar con la simulación.
-                                  </small>
-                                )}
-                              </div>
-                            )}
-
                             {/* Seguro opcional */}
                             <div className="d-flex flex-column gap-2 small">
                               <div

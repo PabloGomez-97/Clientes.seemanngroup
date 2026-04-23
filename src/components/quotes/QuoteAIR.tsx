@@ -4355,6 +4355,104 @@ function QuoteAPITester({
                 </div>
               </div>
 
+              {isSimulationMode && (
+                <div
+                  className="p-3 rounded border"
+                  style={{
+                    borderColor: "rgba(255, 98, 0, 0.2)",
+                    backgroundColor: "rgba(255, 98, 0, 0.03)", // Un 3% de opacidad del naranja
+                  }}
+                >
+                  <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                      <div className="fw-bold">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="#ffc107"
+                          style={{ flexShrink: 0 }}
+                        >
+                          <path d="M12 3L1 21h22L12 3z" />
+                          <rect
+                            x="11"
+                            y="9"
+                            width="2"
+                            height="6"
+                            fill="white"
+                          />
+                          <circle cx="12" cy="18" r="1.2" fill="white" />
+                        </svg>{" "}
+                        Air Freight Simulado
+                        <span
+                          className="qf-badge ms-2"
+                          style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                        >
+                          Obligatorio
+                        </span>
+                      </div>
+                      <small className="text-muted">
+                        Ingresa el valor costo, la venta se calcula
+                        automáticamente con un markup del 15%
+                      </small>
+                    </div>
+                    <span
+                      className="badge"
+                      style={{
+                        backgroundColor: "rgba(255, 98, 0, 0.12)",
+                        color: "#ff6200",
+                      }}
+                    >
+                      Validez de 5 días
+                    </span>
+                  </div>
+
+                  <div className="row g-3 align-items-end">
+                    <div className="col-md-6">
+                      <label className="qa-label mb-1">
+                        Costo rate ({rutaSeleccionada.currency})
+                      </label>
+                      <input
+                        type="text"
+                        className="qa-input"
+                        value={simulatedAirFreightRate}
+                        placeholder="Ej: 4.25"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === "" || /^[\d,\.]+$/.test(value)) {
+                            setSimulatedAirFreightRate(value);
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="qa-label mb-1">
+                        Venta rate ({rutaSeleccionada.currency})
+                      </label>
+                      <input
+                        type="text"
+                        className="qa-input"
+                        value={simulatedAirFreightIncomeRate.toFixed(2)}
+                        disabled
+                        style={{
+                          backgroundColor: "#e9ecef",
+                          cursor: "not-allowed",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {!hasSimulationBaseRate && (
+                    <small className="text-danger d-block mt-2">
+                      Debes ingresar la tarifa manual para continuar con la
+                      simulación
+                    </small>
+                  )}
+                </div>
+              )}
+              <hr className="my-4" />
+
               <div className="qa-form-group mb-4">
                 <label className="qa-label">
                   <i className="bi bi-flag me-2"></i>
@@ -4805,103 +4903,6 @@ function QuoteAPITester({
                     </h6>
 
                     <div className="d-flex flex-column gap-2 small">
-                      {isSimulationMode && (
-                        <div
-                          className="p-3 rounded border bg-white"
-                          style={{ borderColor: "rgba(255, 98, 0, 0.2)" }}
-                        >
-                          <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
-                            <div>
-                              <div className="fw-bold">
-                                Air Freight Simulado
-                              </div>
-                              <small className="text-muted">
-                                Ingresa el rate base del ejecutivo. El income se
-                                calcula automáticamente con +15%.
-                              </small>
-                            </div>
-                            <span
-                              className="badge"
-                              style={{
-                                backgroundColor: "rgba(255, 98, 0, 0.12)",
-                                color: "#ff6200",
-                              }}
-                            >
-                              Validez de 5 días
-                            </span>
-                          </div>
-
-                          <div className="row g-3 align-items-end">
-                            <div className="col-md-4">
-                              <label className="qa-label mb-1">
-                                Expense rate ({rutaSeleccionada.currency})
-                              </label>
-                              <input
-                                type="text"
-                                className="qa-input"
-                                value={simulatedAirFreightRate}
-                                placeholder="Ej: 4.25"
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (
-                                    value === "" ||
-                                    /^[\d,\.]+$/.test(value)
-                                  ) {
-                                    setSimulatedAirFreightRate(value);
-                                  }
-                                }}
-                              />
-                            </div>
-                            <div className="col-md-4">
-                              <label className="qa-label mb-1">
-                                Income rate ({rutaSeleccionada.currency})
-                              </label>
-                              <input
-                                type="text"
-                                className="qa-input"
-                                value={simulatedAirFreightIncomeRate.toFixed(2)}
-                                readOnly
-                              />
-                            </div>
-                            <div className="col-md-4">
-                              <label className="qa-label mb-1">
-                                Peso facturable
-                              </label>
-                              <input
-                                type="text"
-                                className="qa-input"
-                                value={`${pesoAirFreight.toFixed(2)} kg`}
-                                readOnly
-                              />
-                            </div>
-                          </div>
-
-                          <div className="row g-2 small mt-2">
-                            <div className="col-6 text-muted">
-                              Total income:
-                            </div>
-                            <div className="col-6 text-end fw-bold">
-                              {rutaSeleccionada.currency}{" "}
-                              {airFreightQuoteValues.incomeAmount.toFixed(2)}
-                            </div>
-                            <div className="col-6 text-muted">
-                              Base expense para recargos:
-                            </div>
-                            <div className="col-6 text-end fw-bold text-primary">
-                              {rutaSeleccionada.currency}{" "}
-                              {airFreightQuoteValues.expenseAmount.toFixed(2)}
-                            </div>
-                          </div>
-
-                          {!hasSimulationBaseRate && (
-                            <small className="text-danger d-block mt-2">
-                              Debes ingresar la tarifa manual para continuar con
-                              la simulación
-                            </small>
-                          )}
-                        </div>
-                      )}
-
                       {/* Seguro opcional */}
                       <div className="mt-2">
                         <div
