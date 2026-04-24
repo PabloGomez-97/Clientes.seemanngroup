@@ -274,18 +274,22 @@ function clearLinbisCache(username: string) {
 // Sub-components (stateless)
 // ═══════════════════════════════════════════════════════════════════════════
 
-function SkeletonCard() {
+function SkeletonMetricStrip() {
   return (
-    <div className="ej-kpi" style={{ minHeight: 95 }}>
-      <div
-        className="ej-skeleton"
-        style={{ width: 100, height: 12, marginBottom: 14 }}
-      />
-      <div
-        className="ej-skeleton"
-        style={{ width: 60, height: 28, marginBottom: 6 }}
-      />
-      <div className="ej-skeleton" style={{ width: 120, height: 10 }} />
+    <div className="ej-client-metrics-strip" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div className="ej-client-metrics-strip__item" key={index}>
+          <div
+            className="ej-skeleton"
+            style={{ width: "52%", height: 11, marginBottom: 10 }}
+          />
+          <div
+            className="ej-skeleton"
+            style={{ width: "34%", height: 20, marginBottom: 6 }}
+          />
+          <div className="ej-skeleton" style={{ width: "68%", height: 11 }} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -850,7 +854,6 @@ export default function HomeEjecutivo() {
     );
     return clientes.filter((c) => new Date(c.createdAt) >= firstDay).length;
   }, [clientes]);
-
   // Recent ShipsGo air/ocean
   const recentAir = useMemo(
     () =>
@@ -955,11 +958,7 @@ export default function HomeEjecutivo() {
             <h1>Cargando Torre de Control...</h1>
           </div>
         </div>
-        <div className="ej-kpi-grid">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
+        <SkeletonMetricStrip />
       </div>
     );
   }
@@ -1250,10 +1249,10 @@ export default function HomeEjecutivo() {
             Ver análisis completo →
           </button>
         </div>
-        <div className="ej-kpi-grid ej-kpi-grid--4">
+        <div className="ej-client-metrics-strip">
           {/* Clients */}
           <div
-            className="ej-kpi ej-kpi--orange ej-kpi--clickable"
+            className="ej-kpi ej-kpi--orange ej-kpi--clickable ej-client-metrics-strip__item"
             onClick={() => setListModal("all-clients")}
           >
             <div className="ej-kpi__header">
@@ -1279,12 +1278,7 @@ export default function HomeEjecutivo() {
                 </svg>
               </div>
             </div>
-            <div
-              className="ej-kpi__value"
-              style={{ color: "var(--ej-orange)" }}
-            >
-              {clientes.length}
-            </div>
+            <div className="ej-kpi__value">{clientes.length}</div>
             <div className="ej-kpi__sub">
               {newThisMonth > 0
                 ? `+${newThisMonth} este mes`
@@ -1294,7 +1288,7 @@ export default function HomeEjecutivo() {
 
           {/* ShipsGo Trackings */}
           <div
-            className="ej-kpi ej-kpi--green ej-kpi--clickable"
+            className="ej-kpi ej-kpi--green ej-kpi--clickable ej-client-metrics-strip__item"
             onClick={() => {
               setListModal("all-trackings");
               setListModalTab("all");
@@ -1320,7 +1314,7 @@ export default function HomeEjecutivo() {
                 </svg>
               </div>
             </div>
-            <div className="ej-kpi__value" style={{ color: "var(--ej-green)" }}>
+            <div className="ej-kpi__value">
               {trackingAir.length + trackingOcean.length}
             </div>
             <div className="ej-kpi__sub">
@@ -1330,7 +1324,7 @@ export default function HomeEjecutivo() {
 
           {/* Active (in transit) */}
           <div
-            className="ej-kpi ej-kpi--amber ej-kpi--clickable"
+            className="ej-kpi ej-kpi--amber ej-kpi--clickable ej-client-metrics-strip__item"
             onClick={() => {
               setListModal("kpi-trackings");
               setListModalTab("all");
@@ -1357,7 +1351,7 @@ export default function HomeEjecutivo() {
                 </svg>
               </div>
             </div>
-            <div className="ej-kpi__value" style={{ color: "var(--ej-amber)" }}>
+            <div className="ej-kpi__value">
               {airInTransit.length + oceanInTransit.length}
             </div>
             <div className="ej-kpi__sub">
@@ -1367,7 +1361,7 @@ export default function HomeEjecutivo() {
 
           {/* Delays */}
           <div
-            className="ej-kpi ej-kpi--red ej-kpi--clickable"
+            className="ej-kpi ej-kpi--red ej-kpi--clickable ej-client-metrics-strip__item"
             onClick={() => {
               setListModal("kpi-delayed");
               setListModalTab("all");
@@ -1395,9 +1389,7 @@ export default function HomeEjecutivo() {
                 </svg>
               </div>
             </div>
-            <div className="ej-kpi__value" style={{ color: "var(--ej-red)" }}>
-              {totalDelayed}
-            </div>
+            <div className="ej-kpi__value">{totalDelayed}</div>
             <div className="ej-kpi__sub">
               {airDelayed.length} aéreos · {oceanDelayed.length} marítimos
             </div>

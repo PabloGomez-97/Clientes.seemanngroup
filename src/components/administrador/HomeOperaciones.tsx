@@ -153,14 +153,22 @@ function getToday(): string {
 // Sub-components
 // ═══════════════════════════════════════════════════════════════════════════
 
-function SkeletonCard() {
+function SkeletonMetricStrip() {
   return (
-    <div className="ops-kpi" style={{ minHeight: 95 }}>
-      <div
-        className="ops-skeleton"
-        style={{ width: "60%", height: 12, marginBottom: 14 }}
-      />
-      <div className="ops-skeleton" style={{ width: "40%", height: 28 }} />
+    <div className="ops-metrics-strip" aria-hidden="true">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div className="ops-metrics-strip__item" key={index}>
+          <div
+            className="ops-skeleton"
+            style={{ width: "52%", height: 11, marginBottom: 10 }}
+          />
+          <div
+            className="ops-skeleton"
+            style={{ width: "34%", height: 20, marginBottom: 6 }}
+          />
+          <div className="ops-skeleton" style={{ width: "68%", height: 11 }} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -408,6 +416,48 @@ export default function HomeOperaciones() {
   const totalCompleted = airCompleted.length + oceanCompleted.length;
   const totalDelayed = airDelayed.length + oceanDelayed.length;
   const totalTrackings = allAir.length + allOcean.length;
+  const overviewMetrics = [
+    {
+      id: "total",
+      label: "Total",
+      value: totalTrackings,
+      subtext: `${allAir.length} aéreos · ${allOcean.length} marítimos`,
+      onClick: () => {
+        setListModal("kpi-total");
+        setListModalTab("all");
+      },
+    },
+    {
+      id: "active",
+      label: "En movimiento",
+      value: totalActive,
+      subtext: `${airInTransit.length} aéreos · ${oceanInTransit.length} marítimos`,
+      onClick: () => {
+        setListModal("kpi-active");
+        setListModalTab("all");
+      },
+    },
+    {
+      id: "completed",
+      label: "Completados",
+      value: totalCompleted,
+      subtext: `${airCompleted.length} aterrizados · ${oceanCompleted.length} arribados`,
+      onClick: () => {
+        setListModal("kpi-completed");
+        setListModalTab("all");
+      },
+    },
+    {
+      id: "delayed",
+      label: "Retrasos",
+      value: totalDelayed,
+      subtext: `${airDelayed.length} aéreos · ${oceanDelayed.length} marítimos`,
+      onClick: () => {
+        setListModal("kpi-delayed");
+        setListModalTab("all");
+      },
+    },
+  ];
 
   // Air status distribution
   const airStatusDist = useMemo(() => {
@@ -607,11 +657,7 @@ export default function HomeOperaciones() {
             <p>{getToday()}</p>
           </div>
         </div>
-        <div className="ops-kpi-grid">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
+        <SkeletonMetricStrip />
       </div>
     );
   }
@@ -702,259 +748,18 @@ export default function HomeOperaciones() {
       </div>
 
       {/* ── KPI Cards ────────────────────────────────────────────────────── */}
-      <div className="ops-kpi-grid">
-        {/* Total seguimientos */}
-        <div
-          className="ops-kpi ops-kpi--clickable"
-          onClick={() => {
-            setListModal("kpi-total");
-            setListModalTab("all");
-          }}
-        >
-          <div className="ops-kpi__header">
-            <span className="ops-kpi__label">Total Seguimientos</span>
-            <div className="ops-kpi__icon">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--secondary-color)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </div>
-          </div>
+      <div className="ops-metrics-strip">
+        {overviewMetrics.map((metric) => (
           <div
-            className="ops-kpi__value"
-            style={{ color: "var(--secondary-color)" }}
+            key={metric.id}
+            className="ops-metrics-strip__item ops-metrics-strip__item--clickable"
+            onClick={metric.onClick}
           >
-            {totalTrackings}
+            <span className="ops-metrics-strip__label">{metric.label}</span>
+            <span className="ops-metrics-strip__value">{metric.value}</span>
+            <span className="ops-metrics-strip__sub">{metric.subtext}</span>
           </div>
-          <div className="ops-kpi__sub">
-            {allAir.length} aéreos · {allOcean.length} marítimos
-          </div>
-        </div>
-
-        {/* En movimiento */}
-        <div
-          className="ops-kpi ops-kpi--clickable"
-          onClick={() => {
-            setListModal("kpi-active");
-            setListModalTab("all");
-          }}
-        >
-          <div className="ops-kpi__header">
-            <span className="ops-kpi__label">En Movimiento</span>
-            <div className="ops-kpi__icon">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--secondary-color)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-              </svg>
-            </div>
-          </div>
-          <div
-            className="ops-kpi__value"
-            style={{ color: "var(--secondary-color)" }}
-          >
-            {totalActive}
-          </div>
-          <div className="ops-kpi__sub">
-            {airInTransit.length} aéreos · {oceanInTransit.length} marítimos
-          </div>
-        </div>
-
-        {/* Aéreos en tránsito */}
-        <div
-          className="ops-kpi ops-kpi--clickable"
-          onClick={() => {
-            setListModal("kpi-air-transit");
-            setListModalTab("air");
-          }}
-        >
-          <div className="ops-kpi__header">
-            <span className="ops-kpi__label">Aéreos En Tránsito</span>
-            <div className="ops-kpi__icon">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--secondary-color)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-              </svg>
-            </div>
-          </div>
-          <div
-            className="ops-kpi__value"
-            style={{ color: "var(--secondary-color)" }}
-          >
-            {airInTransit.length}
-          </div>
-          <div className="ops-kpi__sub">{airCompleted.length} completados</div>
-        </div>
-
-        {/* Marítimos navegando */}
-        <div
-          className="ops-kpi ops-kpi--clickable"
-          onClick={() => {
-            setListModal("kpi-ocean-transit");
-            setListModalTab("ocean");
-          }}
-        >
-          <div className="ops-kpi__header">
-            <span className="ops-kpi__label">Marítimos Navegando</span>
-            <div className="ops-kpi__icon">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--secondary-color)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1" />
-                <path d="M4 18l-1-5h18l-1 5" />
-                <path d="M12 2v7" />
-                <path d="M7 9h10" />
-              </svg>
-            </div>
-          </div>
-          <div
-            className="ops-kpi__value"
-            style={{ color: "var(--secondary-color)" }}
-          >
-            {oceanInTransit.length}
-          </div>
-          <div className="ops-kpi__sub">
-            {oceanCompleted.length} completados
-          </div>
-        </div>
-
-        {/* Completados total */}
-        <div
-          className="ops-kpi ops-kpi--clickable"
-          onClick={() => {
-            setListModal("kpi-completed");
-            setListModalTab("all");
-          }}
-        >
-          <div className="ops-kpi__header">
-            <span className="ops-kpi__label">Completados</span>
-            <div className="ops-kpi__icon">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--secondary-color)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-            </div>
-          </div>
-          <div
-            className="ops-kpi__value"
-            style={{ color: "var(--secondary-color)" }}
-          >
-            {totalCompleted}
-          </div>
-          <div className="ops-kpi__sub">
-            {airCompleted.length} aterrizados · {oceanCompleted.length}{" "}
-            arribados
-          </div>
-        </div>
-
-        {/* Retrasos */}
-        <div
-          className="ops-kpi ops-kpi--clickable"
-          onClick={() => {
-            setListModal("kpi-delayed");
-            setListModalTab("all");
-          }}
-        >
-          <div className="ops-kpi__header">
-            <span className="ops-kpi__label">Retrasos Activos</span>
-            <div className="ops-kpi__icon">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--ops-red)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </div>
-          </div>
-          <div className="ops-kpi__value" style={{ color: "var(--ops-red)" }}>
-            {totalDelayed}
-          </div>
-          <div className="ops-kpi__sub">
-            {airDelayed.length} aéreos · {oceanDelayed.length} marítimos
-          </div>
-        </div>
-
-        {/* Clientes con seguimiento */}
-        <div
-          className="ops-kpi ops-kpi--clickable"
-          onClick={() => setListModal("kpi-clients")}
-        >
-          <div className="ops-kpi__header">
-            <span className="ops-kpi__label">Clientes con Seguimiento</span>
-            <div className="ops-kpi__icon">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--secondary-color)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-          </div>
-          <div
-            className="ops-kpi__value"
-            style={{ color: "var(--secondary-color)" }}
-          >
-            {clientRanking.length}
-          </div>
-          <div className="ops-kpi__sub">de {clients.length} totales</div>
-        </div>
+        ))}
       </div>
 
       {/* ── Delay Banner ──────────────────────────────────────────────────── */}

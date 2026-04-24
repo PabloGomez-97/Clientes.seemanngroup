@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useOutletContext, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
+import "./ComportamientoDeClients.css";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -880,12 +881,10 @@ export default function ComportamientoDeClientes() {
             <SummaryCard
               label="Completadas"
               value={clientDetail.summary.completed}
-              color="#10b981"
             />
             <SummaryCard
               label="Abandonadas"
               value={clientDetail.summary.abandoned}
-              color="#ef4444"
             />
             <SummaryCard
               label="Tasa de completación"
@@ -1913,18 +1912,9 @@ export default function ComportamientoDeClientes() {
       </div>
 
       {/* Summary cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-          gap: 12,
-          marginBottom: 24,
-        }}
-      >
+      <div className="cb-metrics-strip">
         <SummaryCard label="Cuentas" value={uniqueAccountCount} />
-        {sortedClients.length > uniqueAccountCount && (
-          <SummaryCard label="Empresas" value={sortedClients.length} />
-        )}
+        <SummaryCard label="Empresas" value={sortedClients.length} />
         <SummaryCard
           label="Cotizaciones iniciadas"
           value={totalStarted}
@@ -1933,13 +1923,11 @@ export default function ComportamientoDeClientes() {
         <SummaryCard
           label="Completadas"
           value={totalCompleted}
-          color="#10b981"
           onClick={() => setModalType("completadas")}
         />
         <SummaryCard
           label="Abandonadas"
           value={totalAbandoned}
-          color="#ef4444"
           onClick={() => setModalType("abandonadas")}
         />
         <SummaryCard label="Tasa global" value={`${overallRate}%`} />
@@ -2326,51 +2314,21 @@ export default function ComportamientoDeClientes() {
 function SummaryCard({
   label,
   value,
-  color,
   onClick,
 }: {
   label: string;
   value: number | string;
-  color?: string;
   onClick?: () => void;
 }) {
   return (
     <div
       onClick={onClick}
-      style={{
-        background: "#fff",
-        border: "1px solid #e5e7eb",
-        borderRadius: 10,
-        padding: "16px 18px",
-        cursor: onClick ? "pointer" : "default",
-        transition: onClick
-          ? "border-color 0.15s, box-shadow 0.15s"
-          : undefined,
-      }}
-      onMouseEnter={(e) => {
-        if (onClick) {
-          e.currentTarget.style.borderColor = "rgba(255,98,0,0.35)";
-          e.currentTarget.style.boxShadow = "0 2px 8px rgba(255,98,0,0.08)";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (onClick) {
-          e.currentTarget.style.borderColor = "#e5e7eb";
-          e.currentTarget.style.boxShadow = "none";
-        }
-      }}
+      className={`cb-metrics-strip__item${onClick ? " cb-metrics-strip__item--clickable" : ""}`}
     >
-      <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>
+      <div className="cb-metrics-strip__label">
         {label}
       </div>
-      <div
-        style={{
-          fontSize: 24,
-          fontWeight: 700,
-          color: color || "#1f2937",
-          fontFamily: FONT,
-        }}
-      >
+      <div className="cb-metrics-strip__value">
         {value}
       </div>
       {onClick && (
