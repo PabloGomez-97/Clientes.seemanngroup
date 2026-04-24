@@ -705,7 +705,7 @@ export default function HomeOperaciones() {
       <div className="ops-kpi-grid">
         {/* Total seguimientos */}
         <div
-          className="ops-kpi ops-kpi--orange ops-kpi--clickable"
+          className="ops-kpi ops-kpi--clickable"
           onClick={() => {
             setListModal("kpi-total");
             setListModalTab("all");
@@ -713,16 +713,13 @@ export default function HomeOperaciones() {
         >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Total Seguimientos</span>
-            <div
-              className="ops-kpi__icon"
-              style={{ background: "var(--ops-orange-bg)" }}
-            >
+            <div className="ops-kpi__icon">
               <svg
                 width="18"
                 height="18"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--ops-orange)"
+                stroke="var(--secondary-color)"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -734,7 +731,7 @@ export default function HomeOperaciones() {
           </div>
           <div
             className="ops-kpi__value"
-            style={{ color: "var(--ops-orange)" }}
+            style={{ color: "var(--secondary-color)" }}
           >
             {totalTrackings}
           </div>
@@ -745,7 +742,7 @@ export default function HomeOperaciones() {
 
         {/* En movimiento */}
         <div
-          className="ops-kpi ops-kpi--cyan ops-kpi--clickable"
+          className="ops-kpi ops-kpi--clickable"
           onClick={() => {
             setListModal("kpi-active");
             setListModalTab("all");
@@ -753,16 +750,13 @@ export default function HomeOperaciones() {
         >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">En Movimiento</span>
-            <div
-              className="ops-kpi__icon"
-              style={{ background: "var(--ops-cyan-bg)" }}
-            >
+            <div className="ops-kpi__icon">
               <svg
                 width="18"
                 height="18"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--ops-cyan)"
+                stroke="var(--secondary-color)"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -771,7 +765,10 @@ export default function HomeOperaciones() {
               </svg>
             </div>
           </div>
-          <div className="ops-kpi__value" style={{ color: "var(--ops-cyan)" }}>
+          <div
+            className="ops-kpi__value"
+            style={{ color: "var(--secondary-color)" }}
+          >
             {totalActive}
           </div>
           <div className="ops-kpi__sub">
@@ -781,7 +778,7 @@ export default function HomeOperaciones() {
 
         {/* Aéreos en tránsito */}
         <div
-          className="ops-kpi ops-kpi--blue ops-kpi--clickable"
+          className="ops-kpi ops-kpi--clickable"
           onClick={() => {
             setListModal("kpi-air-transit");
             setListModalTab("air");
@@ -789,16 +786,13 @@ export default function HomeOperaciones() {
         >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Aéreos En Tránsito</span>
-            <div
-              className="ops-kpi__icon"
-              style={{ background: "var(--ops-blue-bg)" }}
-            >
+            <div className="ops-kpi__icon">
               <svg
                 width="18"
                 height="18"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--ops-blue)"
+                stroke="var(--secondary-color)"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -807,7 +801,10 @@ export default function HomeOperaciones() {
               </svg>
             </div>
           </div>
-          <div className="ops-kpi__value" style={{ color: "var(--ops-blue)" }}>
+          <div
+            className="ops-kpi__value"
+            style={{ color: "var(--secondary-color)" }}
+          >
             {airInTransit.length}
           </div>
           <div className="ops-kpi__sub">{airCompleted.length} completados</div>
@@ -815,7 +812,7 @@ export default function HomeOperaciones() {
 
         {/* Marítimos navegando */}
         <div
-          className="ops-kpi ops-kpi--green ops-kpi--clickable"
+          className="ops-kpi ops-kpi--clickable"
           onClick={() => {
             setListModal("kpi-ocean-transit");
             setListModalTab("ocean");
@@ -823,16 +820,13 @@ export default function HomeOperaciones() {
         >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Marítimos Navegando</span>
-            <div
-              className="ops-kpi__icon"
-              style={{ background: "var(--ops-green-bg)" }}
-            >
+            <div className="ops-kpi__icon">
               <svg
                 width="18"
                 height="18"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--ops-green)"
+                stroke="var(--secondary-color)"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -844,7 +838,10 @@ export default function HomeOperaciones() {
               </svg>
             </div>
           </div>
-          <div className="ops-kpi__value" style={{ color: "var(--ops-green)" }}>
+          <div
+            className="ops-kpi__value"
+            style={{ color: "var(--secondary-color)" }}
+          >
             {oceanInTransit.length}
           </div>
           <div className="ops-kpi__sub">
@@ -854,7 +851,7 @@ export default function HomeOperaciones() {
 
         {/* Completados total */}
         <div
-          className="ops-kpi ops-kpi--purple ops-kpi--clickable"
+          className="ops-kpi ops-kpi--clickable"
           onClick={() => {
             setListModal("kpi-completed");
             setListModalTab("all");
@@ -862,16 +859,13 @@ export default function HomeOperaciones() {
         >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Completados</span>
-            <div
-              className="ops-kpi__icon"
-              style={{ background: "var(--ops-purple-bg)" }}
-            >
+            <div className="ops-kpi__icon">
               <svg
                 width="18"
                 height="18"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--ops-purple)"
+                stroke="var(--secondary-color)"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -883,7 +877,7 @@ export default function HomeOperaciones() {
           </div>
           <div
             className="ops-kpi__value"
-            style={{ color: "var(--ops-purple)" }}
+            style={{ color: "var(--secondary-color)" }}
           >
             {totalCompleted}
           </div>
@@ -895,7 +889,7 @@ export default function HomeOperaciones() {
 
         {/* Retrasos */}
         <div
-          className="ops-kpi ops-kpi--red ops-kpi--clickable"
+          className="ops-kpi ops-kpi--clickable"
           onClick={() => {
             setListModal("kpi-delayed");
             setListModalTab("all");
@@ -903,10 +897,7 @@ export default function HomeOperaciones() {
         >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Retrasos Activos</span>
-            <div
-              className="ops-kpi__icon"
-              style={{ background: "var(--ops-red-bg)" }}
-            >
+            <div className="ops-kpi__icon">
               <svg
                 width="18"
                 height="18"
@@ -933,21 +924,18 @@ export default function HomeOperaciones() {
 
         {/* Clientes con seguimiento */}
         <div
-          className="ops-kpi ops-kpi--amber ops-kpi--clickable"
+          className="ops-kpi ops-kpi--clickable"
           onClick={() => setListModal("kpi-clients")}
         >
           <div className="ops-kpi__header">
             <span className="ops-kpi__label">Clientes con Seguimiento</span>
-            <div
-              className="ops-kpi__icon"
-              style={{ background: "var(--ops-amber-bg)" }}
-            >
+            <div className="ops-kpi__icon">
               <svg
                 width="18"
                 height="18"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--ops-amber)"
+                stroke="var(--secondary-color)"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -959,7 +947,10 @@ export default function HomeOperaciones() {
               </svg>
             </div>
           </div>
-          <div className="ops-kpi__value" style={{ color: "var(--ops-amber)" }}>
+          <div
+            className="ops-kpi__value"
+            style={{ color: "var(--secondary-color)" }}
+          >
             {clientRanking.length}
           </div>
           <div className="ops-kpi__sub">de {clients.length} totales</div>
@@ -999,149 +990,153 @@ export default function HomeOperaciones() {
           </h3>
         </div>
         <div className="ops-grid-2">
-        {/* Air status donut & bars */}
-        <div className="ops-panel">
-          <h3 className="ops-section-title">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--ops-cyan)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-            </svg>
-            Distribución Aérea
-          </h3>
-          <div className="ops-donut-wrap">
-            <DonutChart segments={airDonutSegments} />
-            <div className="ops-donut-legend">
-              {airDonutSegments
-                .filter((s) => s.value > 0)
-                .map((seg) => (
-                  <div key={seg.label} className="ops-donut-legend__item">
-                    <span
-                      className="ops-donut-legend__dot"
-                      style={{ background: seg.color }}
-                    />
-                    {seg.label}
-                    <span className="ops-donut-legend__value">{seg.value}</span>
-                  </div>
-                ))}
+          {/* Air status donut & bars */}
+          <div className="ops-panel">
+            <h3 className="ops-section-title">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--secondary-color)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
+              </svg>
+              Distribución Aérea
+            </h3>
+            <div className="ops-donut-wrap">
+              <DonutChart segments={airDonutSegments} />
+              <div className="ops-donut-legend">
+                {airDonutSegments
+                  .filter((s) => s.value > 0)
+                  .map((seg) => (
+                    <div key={seg.label} className="ops-donut-legend__item">
+                      <span
+                        className="ops-donut-legend__dot"
+                        style={{ background: seg.color }}
+                      />
+                      {seg.label}
+                      <span className="ops-donut-legend__value">
+                        {seg.value}
+                      </span>
+                    </div>
+                  ))}
+              </div>
             </div>
-          </div>
-          <div className="ops-status-grid">
-            <StatusBar
-              label="En Tránsito"
-              count={airStatusDist["EN_ROUTE"] || 0}
-              total={allAir.length}
-              color="#0891b2"
-            />
-            <StatusBar
-              label="Aterrizado"
-              count={airStatusDist["LANDED"] || 0}
-              total={allAir.length}
-              color="#059669"
-            />
-            <StatusBar
-              label="Entregado"
-              count={airStatusDist["DELIVERED"] || 0}
-              total={allAir.length}
-              color="#22c55e"
-            />
-            <StatusBar
-              label="Reservado"
-              count={airStatusDist["BOOKED"] || 0}
-              total={allAir.length}
-              color="#7c3aed"
-            />
-            {(airStatusDist["UNTRACKED"] || 0) > 0 && (
+            <div className="ops-status-grid">
               <StatusBar
-                label="Sin Rastreo"
-                count={airStatusDist["UNTRACKED"] || 0}
+                label="En Tránsito"
+                count={airStatusDist["EN_ROUTE"] || 0}
                 total={allAir.length}
-                color="#94a3b8"
+                color="#0891b2"
               />
-            )}
-          </div>
-        </div>
-
-        {/* Ocean status donut & bars */}
-        <div className="ops-panel">
-          <h3 className="ops-section-title">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--ops-blue)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1" />
-              <path d="M4 18l-1-5h18l-1 5" />
-              <path d="M12 2v7" />
-              <path d="M7 9h10" />
-            </svg>
-            Distribución Marítima
-          </h3>
-          <div className="ops-donut-wrap">
-            <DonutChart segments={oceanDonutSegments} />
-            <div className="ops-donut-legend">
-              {oceanDonutSegments
-                .filter((s) => s.value > 0)
-                .map((seg) => (
-                  <div key={seg.label} className="ops-donut-legend__item">
-                    <span
-                      className="ops-donut-legend__dot"
-                      style={{ background: seg.color }}
-                    />
-                    {seg.label}
-                    <span className="ops-donut-legend__value">{seg.value}</span>
-                  </div>
-                ))}
+              <StatusBar
+                label="Aterrizado"
+                count={airStatusDist["LANDED"] || 0}
+                total={allAir.length}
+                color="#059669"
+              />
+              <StatusBar
+                label="Entregado"
+                count={airStatusDist["DELIVERED"] || 0}
+                total={allAir.length}
+                color="#22c55e"
+              />
+              <StatusBar
+                label="Reservado"
+                count={airStatusDist["BOOKED"] || 0}
+                total={allAir.length}
+                color="#7c3aed"
+              />
+              {(airStatusDist["UNTRACKED"] || 0) > 0 && (
+                <StatusBar
+                  label="Sin Rastreo"
+                  count={airStatusDist["UNTRACKED"] || 0}
+                  total={allAir.length}
+                  color="#94a3b8"
+                />
+              )}
             </div>
           </div>
-          <div className="ops-status-grid">
-            <StatusBar
-              label="Navegando"
-              count={oceanStatusDist["SAILING"] || 0}
-              total={allOcean.length}
-              color="#2563eb"
-            />
-            <StatusBar
-              label="Llegó"
-              count={oceanStatusDist["ARRIVED"] || 0}
-              total={allOcean.length}
-              color="#059669"
-            />
-            <StatusBar
-              label="Descargado"
-              count={oceanStatusDist["DISCHARGED"] || 0}
-              total={allOcean.length}
-              color="#22c55e"
-            />
-            <StatusBar
-              label="Cargado"
-              count={oceanStatusDist["LOADED"] || 0}
-              total={allOcean.length}
-              color="#7c3aed"
-            />
-            {(oceanStatusDist["UNTRACKED"] || 0) > 0 && (
+
+          {/* Ocean status donut & bars */}
+          <div className="ops-panel">
+            <h3 className="ops-section-title">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--secondary-color)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1" />
+                <path d="M4 18l-1-5h18l-1 5" />
+                <path d="M12 2v7" />
+                <path d="M7 9h10" />
+              </svg>
+              Distribución Marítima
+            </h3>
+            <div className="ops-donut-wrap">
+              <DonutChart segments={oceanDonutSegments} />
+              <div className="ops-donut-legend">
+                {oceanDonutSegments
+                  .filter((s) => s.value > 0)
+                  .map((seg) => (
+                    <div key={seg.label} className="ops-donut-legend__item">
+                      <span
+                        className="ops-donut-legend__dot"
+                        style={{ background: seg.color }}
+                      />
+                      {seg.label}
+                      <span className="ops-donut-legend__value">
+                        {seg.value}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+            <div className="ops-status-grid">
               <StatusBar
-                label="Sin Rastreo"
-                count={oceanStatusDist["UNTRACKED"] || 0}
+                label="Navegando"
+                count={oceanStatusDist["SAILING"] || 0}
                 total={allOcean.length}
-                color="#94a3b8"
+                color="#2563eb"
               />
-            )}
+              <StatusBar
+                label="Llegó"
+                count={oceanStatusDist["ARRIVED"] || 0}
+                total={allOcean.length}
+                color="#059669"
+              />
+              <StatusBar
+                label="Descargado"
+                count={oceanStatusDist["DISCHARGED"] || 0}
+                total={allOcean.length}
+                color="#22c55e"
+              />
+              <StatusBar
+                label="Cargado"
+                count={oceanStatusDist["LOADED"] || 0}
+                total={allOcean.length}
+                color="#7c3aed"
+              />
+              {(oceanStatusDist["UNTRACKED"] || 0) > 0 && (
+                <StatusBar
+                  label="Sin Rastreo"
+                  count={oceanStatusDist["UNTRACKED"] || 0}
+                  total={allOcean.length}
+                  color="#94a3b8"
+                />
+              )}
+            </div>
           </div>
         </div>
-      </div>
       </div>
 
       {/* ── Últimos Movimientos ────────────────────────────────────────────── */}
@@ -1161,34 +1156,120 @@ export default function HomeOperaciones() {
           </button>
         </div>
         <div className="ops-panel">
-        {/* Tabs */}
-        <div className="ops-tabs">
-          <button
-            className={`ops-tab ${shipmentTab === "air" ? "ops-tab--active" : ""}`}
-            onClick={() => setShipmentTab("air")}
-          >
-            ✈ Aéreos ({allAir.length})
-          </button>
-          <button
-            className={`ops-tab ${shipmentTab === "ocean" ? "ops-tab--active" : ""}`}
-            onClick={() => setShipmentTab("ocean")}
-          >
-            🚢 Marítimos ({allOcean.length})
-          </button>
-        </div>
+          {/* Tabs */}
+          <div className="ops-tabs">
+            <button
+              className={`ops-tab ${shipmentTab === "air" ? "ops-tab--active" : ""}`}
+              onClick={() => setShipmentTab("air")}
+            >
+              ✈ Aéreos ({allAir.length})
+            </button>
+            <button
+              className={`ops-tab ${shipmentTab === "ocean" ? "ops-tab--active" : ""}`}
+              onClick={() => setShipmentTab("ocean")}
+            >
+              🚢 Marítimos ({allOcean.length})
+            </button>
+          </div>
 
-        {shipmentTab === "air" ? (
-          recentAir.length === 0 ? (
+          {shipmentTab === "air" ? (
+            recentAir.length === 0 ? (
+              <div className="ops-empty">
+                No hay seguimientos aéreos registrados.
+              </div>
+            ) : (
+              <table className="ops-mini-table">
+                <thead>
+                  <tr>
+                    <th>Estado</th>
+                    <th>AWB</th>
+                    <th>Aerolínea</th>
+                    <th>Ruta</th>
+                    <th>Cliente</th>
+                    <th>Progreso</th>
+                    <th>ETA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentAir.map((s) => {
+                    const delayed = isAirDelayed(s);
+                    return (
+                      <tr
+                        key={s.id}
+                        className="ops-clickable-row"
+                        onClick={() => setSelectedAir(s)}
+                      >
+                        <td>
+                          <span
+                            className={`ops-badge ${delayed ? "ops-badge--delayed" : getAirBadgeClass(s.status)}`}
+                          >
+                            {delayed
+                              ? "⚠ Retraso"
+                              : AIR_STATUS_LABELS[s.status] || s.status}
+                          </span>
+                        </td>
+                        <td
+                          style={{
+                            fontWeight: 600,
+                            fontFamily: "monospace",
+                            fontSize: 11,
+                          }}
+                        >
+                          {s.awb_number}
+                        </td>
+                        <td>{s.airline?.name || "—"}</td>
+                        <td>
+                          {s.route?.origin.location.country.code && (
+                            <img
+                              src={getFlagUrl(
+                                s.route.origin.location.country.code,
+                              )}
+                              alt=""
+                              className="ops-flag"
+                            />
+                          )}
+                          {s.route?.origin.location.iata || "—"}
+                          {" → "}
+                          {s.route?.destination.location.country.code && (
+                            <img
+                              src={getFlagUrl(
+                                s.route.destination.location.country.code,
+                              )}
+                              alt=""
+                              className="ops-flag"
+                            />
+                          )}
+                          {s.route?.destination.location.iata || "—"}
+                        </td>
+                        <td style={{ fontWeight: 600 }}>
+                          {s.reference || "—"}
+                        </td>
+                        <td style={{ minWidth: 100 }}>
+                          <ProgressBar
+                            value={s.route?.transit_percentage ?? 0}
+                            color={delayed ? "#dc2626" : "#0891b2"}
+                          />
+                        </td>
+                        <td style={{ fontSize: 11, color: "#8b92a5" }}>
+                          {formatDate(s.route?.destination.date_of_rcf)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )
+          ) : recentOcean.length === 0 ? (
             <div className="ops-empty">
-              No hay seguimientos aéreos registrados.
+              No hay seguimientos marítimos registrados.
             </div>
           ) : (
             <table className="ops-mini-table">
               <thead>
                 <tr>
                   <th>Estado</th>
-                  <th>AWB</th>
-                  <th>Aerolínea</th>
+                  <th>Container / Booking</th>
+                  <th>Naviera</th>
                   <th>Ruta</th>
                   <th>Cliente</th>
                   <th>Progreso</th>
@@ -1196,21 +1277,21 @@ export default function HomeOperaciones() {
                 </tr>
               </thead>
               <tbody>
-                {recentAir.map((s) => {
-                  const delayed = isAirDelayed(s);
+                {recentOcean.map((s) => {
+                  const delayed = isOceanDelayed(s);
                   return (
                     <tr
                       key={s.id}
                       className="ops-clickable-row"
-                      onClick={() => setSelectedAir(s)}
+                      onClick={() => setSelectedOcean(s)}
                     >
                       <td>
                         <span
-                          className={`ops-badge ${delayed ? "ops-badge--delayed" : getAirBadgeClass(s.status)}`}
+                          className={`ops-badge ${delayed ? "ops-badge--delayed" : getOceanBadgeClass(s.status)}`}
                         >
                           {delayed
                             ? "⚠ Retraso"
-                            : AIR_STATUS_LABELS[s.status] || s.status}
+                            : OCEAN_STATUS_LABELS[s.status] || s.status}
                         </span>
                       </td>
                       <td
@@ -1220,157 +1301,99 @@ export default function HomeOperaciones() {
                           fontSize: 11,
                         }}
                       >
-                        {s.awb_number}
+                        {s.container_number || s.booking_number || "—"}
                       </td>
-                      <td>{s.airline?.name || "—"}</td>
+                      <td>{s.carrier?.name || "—"}</td>
                       <td>
-                        {s.route?.origin.location.country.code && (
+                        {s.route?.port_of_loading.location.country?.code && (
                           <img
                             src={getFlagUrl(
-                              s.route.origin.location.country.code,
+                              s.route.port_of_loading.location.country.code,
                             )}
                             alt=""
                             className="ops-flag"
                           />
                         )}
-                        {s.route?.origin.location.iata || "—"}
+                        {s.route?.port_of_loading.location.name || "—"}
                         {" → "}
-                        {s.route?.destination.location.country.code && (
+                        {s.route?.port_of_discharge.location.country?.code && (
                           <img
                             src={getFlagUrl(
-                              s.route.destination.location.country.code,
+                              s.route.port_of_discharge.location.country.code,
                             )}
                             alt=""
                             className="ops-flag"
                           />
                         )}
-                        {s.route?.destination.location.iata || "—"}
+                        {s.route?.port_of_discharge.location.name || "—"}
                       </td>
                       <td style={{ fontWeight: 600 }}>{s.reference || "—"}</td>
                       <td style={{ minWidth: 100 }}>
                         <ProgressBar
                           value={s.route?.transit_percentage ?? 0}
-                          color={delayed ? "#dc2626" : "#0891b2"}
+                          color={delayed ? "#dc2626" : "#2563eb"}
                         />
                       </td>
                       <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                        {formatDate(s.route?.destination.date_of_rcf)}
+                        {formatDate(
+                          s.route?.port_of_discharge.date_of_discharge,
+                        )}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          )
-        ) : recentOcean.length === 0 ? (
-          <div className="ops-empty">
-            No hay seguimientos marítimos registrados.
-          </div>
-        ) : (
-          <table className="ops-mini-table">
-            <thead>
-              <tr>
-                <th>Estado</th>
-                <th>Container / Booking</th>
-                <th>Naviera</th>
-                <th>Ruta</th>
-                <th>Cliente</th>
-                <th>Progreso</th>
-                <th>ETA</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOcean.map((s) => {
-                const delayed = isOceanDelayed(s);
-                return (
-                  <tr
-                    key={s.id}
-                    className="ops-clickable-row"
-                    onClick={() => setSelectedOcean(s)}
-                  >
-                    <td>
-                      <span
-                        className={`ops-badge ${delayed ? "ops-badge--delayed" : getOceanBadgeClass(s.status)}`}
-                      >
-                        {delayed
-                          ? "⚠ Retraso"
-                          : OCEAN_STATUS_LABELS[s.status] || s.status}
-                      </span>
-                    </td>
-                    <td
-                      style={{
-                        fontWeight: 600,
-                        fontFamily: "monospace",
-                        fontSize: 11,
-                      }}
-                    >
-                      {s.container_number || s.booking_number || "—"}
-                    </td>
-                    <td>{s.carrier?.name || "—"}</td>
-                    <td>
-                      {s.route?.port_of_loading.location.country?.code && (
-                        <img
-                          src={getFlagUrl(
-                            s.route.port_of_loading.location.country.code,
-                          )}
-                          alt=""
-                          className="ops-flag"
-                        />
-                      )}
-                      {s.route?.port_of_loading.location.name || "—"}
-                      {" → "}
-                      {s.route?.port_of_discharge.location.country?.code && (
-                        <img
-                          src={getFlagUrl(
-                            s.route.port_of_discharge.location.country.code,
-                          )}
-                          alt=""
-                          className="ops-flag"
-                        />
-                      )}
-                      {s.route?.port_of_discharge.location.name || "—"}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>{s.reference || "—"}</td>
-                    <td style={{ minWidth: 100 }}>
-                      <ProgressBar
-                        value={s.route?.transit_percentage ?? 0}
-                        color={delayed ? "#dc2626" : "#2563eb"}
-                      />
-                    </td>
-                    <td style={{ fontSize: 11, color: "#8b92a5" }}>
-                      {formatDate(s.route?.port_of_discharge.date_of_discharge)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+          )}
+        </div>
       </div>
 
       {/* ── Reportería de Movimientos ─────────────────────────────────────── */}
       <div className="ops-section">
         <div className="ops-section-header">
-          <h3 className="ops-section-title" style={{ margin: 0 }}>Reportería de Movimientos</h3>
+          <h3 className="ops-section-title" style={{ margin: 0 }}>
+            Reportería de Movimientos
+          </h3>
         </div>
         <div className="ops-panel">
           <div className="ops-report-grid">
             {/* Rutas Aéreas más usadas */}
             <div className="ops-report-stat">
-              <div className="ops-report-stat__label" style={{ color: "var(--ops-cyan)" }}>✈ Rutas Aéreas más usadas</div>
+              <div
+                className="ops-report-stat__label"
+                style={{ color: "var(--secondary-color)" }}
+              >
+                Rutas Aéreas más usadas
+              </div>
               {airRouteStats.length === 0 ? (
                 <div className="ops-empty">Sin datos.</div>
               ) : (
                 airRouteStats.map(([route, count], i) => {
-                  const pct = airRouteStats[0][1] > 0 ? (count / airRouteStats[0][1]) * 100 : 0;
+                  const pct =
+                    airRouteStats[0][1] > 0
+                      ? (count / airRouteStats[0][1]) * 100
+                      : 0;
                   return (
                     <div key={route} className="ops-report-item">
-                      <span className="ops-report-item__name">{i === 0 ? "🥇 " : `${i + 1}. `}{route}</span>
+                      <span className="ops-report-item__name">
+                        {i === 0 ? "1° " : `${i + 1}. `}
+                        {route}
+                      </span>
                       <div className="ops-report-item__bar-wrap">
-                        <div className="ops-report-item__bar" style={{ width: `${pct}%`, background: "var(--ops-cyan)" }} />
+                        <div
+                          className="ops-report-item__bar"
+                          style={{
+                            width: `${pct}%`,
+                            background: "var(--ops-cyan)",
+                          }}
+                        />
                       </div>
-                      <span className="ops-report-item__count" style={{ color: "var(--ops-cyan)" }}>{count}</span>
+                      <span
+                        className="ops-report-item__count"
+                        style={{ color: "var(--ops-cyan)" }}
+                      >
+                        {count}
+                      </span>
                     </div>
                   );
                 })
@@ -1379,19 +1402,41 @@ export default function HomeOperaciones() {
 
             {/* Aerolíneas más usadas */}
             <div className="ops-report-stat">
-              <div className="ops-report-stat__label" style={{ color: "var(--ops-cyan)" }}>✈ Aerolíneas más usadas</div>
+              <div
+                className="ops-report-stat__label"
+                style={{ color: "var(--secondary-color)" }}
+              >
+                Aerolíneas más usadas
+              </div>
               {airAirlineStats.length === 0 ? (
                 <div className="ops-empty">Sin datos.</div>
               ) : (
                 airAirlineStats.map(([airline, count], i) => {
-                  const pct = airAirlineStats[0][1] > 0 ? (count / airAirlineStats[0][1]) * 100 : 0;
+                  const pct =
+                    airAirlineStats[0][1] > 0
+                      ? (count / airAirlineStats[0][1]) * 100
+                      : 0;
                   return (
                     <div key={airline} className="ops-report-item">
-                      <span className="ops-report-item__name">{i === 0 ? "🥇 " : `${i + 1}. `}{airline}</span>
+                      <span className="ops-report-item__name">
+                        {i === 0 ? "1° " : `${i + 1}. `}
+                        {airline}
+                      </span>
                       <div className="ops-report-item__bar-wrap">
-                        <div className="ops-report-item__bar" style={{ width: `${pct}%`, background: "var(--ops-cyan)" }} />
+                        <div
+                          className="ops-report-item__bar"
+                          style={{
+                            width: `${pct}%`,
+                            background: "var(--ops-cyan)",
+                          }}
+                        />
                       </div>
-                      <span className="ops-report-item__count" style={{ color: "var(--ops-cyan)" }}>{count}</span>
+                      <span
+                        className="ops-report-item__count"
+                        style={{ color: "var(--ops-cyan)" }}
+                      >
+                        {count}
+                      </span>
                     </div>
                   );
                 })
@@ -1400,19 +1445,41 @@ export default function HomeOperaciones() {
 
             {/* Rutas Marítimas más usadas */}
             <div className="ops-report-stat">
-              <div className="ops-report-stat__label" style={{ color: "var(--ops-blue)" }}>🚢 Rutas Marítimas más usadas</div>
+              <div
+                className="ops-report-stat__label"
+                style={{ color: "var(--secondary-color)" }}
+              >
+                Rutas Marítimas más usadas
+              </div>
               {oceanRouteStats.length === 0 ? (
                 <div className="ops-empty">Sin datos.</div>
               ) : (
                 oceanRouteStats.map(([route, count], i) => {
-                  const pct = oceanRouteStats[0][1] > 0 ? (count / oceanRouteStats[0][1]) * 100 : 0;
+                  const pct =
+                    oceanRouteStats[0][1] > 0
+                      ? (count / oceanRouteStats[0][1]) * 100
+                      : 0;
                   return (
                     <div key={route} className="ops-report-item">
-                      <span className="ops-report-item__name">{i === 0 ? "🥇 " : `${i + 1}. `}{route}</span>
+                      <span className="ops-report-item__name">
+                        {i === 0 ? "1° " : `${i + 1}. `}
+                        {route}
+                      </span>
                       <div className="ops-report-item__bar-wrap">
-                        <div className="ops-report-item__bar" style={{ width: `${pct}%`, background: "var(--ops-blue)" }} />
+                        <div
+                          className="ops-report-item__bar"
+                          style={{
+                            width: `${pct}%`,
+                            background: "var(--ops-blue)",
+                          }}
+                        />
                       </div>
-                      <span className="ops-report-item__count" style={{ color: "var(--ops-blue)" }}>{count}</span>
+                      <span
+                        className="ops-report-item__count"
+                        style={{ color: "var(--ops-blue)" }}
+                      >
+                        {count}
+                      </span>
                     </div>
                   );
                 })
@@ -1421,19 +1488,41 @@ export default function HomeOperaciones() {
 
             {/* Navieras más usadas */}
             <div className="ops-report-stat">
-              <div className="ops-report-stat__label" style={{ color: "var(--ops-blue)" }}>🚢 Navieras más usadas</div>
+              <div
+                className="ops-report-stat__label"
+                style={{ color: "var(--secondary-color)" }}
+              >
+                Navieras más usadas
+              </div>
               {oceanCarrierStats.length === 0 ? (
                 <div className="ops-empty">Sin datos.</div>
               ) : (
                 oceanCarrierStats.map(([carrier, count], i) => {
-                  const pct = oceanCarrierStats[0][1] > 0 ? (count / oceanCarrierStats[0][1]) * 100 : 0;
+                  const pct =
+                    oceanCarrierStats[0][1] > 0
+                      ? (count / oceanCarrierStats[0][1]) * 100
+                      : 0;
                   return (
                     <div key={carrier} className="ops-report-item">
-                      <span className="ops-report-item__name">{i === 0 ? "🥇 " : `${i + 1}. `}{carrier}</span>
+                      <span className="ops-report-item__name">
+                        {i === 0 ? "1° " : `${i + 1}. `}
+                        {carrier}
+                      </span>
                       <div className="ops-report-item__bar-wrap">
-                        <div className="ops-report-item__bar" style={{ width: `${pct}%`, background: "var(--ops-blue)" }} />
+                        <div
+                          className="ops-report-item__bar"
+                          style={{
+                            width: `${pct}%`,
+                            background: "var(--ops-blue)",
+                          }}
+                        />
                       </div>
-                      <span className="ops-report-item__count" style={{ color: "var(--ops-blue)" }}>{count}</span>
+                      <span
+                        className="ops-report-item__count"
+                        style={{ color: "var(--ops-blue)" }}
+                      >
+                        {count}
+                      </span>
                     </div>
                   );
                 })
@@ -1449,18 +1538,6 @@ export default function HomeOperaciones() {
         <div className="ops-panel">
           <div className="ops-section-header" style={{ marginBottom: 14 }}>
             <h3 className="ops-section-title" style={{ margin: 0 }}>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--ops-amber)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z" />
-              </svg>
               Clientes con más seguimientos
             </h3>
             <button
@@ -1503,23 +1580,7 @@ export default function HomeOperaciones() {
 
         {/* Operations Summary Card */}
         <div className="ops-panel">
-          <h3 className="ops-section-title">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--ops-purple)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <line x1="3" y1="9" x2="21" y2="9" />
-              <line x1="9" y1="21" x2="9" y2="9" />
-            </svg>
-            Resumen Operativo
-          </h3>
+          <h3 className="ops-section-title">Resumen Operativo</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Air summary row */}
             <div
@@ -1542,10 +1603,10 @@ export default function HomeOperaciones() {
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
-                    color: "var(--ops-cyan)",
+                    color: "var(--secondary-color)",
                   }}
                 >
-                  ✈ Carga Aérea
+                  Carga Aérea
                 </span>
                 <span
                   style={{
@@ -1599,10 +1660,10 @@ export default function HomeOperaciones() {
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
-                    color: "var(--ops-blue)",
+                    color: "var(--secondary-color)",
                   }}
                 >
-                  🚢 Carga Marítima
+                  Carga Marítima
                 </span>
                 <span
                   style={{
