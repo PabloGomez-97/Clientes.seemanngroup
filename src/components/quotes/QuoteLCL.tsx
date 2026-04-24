@@ -3524,7 +3524,7 @@ function QuoteLCL({
                         ></i>
                         <div>
                           <span className="d-block text-dark">
-                            Dimensiones y Peso Totales (OVERALL)
+                            Dimensiones y Peso Totales
                           </span>
                           <small className="text-muted fw-normal">
                             Ingresa el peso total y volumen total sin desglosar

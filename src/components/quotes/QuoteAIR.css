@@ -18,7 +18,8 @@
   font-family: var(--qa-font-family);
   color: var(--qa-text-primary);
   background-color: #fff;
-  padding: 2rem;
+  width: 100%;
+  padding: clamp(1rem, 2.5vw, 2rem);
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -31,6 +32,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .qa-title {
@@ -65,6 +68,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1rem;
   cursor: pointer;
 }
@@ -73,15 +78,18 @@
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
+  flex: 1 1 240px;
 }
 
 /* Table Style for Routes */
 .qa-table-container {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .qa-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
@@ -133,6 +141,8 @@
   border-radius: 10px;
   background-color: #fff;
   transition: var(--qa-transition);
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .qa-input:focus, .qa-select:focus, .qa-textarea:focus {
@@ -569,6 +579,7 @@
   padding: 0.25rem 0.65rem;
   border-radius: 20px;
   font-size: 0.78rem;
+  white-space: normal;
 }
 
 /* ============================================================
@@ -604,4 +615,186 @@
 .qa-totals-bar-label {
   font-size: 0.75rem;
   color: var(--qa-text-secondary);
+}
+
+@media (max-width: 1024px) {
+  .qa-container {
+    padding: 1.25rem;
+  }
+
+  .qa-card,
+  .qa-accordion-content {
+    padding: 1.25rem;
+  }
+
+  .qa-accordion-header {
+    padding: 0.9rem 1.25rem;
+  }
+
+  .qa-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .qa-route-summary-cards {
+    flex-direction: column;
+  }
+
+  .qa-route-summary-arrow {
+    justify-content: center;
+    padding: 0;
+    transform: rotate(90deg);
+  }
+
+  .qa-totals-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    padding: 1px;
+    background: var(--qa-border-color);
+  }
+
+  .qa-totals-bar-item {
+    min-width: 0;
+    background: #f8f9fa;
+  }
+
+  .qa-totals-bar-item + .qa-totals-bar-item {
+    border-left: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .qa-container {
+    padding: 1rem;
+  }
+
+  .qa-title {
+    font-size: 1.25rem;
+  }
+
+  .qa-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .qa-card {
+    padding: 1rem;
+  }
+
+  .qa-card-header,
+  .qa-section-header {
+    align-items: flex-start;
+  }
+
+  .qa-accordion-header {
+    padding: 0.85rem 1rem;
+  }
+
+  .qa-accordion-content {
+    padding: 1rem;
+  }
+
+  .qa-grid-2,
+  .qa-grid-4 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .qa-switch-container,
+  .qa-alert {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .qa-btn:not(.qa-btn-sm) {
+    width: 100%;
+  }
+
+  .qa-route-summary {
+    padding: 0 0 0.75rem;
+  }
+
+  .qa-route-summary-card {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .qa-route-summary-iata {
+    font-size: 1.45rem;
+  }
+
+  .qa-route-summary-meta {
+    gap: 0.5rem;
+  }
+
+  .qa-route-carrier-badge,
+  .qa-route-meta-pill {
+    max-width: 100%;
+  }
+
+  .qa-totals-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .qa-totals-bar-item {
+    padding: 0.8rem 0.9rem;
+  }
+
+  .qa-table {
+    min-width: 580px;
+    font-size: 0.82rem;
+  }
+
+  .qa-table th,
+  .qa-table td {
+    padding: 0.65rem 0.75rem;
+  }
+
+  .qa-address-map__toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .qa-address-map__overlay {
+    width: calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .qa-address-map__canvas {
+    height: 320px;
+  }
+}
+
+@media (max-width: 480px) {
+  .qa-container {
+    padding: 0.85rem;
+  }
+
+  .qa-card {
+    padding: 0.9rem;
+    border-radius: 12px;
+  }
+
+  .qa-input,
+  .qa-select,
+  .qa-textarea {
+    font-size: 16px;
+  }
+
+  .qa-btn {
+    padding: 0.65rem 1rem;
+  }
+
+  .qa-route-summary-iata {
+    font-size: 1.25rem;
+  }
+
+  .qa-address-map__overlay {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+  }
+
+  .qa-address-map__canvas {
+    height: 280px;
+  }
 }

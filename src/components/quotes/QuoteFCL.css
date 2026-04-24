@@ -18,7 +18,8 @@
   font-family: var(--qf-font-family);
   color: var(--qf-text-primary);
   background-color: #fff;
-  padding: 2rem;
+  width: 100%;
+  padding: clamp(1rem, 2.5vw, 2rem);
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -31,6 +32,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .qf-title {
@@ -65,6 +68,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-bottom: 1rem;
   cursor: pointer;
 }
@@ -73,15 +78,18 @@
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0;
+  flex: 1 1 240px;
 }
 
 /* Table Style for Routes */
 .qf-table-container {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .qf-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
@@ -133,6 +141,8 @@
   border-radius: 4px; /* Slightly sharper than cards */
   background-color: #fff;
   transition: var(--qf-transition);
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .qf-input:focus, .qf-select:focus, .qf-textarea:focus {
@@ -338,4 +348,103 @@
   background-color: #f8d7da;
   color: #721c24;
   border: 1px solid #f5c6cb;
+}
+
+@media (max-width: 1024px) {
+  .qf-container {
+    padding: 1.25rem;
+  }
+
+  .qf-card,
+  .qf-accordion-content {
+    padding: 1.25rem;
+  }
+
+  .qf-accordion-header {
+    padding: 0.9rem 1.25rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .qf-container {
+    padding: 1rem;
+  }
+
+  .qf-title {
+    font-size: 1.25rem;
+  }
+
+  .qf-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .qf-card {
+    padding: 1rem;
+  }
+
+  .qf-card-header,
+  .qf-section-header {
+    align-items: flex-start;
+  }
+
+  .qf-accordion-header {
+    padding: 0.85rem 1rem;
+  }
+
+  .qf-accordion-content {
+    padding: 1rem;
+  }
+
+  .qf-grid-2,
+  .qf-grid-4 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .qf-switch-container,
+  .qf-alert,
+  .qf-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .qf-footer {
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+  }
+
+  .qf-btn:not(.qf-btn-sm) {
+    width: 100%;
+  }
+
+  .qf-table {
+    min-width: 580px;
+    font-size: 0.82rem;
+  }
+
+  .qf-table th,
+  .qf-table td {
+    padding: 0.65rem 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .qf-container {
+    padding: 0.85rem;
+  }
+
+  .qf-card {
+    padding: 0.9rem;
+    border-radius: 12px;
+  }
+
+  .qf-input,
+  .qf-select,
+  .qf-textarea {
+    font-size: 16px;
+  }
+
+  .qf-btn {
+    padding: 0.65rem 1rem;
+  }
 }
