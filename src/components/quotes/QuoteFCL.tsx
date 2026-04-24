@@ -3432,7 +3432,7 @@ function QuoteFCL({
               <div className="d-flex align-items-center">
                 <h3>
                   <i
-                    className="bi bi-stars me-2"
+                    className="bi bi-bag-plus-fill me-2"
                     style={{ color: "var(--qf-primary)" }}
                   ></i>
                   Paso 3: Servicios Adicionales
