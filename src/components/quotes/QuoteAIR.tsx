@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -234,6 +234,12 @@ function QuoteAPITester({
   const [step2Completed, setStep2Completed] = useState<boolean>(false);
   const [step3Completed, setStep3Completed] = useState<boolean>(false);
   const [openSection4, setOpenSection4] = useState<boolean>(false);
+
+  // Modales para Servicios Adicionales
+  const [showSeguroModal, setShowSeguroModal] = useState(false);
+  const [tempValorSeguro, setTempValorSeguro] = useState("");
+  const [showAduanaModal, setShowAduanaModal] = useState(false);
+  const [tempValorAduana, setTempValorAduana] = useState("");
 
   // Estado para el tipo de acción: cotización u operación
   const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
@@ -735,6 +741,34 @@ function QuoteAPITester({
       trackStep({ step: "incoterm_charges", stepNumber: 3, totalSteps: 3 });
     }
   };
+
+  // Refs para scroll automático
+  const routesRef = useRef<HTMLDivElement>(null);
+  const section2Ref = useRef<HTMLDivElement>(null);
+  const section3Ref = useRef<HTMLDivElement>(null);
+  const section4Ref = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll al cambiar de sección
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (openSection === 2)
+        section2Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      else if (openSection === 3)
+        section3Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      else if (openSection === 4)
+        section4Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+    }, 150);
+    return () => clearTimeout(timeout);
+  }, [openSection]);
 
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
@@ -1551,8 +1585,18 @@ function QuoteAPITester({
     })
     .sort((a, b) => a.priceForComparison - b.priceForComparison);
 
-  // ============================================================================
-  // HANDLERS PARA SELECTOR DUAL (RECURRENTES / NO RECURRENTES)
+  // Scroll a rutas cuando aparecen
+  useEffect(() => {
+    if (rutasFiltradas.length > 0 && openSection === 1) {
+      const timeout = setTimeout(() => {
+        routesRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 200);
+      return () => clearTimeout(timeout);
+    }
+  }, [rutasFiltradas.length, openSection]);
   // ============================================================================
 
   const handleOriginRecurrenteChange = (option: SelectOption | null) => {
@@ -4216,7 +4260,7 @@ function QuoteAPITester({
                     </div>
 
                     {originSeleccionado && destinationSeleccionado && (
-                      <div className="mt-4">
+                      <div className="mt-4" ref={routesRef}>
                         <div className="d-flex justify-content-between align-items-center mb-3">
                           <h6 className="mb-0 fw-bold">
                             {t("QuoteAIR.rutasdisponibles1")} (
@@ -4472,7 +4516,7 @@ function QuoteAPITester({
       {/* ============================================================================ */}
 
       {rutaSeleccionada && (
-        <div className="qa-card">
+        <div className="qa-card" ref={section2Ref}>
           <div
             className={`qa-card-header ${openSection === 2 ? "open" : ""}`}
             onClick={() => handleSectionToggle(2)}
@@ -4552,6 +4596,14 @@ function QuoteAPITester({
                           {manualWeight.toFixed(2)} kg
                         </span>
                         <span className="qa-totals-bar-label">Peso total</span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {pesoVolumetricoOverall.toFixed(2)} kg
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Peso volumétrico
+                        </span>
                       </div>
                       <div className="qa-totals-bar-item">
                         <span className="qa-totals-bar-value">
@@ -5081,11 +5133,11 @@ function QuoteAPITester({
       )}
 
       {/* ============================================================================ */}
-      {/* SECCIÓN 3: REVISIÓN DE PIEZAS Y COSTOS */}
+      {/* SECCIÓN 3: SERVICIOS ADICIONALES */}
       {/* ============================================================================ */}
 
       {rutaSeleccionada && step2Completed && (
-        <div className="qa-card">
+        <div className="qa-card" ref={section3Ref}>
           <div
             className={`qa-card-header ${openSection === 3 ? "open" : ""}`}
             onClick={() => handleSectionToggle(3)}
@@ -5094,11 +5146,24 @@ function QuoteAPITester({
             <div className="d-flex align-items-center">
               <h3>
                 <i
-                  className="bi bi-clipboard-check me-2"
+                  className="bi bi-stars me-2"
                   style={{ color: "var(--qa-primary)" }}
                 ></i>
-                Paso 3: Revisión de Piezas y Costos
+                Paso 3: Servicios Adicionales
               </h3>
+              {step3Completed && (
+                <span
+                  className="qa-badge ms-3"
+                  style={{
+                    backgroundColor: "#d1e7dd",
+                    color: "#0f5132",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Completado
+                </span>
+              )}
             </div>
             <i
               className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
@@ -5109,15 +5174,228 @@ function QuoteAPITester({
           {openSection !== 3 && (
             <div className="qa-route-summary">
               <span className="qa-text-muted" style={{ fontSize: "0.85rem" }}>
-                <i className="bi bi-info-circle me-1"></i>
-                Expande para ver el resumen de costos y generar la cotización.
+                {seguroActivo || gastolocal || aduanaActivo ? (
+                  <>
+                    <i className="bi bi-check-circle-fill text-success me-1"></i>
+                    {[
+                      seguroActivo && "Seguro de Carga",
+                      gastolocal && "Desconsolidación",
+                      aduanaActivo && "Agencia de Aduanas",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-info-circle me-1"></i>
+                    Sin servicios adicionales seleccionados
+                  </>
+                )}
               </span>
             </div>
           )}
 
           {openSection === 3 && (
+            <div>
+              <div className="qa-addons-list">
+                {/* Card: Seguro de Carga */}
+                <div
+                  className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}
+                >
+                  <div className="qa-addon-card__image">
+                    <img
+                      src={imgUrl("addcargos/seguro.png")}
+                      alt="Seguro de carga"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="qa-addon-card__body">
+                    <h4>Agregar Seguro de Carga</h4>
+                    <p>
+                      Protege tu cargamento contra daños, pérdidas y robos
+                      durante el transporte aéreo. Se calcula en base al valor
+                      declarado de la mercadería.
+                    </p>
+                    {seguroActivo && valorMercaderia && (
+                      <span
+                        className="qa-badge qa-badge-primary mt-2"
+                        style={{ display: "inline-block" }}
+                      >
+                        Valor declarado: {rutaSeleccionada.currency}{" "}
+                        {valorMercaderia}
+                        {aduanaMaster === true && (
+                          <span className="ms-1">
+                            <i className="bi bi-lock-fill"></i>
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <div className="qa-addon-card__action">
+                    {!seguroActivo ? (
+                      <button
+                        className="qa-addon-btn-add"
+                        onClick={() => {
+                          setTempValorSeguro("");
+                          setShowSeguroModal(true);
+                        }}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar
+                      </button>
+                    ) : (
+                      <button
+                        className="qa-addon-btn-remove"
+                        onClick={() => handleToggleSeguro(false)}
+                      >
+                        <i className="bi bi-x-lg"></i>Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card: Desconsolidación */}
+                <div
+                  className={`qa-addon-card${gastolocal ? " is-active" : ""}`}
+                >
+                  <div className="qa-addon-card__image">
+                    <img
+                      src={imgUrl("addcargos/gastos-locales.png")}
+                      alt="Desconsolidación"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="qa-addon-card__body">
+                    <h4>{t("QuoteAIR.desconsolidacion")}</h4>
+                    <p>
+                      Incluye los gastos de desconsolidación en destino para
+                      retirar tu cargamento del almacén aéreo. Cargo fijo
+                      aplicable al momento de la entrega.
+                    </p>
+                  </div>
+                  <div className="qa-addon-card__action">
+                    {!gastolocal ? (
+                      <button
+                        className="qa-addon-btn-add"
+                        onClick={() => setGastolocal(true)}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar
+                      </button>
+                    ) : (
+                      <button
+                        className="qa-addon-btn-remove"
+                        onClick={() => setGastolocal(false)}
+                      >
+                        <i className="bi bi-x-lg"></i>Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card: Agencia de Aduanas */}
+                {!aduanaConfigLoading && (
+                  <div
+                    className={`qa-addon-card${aduanaActivo ? " is-active" : ""}`}
+                  >
+                    <div className="qa-addon-card__image">
+                      <img
+                        src={imgUrl("addcargos/agencia-aduanas.png")}
+                        alt="Agencia de Aduanas"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="qa-addon-card__body">
+                      <h4>{t("AgenciaAduana.toggle")}</h4>
+                      <p>
+                        Servicio integral de despacho aduanero y nacionalización
+                        de tu cargamento en destino. Incluye honorarios, gastos
+                        de despacho y tramitación oficial.
+                      </p>
+                      {aduanaActivo && valorProductoAduana && (
+                        <span
+                          className="qa-badge qa-badge-primary mt-2"
+                          style={{ display: "inline-block" }}
+                        >
+                          Valor producto: {rutaSeleccionada.currency}{" "}
+                          {valorProductoAduana}
+                          {aduanaMaster === false && (
+                            <span className="ms-1">
+                              <i className="bi bi-lock-fill"></i>
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    <div className="qa-addon-card__action">
+                      {!aduanaActivo ? (
+                        <button
+                          className="qa-addon-btn-add"
+                          onClick={() => {
+                            setTempValorAduana("");
+                            setShowAduanaModal(true);
+                          }}
+                        >
+                          <i className="bi bi-plus-lg"></i>Agregar
+                        </button>
+                      ) : (
+                        <button
+                          className="qa-addon-btn-remove"
+                          onClick={() => handleToggleAduana(false)}
+                        >
+                          <i className="bi bi-x-lg"></i>Remover
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Botón Continuar */}
+              <div className="d-flex justify-content-end mt-4 pt-3 border-top">
+                <button
+                  className="qa-btn qa-btn-primary"
+                  onClick={() => {
+                    setStep3Completed(true);
+                    setOpenSection(4);
+                  }}
+                >
+                  Continuar a Revisión
+                  <i className="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ============================================================================ */}
+      {/* SECCIÓN 4: REVISIÓN DE PIEZAS Y COSTOS */}
+      {/* ============================================================================ */}
+
+      {rutaSeleccionada && step3Completed && (
+        <div className="qa-card" ref={section4Ref}>
+          <div
+            className={`qa-card-header ${openSection === 4 ? "open" : ""}`}
+            onClick={() => setOpenSection(openSection === 4 ? 0 : 4)}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-clipboard-check me-2"
+                  style={{ color: "var(--qa-primary)" }}
+                ></i>
+                Paso 4: Revisión de Piezas y Costos
+              </h3>
+            </div>
+            <i
+              className={`bi bi-chevron-${openSection === 4 ? "up" : "down"}`}
+              style={{ color: "var(--qa-text-secondary)" }}
+            ></i>
+          </div>
+
+          {openSection === 4 && (
             <>
-              <div className="qa-grid-2 mb-4">
+              <div className="qa-grid-1 mb-4">
                 {/* Resumen de Pesos/Volumen */}
                 <div className="p-3 bg-light rounded border">
                   <h6 className="fw-bold mb-3">
@@ -5206,156 +5484,9 @@ function QuoteAPITester({
                       <div className="col-6 text-end fw-bolder text-primary fs-6">
                         {pesoChargeable.toFixed(2)} kg
                       </div>
-
-                      <div
-                        className="col-12 text-muted fst-italic mt-1"
-                        style={{ fontSize: "0.75rem" }}
-                      >
-                        ({t("QuoteAIR.cobropor")} {manualWeight.toFixed(2)} kg
-                        vs {(manualVolume * 167).toFixed(2)} kg)
-                      </div>
                     </div>
                   )}
                 </div>
-
-                {/* Opciones Adicionales */}
-                {(tarifaAirFreight || sinTarifa) && (
-                  <div className="p-3 bg-light rounded border">
-                    <h6 className="fw-bold mb-3">
-                      <i className="bi bi-shield-check me-2"></i>
-                      {t("QuoteAIR.resumencargos")}
-                    </h6>
-
-                    <div className="d-flex flex-column gap-2 small">
-                      {/* Seguro opcional */}
-                      <div className="mt-2">
-                        <div
-                          className="qa-switch-container"
-                          style={{
-                            width: "fit-content",
-                            padding: "0.4rem 0.8rem",
-                          }}
-                        >
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="seguroCheckbox"
-                            checked={seguroActivo}
-                            onChange={(e) =>
-                              handleToggleSeguro(e.target.checked)
-                            }
-                          />
-                          <label
-                            className="form-check-label small"
-                            htmlFor="seguroCheckbox"
-                          >
-                            {t("QuoteAIR.agregar")}
-                          </label>
-                        </div>
-                        {seguroActivo && (
-                          <div className="mt-2 ps-4">
-                            <label
-                              htmlFor="valorMercaderia"
-                              className="qa-label"
-                            >
-                              {t("Quotelcl.valormercaderia")} (
-                              {rutaSeleccionada.currency}){" "}
-                              <span className="text-danger">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              className="qa-input"
-                              id="valorMercaderia"
-                              placeholder="Ej: 10000 o 10000,50"
-                              value={valorMercaderia}
-                              disabled={aduanaMaster === true}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                if (value === "" || /^[\d,\.]+$/.test(value)) {
-                                  handleValorMercaderiaChange(value);
-                                }
-                              }}
-                              style={{
-                                maxWidth: "300px",
-                                backgroundColor:
-                                  aduanaMaster === true ? "#f0f0f0" : undefined,
-                                cursor:
-                                  aduanaMaster === true
-                                    ? "not-allowed"
-                                    : undefined,
-                              }}
-                            />
-                            {aduanaMaster === true && (
-                              <small className="text-muted ms-1">
-                                <i className="bi bi-lock-fill me-1"></i>
-                                {t("QuoteAIR.sincronizadoConAduana")}
-                              </small>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Gastos Locales - Desconsolidación (cargo fijo) */}
-                      <div className="mt-2">
-                        <div
-                          className="qa-switch-container"
-                          style={{
-                            width: "fit-content",
-                            padding: "0.4rem 0.8rem",
-                          }}
-                        >
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            id="gastolocalCheckbox"
-                            checked={gastolocal}
-                            onChange={(e) => setGastolocal(e.target.checked)}
-                          />
-                          <label
-                            className="form-check-label small"
-                            htmlFor="gastolocalCheckbox"
-                          >
-                            {t("QuoteAIR.desconsolidacion")}
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Agencia de Aduanas y Nacionalización */}
-                      <AduanaSection
-                        activo={aduanaActivo}
-                        onToggle={handleToggleAduana}
-                        valorProducto={valorProductoAduana}
-                        onValorProductoChange={(value) =>
-                          handleValorProductoAduanaChange(value)
-                        }
-                        costoTransporte={calculateCostoTransporteBase()}
-                        seguroActivo={seguroActivo}
-                        seguroMonto={calculateSeguro()}
-                        currency={
-                          (rutaSeleccionada.currency ||
-                            "USD") as SupportedCurrency
-                        }
-                        config={aduanaConfig}
-                        configLoading={aduanaConfigLoading}
-                        valorProductoDisabled={aduanaMaster === false}
-                      />
-
-                      {/* Nota informativa */}
-                      <div
-                        className="mt-2 p-2 rounded"
-                        style={{
-                          backgroundColor: "rgba(255, 98, 0, 0.05)",
-                          border: "1px solid rgba(255, 98, 0, 0.15)",
-                        }}
-                      >
-                        <small className="text-muted">
-                          <i className="bi bi-info-circle me-1"></i>
-                          {t("QuoteAIR.desglose")}
-                        </small>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {(weightError || dimensionError) && (
@@ -5568,6 +5699,155 @@ function QuoteAPITester({
           </div>
         </div>
       )}
+
+      {/* Modal: Seguro de Carga */}
+      <Modal
+        show={showSeguroModal}
+        onHide={() => setShowSeguroModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-shield-check me-2"
+              style={{ color: "var(--qa-primary)" }}
+            ></i>
+            Agregar Seguro de Carga
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small mb-3">
+            Protege tu cargamento. Ingresa el valor declarado de la mercadería
+            para calcular el costo del seguro.
+            {aduanaActivo && (
+              <span className="d-block mt-1 text-info">
+                <i className="bi bi-info-circle me-1"></i>
+                El valor se sincronizará con el valor de producto de Agencia de
+                Aduanas.
+              </span>
+            )}
+          </p>
+          <label htmlFor="seguroModalValorAIR" className="qa-label">
+            {t("Quotelcl.valormercaderia")} (
+            {rutaSeleccionada?.currency || "USD"}){" "}
+            <span className="text-danger">*</span>
+          </label>
+          <input
+            type="text"
+            className="qa-input"
+            id="seguroModalValorAIR"
+            placeholder="Ej: 10000 o 10000,50"
+            value={aduanaActivo ? valorProductoAduana : tempValorSeguro}
+            disabled={aduanaActivo}
+            autoFocus
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^[\d,\.]+$/.test(v)) setTempValorSeguro(v);
+            }}
+            style={
+              aduanaActivo
+                ? { backgroundColor: "#f0f0f0", cursor: "not-allowed" }
+                : undefined
+            }
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowSeguroModal(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qa-primary)",
+              borderColor: "var(--qa-primary)",
+            }}
+            disabled={!aduanaActivo && !tempValorSeguro}
+            onClick={() => {
+              if (!aduanaActivo) {
+                setValorMercaderia(tempValorSeguro);
+              }
+              handleToggleSeguro(true);
+              setShowSeguroModal(false);
+            }}
+          >
+            Confirmar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal: Agencia de Aduanas */}
+      <Modal
+        show={showAduanaModal}
+        onHide={() => setShowAduanaModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-building me-2"
+              style={{ color: "var(--qa-primary)" }}
+            ></i>
+            {t("AgenciaAduana.toggle")}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small mb-3">
+            Servicio de despacho aduanero y nacionalización. Ingresa el valor
+            del producto para calcular los honorarios y gastos asociados.
+            {seguroActivo && (
+              <span className="d-block mt-1 text-info">
+                <i className="bi bi-info-circle me-1"></i>
+                El valor se sincronizará con el valor declarado del seguro.
+              </span>
+            )}
+          </p>
+          <label htmlFor="aduanaModalValorAIR" className="qa-label">
+            {t("AgenciaAduana.valorProducto")} (
+            {rutaSeleccionada?.currency || "USD"}){" "}
+            <span className="text-danger">*</span>
+          </label>
+          <input
+            type="text"
+            className="qa-input"
+            id="aduanaModalValorAIR"
+            placeholder="Ej: 10000 o 10000,50"
+            value={seguroActivo ? valorMercaderia : tempValorAduana}
+            disabled={seguroActivo}
+            autoFocus
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^[\d,\.]+$/.test(v)) setTempValorAduana(v);
+            }}
+            style={
+              seguroActivo
+                ? { backgroundColor: "#f0f0f0", cursor: "not-allowed" }
+                : undefined
+            }
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAduanaModal(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qa-primary)",
+              borderColor: "var(--qa-primary)",
+            }}
+            disabled={!seguroActivo && !tempValorAduana}
+            onClick={() => {
+              if (!seguroActivo) {
+                setValorProductoAduana(tempValorAduana);
+              }
+              handleToggleAduana(true);
+              setShowAduanaModal(false);
+            }}
+          >
+            Confirmar
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <Modal
         show={showPriceZeroModal}

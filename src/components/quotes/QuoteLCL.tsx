@@ -269,6 +269,8 @@ function QuoteLCL({
   const [step2Completed, setStep2Completed] = useState<boolean>(false);
   const [step3Completed, setStep3Completed] = useState<boolean>(false);
   const [openSection4, setOpenSection4] = useState<boolean>(false);
+  const [showSeguroModal, setShowSeguroModal] = useState<boolean>(false);
+  const [tempValorSeguro, setTempValorSeguro] = useState<string>("");
 
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
@@ -934,8 +936,33 @@ function QuoteLCL({
     }
   };
 
-  // ============================================================================
-  // ACTUALIZAR PODs CUANDO CAMBIA POL
+  // Refs para scroll automático
+  const routesRef = useRef<HTMLDivElement>(null);
+  const section2Ref = useRef<HTMLDivElement>(null);
+  const section3Ref = useRef<HTMLDivElement>(null);
+  const section4Ref = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll al cambiar de sección
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (openSection === 2)
+        section2Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      else if (openSection === 3)
+        section3Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      else if (openSection === 4)
+        section4Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+    }, 150);
+    return () => clearTimeout(timeout);
+  }, [openSection]);
   // ============================================================================
 
   useEffect(() => {
@@ -1375,6 +1402,19 @@ function QuoteLCL({
       return matchPOL && matchPOD && matchOperador;
     })
     .sort((a, b) => a.ofWM - b.ofWM);
+
+  // Scroll a rutas cuando aparecen
+  useEffect(() => {
+    if (rutasFiltradas.length > 0 && openSection === 1) {
+      const timeout = setTimeout(() => {
+        routesRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 200);
+      return () => clearTimeout(timeout);
+    }
+  }, [rutasFiltradas.length, openSection]);
 
   // ============================================================================
   // HANDLERS PARA SELECTOR DUAL (RECURRENTES / NO RECURRENTES)
@@ -3044,7 +3084,7 @@ function QuoteLCL({
                     </div>
 
                     {polSeleccionado && podSeleccionado && (
-                      <div className="mt-4">
+                      <div className="mt-4" ref={routesRef}>
                         <div className="d-flex justify-content-between align-items-center mb-3">
                           <h6 className="mb-0 fw-bold">
                             {t("Quotelcl.rutasdisponibles")} (
@@ -3400,7 +3440,7 @@ function QuoteLCL({
 
       {rutaSeleccionada && (
         <>
-          <div className="qa-card">
+          <div className="qa-card" ref={section2Ref}>
             <div
               className={`qa-card-header ${openSection === 2 ? "open" : ""}`}
               onClick={() => handleSectionToggle(2)}
@@ -3948,7 +3988,7 @@ function QuoteLCL({
           </div>
 
           {step2Completed && (
-            <div className="qa-card">
+            <div className="qa-card" ref={section3Ref}>
               <div
                 className={`qa-card-header ${openSection === 3 ? "open" : ""}`}
                 onClick={() => handleSectionToggle(3)}
@@ -3960,7 +4000,7 @@ function QuoteLCL({
                       className="bi bi-clipboard-check me-2"
                       style={{ color: "var(--qf-primary)" }}
                     ></i>
-                    Paso 3: Revisión de Piezas y Costos
+                    Paso 3: Servicios Adicionales
                   </h3>
                   {step3Completed && (
                     <span
@@ -3988,233 +4028,242 @@ function QuoteLCL({
                     className="qa-text-muted"
                     style={{ fontSize: "0.85rem" }}
                   >
-                    <i className="bi bi-info-circle me-1"></i>
-                    Expande para ver el resumen de costos.
+                    {seguroActivo || gastolocal ? (
+                      <>
+                        <i className="bi bi-check-circle-fill text-success me-1"></i>
+                        {[
+                          seguroActivo && "Seguro de Carga",
+                          gastolocal && "Gastos Locales",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-info-circle me-1"></i>
+                        Sin servicios adicionales seleccionados.
+                      </>
+                    )}
                   </span>
                 </div>
               )}
 
               {openSection === 3 && (
-                <>
-                  {/* Cálculos */}
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <div
-                        className="p-3 rounded border d-flex flex-column h-100"
-                        style={{ backgroundColor: "var(--qa-bg-light)" }}
-                      >
-                        <h4 className="fs-6 fw-bold mb-3">
-                          {t("Quotelcl.resumen")}
-                        </h4>
-                        <div
-                          className="qa-grid-4"
-                          style={{ fontSize: "0.9rem" }}
-                        >
-                          <div>
-                            <span className="qa-text-muted d-block">
-                              {t("Quotelcl.pesototal1")}
-                            </span>
-                            <strong>
-                              {totalWeightKg.toFixed(2)} kg (
-                              {totalWeightTons.toFixed(4)} t)
-                            </strong>
-                          </div>
-                          <div>
-                            <span className="qa-text-muted d-block">
-                              {t("Quotelcl.volumentotal1")}
-                            </span>
-                            <strong>{totalVolume.toFixed(4)} m³</strong>
-                          </div>
-                          <div>
-                            <span className="qa-text-muted d-block">
-                              {t("Quotelcl.chargeable")}
-                            </span>
-                            <strong>
-                              {chargeableVolume.toFixed(4)} {lclChargeableUnit}
-                            </strong>
-                          </div>
-                          <div>
-                            <span className="qa-text-muted d-block">
-                              {t("Quotelcl.cobropor")}
-                            </span>
-                            <strong>{lclChargeableBillingBasis}</strong>
-                          </div>
-                        </div>
+                <div>
+                  <div className="qa-addons-list">
+                    {/* Card: Seguro de Carga */}
+                    <div
+                      className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}
+                    >
+                      <div className="qa-addon-card__image">
+                        <img
+                          src={imgUrl("addcargos/seguro.png")}
+                          alt="Seguro de carga"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="qa-addon-card__body">
+                        <h4>Agregar Seguro de Carga</h4>
+                        <p>
+                          Protege tu cargamento contra daños, pérdidas y robos
+                          durante el transporte. Se calcula en base al valor
+                          declarado de la mercadería.
+                        </p>
+                        {seguroActivo && valorMercaderia && (
+                          <span
+                            className="qa-badge qa-badge-primary mt-2"
+                            style={{ display: "inline-block" }}
+                          >
+                            Valor declarado: {rutaSeleccionada.currency}{" "}
+                            {valorMercaderia}
+                          </span>
+                        )}
+                      </div>
+                      <div className="qa-addon-card__action">
+                        {!seguroActivo ? (
+                          <button
+                            className="qa-addon-btn-add"
+                            onClick={() => {
+                              setTempValorSeguro("");
+                              setShowSeguroModal(true);
+                            }}
+                          >
+                            <i className="bi bi-plus-lg"></i>Agregar
+                          </button>
+                        ) : (
+                          <button
+                            className="qa-addon-btn-remove"
+                            onClick={() => {
+                              setSeguroActivo(false);
+                              setValorMercaderia("");
+                            }}
+                          >
+                            <i className="bi bi-x-lg"></i>Remover
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    {tarifaOceanFreight && (
-                      <div className="col-md-6">
-                        <div
-                          className="p-3 rounded border"
-                          style={{ backgroundColor: "var(--qa-bg-light)" }}
-                        >
-                          <h4 className="fs-6 fw-bold mb-3">
-                            <i className="bi bi-shield-check me-2"></i>
-                            {t("Quotelcl.opcional")}
-                          </h4>
-
-                          <div className="d-flex flex-column gap-2 small">
-                            {/* Seguro opcional */}
-                            <div className="d-flex flex-column gap-2 small">
-                              <div
-                                className="qa-switch-container"
-                                style={{
-                                  width: "fit-content",
-                                  padding: "0.4rem 0.8rem",
-                                }}
-                              >
-                                <input
-                                  className="qa-switch-input"
-                                  type="checkbox"
-                                  id="seguroCheckbox"
-                                  checked={seguroActivo}
-                                  onChange={(e) =>
-                                    setSeguroActivo(e.target.checked)
-                                  }
-                                />
-                                <label
-                                  className="form-check-label small"
-                                  htmlFor="seguroCheckbox"
-                                  style={{ cursor: "pointer" }}
-                                >
-                                  {t("Quotelcl.agregar")}
-                                </label>
-                              </div>
-
-                              {seguroActivo && (
-                                <div className="mt-2 ps-4">
-                                  <label
-                                    htmlFor="valorMercaderia"
-                                    className="qa-label"
-                                  >
-                                    {t("Quotelcl.valormercaderia")} (
-                                    {rutaSeleccionada.currency}){" "}
-                                    <span className="text-danger">*</span>
-                                  </label>
-                                  <input
-                                    type="text"
-                                    className="qa-input"
-                                    id="valorMercaderia"
-                                    placeholder="Ej: 10000 o 10000,50"
-                                    value={valorMercaderia}
-                                    onChange={(e) => {
-                                      const value = e.target.value;
-                                      if (
-                                        value === "" ||
-                                        /^[\d,\.]+$/.test(value)
-                                      ) {
-                                        setValorMercaderia(value);
-                                      }
-                                    }}
-                                    style={{ maxWidth: "300px" }}
-                                  />
-                                </div>
-                              )}
-                              {/* Gastos Locales + Apertura */}
-                              <div className="mt-3">
-                                <div
-                                  className="qa-switch-container"
-                                  style={{
-                                    width: "fit-content",
-                                    padding: "0.4rem 0.8rem",
-                                  }}
-                                >
-                                  <input
-                                    className="qa-switch-input"
-                                    type="checkbox"
-                                    id="gastolocalCheckbox"
-                                    checked={gastolocal}
-                                    onChange={(e) =>
-                                      setGastolocal(e.target.checked)
-                                    }
-                                  />
-                                  <label
-                                    className="form-check-label small"
-                                    htmlFor="gastolocalCheckbox"
-                                    style={{ cursor: "pointer" }}
-                                  >
-                                    Agregar Gastos Locales (Desconsolidación +
-                                    Apertura)
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-
-                            {hasNotApilable &&
-                              incoterm === "EXW" &&
-                              calculateNoApilable() > 0 && (
-                                <div
-                                  className="d-flex align-items-center gap-1 mt-2 pt-2"
-                                  style={{
-                                    borderTop:
-                                      "1px solid var(--qa-border-color)",
-                                  }}
-                                >
-                                  <i
-                                    className="bi bi-info-circle small opacity-50"
-                                    data-bs-toggle="tooltip"
-                                    data-bs-placement="top"
-                                    title={t("Quotelcl.tooltipnoapilable")}
-                                    style={{ cursor: "pointer" }}
-                                  ></i>
-                                  <p className="mb-0 small">
-                                    Existirá un recargo adicional por piezas no
-                                    apilables.
-                                  </p>
-                                </div>
-                              )}
-
-                            {/* Nota informativa */}
-                            <div
-                              className="mt-2 p-2 rounded"
-                              style={{
-                                backgroundColor: "rgba(255, 98, 0, 0.05)",
-                                border: "1px solid rgba(255, 98, 0, 0.15)",
-                              }}
-                            >
-                              <small className="text-muted">
-                                <i className="bi bi-info-circle me-1"></i>
-                                {t("QuoteAIR.desglose")}
-                              </small>
-                            </div>
-                          </div>
-                        </div>
+                    {/* Card: Gastos Locales (Desconsolidación + Apertura) */}
+                    <div
+                      className={`qa-addon-card${gastolocal ? " is-active" : ""}`}
+                    >
+                      <div className="qa-addon-card__image">
+                        <img
+                          src={imgUrl("addcargos/gastos-locales.png")}
+                          alt="Gastos Locales"
+                          loading="lazy"
+                        />
                       </div>
-                    )}
+                      <div className="qa-addon-card__body">
+                        <h4>Agregar Gastos Locales</h4>
+                        <p>
+                          Incluye los cargos de desconsolidación y gastos de
+                          apertura en destino al momento de retirar la carga.
+                        </p>
+                      </div>
+                      <div className="qa-addon-card__action">
+                        {!gastolocal ? (
+                          <button
+                            className="qa-addon-btn-add"
+                            onClick={() => setGastolocal(true)}
+                          >
+                            <i className="bi bi-plus-lg"></i>Agregar
+                          </button>
+                        ) : (
+                          <button
+                            className="qa-addon-btn-remove"
+                            onClick={() => setGastolocal(false)}
+                          >
+                            <i className="bi bi-x-lg"></i>Remover
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Botón Siguiente Paso 3 */}
-                  <div className="d-flex justify-content-end mt-4">
+                  {/* Botón Continuar */}
+                  <div className="d-flex justify-content-end mt-4 pt-3 border-top">
                     <button
-                      onClick={() => {
-                        setTipoAccion("cotizacion");
-                        testAPI("cotizacion");
-                      }}
-                      disabled={
-                        loading ||
-                        authLoading ||
-                        !accessToken ||
-                        !incoterm ||
-                        (isSimulationMode && !hasSimulationOceanRate) ||
-                        oversizeErrorLCL ||
-                        (incoterm === "EXW" && !pickupFromAddress)
-                      }
                       className="qa-btn qa-btn-primary"
+                      onClick={() => {
+                        setStep3Completed(true);
+                        setOpenSection(4);
+                      }}
                     >
-                      {loading ? (
-                        <span className="spinner-border spinner-border-sm"></span>
-                      ) : (
-                        t("QuoteAIR.generarcotizacion")
-                      )}
+                      Continuar a Revisión
                       <i className="bi bi-arrow-right ms-1"></i>
                     </button>
                   </div>
-                </>
+                </div>
               )}
             </div>
           )}
         </>
+      )}
+
+      {/* ============================================================================ */}
+      {/* SECCIÓN 4: REVISIÓN DE PIEZAS Y COSTOS */}
+      {/* ============================================================================ */}
+
+      {step3Completed && (
+        <div className="qa-card" ref={section4Ref}>
+          <div
+            className={`qa-card-header ${openSection === 4 ? "open" : ""}`}
+            onClick={() => setOpenSection(openSection === 4 ? 0 : 4)}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-clipboard-check me-2"
+                  style={{ color: "var(--qf-primary)" }}
+                ></i>
+                Paso 4: Revisión de Piezas y Costos
+              </h3>
+            </div>
+            <i
+              className={`bi bi-chevron-${openSection === 4 ? "up" : "down"}`}
+              style={{ color: "var(--qa-text-secondary)" }}
+            ></i>
+          </div>
+
+          {openSection === 4 && (
+            <>
+              {/* Cálculos */}
+              <div className="row g-3">
+                <div className="col-md-12">
+                  <div
+                    className="p-3 rounded border d-flex flex-column h-100"
+                    style={{ backgroundColor: "var(--qa-bg-light)" }}
+                  >
+                    <h4 className="fs-6 fw-bold mb-3">
+                      Resumen del Cargamento
+                    </h4>
+                    <div className="qa-grid-4" style={{ fontSize: "0.9rem" }}>
+                      <div>
+                        <span className="qa-text-muted d-block">
+                          {t("Quotelcl.pesototal1")}
+                        </span>
+                        <strong>
+                          {totalWeightKg.toFixed(2)} kg (
+                          {totalWeightTons.toFixed(4)} t)
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="qa-text-muted d-block">
+                          {t("Quotelcl.volumentotal1")}
+                        </span>
+                        <strong>{totalVolume.toFixed(4)} m³</strong>
+                      </div>
+                      <div>
+                        <span className="qa-text-muted d-block">
+                          {t("Quotelcl.chargeable")}
+                        </span>
+                        <strong>
+                          {chargeableVolume.toFixed(4)} {lclChargeableUnit}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="qa-text-muted d-block">
+                          {t("Quotelcl.cobropor")}
+                        </span>
+                        <strong>{lclChargeableBillingBasis}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón Generar Cotización */}
+              <div className="d-flex justify-content-end mt-4">
+                <button
+                  onClick={() => {
+                    setTipoAccion("cotizacion");
+                    testAPI("cotizacion");
+                  }}
+                  disabled={
+                    loading ||
+                    authLoading ||
+                    !accessToken ||
+                    !incoterm ||
+                    (isSimulationMode && !hasSimulationOceanRate) ||
+                    oversizeErrorLCL ||
+                    (incoterm === "EXW" && !pickupFromAddress)
+                  }
+                  className="qa-btn qa-btn-primary"
+                >
+                  {loading ? (
+                    <span className="spinner-border spinner-border-sm"></span>
+                  ) : (
+                    t("QuoteAIR.generarcotizacion")
+                  )}
+                  <i className="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
       {/* ============================================================================ */}
@@ -4368,6 +4417,66 @@ function QuoteLCL({
           </div>
         </div>
       )}
+
+      {/* Modal: Seguro de Carga */}
+      <Modal
+        show={showSeguroModal}
+        onHide={() => setShowSeguroModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-shield-check me-2"
+              style={{ color: "var(--qa-primary)" }}
+            ></i>
+            Agregar Seguro de Carga
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small mb-3">
+            Protege tu cargamento. Ingresa el valor declarado de la mercadería
+            para calcular el costo del seguro.
+          </p>
+          <label htmlFor="seguroModalValorLCL" className="qa-label">
+            {t("Quotelcl.valormercaderia")} (
+            {rutaSeleccionada?.currency || "USD"}){" "}
+            <span className="text-danger">*</span>
+          </label>
+          <input
+            type="text"
+            className="qa-input"
+            id="seguroModalValorLCL"
+            placeholder="Ej: 10000 o 10000,50"
+            value={tempValorSeguro}
+            autoFocus
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^[\d,\.]+$/.test(v)) setTempValorSeguro(v);
+            }}
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowSeguroModal(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qa-primary)",
+              borderColor: "var(--qa-primary)",
+            }}
+            disabled={!tempValorSeguro}
+            onClick={() => {
+              setValorMercaderia(tempValorSeguro);
+              setSeguroActivo(true);
+              setShowSeguroModal(false);
+            }}
+          >
+            Confirmar
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Modal para rutas con tarifa OF W/M en 0 */}
       <Modal
