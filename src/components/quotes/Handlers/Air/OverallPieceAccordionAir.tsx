@@ -129,7 +129,7 @@ export const OverallPieceAccordionAir: React.FC<
             </div>
 
             <div className="col-md-6 mb-3">
-              <label className="qa-label">Descripción (Opcional)</label>
+              <label className="qa-label">Descripción</label>
               <input
                 type="text"
                 className="qa-input"
@@ -185,7 +185,7 @@ export const OverallPieceAccordionAir: React.FC<
             </div>
           </div>
 
-          <div className="qa-grid-2 mt-2">
+          <div className="qa-grid-2 mt-3">
             <div>
               <label className="qa-label">
                 {useUSCustomary
