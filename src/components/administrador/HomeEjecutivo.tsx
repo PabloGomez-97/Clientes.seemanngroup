@@ -27,9 +27,9 @@ const BEHAVIOR_API =
 
 // Colors for AIR / FCL / LCL badges (mirrors ComportamientoDeClientes)
 const BEHAVIOR_TYPE_COLORS: Record<string, string> = {
-  AIR: "#3b82f6",
-  FCL: "#8b5cf6",
-  LCL: "#06b6d4",
+  AIR: "#ff6200",
+  FCL: "#ff6200",
+  LCL: "#ff6200",
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1166,10 +1166,7 @@ export default function HomeEjecutivo() {
                 </span>
               </div>
               <div className="ej-behavior-stat">
-                <span
-                  className="ej-behavior-stat__value"
-                  style={{ color: "var(--ej-green)" }}
-                >
+                <span className="ej-behavior-stat__value">
                   {behaviorStats.totalCompleted}
                 </span>
                 <span className="ej-behavior-stat__label">
@@ -1177,10 +1174,7 @@ export default function HomeEjecutivo() {
                 </span>
               </div>
               <div className="ej-behavior-stat">
-                <span
-                  className="ej-behavior-stat__value"
-                  style={{ color: "var(--ej-red)" }}
-                >
+                <span className="ej-behavior-stat__value">
                   {behaviorStats.totalAbandoned}
                 </span>
                 <span className="ej-behavior-stat__label">
@@ -1188,17 +1182,7 @@ export default function HomeEjecutivo() {
                 </span>
               </div>
               <div className="ej-behavior-stat">
-                <span
-                  className="ej-behavior-stat__value"
-                  style={{
-                    color:
-                      behaviorStats.overallRate >= 70
-                        ? "var(--ej-green)"
-                        : behaviorStats.overallRate >= 40
-                          ? "var(--ej-amber)"
-                          : "var(--ej-red)",
-                  }}
-                >
+                <span className="ej-behavior-stat__value">
                   {behaviorStats.overallRate}%
                 </span>
                 <span className="ej-behavior-stat__label">
@@ -1232,10 +1216,7 @@ export default function HomeEjecutivo() {
                           <span className="ej-behavior-type__row-label">
                             Completadas
                           </span>
-                          <span
-                            className="ej-behavior-type__row-value"
-                            style={{ color: "var(--ej-green)" }}
-                          >
+                          <span className="ej-behavior-type__row-value">
                             {completed}
                           </span>
                         </div>
@@ -1243,10 +1224,7 @@ export default function HomeEjecutivo() {
                           <span className="ej-behavior-type__row-label">
                             Abandonadas
                           </span>
-                          <span
-                            className="ej-behavior-type__row-value"
-                            style={{ color: "var(--ej-red)" }}
-                          >
+                          <span className="ej-behavior-type__row-value">
                             {abandoned}
                           </span>
                         </div>

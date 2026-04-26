@@ -3237,6 +3237,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // RUTAS DE DOCUMENTOS
     // ============================================================
 
+    // GET /api/documents/all?ownerUsername=X - Todos los docs de un usuario (sin base64)
+    if (path === '/api/documents/all' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        if (!currentUser) return res.status(401).json({ error: 'No autorizado' });
+
+        const ownerUsername = (req.query?.ownerUsername as string) || currentUser.username;
+        if (!ownerUsername) return res.status(400).json({ error: 'ownerUsername requerido' });
+
+        const [airDocs, oceanDocs, groundDocs, quoteDocs] = await Promise.all([
+          AirShipmentDocumento.find({ usuarioId: ownerUsername }).select('-contenidoBase64').sort({ createdAt: -1 }),
+          OceanShipmentDocumento.find({ usuarioId: ownerUsername }).select('-contenidoBase64').sort({ createdAt: -1 }),
+          GroundShipmentDocumento.find({ usuarioId: ownerUsername }).select('-contenidoBase64').sort({ createdAt: -1 }),
+          Documento.find({ usuarioId: ownerUsername }).select('-contenidoBase64').sort({ createdAt: -1 }),
+        ]);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapDoc = (doc: any) => ({
+          id: doc._id.toString(),
+          shipmentId: doc.shipmentId || doc.quoteId || null,
+          tipo: doc.tipo,
+          nombreArchivo: doc.nombreArchivo,
+          tipoArchivo: doc.tipoArchivo,
+          tamanoMB: (doc.tamanoBytes / (1024 * 1024)).toFixed(2),
+          fechaSubida: doc.createdAt,
+        });
+
+        return res.status(200).json({
+          air: airDocs.map(mapDoc),
+          ocean: oceanDocs.map(mapDoc),
+          ground: groundDocs.map(mapDoc),
+          quotes: quoteDocs.map(mapDoc),
+        });
+      } catch (error) {
+        console.error('[documents/all] Error:', error);
+        return res.status(500).json({ error: 'Error al obtener documentos' });
+      }
+    }
+
     // POST /api/documentos/upload - Subir documento
     if (path === '/api/documentos/upload' && method === 'POST') {
       try {

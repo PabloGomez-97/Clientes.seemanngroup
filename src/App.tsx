@@ -67,6 +67,7 @@ import CreateOceanShipmentForm from "./components/Sidebar/New-ocean-tracking";
 import Novedades from "./components/Sidebar/Novedades";
 import ShippingOrderView from "./components/Sidebar/ShippingOrder";
 import CotizacionEspecial from "./components/Sidebar/Cotizacion-especial";
+import MisDocumentosCliente from "./components/Sidebar/MisDocumentosCliente";
 
 // Proveedor Views
 import HomeProveedores from "./components/Proveedores/Homeproveedores";
@@ -262,6 +263,7 @@ function App() {
             element={<CreateOceanShipmentForm />}
           />
           <Route path="novedades" element={<Novedades />} />
+          <Route path="mis-documentos" element={<MisDocumentosCliente />} />
         </Route>
 
         {/* Ruta por defecto */}

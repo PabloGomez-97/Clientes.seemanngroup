@@ -111,6 +111,15 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
     {
       items: [
         {
+          path: "/mis-documentos",
+          name: "Mis Documentos",
+          icon: "fa fa-folder-open",
+        },
+      ],
+    },
+    {
+      items: [
+        {
           name: t("home.sidebar.track"),
           icon: "fa fa-route",
           subItems: [

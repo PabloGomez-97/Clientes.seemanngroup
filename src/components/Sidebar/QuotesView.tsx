@@ -821,38 +821,6 @@ function QuotesView({
     setExpandedQuoteId((prev) => (prev === quoteKey ? null : quoteKey));
   }, []);
 
-  /* -- Repeat quote handler --------------------------------- */
-  const handleRepeatQuote = useCallback(
-    (quote: Quote) => {
-      const portalType = getPortalQuoteType(quote);
-      if (!portalType) {
-        alert(t("quotesView.repeatNotPortal"));
-        return;
-      }
-
-      const tipoEnvio = mapQuoteTypeToTipoEnvio(portalType);
-      const origin = quote.origin || "";
-      const destination = quote.destination || "";
-
-      if (!origin || !destination) {
-        alert(t("quotesView.repeatNoRoutes"));
-        return;
-      }
-
-      navigate("/newquotes", {
-        state: {
-          tipoEnvio,
-          origin: { value: origin.toLowerCase().trim(), label: origin },
-          destination: {
-            value: destination.toLowerCase().trim(),
-            label: destination,
-          },
-        },
-      });
-    },
-    [navigate, t],
-  );
-
   /* -- Fetch available PDFs --------------------------------- */
   useEffect(() => {
     if (!token) return;
@@ -863,9 +831,12 @@ function QuotesView({
           pdfListParams.set("ownerUsername", activeUsername);
         }
 
-        const res = await fetch(`/api/quote-pdf/list?${pdfListParams.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(
+          `/api/quote-pdf/list?${pdfListParams.toString()}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
         if (res.ok) {
           const data = await res.json();
           if (data.success && Array.isArray(data.pdfs)) {
@@ -1354,9 +1325,6 @@ function QuotesView({
                     <SortIcon column="number" />
                   </th>
                   <th className="qv-th qv-th--center">
-                    <span>{t("quotesView.thRepeat")}</span>
-                  </th>
-                  <th className="qv-th qv-th--center">
                     <span>{t("quotesView.thStatus")}</span>
                   </th>
                   <th
@@ -1429,52 +1397,6 @@ function QuotesView({
                             <polyline points="9 18 15 12 9 6" />
                           </svg>
                           {quote.number || "---"}
-                        </td>
-                        <td
-                          className="qv-td qv-td--center"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {getPortalQuoteType(quote) ? (
-                            <button
-                              className="qv-btn qv-btn--repeat"
-                              title={t("quotesView.repeatTooltip")}
-                              onClick={() => handleRepeatQuote(quote)}
-                              style={{
-                                fontSize: "11px",
-                                padding: "4px 10px",
-                                whiteSpace: "nowrap",
-                                background: "var(--primary-color)",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "6px",
-                                cursor: "pointer",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                              }}
-                            >
-                              <svg
-                                width="12"
-                                height="12"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <polyline points="17 1 21 5 17 9" />
-                                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                                <polyline points="7 23 3 19 7 15" />
-                                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-                              </svg>
-                              {t("quotesView.repeatQuote")}
-                            </button>
-                          ) : (
-                            <span style={{ color: "#ccc", fontSize: "11px" }}>
-                              ---
-                            </span>
-                          )}
                         </td>
                         <td className="qv-td qv-td--center">
                           <StatusBadge validUntilDate={quote.validUntil_Date} />

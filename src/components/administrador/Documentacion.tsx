@@ -1,13 +1,8 @@
-// src/components/administrador/Documentacion.tsx — Document management for ejecutivos
+// src/components/administrador/Documentacion.tsx — Gestión de documentos para ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import { useOutletContext, useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { ClientOverrideProvider } from "../../contexts/ClientOverrideContext";
-import AirShipmentsView from "../shipments/AirShipmentsView";
-import OceanShipmentsView from "../shipments/OceanShipmentsView";
-import GroundShipmentsView from "../shipments/GroundShipmentsView";
-import QuotesView from "../Sidebar/QuotesView";
+import { DocumentosUnificadosView } from "../Sidebar/Documents/DocumentosUnificadosView";
 
 interface OutletContext {
   accessToken: string;
@@ -23,9 +18,10 @@ interface Cliente {
   createdAt: string;
 }
 
-// ── Cache helpers (reuse the same cache as ReporteriaClientes) ──
 const CACHE_TTL = 60 * 60 * 1000;
 const CLIENTS_CACHE_KEY = "rc_clients_list";
+const FONT =
+  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 function getCachedClients(): Cliente[] | null {
   try {
@@ -53,13 +49,9 @@ function setCachedClients(data: Cliente[]) {
   }
 }
 
-const FONT =
-  '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-
 function Documentacion() {
   useOutletContext<OutletContext>();
   const { token } = useAuth();
-  const { t } = useTranslation();
   const { clientUsername } = useParams<{ clientUsername?: string }>();
   const navigate = useNavigate();
 
@@ -67,24 +59,18 @@ function Documentacion() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
-  const [activeTab, setActiveTab] = useState<
-    "air" | "ocean" | "ground" | "quotes"
-  >("air");
 
-  // ── Fetch clients (shared cache with ReporteriaClientes) ──
+  // Fetch clients
   useEffect(() => {
     const fetchClientes = async () => {
       if (!token) return;
-
       const cached = getCachedClients();
       if (cached) {
         setClientes(cached);
         setLoading(false);
         return;
       }
-
       setLoading(true);
       try {
         const resp = await fetch("/api/ejecutivo/clientes", {
@@ -109,7 +95,6 @@ function Documentacion() {
 
   const handleSelectClient = useCallback(
     (cliente: Cliente) => {
-      setActiveTab("air");
       navigate(`/admin/documentacion/${encodeURIComponent(cliente.username)}`, {
         replace: true,
       });
@@ -117,12 +102,9 @@ function Documentacion() {
     [navigate],
   );
 
-  const handleBack = () => {
-    navigate("/admin/documentacion", { replace: true });
-  };
+  const handleBack = () => navigate("/admin/documentacion", { replace: true });
 
-  // URL is the single source of truth for which client is open.
-  // Intentionally excludes selectedClient to avoid the re-select race condition.
+  // URL is source of truth
   useEffect(() => {
     if (!clientUsername) {
       setSelectedClient(null);
@@ -140,7 +122,6 @@ function Documentacion() {
         ? prev
         : match,
     );
-    setActiveTab("air");
   }, [clientUsername, clientes, loading]);
 
   const filteredClients = useMemo(() => {
@@ -154,7 +135,7 @@ function Documentacion() {
     );
   }, [clientes, searchQuery]);
 
-  // ── Loading ──
+  // Loading state
   if (loading) {
     return (
       <div
@@ -169,25 +150,25 @@ function Documentacion() {
         <div style={{ textAlign: "center" }}>
           <div
             style={{
-              width: 32,
-              height: 32,
+              width: 28,
+              height: 28,
               border: "3px solid #f0f0f0",
               borderTop: "3px solid #2563eb",
               borderRadius: "50%",
-              animation: "doc-spin 0.8s linear infinite",
-              margin: "0 auto 16px",
+              animation: "spin 0.8s linear infinite",
+              margin: "0 auto 12px",
             }}
           />
-          <div style={{ color: "#8d99a8", fontSize: 13 }}>
+          <div style={{ color: "#9ca3af", fontSize: 13 }}>
             Cargando clientes...
           </div>
-          <style>{`@keyframes doc-spin { to { transform: rotate(360deg); } }`}</style>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
     );
   }
 
-  // ── Error ──
+  // Error state
   if (error) {
     return (
       <div style={{ fontFamily: FONT, padding: 40, textAlign: "center" }}>
@@ -202,7 +183,7 @@ function Documentacion() {
         >
           <div
             style={{
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: 600,
               color: "#dc2626",
               marginBottom: 4,
@@ -218,329 +199,207 @@ function Documentacion() {
 
   // ── Client Document View ──
   if (selectedClient) {
-    const tabs: {
-      key: "air" | "ocean" | "ground" | "quotes";
-      label: string;
-      icon: string;
-    }[] = [
-      { key: "air", label: t("home.sidebar.airOperations"), icon: "" },
-      { key: "ocean", label: t("home.sidebar.oceanOperations"), icon: "" },
-      { key: "ground", label: t("home.sidebar.groundOperations"), icon: "" },
-      { key: "quotes", label: t("home.sidebar.quotes"), icon: "" },
-    ];
-
     return (
       <div style={{ fontFamily: FONT }}>
-        {/* Back button */}
-        <button
-          onClick={handleBack}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 16px",
-            background: "none",
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 500,
-            color: "#374151",
-            marginBottom: 20,
-            transition: "all 0.15s",
-            fontFamily: FONT,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#f9fafb";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "none";
-          }}
-        >
-          <svg
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            viewBox="0 0 24 24"
-          >
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Volver a la lista
-        </button>
-
-        {/* Client Header */}
+        {/* Back + Client header */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 16,
-            marginBottom: 6,
+            marginBottom: 24,
           }}
         >
-          <div
+          <button
+            onClick={handleBack}
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: "#1e40af",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              fontSize: 18,
-              fontWeight: 700,
-              color: "#fff",
+              gap: 6,
+              padding: "7px 14px",
+              background: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 500,
+              color: "#374151",
+              fontFamily: FONT,
               flexShrink: 0,
             }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "#f9fafb";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "#fff";
+            }}
           >
-            {(selectedClient.username || "?").charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: "#1f2937",
-                margin: 0,
-              }}
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 24 24"
             >
-              {selectedClient.username}
-            </h1>
-            <p style={{ fontSize: 14, color: "#6b7280", margin: "2px 0 0" }}>
-              {selectedClient.email} · Registrado el{" "}
-              {new Date(selectedClient.createdAt).toLocaleDateString("es-CL", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            </p>
-          </div>
-        </div>
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Volver
+          </button>
 
-        {/* Hint */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 16px",
-            background: "#eff6ff",
-            border: "1px solid #bfdbfe",
-            borderRadius: 8,
-            marginBottom: 20,
-            fontSize: 13,
-            color: "#1e40af",
-          }}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-          </svg>
-          Selecciona una operación para ver y gestionar sus documentos.
-        </div>
-
-        {/* Tabs */}
-        <div
-          style={{
-            display: "flex",
-            gap: 4,
-            marginBottom: 24,
-            borderBottom: "2px solid #e5e7eb",
-            paddingBottom: 0,
-            overflowX: "auto",
-          }}
-        >
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+          {/* Avatar + info */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
               style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "#1e40af",
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
-                padding: "10px 20px",
-                background: "none",
-                border: "none",
-                borderBottom:
-                  activeTab === tab.key
-                    ? "2px solid #2563eb"
-                    : "2px solid transparent",
-                marginBottom: -2,
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: activeTab === tab.key ? 600 : 500,
-                color: activeTab === tab.key ? "#2563eb" : "#6b7280",
-                transition: "all 0.15s",
-                whiteSpace: "nowrap",
-                fontFamily: FONT,
+                justifyContent: "center",
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#fff",
+                flexShrink: 0,
               }}
             >
-              <span style={{ fontSize: 15 }}>{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
+              {(selectedClient.username || "?").charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+                {selectedClient.username}
+              </div>
+              <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                {selectedClient.email}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Content — documents only mode */}
-        <ClientOverrideProvider value={selectedClient.username}>
-          {activeTab === "air" && <AirShipmentsView documentsOnly />}
-          {activeTab === "ocean" && <OceanShipmentsView documentsOnly />}
-          {activeTab === "ground" && <GroundShipmentsView documentsOnly />}
-          {activeTab === "quotes" && <QuotesView documentsOnly />}
-        </ClientOverrideProvider>
+        <DocumentosUnificadosView ownerUsername={selectedClient.username} />
       </div>
     );
   }
 
   // ── Client List View ──
   return (
-    <div style={{ fontFamily: FONT, maxWidth: 1200 }}>
+    <div style={{ fontFamily: FONT, maxWidth: 860 }}>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: "#1e40af",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#fff"
-              strokeWidth="2"
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
-          </div>
-          <div>
-            <h1
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: "#1f2937",
-                margin: 0,
-              }}
-            >
-              Documentación
-            </h1>
-            <p style={{ fontSize: 14, color: "#6b7280", margin: "2px 0 0" }}>
-              Gestiona los documentos de tus clientes por operación.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary bar */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 16,
-          marginBottom: 20,
-          padding: "14px 20px",
-          background: "#fff",
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
+          gap: 12,
+          marginBottom: 24,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <i
-            className="fa fa-users"
-            style={{ fontSize: 16, color: "#2563eb" }}
-          />
-          <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
-            {clientes.length}
-          </span>
-          <span style={{ fontSize: 13, color: "#6b7280" }}>
-            clientes asignados
-          </span>
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: "#1e40af",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="2"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
         </div>
-        <div style={{ flex: 1 }} />
-        <div style={{ fontSize: 12, color: "#9ca3af" }}>
-          Caché: {getCachedClients() ? "activo" : "sin caché"}
+        <div>
+          <h1
+            style={{
+              fontSize: 20,
+              fontWeight: 700,
+              color: "#0f172a",
+              margin: 0,
+            }}
+          >
+            Documentación
+          </h1>
+          <p style={{ fontSize: 13, color: "#6b7280", margin: "2px 0 0" }}>
+            Selecciona un cliente para ver sus documentos.
+          </p>
+        </div>
+        <div style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>
+          {clientes.length} cliente{clientes.length !== 1 ? "s" : ""}
         </div>
       </div>
 
       {/* Search */}
-      <div style={{ marginBottom: 16 }}>
-        <div
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "9px 14px",
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: 10,
+          marginBottom: 14,
+        }}
+      >
+        <svg width="14" height="14" fill="#9ca3af" viewBox="0 0 16 16">
+          <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+        </svg>
+        <input
+          type="text"
+          placeholder="Buscar cliente..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "10px 16px",
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 10,
-            transition: "border-color 0.15s",
+            flex: 1,
+            border: "none",
+            outline: "none",
+            fontSize: 14,
+            color: "#1f2937",
+            background: "transparent",
+            fontFamily: FONT,
           }}
-        >
-          <svg width="16" height="16" fill="#9ca3af" viewBox="0 0 16 16">
-            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Buscar cliente por nombre, empresa o email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              flex: 1,
-              border: "none",
-              outline: "none",
-              fontSize: 14,
-              color: "#1f2937",
-              background: "transparent",
-              fontFamily: FONT,
-            }}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "#9ca3af",
-                padding: 2,
-                fontSize: 16,
-              }}
-            >
-              ×
-            </button>
-          )}
-        </div>
+        />
         {searchQuery && (
-          <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 6 }}>
-            {filteredClients.length} resultado
-            {filteredClients.length !== 1 ? "s" : ""}
-          </div>
+          <button
+            onClick={() => setSearchQuery("")}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "#9ca3af",
+              fontSize: 18,
+              lineHeight: 1,
+              padding: 0,
+            }}
+          >
+            ×
+          </button>
         )}
       </div>
 
-      {/* Client List */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {searchQuery && (
+        <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 10 }}>
+          {filteredClients.length} resultado
+          {filteredClients.length !== 1 ? "s" : ""}
+        </div>
+      )}
+
+      {/* Client list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {filteredClients.map((client) => (
           <div
             key={client.id}
@@ -548,34 +407,33 @@ function Documentacion() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 14,
-              padding: "14px 18px",
+              gap: 12,
+              padding: "12px 16px",
               background: "#fff",
               border: "1px solid #e5e7eb",
               borderRadius: 10,
               cursor: "pointer",
-              transition: "all 0.15s",
+              transition: "all 0.12s",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = "#2563eb";
-              e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
+              e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.04)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = "#e5e7eb";
               e.currentTarget.style.boxShadow = "none";
             }}
           >
-            {/* Avatar */}
             <div
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
+                width: 36,
+                height: 36,
+                borderRadius: 9,
                 background: "#1e40af",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 700,
                 color: "#fff",
                 flexShrink: 0,
@@ -583,12 +441,10 @@ function Documentacion() {
             >
               {(client.username || "?").charAt(0).toUpperCase()}
             </div>
-
-            {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: 600,
                   color: "#1f2937",
                   overflow: "hidden",
@@ -598,46 +454,37 @@ function Documentacion() {
               >
                 {client.username}
               </div>
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {client.email}
               </div>
             </div>
-
-            {/* Date */}
-            <div style={{ fontSize: 12, color: "#9ca3af", flexShrink: 0 }}>
+            <div style={{ fontSize: 11, color: "#9ca3af", flexShrink: 0 }}>
               {new Date(client.createdAt).toLocaleDateString("es-CL", {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",
               })}
             </div>
-
-            {/* Document icon + arrow */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#9ca3af"
-                strokeWidth="2"
-              >
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-              <svg
-                width="16"
-                height="16"
-                fill="none"
-                stroke="#9ca3af"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                viewBox="0 0 24 24"
-              >
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </div>
+            <svg
+              width="14"
+              height="14"
+              fill="none"
+              stroke="#d1d5db"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 24 24"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
           </div>
         ))}
       </div>
@@ -652,8 +499,8 @@ function Documentacion() {
           }}
         >
           {searchQuery
-            ? `No se encontraron clientes para "${searchQuery}"`
-            : "No hay clientes asignados a este ejecutivo."}
+            ? `Sin resultados para "${searchQuery}"`
+            : "No hay clientes asignados."}
         </div>
       )}
     </div>
