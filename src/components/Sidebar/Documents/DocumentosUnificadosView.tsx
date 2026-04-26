@@ -1,15 +1,10 @@
 // src/components/Sidebar/Documents/DocumentosUnificadosView.tsx
-// Vista unificada de documentos â€” reutilizable para ejecutivo y cliente
-import {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  type ReactNode,
-} from "react";
+// Vista unificada de documentos para cliente y ejecutivo.
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { linbisFetch } from "../../../services/linbisFetch";
+import "./DocumentosUnificadosView.css";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -54,113 +49,39 @@ interface DocGroup {
   subtitle: string | null;
   docs: UnifiedDoc[];
   latestTimestamp: number;
+  sortValue: number;
 }
 
 const TRANSPORT_LABELS: Record<TransportType, string> = {
   all: "Todos",
-  air: "Aéreo",
-  ocean: "Marítimo",
+  air: "Aérea",
+  ocean: "Marítima",
   ground: "Terrestre",
   quotes: "Cotizaciones",
 };
 
-const TRANSPORT_COLORS: Record<
-  TransportType,
-  { bg: string; text: string; border: string }
-> = {
-  all: { bg: "#f0f4ff", text: "#2563eb", border: "#bfdbfe" },
-  air: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
-  ocean: { bg: "#f0fdf4", text: "#16a34a", border: "#bbf7d0" },
-  ground: { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" },
-  quotes: { bg: "#faf5ff", text: "#7c3aed", border: "#ddd6fe" },
-};
+const SUMMARY_METRICS: Array<{
+  key: TransportType;
+  label: string;
+  sub: string;
+}> = [
+  { key: "all", label: "Todos", sub: "documentos" },
+  { key: "air", label: "Aéreo", sub: "documentos" },
+  { key: "ocean", label: "Marítimo", sub: "documentos" },
+  { key: "ground", label: "Terrestre", sub: "documentos" },
+  { key: "quotes", label: "Cotizaciones", sub: "documentos" },
+];
 
-const TRANSPORT_ICONS: Record<TransportType, ReactNode> = {
-  all: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-    </svg>
-  ),
-  air: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21 4 19 4s-2 1-3.5 2.5L11 8 2.8 6.2c-.5-.1-.9.4-.8.9l6.4 6.4L5 17l-1 1 3 .5.5 3 1-1 3.4-4.4 6.4 6.4c.5.1 1-.3.9-.8z" />
-    </svg>
-  ),
-  ocean: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1" />
-      <path d="M4 5h12l3 6-18 1z" />
-    </svg>
-  ),
-  ground: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <rect x="1" y="3" width="15" height="13" />
-      <path d="M16 8h4l3 3v5h-7V8z" />
-      <circle cx="5.5" cy="18.5" r="2.5" />
-      <circle cx="18.5" cy="18.5" r="2.5" />
-    </svg>
-  ),
-  quotes: (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-    </svg>
-  ),
-};
+const FILE_BADGES: Array<{ match: string; label: string }> = [
+  { match: "pdf", label: "PDF" },
+  { match: "excel", label: "XLS" },
+  { match: "spreadsheet", label: "XLS" },
+  { match: "word", label: "DOC" },
+  { match: "document", label: "DOC" },
+];
 
-const FILE_ICONS: Record<string, { icon: string; color: string }> = {
-  pdf: { icon: "PDF", color: "#dc2626" },
-  excel: { icon: "XLS", color: "#16a34a" },
-  spreadsheet: { icon: "XLS", color: "#16a34a" },
-  word: { icon: "DOC", color: "#1d4ed8" },
-  document: { icon: "DOC", color: "#1d4ed8" },
-};
-
-function getFileLabel(tipoArchivo: string) {
-  for (const [key, val] of Object.entries(FILE_ICONS)) {
-    if (tipoArchivo.includes(key)) return val;
-  }
-  return { icon: "FILE", color: "#6b7280" };
+function normalizeText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function formatFecha(fechaISO: string) {
@@ -181,10 +102,6 @@ function formatFechaFull(fechaISO: string) {
   });
 }
 
-function normalizeText(value: unknown) {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
 function getReferenceKey(type: GroupTransportType, referenceId: string | null) {
   return `${type}:${referenceId || "sin-referencia"}`;
 }
@@ -194,16 +111,17 @@ function getGroupTitle(
   meta: ReferenceMeta | null,
   internalId: string | null,
 ) {
-  const base =
-    type === "quotes" ? "Cotización" : `Operación ${TRANSPORT_LABELS[type]}`;
   const number = normalizeText(meta?.number);
   const customerReference = normalizeText(meta?.customerReference);
+  const suffix = number || customerReference || internalId || "";
 
-  if (number || customerReference) {
-    return `${base} ${number || customerReference}`;
+  if (type === "quotes") {
+    return suffix ? `Cotización ${suffix}` : "Cotización";
   }
 
-  return `${base}${internalId ? ` ${internalId}` : ""}`;
+  return suffix
+    ? `Operación ${TRANSPORT_LABELS[type]} ${suffix}`
+    : `Operación ${TRANSPORT_LABELS[type]}`;
 }
 
 function getGroupSubtitle(
@@ -222,6 +140,28 @@ function getGroupSubtitle(
   }
 
   return null;
+}
+
+function getFileBadge(tipoArchivo: string) {
+  const lower = tipoArchivo.toLowerCase();
+  const match = FILE_BADGES.find((item) => lower.includes(item.match));
+  return match?.label ?? "FILE";
+}
+
+function getReferenceSortValue(
+  meta: ReferenceMeta | null,
+  internalId: string | null,
+) {
+  const source =
+    normalizeText(meta?.number) ||
+    normalizeText(meta?.customerReference) ||
+    internalId;
+  if (!source) return -1;
+
+  const numeric = source.match(/\d+/g)?.join("");
+  if (numeric) return Number(numeric);
+
+  return 0;
 }
 
 interface Props {
@@ -266,6 +206,7 @@ export function DocumentosUnificadosView({
       }
 
       const nextMap: Record<string, ReferenceMeta> = {};
+
       const airIds = new Set(
         sourceDocs.air
           .map((doc) => normalizeText(doc.shipmentId))
@@ -319,7 +260,7 @@ export function DocumentosUnificadosView({
             nextMap[getReferenceKey("ocean", shipmentId)] = meta;
           }
         } catch {
-          // Ignorar referencias individuales con error y seguir armando el resto.
+          // Keep the fallback reference if Linbis is unavailable.
         }
       });
 
@@ -357,7 +298,7 @@ export function DocumentosUnificadosView({
                   };
                 });
               } catch {
-                // Si falla ground, la vista sigue funcionando con el ID interno.
+                // Keep the fallback reference if the lookup fails.
               }
             })()
           : Promise.resolve();
@@ -401,7 +342,7 @@ export function DocumentosUnificadosView({
                   };
                 });
               } catch {
-                // Si falla quotes, se mantiene el fallback.
+                // Keep the fallback reference if the lookup fails.
               }
             })()
           : Promise.resolve();
@@ -427,6 +368,7 @@ export function DocumentosUnificadosView({
         `/api/documents/all?ownerUsername=${encodeURIComponent(ownerUsername)}`,
         { headers: { Authorization: `Bearer ${token}` } },
       );
+
       if (!res.ok) throw new Error("Error al cargar documentos");
 
       const data = await res.json();
@@ -438,13 +380,13 @@ export function DocumentosUnificadosView({
       };
 
       setDocs(nextDocs);
-      void loadReferenceMap(nextDocs);
+      await loadReferenceMap(nextDocs);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
     } finally {
       setLoading(false);
     }
-  }, [token, ownerUsername, loadReferenceMap]);
+  }, [loadReferenceMap, ownerUsername, token]);
 
   useEffect(() => {
     loadDocs();
@@ -460,11 +402,19 @@ export function DocumentosUnificadosView({
     [docs],
   );
 
+  const counts: Record<TransportType, number> = {
+    all: allDocs.length,
+    air: docs.air.length,
+    ocean: docs.ocean.length,
+    ground: docs.ground.length,
+    quotes: docs.quotes.length,
+  };
+
   const visibleDocs = useMemo(() => {
     let list =
       activeType === "all"
         ? allDocs
-        : allDocs.filter((d) => d._type === activeType);
+        : allDocs.filter((doc) => doc._type === activeType);
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -472,15 +422,15 @@ export function DocumentosUnificadosView({
         const internalId = normalizeText(doc.shipmentId);
         const meta =
           referenceMap[getReferenceKey(doc._type, internalId)] || null;
+        const number = normalizeText(meta?.number) || "";
+        const customerReference = normalizeText(meta?.customerReference) || "";
 
         return (
           doc.nombreArchivo.toLowerCase().includes(q) ||
           doc.tipo.toLowerCase().includes(q) ||
           (internalId || "").toLowerCase().includes(q) ||
-          (normalizeText(meta?.number) || "").toLowerCase().includes(q) ||
-          (normalizeText(meta?.customerReference) || "")
-            .toLowerCase()
-            .includes(q) ||
+          number.toLowerCase().includes(q) ||
+          customerReference.toLowerCase().includes(q) ||
           TRANSPORT_LABELS[doc._type].toLowerCase().includes(q)
         );
       });
@@ -490,7 +440,7 @@ export function DocumentosUnificadosView({
       (a, b) =>
         new Date(b.fechaSubida).getTime() - new Date(a.fechaSubida).getTime(),
     );
-  }, [allDocs, activeType, search, referenceMap]);
+  }, [activeType, allDocs, referenceMap, search]);
 
   const groupedDocs = useMemo<DocGroup[]>(() => {
     const groups = new Map<string, DocGroup>();
@@ -499,7 +449,7 @@ export function DocumentosUnificadosView({
       const internalId = normalizeText(doc.shipmentId);
       const meta = referenceMap[getReferenceKey(doc._type, internalId)] || null;
       const key = getReferenceKey(doc._type, internalId);
-      const docTimestamp = new Date(doc.fechaSubida).getTime();
+      const timestamp = new Date(doc.fechaSubida).getTime();
 
       if (!groups.has(key)) {
         groups.set(key, {
@@ -508,13 +458,18 @@ export function DocumentosUnificadosView({
           title: getGroupTitle(doc._type, meta, internalId),
           subtitle: getGroupSubtitle(meta, internalId),
           docs: [],
-          latestTimestamp: docTimestamp,
+          latestTimestamp: timestamp,
+          sortValue: getReferenceSortValue(meta, internalId),
         });
       }
 
       const group = groups.get(key)!;
       group.docs.push(doc);
-      group.latestTimestamp = Math.max(group.latestTimestamp, docTimestamp);
+      group.latestTimestamp = Math.max(group.latestTimestamp, timestamp);
+      group.sortValue = Math.max(
+        group.sortValue,
+        getReferenceSortValue(meta, internalId),
+      );
     });
 
     return Array.from(groups.values())
@@ -526,15 +481,23 @@ export function DocumentosUnificadosView({
             new Date(a.fechaSubida).getTime(),
         ),
       }))
-      .sort((a, b) => b.latestTimestamp - a.latestTimestamp);
-  }, [visibleDocs, referenceMap]);
+      .sort((a, b) => {
+        if (b.sortValue !== a.sortValue) return b.sortValue - a.sortValue;
+        if (b.latestTimestamp !== a.latestTimestamp) {
+          return b.latestTimestamp - a.latestTimestamp;
+        }
+        return a.title.localeCompare(b.title, "es", { numeric: true });
+      });
+  }, [referenceMap, visibleDocs]);
 
   useEffect(() => {
     setExpandedGroups((prev) => {
-      const next: Record<string, boolean> = {};
+      const next: Record<string, boolean> = { ...prev };
 
       groupedDocs.forEach((group) => {
-        next[group.key] = prev[group.key] ?? true;
+        if (next[group.key] === undefined) {
+          next[group.key] = true;
+        }
       });
 
       return next;
@@ -551,745 +514,266 @@ export function DocumentosUnificadosView({
       });
       return next;
     });
-  }, [search, groupedDocs]);
+  }, [groupedDocs, search]);
 
-  const counts: Record<TransportType, number> = {
-    all: allDocs.length,
-    air: docs.air.length,
-    ocean: docs.ocean.length,
-    ground: docs.ground.length,
-    quotes: docs.quotes.length,
-  };
+  const toggleGroup = useCallback((key: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  }, []);
 
-  const handleDownload = async (doc: UnifiedDoc) => {
-    if (!token || downloadingId === doc.id) return;
-    setDownloadingId(doc.id);
+  const handleDownload = useCallback(
+    async (doc: UnifiedDoc) => {
+      if (!token || downloadingId === doc.id) return;
+      setDownloadingId(doc.id);
 
-    try {
-      const endpoint =
-        doc._type === "air"
-          ? `/api/air-shipments/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
-          : doc._type === "ocean"
-            ? `/api/ocean-shipments/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
-            : doc._type === "ground"
-              ? `/api/ground-shipments/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
-              : `/api/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`;
+      try {
+        const endpoint =
+          doc._type === "air"
+            ? `/api/air-shipments/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+            : doc._type === "ocean"
+              ? `/api/ocean-shipments/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+              : doc._type === "ground"
+                ? `/api/ground-shipments/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+                : `/api/documentos/download/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`;
 
-      const res = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Error al descargar");
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      const contentType = res.headers.get("Content-Type") || "";
-      if (!contentType.includes("application/json")) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = doc.nombreArchivo;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        const data = await res.json();
-        const a = document.createElement("a");
-        a.href = data.documento.contenidoBase64;
-        a.download = doc.nombreArchivo;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        if (!res.ok) throw new Error("Error al descargar");
+
+        const contentType = res.headers.get("Content-Type") || "";
+        if (!contentType.includes("application/json")) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = doc.nombreArchivo;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } else {
+          const data = await res.json();
+          const a = document.createElement("a");
+          a.href = data.documento.contenidoBase64;
+          a.download = doc.nombreArchivo;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+      } catch {
+        setError("Error al descargar el documento");
+      } finally {
+        setDownloadingId(null);
       }
-    } catch {
-      setError("Error al descargar el documento");
-    } finally {
-      setDownloadingId(null);
-    }
-  };
+    },
+    [downloadingId, ownerUsername, token],
+  );
 
-  const handleDelete = async (doc: UnifiedDoc) => {
-    if (!token || !canDelete) return;
-    if (!window.confirm(`Â¿Eliminar "${doc.nombreArchivo}"?`)) return;
-    setDeletingId(doc.id);
+  const handleDelete = useCallback(
+    async (doc: UnifiedDoc) => {
+      if (!token || !canDelete) return;
+      if (!window.confirm(`¿Eliminar "${doc.nombreArchivo}"?`)) return;
+      setDeletingId(doc.id);
 
-    try {
-      const endpoint =
-        doc._type === "air"
-          ? `/api/air-shipments/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
-          : doc._type === "ocean"
-            ? `/api/ocean-shipments/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
-            : doc._type === "ground"
-              ? `/api/ground-shipments/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
-              : `/api/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`;
+      try {
+        const endpoint =
+          doc._type === "air"
+            ? `/api/air-shipments/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+            : doc._type === "ocean"
+              ? `/api/ocean-shipments/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+              : doc._type === "ground"
+                ? `/api/ground-shipments/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`
+                : `/api/documentos/${doc.id}?ownerUsername=${encodeURIComponent(ownerUsername)}`;
 
-      const res = await fetch(endpoint, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Error al eliminar");
+        const res = await fetch(endpoint, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      setSuccessMsg(`"${doc.nombreArchivo}" eliminado`);
-      setTimeout(() => setSuccessMsg(null), 4000);
-      await loadDocs();
-    } catch {
-      setError("Error al eliminar el documento");
-    } finally {
-      setDeletingId(null);
-    }
-  };
+        if (!res.ok) throw new Error("Error al eliminar");
 
-  const types: TransportType[] = ["all", "air", "ocean", "ground", "quotes"];
+        setSuccessMsg(`"${doc.nombreArchivo}" eliminado`);
+        setTimeout(() => setSuccessMsg(null), 4000);
+        await loadDocs();
+      } catch {
+        setError("Error al eliminar el documento");
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [canDelete, loadDocs, ownerUsername, token],
+  );
 
   return (
-    <div style={{ fontFamily: FONT }}>
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-        .doc-row:hover { background: #f8fafc !important; }
-        .doc-action-btn:hover { background: #f1f5f9 !important; }
-        .doc-action-btn.danger:hover { background: #fee2e2 !important; color: #dc2626 !important; }
-        .doc-type-chip { cursor: pointer; transition: all 0.12s; }
-        .doc-type-chip:hover { filter: brightness(0.96); }
-        .doc-group-btn:hover { background: #f8fafc !important; }
-      `}</style>
-
+    <div className="doc-unified-view" style={{ fontFamily: FONT }}>
       {title && (
-        <div style={{ marginBottom: 20 }}>
-          <h2
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color: "#0f172a",
-              margin: 0,
-            }}
-          >
-            {title}
-          </h2>
+        <div className="doc-header">
+          <h2 className="doc-header__title">{title}</h2>
         </div>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-          gap: 10,
-          marginBottom: 20,
-        }}
-      >
-        {(["air", "ocean", "ground", "quotes"] as GroupTransportType[]).map(
-          (t) => {
-            const c = TRANSPORT_COLORS[t];
-            return (
-              <div
-                key={t}
-                onClick={() => setActiveType(activeType === t ? "all" : t)}
-                className="doc-type-chip"
-                style={{
-                  padding: "12px 16px",
-                  background: activeType === t ? c.bg : "#fff",
-                  border: `1px solid ${activeType === t ? c.border : "#e5e7eb"}`,
-                  borderRadius: 10,
-                  cursor: "pointer",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    color: activeType === t ? c.text : "#6b7280",
-                    marginBottom: 4,
-                  }}
-                >
-                  {TRANSPORT_ICONS[t]}
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    {TRANSPORT_LABELS[t]}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    fontSize: 22,
-                    fontWeight: 700,
-                    color: activeType === t ? c.text : "#1f2937",
-                  }}
-                >
-                  {counts[t]}
-                </div>
-              </div>
-            );
-          },
-        )}
-      </div>
+      <section className="doc-metrics-strip" aria-label="Resumen de documentos">
+        {SUMMARY_METRICS.map((metric) => {
+          const active = activeType === metric.key;
+          return (
+            <button
+              key={metric.key}
+              type="button"
+              className={`doc-metrics-strip__item${active ? " doc-metrics-strip__item--active" : ""}`}
+              aria-pressed={active}
+              onClick={() => setActiveType(metric.key)}
+            >
+              <div className="doc-metrics-strip__label">{metric.label}</div>
+              <div className="doc-metrics-strip__value">{counts[metric.key]}</div>
+              <div className="doc-metrics-strip__sub">{metric.sub}</div>
+            </button>
+          );
+        })}
+      </section>
 
-      {successMsg && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "10px 14px",
-            background: "#f0fdf4",
-            border: "1px solid #bbf7d0",
-            borderRadius: 8,
-            marginBottom: 14,
-            fontSize: 13,
-            color: "#15803d",
-            animation: "fadeIn 0.2s",
-          }}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          {successMsg}
-        </div>
-      )}
-
-      {error && (
-        <div
-          style={{
-            padding: "10px 14px",
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            borderRadius: 8,
-            marginBottom: 14,
-            fontSize: 13,
-            color: "#dc2626",
-          }}
-        >
-          {error}
-          <button
-            onClick={() => setError(null)}
-            style={{
-              float: "right",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "#dc2626",
-              fontSize: 16,
-              lineHeight: 1,
-            }}
-          >
-            Ã—
-          </button>
-        </div>
-      )}
-
-      <div
-        style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}
-      >
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {types.map((t) => {
-            const c = TRANSPORT_COLORS[t];
-            const active = activeType === t;
-            return (
-              <button
-                key={t}
-                onClick={() => setActiveType(t)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  padding: "5px 12px",
-                  borderRadius: 20,
-                  border: `1px solid ${active ? c.border : "#e5e7eb"}`,
-                  background: active ? c.bg : "#fff",
-                  color: active ? c.text : "#6b7280",
-                  fontSize: 12,
-                  fontWeight: active ? 600 : 500,
-                  cursor: "pointer",
-                  fontFamily: FONT,
-                  transition: "all 0.12s",
-                }}
-              >
-                {TRANSPORT_ICONS[t]}
-                {TRANSPORT_LABELS[t]}
-                <span
-                  style={{
-                    background: active ? c.text : "#e5e7eb",
-                    color: active ? "#fff" : "#6b7280",
-                    borderRadius: 99,
-                    padding: "0 6px",
-                    fontSize: 10,
-                    fontWeight: 700,
-                  }}
-                >
-                  {counts[t]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div
-          style={{
-            flex: 1,
-            minWidth: 200,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "7px 12px",
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-          }}
-        >
-          <svg width="14" height="14" fill="#9ca3af" viewBox="0 0 16 16">
-            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-          </svg>
+      <div className="doc-toolbar">
+        <div className="doc-search">
           <input
             type="text"
             placeholder="Buscar por nombre, tipo, operación o cotización..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              flex: 1,
-              border: "none",
-              outline: "none",
-              fontSize: 13,
-              color: "#1f2937",
-              background: "transparent",
-              fontFamily: FONT,
-            }}
           />
           {search && (
             <button
+              type="button"
+              className="doc-link"
               onClick={() => setSearch("")}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "#9ca3af",
-                fontSize: 16,
-                lineHeight: 1,
-                padding: 0,
-              }}
             >
-              Ã—
+              Limpiar
             </button>
           )}
         </div>
       </div>
 
-      {loading && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: 180,
-          }}
-        >
-          <div>
-            <div
-              style={{
-                width: 30,
-                height: 30,
-                border: "3px solid #f0f0f0",
-                borderTop: "3px solid #2563eb",
-                borderRadius: "50%",
-                animation: "spin 0.8s linear infinite",
-                margin: "0 auto 12px",
-              }}
-            />
-            <div
-              style={{ color: "#9ca3af", fontSize: 13, textAlign: "center" }}
-            >
-              Cargando documentos...
-            </div>
-          </div>
+      {successMsg && (
+        <div className="doc-alert doc-alert--success">{successMsg}</div>
+      )}
+
+      {error && (
+        <div className="doc-alert doc-alert--error">
+          {error}
+          <button
+            type="button"
+            className="doc-alert__close"
+            onClick={() => setError(null)}
+          >
+            Cerrar
+          </button>
         </div>
       )}
 
-      {!loading && visibleDocs.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {loading && (
+        <div className="doc-empty">
+          <span>Cargando documentos...</span>
+        </div>
+      )}
+
+      {!loading && groupedDocs.length > 0 && (
+        <div className="doc-groups">
           {groupedDocs.map((group) => {
-            const tc = TRANSPORT_COLORS[group.type];
             const isExpanded = expandedGroups[group.key] ?? true;
 
             return (
-              <div
-                key={group.key}
-                style={{
-                  background: "#fff",
-                  border: `1px solid ${tc.border}`,
-                  borderRadius: 10,
-                  overflow: "hidden",
-                }}
-              >
+              <section key={group.key} className="doc-group">
                 <button
-                  className="doc-group-btn"
-                  onClick={() =>
-                    setExpandedGroups((prev) => ({
-                      ...prev,
-                      [group.key]: !isExpanded,
-                    }))
-                  }
-                  style={{
-                    width: "100%",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    padding: "14px 16px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    textAlign: "left",
-                  }}
+                  type="button"
+                  className="doc-group__header"
+                  onClick={() => toggleGroup(group.key)}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 12,
-                      minWidth: 0,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 9,
-                        background: tc.bg,
-                        color: tc.text,
-                        border: `1px solid ${tc.border}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {TRANSPORT_ICONS[group.type]}
-                    </div>
-
-                    <div style={{ minWidth: 0 }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          flexWrap: "wrap",
-                          marginBottom: 3,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: "#0f172a",
-                          }}
-                        >
-                          {group.title}
-                        </span>
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            padding: "3px 8px",
-                            borderRadius: 999,
-                            background: tc.bg,
-                            color: tc.text,
-                            border: `1px solid ${tc.border}`,
-                            fontSize: 10,
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {TRANSPORT_LABELS[group.type]}
-                        </span>
-                      </div>
-
-                      <div style={{ fontSize: 12, color: "#64748b" }}>
-                        {group.subtitle ||
-                          "Documentos agrupados bajo esta referencia"}
-                      </div>
+                  <div className="doc-group__copy">
+                    <div className="doc-group__title">{group.title}</div>
+                    <div className="doc-group__subtitle">
+                      {group.subtitle ||
+                        "Documentos agrupados bajo esta referencia"}
                     </div>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 12,
-                        color: "#64748b",
-                        fontWeight: 600,
-                      }}
-                    >
+                  <div className="doc-group__meta">
+                    <span>
                       {group.docs.length} documento
                       {group.docs.length !== 1 ? "s" : ""}
                     </span>
-                    <svg
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#64748b"
-                      strokeWidth="2"
-                      style={{
-                        transform: isExpanded
-                          ? "rotate(180deg)"
-                          : "rotate(0deg)",
-                        transition: "transform 0.15s ease",
-                      }}
-                    >
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
+                    <span className="doc-group__toggle">
+                      {isExpanded ? "Ocultar" : "Ver"}
+                    </span>
                   </div>
                 </button>
 
                 {isExpanded && (
-                  <div style={{ borderTop: "1px solid #e5e7eb" }}>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "32px 1fr 180px 110px 80px",
-                        gap: 0,
-                        padding: "8px 16px",
-                        background: "#f8fafc",
-                        borderBottom: "1px solid #e5e7eb",
-                      }}
-                    >
-                      {["", "Documento", "Tipo", "Fecha", ""].map((h, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: "#6b7280",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px",
-                            textAlign: i === 4 ? "right" : "left",
-                          }}
-                        >
-                          {h}
-                        </div>
-                      ))}
+                  <div className="doc-group__body">
+                    <div className="doc-group__table-header">
+                      <div className="doc-group__head">Documento</div>
+                      <div className="doc-group__head">Tipo</div>
+                      <div className="doc-group__head">Fecha</div>
+                      <div className="doc-group__head doc-group__head--actions">
+                        Acciones
+                      </div>
                     </div>
 
-                    {group.docs.map((doc, idx) => {
-                      const fileLabel = getFileLabel(doc.tipoArchivo);
+                    {group.docs.map((doc) => {
                       const isDeleting = deletingId === doc.id;
                       const isDownloading = downloadingId === doc.id;
 
                       return (
-                        <div
-                          key={doc.id}
-                          className="doc-row"
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "32px 1fr 180px 110px 80px",
-                            gap: 0,
-                            padding: "10px 16px",
-                            borderBottom:
-                              idx < group.docs.length - 1
-                                ? "1px solid #f1f5f9"
-                                : "none",
-                            alignItems: "center",
-                            transition: "background 0.1s",
-                            opacity: isDeleting ? 0.5 : 1,
-                            animation: "fadeIn 0.15s",
-                          }}
-                        >
+                        <div key={doc.id} className="doc-row">
                           <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "flex-start",
-                            }}
+                            className="doc-document"
+                            title={doc.nombreArchivo}
                           >
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: 26,
-                                height: 26,
-                                borderRadius: 5,
-                                background: `${fileLabel.color}18`,
-                                color: fileLabel.color,
-                                fontSize: 8,
-                                fontWeight: 800,
-                                letterSpacing: "-0.3px",
-                              }}
-                            >
-                              {fileLabel.icon}
+                            <span className="doc-file-badge">
+                              {getFileBadge(doc.tipoArchivo)}
                             </span>
-                          </div>
-
-                          <div style={{ minWidth: 0 }}>
-                            <div
-                              style={{
-                                fontSize: 13,
-                                fontWeight: 500,
-                                color: "#0f172a",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                              title={doc.nombreArchivo}
-                            >
-                              {doc.nombreArchivo}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 11,
-                                color: "#9ca3af",
-                                marginTop: 1,
-                              }}
-                            >
-                              {doc.tamanoMB} MB
+                            <div className="doc-document__copy">
+                              <div className="doc-document__name">
+                                {doc.nombreArchivo}
+                              </div>
+                              <div className="doc-document__size">
+                                {doc.tamanoMB} MB
+                              </div>
                             </div>
                           </div>
 
-                          <div>
-                            <span
-                              style={{
-                                display: "inline-block",
-                                padding: "2px 8px",
-                                borderRadius: 4,
-                                background: tc.bg,
-                                color: tc.text,
-                                border: `1px solid ${tc.border}`,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                maxWidth: 170,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                              title={doc.tipo}
-                            >
+                          <div className="doc-type-cell">
+                            <span className="doc-type-badge" title={doc.tipo}>
                               {doc.tipo}
                             </span>
                           </div>
 
                           <div
-                            style={{ fontSize: 12, color: "#94a3b8" }}
+                            className="doc-date"
                             title={formatFechaFull(doc.fechaSubida)}
                           >
                             {formatFecha(doc.fechaSubida)}
                           </div>
 
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "flex-end",
-                              gap: 4,
-                            }}
-                          >
+                          <div className="doc-actions">
                             <button
-                              className="doc-action-btn"
+                              type="button"
+                              className="doc-action-link"
                               onClick={() => handleDownload(doc)}
                               disabled={isDownloading || isDeleting}
-                              title="Descargar"
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: 30,
-                                height: 30,
-                                borderRadius: 6,
-                                border: "1px solid #e5e7eb",
-                                background: "transparent",
-                                cursor: "pointer",
-                                color: "#64748b",
-                                transition: "all 0.1s",
-                                fontFamily: FONT,
-                              }}
                             >
-                              {isDownloading ? (
-                                <div
-                                  style={{
-                                    width: 12,
-                                    height: 12,
-                                    border: "2px solid #e5e7eb",
-                                    borderTop: "2px solid #2563eb",
-                                    borderRadius: "50%",
-                                    animation: "spin 0.8s linear infinite",
-                                  }}
-                                />
-                              ) : (
-                                <svg
-                                  width="13"
-                                  height="13"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                >
-                                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                  <polyline points="7 10 12 15 17 10" />
-                                  <line x1="12" y1="15" x2="12" y2="3" />
-                                </svg>
-                              )}
+                              {isDownloading ? "Descargando..." : "Descargar"}
                             </button>
 
                             {canDelete && (
                               <button
-                                className="doc-action-btn danger"
+                                type="button"
+                                className="doc-action-link doc-action-link--danger"
                                 onClick={() => handleDelete(doc)}
                                 disabled={isDeleting || isDownloading}
-                                title="Eliminar"
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  width: 30,
-                                  height: 30,
-                                  borderRadius: 6,
-                                  border: "1px solid #e5e7eb",
-                                  background: "transparent",
-                                  cursor: "pointer",
-                                  color: "#94a3b8",
-                                  transition: "all 0.1s",
-                                  fontFamily: FONT,
-                                }}
                               >
-                                {isDeleting ? (
-                                  <div
-                                    style={{
-                                      width: 12,
-                                      height: 12,
-                                      border: "2px solid #e5e7eb",
-                                      borderTop: "2px solid #dc2626",
-                                      borderRadius: "50%",
-                                      animation: "spin 0.8s linear infinite",
-                                    }}
-                                  />
-                                ) : (
-                                  <svg
-                                    width="13"
-                                    height="13"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                  >
-                                    <polyline points="3 6 5 6 21 6" />
-                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                    <path d="M10 11v6" />
-                                    <path d="M14 11v6" />
-                                  </svg>
-                                )}
+                                {isDeleting ? "Eliminando..." : "Eliminar"}
                               </button>
                             )}
                           </div>
@@ -1298,82 +782,44 @@ export function DocumentosUnificadosView({
                     })}
                   </div>
                 )}
-              </div>
+              </section>
             );
           })}
         </div>
       )}
 
-      {!loading && visibleDocs.length === 0 && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: 200,
-            color: "#9ca3af",
-          }}
-        >
-          <svg
-            width="40"
-            height="40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#d1d5db"
-            strokeWidth="1.5"
-            style={{ marginBottom: 12 }}
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-          </svg>
-          <p
-            style={{
-              fontSize: 14,
-              margin: 0,
-              fontWeight: 500,
-              color: "#6b7280",
-            }}
-          >
-            {search
-              ? `Sin resultados para "${search}"`
-              : counts.all === 0
-                ? "No hay documentos disponibles"
-                : `Sin documentos en ${TRANSPORT_LABELS[activeType]}`}
-          </p>
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              style={{
-                marginTop: 8,
-                fontSize: 12,
-                color: "#2563eb",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: FONT,
-              }}
-            >
-              Limpiar bÃºsqueda
-            </button>
-          )}
+      {!loading && groupedDocs.length === 0 && (
+        <div className="doc-empty">
+          <div>
+            <div className="doc-empty__title">
+              {search
+                ? `Sin resultados para "${search}"`
+                : counts.all === 0
+                  ? "No hay documentos disponibles"
+                  : `Sin documentos en ${TRANSPORT_LABELS[activeType]}`}
+            </div>
+            {search ? (
+              <button
+                type="button"
+                className="doc-link"
+                onClick={() => setSearch("")}
+              >
+                Limpiar búsqueda
+              </button>
+            ) : null}
+          </div>
         </div>
       )}
 
       {!loading && visibleDocs.length > 0 && (
-        <div
-          style={{
-            marginTop: 10,
-            fontSize: 12,
-            color: "#9ca3af",
-            textAlign: "right",
-          }}
-        >
-          {visibleDocs.length} documento{visibleDocs.length !== 1 ? "s" : ""} en{" "}
-          {groupedDocs.length} grupo{groupedDocs.length !== 1 ? "s" : ""}
+        <div className="doc-results">
+          {visibleDocs.length} documento{visibleDocs.length !== 1 ? "s" : ""}
+          {activeType !== "all" && ` en ${TRANSPORT_LABELS[activeType]}`}
           {search && ` encontrado${visibleDocs.length !== 1 ? "s" : ""}`}
         </div>
       )}
     </div>
   );
 }
+
+export default DocumentosUnificadosView;
