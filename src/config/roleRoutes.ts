@@ -67,6 +67,7 @@ export const OPERACIONES_ROUTES: string[] = [
   '/admin/cotizador-administrador',
   '/admin/simulador-cotizaciones',
   '/admin/op-reporteriaclientes',
+  '/admin/op-documentacion',
   '/admin/op-trackeos',
   '/admin/settings',
 ];

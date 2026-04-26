@@ -35,6 +35,7 @@ import HomeEjecutivo from "./components/administrador/HomeEjecutivo";
 import HomeOperaciones from "./components/administrador/HomeOperaciones";
 import ReporteriaClientes from "./components/administrador/ReporteriaClientes";
 import Documentacion from "./components/administrador/Documentacion";
+import OPDocumentacion from "./components/administrador/OP-Documentacion";
 import OPReporteriaClientes from "./components/administrador/OP-reporteriaclientes";
 import Auditoria from "./components/administrador/Auditoria";
 import AgenciaAduanas from "./components/administrador/AgenciaAduanas";
@@ -167,6 +168,10 @@ function App() {
           <Route
             path="documentacion/:clientUsername?"
             element={<Documentacion />}
+          />
+          <Route
+            path="op-documentacion/:clientUsername?"
+            element={<OPDocumentacion />}
           />
           <Route path="users" element={<UsersManagement />} />
           <Route path="reportexecutive" element={<ReportExecutive />} />

@@ -94,7 +94,7 @@ function SidebarAdmin({
         },
         {
           path: "/admin/comportamiento-clientes",
-          name: "Comportamiento de Clientes",
+          name: "Análisis de Clientes",
           icon: "fa fa-chart-line",
         },
       ],
@@ -108,23 +108,23 @@ function SidebarAdmin({
           subItems: [
             {
               path: "/admin/reporteriaclientes",
-              name: "Mis Clientes",
+              name: "Directorio de Clientes",
             },
             {
               path: "/admin/op-reporteriaclientes",
-              name: "Todos los clientes",
+              name: "Directorio de Clientes",
             },
             {
               path: "/admin/trackeos",
-              name: "Seguimiento de Operaciones",
+              name: "Monitoreo de Operaciones",
             },
             {
               path: "/admin/op-trackeos",
-              name: "Rastreo de envíos",
+              name: "Monitoreo de Envíos",
             },
             {
-              path: "/admin/documentacion",
-              name: "Documentos",
+              path: "/admin/op-documentacion",
+              name: "Documentación de Clientes",
             },
           ],
         },
@@ -135,22 +135,22 @@ function SidebarAdmin({
       items: [
         {
           path: "/admin/pricing",
-          name: "Gestionar Tarifas",
+          name: "Administración de Tarifas",
           icon: "fa fa-tags",
         },
         {
           path: "/admin/tarifario-completo",
-          name: "Tarifario Completo",
+          name: "Tarifario General",
           icon: "fa fa-table",
         },
         {
           path: "/admin/documentos-proveedores",
-          name: "Documentos Proveedores",
+          name: "Documentación de Proveedores",
           icon: "fa fa-file-alt",
         },
         {
           path: "/admin/alertas-pricing",
-          name: "Alertas de Tarifas",
+          name: "Alertas Tarifas",
           icon: "fa fa-exclamation-triangle",
         },
       ],
@@ -160,21 +160,21 @@ function SidebarAdmin({
       items: [
         {
           path: "/admin/reporteria",
-          name: "Reportería",
+          name: "Reportes",
           icon: "fa fa-chart-bar",
           subItems: [
             {
               path: "/admin/reporteria",
-              name: "Reportería LINBIS",
+              name: "Reportes LINBIS",
             },
             {
               path: "/admin/reportexecutive",
-              name: "Cotizaciones Ejecutivo",
+              name: "Reporte de Cotizaciones",
               badge: { text: "CHIEF", type: "admin" as const },
             },
             {
               path: "/admin/reportoperational",
-              name: "Facturaciones Ejecutivo",
+              name: "Reporte de Facturaciones",
               badge: { text: "CHIEF", type: "admin" as const },
             },
           ],
@@ -190,7 +190,7 @@ function SidebarAdmin({
           subItems: [
             {
               path: "/admin/users",
-              name: "Gestión Usuarios",
+              name: "Gestión de Usuarios",
               badge: { text: "CHIEF", type: "admin" as const },
             },
             {
@@ -200,7 +200,7 @@ function SidebarAdmin({
             },
             {
               path: "/admin/agencia-aduanas",
-              name: "Agencia de Aduanas",
+              name: "Gestión Aduanera",
               badge: { text: "CHIEF", type: "admin" as const },
             },
           ],

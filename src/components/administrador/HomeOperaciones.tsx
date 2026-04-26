@@ -740,6 +740,12 @@ export default function HomeOperaciones() {
           </button>
           <button
             className="ops-quick-action"
+            onClick={() => navigate("/admin/op-documentacion")}
+          >
+            Documentación
+          </button>
+          <button
+            className="ops-quick-action"
             onClick={() => navigate("/admin/cotizador-administrador")}
           >
             Cotizador
