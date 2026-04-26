@@ -20,8 +20,12 @@ interface Cliente {
 
 const CACHE_TTL = 60 * 60 * 1000;
 const CLIENTS_CACHE_KEY = "rc_clients_list";
+const DOCUMENT_COUNTS_CACHE_KEY = "doc_client_counts_v1";
+const DOCUMENT_COUNTS_TTL = 3 * 60 * 60 * 1000;
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+type DocumentCounts = Record<string, number>;
 
 function getCachedClients(): Cliente[] | null {
   try {
@@ -49,6 +53,32 @@ function setCachedClients(data: Cliente[]) {
   }
 }
 
+function getCachedDocumentCounts(): DocumentCounts | null {
+  try {
+    const raw = localStorage.getItem(DOCUMENT_COUNTS_CACHE_KEY);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > DOCUMENT_COUNTS_TTL) {
+      localStorage.removeItem(DOCUMENT_COUNTS_CACHE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedDocumentCounts(data: DocumentCounts) {
+  try {
+    localStorage.setItem(
+      DOCUMENT_COUNTS_CACHE_KEY,
+      JSON.stringify({ data, ts: Date.now() }),
+    );
+  } catch {
+    /* quota exceeded */
+  }
+}
+
 function Documentacion() {
   useOutletContext<OutletContext>();
   const { token } = useAuth();
@@ -60,6 +90,7 @@ function Documentacion() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
+  const [documentCounts, setDocumentCounts] = useState<DocumentCounts>({});
 
   // Fetch clients
   useEffect(() => {
@@ -92,6 +123,62 @@ function Documentacion() {
     };
     fetchClientes();
   }, [token]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchDocumentCounts = async () => {
+      if (!token || clientes.length === 0) return;
+
+      const cachedCounts = getCachedDocumentCounts();
+      if (cachedCounts) {
+        if (!cancelled) {
+          setDocumentCounts(cachedCounts);
+        }
+        return;
+      }
+
+      try {
+        const entries = await Promise.all(
+          clientes.map(async (client) => {
+            try {
+              const resp = await fetch(
+                `/api/documents/all?ownerUsername=${encodeURIComponent(client.username)}`,
+                { headers: { Authorization: `Bearer ${token}` } },
+              );
+              if (!resp.ok) return [client.username, 0] as const;
+
+              const data = await resp.json();
+              const total =
+                (Array.isArray(data?.air) ? data.air.length : 0) +
+                (Array.isArray(data?.ocean) ? data.ocean.length : 0) +
+                (Array.isArray(data?.ground) ? data.ground.length : 0) +
+                (Array.isArray(data?.quotes) ? data.quotes.length : 0);
+              return [client.username, total] as const;
+            } catch {
+              return [client.username, 0] as const;
+            }
+          }),
+        );
+
+        if (cancelled) return;
+
+        const nextCounts: DocumentCounts = Object.fromEntries(entries);
+        setDocumentCounts(nextCounts);
+        setCachedDocumentCounts(nextCounts);
+      } catch {
+        if (!cancelled) {
+          setDocumentCounts({});
+        }
+      }
+    };
+
+    fetchDocumentCounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clientes, token]);
 
   const handleSelectClient = useCallback(
     (cliente: Cliente) => {
@@ -472,6 +559,19 @@ function Documentacion() {
                 month: "short",
                 year: "numeric",
               })}
+            </div>
+            <div
+              style={{
+                minWidth: 56,
+                textAlign: "right",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#374151",
+                flexShrink: 0,
+              }}
+            >
+              {documentCounts[client.username] ?? 0} doc
+              {(documentCounts[client.username] ?? 0) !== 1 ? "s" : ""}
             </div>
             <svg
               width="14"

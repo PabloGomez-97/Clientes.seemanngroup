@@ -1,13 +1,15 @@
 // src/components/Sidebar/Documents/DocumentosUnificadosView.tsx
 // Vista unificada de documentos para cliente y ejecutivo.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { linbisFetch } from "../../../services/linbisFetch";
 import "./DocumentosUnificadosView.css";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const DOCS_CACHE_TTL = 3 * 60 * 60 * 1000;
+const DOCS_CACHE_PREFIX = "unifiedDocumentsCache_v1";
 
 export interface DocItem {
   id: string;
@@ -40,6 +42,12 @@ interface ReferenceMeta {
   customerReference: string | null;
 }
 
+interface CachedDocsPayload {
+  ts: number;
+  docs: AllDocs;
+  referenceMap: Record<string, ReferenceMeta>;
+}
+
 type UnifiedDoc = DocItem & { _type: GroupTransportType };
 
 interface DocGroup {
@@ -50,6 +58,7 @@ interface DocGroup {
   docs: UnifiedDoc[];
   latestTimestamp: number;
   sortValue: number;
+  lookupValue: string | null;
 }
 
 const TRANSPORT_LABELS: Record<TransportType, string> = {
@@ -106,6 +115,47 @@ function getReferenceKey(type: GroupTransportType, referenceId: string | null) {
   return `${type}:${referenceId || "sin-referencia"}`;
 }
 
+function getDocsCacheKey(ownerUsername: string) {
+  return `${DOCS_CACHE_PREFIX}_${ownerUsername.toLowerCase()}`;
+}
+
+function readDocsCache(ownerUsername: string): CachedDocsPayload | null {
+  try {
+    const raw = localStorage.getItem(getDocsCacheKey(ownerUsername));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as CachedDocsPayload;
+    if (!parsed?.ts || Date.now() - parsed.ts > DOCS_CACHE_TTL) {
+      localStorage.removeItem(getDocsCacheKey(ownerUsername));
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeDocsCache(
+  ownerUsername: string,
+  docs: AllDocs,
+  referenceMap: Record<string, ReferenceMeta>,
+) {
+  try {
+    const payload: CachedDocsPayload = {
+      ts: Date.now(),
+      docs,
+      referenceMap,
+    };
+    localStorage.setItem(
+      getDocsCacheKey(ownerUsername),
+      JSON.stringify(payload),
+    );
+  } catch {
+    // Cache is best-effort.
+  }
+}
+
 function getGroupTitle(
   type: GroupTransportType,
   meta: ReferenceMeta | null,
@@ -148,6 +198,17 @@ function getFileBadge(tipoArchivo: string) {
   return match?.label ?? "FILE";
 }
 
+function getGroupLookupValue(
+  meta: ReferenceMeta | null,
+  internalId: string | null,
+) {
+  return (
+    normalizeText(meta?.number) ||
+    normalizeText(meta?.customerReference) ||
+    internalId
+  );
+}
+
 function getReferenceSortValue(
   meta: ReferenceMeta | null,
   internalId: string | null,
@@ -176,6 +237,8 @@ export function DocumentosUnificadosView({
   title,
 }: Props) {
   const { token } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
 
   const [docs, setDocs] = useState<AllDocs>({
@@ -194,15 +257,13 @@ export function DocumentosUnificadosView({
   const [referenceMap, setReferenceMap] = useState<
     Record<string, ReferenceMeta>
   >({});
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
   const loadReferenceMap = useCallback(
     async (sourceDocs: AllDocs) => {
       if (!accessToken || !ownerUsername) {
         setReferenceMap({});
-        return;
+        return {};
       }
 
       const nextMap: Record<string, ReferenceMeta> = {};
@@ -354,39 +415,52 @@ export function DocumentosUnificadosView({
       ]);
 
       setReferenceMap(nextMap);
+      return nextMap;
     },
     [accessToken, ownerUsername, refreshAccessToken],
   );
 
-  const loadDocs = useCallback(async () => {
-    if (!token || !ownerUsername) return;
-    setLoading(true);
-    setError(null);
+  const loadDocs = useCallback(
+    async (forceRefresh = false) => {
+      if (!token || !ownerUsername) return;
+      setLoading(true);
+      setError(null);
 
-    try {
-      const res = await fetch(
-        `/api/documents/all?ownerUsername=${encodeURIComponent(ownerUsername)}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const cached = forceRefresh ? null : readDocsCache(ownerUsername);
+      if (cached) {
+        setDocs(cached.docs);
+        setReferenceMap(cached.referenceMap);
+        setLoading(false);
+        return;
+      }
 
-      if (!res.ok) throw new Error("Error al cargar documentos");
+      try {
+        const res = await fetch(
+          `/api/documents/all?ownerUsername=${encodeURIComponent(ownerUsername)}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
 
-      const data = await res.json();
-      const nextDocs: AllDocs = {
-        air: data.air || [],
-        ocean: data.ocean || [],
-        ground: data.ground || [],
-        quotes: data.quotes || [],
-      };
+        if (!res.ok) throw new Error("Error al cargar documentos");
 
-      setDocs(nextDocs);
-      await loadReferenceMap(nextDocs);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Error desconocido");
-    } finally {
-      setLoading(false);
-    }
-  }, [loadReferenceMap, ownerUsername, token]);
+        const data = await res.json();
+        const nextDocs: AllDocs = {
+          air: data.air || [],
+          ocean: data.ocean || [],
+          ground: data.ground || [],
+          quotes: data.quotes || [],
+        };
+
+        setDocs(nextDocs);
+        const nextReferenceMap = await loadReferenceMap(nextDocs);
+        writeDocsCache(ownerUsername, nextDocs, nextReferenceMap);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Error desconocido");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadReferenceMap, ownerUsername, token],
+  );
 
   useEffect(() => {
     loadDocs();
@@ -460,6 +534,7 @@ export function DocumentosUnificadosView({
           docs: [],
           latestTimestamp: timestamp,
           sortValue: getReferenceSortValue(meta, internalId),
+          lookupValue: getGroupLookupValue(meta, internalId),
         });
       }
 
@@ -470,6 +545,8 @@ export function DocumentosUnificadosView({
         group.sortValue,
         getReferenceSortValue(meta, internalId),
       );
+      group.lookupValue =
+        group.lookupValue || getGroupLookupValue(meta, internalId);
     });
 
     return Array.from(groups.values())
@@ -490,38 +567,69 @@ export function DocumentosUnificadosView({
       });
   }, [referenceMap, visibleDocs]);
 
-  useEffect(() => {
-    setExpandedGroups((prev) => {
-      const next: Record<string, boolean> = { ...prev };
-
-      groupedDocs.forEach((group) => {
-        if (next[group.key] === undefined) {
-          next[group.key] = true;
-        }
-      });
-
-      return next;
-    });
-  }, [groupedDocs]);
-
-  useEffect(() => {
-    if (!search.trim()) return;
-
-    setExpandedGroups((prev) => {
-      const next = { ...prev };
-      groupedDocs.forEach((group) => {
-        next[group.key] = true;
-      });
-      return next;
-    });
-  }, [groupedDocs, search]);
-
   const toggleGroup = useCallback((key: string) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    setExpandedGroups((prev) => {
+      if (prev.includes(key)) {
+        return prev.filter((groupKey) => groupKey !== key);
+      }
+
+      const next = prev.length >= 2 ? prev.slice(1) : [...prev];
+      next.push(key);
+      return next;
+    });
   }, []);
+
+  const buildDestination = useCallback(
+    (group: DocGroup) => {
+      const lookup = group.lookupValue || "";
+      const isAdmin = location.pathname.startsWith("/admin/");
+
+      if (group.type === "quotes") {
+        if (isAdmin) {
+          return {
+            to: `/admin/reporteriaclientes/${encodeURIComponent(ownerUsername)}`,
+            state: {
+              targetTab: "quotes" as const,
+              quoteFilterNumber: lookup,
+            },
+          };
+        }
+
+        return {
+          to: "/quotes",
+          state: {
+            quoteFilter: lookup,
+          },
+        };
+      }
+
+      const targetTab = group.type;
+      if (isAdmin) {
+        return {
+          to: `/admin/reporteriaclientes/${encodeURIComponent(ownerUsername)}`,
+          state: {
+            targetTab,
+            shipmentFilterNumber: lookup,
+          },
+        };
+      }
+
+      const route =
+        group.type === "air"
+          ? "/air-shipments"
+          : group.type === "ocean"
+            ? "/ocean-shipments"
+            : "/ground-shipments";
+
+      return {
+        to: route,
+        state: {
+          shipmentFilterNumber: lookup,
+        },
+      };
+    },
+    [location.pathname, ownerUsername],
+  );
 
   const handleDownload = useCallback(
     async (doc: UnifiedDoc) => {
@@ -598,7 +706,7 @@ export function DocumentosUnificadosView({
 
         setSuccessMsg(`"${doc.nombreArchivo}" eliminado`);
         setTimeout(() => setSuccessMsg(null), 4000);
-        await loadDocs();
+        await loadDocs(true);
       } catch {
         setError("Error al eliminar el documento");
       } finally {
@@ -608,6 +716,10 @@ export function DocumentosUnificadosView({
     [canDelete, loadDocs, ownerUsername, token],
   );
 
+  const handleRefresh = useCallback(async () => {
+    await loadDocs(true);
+  }, [loadDocs]);
+
   return (
     <div className="doc-unified-view" style={{ fontFamily: FONT }}>
       {title && (
@@ -615,6 +727,42 @@ export function DocumentosUnificadosView({
           <h2 className="doc-header__title">{title}</h2>
         </div>
       )}
+
+      {/* Hint sobre subida de documentos */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+          padding: "10px 14px",
+          background: "#eff6ff",
+          border: "1px solid #bfdbfe",
+          borderRadius: 8,
+          marginBottom: 20,
+          fontSize: 12,
+          color: "#1d4ed8",
+          lineHeight: 1.5,
+        }}
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          style={{ marginTop: 1, flexShrink: 0 }}
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+          <line x1="12" y1="12" x2="12" y2="16" />
+        </svg>
+        <span>
+          Para <strong>subir nuevos documentos</strong>, ve a la sección de
+          operaciones correspondiente (Aérea, Marítima o Terrestre) y ábrelos
+          desde allí.
+        </span>
+      </div>
 
       <section className="doc-metrics-strip" aria-label="Resumen de documentos">
         {SUMMARY_METRICS.map((metric) => {
@@ -628,7 +776,9 @@ export function DocumentosUnificadosView({
               onClick={() => setActiveType(metric.key)}
             >
               <div className="doc-metrics-strip__label">{metric.label}</div>
-              <div className="doc-metrics-strip__value">{counts[metric.key]}</div>
+              <div className="doc-metrics-strip__value">
+                {counts[metric.key]}
+              </div>
               <div className="doc-metrics-strip__sub">{metric.sub}</div>
             </button>
           );
@@ -653,6 +803,14 @@ export function DocumentosUnificadosView({
             </button>
           )}
         </div>
+        <button
+          type="button"
+          className="doc-refresh-button"
+          onClick={handleRefresh}
+          disabled={loading}
+        >
+          Actualizar
+        </button>
       </div>
 
       {successMsg && (
@@ -681,17 +839,44 @@ export function DocumentosUnificadosView({
       {!loading && groupedDocs.length > 0 && (
         <div className="doc-groups">
           {groupedDocs.map((group) => {
-            const isExpanded = expandedGroups[group.key] ?? true;
+            const isExpanded = expandedGroups.includes(group.key);
+            const destination = buildDestination(group);
 
             return (
-              <section key={group.key} className="doc-group">
-                <button
-                  type="button"
+              <section
+                key={group.key}
+                className={`doc-group${isExpanded ? " doc-group--open" : ""}`}
+              >
+                <div
                   className="doc-group__header"
                   onClick={() => toggleGroup(group.key)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleGroup(group.key);
+                    }
+                  }}
                 >
                   <div className="doc-group__copy">
-                    <div className="doc-group__title">{group.title}</div>
+                    <div className="doc-group__title-row">
+                      <div className="doc-group__title">{group.title}</div>
+                      <button
+                        type="button"
+                        className="doc-group__view"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(destination.to, {
+                            state: destination.state,
+                          });
+                        }}
+                      >
+                        {group.type === "quotes"
+                          ? "Ver Cotización"
+                          : "Ver Operación"}
+                      </button>
+                    </div>
                     <div className="doc-group__subtitle">
                       {group.subtitle ||
                         "Documentos agrupados bajo esta referencia"}
@@ -704,10 +889,10 @@ export function DocumentosUnificadosView({
                       {group.docs.length !== 1 ? "s" : ""}
                     </span>
                     <span className="doc-group__toggle">
-                      {isExpanded ? "Ocultar" : "Ver"}
+                      {isExpanded ? "Cerrar" : "Abrir"}
                     </span>
                   </div>
-                </button>
+                </div>
 
                 {isExpanded && (
                   <div className="doc-group__body">

@@ -1,7 +1,12 @@
 // src/components/administrador/ReporteriaClientes.tsx — Client portal view for ejecutivos
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useOutletContext, useParams, useNavigate } from "react-router-dom";
+import {
+  useOutletContext,
+  useParams,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { ClientOverrideProvider } from "../../contexts/ClientOverrideContext";
 import AirShipmentsView from "../shipments/AirShipmentsView";
@@ -27,6 +32,12 @@ interface Cliente {
   createdAt: string;
   usernames?: string[];
   parentUsername?: string;
+}
+
+interface ReporteriaClientesLocationState {
+  targetTab?: "air" | "ocean" | "ground" | "quotes" | "exw" | "tracking" | "settings";
+  shipmentFilterNumber?: string;
+  quoteFilterNumber?: string;
 }
 
 /** Expand users with multiple company names into separate list entries */
@@ -88,6 +99,7 @@ function ReporteriaClientes() {
   const { t } = useTranslation();
   const { clientUsername } = useParams<{ clientUsername?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +113,9 @@ function ReporteriaClientes() {
     "air" | "ocean" | "ground" | "quotes" | "exw" | "tracking" | "settings"
   >("air");
   const [quoteFilterNumber, setQuoteFilterNumber] = useState<
+    string | undefined
+  >();
+  const [shipmentFilterNumber, setShipmentFilterNumber] = useState<
     string | undefined
   >();
 
@@ -148,6 +163,8 @@ function ReporteriaClientes() {
       setShowAllExw(false);
       setSelectedClient(cliente);
       setActiveTab("air");
+      setShipmentFilterNumber(undefined);
+      setQuoteFilterNumber(undefined);
       navigate(
         `/admin/reporteriaclientes/${encodeURIComponent(cliente.username)}`,
         { replace: true },
@@ -174,6 +191,8 @@ function ReporteriaClientes() {
   useEffect(() => {
     if (!clientUsername) {
       setSelectedClient(null);
+      setShipmentFilterNumber(undefined);
+      setQuoteFilterNumber(undefined);
       return;
     }
     if (loading || clientes.length === 0) return;
@@ -187,7 +206,29 @@ function ReporteriaClientes() {
         : match,
     );
     setActiveTab("air");
+    setShipmentFilterNumber(undefined);
+    setQuoteFilterNumber(undefined);
   }, [clientUsername, clientes, loading]);
+
+  useEffect(() => {
+    if (!selectedClient) return;
+    const state = location.state as ReporteriaClientesLocationState | null;
+    if (!state) return;
+
+    setShipmentFilterNumber(undefined);
+    setQuoteFilterNumber(undefined);
+    if (state.targetTab) {
+      setActiveTab(state.targetTab);
+    }
+    if (typeof state.shipmentFilterNumber === "string") {
+      setShipmentFilterNumber(state.shipmentFilterNumber);
+    }
+    if (typeof state.quoteFilterNumber === "string") {
+      setQuoteFilterNumber(state.quoteFilterNumber);
+    }
+
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state, navigate, selectedClient]);
 
   // Filtered client list
   const filteredClients = useMemo(() => {
@@ -550,9 +591,15 @@ function ReporteriaClientes() {
           value={{ openTrackingTab, openQuotesTab, quoteFilterNumber }}
         >
           <ClientOverrideProvider value={selectedClient.username}>
-            {activeTab === "air" && <AirShipmentsView />}
-            {activeTab === "ocean" && <OceanShipmentsView />}
-            {activeTab === "ground" && <GroundShipmentsView />}
+            {activeTab === "air" && (
+              <AirShipmentsView initialFilterNumber={shipmentFilterNumber} />
+            )}
+            {activeTab === "ocean" && (
+              <OceanShipmentsView initialFilterNumber={shipmentFilterNumber} />
+            )}
+            {activeTab === "ground" && (
+              <GroundShipmentsView initialFilterNumber={shipmentFilterNumber} />
+            )}
             {activeTab === "exw" && <EXWChargesView />}
             {activeTab === "quotes" && (
               <QuotesView initialQuoteFilter={quoteFilterNumber} />

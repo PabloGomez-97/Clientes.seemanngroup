@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import LoadingTips from "./LoadingTips";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { imgUrl } from "../../config/images";
@@ -124,7 +124,8 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    =========================================================== */
 function OceanShipmentsView({
   documentsOnly = false,
-}: { documentsOnly?: boolean } = {}) {
+  initialFilterNumber,
+}: { documentsOnly?: boolean; initialFilterNumber?: string } = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const reporteriaClientesContext = useReporteriaClientesContext();
@@ -132,6 +133,7 @@ function OceanShipmentsView({
   const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
+  const location = useLocation();
   const { emails: savedTrackingEmails, remember: rememberTrackingEmails } =
     useTrackingEmailPreferences(activeUsername);
 
@@ -189,6 +191,7 @@ function OceanShipmentsView({
   const [filterDepartureDate, setFilterDepartureDate] = useState("");
   const [filterArrivalDate, setFilterArrivalDate] = useState("");
   const [filterCarrier, setFilterCarrier] = useState("");
+  const appliedInitialFilterRef = useRef("");
 
   // Focus states for floating labels
   const [isNumberFocused, setIsNumberFocused] = useState(false);
@@ -722,6 +725,39 @@ function OceanShipmentsView({
     fetchOceanShipments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, activeUsername]);
+
+  useEffect(() => {
+    const locationState = location.state as {
+      shipmentFilterNumber?: string;
+    } | null;
+    const incomingFilter = (
+      initialFilterNumber || locationState?.shipmentFilterNumber || ""
+    ).trim();
+
+    if (!incomingFilter || oceanShipments.length === 0) return;
+    if (appliedInitialFilterRef.current === incomingFilter) return;
+
+    const filtered = oceanShipments.filter((s) =>
+      (s.number || "").toLowerCase().includes(incomingFilter.toLowerCase()),
+    );
+
+    appliedInitialFilterRef.current = incomingFilter;
+    setFilterNumber(incomingFilter);
+    setDisplayedOceanShipments(filtered);
+    setShowingAll(true);
+    setExpandedShipmentId(filtered[0]?.id ?? null);
+    setTablePage(1);
+
+    if (!initialFilterNumber && locationState?.shipmentFilterNumber) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [
+    initialFilterNumber,
+    location.pathname,
+    location.state,
+    navigate,
+    oceanShipments,
+  ]);
 
   useEffect(() => {
     setHbliCache({});

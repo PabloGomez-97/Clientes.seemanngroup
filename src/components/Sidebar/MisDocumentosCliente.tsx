@@ -84,42 +84,6 @@ function MisDocumentosCliente() {
         </div>
       </div>
 
-      {/* Hint sobre subida de documentos */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 10,
-          padding: "10px 14px",
-          background: "#eff6ff",
-          border: "1px solid #bfdbfe",
-          borderRadius: 8,
-          marginBottom: 20,
-          fontSize: 12,
-          color: "#1d4ed8",
-          lineHeight: 1.5,
-        }}
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          style={{ marginTop: 1, flexShrink: 0 }}
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12.01" y2="8" />
-          <line x1="12" y1="12" x2="12" y2="16" />
-        </svg>
-        <span>
-          Para <strong>subir nuevos documentos</strong>, ve a la sección de
-          operaciones correspondiente (Aérea, Marítima o Terrestre) y ábrelos
-          desde allí.
-        </span>
-      </div>
-
       <DocumentosUnificadosView
         ownerUsername={activeUsername}
         canDelete={true}

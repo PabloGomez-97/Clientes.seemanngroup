@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect, useMemo, useRef } from "react";
 import LoadingTips from "./LoadingTips";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { imgUrl } from "../../config/images";
@@ -208,7 +208,8 @@ function CargoTabContent({
     */
 function AirShipmentsView({
   documentsOnly = false,
-}: { documentsOnly?: boolean } = {}) {
+  initialFilterNumber,
+}: { documentsOnly?: boolean; initialFilterNumber?: string } = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const reporteriaClientesContext = useReporteriaClientesContext();
@@ -216,6 +217,7 @@ function AirShipmentsView({
   const { token, activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const navigate = useNavigate();
+  const location = useLocation();
   const { emails: savedTrackingEmails, remember: rememberTrackingEmails } =
     useTrackingEmailPreferences(activeUsername);
 
@@ -271,6 +273,7 @@ function AirShipmentsView({
   const [filterDepartureDate, setFilterDepartureDate] = useState("");
   const [filterArrivalDate, setFilterArrivalDate] = useState("");
   const [filterCarrier, setFilterCarrier] = useState("");
+  const appliedInitialFilterRef = useRef("");
   const [showingAll, setShowingAll] = useState(false);
 
   // Focus states for floating labels
@@ -776,6 +779,39 @@ function AirShipmentsView({
     fetchAirShipments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, activeUsername]);
+
+  useEffect(() => {
+    const locationState = location.state as {
+      shipmentFilterNumber?: string;
+    } | null;
+    const incomingFilter = (
+      initialFilterNumber || locationState?.shipmentFilterNumber || ""
+    ).trim();
+
+    if (!incomingFilter || shipments.length === 0) return;
+    if (appliedInitialFilterRef.current === incomingFilter) return;
+
+    const filtered = shipments.filter((s) =>
+      (s.number || "").toLowerCase().includes(incomingFilter.toLowerCase()),
+    );
+
+    appliedInitialFilterRef.current = incomingFilter;
+    setFilterNumber(incomingFilter);
+    setDisplayedShipments(filtered);
+    setShowingAll(true);
+    setExpandedShipmentId(filtered[0]?.id ?? null);
+    setTablePage(1);
+
+    if (!initialFilterNumber && locationState?.shipmentFilterNumber) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [
+    initialFilterNumber,
+    location.pathname,
+    location.state,
+    navigate,
+    shipments,
+  ]);
 
   /*  Search  */
 

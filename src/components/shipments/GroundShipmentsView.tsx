@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import LoadingTips from "./LoadingTips";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useClientOverride } from "../../contexts/ClientOverrideContext";
 import { imgUrl } from "../../config/images";
@@ -57,12 +57,15 @@ function DetailTabs({ tabs }: { tabs: TabDef[] }) {
    =========================================================== */
 function GroundShipmentsView({
   documentsOnly = false,
-}: { documentsOnly?: boolean } = {}) {
+  initialFilterNumber,
+}: { documentsOnly?: boolean; initialFilterNumber?: string } = {}) {
   const { accessToken, refreshAccessToken } = useOutletContext<OutletContext>();
   const clientOverride = useClientOverride();
   const { activeUsername: authUsername } = useAuth();
   const activeUsername = clientOverride || authUsername;
   const filterConsignee = activeUsername || "";
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [groundShipments, setGroundShipments] = useState<GroundShipment[]>([]);
   const [displayedShipments, setDisplayedShipments] = useState<
@@ -97,6 +100,7 @@ function GroundShipmentsView({
   const [filterCarrier, setFilterCarrier] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterPieces, setFilterPieces] = useState("");
+  const appliedInitialFilterRef = useRef("");
 
   // Focus states for floating labels
   const [isNumberFocused, setIsNumberFocused] = useState(false);
@@ -280,6 +284,40 @@ function GroundShipmentsView({
     fetchGroundShipments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken]);
+
+  useEffect(() => {
+    const locationState = location.state as {
+      shipmentFilterNumber?: string;
+    } | null;
+    const incomingFilter = (
+      initialFilterNumber || locationState?.shipmentFilterNumber || ""
+    ).trim();
+
+    if (!incomingFilter || groundShipments.length === 0) return;
+    if (appliedInitialFilterRef.current === incomingFilter) return;
+
+    const filtered = groundShipments.filter((s) =>
+      (s.number || "").toString().toLowerCase().includes(incomingFilter.toLowerCase()),
+    );
+
+    appliedInitialFilterRef.current = incomingFilter;
+    setFilterNumber(incomingFilter);
+    setDisplayedShipments(filtered);
+    setShowingAll(true);
+    setTablePage(1);
+    setExpandedShipmentId(filtered[0]?.id ?? null);
+    setEmbedQuery(filtered[0]?.number || null);
+
+    if (!initialFilterNumber && locationState?.shipmentFilterNumber) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [
+    initialFilterNumber,
+    groundShipments,
+    location.pathname,
+    location.state,
+    navigate,
+  ]);
 
   /* -- Accordion --------------------------------------------- */
   const toggleAccordion = (shipmentId: string | number) => {
