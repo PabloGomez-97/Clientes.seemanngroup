@@ -63,6 +63,44 @@ const ITEMS_PER_PAGE = 10;
 
 /* -- Helpers ------------------------------------------------ */
 
+const getQuoteDate = (quote: Record<string, unknown>): string => {
+  const candidates = [
+    quote.date,
+    quote.createdAt,
+    quote.created_at,
+    quote.dateCreated,
+    quote.createdDate,
+    quote.creationDate,
+    quote.quoteDate,
+    quote.quotationDate,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+
+    if (
+      candidate &&
+      typeof candidate === "object" &&
+      "displayDate" in candidate &&
+      typeof (candidate as { displayDate?: unknown }).displayDate === "string"
+    ) {
+      const displayDate = (candidate as { displayDate: string }).displayDate;
+      if (displayDate.trim()) {
+        return displayDate;
+      }
+    }
+  }
+
+  return "";
+};
+
+const normalizeQuote = (quote: Quote): Quote => ({
+  ...quote,
+  date: getQuoteDate(quote),
+});
+
 function isQuoteValid(validUntilDate?: string): boolean | null {
   if (!validUntilDate) return null;
   const today = new Date();
@@ -425,7 +463,9 @@ function QuotesView({
       }
 
       const data = await response.json();
-      const quotesArray: Quote[] = Array.isArray(data) ? data : [];
+      const quotesArray: Quote[] = (Array.isArray(data) ? data : []).map(
+        normalizeQuote,
+      );
       const sortedArr = quotesArray.sort((a, b) => {
         const nA = parseInt(a.number?.replace(/\D/g, "") || "0", 10);
         const nB = parseInt(b.number?.replace(/\D/g, "") || "0", 10);
@@ -482,7 +522,7 @@ function QuotesView({
       const oneHour = 60 * 60 * 1000;
       const cacheAge = new Date().getTime() - parseInt(cacheTimestamp);
       if (cacheAge < oneHour) {
-        const parsed = JSON.parse(cachedQuotes);
+        const parsed = JSON.parse(cachedQuotes).map(normalizeQuote);
         setQuotes(parsed);
         setDisplayedQuotes(parsed);
         if (cachedPage) setCurrentPage(parseInt(cachedPage));

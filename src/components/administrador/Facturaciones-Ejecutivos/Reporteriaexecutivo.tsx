@@ -38,6 +38,7 @@ interface Quote {
   totalExpense: number;
   profit: number;
   chargeDetails?: Record<string, unknown>[];
+  [key: string]: unknown;
 }
 
 interface MonthlyBreakdown {
@@ -191,6 +192,44 @@ const fmtDate = (d: string) =>
   });
 
 const fmtPct = (v: number) => `${v.toFixed(1)}%`;
+
+const getQuoteDate = (quote: Record<string, unknown>): string => {
+  const candidates = [
+    quote.date,
+    quote.createdAt,
+    quote.created_at,
+    quote.dateCreated,
+    quote.createdDate,
+    quote.creationDate,
+    quote.quoteDate,
+    quote.quotationDate,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+
+    if (
+      candidate &&
+      typeof candidate === "object" &&
+      "displayDate" in candidate &&
+      typeof (candidate as { displayDate?: unknown }).displayDate === "string"
+    ) {
+      const displayDate = (candidate as { displayDate: string }).displayDate;
+      if (displayDate.trim()) {
+        return displayDate;
+      }
+    }
+  }
+
+  return "";
+};
+
+const normalizeQuote = (quote: Quote): Quote => ({
+  ...quote,
+  date: getQuoteDate(quote),
+});
 
 const calculateStats = (arr: Quote[]): QuoteStats => {
   const n = arr.length;
@@ -669,7 +708,9 @@ function ReportExecutive() {
         throw new Error(`Error ${res.status}: ${res.statusText}`);
       }
       const data = await res.json();
-      const sorted: Quote[] = (Array.isArray(data) ? data : []).sort(
+      const sorted: Quote[] = (Array.isArray(data) ? data : [])
+        .map(normalizeQuote)
+        .sort(
         (a: Quote, b: Quote) =>
           new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
       );
@@ -718,7 +759,9 @@ function ReportExecutive() {
         );
         if (res.ok) {
           const data = await res.json();
-          const arr: Quote[] = Array.isArray(data) ? data : [];
+          const arr: Quote[] = (Array.isArray(data) ? data : []).map(
+            normalizeQuote,
+          );
           allQuotes.push(...arr);
           comparisons.push({ nombre: ej.nombre, stats: calculateStats(arr) });
         }
@@ -778,7 +821,9 @@ function ReportExecutive() {
         );
         if (res.ok) {
           const data = await res.json();
-          const arr: Quote[] = Array.isArray(data) ? data : [];
+          const arr: Quote[] = (Array.isArray(data) ? data : []).map(
+            normalizeQuote,
+          );
           allQuotes.push(...arr);
           comparisons.push({ nombre: name, stats: calculateStats(arr) });
         }

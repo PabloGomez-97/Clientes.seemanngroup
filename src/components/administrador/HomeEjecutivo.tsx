@@ -121,6 +121,44 @@ interface LinbisQuote {
   [key: string]: unknown;
 }
 
+const getLinbisQuoteDate = (quote: Record<string, unknown>): string => {
+  const candidates = [
+    quote.date,
+    quote.createdAt,
+    quote.created_at,
+    quote.dateCreated,
+    quote.createdDate,
+    quote.creationDate,
+    quote.quoteDate,
+    quote.quotationDate,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate;
+    }
+
+    if (
+      candidate &&
+      typeof candidate === "object" &&
+      "displayDate" in candidate &&
+      typeof (candidate as { displayDate?: unknown }).displayDate === "string"
+    ) {
+      const displayDate = (candidate as { displayDate: string }).displayDate;
+      if (displayDate.trim()) {
+        return displayDate;
+      }
+    }
+  }
+
+  return "";
+};
+
+const normalizeLinbisQuote = (quote: LinbisQuote): LinbisQuote => ({
+  ...quote,
+  date: getLinbisQuoteDate(quote),
+});
+
 // Behavior tracking — aggregated KPI stats
 interface BehaviorStats {
   uniqueAccountCount: number;
@@ -622,7 +660,9 @@ export default function HomeEjecutivo() {
 
         const allQuotes: LinbisQuote[] = [];
         quoteResults.forEach((res) => {
-          if (res.status === "fulfilled") allQuotes.push(...res.value);
+          if (res.status === "fulfilled") {
+            allQuotes.push(...res.value.map(normalizeLinbisQuote));
+          }
         });
 
         setLinbisAir(allAirShipments);

@@ -3541,6 +3541,9 @@ function QuoteAPITester({
         transitDays: sinTarifa
           ? null
           : parseTransitDays(rutaSeleccionada.transitTime),
+        project: {
+          name: "AIR",
+        },
         customerReference: isSimulationMode
           ? "Portal Created [AIR-OVERALL] - SIMULADOR"
           : sinTarifa
