@@ -446,15 +446,15 @@ function OPDocumentacion() {
         <div>
           <h1
             style={{
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: 700,
-              color: "#0f172a",
+              color: "#1f2937",
               margin: 0,
             }}
           >
             Documentación de Clientes
           </h1>
-          <p style={{ fontSize: 13, color: "#6b7280", margin: "2px 0 0" }}>
+          <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
             Selecciona un cliente para ver sus documentos.
           </p>
         </div>
@@ -606,11 +606,12 @@ function OPDocumentacion() {
               e.currentTarget.style.boxShadow = "none";
             }}
           >
+            {/* Avatar */}
             <div
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 9,
+                width: 38,
+                height: 38,
+                borderRadius: 10,
                 background: "#232f3e",
                 display: "flex",
                 alignItems: "center",
@@ -623,6 +624,8 @@ function OPDocumentacion() {
             >
               {(client.username || "?").charAt(0).toUpperCase()}
             </div>
+
+            {/* Client info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{

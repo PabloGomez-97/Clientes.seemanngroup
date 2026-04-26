@@ -679,43 +679,41 @@ function ShipsGoTrackingAdmin() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    minWidth: 0,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#1f2937",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "#1f2937",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {client.username}
-                  </div>
+                  {client.username}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "#9ca3af",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {client.email}
                   {client.parentUsername && (
                     <span
                       style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        padding: "2px 8px",
-                        borderRadius: 4,
                         background: "#fef3c7",
                         color: "#92400e",
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
+                        fontSize: 11,
+                        fontWeight: 500,
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        marginLeft: 8,
                       }}
                     >
                       Cuenta: {client.parentUsername}
                     </span>
                   )}
-                </div>
-                <div style={{ fontSize: 12, color: "#9ca3af" }}>
-                  {client.email}
                 </div>
               </div>
 

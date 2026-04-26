@@ -445,61 +445,88 @@ function Documentacion() {
           marginBottom: 24,
         }}
       >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: "#232f3e",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#fff"
-            strokeWidth="2"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-          </svg>
-        </div>
         <div>
           <h1
             style={{
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: 700,
-              color: "#232f3e",
+              color: "#1f2937",
               margin: 0,
             }}
           >
             Documentación
           </h1>
-          <p style={{ fontSize: 13, color: "#6b7280", margin: "2px 0 0" }}>
+          <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
             Selecciona un cliente para ver sus documentos.
           </p>
         </div>
-        <div
-          style={{
-            marginLeft: "auto",
-            display: "flex",
-            gap: 12,
-            alignItems: "center",
-            flexShrink: 0,
-            color: "#9ca3af",
-            fontSize: 12,
-          }}
-        >
-          <span>{uniqueAccountCount} cuentas</span>
-          <span>·</span>
-          <span>{multiAccountCount} multicuentas</span>
+      </div>
+
+      {/* Summary bar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 20,
+          padding: "14px 20px",
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <i
+            className="fa fa-users"
+            style={{ fontSize: 16, color: "#ff9900" }}
+          />
+          <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
+            {uniqueAccountCount}
+          </span>
+          <span style={{ fontSize: 13, color: "#6b7280" }}>
+            cuentas asignadas
+          </span>
+          {clientes.length > uniqueAccountCount && (
+            <>
+              <span style={{ fontSize: 13, color: "#d1d5db" }}>·</span>
+              <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
+                {clientes.length}
+              </span>
+              <span style={{ fontSize: 13, color: "#6b7280" }}>empresas</span>
+            </>
+          )}
+        </div>
+        <div style={{ flex: 1 }} />
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.removeItem(CLIENTS_CACHE_KEY);
+              } catch {
+                // ignore quota or access errors
+              }
+              // Reload the page so the component refetches without cache
+              window.location.reload();
+            }}
+            style={{
+              padding: "8px 12px",
+              background: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 13,
+              color: "#374151",
+            }}
+            title="Limpiar caché de clientes y recargar la página"
+          >
+            Actualizar página
+          </button>
+
+          <div style={{ fontSize: 12, color: "#9ca3af" }}>
+            Caché: {getCachedClients() ? "activo" : "sin caché"}
+          </div>
         </div>
       </div>
 
