@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import LoadingTips from "../../components/shipments/LoadingTips";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -282,11 +283,7 @@ export default function DocumentosProveedores() {
       )}
 
       {/* Loading */}
-      {loading && (
-        <p style={{ textAlign: "center", color: "#9ca3af", padding: 48 }}>
-          Cargando documentos...
-        </p>
-      )}
+      {loading && <LoadingTips />}
 
       {/* Empty state */}
       {!loading && archivosVisible.length === 0 && !error && (

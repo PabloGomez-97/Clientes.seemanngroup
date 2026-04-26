@@ -785,7 +785,9 @@ function AirShipmentsView({
       shipmentFilterNumber?: string;
     } | null;
     const incomingFilter = (
-      initialFilterNumber || locationState?.shipmentFilterNumber || ""
+      initialFilterNumber ||
+      locationState?.shipmentFilterNumber ||
+      ""
     ).trim();
 
     if (!incomingFilter || shipments.length === 0) return;

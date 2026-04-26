@@ -29,30 +29,47 @@ const FONT =
 
 type DocumentCounts = Record<string, number>;
 
-function expandClients(rawClients: Cliente[]): Cliente[] {
-  const expanded: Cliente[] = [];
-  for (const client of rawClients) {
-    const names =
-      client.usernames && client.usernames.length > 1
-        ? client.usernames
-        : [client.username];
+function normalizeAccountName(value?: string) {
+  return value?.trim().toLowerCase() || "";
+}
 
-    for (let i = 0; i < names.length; i++) {
+function buildClientList(rawClients: Cliente[]): Cliente[] {
+  const expanded: Cliente[] = [];
+  const seenEntries = new Set<string>();
+
+  for (const client of rawClients) {
+    const names = Array.from(
+      new Map(
+        (client.usernames?.length ? client.usernames : [client.username])
+          .map((name) => String(name || "").trim())
+          .filter(Boolean)
+          .map((name) => [normalizeAccountName(name), name] as const),
+      ).values(),
+    );
+
+    const primaryUsername = names[0] || String(client.username || "").trim();
+
+    for (const name of names) {
+      const entryKey = `${client.id}:${normalizeAccountName(name)}`;
+      if (seenEntries.has(entryKey)) {
+        continue;
+      }
+      seenEntries.add(entryKey);
+
       expanded.push({
         ...client,
-        username: names[i],
-        parentUsername: i > 0 ? names[0] : undefined,
+        username: name,
+        usernames: names,
+        parentUsername: name !== primaryUsername ? primaryUsername : undefined,
       });
     }
   }
+
   return expanded;
 }
 
 function normalizeClients(rawClients: Cliente[]) {
-  if (rawClients.some((client) => client.parentUsername || client.usernames)) {
-    return rawClients;
-  }
-  return expandClients(rawClients);
+  return buildClientList(rawClients);
 }
 
 function getCachedClients(): Cliente[] | null {
@@ -126,7 +143,11 @@ function Documentacion() {
       if (!token) return;
       const cached = getCachedClients();
       if (cached) {
-        setClientes(normalizeClients(cached));
+        const normalizedCached = normalizeClients(cached).sort((a, b) =>
+          a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
+        );
+        setClientes(normalizedCached);
+        setCachedClients(normalizedCached);
         setLoading(false);
         return;
       }
@@ -141,7 +162,9 @@ function Documentacion() {
         const raw: Cliente[] = Array.isArray(data?.clientes)
           ? data.clientes
           : [];
-        const lista = expandClients(raw);
+        const lista = buildClientList(raw).sort((a, b) =>
+          a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
+        );
         setClientes(lista);
         setCachedClients(lista);
       } catch (e) {
@@ -590,7 +613,7 @@ function Documentacion() {
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {filteredClients.map((client) => (
           <div
-            key={client.id}
+            key={`${client.id}:${normalizeAccountName(client.username)}`}
             onClick={() => handleSelectClient(client)}
             style={{
               display: "flex",

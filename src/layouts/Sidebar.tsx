@@ -102,18 +102,9 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
     {
       items: [
         {
-          path: "/novedades",
-          name: t("home.sidebar.novedades"),
-          icon: "fa fa-newspaper",
-        },
-      ],
-    },
-    {
-      items: [
-        {
           path: "/mis-documentos",
           name: "Mis Documentos",
-          icon: "fa fa-folder-open",
+          icon: "fa fa-file",
         },
       ],
     },
@@ -145,6 +136,15 @@ function Sidebar({ isCollapsed, isMobile, onCloseMobile }: SidebarProps) {
             { path: "/financiera", name: t("home.sidebar.financial") },
             { path: "/operacional", name: t("home.sidebar.operational") },
           ],
+        },
+      ],
+    },
+    {
+      items: [
+        {
+          path: "/novedades",
+          name: t("home.sidebar.novedades"),
+          icon: "fa fa-newspaper",
         },
       ],
     },

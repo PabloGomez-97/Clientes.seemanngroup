@@ -29,22 +29,42 @@ const DOCUMENT_COUNTS_TTL = 3 * 60 * 60 * 1000;
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
-function expandClients(rawClients: Cliente[]): Cliente[] {
-  const expanded: Cliente[] = [];
-  for (const client of rawClients) {
-    const names =
-      client.usernames && client.usernames.length > 1
-        ? client.usernames
-        : [client.username];
+function normalizeAccountName(value?: string) {
+  return value?.trim().toLowerCase() || "";
+}
 
-    for (let i = 0; i < names.length; i++) {
+function buildClientList(rawClients: Cliente[]): Cliente[] {
+  const expanded: Cliente[] = [];
+  const seenEntries = new Set<string>();
+
+  for (const client of rawClients) {
+    const names = Array.from(
+      new Map(
+        (client.usernames?.length ? client.usernames : [client.username])
+          .map((name) => String(name || "").trim())
+          .filter(Boolean)
+          .map((name) => [normalizeAccountName(name), name] as const),
+      ).values(),
+    );
+
+    const primaryUsername = names[0] || String(client.username || "").trim();
+
+    for (const name of names) {
+      const entryKey = `${client.id}:${normalizeAccountName(name)}`;
+      if (seenEntries.has(entryKey)) {
+        continue;
+      }
+      seenEntries.add(entryKey);
+
       expanded.push({
         ...client,
-        username: names[i],
-        parentUsername: i > 0 ? names[0] : undefined,
+        username: name,
+        usernames: names,
+        parentUsername: name !== primaryUsername ? primaryUsername : undefined,
       });
     }
   }
+
   return expanded;
 }
 
@@ -118,7 +138,14 @@ function OPDocumentacion() {
       if (!token) return;
       const cached = getCachedClients();
       if (cached) {
-        setClientes(cached);
+        const normalizedCached = buildClientList(cached).sort(
+          (a: Cliente, b: Cliente) =>
+            a.username.localeCompare(b.username, "es", {
+              sensitivity: "base",
+            }),
+        );
+        setClientes(normalizedCached);
+        setCachedClients(normalizedCached);
         setLoading(false);
         return;
       }
@@ -142,7 +169,7 @@ function OPDocumentacion() {
             nombreuser: user.nombreuser,
             createdAt: user.createdAt,
           }));
-        const lista = expandClients(raw).sort((a: Cliente, b: Cliente) =>
+        const lista = buildClientList(raw).sort((a: Cliente, b: Cliente) =>
           a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
         );
 
@@ -584,7 +611,7 @@ function OPDocumentacion() {
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {filteredClients.map((client) => (
           <div
-            key={client.id}
+            key={`${client.id}:${normalizeAccountName(client.username)}`}
             onClick={() => handleSelectClient(client)}
             style={{
               display: "flex",

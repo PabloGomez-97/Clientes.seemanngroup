@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { linbisFetch } from "../../../services/linbisFetch";
 import "./DocumentosUnificadosView.css";
+import LoadingTips from "../../shipments/LoadingTips";
 
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -830,11 +831,8 @@ export function DocumentosUnificadosView({
         </div>
       )}
 
-      {loading && (
-        <div className="doc-empty">
-          <span>Cargando documentos...</span>
-        </div>
-      )}
+      {/* Loading */}
+      {loading && <LoadingTips />}
 
       {!loading && groupedDocs.length > 0 && (
         <div className="doc-groups">
