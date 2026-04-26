@@ -4777,14 +4777,19 @@ app.post('/api/quote-pdf/upload', auth, async (req, res) => {
 // GET /api/quote-pdf/list - Obtener lista de PDFs disponibles para el usuario
 app.get('/api/quote-pdf/list', auth, async (req, res) => {
   try {
-    const currentUser = (req as any).user;
+    const currentUser = (req as any).user as AuthPayload;
 
     if (!currentUser || !currentUser.username) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
     }
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const pdfs = await QuotePDF.find({ 
-      usuarioId: currentUser.username,
+      usuarioId: ownerUsername,
       quoteNumber: { $exists: true, $nin: ['', null] }
     })
       .select('-contenidoBase64')
@@ -4801,7 +4806,7 @@ app.get('/api/quote-pdf/list', auth, async (req, res) => {
       fechaCreacion: pdf.createdAt,
     }));
 
-    console.log(`[quote-pdf] Listando PDFs para ${currentUser.username}: ${pdfs.length} encontrados`);
+    console.log(`[quote-pdf] Listando PDFs para ${ownerUsername}: ${pdfs.length} encontrados`);
     console.log(`[quote-pdf] quoteNumbers en DB:`, pdfList.map(p => p.quoteNumber));
 
     return res.json({
@@ -4840,7 +4845,7 @@ app.delete('/api/quote-pdf/cleanup', auth, async (req, res) => {
 // GET /api/quote-pdf/download/:quoteNumber - Descargar PDF de cotización (proxy R2 + legacy MongoDB)
 app.get('/api/quote-pdf/download/:quoteNumber', auth, async (req, res) => {
   try {
-    const currentUser = (req as any).user;
+    const currentUser = (req as any).user as AuthPayload;
 
     if (!currentUser || !currentUser.username) {
       return res.status(401).json({ error: 'Usuario no autenticado' });
@@ -4852,9 +4857,14 @@ app.get('/api/quote-pdf/download/:quoteNumber', auth, async (req, res) => {
       return res.status(400).json({ error: 'quoteNumber es requerido' });
     }
 
+    const ownerUsername = await resolveDocumentOwnerUsername(
+      currentUser,
+      getRequestedDocumentOwnerUsername(req),
+    );
+
     const quotePdf = await QuotePDF.findOne({
       quoteNumber: decodeURIComponent(quoteNumber),
-      usuarioId: currentUser.username
+      usuarioId: ownerUsername
     });
 
     if (!quotePdf) {

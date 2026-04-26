@@ -371,23 +371,23 @@ function ReporteriaClientes() {
     };
 
     const tabs = [
-      { key: "air" as const, label: t("home.sidebar.airOperations"), icon: "" },
+      { key: "air" as const, label: "Operaciones Aéreas", icon: "" },
       {
         key: "ocean" as const,
-        label: t("home.sidebar.oceanOperations"),
+        label: "Operaciones Marítimas",
         icon: "",
       },
       {
         key: "ground" as const,
-        label: t("home.sidebar.groundOperations"),
+        label: "Operaciones Terrestres",
         icon: "",
       },
-      { key: "quotes" as const, label: t("home.sidebar.quotes"), icon: "" },
+      { key: "quotes" as const, label: "Mis cotizaciones", icon: "" },
 
-      { key: "exw" as const, label: t("home.sidebar.exwCharges"), icon: "" },
+      { key: "exw" as const, label: "Cargos EXW", icon: "" },
       {
         key: "tracking" as const,
-        label: t("home.sidebar.clientTracking"),
+        label: "Seguimiento del cliente",
         icon: "",
       },
       {

@@ -858,7 +858,12 @@ function QuotesView({
     if (!token) return;
     const fetchPDFs = async () => {
       try {
-        const res = await fetch("/api/quote-pdf/list", {
+        const pdfListParams = new URLSearchParams();
+        if (activeUsername) {
+          pdfListParams.set("ownerUsername", activeUsername);
+        }
+
+        const res = await fetch(`/api/quote-pdf/list?${pdfListParams.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -875,15 +880,20 @@ function QuotesView({
       }
     };
     fetchPDFs();
-  }, [token]);
+  }, [token, activeUsername]);
 
   const handleDownloadPDF = useCallback(
     async (quoteNumber: string) => {
       if (!token || !quoteNumber) return;
       setDownloadingPDF(quoteNumber);
       try {
+        const downloadParams = new URLSearchParams();
+        if (activeUsername) {
+          downloadParams.set("ownerUsername", activeUsername);
+        }
+
         const res = await fetch(
-          `/api/quote-pdf/download/${encodeURIComponent(quoteNumber)}`,
+          `/api/quote-pdf/download/${encodeURIComponent(quoteNumber)}?${downloadParams.toString()}`,
           {
             headers: { Authorization: `Bearer ${token}` },
           },
@@ -928,7 +938,7 @@ function QuotesView({
         setDownloadingPDF(null);
       }
     },
-    [token],
+    [token, activeUsername],
   );
 
   /* -- Sort icon -------------------------------------------- */

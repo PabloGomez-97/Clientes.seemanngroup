@@ -4898,7 +4898,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(401).json({ error: 'Usuario no autenticado' });
         }
 
-        const pdfs = await QuotePDF.find({ usuarioId: currentUser.username })
+        const ownerUsername = await resolveDocumentOwnerUsername(
+          currentUser,
+          getRequestedDocumentOwnerUsername(req),
+        );
+
+        const pdfs = await QuotePDF.find({ usuarioId: ownerUsername })
           .select('-contenidoBase64')
           .sort({ createdAt: -1 });
 
@@ -4939,9 +4944,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return res.status(400).json({ error: 'quoteNumber es requerido' });
         }
 
+        const ownerUsername = await resolveDocumentOwnerUsername(
+          currentUser,
+          getRequestedDocumentOwnerUsername(req),
+        );
+
         const quotePdf = await QuotePDF.findOne({
           quoteNumber: decodeURIComponent(quoteNumber),
-          usuarioId: currentUser.username
+          usuarioId: ownerUsername
         });
 
         if (!quotePdf) {
