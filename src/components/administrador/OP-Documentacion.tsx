@@ -16,6 +16,8 @@ interface Cliente {
   username: string;
   nombreuser?: string;
   createdAt: string;
+  usernames?: string[];
+  parentUsername?: string;
 }
 
 type DocumentCounts = Record<string, number>;
@@ -26,6 +28,25 @@ const DOCUMENT_COUNTS_CACHE_KEY = "op_doc_client_counts_v1";
 const DOCUMENT_COUNTS_TTL = 3 * 60 * 60 * 1000;
 const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+function expandClients(rawClients: Cliente[]): Cliente[] {
+  const expanded: Cliente[] = [];
+  for (const client of rawClients) {
+    const names =
+      client.usernames && client.usernames.length > 1
+        ? client.usernames
+        : [client.username];
+
+    for (let i = 0; i < names.length; i++) {
+      expanded.push({
+        ...client,
+        username: names[i],
+        parentUsername: i > 0 ? names[0] : undefined,
+      });
+    }
+  }
+  return expanded;
+}
 
 function getCachedClients(): Cliente[] | null {
   try {
@@ -111,18 +132,19 @@ function OPDocumentacion() {
           throw new Error(data?.error || "Error al cargar clientes");
         }
 
-        const lista: Cliente[] = (Array.isArray(data?.users) ? data.users : [])
+        const raw: Cliente[] = (Array.isArray(data?.users) ? data.users : [])
           .filter((user: Cliente) => user.username !== "Ejecutivo")
           .map((user: Cliente) => ({
             id: user.id,
             email: user.email,
             username: user.username,
+            usernames: user.usernames,
             nombreuser: user.nombreuser,
             createdAt: user.createdAt,
-          }))
-          .sort((a: Cliente, b: Cliente) =>
-            a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
-          );
+          }));
+        const lista = expandClients(raw).sort((a: Cliente, b: Cliente) =>
+          a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
+        );
 
         setClientes(lista);
         setCachedClients(lista);
@@ -232,9 +254,20 @@ function OPDocumentacion() {
       (c) =>
         c.username.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
-        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)),
+        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)) ||
+        (c.parentUsername && c.parentUsername.toLowerCase().includes(q)),
     );
   }, [clientes, searchQuery]);
+
+  const uniqueAccountCount = useMemo(
+    () => new Set(clientes.map((c) => c.id)).size,
+    [clientes],
+  );
+
+  const multiAccountCount = useMemo(
+    () => clientes.filter((c) => c.parentUsername).length,
+    [clientes],
+  );
 
   if (loading) {
     return (
@@ -298,7 +331,7 @@ function OPDocumentacion() {
 
   if (selectedClient) {
     return (
-      <div style={{ fontFamily: FONT }}>
+      <div style={{ fontFamily: FONT, maxWidth: 1200 }}>
         <div
           style={{
             display: "flex",
@@ -314,7 +347,7 @@ function OPDocumentacion() {
               alignItems: "center",
               gap: 6,
               padding: "7px 14px",
-              background: "#fff",
+              background: "none",
               border: "1px solid #e5e7eb",
               borderRadius: 8,
               cursor: "pointer",
@@ -352,7 +385,7 @@ function OPDocumentacion() {
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                background: "#1e40af",
+                background: "#232f3e",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -365,11 +398,31 @@ function OPDocumentacion() {
               {(selectedClient.username || "?").charAt(0).toUpperCase()}
             </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#1f2937" }}>
                 {selectedClient.username}
               </div>
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>
+                {selectedClient.parentUsername && (
+                  <span
+                    style={{
+                      background: "#fef3c7",
+                      color: "#92400e",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      marginRight: 8,
+                    }}
+                  >
+                    Cuenta: {selectedClient.parentUsername}
+                  </span>
+                )}
                 {selectedClient.email}
+                {(selectedClient.usernames?.length || 1) > 1 && (
+                  <span style={{ marginLeft: 8, color: "#9ca3af" }}>
+                    · {selectedClient.usernames?.length} cuentas
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -381,7 +434,7 @@ function OPDocumentacion() {
   }
 
   return (
-    <div style={{ fontFamily: FONT, maxWidth: 860 }}>
+    <div style={{ fontFamily: FONT, maxWidth: 1200 }}>
       <div
         style={{
           display: "flex",
@@ -390,32 +443,6 @@ function OPDocumentacion() {
           marginBottom: 24,
         }}
       >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: "#1e40af",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#fff"
-            strokeWidth="2"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-          </svg>
-        </div>
         <div>
           <h1
             style={{
@@ -425,14 +452,77 @@ function OPDocumentacion() {
               margin: 0,
             }}
           >
-            Documentación Operaciones
+            Documentación de Clientes
           </h1>
           <p style={{ fontSize: 13, color: "#6b7280", margin: "2px 0 0" }}>
             Selecciona un cliente para ver sus documentos.
           </p>
         </div>
-        <div style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>
-          {clientes.length} cliente{clientes.length !== 1 ? "s" : ""}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          marginBottom: 20,
+          padding: "14px 20px",
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <i
+            className="fa fa-users"
+            style={{ fontSize: 16, color: "#ff9900" }}
+          />
+          <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
+            {uniqueAccountCount}
+          </span>
+          <span style={{ fontSize: 13, color: "#6b7280" }}>
+            cuentas en el portal
+          </span>
+          {clientes.length > uniqueAccountCount && (
+            <>
+              <span style={{ fontSize: 13, color: "#d1d5db" }}>·</span>
+              <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
+                {clientes.length}
+              </span>
+              <span style={{ fontSize: 13, color: "#6b7280" }}>empresas</span>
+            </>
+          )}
+        </div>
+        <div style={{ flex: 1 }} />
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.removeItem(CLIENTS_CACHE_KEY);
+              } catch {
+                // ignore
+              }
+              window.location.reload();
+            }}
+            style={{
+              padding: "8px 12px",
+              background: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 13,
+              color: "#374151",
+            }}
+            title="Limpiar caché de clientes y recargar la página"
+          >
+            Actualizar página
+          </button>
+
+          <div style={{ fontSize: 12, color: "#9ca3af" }}>
+            Caché: {getCachedClients() ? "activo" : "sin caché"}
+          </div>
         </div>
       </div>
 
@@ -508,7 +598,7 @@ function OPDocumentacion() {
               transition: "all 0.12s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "#2563eb";
+              e.currentTarget.style.borderColor = "#181b22";
               e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.04)";
             }}
             onMouseLeave={(e) => {
@@ -521,11 +611,11 @@ function OPDocumentacion() {
                 width: 36,
                 height: 36,
                 borderRadius: 9,
-                background: "#1e40af",
+                background: "#232f3e",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: 700,
                 color: "#fff",
                 flexShrink: 0,
@@ -536,7 +626,7 @@ function OPDocumentacion() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
                   color: "#1f2937",
                   overflow: "hidden",
@@ -556,6 +646,21 @@ function OPDocumentacion() {
                 }}
               >
                 {client.email}
+                {client.parentUsername && (
+                  <span
+                    style={{
+                      background: "#fef3c7",
+                      color: "#92400e",
+                      fontSize: 11,
+                      fontWeight: 500,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      marginLeft: 8,
+                    }}
+                  >
+                    Cuenta: {client.parentUsername}
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ fontSize: 11, color: "#9ca3af", flexShrink: 0 }}>

@@ -26,6 +26,26 @@ interface Cliente {
   username: string;
   nombreuser?: string;
   createdAt: string;
+  usernames?: string[];
+  parentUsername?: string;
+}
+
+function expandClients(rawClients: Cliente[]): Cliente[] {
+  const expanded: Cliente[] = [];
+  for (const client of rawClients) {
+    const names =
+      client.usernames && client.usernames.length > 1
+        ? client.usernames
+        : [client.username];
+    for (let i = 0; i < names.length; i++) {
+      expanded.push({
+        ...client,
+        username: names[i],
+        parentUsername: i > 0 ? names[0] : undefined,
+      });
+    }
+  }
+  return expanded;
 }
 
 type CreateFormType = "air" | "ocean" | null;
@@ -73,9 +93,11 @@ function ShipsGoTrackingAdmin() {
         });
         if (!resp.ok) throw new Error("Error al cargar clientes");
         const data = await resp.json();
-        const users: Cliente[] = (data.clientes || []).sort(
-          (a: Cliente, b: Cliente) =>
-            a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
+        const raw: Cliente[] = Array.isArray(data.clientes)
+          ? data.clientes
+          : [];
+        const users = expandClients(raw).sort((a, b) =>
+          a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
         );
         setClientes(users);
       } catch (e) {
@@ -122,7 +144,7 @@ function ShipsGoTrackingAdmin() {
       const ocean = oceanShipments.filter(
         (s) => s.reference === client.username,
       ).length;
-      map.set(client.id, { air, ocean });
+      map.set(client.username, { air, ocean });
     }
     return map;
   }, [clientes, airShipments, oceanShipments]);
@@ -150,7 +172,8 @@ function ShipsGoTrackingAdmin() {
       (c) =>
         c.username.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
-        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)),
+        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)) ||
+        (c.parentUsername && c.parentUsername.toLowerCase().includes(q)),
     );
   }, [clientes, searchQuery]);
 
@@ -341,16 +364,40 @@ function ShipsGoTrackingAdmin() {
             {(selectedClient.username || "?").charAt(0).toUpperCase()}
           </div>
           <div style={{ flex: 1 }}>
-            <h1
+            <div
               style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: "#1f2937",
-                margin: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                flexWrap: "wrap",
               }}
             >
-              {selectedClient.username}
-            </h1>
+              <h1
+                style={{
+                  fontSize: 22,
+                  fontWeight: 700,
+                  color: "#1f2937",
+                  margin: 0,
+                }}
+              >
+                {selectedClient.username}
+              </h1>
+              {selectedClient.parentUsername && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    background: "#fef3c7",
+                    color: "#92400e",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Cuenta: {selectedClient.parentUsername}
+                </span>
+              )}
+            </div>
             <p style={{ fontSize: 14, color: "#6b7280", margin: "2px 0 0" }}>
               {selectedClient.email}
             </p>
@@ -580,14 +627,14 @@ function ShipsGoTrackingAdmin() {
       {/* Client List */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {filteredClients.map((client) => {
-          const counts = clientShipmentCounts.get(client.id);
+          const counts = clientShipmentCounts.get(client.username);
           const airCount = counts?.air ?? 0;
           const oceanCount = counts?.ocean ?? 0;
           const totalCount = airCount + oceanCount;
 
           return (
             <div
-              key={client.id}
+              key={`${client.id}-${client.username}`}
               onClick={() => handleSelectClient(client)}
               style={{
                 display: "flex",
@@ -632,15 +679,40 @@ function ShipsGoTrackingAdmin() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#1f2937",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    minWidth: 0,
                   }}
                 >
-                  {client.username}
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "#1f2937",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {client.username}
+                  </div>
+                  {client.parentUsername && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        background: "#fef3c7",
+                        color: "#92400e",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
+                    >
+                      Cuenta: {client.parentUsername}
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: 12, color: "#9ca3af" }}>
                   {client.email}

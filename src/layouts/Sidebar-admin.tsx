@@ -107,6 +107,10 @@ function SidebarAdmin({
           icon: "fa fa-route",
           subItems: [
             {
+              path: "/admin/documentacion",
+              name: "Documentación de Clientes",
+            },
+            {
               path: "/admin/reporteriaclientes",
               name: "Directorio de Clientes",
             },
@@ -116,7 +120,7 @@ function SidebarAdmin({
             },
             {
               path: "/admin/trackeos",
-              name: "Monitoreo de Operaciones",
+              name: "Monitoreo de Envíos",
             },
             {
               path: "/admin/op-trackeos",
@@ -124,7 +128,7 @@ function SidebarAdmin({
             },
             {
               path: "/admin/op-documentacion",
-              name: "Documentación de Clientes",
+              name: "Documentación Global",
             },
           ],
         },

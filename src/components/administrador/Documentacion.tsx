@@ -16,6 +16,8 @@ interface Cliente {
   username: string;
   nombreuser?: string;
   createdAt: string;
+  usernames?: string[];
+  parentUsername?: string;
 }
 
 const CACHE_TTL = 60 * 60 * 1000;
@@ -26,6 +28,32 @@ const FONT =
   '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 type DocumentCounts = Record<string, number>;
+
+function expandClients(rawClients: Cliente[]): Cliente[] {
+  const expanded: Cliente[] = [];
+  for (const client of rawClients) {
+    const names =
+      client.usernames && client.usernames.length > 1
+        ? client.usernames
+        : [client.username];
+
+    for (let i = 0; i < names.length; i++) {
+      expanded.push({
+        ...client,
+        username: names[i],
+        parentUsername: i > 0 ? names[0] : undefined,
+      });
+    }
+  }
+  return expanded;
+}
+
+function normalizeClients(rawClients: Cliente[]) {
+  if (rawClients.some((client) => client.parentUsername || client.usernames)) {
+    return rawClients;
+  }
+  return expandClients(rawClients);
+}
 
 function getCachedClients(): Cliente[] | null {
   try {
@@ -98,7 +126,7 @@ function Documentacion() {
       if (!token) return;
       const cached = getCachedClients();
       if (cached) {
-        setClientes(cached);
+        setClientes(normalizeClients(cached));
         setLoading(false);
         return;
       }
@@ -110,9 +138,10 @@ function Documentacion() {
         const data = await resp.json();
         if (!resp.ok)
           throw new Error(data?.error || "Error al cargar clientes");
-        const lista: Cliente[] = Array.isArray(data?.clientes)
+        const raw: Cliente[] = Array.isArray(data?.clientes)
           ? data.clientes
           : [];
+        const lista = expandClients(raw);
         setClientes(lista);
         setCachedClients(lista);
       } catch (e) {
@@ -218,9 +247,20 @@ function Documentacion() {
       (c) =>
         c.username.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
-        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)),
+        (c.nombreuser && c.nombreuser.toLowerCase().includes(q)) ||
+        (c.parentUsername && c.parentUsername.toLowerCase().includes(q)),
     );
   }, [clientes, searchQuery]);
+
+  const uniqueAccountCount = useMemo(
+    () => new Set(clientes.map((c) => c.id)).size,
+    [clientes],
+  );
+
+  const multiAccountCount = useMemo(
+    () => clientes.filter((c) => c.parentUsername).length,
+    [clientes],
+  );
 
   // Loading state
   if (loading) {
@@ -286,15 +326,16 @@ function Documentacion() {
 
   // ── Client Document View ──
   if (selectedClient) {
+    const accountCount = selectedClient.usernames?.length || 1;
     return (
-      <div style={{ fontFamily: FONT }}>
+      <div style={{ fontFamily: FONT, maxWidth: 1200 }}>
         {/* Back + Client header */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: 16,
-            marginBottom: 24,
+            marginBottom: 20,
           }}
         >
           <button
@@ -302,9 +343,9 @@ function Documentacion() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 6,
-              padding: "7px 14px",
-              background: "#fff",
+              gap: 8,
+              padding: "8px 16px",
+              background: "none",
               border: "1px solid #e5e7eb",
               borderRadius: 8,
               cursor: "pointer",
@@ -313,17 +354,18 @@ function Documentacion() {
               color: "#374151",
               fontFamily: FONT,
               flexShrink: 0,
+              transition: "all 0.15s",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "#f9fafb";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "#fff";
+              e.currentTarget.style.background = "none";
             }}
           >
             <svg
-              width="14"
-              height="14"
+              width="16"
+              height="16"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -340,14 +382,14 @@ function Documentacion() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: "#1e40af",
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                background: "#232f3e",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: 700,
                 color: "#fff",
                 flexShrink: 0,
@@ -355,12 +397,32 @@ function Documentacion() {
             >
               {(selectedClient.username || "?").charAt(0).toUpperCase()}
             </div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#1f2937" }}>
                 {selectedClient.username}
               </div>
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>
+              <div style={{ fontSize: 14, color: "#6b7280", marginTop: 2 }}>
+                {selectedClient.parentUsername && (
+                  <span
+                    style={{
+                      background: "#fef3c7",
+                      color: "#92400e",
+                      fontSize: 12,
+                      fontWeight: 500,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      marginRight: 8,
+                    }}
+                  >
+                    Cuenta: {selectedClient.parentUsername}
+                  </span>
+                )}
                 {selectedClient.email}
+                {accountCount > 1 && (
+                  <span style={{ marginLeft: 8, color: "#9ca3af" }}>
+                    · {accountCount} cuentas
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -373,7 +435,7 @@ function Documentacion() {
 
   // ── Client List View ──
   return (
-    <div style={{ fontFamily: FONT, maxWidth: 860 }}>
+    <div style={{ fontFamily: FONT, maxWidth: 1200 }}>
       {/* Header */}
       <div
         style={{
@@ -388,7 +450,7 @@ function Documentacion() {
             width: 40,
             height: 40,
             borderRadius: 10,
-            background: "#1e40af",
+            background: "#232f3e",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -414,7 +476,7 @@ function Documentacion() {
             style={{
               fontSize: 20,
               fontWeight: 700,
-              color: "#0f172a",
+              color: "#232f3e",
               margin: 0,
             }}
           >
@@ -424,8 +486,20 @@ function Documentacion() {
             Selecciona un cliente para ver sus documentos.
           </p>
         </div>
-        <div style={{ marginLeft: "auto", fontSize: 12, color: "#9ca3af" }}>
-          {clientes.length} cliente{clientes.length !== 1 ? "s" : ""}
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            gap: 12,
+            alignItems: "center",
+            flexShrink: 0,
+            color: "#9ca3af",
+            fontSize: 12,
+          }}
+        >
+          <span>{uniqueAccountCount} cuentas</span>
+          <span>·</span>
+          <span>{multiAccountCount} multicuentas</span>
         </div>
       </div>
 
@@ -516,11 +590,11 @@ function Documentacion() {
                 width: 36,
                 height: 36,
                 borderRadius: 9,
-                background: "#1e40af",
+                background: "#232f3e",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: 700,
                 color: "#fff",
                 flexShrink: 0,
@@ -531,7 +605,7 @@ function Documentacion() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
                   color: "#1f2937",
                   overflow: "hidden",
@@ -551,6 +625,21 @@ function Documentacion() {
                 }}
               >
                 {client.email}
+                {client.parentUsername && (
+                  <span
+                    style={{
+                      background: "#fef3c7",
+                      color: "#92400e",
+                      fontSize: 11,
+                      fontWeight: 500,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      marginLeft: 8,
+                    }}
+                  >
+                    Cuenta: {client.parentUsername}
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ fontSize: 11, color: "#9ca3af", flexShrink: 0 }}>
