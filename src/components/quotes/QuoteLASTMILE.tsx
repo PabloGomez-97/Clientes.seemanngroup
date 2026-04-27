@@ -116,10 +116,59 @@ function QuoteLASTMILE({
   const [pickupAddress, setPickupAddress] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [cargoDescription, setCargoDescription] = useState("");
+  // Valores siempre almacenados en SI (cm / kg). El toggle solo afecta la visualización/entrada.
   const [peso, setPeso] = useState("");
   const [alto, setAlto] = useState("");
   const [ancho, setAncho] = useState("");
   const [largo, setLargo] = useState("");
+  const [useUSCustomary, setUseUSCustomary] = useState(false);
+
+  // Helpers de conversión SI ↔ US Customary
+  const displayDim = (cmStr: string): string => {
+    if (!cmStr) return "";
+    const cm = parseFloat(cmStr);
+    if (!Number.isFinite(cm) || cm === 0) return "";
+    return useUSCustomary
+      ? (cm / 2.54).toFixed(3).replace(/\.?0+$/, "")
+      : cmStr;
+  };
+  const displayWeight = (kgStr: string): string => {
+    if (!kgStr) return "";
+    const kg = parseFloat(kgStr);
+    if (!Number.isFinite(kg) || kg === 0) return "";
+    return useUSCustomary
+      ? (kg / 0.453592).toFixed(3).replace(/\.?0+$/, "")
+      : kgStr;
+  };
+  const handleDimInput = (
+    setter: React.Dispatch<React.SetStateAction<string>>,
+    raw: string,
+  ) => {
+    if (raw === "") {
+      setter("");
+      return;
+    }
+    const num = parseFloat(raw);
+    if (!Number.isFinite(num)) {
+      setter("");
+      return;
+    }
+    const cm = useUSCustomary ? num * 2.54 : num;
+    setter(String(cm));
+  };
+  const handleWeightInput = (raw: string) => {
+    if (raw === "") {
+      setPeso("");
+      return;
+    }
+    const num = parseFloat(raw);
+    if (!Number.isFinite(num)) {
+      setPeso("");
+      return;
+    }
+    const kg = useUSCustomary ? num * 0.453592 : num;
+    setPeso(String(kg));
+  };
 
   // Servicios adicionales
   const [seguroActivo, setSeguroActivo] = useState(false);
@@ -348,6 +397,19 @@ function QuoteLASTMILE({
         .join(" · "),
     [peso, largo, ancho, alto],
   );
+
+  // Totales (volumen, peso real/volumétrico/chargeable) para LASTMILE.
+  // Factor volumétrico estándar terrestre/courier internacional: 167 kg/m³ (5000 cm³/kg).
+  const cargoTotals = useMemo(() => {
+    const l = parseFloat(largo) || 0;
+    const w = parseFloat(ancho) || 0;
+    const h = parseFloat(alto) || 0;
+    const realWeight = parseFloat(peso) || 0;
+    const volume = l && w && h ? (l * w * h) / 1_000_000 : 0; // m³
+    const volumetricWeight = volume * 167;
+    const chargeableWeight = Math.max(realWeight, volumetricWeight);
+    return { volume, realWeight, volumetricWeight, chargeableWeight };
+  }, [largo, ancho, alto, peso]);
 
   const cargoDescriptionPreview = useMemo(() => {
     const trimmedDescription = cargoDescription.trim();
@@ -1108,6 +1170,34 @@ function QuoteLASTMILE({
                     )}
                   </div>
                 )}
+                <div className="qa-totals-bar mt-3">
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {cargoTotals.volume.toFixed(3)} m³
+                    </span>
+                    <span className="qa-totals-bar-label">Volumen total</span>
+                  </div>
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {cargoTotals.realWeight.toFixed(2)} kg
+                    </span>
+                    <span className="qa-totals-bar-label">Peso real</span>
+                  </div>
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {cargoTotals.volumetricWeight.toFixed(2)} kg
+                    </span>
+                    <span className="qa-totals-bar-label">
+                      Peso volumétrico
+                    </span>
+                  </div>
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {cargoTotals.chargeableWeight.toFixed(2)} kg
+                    </span>
+                    <span className="qa-totals-bar-label">Peso chargeable</span>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1165,72 +1255,151 @@ function QuoteLASTMILE({
                         />
                       </div>
 
-                      {/* Separador */}
+                      {/* Toggle Sistema de Unidades */}
                       <div className="col-12">
-                        <div
-                          style={{
-                            borderTop: "1px solid var(--qa-border, #e5e7eb)",
-                            marginTop: 4,
-                            marginBottom: 4,
-                          }}
-                        />
-                        <small className="qa-label" style={{ fontWeight: 600 }}>
-                          Dimensiones y peso{" "}
-                          <span
-                            className="qa-text-muted"
-                            style={{ fontWeight: 400 }}
+                        <div className="d-flex align-items-center gap-2">
+                          <small className="qa-text-muted fw-semibold">
+                            Unidades:
+                          </small>
+                          <div
+                            className="d-flex"
+                            style={{
+                              border: "1px solid var(--qa-border)",
+                              borderRadius: "6px",
+                              overflow: "hidden",
+                            }}
                           >
-                            (opcional)
-                          </span>
-                        </small>
+                            <button
+                              type="button"
+                              className={`qa-btn qa-btn-sm ${!useUSCustomary ? "qa-btn-primary" : ""}`}
+                              style={{
+                                borderRadius: 0,
+                                border: "none",
+                                padding: "0.2rem 0.8rem",
+                                fontSize: "0.78rem",
+                              }}
+                              onClick={() => setUseUSCustomary(false)}
+                            >
+                              Métrico
+                            </button>
+                            <button
+                              type="button"
+                              className={`qa-btn qa-btn-sm ${useUSCustomary ? "qa-btn-primary" : ""}`}
+                              style={{
+                                borderRadius: 0,
+                                border: "none",
+                                borderLeft: "1px solid var(--qa-border)",
+                                padding: "0.2rem 0.8rem",
+                                fontSize: "0.78rem",
+                              }}
+                              onClick={() => setUseUSCustomary(true)}
+                            >
+                              US Customary
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
                       {/* Grid de dimensiones */}
                       <div className="col-12">
                         <div className="qa-grid-4">
                           <div>
-                            <label className="qa-label">Peso (kg)</label>
+                            <label className="qa-label">
+                              {useUSCustomary ? "Largo (in)" : "Largo (cm)"}
+                            </label>
                             <input
                               type="number"
                               className="qa-input"
-                              value={peso}
-                              onChange={(e) => setPeso(e.target.value)}
+                              value={displayDim(largo)}
+                              onChange={(e) =>
+                                handleDimInput(setLargo, e.target.value)
+                              }
                               min="0"
                               step="0.01"
                             />
                           </div>
                           <div>
-                            <label className="qa-label">Largo (cm)</label>
+                            <label className="qa-label">
+                              {useUSCustomary ? "Ancho (in)" : "Ancho (cm)"}
+                            </label>
                             <input
                               type="number"
                               className="qa-input"
-                              value={largo}
-                              onChange={(e) => setLargo(e.target.value)}
+                              value={displayDim(ancho)}
+                              onChange={(e) =>
+                                handleDimInput(setAncho, e.target.value)
+                              }
                               min="0"
                               step="0.01"
                             />
                           </div>
                           <div>
-                            <label className="qa-label">Ancho (cm)</label>
+                            <label className="qa-label">
+                              {useUSCustomary ? "Alto (in)" : "Alto (cm)"}
+                            </label>
                             <input
                               type="number"
                               className="qa-input"
-                              value={ancho}
-                              onChange={(e) => setAncho(e.target.value)}
+                              value={displayDim(alto)}
+                              onChange={(e) =>
+                                handleDimInput(setAlto, e.target.value)
+                              }
                               min="0"
                               step="0.01"
                             />
                           </div>
                           <div>
-                            <label className="qa-label">Alto (cm)</label>
+                            <label className="qa-label">
+                              {useUSCustomary ? "Peso (lbs)" : "Peso (kg)"}
+                            </label>
                             <input
                               type="number"
                               className="qa-input"
-                              value={alto}
-                              onChange={(e) => setAlto(e.target.value)}
+                              value={displayWeight(peso)}
+                              onChange={(e) =>
+                                handleWeightInput(e.target.value)
+                              }
                               min="0"
                               step="0.01"
                             />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Totals summary bar */}
+                      <div className="col-12">
+                        <div className="qa-totals-bar">
+                          <div className="qa-totals-bar-item">
+                            <span className="qa-totals-bar-value">
+                              {cargoTotals.volume.toFixed(3)} m³
+                            </span>
+                            <span className="qa-totals-bar-label">
+                              Volumen total
+                            </span>
+                          </div>
+                          <div className="qa-totals-bar-item">
+                            <span className="qa-totals-bar-value">
+                              {cargoTotals.realWeight.toFixed(2)} kg
+                            </span>
+                            <span className="qa-totals-bar-label">
+                              Peso real
+                            </span>
+                          </div>
+                          <div className="qa-totals-bar-item">
+                            <span className="qa-totals-bar-value">
+                              {cargoTotals.volumetricWeight.toFixed(2)} kg
+                            </span>
+                            <span className="qa-totals-bar-label">
+                              Peso volumétrico
+                            </span>
+                          </div>
+                          <div className="qa-totals-bar-item">
+                            <span className="qa-totals-bar-value">
+                              {cargoTotals.chargeableWeight.toFixed(2)} kg
+                            </span>
+                            <span className="qa-totals-bar-label">
+                              Peso chargeable
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -1253,8 +1422,8 @@ function QuoteLASTMILE({
                       });
                     }}
                   >
-                    Continuar al Paso 3
-                    <i className="bi bi-arrow-right ms-2"></i>
+                    Siguiente
+                    <i className="bi bi-arrow-right ms-1"></i>
                   </button>
                 </div>
               </div>
@@ -1377,8 +1546,8 @@ function QuoteLASTMILE({
                       });
                     }}
                   >
-                    Continuar al Paso 4
-                    <i className="bi bi-arrow-right ms-2"></i>
+                    Siguiente
+                    <i className="bi bi-arrow-right ms-1"></i>
                   </button>
                 </div>
               </div>
@@ -1417,7 +1586,7 @@ function QuoteLASTMILE({
                   <div className="p-3 bg-light rounded border mb-3">
                     <h6 className="fw-bold mb-3">
                       <i className="bi bi-geo-alt me-2"></i>
-                      Ruta
+                      Ruta Seleccionada
                     </h6>
                     <div className="row g-2 small">
                       <div className="col-6 text-muted">Origen:</div>
@@ -1430,20 +1599,14 @@ function QuoteLASTMILE({
                       </div>
                       <div className="col-12 border-top my-2"></div>
                       <div className="col-6 text-muted">
-                        <i
-                          className="bi bi-geo-alt-fill me-1"
-                          style={{ color: "#198754" }}
-                        ></i>
+                        <i className="bi bi-geo-alt-fill me-1"></i>
                         Dirección de recogida:
                       </div>
                       <div className="col-6 text-end fw-bold">
                         {pickupAddress || "—"}
                       </div>
                       <div className="col-6 text-muted">
-                        <i
-                          className="bi bi-flag-fill me-1"
-                          style={{ color: "#dc3545" }}
-                        ></i>
+                        <i className="bi bi-flag-fill me-1"></i>
                         Dirección de entrega:
                       </div>
                       <div className="col-6 text-end fw-bold">
@@ -1456,7 +1619,7 @@ function QuoteLASTMILE({
                   <div className="p-3 bg-light rounded border mb-3">
                     <h6 className="fw-bold mb-3">
                       <i className="bi bi-box-seam me-2"></i>
-                      Cargamento
+                      Datos del Cargamento
                     </h6>
                     <div className="row g-2 small">
                       <div className="col-6 text-muted">Descripción:</div>
@@ -1511,24 +1674,6 @@ function QuoteLASTMILE({
                       )}
                     </div>
                   </div>
-
-                  {/* Info alert */}
-                  <div
-                    className="qa-alert"
-                    style={{
-                      backgroundColor: "#fff8e1",
-                      color: "#856404",
-                      border: "1px solid #ffeeba",
-                    }}
-                  >
-                    <i className="bi bi-info-circle-fill mt-1"></i>
-                    <div>
-                      Esta es una{" "}
-                      <strong>cotización sin tarifa inmediata</strong>. Tu
-                      ejecutivo te contactará con el precio formal en un plazo
-                      de 48 horas hábiles. Validez: <strong>5 días</strong>.
-                    </div>
-                  </div>
                 </div>
 
                 {error && (
@@ -1579,8 +1724,8 @@ function QuoteLASTMILE({
                       </>
                     ) : (
                       <>
-                        <i className="bi bi-send-fill me-2"></i>
                         Generar Cotización
+                        <i className="bi bi-arrow-right ms-1"></i>
                       </>
                     )}
                   </button>
