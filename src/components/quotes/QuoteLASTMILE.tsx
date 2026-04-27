@@ -467,23 +467,6 @@ function QuoteLASTMILE({
 
     const validUntil = getValidityDate().toISOString();
 
-    const dimensiones = [
-      peso ? `Peso: ${peso} kg` : null,
-      largo ? `Largo: ${largo} cm` : null,
-      ancho ? `Ancho: ${ancho} cm` : null,
-      alto ? `Alto: ${alto} cm` : null,
-    ]
-      .filter(Boolean)
-      .join(" · ");
-
-    const remarks = [
-      cargoDescription.trim(),
-      dimensiones ? `Dimensiones: ${dimensiones}` : null,
-      seguroActivo ? "Cliente solicita seguro de carga." : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
     // Charges con monto 0 (cotización sin valor)
     const charges = [
       {
@@ -504,6 +487,35 @@ function QuoteLASTMILE({
         expense: { currency: { abbr: "USD" } },
       },
     ];
+
+    // Commodity con dimensiones detalladas (mismo formato que QuoteAIR)
+    const pesoNum = parseFloat(peso) || 0;
+    const largoNum = parseFloat(largo) || 0;
+    const anchoNum = parseFloat(ancho) || 0;
+    const altoNum = parseFloat(alto) || 0;
+    const commodity = {
+      commodityType: "Standard",
+      pieces: 1,
+      description: cargoDescription.slice(0, 500),
+      weightPerUnitValue: pesoNum,
+      weightPerUnitUOM: "kg",
+      totalWeightValue: pesoNum,
+      totalWeightUOM: "kg",
+      lengthValue: largoNum,
+      lengthUOM: "cm",
+      widthValue: anchoNum,
+      widthUOM: "cm",
+      heightValue: altoNum,
+      heightUOM: "cm",
+      volumeValue: cargoTotals.volume,
+      volumeUOM: "m3",
+      totalVolumeValue: cargoTotals.volume,
+      totalVolumeUOM: "m3",
+      volumeWeightValue: cargoTotals.volumetricWeight,
+      volumeWeightUOM: "kg",
+      totalVolumeWeightValue: cargoTotals.volumetricWeight,
+      totalVolumeWeightUOM: "kg",
+    };
 
     return {
       date: new Date().toISOString(),
@@ -526,27 +538,8 @@ function QuoteLASTMILE({
       serviceType: { name: "GROUND" },
       salesRep: { name: salesRepName },
       PaymentTerms: { name: "Prepaid" },
-      commodities: [
-        {
-          commodityType: "Pieza",
-          description: cargoDescription.slice(0, 500),
-          ...(peso
-            ? { weight: { value: parseFloat(peso) || 0, unit: "kg" } }
-            : {}),
-          ...(largo || ancho || alto
-            ? {
-                dimensions: {
-                  length: parseFloat(largo) || 0,
-                  width: parseFloat(ancho) || 0,
-                  height: parseFloat(alto) || 0,
-                  unit: "cm",
-                },
-              }
-            : {}),
-        },
-      ],
+      commodities: [commodity],
       charges,
-      remarks,
     };
   };
 
