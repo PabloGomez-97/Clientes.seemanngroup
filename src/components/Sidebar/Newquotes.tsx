@@ -4,12 +4,13 @@ import { useTranslation } from "react-i18next";
 import CotizadorAereo from "../quotes/QuoteAIR";
 import CotizadorFCL from "../quotes/QuoteFCL";
 import CotizadorLCL from "../quotes/QuoteLCL";
+import CotizadorLastMile from "../quotes/QuoteLASTMILE";
 import "./styles/Cotizador.css";
 
-type TipoCotizacion = "AEREO" | "FCL" | "LCL" | null;
+type TipoCotizacion = "AEREO" | "FCL" | "LCL" | "LASTMILE" | null;
 
 interface ItineraryState {
-  tipoEnvio: "AEREO" | "FCL" | "LCL";
+  tipoEnvio: "AEREO" | "FCL" | "LCL" | "LASTMILE";
   origin: { value: string; label: string };
   destination: { value: string; label: string };
   fecha?: string;
@@ -19,6 +20,7 @@ const serviceTypes = [
   { key: "AEREO" as const, icon: "fa fa-plane" },
   { key: "FCL" as const, icon: "fa fa-ship" },
   { key: "LCL" as const, icon: "fa fa-cubes" },
+  { key: "LASTMILE" as const, icon: "fa fa-truck" },
 ] as const;
 
 const Cotizador: React.FC = () => {
@@ -149,6 +151,13 @@ const Cotizador: React.FC = () => {
               key="lcl"
               preselectedPOL={preselectedData?.origin}
               preselectedPOD={preselectedData?.destination}
+            />
+          )}
+          {tipoCotizacion === "LASTMILE" && (
+            <CotizadorLastMile
+              key="lastmile"
+              preselectedOrigin={preselectedData?.origin}
+              preselectedDestination={preselectedData?.destination}
             />
           )}
         </div>

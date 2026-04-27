@@ -10,6 +10,7 @@ import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuote
 import { buildAirQuoteEmailHTML, getAirQuoteEmailSubject, type AirQuoteEmailData } from './emails/airQuoteEmailTemplate.js';
 import { buildFclQuoteEmailHTML, getFclQuoteEmailSubject, type FclQuoteEmailData } from './emails/fclQuoteEmailTemplate.js';
 import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData } from './emails/lclQuoteEmailTemplate.js';
+import { buildLastMileQuoteEmailHTML, getLastMileQuoteEmailSubject, type LastMileQuoteEmailData } from './emails/lastmileQuoteEmailTemplate.js';
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from './emails/specialQuoteEmailTemplate.js';
 import chatHandler from './chat.js';
 import { fetchAllExpiring, filterMaxWindow } from './services/pricingExpiryService.js';
@@ -976,7 +977,7 @@ interface IQuotePDF {
   tamanoBytes: number;
   contenidoBase64?: string;          // Legacy – ya no se usa para nuevos PDFs
   r2Key?: string;                    // Clave del objeto en Cloudflare R2
-  tipoServicio: 'AIR' | 'FCL' | 'LCL' | 'INTERNACIONALIZACION';
+  tipoServicio: 'AIR' | 'FCL' | 'LCL' | 'INTERNACIONALIZACION' | 'LASTMILE';
   origen: string;
   destino: string;
   usuarioId: string;
@@ -997,7 +998,7 @@ const QuotePDFSchema = new mongoose.Schema<IQuotePDFDoc>(
     tamanoBytes: { type: Number, required: true },
     contenidoBase64: { type: String },   // Legacy – opcional
     r2Key: { type: String },             // Cloudflare R2 object key
-    tipoServicio: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL', 'INTERNACIONALIZACION'] },
+    tipoServicio: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL', 'INTERNACIONALIZACION', 'LASTMILE'] },
     origen: { type: String, default: '' },
     destino: { type: String, default: '' },
     usuarioId: { type: String, required: true, index: true },
@@ -4603,6 +4604,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // EXW específico
           pickupFromAddress,
           deliveryToAddress,
+          // Última Milla específico
+          cargoDescription,
+          peso,
+          alto,
+          ancho,
+          largo,
+          seguroActivo,
           // Agente y número de cotización
           agente,
           quoteNumber,
@@ -4653,6 +4661,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           };
           subject = getLclQuoteEmailSubject(emailData);
           htmlContent = buildLclQuoteEmailHTML(emailData);
+        } else if (tipoServicio === 'Última Milla') {
+          const emailData: LastMileQuoteEmailData = {
+            ejecutivoNombre,
+            clienteUsername,
+            clienteNombre: currentUser.nombreuser,
+            origen: origen || '',
+            destino: destino || '',
+            pickupFromAddress: pickupFromAddress || '',
+            deliveryToAddress: deliveryToAddress || '',
+            cargoDescription: cargoDescription || '',
+            peso: peso || undefined,
+            alto: alto || undefined,
+            ancho: ancho || undefined,
+            largo: largo || undefined,
+            seguroActivo: !!seguroActivo,
+            tipoAccion: tipoAccionResolved,
+            quoteNumber: quoteNumber || undefined,
+          };
+          subject = getLastMileQuoteEmailSubject(emailData);
+          htmlContent = buildLastMileQuoteEmailHTML(emailData);
         } else {
           // Aéreo
           const emailData: AirQuoteEmailData = {
@@ -4770,7 +4798,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const clienteUsername = currentUser.username || currentUser.email;
 
         const { quoteType, cargoDetails, quoteNumber: noRateQuoteNumber } = req.body as {
-          quoteType: 'AIR' | 'FCL' | 'LCL';
+          quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
           cargoDetails: Record<string, unknown>;
           quoteNumber?: string;
         };
@@ -4841,8 +4869,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        if (!['AIR', 'FCL', 'LCL', 'INTERNACIONALIZACION'].includes(tipoServicio)) {
-          return res.status(400).json({ error: 'tipoServicio debe ser AIR, FCL, LCL o INTERNACIONALIZACION' });
+        if (!['AIR', 'FCL', 'LCL', 'INTERNACIONALIZACION', 'LASTMILE'].includes(tipoServicio)) {
+          return res.status(400).json({ error: 'tipoServicio debe ser AIR, FCL, LCL, INTERNACIONALIZACION o LASTMILE' });
         }
 
         // Extraer contenido base64 puro y convertir a Buffer

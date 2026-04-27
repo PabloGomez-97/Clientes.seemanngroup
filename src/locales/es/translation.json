@@ -213,6 +213,16 @@
         "badge": "💰 Económico",
         "comparisonDescription": "Solución económica para volúmenes medianos. Comparte espacio en contenedor optimizando costos sin sacrificar calidad."
       },
+      "lastmile": {
+        "title": "Última Milla",
+        "description": "Transporte terrestre nacional desde puerto a destino final",
+        "description1": "Recogida y entrega puerta a puerta",
+        "description2": "Cobertura nacional",
+        "description3": "Cotización personalizada en 48 horas",
+        "button": "Seleccionar Última Milla →",
+        "badge": "🚚 Terrestre",
+        "comparisonDescription": "Servicio de transporte terrestre para mover tu carga desde el puerto hasta su destino final dentro del país."
+      },
       "volver": "Volver a selección",
       "comparison": {
         "title": "¿Necesitas ayuda para elegir?"

@@ -6,7 +6,7 @@
 export interface NoRateQuoteEmailData {
   ejecutivoNombre: string;
   clienteUsername: string;
-  quoteType: 'AIR' | 'FCL' | 'LCL';
+  quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
   cargoDetails: Record<string, unknown>;
   quoteNumber?: string;
 }
@@ -27,12 +27,14 @@ const C = {
 function getServiceLabel(quoteType: string): string {
   if (quoteType === 'AIR') return 'Aéreo (AIR)';
   if (quoteType === 'FCL') return 'Marítimo FCL';
+  if (quoteType === 'LASTMILE') return 'Última Milla';
   return 'Marítimo LCL';
 }
 
 function getServiceColor(quoteType: string): string {
   if (quoteType === 'AIR') return '#3b82f6';
   if (quoteType === 'FCL') return '#8b5cf6';
+  if (quoteType === 'LASTMILE') return '#0d9488';
   return '#06b6d4';
 }
 
@@ -95,6 +97,25 @@ function buildDetailRows(quoteType: string, d: any): string {
     if (d.pickupFromAddress) rows.push(row('Dirección de recogida', d.pickupFromAddress as string));
     if (d.deliveryToAddress) rows.push(row('Dirección de entrega', d.deliveryToAddress as string));
   }
+  return rows.join('');
+}
+
+function buildLastMileDetailRows(d: any, row: (l: string, v: string) => string): string {
+  const medidas = [
+    d.peso ? `Peso: ${d.peso} kg` : null,
+    d.largo ? `Largo: ${d.largo} cm` : null,
+    d.ancho ? `Ancho: ${d.ancho} cm` : null,
+    d.alto ? `Alto: ${d.alto} cm` : null,
+  ].filter(Boolean).join(' · ');
+
+  const rows = [
+    row('Origen', d.pol),
+    row('Destino', d.pod),
+    row('Dirección de recogida', d.pickupFromAddress),
+    row('Dirección de entrega', d.deliveryToAddress),
+  ];
+  if (d.cargoDescription) rows.push(row('Descripción del cargamento', d.cargoDescription));
+  if (medidas) rows.push(row('Medidas (m)', medidas));
   return rows.join('');
 }
 
@@ -188,7 +209,11 @@ export function buildNoRateQuoteEmailHTML(data: NoRateQuoteEmailData): string {
                   <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;border-bottom:1px solid ${C.border};">N° de cotización</td>
                   <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.primary};border-bottom:1px solid ${C.border};">${data.quoteNumber}</td>
                 </tr>` : ''}
-                ${buildDetailRows(data.quoteType, data.cargoDetails)}
+                ${data.quoteType === 'LASTMILE' ? buildLastMileDetailRows(data.cargoDetails, (l, v) => `
+                <tr>
+                  <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;border-bottom:1px solid ${C.border};">${l}</td>
+                  <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.text};border-bottom:1px solid ${C.border};">${v || '—'}</td>
+                </tr>`) : buildDetailRows(data.quoteType, data.cargoDetails)}
                 <tr>
                   <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:180px;">Fecha de cotización</td>
                   <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.text};">${fecha}</td>

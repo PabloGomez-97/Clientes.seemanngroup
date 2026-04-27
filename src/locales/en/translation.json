@@ -214,6 +214,16 @@
         "badge": "💰 Cost-effective",
         "comparisonDescription": "Economic solution for medium volumes. Share container space optimizing costs without sacrificing quality."
       },
+      "lastmile": {
+        "title": "Last Mile",
+        "description": "Domestic ground transportation from port to final destination",
+        "description1": " Door-to-door pickup and delivery",
+        "description2": " Nationwide coverage",
+        "description3": " Personalized quote within 48 hours",
+        "button": "Select Last Mile →",
+        "badge": "🚚 Ground",
+        "comparisonDescription": "Ground transportation service to move your cargo from the port to its final destination within the country."
+      },
       "volver": "Back to selection",
       "comparison": {
         "title": "Need help choosing?"
