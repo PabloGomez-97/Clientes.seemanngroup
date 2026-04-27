@@ -1676,25 +1676,6 @@ function QuoteLASTMILE({
                   </div>
                 )}
 
-                {response && (
-                  <div
-                    className="qa-alert mb-3"
-                    style={{
-                      backgroundColor: "#d4edda",
-                      color: "#155724",
-                      border: "1px solid #c3e6cb",
-                    }}
-                  >
-                    <i className="bi bi-check-circle-fill"></i>
-                    <div>
-                      <strong>¡Cotización enviada exitosamente!</strong>
-                      <div className="mt-1">
-                        En unos momentos se descargará automáticamente el PDF.
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 <div className="d-flex justify-content-end mt-4">
                   <button
                     className="qa-btn qa-btn-primary"
@@ -1725,6 +1706,26 @@ function QuoteLASTMILE({
                 </div>
               </>
             )}
+          </div>
+        )}
+        {/* Respuesta exitosa */}
+        {response && (
+          <div
+            className="qa-alert qa-alert-success mb-4"
+            style={{
+              backgroundColor: "#d4edda",
+              color: "#155724",
+              borderColor: "#c3e6cb",
+            }}
+          >
+            <i className="bi bi-check-circle-fill"></i>
+            <div>
+              <strong>Tu cotización se ha generado exitosamente</strong>
+              <div className="mt-1">
+                En unos momentos se descargará automáticamente el PDF de la
+                cotización.
+              </div>
+            </div>
           </div>
         )}
       </div>
