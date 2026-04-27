@@ -255,6 +255,14 @@ function App() {
           <Route path="QuoteFCL" element={<QuoteFCL />} />
           <Route path="air-shipments" element={<AirShipmentsView />} />
           <Route path="trackings" element={<ShipsGoTracking />} />
+          <Route
+            path="trackings-aereo"
+            element={<ShipsGoTracking initialTab="air" />}
+          />
+          <Route
+            path="trackings-maritimo"
+            element={<ShipsGoTracking initialTab="ocean" />}
+          />
           <Route path="ocean-shipments" element={<OceanShipmentsView />} />
           <Route path="ground-shipments" element={<GroundShipmentsView />} />
           <Route path="shipping-orders" element={<ShippingOrderView />} />

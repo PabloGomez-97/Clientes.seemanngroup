@@ -1089,9 +1089,9 @@ function AirShipmentsView({
         clienteAfectado: activeUsername || undefined,
       });
       if (reporteriaClientesContext) {
-        reporteriaClientesContext.openTrackingTab();
+        reporteriaClientesContext.openTrackingTab("air");
       } else {
-        navigate("/trackings");
+        navigate("/trackings-aereo");
       }
     } catch {
       setTrackError(
@@ -1803,10 +1803,12 @@ function AirShipmentsView({
                                                         if (
                                                           reporteriaClientesContext
                                                         ) {
-                                                          reporteriaClientesContext.openTrackingTab();
+                                                          reporteriaClientesContext.openTrackingTab(
+                                                            "air",
+                                                          );
                                                         } else {
                                                           navigate(
-                                                            "/trackings",
+                                                            "/trackings-aereo",
                                                           );
                                                         }
                                                       }}

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import LoadingTips from "./LoadingTips";
 import { useOutletContext, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -385,7 +391,6 @@ function OceanShipmentsView({
         const items2: any[] = data2.items || [];
 
         // Find item whose number starts with HBLI
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const hbliItem = items2.find(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (item: any) =>
@@ -731,7 +736,9 @@ function OceanShipmentsView({
       shipmentFilterNumber?: string;
     } | null;
     const incomingFilter = (
-      initialFilterNumber || locationState?.shipmentFilterNumber || ""
+      initialFilterNumber ||
+      locationState?.shipmentFilterNumber ||
+      ""
     ).trim();
 
     if (!incomingFilter || oceanShipments.length === 0) return;
@@ -1023,9 +1030,9 @@ function OceanShipmentsView({
         clienteAfectado: activeUsername || undefined,
       });
       if (reporteriaClientesContext) {
-        reporteriaClientesContext.openTrackingTab();
+        reporteriaClientesContext.openTrackingTab("ocean");
       } else {
-        navigate("/trackings");
+        navigate("/trackings-maritimo");
       }
     } catch {
       setTrackError(
@@ -1886,10 +1893,12 @@ function OceanShipmentsView({
                                                         if (
                                                           reporteriaClientesContext
                                                         ) {
-                                                          reporteriaClientesContext.openTrackingTab();
+                                                          reporteriaClientesContext.openTrackingTab(
+                                                            "ocean",
+                                                          );
                                                         } else {
                                                           navigate(
-                                                            "/trackings",
+                                                            "/trackings-maritimo",
                                                           );
                                                         }
                                                       }}

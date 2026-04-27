@@ -35,7 +35,14 @@ interface Cliente {
 }
 
 interface ReporteriaClientesLocationState {
-  targetTab?: "air" | "ocean" | "ground" | "quotes" | "exw" | "tracking" | "settings";
+  targetTab?:
+    | "air"
+    | "ocean"
+    | "ground"
+    | "quotes"
+    | "exw"
+    | "tracking"
+    | "settings";
   shipmentFilterNumber?: string;
   quoteFilterNumber?: string;
 }
@@ -118,6 +125,9 @@ function ReporteriaClientes() {
   const [shipmentFilterNumber, setShipmentFilterNumber] = useState<
     string | undefined
   >();
+  const [trackingInitialTab, setTrackingInitialTab] = useState<"air" | "ocean">(
+    "air",
+  );
 
   // ── Fetch clients list (with cache) ──
   useEffect(() => {
@@ -405,7 +415,10 @@ function ReporteriaClientes() {
 
   // ── Client Detail View (same portal views the client sees) ──
   if (selectedClient) {
-    const openTrackingTab = () => setActiveTab("tracking");
+    const openTrackingTab = (tab?: "air" | "ocean") => {
+      setTrackingInitialTab(tab ?? "air");
+      setActiveTab("tracking");
+    };
     const openQuotesTab = (quoteNumber?: string) => {
       setQuoteFilterNumber(quoteNumber);
       setActiveTab("quotes");
@@ -605,7 +618,10 @@ function ReporteriaClientes() {
               <QuotesView initialQuoteFilter={quoteFilterNumber} />
             )}
             {activeTab === "tracking" && (
-              <ClientTrackingView clientUsername={selectedClient.username} />
+              <ClientTrackingView
+                clientUsername={selectedClient.username}
+                initialTrackingTab={trackingInitialTab}
+              />
             )}
             {activeTab === "settings" && (
               <SettingsClient

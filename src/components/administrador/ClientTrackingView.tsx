@@ -7,9 +7,13 @@ type TrackingFormType = "air" | "ocean" | null;
 
 interface ClientTrackingViewProps {
   clientUsername: string;
+  initialTrackingTab?: "air" | "ocean";
 }
 
-function ClientTrackingView({ clientUsername }: ClientTrackingViewProps) {
+function ClientTrackingView({
+  clientUsername,
+  initialTrackingTab,
+}: ClientTrackingViewProps) {
   const [showCreateForm, setShowCreateForm] = useState<TrackingFormType>(null);
   const [trackingKey, setTrackingKey] = useState(0);
 
@@ -126,6 +130,7 @@ function ClientTrackingView({ clientUsername }: ClientTrackingViewProps) {
         key={`${clientUsername}-${trackingKey}`}
         filterUsername={clientUsername}
         onNewTracking={handleNewTracking}
+        initialTab={initialTrackingTab}
       />
     </>
   );

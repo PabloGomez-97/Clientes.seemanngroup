@@ -7,7 +7,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import mongoose from 'mongoose';
 import {
   fetchAllExpiring,
-  filterExactWindow,
+  filterMaxWindow,
 } from '../services/pricingExpiryService.js';
 import {
   buildAirExpiryAlertHTML,
@@ -85,35 +85,52 @@ async function sendBrevoEmail(
 // ─── Core send logic (reusable from endpoint) ─────────────────
 
 interface SendAlertsOptions {
-  /** alertType: '48hrs' | '24hrs'. Both are processed when this function is called for the cron. */
-  alertType?: AlertType | 'both';
-  /** Override recipient list (replaces pricing users). Use for manual test sends. */
+  /**
+   * alertType controls the email branding/subject ('48hrs' or '24hrs') and
+   * the inclusive window of days-until-expiry that gets included:
+   *   '48hrs' → rates expiring in 0..2 days (today, tomorrow, day-after).
+   *   '24hrs' → rates expiring in 0..1 days (today, tomorrow).
+   * For the daily cron we always use '48hrs' so the email naturally
+   * combines today's, tomorrow's, and day-after-tomorrow's expiries in a
+   * single consolidated message per tariff type.
+   */
+  alertType?: AlertType;
+  /** Extra recipients added on top of (or replacing) the pricing users. */
   extraEmails?: string[];
   /** If true, sends only to extraEmails and not to pricing users. */
   onlyExtraEmails?: boolean;
 }
 
 interface SendAlertsResult {
+  alertType: AlertType;
+  recipients: string[];
   sent: { type: string; alertType: AlertType; recipients: number; count: number }[];
   skipped: string[];
   errors: string[];
 }
 
 export async function runPricingAlerts(opts: SendAlertsOptions = {}): Promise<SendAlertsResult> {
-  const result: SendAlertsResult = { sent: [], skipped: [], errors: [] };
-  const alertTypes: AlertType[] =
-    opts.alertType === 'both' || !opts.alertType ? ['48hrs', '24hrs'] : [opts.alertType];
+  const alertType: AlertType = opts.alertType === '24hrs' ? '24hrs' : '48hrs';
+  const windowDays: 1 | 2 = alertType === '24hrs' ? 1 : 2;
 
-  // Fetch all sheets (up to 2 days ahead is enough for cron; a bit more for flexibility)
+  const result: SendAlertsResult = {
+    alertType,
+    recipients: [],
+    sent: [],
+    skipped: [],
+    errors: [],
+  };
+
+  // Fetch all sheets (with the broadest window we'll need).
   let all: Awaited<ReturnType<typeof fetchAllExpiring>>;
   try {
-    all = await fetchAllExpiring(2);
+    all = await fetchAllExpiring(windowDays);
   } catch (err: any) {
     result.errors.push(`Error al obtener hojas: ${err.message}`);
     return result;
   }
 
-  // Determine recipients
+  // Determine recipients.
   let recipients: { email: string; name?: string }[] = [];
 
   if (!opts.onlyExtraEmails) {
@@ -125,12 +142,14 @@ export async function runPricingAlerts(opts: SendAlertsOptions = {}): Promise<Se
       recipients = pricingUsers
         .filter((u) => u.email)
         .map((u) => ({ email: String(u.email).toLowerCase().trim(), name: u.nombre || undefined }));
+
+      console.log(`[pricing-cron] ${recipients.length} usuarios con rol Pricing activos encontrados`);
     } catch (err: any) {
       result.errors.push(`Error al obtener usuarios pricing: ${err.message}`);
     }
   }
 
-  // Add extra emails
+  // Add extra emails.
   if (opts.extraEmails && opts.extraEmails.length > 0) {
     for (const em of opts.extraEmails) {
       const clean = String(em).toLowerCase().trim();
@@ -141,62 +160,63 @@ export async function runPricingAlerts(opts: SendAlertsOptions = {}): Promise<Se
   }
 
   if (recipients.length === 0) {
-    result.skipped.push('No hay destinatarios pricing activos');
+    const msg =
+      'No hay destinatarios. Verifica que existan ejecutivos activos con roles.pricing = true.';
+    result.skipped.push(msg);
+    console.warn(`[pricing-cron] ⚠ ${msg}`);
     return result;
   }
 
-  // Send emails for each alert type and each sheet
-  for (const alertType of alertTypes) {
-    const windowDays: 1 | 2 = alertType === '24hrs' ? 1 : 2;
+  result.recipients = recipients.map((r) => r.email);
 
-    const airFiltered = filterExactWindow(all.air, windowDays);
-    const fclFiltered = filterExactWindow(all.fcl, windowDays);
-    const lclFiltered = filterExactWindow(all.lcl, windowDays);
+  // Inclusive window: 48hrs alert includes 24hrs and same-day expiries.
+  const airFiltered = filterMaxWindow(all.air, windowDays);
+  const fclFiltered = filterMaxWindow(all.fcl, windowDays);
+  const lclFiltered = filterMaxWindow(all.lcl, windowDays);
 
-    if (airFiltered.length > 0) {
-      try {
-        await sendBrevoEmail(
-          recipients,
-          buildAirExpiryAlertSubject(alertType, airFiltered.length),
-          buildAirExpiryAlertHTML(airFiltered, alertType),
-        );
-        result.sent.push({ type: 'AIR', alertType, recipients: recipients.length, count: airFiltered.length });
-      } catch (err: any) {
-        result.errors.push(`Error enviando alerta AIR ${alertType}: ${err.message}`);
-      }
-    } else {
-      result.skipped.push(`No hay tarifas AIR para ventana ${alertType}`);
+  if (airFiltered.length > 0) {
+    try {
+      await sendBrevoEmail(
+        recipients,
+        buildAirExpiryAlertSubject(alertType, airFiltered.length),
+        buildAirExpiryAlertHTML(airFiltered, alertType),
+      );
+      result.sent.push({ type: 'AIR', alertType, recipients: recipients.length, count: airFiltered.length });
+    } catch (err: any) {
+      result.errors.push(`Error enviando alerta AIR: ${err.message}`);
     }
+  } else {
+    result.skipped.push(`No hay tarifas AIR por vencer en ${windowDays} día(s)`);
+  }
 
-    if (fclFiltered.length > 0) {
-      try {
-        await sendBrevoEmail(
-          recipients,
-          buildFCLExpiryAlertSubject(alertType, fclFiltered.length),
-          buildFCLExpiryAlertHTML(fclFiltered, alertType),
-        );
-        result.sent.push({ type: 'FCL', alertType, recipients: recipients.length, count: fclFiltered.length });
-      } catch (err: any) {
-        result.errors.push(`Error enviando alerta FCL ${alertType}: ${err.message}`);
-      }
-    } else {
-      result.skipped.push(`No hay tarifas FCL para ventana ${alertType}`);
+  if (fclFiltered.length > 0) {
+    try {
+      await sendBrevoEmail(
+        recipients,
+        buildFCLExpiryAlertSubject(alertType, fclFiltered.length),
+        buildFCLExpiryAlertHTML(fclFiltered, alertType),
+      );
+      result.sent.push({ type: 'FCL', alertType, recipients: recipients.length, count: fclFiltered.length });
+    } catch (err: any) {
+      result.errors.push(`Error enviando alerta FCL: ${err.message}`);
     }
+  } else {
+    result.skipped.push(`No hay tarifas FCL por vencer en ${windowDays} día(s)`);
+  }
 
-    if (lclFiltered.length > 0) {
-      try {
-        await sendBrevoEmail(
-          recipients,
-          buildLCLExpiryAlertSubject(alertType, lclFiltered.length),
-          buildLCLExpiryAlertHTML(lclFiltered, alertType),
-        );
-        result.sent.push({ type: 'LCL', alertType, recipients: recipients.length, count: lclFiltered.length });
-      } catch (err: any) {
-        result.errors.push(`Error enviando alerta LCL ${alertType}: ${err.message}`);
-      }
-    } else {
-      result.skipped.push(`No hay tarifas LCL para ventana ${alertType}`);
+  if (lclFiltered.length > 0) {
+    try {
+      await sendBrevoEmail(
+        recipients,
+        buildLCLExpiryAlertSubject(alertType, lclFiltered.length),
+        buildLCLExpiryAlertHTML(lclFiltered, alertType),
+      );
+      result.sent.push({ type: 'LCL', alertType, recipients: recipients.length, count: lclFiltered.length });
+    } catch (err: any) {
+      result.errors.push(`Error enviando alerta LCL: ${err.message}`);
     }
+  } else {
+    result.skipped.push(`No hay tarifas LCL por vencer en ${windowDays} día(s)`);
   }
 
   return result;
@@ -227,7 +247,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     await connectDB();
-    const result = await runPricingAlerts({ alertType: 'both' });
+    // Single daily consolidated send: '48hrs' window includes today, tomorrow,
+    // and the day after — so 24-hour expiries are naturally included too.
+    const result = await runPricingAlerts({ alertType: '48hrs' });
 
     console.log('[pricing-cron] ✅ Completado:', JSON.stringify(result));
     return res.status(200).json({ success: true, ...result });

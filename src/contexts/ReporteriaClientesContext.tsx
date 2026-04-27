@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 
 type ReporteriaClientesContextValue = {
-  openTrackingTab: () => void;
+  openTrackingTab: (tab?: "air" | "ocean") => void;
   openQuotesTab: (quoteNumber?: string) => void;
   quoteFilterNumber?: string;
 };

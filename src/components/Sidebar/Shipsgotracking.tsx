@@ -40,18 +40,21 @@ export interface ShipsGoTrackingProps {
   filterUsername?: string;
   /** Custom callback for "new tracking" button (replaces default navigate) */
   onNewTracking?: (type: TabType) => void;
+  /** Which tab to open initially: "air" (default) or "ocean" */
+  initialTab?: TabType;
 }
 
 function ShipsGoTracking({
   filterUsername,
   onNewTracking,
+  initialTab = "air",
 }: ShipsGoTrackingProps = {}) {
   const { token, activeUsername } = useAuth();
   const navigate = useNavigate();
   const { registrarEvento } = useAuditLog();
   const effectiveUsername = filterUsername || activeUsername;
 
-  const [activeTab, setActiveTab] = useState<TabType>("air");
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   // Air state
   const [allAirShipments, setAllAirShipments] = useState<AirShipment[]>([]);

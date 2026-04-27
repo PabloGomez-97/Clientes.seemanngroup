@@ -100,6 +100,9 @@ function OPReporteriaClientes() {
   const [quoteFilterNumber, setQuoteFilterNumber] = useState<
     string | undefined
   >();
+  const [trackingInitialTab, setTrackingInitialTab] = useState<"air" | "ocean">(
+    "air",
+  );
 
   // ── Fetch ALL clients list (via /api/admin/users, with cache) ──
   useEffect(() => {
@@ -356,7 +359,10 @@ function OPReporteriaClientes() {
 
   // ── Client Detail View ──
   if (selectedClient) {
-    const openTrackingTab = () => setActiveTab("tracking");
+    const openTrackingTab = (tab?: "air" | "ocean") => {
+      setTrackingInitialTab(tab ?? "air");
+      setActiveTab("tracking");
+    };
     const openQuotesTab = (quoteNumber?: string) => {
       setQuoteFilterNumber(quoteNumber);
       setActiveTab("quotes");
@@ -546,7 +552,10 @@ function OPReporteriaClientes() {
               <QuotesView initialQuoteFilter={quoteFilterNumber} />
             )}
             {activeTab === "tracking" && (
-              <ClientTrackingView clientUsername={selectedClient.username} />
+              <ClientTrackingView
+                clientUsername={selectedClient.username}
+                initialTrackingTab={trackingInitialTab}
+              />
             )}
             {activeTab === "settings" && (
               <SettingsClient
