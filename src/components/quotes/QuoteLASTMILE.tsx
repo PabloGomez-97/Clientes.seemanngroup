@@ -170,6 +170,27 @@ function QuoteLASTMILE({
     setPeso(String(kg));
   };
 
+  // Helpers de presentación según el sistema de unidades activo.
+  // Los valores internos siempre están en SI (kg / cm / m³).
+  const weightUnit = useUSCustomary ? "lbs" : "kg";
+  const volumeUnit = useUSCustomary ? "ft³" : "m³";
+  const dimUnit = useUSCustomary ? "in" : "cm";
+  const fmtWeight = (kg: number) => {
+    const v = useUSCustomary ? kg / 0.453592 : kg;
+    return v.toFixed(2);
+  };
+  const fmtVolume = (m3: number) => {
+    const v = useUSCustomary ? m3 * 35.3147 : m3;
+    return v.toFixed(3);
+  };
+  const fmtDimStr = (cmStr: string) => {
+    if (!cmStr) return "0";
+    const cm = parseFloat(cmStr);
+    if (!Number.isFinite(cm)) return "0";
+    const v = useUSCustomary ? cm / 2.54 : cm;
+    return v.toFixed(2).replace(/\.?0+$/, "");
+  };
+
   // Servicios adicionales
   const [seguroActivo, setSeguroActivo] = useState(false);
 
@@ -1167,19 +1188,19 @@ function QuoteLASTMILE({
                 <div className="qa-totals-bar mt-3">
                   <div className="qa-totals-bar-item">
                     <span className="qa-totals-bar-value">
-                      {cargoTotals.volume.toFixed(3)} m³
+                      {fmtVolume(cargoTotals.volume)} {volumeUnit}
                     </span>
                     <span className="qa-totals-bar-label">Volumen total</span>
                   </div>
                   <div className="qa-totals-bar-item">
                     <span className="qa-totals-bar-value">
-                      {cargoTotals.realWeight.toFixed(2)} kg
+                      {fmtWeight(cargoTotals.realWeight)} {weightUnit}
                     </span>
                     <span className="qa-totals-bar-label">Peso real</span>
                   </div>
                   <div className="qa-totals-bar-item">
                     <span className="qa-totals-bar-value">
-                      {cargoTotals.volumetricWeight.toFixed(2)} kg
+                      {fmtWeight(cargoTotals.volumetricWeight)} {weightUnit}
                     </span>
                     <span className="qa-totals-bar-label">
                       Peso volumétrico
@@ -1187,7 +1208,7 @@ function QuoteLASTMILE({
                   </div>
                   <div className="qa-totals-bar-item">
                     <span className="qa-totals-bar-value">
-                      {cargoTotals.chargeableWeight.toFixed(2)} kg
+                      {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
                     </span>
                     <span className="qa-totals-bar-label">Peso chargeable</span>
                   </div>
@@ -1365,7 +1386,7 @@ function QuoteLASTMILE({
                         <div className="qa-totals-bar">
                           <div className="qa-totals-bar-item">
                             <span className="qa-totals-bar-value">
-                              {cargoTotals.volume.toFixed(3)} m³
+                              {fmtVolume(cargoTotals.volume)} {volumeUnit}
                             </span>
                             <span className="qa-totals-bar-label">
                               Volumen total
@@ -1373,7 +1394,7 @@ function QuoteLASTMILE({
                           </div>
                           <div className="qa-totals-bar-item">
                             <span className="qa-totals-bar-value">
-                              {cargoTotals.realWeight.toFixed(2)} kg
+                              {fmtWeight(cargoTotals.realWeight)} {weightUnit}
                             </span>
                             <span className="qa-totals-bar-label">
                               Peso real
@@ -1381,7 +1402,8 @@ function QuoteLASTMILE({
                           </div>
                           <div className="qa-totals-bar-item">
                             <span className="qa-totals-bar-value">
-                              {cargoTotals.volumetricWeight.toFixed(2)} kg
+                              {fmtWeight(cargoTotals.volumetricWeight)}{" "}
+                              {weightUnit}
                             </span>
                             <span className="qa-totals-bar-label">
                               Peso volumétrico
@@ -1389,7 +1411,8 @@ function QuoteLASTMILE({
                           </div>
                           <div className="qa-totals-bar-item">
                             <span className="qa-totals-bar-value">
-                              {cargoTotals.chargeableWeight.toFixed(2)} kg
+                              {fmtWeight(cargoTotals.chargeableWeight)}{" "}
+                              {weightUnit}
                             </span>
                             <span className="qa-totals-bar-label">
                               Peso chargeable
@@ -1624,7 +1647,7 @@ function QuoteLASTMILE({
                         <>
                           <div className="col-6 text-muted">Peso:</div>
                           <div className="col-6 text-end fw-bold">
-                            {peso} kg
+                            {fmtWeight(parseFloat(peso) || 0)} {weightUnit}
                           </div>
                         </>
                       )}
@@ -1636,9 +1659,9 @@ function QuoteLASTMILE({
                           </div>
                           <div className="col-6 text-end fw-bold">
                             {[largo, ancho, alto]
-                              .map((v) => v || "0")
+                              .map((v) => fmtDimStr(v))
                               .join(" × ")}{" "}
-                            cm
+                            {dimUnit}
                           </div>
                         </>
                       )}
