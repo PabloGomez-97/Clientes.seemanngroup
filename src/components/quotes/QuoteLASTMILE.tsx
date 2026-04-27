@@ -744,6 +744,7 @@ function QuoteLASTMILE({
             ancho={ancho || undefined}
             largo={largo || undefined}
             seguroActivo={seguroActivo}
+            useUSCustomary={useUSCustomary}
             validUntil={validUntilDisplay}
             logoSrc="/logo.png"
           />,

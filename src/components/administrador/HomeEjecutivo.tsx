@@ -1074,6 +1074,16 @@ export default function HomeEjecutivo() {
           </button>
           <button
             className="ops-quick-action"
+            onClick={() =>
+              navigate("/admin/cotizador-administrador", {
+                state: { tipoEnvio: "LASTMILE" },
+              })
+            }
+          >
+            Cotización Última Milla
+          </button>
+          <button
+            className="ops-quick-action"
             onClick={() => navigate("/admin/reporteriaclientes")}
           >
             Mis Clientes

@@ -19,6 +19,8 @@ interface PDFTemplateLastMileProps {
   largo?: string;
   /** ¿Solicitó seguro? */
   seguroActivo?: boolean;
+  /** Sistema de unidades. true = US Customary (lbs/in), false/undefined = Métrico (kg/cm). Los valores recibidos en peso/alto/ancho/largo siempre vienen en SI (kg/cm). */
+  useUSCustomary?: boolean;
   /** Número de cotización para footer */
   validUntil?: string;
   logoSrc?: string;
@@ -51,6 +53,7 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
   ancho,
   largo,
   seguroActivo = false,
+  useUSCustomary = false,
   validUntil,
   logoSrc,
 }) => {
@@ -109,14 +112,22 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
   };
   const cen: React.CSSProperties = { textAlign: "center" };
 
-  const dimensiones = [
-    peso ? `Peso: ${peso} kg` : null,
-    largo ? `Largo: ${largo} cm` : null,
-    ancho ? `Ancho: ${ancho} cm` : null,
-    alto ? `Alto: ${alto} cm` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // Conversiones SI -> US Customary (los valores entran siempre en kg/cm)
+  const KG_TO_LB = 1 / 0.453592;
+  const CM_TO_IN = 1 / 2.54;
+  const fmtNum = (v?: string, kind: "weight" | "length" = "length") => {
+    if (!v || v.toString().trim() === "") return "—";
+    const n = parseFloat(v.toString().replace(",", "."));
+    if (!Number.isFinite(n)) return v.toString().trim();
+    const out = useUSCustomary
+      ? n * (kind === "weight" ? KG_TO_LB : CM_TO_IN)
+      : n;
+    // 2 decimales máx, sin ceros colgando
+    return out.toFixed(2).replace(/\.?0+$/, "");
+  };
+  const wUnit = useUSCustomary ? "lbs" : "kg";
+  const lUnit = useUSCustomary ? "in" : "cm";
+  const hasAnyDim = Boolean(peso || largo || ancho || alto);
 
   return (
     <div id="pdf-content" style={page}>
@@ -345,9 +356,13 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ ...th, ...cen }}>Qty</th>
-              <th style={th}>Commodity</th>
+              <th style={{ ...th, ...cen, width: "8%" }}>Qty</th>
+              <th style={{ ...th, width: "18%" }}>Commodity</th>
               <th style={th}>Description</th>
+              <th style={{ ...th, ...cen, width: "10%" }}>Peso ({wUnit})</th>
+              <th style={{ ...th, ...cen, width: "10%" }}>Largo ({lUnit})</th>
+              <th style={{ ...th, ...cen, width: "10%" }}>Ancho ({lUnit})</th>
+              <th style={{ ...th, ...cen, width: "10%" }}>Alto ({lUnit})</th>
             </tr>
           </thead>
           <tbody>
@@ -355,13 +370,28 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
               <td style={{ ...td, ...cen, fontWeight: 600 }}>1</td>
               <td style={{ ...td, fontWeight: 600 }}>Última Milla</td>
               <td style={td}>{truncateForTable(cargoDescription)}</td>
+              <td style={{ ...td, ...cen }}>{fmtNum(peso, "weight")}</td>
+              <td style={{ ...td, ...cen }}>{fmtNum(largo)}</td>
+              <td style={{ ...td, ...cen }}>{fmtNum(ancho)}</td>
+              <td style={{ ...td, ...cen }}>{fmtNum(alto)}</td>
             </tr>
           </tbody>
         </table>
+        {!hasAnyDim && (
+          <div
+            style={{
+              fontSize: "6.5pt",
+              color: C.sub,
+              marginTop: "3px",
+              fontStyle: "italic",
+            }}
+          >
+            Dimensiones no especificadas.
+          </div>
+        )}
       </div>
 
-      {/* ── Detalle del cargamento (texto completo) ── */}
-      {cargoDescription && (
+      {seguroActivo && (
         <div
           style={{
             backgroundColor: C.bg,
@@ -373,26 +403,10 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
             fontSize: "7.5pt",
             color: C.sub,
             lineHeight: 1.5,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
           }}
         >
-          <strong style={{ color: C.text }}>Información del cargamento</strong>{" "}
-          — {cargoDescription}
-          {dimensiones && (
-            <>
-              <br />
-              <strong style={{ color: C.text }}>Dimensiones</strong> —{" "}
-              {dimensiones}
-            </>
-          )}
-          {seguroActivo && (
-            <>
-              <br />
-              <strong style={{ color: C.text }}>Servicios adicionales</strong> —
-              Seguro de carga solicitado
-            </>
-          )}
+          <strong style={{ color: C.text }}>Servicios adicionales</strong> —
+          Seguro de carga solicitado
         </div>
       )}
 
