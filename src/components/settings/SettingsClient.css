@@ -30,35 +30,70 @@
   color: #6b7280;
 }
 
-/* ── Tabs ── */
+/* ── Tabs (card selectors) ── */
 .sc-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid #e5e7eb;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
   margin-bottom: 1.5rem;
 }
 
 .sc-tab {
-  padding: 0.65rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 16px 18px;
   font: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #6b7280;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  color: #6b7280;
 }
 
 .sc-tab:hover {
+  border-color: var(--primary-color, #ff6200);
+  background: rgba(255, 98, 0, 0.02);
   color: var(--secondary-color, #1a1a1a);
 }
 
 .sc-tab--active {
+  border-color: var(--primary-color, #ff6200);
+  background: rgba(255, 98, 0, 0.04);
+  color: var(--secondary-color, #1a1a1a);
+  box-shadow: inset 0 0 0 0.5px var(--primary-color, #ff6200);
+}
+
+.sc-tab__icon {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  color: #d1d5db;
+  transition: color 0.15s;
+}
+
+.sc-tab:hover .sc-tab__icon,
+.sc-tab--active .sc-tab__icon {
   color: var(--primary-color, #ff6200);
-  border-bottom-color: var(--primary-color, #ff6200);
+}
+
+.sc-tab__title {
+  font-size: 0.875rem;
   font-weight: 600;
+  color: var(--secondary-color, #1a1a1a);
+  line-height: 1.3;
+}
+
+.sc-tab__desc {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+.sc-tab--active .sc-tab__desc {
+  color: #6b7280;
 }
 
 /* ── Card ── */

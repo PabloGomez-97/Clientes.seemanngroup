@@ -163,22 +163,22 @@
 /* ====== KPI grid ====== */
 .rf-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 24px;
+  background: var(--background-primary, #fff);
+  border: 0.5px solid var(--border-tertiary, #e5e7eb);
+  border-radius: var(--border-radius-lg, 12px);
+  overflow: hidden;
 }
 
 .rf-kpi {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 16px 18px;
-  transition: box-shadow 0.15s;
+  padding: 16px;
+  border-right: 0.5px solid var(--border-tertiary, #e5e7eb);
   cursor: default;
 }
 
-.rf-kpi:hover {
-  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+.rf-kpi:last-child {
+  border-right: none;
 }
 
 .rf-kpi--clickable {
@@ -186,19 +186,20 @@
 }
 
 .rf-kpi__label {
-  font-size: 0.6875rem;
+  font-size: 11px;
   font-weight: 600;
-  color: #9ca3af;
+  color: var(--text-secondary, #6b7280);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.04em;
   margin-bottom: 6px;
+  line-height: 1.3;
 }
 
 .rf-kpi__value {
-  font-size: 1.375rem;
-  font-weight: 700;
-  color: var(--secondary-color);
-  line-height: 1.2;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--secondary-color, #1a1a1a);
+  line-height: 1.1;
 }
 
 .rf-kpi__value--success { color: #047857; }
@@ -207,8 +208,8 @@
 .rf-kpi__value--accent  { color: var(--primary-color); }
 
 .rf-kpi__sub {
-  font-size: 0.75rem;
-  color: #9ca3af;
+  font-size: 11px;
+  color: var(--text-tertiary, #9ca3af);
   margin-top: 4px;
 }
 
@@ -1013,7 +1014,13 @@
 /* ====== Responsive ====== */
 @media (max-width: 1024px) {
   .rf-kpi-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rf-kpi:nth-child(2n) {
+    border-right: none;
+  }
+  .rf-kpi:nth-child(-n+2) {
+    border-bottom: 0.5px solid var(--border-tertiary, #e5e7eb);
   }
   .rf-panel__row {
     grid-template-columns: 1fr;
@@ -1055,6 +1062,13 @@
 @media (max-width: 480px) {
   .rf-kpi-grid {
     grid-template-columns: 1fr;
+  }
+  .rf-kpi {
+    border-right: none;
+    border-bottom: 0.5px solid var(--border-tertiary, #e5e7eb);
+  }
+  .rf-kpi:last-child {
+    border-bottom: none;
   }
   .rf-filter-group {
     width: 100%;

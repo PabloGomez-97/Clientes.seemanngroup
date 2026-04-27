@@ -448,20 +448,52 @@ function SettingsClient({
       </div>
 
       {allowPasswordChange ? (
-        <div className="sc-tabs">
+        <div className="sc-tabs mt-3">
           <button
             type="button"
             className={`sc-tab ${activeTab === "emails" ? "sc-tab--active" : ""}`}
             onClick={() => setActiveTab("emails")}
           >
-            Correos de seguimiento
+            <span className="sc-tab__icon">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m2 7 10 7 10-7" />
+              </svg>
+            </span>
+            <span className="sc-tab__title">Correos de seguimiento</span>
+            <span className="sc-tab__desc">
+              Gestiona tus correos de notificación
+            </span>
           </button>
           <button
             type="button"
             className={`sc-tab ${activeTab === "password" ? "sc-tab--active" : ""}`}
             onClick={() => setActiveTab("password")}
           >
-            Cambiar contraseña
+            <span className="sc-tab__icon">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <rect x="5" y="11" width="14" height="10" rx="2" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+            </span>
+            <span className="sc-tab__title">Cambiar contraseña</span>
+            <span className="sc-tab__desc">
+              Actualiza tu contraseña de acceso
+            </span>
           </button>
         </div>
       ) : null}

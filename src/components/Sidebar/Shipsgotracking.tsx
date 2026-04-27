@@ -480,21 +480,21 @@ function ShipsGoTracking({
             {/* Stats */}
             <div className="sg-stats">
               <div className="sg-stat-item">
-                <div className="sg-stat-value">{airStats.total}</div>
                 <div className="sg-stat-label">Total</div>
+                <div className="sg-stat-value">{airStats.total}</div>
               </div>
               <div className="sg-stat-item">
-                <div className="sg-stat-value">{airStats.inTransit}</div>
                 <div className="sg-stat-label">En tránsito</div>
+                <div className="sg-stat-value">{airStats.inTransit}</div>
               </div>
               <div className="sg-stat-item">
-                <div className="sg-stat-value">{airStats.delivered}</div>
                 <div className="sg-stat-label">Entregados</div>
+                <div className="sg-stat-value">{airStats.delivered}</div>
               </div>
               {airStats.delayed > 0 && (
                 <div className="sg-stat-item">
-                  <div className="sg-stat-value">{airStats.delayed}</div>
                   <div className="sg-stat-label">Con retraso</div>
+                  <div className="sg-stat-value">{airStats.delayed}</div>
                 </div>
               )}
             </div>
@@ -684,21 +684,21 @@ function ShipsGoTracking({
             {/* Stats */}
             <div className="sg-stats">
               <div className="sg-stat-item">
-                <div className="sg-stat-value">{oceanStats.total}</div>
                 <div className="sg-stat-label">Total</div>
+                <div className="sg-stat-value">{oceanStats.total}</div>
               </div>
               <div className="sg-stat-item">
-                <div className="sg-stat-value">{oceanStats.sailing}</div>
                 <div className="sg-stat-label">Navegando</div>
+                <div className="sg-stat-value">{oceanStats.sailing}</div>
               </div>
               <div className="sg-stat-item">
-                <div className="sg-stat-value">{oceanStats.arrived}</div>
                 <div className="sg-stat-label">Llegados</div>
+                <div className="sg-stat-value">{oceanStats.arrived}</div>
               </div>
               {oceanStats.delayed > 0 && (
                 <div className="sg-stat-item">
-                  <div className="sg-stat-value">{oceanStats.delayed}</div>
                   <div className="sg-stat-label">Con retraso</div>
+                  <div className="sg-stat-value">{oceanStats.delayed}</div>
                 </div>
               )}
             </div>
