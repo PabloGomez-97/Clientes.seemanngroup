@@ -515,7 +515,7 @@ function QuoteLASTMILE({
       origin: { name: origenSel.label },
       carrierBroker: { name: "X" },
       destination: { name: destinoSel.label },
-      modeOfTransportation: { id: 19 },
+      modeOfTransportation: { id: 6 },
       rateCategoryId: 2,
       pickupFromAddress: pickupAddress,
       deliveryToAddress: deliveryAddress,
