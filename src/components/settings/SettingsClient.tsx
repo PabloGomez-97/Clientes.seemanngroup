@@ -7,6 +7,7 @@ import {
   normalizeEmail,
 } from "../../services/trackingEmailPreferences";
 import "./SettingsClient.css";
+import { imgUrl } from "../../config/images";
 
 type SettingsTab = "emails" | "password";
 
@@ -363,49 +364,114 @@ function PasswordSettings() {
 /* ── Main Component ── */
 function SettingsClient({
   reference,
-  username,
-  email,
   allowPasswordChange = true,
 }: SettingsClientProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("emails");
   const hasReference = Boolean(reference.trim());
 
   return (
-    <section className="sc-page">
-      <div className="sc-shell">
-        <div className="sc-header">
-          <h1>Configuración</h1>
-          <p>
-            {username} · {email}
-          </p>
-        </div>
-
-        {allowPasswordChange ? (
-          <div className="sc-tabs">
-            <button
-              type="button"
-              className={`sc-tab ${activeTab === "emails" ? "sc-tab--active" : ""}`}
-              onClick={() => setActiveTab("emails")}
+    <section>
+      {/* Image banner */}
+      <div
+        style={{
+          position: "relative",
+          height: 220,
+          overflow: "hidden",
+          background: "#1a1a1a",
+        }}
+      >
+        <img
+          src={imgUrl("/imo.png")}
+          alt="Operaciones Marítimas"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            opacity: 0.75,
+          }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 32px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                display: "inline-block",
+                background: "var(--primary-color)",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                padding: "3px 10px",
+                borderRadius: 3,
+                marginBottom: 10,
+              }}
             >
-              Correos de seguimiento
-            </button>
-            <button
-              type="button"
-              className={`sc-tab ${activeTab === "password" ? "sc-tab--active" : ""}`}
-              onClick={() => setActiveTab("password")}
+              Configuraciones
+            </div>
+            <h2
+              style={{
+                color: "#fff",
+                fontSize: 24,
+                fontWeight: 700,
+                margin: 0,
+                lineHeight: 1.3,
+              }}
             >
-              Cambiar contraseña
-            </button>
+              Mis Configuraciones
+            </h2>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.78)",
+                fontSize: 14,
+                margin: "8px 0 0",
+                maxWidth: 460,
+              }}
+            >
+              Administra tus preferencias de seguimiento y seguridad de tu
+              cuenta.
+            </p>
           </div>
-        ) : null}
-
-        {activeTab === "emails" && (
-          <EmailSettings reference={reference} hasReference={hasReference} />
-        )}
-        {allowPasswordChange && activeTab === "password" ? (
-          <PasswordSettings />
-        ) : null}
+        </div>
       </div>
+
+      {allowPasswordChange ? (
+        <div className="sc-tabs">
+          <button
+            type="button"
+            className={`sc-tab ${activeTab === "emails" ? "sc-tab--active" : ""}`}
+            onClick={() => setActiveTab("emails")}
+          >
+            Correos de seguimiento
+          </button>
+          <button
+            type="button"
+            className={`sc-tab ${activeTab === "password" ? "sc-tab--active" : ""}`}
+            onClick={() => setActiveTab("password")}
+          >
+            Cambiar contraseña
+          </button>
+        </div>
+      ) : null}
+
+      {activeTab === "emails" && (
+        <EmailSettings reference={reference} hasReference={hasReference} />
+      )}
+      {allowPasswordChange && activeTab === "password" ? (
+        <PasswordSettings />
+      ) : null}
     </section>
   );
 }
