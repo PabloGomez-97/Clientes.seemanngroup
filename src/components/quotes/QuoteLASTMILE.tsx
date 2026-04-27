@@ -748,37 +748,6 @@ function QuoteLASTMILE({
 
       root.unmount();
       document.body.removeChild(tempDiv);
-
-      // Email al ejecutivo (si NO es modo ejecutivo)
-      if (!isEjecutivoMode) {
-        fetch("/api/send-operation-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ejecutivoEmail: ejecutivo?.email,
-            ejecutivoNombre: ejecutivo?.nombre,
-            clienteNombre: user?.nombreuser,
-            tipoServicio: "Última Milla",
-            origen: origenSel.label,
-            destino: destinoSel.label,
-            pickupFromAddress: pickupAddress,
-            deliveryToAddress: deliveryAddress,
-            cargoDescription,
-            peso: peso || undefined,
-            alto: alto || undefined,
-            ancho: ancho || undefined,
-            largo: largo || undefined,
-            seguroActivo,
-            tipoAccion,
-            quoteId: (apiResponse || response)?.quote?.id,
-            quoteNumber: quoteNumber || undefined,
-          }),
-          keepalive: true,
-        }).catch((e) => console.error("Error enviando email:", e));
-      }
     } catch (err) {
       console.error("[QuoteLASTMILE] Error generando PDF:", err);
     }
@@ -902,6 +871,19 @@ function QuoteLASTMILE({
                   className="qa-btn qa-btn-sm qa-btn-outline"
                   onClick={(event) => {
                     event.stopPropagation();
+                    // Reset route and all downstream state so auto-advance doesn't retrigger
+                    setOrigenSel(null);
+                    setDestinoSel(null);
+                    setPickupAddress("");
+                    setDeliveryAddress("");
+                    setCargoDescription("");
+                    setPeso("");
+                    setAlto("");
+                    setAncho("");
+                    setLargo("");
+                    setSeguroActivo(false);
+                    setStep2Completed(false);
+                    setStep3Completed(false);
                     setOpenSection(1);
                   }}
                 >
@@ -1162,9 +1144,9 @@ function QuoteLASTMILE({
                   <div className="qa-accordion-content">
                     <div className="row g-3">
                       {/* Descripción libre */}
-                      <div className="col-12">
+                      <div className="col-md-12 mb-3">
                         <label className="qa-label">
-                          Descripción del cargamento{" "}
+                          Descripción{" "}
                           <span
                             className="qa-text-muted"
                             style={{ fontWeight: 400 }}
@@ -1174,7 +1156,7 @@ function QuoteLASTMILE({
                         </label>
                         <textarea
                           className="qa-input"
-                          rows={4}
+                          rows={2}
                           maxLength={MAX_CARGO_DESC}
                           placeholder="Describe tu cargamento: paletas, cajas, mercadería suelta, tipo de producto, etc."
                           value={cargoDescription}
@@ -1211,7 +1193,6 @@ function QuoteLASTMILE({
                             <input
                               type="number"
                               className="qa-input"
-                              placeholder="0"
                               value={peso}
                               onChange={(e) => setPeso(e.target.value)}
                               min="0"
@@ -1223,7 +1204,6 @@ function QuoteLASTMILE({
                             <input
                               type="number"
                               className="qa-input"
-                              placeholder="0"
                               value={largo}
                               onChange={(e) => setLargo(e.target.value)}
                               min="0"
@@ -1235,7 +1215,6 @@ function QuoteLASTMILE({
                             <input
                               type="number"
                               className="qa-input"
-                              placeholder="0"
                               value={ancho}
                               onChange={(e) => setAncho(e.target.value)}
                               min="0"
@@ -1247,7 +1226,6 @@ function QuoteLASTMILE({
                             <input
                               type="number"
                               className="qa-input"
-                              placeholder="0"
                               value={alto}
                               onChange={(e) => setAlto(e.target.value)}
                               min="0"

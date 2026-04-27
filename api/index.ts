@@ -10,7 +10,7 @@ import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuote
 import { buildAirQuoteEmailHTML, getAirQuoteEmailSubject, type AirQuoteEmailData } from './emails/airQuoteEmailTemplate.js';
 import { buildFclQuoteEmailHTML, getFclQuoteEmailSubject, type FclQuoteEmailData } from './emails/fclQuoteEmailTemplate.js';
 import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData } from './emails/lclQuoteEmailTemplate.js';
-import { buildLastMileQuoteEmailHTML, getLastMileQuoteEmailSubject, type LastMileQuoteEmailData } from './emails/lastmileQuoteEmailTemplate.js';
+
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from './emails/specialQuoteEmailTemplate.js';
 import chatHandler from './chat.js';
 import { fetchAllExpiring, filterMaxWindow } from './services/pricingExpiryService.js';
@@ -4604,13 +4604,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // EXW específico
           pickupFromAddress,
           deliveryToAddress,
-          // Última Milla específico
-          cargoDescription,
-          peso,
-          alto,
-          ancho,
-          largo,
-          seguroActivo,
           // Agente y número de cotización
           agente,
           quoteNumber,
@@ -4662,25 +4655,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           subject = getLclQuoteEmailSubject(emailData);
           htmlContent = buildLclQuoteEmailHTML(emailData);
         } else if (tipoServicio === 'Última Milla') {
-          const emailData: LastMileQuoteEmailData = {
-            ejecutivoNombre,
-            clienteUsername,
-            clienteNombre: currentUser.nombreuser,
-            origen: origen || '',
-            destino: destino || '',
-            pickupFromAddress: pickupFromAddress || '',
-            deliveryToAddress: deliveryToAddress || '',
-            cargoDescription: cargoDescription || '',
-            peso: peso || undefined,
-            alto: alto || undefined,
-            ancho: ancho || undefined,
-            largo: largo || undefined,
-            seguroActivo: !!seguroActivo,
-            tipoAccion: tipoAccionResolved,
-            quoteNumber: quoteNumber || undefined,
-          };
-          subject = getLastMileQuoteEmailSubject(emailData);
-          htmlContent = buildLastMileQuoteEmailHTML(emailData);
+          // LASTMILE notifications are handled by /api/send-no-rate-quote-email
+          return res.status(200).json({ success: true });
         } else {
           // Aéreo
           const emailData: AirQuoteEmailData = {

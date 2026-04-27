@@ -20,7 +20,7 @@ import { buildNoRateQuoteEmailHTML, getNoRateQuoteEmailSubject, type NoRateQuote
 import { buildAirQuoteEmailHTML, getAirQuoteEmailSubject, type AirQuoteEmailData } from '../api/emails/airQuoteEmailTemplate.ts';
 import { buildFclQuoteEmailHTML, getFclQuoteEmailSubject, type FclQuoteEmailData } from '../api/emails/fclQuoteEmailTemplate.ts';
 import { buildLclQuoteEmailHTML, getLclQuoteEmailSubject, type LclQuoteEmailData } from '../api/emails/lclQuoteEmailTemplate.ts';
-import { buildLastMileQuoteEmailHTML, getLastMileQuoteEmailSubject, type LastMileQuoteEmailData } from '../api/emails/lastmileQuoteEmailTemplate.ts';
+
 import { buildSpecialQuoteEmailHTML, getSpecialQuoteEmailSubject, type SpecialQuoteEmailData } from '../api/emails/specialQuoteEmailTemplate.ts';
 import { buildR2Key, getPublicUrl, uploadPDF, deletePDF, deleteAllUserPDFs, downloadPDFBuffer } from '../api/services/r2Storage.ts';
 import { buildDocR2Key, uploadDocument, downloadDocumentBuffer, deleteDocument } from '../api/services/r2DocumentStorage.ts';
@@ -4372,13 +4372,6 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       // EXW específico
       pickupFromAddress,
       deliveryToAddress,
-      // Última Milla específico
-      cargoDescription,
-      peso,
-      alto,
-      ancho,
-      largo,
-      seguroActivo,
       // Agente y número de cotización
       agente,
       quoteNumber,
@@ -4430,25 +4423,8 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       subject = getLclQuoteEmailSubject(emailData);
       htmlContent = buildLclQuoteEmailHTML(emailData);
     } else if (tipoServicio === 'Última Milla') {
-      const emailData: LastMileQuoteEmailData = {
-        ejecutivoNombre,
-        clienteUsername,
-        clienteNombre: currentUser.nombreuser,
-        origen: origen || '',
-        destino: destino || '',
-        pickupFromAddress: pickupFromAddress || '',
-        deliveryToAddress: deliveryToAddress || '',
-        cargoDescription: cargoDescription || '',
-        peso: peso || undefined,
-        alto: alto || undefined,
-        ancho: ancho || undefined,
-        largo: largo || undefined,
-        seguroActivo: !!seguroActivo,
-        tipoAccion: tipoAccionResolved,
-        quoteNumber: quoteNumber || undefined,
-      };
-      subject = getLastMileQuoteEmailSubject(emailData);
-      htmlContent = buildLastMileQuoteEmailHTML(emailData);
+      // LASTMILE notifications are handled by /api/send-no-rate-quote-email
+      return res.status(200).json({ success: true });
     } else {
       // Aéreo
       const emailData: AirQuoteEmailData = {
