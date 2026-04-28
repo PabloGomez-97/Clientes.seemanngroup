@@ -119,6 +119,12 @@
   cursor: pointer;
 }
 
+.qa-routes-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
 /* Inputs & Form Elements */
 .qa-form-group {
   margin-bottom: 1rem;

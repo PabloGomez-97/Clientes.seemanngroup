@@ -73,6 +73,7 @@ import {
 const FCA_MARKUP = 1.2;
 const DEFAULT_OVERALL_AIR_DESCRIPTION = "Cargamento Aéreo";
 const DEFAULT_OVERALL_AIR_PACKAGE_TYPE = "97";
+const INITIAL_VISIBLE_ROUTES = 5;
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
@@ -279,6 +280,7 @@ function QuoteAPITester({
   const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaAerea | null>(
     null,
   );
+  const [showAllRoutes, setShowAllRoutes] = useState(false);
 
   // Delivery computed after NR states below
   const [opcionesOrigin, setOpcionesOrigin] = useState<SelectOption[]>([]);
@@ -1585,6 +1587,13 @@ function QuoteAPITester({
     })
     .sort((a, b) => a.priceForComparison - b.priceForComparison);
 
+  const rutasVisibles = showAllRoutes
+    ? rutasFiltradas
+    : rutasFiltradas.slice(0, INITIAL_VISIBLE_ROUTES);
+  const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
+  const activeCarriersKey = Array.from(carriersActivos).sort().join("|");
+  const activeCurrenciesKey = Array.from(monedasActivas).sort().join("|");
+
   // Scroll a rutas cuando aparecen
   useEffect(() => {
     if (rutasFiltradas.length > 0 && openSection === 1) {
@@ -1597,6 +1606,15 @@ function QuoteAPITester({
       return () => clearTimeout(timeout);
     }
   }, [rutasFiltradas.length, openSection]);
+
+  useEffect(() => {
+    setShowAllRoutes(false);
+  }, [
+    originSeleccionado?.value,
+    destinationSeleccionado?.value,
+    activeCarriersKey,
+    activeCurrenciesKey,
+  ]);
   // ============================================================================
 
   const handleOriginRecurrenteChange = (option: SelectOption | null) => {
@@ -4306,7 +4324,7 @@ function QuoteAPITester({
                                 </tr>
                               </thead>
                               <tbody>
-                                {rutasFiltradas.map((ruta, index) => {
+                                {rutasVisibles.map((ruta) => {
                                   const precioKg45 = extractPrice(ruta.kg45);
                                   const precioKg100 = extractPrice(ruta.kg100);
                                   const precioKg300 = extractPrice(ruta.kg300);
@@ -4446,6 +4464,21 @@ function QuoteAPITester({
                                 })}
                               </tbody>
                             </table>
+                            {hasHiddenRoutes && (
+                              <div className="qa-routes-actions">
+                                <button
+                                  type="button"
+                                  className="qa-btn qa-btn-outline"
+                                  onClick={() =>
+                                    setShowAllRoutes(!showAllRoutes)
+                                  }
+                                >
+                                  {showAllRoutes
+                                    ? "Mostrar menos rutas"
+                                    : "Mostrar más rutas"}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
