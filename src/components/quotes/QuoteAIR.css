@@ -125,6 +125,214 @@
   margin-top: 1rem;
 }
 
+/* ============================================================
+   Routes Table — Minimalist refresh (Linear/Stripe vibe)
+   ============================================================ */
+.qa-routes-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 0.5px solid #ececec;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.qa-routes-table {
+  width: 100%;
+  min-width: 880px;
+  border-collapse: collapse;
+  font-feature-settings: "tnum" 1, "lnum" 1; /* tabular numbers para alinear precios */
+}
+
+.qa-routes-table thead th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  text-align: center;
+  padding: 12px 10px;
+  border-bottom: 0.5px solid #ececec;
+  background: #fafafa;
+  white-space: nowrap;
+}
+
+.qa-routes-table thead th.qa-rt-th-carrier {
+  text-align: left;
+  padding-left: 16px;
+}
+
+.qa-routes-table thead th.qa-rt-th-select {
+  width: 40px;
+  padding: 12px 4px;
+}
+
+.qa-routes-table thead th.qa-rt-th-price .qa-rt-th-unit {
+  font-size: 9px;
+  margin-left: 2px;
+  color: #c1c4cb;
+  font-weight: 500;
+}
+
+/* Rows */
+.qa-routes-table tbody tr.qa-rt-row {
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.qa-routes-table tbody tr.qa-rt-row:hover {
+  background-color: #fafafa;
+}
+
+.qa-routes-table tbody td {
+  padding: 14px 10px;
+  border-bottom: 0.5px solid #f1f1f3;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.qa-routes-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.qa-routes-table tbody tr.is-selected {
+  background-color: #fffaf6;
+}
+
+.qa-routes-table tbody tr.is-selected:hover {
+  background-color: #fff5ec;
+}
+
+.qa-routes-table tbody tr.is-selected td:first-child {
+  box-shadow: inset 2px 0 0 var(--qa-primary);
+}
+
+/* Select cell */
+.qa-rt-td-select {
+  font-size: 16px;
+  color: #c1c4cb;
+  width: 40px;
+  padding: 14px 4px !important;
+}
+
+.qa-routes-table tbody tr.is-selected .qa-rt-td-select {
+  color: var(--qa-primary);
+}
+
+/* Carrier cell */
+.qa-rt-td-carrier {
+  text-align: left !important;
+  padding-left: 16px !important;
+  min-width: 200px;
+}
+
+.qa-rt-carrier {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.qa-rt-carrier-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f5f5f7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.qa-rt-carrier-logo img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.qa-rt-carrier-logo i {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.qa-rt-carrier-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.qa-rt-carrier-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  letter-spacing: -0.005em;
+}
+
+/* Price cells */
+.qa-rt-td-price {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.qa-rt-price-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  letter-spacing: -0.01em;
+}
+
+.qa-rt-price-cur {
+  font-size: 10px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin-left: 4px;
+  letter-spacing: 0.02em;
+}
+
+.qa-rt-price-empty {
+  color: #d1d5db;
+  font-size: 14px;
+}
+
+/* Meta cells */
+.qa-rt-td-meta {
+  font-size: 13px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.qa-rt-tbc {
+  text-decoration: underline;
+  color: var(--qa-primary);
+  cursor: help;
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.qa-rt-td-agent {
+  color: #ff6200 !important;
+  font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .qa-routes-table {
+    min-width: 760px;
+  }
+
+  .qa-routes-table tbody td {
+    padding: 12px 8px;
+  }
+
+  .qa-rt-carrier-name {
+    font-size: 13px;
+  }
+
+  .qa-rt-price-amount {
+    font-size: 13px;
+  }
+}
+
 /* Inputs & Form Elements */
 .qa-form-group {
   margin-bottom: 1rem;

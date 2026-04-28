@@ -4301,185 +4301,202 @@ function QuoteAPITester({
                             <small>{t("QuoteAIR.intenta")}</small>
                           </div>
                         ) : (
-                          <div className="qa-table-container">
-                            <table className="qa-table">
-                              <thead>
-                                <tr>
-                                  <th style={{ width: "50px" }}></th>
-                                  <th>Carrier</th>
-                                  <th className="text-center">1-99kg</th>
-                                  <th className="text-center">100-299kg</th>
-                                  <th className="text-center">300-499kg</th>
-                                  <th className="text-center">500-999kg</th>
-                                  <th className="text-center">+1000kg</th>
-                                  <th className="text-center">
-                                    {t("QuoteAIR.tiempoenruta")}
-                                  </th>
-                                  <th className="text-center">
-                                    {t("QuoteAIR.valido")}
-                                  </th>
-                                  {isEjecutivoMode && (
-                                    <th className="text-center">Agente</th>
-                                  )}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {rutasVisibles.map((ruta) => {
-                                  const precioKg45 = extractPrice(ruta.kg45);
-                                  const precioKg100 = extractPrice(ruta.kg100);
-                                  const precioKg300 = extractPrice(ruta.kg300);
-                                  const precioKg500 = extractPrice(ruta.kg500);
-                                  const precioKg1000 = extractPrice(
-                                    ruta.kg1000,
-                                  );
-                                  const isSelected =
-                                    rutaSeleccionada?.id === ruta.id;
-
-                                  const validityState = getValidityClass(
-                                    ruta.validUntil,
-                                  );
-
-                                  return (
-                                    <tr
-                                      key={ruta.id}
-                                      onClick={() => {
-                                        if (ruta.priceForComparison === 0) {
-                                          setShowPriceZeroModal(true);
-                                          return;
-                                        }
-                                        setRutaSeleccionada(ruta);
-                                      }}
-                                      className={isSelected ? "selected" : ""}
-                                    >
-                                      <td className="text-center">
-                                        {isSelected ? (
-                                          <i className="bi bi-check-circle-fill text-primary"></i>
-                                        ) : (
-                                          <i className="bi bi-circle text-muted"></i>
-                                        )}
-                                      </td>
-                                      <td>
-                                        <div className="d-flex align-items-center gap-2">
-                                          {ruta.carrier &&
-                                          ruta.carrier !== "Por Confirmar" ? (
-                                            <img
-                                              src={imgUrl(
-                                                `/logoscarrierair/${ruta.carrier.toLowerCase()}.png`,
-                                              )}
-                                              alt={ruta.carrier}
-                                              style={{
-                                                width: "24px",
-                                                height: "24px",
-                                                objectFit: "contain",
-                                              }}
-                                              onError={(e) => {
-                                                e.currentTarget.style.display =
-                                                  "none";
-                                              }}
-                                            />
-                                          ) : (
-                                            <i className="bi bi-airplane"></i>
-                                          )}
-                                          <span className="fw-medium">
-                                            {ruta.carrier ||
-                                              t("QuoteAIR.porconfirmar")}
-                                          </span>
-                                        </div>
-                                      </td>
+                          (() => {
+                            return (
+                              <div className="qa-routes-table-wrap">
+                                <table className="qa-routes-table">
+                                  <thead>
+                                    <tr>
+                                      <th className="qa-rt-th-select"></th>
+                                      <th className="qa-rt-th-carrier">
+                                        Carrier
+                                      </th>
                                       {[
-                                        precioKg45,
-                                        precioKg100,
-                                        precioKg300,
-                                        precioKg500,
-                                        precioKg1000,
-                                      ].map((price, idx) => (
-                                        <td key={idx} className="text-center">
-                                          {price > 0 ? (
-                                            <div>
-                                              <div className="fw-bold fs-7">
-                                                {ruta.currency}{" "}
-                                                {(price * 1.15).toFixed(2)}
-                                              </div>
-                                            </div>
-                                          ) : (
-                                            <span className="text-muted">
-                                              —
-                                            </span>
-                                          )}
-                                        </td>
-                                      ))}
-                                      <td className="text-center text-muted small">
-                                        {ruta.transitTime ? (
-                                          ruta.transitTime
-                                        ) : (
-                                          <OverlayTrigger
-                                            placement="top"
-                                            overlay={
-                                              <Tooltip
-                                                id={`tt-transit-${ruta.id}`}
-                                              >
-                                                To Be Confirmed
-                                              </Tooltip>
-                                            }
-                                          >
-                                            <span
-                                              style={{
-                                                textDecoration: "underline",
-                                                color: "var(--qa-primary)",
-                                                cursor: "help",
-                                              }}
-                                            >
-                                              TBC
-                                            </span>
-                                          </OverlayTrigger>
-                                        )}
-                                      </td>
-                                      <td className="text-center text-muted small">
-                                        {ruta.validUntil ? (
-                                          <span
-                                            className={`qa-validity ${
-                                              validityState === "valid"
-                                                ? "valid"
-                                                : validityState === "expired"
-                                                  ? "expired"
-                                                  : ""
-                                            }`}
-                                          >
-                                            {ruta.validUntil}
-                                          </span>
-                                        ) : (
-                                          "—"
-                                        )}
-                                      </td>
-                                      {isEjecutivoMode && (
-                                        <td
-                                          className="text-center small fw-semibold"
-                                          style={{ color: "#ff6200" }}
+                                        "1–99",
+                                        "100–299",
+                                        "300–499",
+                                        "500–999",
+                                        "+1000",
+                                      ].map((label, idx) => (
+                                        <th
+                                          key={idx}
+                                          className="qa-rt-th-price"
                                         >
-                                          {ruta.company || "—"}
-                                        </td>
+                                          {label}
+                                          <span className="qa-rt-th-unit">
+                                            kg
+                                          </span>
+                                        </th>
+                                      ))}
+                                      <th className="qa-rt-th-meta">
+                                        {t("QuoteAIR.tiempoenruta")}
+                                      </th>
+                                      <th className="qa-rt-th-meta">
+                                        {t("QuoteAIR.valido")}
+                                      </th>
+                                      {isEjecutivoMode && (
+                                        <th className="qa-rt-th-meta">
+                                          Agente
+                                        </th>
                                       )}
                                     </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                            {hasHiddenRoutes && (
-                              <div className="qa-routes-actions">
-                                <button
-                                  type="button"
-                                  className="qa-btn qa-btn-outline"
-                                  onClick={() =>
-                                    setShowAllRoutes(!showAllRoutes)
-                                  }
-                                >
-                                  {showAllRoutes
-                                    ? "Mostrar menos rutas"
-                                    : "Mostrar más rutas"}
-                                </button>
+                                  </thead>
+                                  <tbody>
+                                    {rutasVisibles.map((ruta) => {
+                                      const prices = [
+                                        extractPrice(ruta.kg45),
+                                        extractPrice(ruta.kg100),
+                                        extractPrice(ruta.kg300),
+                                        extractPrice(ruta.kg500),
+                                        extractPrice(ruta.kg1000),
+                                      ];
+                                      const isSelected =
+                                        rutaSeleccionada?.id === ruta.id;
+
+                                      const validityState = getValidityClass(
+                                        ruta.validUntil,
+                                      );
+
+                                      return (
+                                        <tr
+                                          key={ruta.id}
+                                          onClick={() => {
+                                            if (ruta.priceForComparison === 0) {
+                                              setShowPriceZeroModal(true);
+                                              return;
+                                            }
+                                            setRutaSeleccionada(ruta);
+                                          }}
+                                          className={`qa-rt-row${
+                                            isSelected ? " is-selected" : ""
+                                          }`}
+                                        >
+                                          <td className="qa-rt-td-select">
+                                            {isSelected ? (
+                                              <i className="bi bi-check-circle-fill"></i>
+                                            ) : (
+                                              <i className="bi bi-circle"></i>
+                                            )}
+                                          </td>
+                                          <td className="qa-rt-td-carrier">
+                                            <div className="qa-rt-carrier">
+                                              <div className="qa-rt-carrier-logo">
+                                                {ruta.carrier &&
+                                                ruta.carrier !==
+                                                  "Por Confirmar" ? (
+                                                  <img
+                                                    src={imgUrl(
+                                                      `/logoscarrierair/${ruta.carrier.toLowerCase()}.png`,
+                                                    )}
+                                                    alt={ruta.carrier}
+                                                    onError={(e) => {
+                                                      e.currentTarget.style.display =
+                                                        "none";
+                                                    }}
+                                                  />
+                                                ) : (
+                                                  <i className="bi bi-airplane"></i>
+                                                )}
+                                              </div>
+                                              <div className="qa-rt-carrier-info">
+                                                <span className="qa-rt-carrier-name">
+                                                  {ruta.carrier ||
+                                                    t("QuoteAIR.porconfirmar")}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </td>
+                                          {prices.map((price, idx) => (
+                                            <td
+                                              key={idx}
+                                              className="qa-rt-td-price"
+                                            >
+                                              {price > 0 ? (
+                                                <>
+                                                  <span className="qa-rt-price-amount">
+                                                    {(price * 1.15).toFixed(2)}
+                                                  </span>
+                                                  <span className="qa-rt-price-cur">
+                                                    {ruta.currency}
+                                                  </span>
+                                                </>
+                                              ) : (
+                                                <span className="qa-rt-price-empty">
+                                                  —
+                                                </span>
+                                              )}
+                                            </td>
+                                          ))}
+                                          <td className="qa-rt-td-meta">
+                                            {ruta.transitTime ? (
+                                              ruta.transitTime
+                                            ) : (
+                                              <OverlayTrigger
+                                                placement="top"
+                                                overlay={
+                                                  <Tooltip
+                                                    id={`tt-transit-${ruta.id}`}
+                                                  >
+                                                    To Be Confirmed
+                                                  </Tooltip>
+                                                }
+                                              >
+                                                <span className="qa-rt-tbc">
+                                                  TBC
+                                                </span>
+                                              </OverlayTrigger>
+                                            )}
+                                          </td>
+                                          <td className="qa-rt-td-meta">
+                                            {ruta.validUntil ? (
+                                              <span
+                                                className={`qa-validity ${
+                                                  validityState === "valid"
+                                                    ? "valid"
+                                                    : validityState ===
+                                                        "expired"
+                                                      ? "expired"
+                                                      : ""
+                                                }`}
+                                              >
+                                                {ruta.validUntil}
+                                              </span>
+                                            ) : (
+                                              "—"
+                                            )}
+                                          </td>
+                                          {isEjecutivoMode && (
+                                            <td className="qa-rt-td-meta qa-rt-td-agent">
+                                              {ruta.company || "—"}
+                                            </td>
+                                          )}
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                                <div className="qa-rt-hint">
+                                  <i className="bi bi-info-circle"></i>
+                                  Haz click en la ruta que deseas cotizar
+                                </div>
+                                {hasHiddenRoutes && (
+                                  <div className="qa-routes-actions mb-3">
+                                    <button
+                                      type="button"
+                                      className="qa-btn qa-btn-outline"
+                                      onClick={() =>
+                                        setShowAllRoutes(!showAllRoutes)
+                                      }
+                                    >
+                                      {showAllRoutes
+                                        ? "Mostrar menos rutas"
+                                        : "Mostrar más rutas"}
+                                    </button>
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
+                            );
+                          })()
                         )}
                       </div>
                     )}

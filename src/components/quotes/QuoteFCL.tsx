@@ -38,6 +38,7 @@ import {
   type QuoteFCLProps,
   type ClienteAsignado,
 } from "./Handlers/FCL/HandlerQuoteFCL";
+import "./QuoteAIR.css";
 import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
 import { linbisFetch } from "../../services/linbisFetch";
@@ -2540,334 +2541,194 @@ function QuoteFCL({
                             )}
                           </div>
 
-                          {rutasFiltradas.length > 0 && (
-                            <div className="row g-3">
-                              {rutasFiltradas.map((ruta, index) => (
-                                <div
-                                  key={ruta.id}
-                                  className="col-md-6 col-lg-4"
-                                >
-                                  <div
-                                    className={`qf-card h-100 position-relative`}
-                                    style={{
-                                      transition: "all 0.3s ease",
-                                      transform:
-                                        rutaSeleccionada?.id === ruta.id
-                                          ? "translateY(-4px)"
-                                          : "none",
-                                      borderColor:
-                                        rutaSeleccionada?.id === ruta.id
-                                          ? "var(--qf-primary)"
-                                          : "var(--qf-border-color)",
-                                      borderWidth:
-                                        rutaSeleccionada?.id === ruta.id
-                                          ? "2px"
-                                          : "1px",
-                                      boxShadow:
-                                        rutaSeleccionada?.id === ruta.id
-                                          ? "0 4px 12px rgba(255, 98, 0, 0.15)"
-                                          : "none",
-                                    }}
-                                  >
-                                    <div>
-                                      {/* Header del carrier con logo */}
-                                      <div className="d-flex justify-content-between align-items-start mb-3">
-                                        <div className="d-flex align-items-center gap-2">
-                                          {/* Logo del carrier */}
-                                          <div
-                                            className="rounded bg-white border p-2 d-flex align-items-center justify-content-center"
-                                            style={{
-                                              width: "50px",
-                                              height: "50px",
-                                              minWidth: "50px",
-                                              overflow: "hidden",
-                                            }}
-                                          >
-                                            <img
-                                              src={imgUrl(
-                                                `/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`,
-                                              )}
-                                              alt={ruta.carrier}
-                                              style={{
-                                                maxWidth: "150%",
-                                                maxHeight: "150%",
-                                                objectFit: "contain",
-                                              }}
-                                              onError={(e) => {
-                                                const target = e.currentTarget;
-                                                target.style.display = "none";
-                                                const parent =
-                                                  target.parentElement;
-                                                if (parent) {
-                                                  parent.innerHTML =
-                                                    '<i class="bi bi-box-seam text-primary fs-4"></i>';
-                                                }
-                                              }}
-                                            />
-                                          </div>
+                          {rutasFiltradas.length > 0 &&
+                            (() => {
+                              const isContainerAvailable = (
+                                val?: string | null,
+                              ) => !!val && val !== "N/A" && val !== "-";
 
-                                          <div>
-                                            <span className="qf-badge qf-badge-primary">
-                                              {ruta.carrier}
-                                            </span>
-                                          </div>
-                                        </div>
-
-                                        {rutaSeleccionada?.id === ruta.id && (
-                                          <span className="badge bg-success">
-                                            <i className="bi bi-check-circle-fill"></i>{" "}
-                                            Seleccionada
-                                          </span>
+                              return (
+                                <div className="qa-routes-table-wrap">
+                                  <table className="qa-routes-table">
+                                    <thead>
+                                      <tr>
+                                        <th className="qa-rt-th-carrier">
+                                          Carrier
+                                        </th>
+                                        <th className="qa-rt-th-price">20GP</th>
+                                        <th className="qa-rt-th-price">40HQ</th>
+                                        <th className="qa-rt-th-price">
+                                          40NOR
+                                        </th>
+                                        <th className="qa-rt-th-meta">
+                                          Tránsito
+                                        </th>
+                                        <th className="qa-rt-th-meta">
+                                          Free time
+                                        </th>
+                                        <th className="qa-rt-th-meta">
+                                          Validez
+                                        </th>
+                                        {isEjecutivoMode && (
+                                          <th className="qa-rt-th-meta">
+                                            Agente
+                                          </th>
                                         )}
-                                      </div>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {rutasFiltradas.map((ruta) => {
+                                        const validityState = getValidityClass(
+                                          ruta.validUntil,
+                                        );
+                                        const isRowSelected =
+                                          rutaSeleccionada?.id === ruta.id;
 
-                                      {/* Transit Time y Free Time */}
-                                      {(ruta.tt || ruta.freeTime) && (
-                                        <div className="row g-2 mb-3">
-                                          {ruta.tt && (
-                                            <div className="col-12 col-md-6">
-                                              <div
-                                                className="d-flex align-items-center gap-2 p-2 rounded h-100"
-                                                style={{
-                                                  backgroundColor:
-                                                    "var(--qf-bg-light)",
-                                                }}
-                                              >
-                                                <i
-                                                  className="bi bi-clock"
-                                                  style={{
-                                                    color: "var(--qf-primary)",
-                                                  }}
-                                                ></i>
-                                                <div className="flex-grow-1">
-                                                  <small
-                                                    className="d-block"
-                                                    style={{
-                                                      fontSize: "0.7rem",
-                                                      color:
-                                                        "var(--qf-text-secondary)",
+                                        const containers: {
+                                          type: ContainerType;
+                                          val?: string | null;
+                                        }[] = [
+                                          { type: "20GP", val: ruta.gp20 },
+                                          { type: "40HQ", val: ruta.hq40 },
+                                          { type: "40NOR", val: ruta.nor40 },
+                                        ];
+
+                                        return (
+                                          <tr
+                                            key={ruta.id}
+                                            className={`qa-rt-row qa-rt-row--passive${
+                                              isRowSelected
+                                                ? " is-row-selected"
+                                                : ""
+                                            }`}
+                                          >
+                                            <td className="qa-rt-td-carrier">
+                                              <div className="qa-rt-carrier">
+                                                <div className="qa-rt-carrier-logo">
+                                                  <img
+                                                    src={imgUrl(
+                                                      `/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`,
+                                                    )}
+                                                    alt={ruta.carrier}
+                                                    onError={(e) => {
+                                                      const target =
+                                                        e.currentTarget;
+                                                      target.style.display =
+                                                        "none";
+                                                      const parent =
+                                                        target.parentElement;
+                                                      if (parent) {
+                                                        parent.innerHTML =
+                                                          '<i class="bi bi-box-seam"></i>';
+                                                      }
                                                     }}
-                                                  >
-                                                    Tiempo de tránsito
-                                                  </small>
-                                                  <small className="fw-semibold">
-                                                    {ruta.tt}
-                                                  </small>
+                                                  />
+                                                </div>
+                                                <div className="qa-rt-carrier-info">
+                                                  <span className="qa-rt-carrier-name">
+                                                    {ruta.carrier}
+                                                  </span>
                                                 </div>
                                               </div>
-                                            </div>
-                                          )}
+                                            </td>
+                                            {containers.map(({ type, val }) => {
+                                              const available =
+                                                isContainerAvailable(val);
+                                              const price = available
+                                                ? extractPrice(val!)
+                                                : 0;
+                                              const isCellSelected =
+                                                isRowSelected &&
+                                                containerSeleccionado?.type ===
+                                                  type;
 
-                                          {ruta.freeTime && (
-                                            <div className="col-12 col-md-6">
-                                              <div
-                                                className="d-flex align-items-center gap-2 p-2 rounded h-100"
-                                                style={{
-                                                  backgroundColor:
-                                                    "var(--qf-bg-light)",
-                                                }}
-                                              >
-                                                <i
-                                                  className="bi bi-hourglass-split"
-                                                  style={{
-                                                    color: "var(--qf-primary)",
+                                              return (
+                                                <td
+                                                  key={type}
+                                                  className={`qa-rt-td-price qa-rt-td-container${
+                                                    available
+                                                      ? " is-available"
+                                                      : ""
+                                                  }${
+                                                    isCellSelected
+                                                      ? " is-selected"
+                                                      : ""
+                                                  }`}
+                                                  onClick={() => {
+                                                    if (!available) return;
+                                                    handleSeleccionarContainer(
+                                                      ruta,
+                                                      type,
+                                                    );
                                                   }}
-                                                ></i>
-                                                <div className="flex-grow-1">
-                                                  <small
-                                                    className="d-block"
-                                                    style={{
-                                                      fontSize: "0.7rem",
-                                                      color:
-                                                        "var(--qf-text-secondary)",
-                                                    }}
-                                                  >
-                                                    Free Time
-                                                  </small>
-                                                  <small className="fw-semibold">
-                                                    {ruta.freeTime} Días
-                                                  </small>
-                                                </div>
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-
-                                      {isEjecutivoMode && ruta.company && (
-                                        <p
-                                          className="small mb-3 fw-semibold"
-                                          style={{ color: "#ff6200" }}
-                                        >
-                                          <i className="bi bi-building me-1"></i>
-                                          Agente: {ruta.company}
-                                        </p>
-                                      )}
-
-                                      {/* Validez */}
-                                      <div className="mb-3">
-                                        <div
-                                          className="d-flex align-items-center gap-2 p-2 rounded"
-                                          style={{
-                                            backgroundColor: ruta.validUntil
-                                              ? "rgba(25, 135, 84, 0.08)"
-                                              : "var(--qf-bg-light)",
-                                          }}
-                                        >
-                                          <i
-                                            className="bi bi-calendar-check"
-                                            style={{
-                                              color: ruta.validUntil
-                                                ? "#198754"
-                                                : "var(--qf-text-secondary)",
-                                            }}
-                                          ></i>
-                                          <div className="flex-grow-1">
-                                            <small
-                                              className="d-block"
-                                              style={{
-                                                fontSize: "0.7rem",
-                                                color:
-                                                  "var(--qf-text-secondary)",
-                                              }}
-                                            >
-                                              Validez
-                                            </small>
-                                            <small
-                                              className="fw-semibold"
-                                              style={{
-                                                color: ruta.validUntil
-                                                  ? "#198754"
-                                                  : "var(--qf-text-secondary)",
-                                              }}
-                                            >
-                                              {ruta.validUntil
-                                                ? `Válido hasta ${ruta.validUntil}`
-                                                : "Sin validez"}
-                                            </small>
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Botones de Contenedores */}
-                                      <div className="d-flex flex-column gap-2">
-                                        {/* 20GP */}
-                                        {ruta.gp20 &&
-                                          ruta.gp20 !== "N/A" &&
-                                          ruta.gp20 !== "-" && (
-                                            <button
-                                              type="button"
-                                              className={`qf-btn w-100 justify-content-between ${
-                                                rutaSeleccionada?.id ===
-                                                  ruta.id &&
-                                                containerSeleccionado?.type ===
-                                                  "20GP"
-                                                  ? "qf-btn-primary"
-                                                  : "qf-btn-outline"
-                                              }`}
-                                              onClick={() =>
-                                                handleSeleccionarContainer(
-                                                  ruta,
-                                                  "20GP",
-                                                )
-                                              }
-                                            >
-                                              <div className="d-flex justify-content-between align-items-center">
-                                                <span className="fw-bold">
-                                                  <i className="bi bi-box me-2"></i>{" "}
-                                                  20GP
+                                                >
+                                                  {available ? (
+                                                    <>
+                                                      <span className="qa-rt-price-amount">
+                                                        {(price * 1.15).toFixed(
+                                                          0,
+                                                        )}
+                                                      </span>
+                                                      <span className="qa-rt-price-cur">
+                                                        {ruta.currency}
+                                                      </span>
+                                                      {isCellSelected && (
+                                                        <i className="bi bi-check-circle-fill qa-rt-cell-check"></i>
+                                                      )}
+                                                    </>
+                                                  ) : (
+                                                    <span className="qa-rt-price-empty">
+                                                      —
+                                                    </span>
+                                                  )}
+                                                </td>
+                                              );
+                                            })}
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.tt || "—"}
+                                              {" días"}
+                                            </td>
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.freeTime
+                                                ? `${ruta.freeTime} días`
+                                                : "—"}
+                                            </td>
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.validUntil ? (
+                                                <span
+                                                  className={`qa-validity ${
+                                                    validityState === "valid"
+                                                      ? "valid"
+                                                      : validityState ===
+                                                          "expired"
+                                                        ? "expired"
+                                                        : ""
+                                                  }`}
+                                                >
+                                                  {ruta.validUntil}
                                                 </span>
-                                                <span className="badge bg-light text-dark">
-                                                  {ruta.currency}{" "}
-                                                  {(
-                                                    extractPrice(ruta.gp20) *
-                                                    1.15
-                                                  ).toFixed(0)}
-                                                </span>
-                                              </div>
-                                            </button>
-                                          )}
-
-                                        {/* 40HQ */}
-                                        {ruta.hq40 &&
-                                          ruta.hq40 !== "N/A" &&
-                                          ruta.hq40 !== "-" && (
-                                            <button
-                                              type="button"
-                                              className={`qf-btn w-100 justify-content-between ${
-                                                rutaSeleccionada?.id ===
-                                                  ruta.id &&
-                                                containerSeleccionado?.type ===
-                                                  "40HQ"
-                                                  ? "qf-btn-primary"
-                                                  : "qf-btn-outline"
-                                              }`}
-                                              onClick={() =>
-                                                handleSeleccionarContainer(
-                                                  ruta,
-                                                  "40HQ",
-                                                )
-                                              }
-                                            >
-                                              <div className="d-flex justify-content-between align-items-center">
-                                                <span className="fw-bold">
-                                                  <i className="bi bi-box me-2"></i>{" "}
-                                                  40HQ
-                                                </span>
-                                                <span className="badge bg-light text-dark">
-                                                  {ruta.currency}{" "}
-                                                  {(
-                                                    extractPrice(ruta.hq40) *
-                                                    1.15
-                                                  ).toFixed(0)}
-                                                </span>
-                                              </div>
-                                            </button>
-                                          )}
-
-                                        {/* 40NOR */}
-                                        {ruta.nor40 &&
-                                          ruta.nor40 !== "N/A" &&
-                                          ruta.nor40 !== "-" && (
-                                            <button
-                                              type="button"
-                                              className={`qf-btn w-100 justify-content-between ${
-                                                rutaSeleccionada?.id ===
-                                                  ruta.id &&
-                                                containerSeleccionado?.type ===
-                                                  "40NOR"
-                                                  ? "qf-btn-primary"
-                                                  : "qf-btn-outline"
-                                              }`}
-                                              onClick={() =>
-                                                handleSeleccionarContainer(
-                                                  ruta,
-                                                  "40NOR",
-                                                )
-                                              }
-                                            >
-                                              <div className="d-flex justify-content-between align-items-center">
-                                                <span className="fw-bold">
-                                                  <i className="bi bi-box me-2"></i>{" "}
-                                                  40NOR
-                                                </span>
-                                                <span className="badge bg-light text-dark">
-                                                  {ruta.currency}{" "}
-                                                  {(
-                                                    extractPrice(ruta.nor40) *
-                                                    1.15
-                                                  ).toFixed(0)}
-                                                </span>
-                                              </div>
-                                            </button>
-                                          )}
-                                      </div>
-                                    </div>
+                                              ) : (
+                                                "—"
+                                              )}
+                                            </td>
+                                            {isEjecutivoMode && (
+                                              <td className="qa-rt-td-meta qa-rt-td-agent">
+                                                {ruta.company || "—"}
+                                              </td>
+                                            )}
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                  <div className="qa-rt-hint">
+                                    <i className="bi bi-info-circle"></i>
+                                    Haz click en el precio del contenedor que
+                                    deseas cotizar
                                   </div>
                                 </div>
-                              ))}
-                            </div>
-                          )}
+                              );
+                            })()}
                         </div>
                       )}
                     </div>
