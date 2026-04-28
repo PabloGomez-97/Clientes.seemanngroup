@@ -89,7 +89,7 @@ function QuoteLASTMILE({
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
 
   const effectiveUsername = isEjecutivoMode
-    ? clienteSeleccionado?.username || user?.username || ""
+    ? clienteSeleccionado?.username || "Ejecutivo"
     : activeUsername || "";
   const salesRepName = isEjecutivoMode
     ? user?.nombreuser || user?.username || ""
@@ -542,7 +542,7 @@ function QuoteLASTMILE({
       date: new Date().toISOString(),
       validUntil,
       transitDays: null as number | null,
-      project: { name: "GROUND" },
+      project: { name: "TERRESTRE" },
       customerReference: "Portal Created [LASTMILE] - PENDIENTE TARIFA",
       contact: { name: effectiveUsername },
       origin: { name: origenSel.label },
@@ -556,7 +556,7 @@ function QuoteLASTMILE({
       shipper: { name: effectiveUsername },
       consignee: { name: effectiveUsername },
       issuingCompany: { name: "X" },
-      serviceType: { name: "GROUND" },
+      serviceType: { name: "TERRESTRE" },
       salesRep: { name: salesRepName },
       PaymentTerms: { name: "Prepaid" },
       commodities: [commodity],
@@ -579,10 +579,6 @@ function QuoteLASTMILE({
       setError(
         "Debes ingresar dirección de recogida, dirección de entrega e información del cargamento.",
       );
-      return;
-    }
-    if (isEjecutivoMode && !clienteSeleccionado) {
-      setError("Selecciona un cliente para esta cotización.");
       return;
     }
 
@@ -900,8 +896,8 @@ function QuoteLASTMILE({
                     />
                     {!clienteSeleccionado && (
                       <small className="text-danger d-block mt-1">
-                        Debes seleccionar un cliente antes de generar la
-                        cotización
+                        Debes seleccionar un cliente para continuar con la
+                        cotización.
                       </small>
                     )}
                   </div>
@@ -1704,10 +1700,7 @@ function QuoteLASTMILE({
                   <button
                     className="qa-btn qa-btn-primary"
                     disabled={
-                      loading ||
-                      !canProceedFromStep1 ||
-                      !canProceedFromStep2 ||
-                      (isEjecutivoMode && !clienteSeleccionado)
+                      loading || !canProceedFromStep1 || !canProceedFromStep2
                     }
                     onClick={submitQuote}
                   >
