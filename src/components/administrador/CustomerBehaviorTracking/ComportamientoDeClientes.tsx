@@ -47,7 +47,7 @@ interface Session {
   route: { origin: string; destination: string } | null;
   lastStep: { step: string; stepNumber: number; totalSteps: number } | null;
   eventsCount: number;
-  isRecurring?: boolean;
+  isRecurring?: boolean | null;
   quoteNumber?: string | null;
 }
 
@@ -124,6 +124,12 @@ const stepLabels: Record<string, string> = {
   route_selection: "Selección de ruta",
 };
 
+Object.assign(stepLabels, {
+  datos_cargamento: "Datos del cargamento",
+  servicios_adicionales: "Servicios adicionales",
+  revision: "Revision",
+});
+
 const statusColors: Record<string, { bg: string; text: string; dot: string }> =
   {
     completed: { bg: "#ecfdf5", text: "#065f46", dot: "#10b981" },
@@ -142,6 +148,12 @@ const typeColors: Record<string, string> = {
   FCL: "#8b5cf6",
   LCL: "#06b6d4",
 };
+
+Object.assign(typeColors, {
+  LASTMILE: "#0d9488",
+});
+
+const QUOTE_TYPES = ["AIR", "FCL", "LCL", "LASTMILE"] as const;
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INDIVIDUAL CLIENT ANALYTICS PANEL
@@ -917,7 +929,7 @@ export default function ComportamientoDeClientes() {
                 gap: 12,
               }}
             >
-              {(["AIR", "FCL", "LCL"] as const).map((type) => {
+              {QUOTE_TYPES.map((type) => {
                 const data = clientDetail.summary.byType[type];
                 if (!data || data.started === 0) return null;
                 const rate =
@@ -1232,7 +1244,9 @@ export default function ComportamientoDeClientes() {
                               </div>
 
                               {/* Recurring badge */}
-                              {session.status === "completed" && (
+                              {session.status === "completed" &&
+                                session.quoteType !== "LASTMILE" &&
+                                session.isRecurring != null && (
                                 <span
                                   style={{
                                     display: "inline-block",
@@ -1593,7 +1607,7 @@ export default function ComportamientoDeClientes() {
                   gap: 12,
                 }}
               >
-                {(["AIR", "FCL", "LCL"] as const).map((type) => {
+                {QUOTE_TYPES.map((type) => {
                   const events = analytics.abandonmentByType.filter(
                     (e) => e.quoteType === type,
                   );

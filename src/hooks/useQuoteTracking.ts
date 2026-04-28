@@ -3,7 +3,7 @@ import { useRef, useCallback, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
 
 // ── Event Types ──
-export type QuoteType = "AIR" | "FCL" | "LCL";
+export type QuoteType = "AIR" | "FCL" | "LCL" | "LASTMILE";
 
 export type QuoteTrackingEvent =
   | "QUOTE_STARTED"
@@ -80,7 +80,8 @@ export function useQuoteTracking(quoteType: QuoteType) {
   const sessionId = useRef(generateSessionId());
   const startedRef = useRef(false);
   const completedRef = useRef(false);
-  const lastStepRef = useRef<string | null>(null);
+  const lastStepRef = useRef<QuoteStepInfo | null>(null);
+  const lastStepKeyRef = useRef<string | null>(null);
 
   const send = useCallback(
     (payload: QuoteTrackingPayload) => {
@@ -110,8 +111,9 @@ export function useQuoteTracking(quoteType: QuoteType) {
   const trackStep = useCallback(
     (step: QuoteStepInfo, metadata?: Record<string, unknown>) => {
       const key = `${step.stepNumber}`;
-      if (key === lastStepRef.current) return; // debounce same step
-      lastStepRef.current = key;
+      if (key === lastStepKeyRef.current) return; // debounce same step
+      lastStepKeyRef.current = key;
+      lastStepRef.current = step;
       send({ event: "QUOTE_STEP_CHANGED", quoteType, step, metadata });
     },
     [send, quoteType],
@@ -132,6 +134,7 @@ export function useQuoteTracking(quoteType: QuoteType) {
         startedRef.current = false;
         completedRef.current = false;
         lastStepRef.current = null;
+        lastStepKeyRef.current = null;
         // Start a new session automatically
         send({ event: "QUOTE_STARTED", quoteType });
         startedRef.current = true;
@@ -162,13 +165,7 @@ export function useQuoteTracking(quoteType: QuoteType) {
       send({
         event: "QUOTE_ABANDONED",
         quoteType,
-        step: lastStepRef.current
-          ? {
-              step: lastStepRef.current,
-              stepNumber: parseInt(lastStepRef.current, 10) || 0,
-              totalSteps: 0,
-            }
-          : undefined,
+        step: lastStepRef.current || undefined,
         metadata,
       });
     },
@@ -185,13 +182,7 @@ export function useQuoteTracking(quoteType: QuoteType) {
           {
             event: "QUOTE_ABANDONED",
             quoteType,
-            step: lastStepRef.current
-              ? {
-                  step: lastStepRef.current,
-                  stepNumber: parseInt(lastStepRef.current, 10) || 0,
-                  totalSteps: 0,
-                }
-              : undefined,
+            step: lastStepRef.current || undefined,
             clientEmail: user.email,
             clientUsername: user.username,
             sessionId: sessionId.current,

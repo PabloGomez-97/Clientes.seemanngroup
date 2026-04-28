@@ -108,7 +108,7 @@ function QuoteLASTMILE({
   const ejecutivo = user?.ejecutivo;
   const { registrarEvento } = useAuditLog();
   const { trackStart, trackStep, trackRouteSelected, trackComplete } =
-    useQuoteTracking("LASTMILE" as any);
+    useQuoteTracking("LASTMILE");
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -307,19 +307,23 @@ function QuoteLASTMILE({
   // Track ruta seleccionada
   useEffect(() => {
     if (origenSel && destinoSel) {
+      trackStep({ step: "route_selection", stepNumber: 1, totalSteps: 4 });
       trackRouteSelected(origenSel.label, destinoSel.label, {
         servicio: "LASTMILE",
       });
     }
-  }, [origenSel, destinoSel, trackRouteSelected]);
+  }, [origenSel, destinoSel, trackRouteSelected, trackStep]);
 
   // Auto avanzar al paso 2 cuando ambos están seleccionados
   useEffect(() => {
     if (origenSel && destinoSel && openSection === 1) {
-      const t = setTimeout(() => setOpenSection(2), 250);
+      const t = setTimeout(() => {
+        setOpenSection(2);
+        trackStep({ step: "datos_cargamento", stepNumber: 2, totalSteps: 4 });
+      }, 250);
       return () => clearTimeout(t);
     }
-  }, [origenSel, destinoSel, openSection]);
+  }, [origenSel, destinoSel, openSection, trackStep]);
 
   // Auto-scroll al cambiar sección
   useEffect(() => {
@@ -756,8 +760,7 @@ function QuoteLASTMILE({
         pod: destinoSel?.label || "",
         carrier: "X",
         tipo: tipoAccion,
-        isRecurring: false,
-      } as any);
+      });
 
       await generateQuotePDF(data, previousMaxId);
     } catch (err: any) {
@@ -809,7 +812,7 @@ function QuoteLASTMILE({
       }
 
       if (quoteNumber) {
-        trackComplete({ quoteNumber, isRecurring: false } as any);
+        trackComplete({ quoteNumber });
       }
 
       // Notificar al ejecutivo de cotización sin tarifa (siempre, last mile no tiene tarifa)

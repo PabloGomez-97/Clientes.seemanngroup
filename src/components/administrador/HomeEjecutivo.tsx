@@ -25,12 +25,15 @@ const BEHAVIOR_API =
     ? "http://localhost:4000"
     : "https://portalclientes.seemanngroup.com";
 
-// Colors for AIR / FCL / LCL badges (mirrors ComportamientoDeClientes)
+// Colors for behavior tracking badges (mirrors ComportamientoDeClientes)
 const BEHAVIOR_TYPE_COLORS: Record<string, string> = {
   AIR: "#ff6200",
   FCL: "#ff6200",
   LCL: "#ff6200",
+  LASTMILE: "#0d9488",
 };
+
+const BEHAVIOR_QUOTE_TYPES = ["AIR", "FCL", "LCL", "LASTMILE"] as const;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Types
@@ -954,7 +957,7 @@ export default function HomeEjecutivo() {
   // Abandonment by type — derived from behaviorAnalytics
   const behaviorByType = useMemo(() => {
     if (!behaviorAnalytics?.abandonmentByType) return [];
-    return (["AIR", "FCL", "LCL"] as const)
+    return BEHAVIOR_QUOTE_TYPES
       .map((type) => {
         const events = behaviorAnalytics.abandonmentByType.filter(
           (e) => e.quoteType === type,

@@ -1074,7 +1074,7 @@ interface IQuoteTrackingEvent {
   clientUsername: string;
   sessionId: string;
   event: 'QUOTE_STARTED' | 'QUOTE_STEP_CHANGED' | 'QUOTE_ROUTE_SELECTED' | 'QUOTE_COMPLETED' | 'QUOTE_ABANDONED';
-  quoteType: 'AIR' | 'FCL' | 'LCL';
+  quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
   step?: { step: string; stepNumber: number; totalSteps: number };
   route?: { origin: string; destination: string };
   incoterm?: string;
@@ -1099,7 +1099,7 @@ const QuoteTrackingEventSchema = new mongoose.Schema<IQuoteTrackingEventDoc>(
       required: true,
       enum: ['QUOTE_STARTED', 'QUOTE_STEP_CHANGED', 'QUOTE_ROUTE_SELECTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'],
     },
-    quoteType: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL'] },
+    quoteType: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL', 'LASTMILE'] },
     step: {
       step: String,
       stepNumber: Number,
@@ -5469,7 +5469,7 @@ app.post('/api/behavior-tracking', async (req, res) => {
       return res.status(400).json({ error: `event debe ser uno de: ${validEvents.join(', ')}` });
     }
 
-    const validTypes = ['AIR', 'FCL', 'LCL'];
+    const validTypes = ['AIR', 'FCL', 'LCL', 'LASTMILE'];
     if (!validTypes.includes(quoteType)) {
       return res.status(400).json({ error: `quoteType debe ser uno de: ${validTypes.join(', ')}` });
     }
@@ -5644,7 +5644,12 @@ app.get('/api/behavior-tracking/client/:email', auth, async (req, res) => {
       // Use the QUOTE_COMPLETED event that carries quoteNumber/isRecurring (sent after PDF generation)
       const completedEvt = [...sorted].reverse().find((e: any) => e.event === 'QUOTE_COMPLETED');
       const quoteNumberVal: string | null = completedEvt?.metadata?.quoteNumber || null;
-      const isRecurring: boolean = completedEvt ? completedEvt.metadata?.isRecurring !== false : true;
+      const isRecurring: boolean | null =
+        first.quoteType === 'LASTMILE'
+          ? null
+          : completedEvt
+            ? completedEvt.metadata?.isRecurring !== false
+            : true;
 
       return {
         sessionId,
@@ -5668,6 +5673,7 @@ app.get('/api/behavior-tracking/client/:email', auth, async (req, res) => {
         AIR: { started: 0, completed: 0, abandoned: 0 },
         FCL: { started: 0, completed: 0, abandoned: 0 },
         LCL: { started: 0, completed: 0, abandoned: 0 },
+        LASTMILE: { started: 0, completed: 0, abandoned: 0 },
       } as Record<string, { started: number; completed: number; abandoned: number }>,
     };
 
