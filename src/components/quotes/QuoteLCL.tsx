@@ -3086,15 +3086,9 @@ function QuoteLCL({
                     {polSeleccionado && podSeleccionado && (
                       <div className="mt-4" ref={routesRef}>
                         <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h6 className="mb-0 fw-bold">
-                            {t("Quotelcl.rutasdisponibles")} (
-                            {rutasFiltradas.length})
+                          <h6 className="qa-section-label">
+                            Rutas Disponibles ({rutasFiltradas.length})
                           </h6>
-                          {isEjecutivoMode && rutasFiltradas.length > 0 && (
-                            <small className="text-muted">
-                              {t("Quotelcl.seleccionamejor")}
-                            </small>
-                          )}
                         </div>
 
                         {rutasFiltradas.length > 0 &&
@@ -3182,7 +3176,11 @@ function QuoteLCL({
                                               </div>
                                               <div className="qa-rt-carrier-info">
                                                 <span className="qa-rt-carrier-name">
-                                                  {ruta.operador}
+                                                  {ruta.operador
+                                                    .toLowerCase()
+                                                    .replace(/\b\p{L}/gu, (c) =>
+                                                      c.toUpperCase(),
+                                                    )}
                                                 </span>
                                               </div>
                                             </div>
@@ -3252,14 +3250,6 @@ function QuoteLCL({
                               </div>
                             );
                           })()}
-
-                        {rutasFiltradas.length > 0 && (
-                          <div className="mt-3">
-                            <small className="qa-text-muted">
-                              {t("Quotelcl.tarifasreferenciales")}
-                            </small>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>

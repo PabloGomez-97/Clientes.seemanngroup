@@ -4283,15 +4283,9 @@ function QuoteAPITester({
                     {originSeleccionado && destinationSeleccionado && (
                       <div className="mt-4" ref={routesRef}>
                         <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h6 className="mb-0 fw-bold">
-                            {t("QuoteAIR.rutasdisponibles1")} (
-                            {rutasFiltradas.length})
+                          <h6 className="qa-section-label">
+                            Rutas Disponibles ({rutasFiltradas.length})
                           </h6>
-                          {rutasFiltradas.length > 0 && (
-                            <small className="text-muted">
-                              {t("QuoteAIR.seleccionamejor")}
-                            </small>
-                          )}
                         </div>
 
                         {rutasFiltradas.length === 0 ? (
@@ -4400,8 +4394,14 @@ function QuoteAPITester({
                                               </div>
                                               <div className="qa-rt-carrier-info">
                                                 <span className="qa-rt-carrier-name">
-                                                  {ruta.carrier ||
-                                                    t("QuoteAIR.porconfirmar")}
+                                                  {(
+                                                    ruta.carrier ||
+                                                    t("QuoteAIR.porconfirmar")
+                                                  )
+                                                    .toLowerCase()
+                                                    .replace(/\b\p{L}/gu, (c) =>
+                                                      c.toUpperCase(),
+                                                    )}
                                                 </span>
                                               </div>
                                             </div>

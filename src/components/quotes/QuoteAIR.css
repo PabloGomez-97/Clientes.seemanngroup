@@ -14,6 +14,7 @@
   --qa-transition: all 0.2s ease-in-out;
 }
 
+
 .qa-container {
   font-family: var(--qa-font-family);
   color: var(--qa-text-primary);
@@ -123,6 +124,15 @@
   display: flex;
   justify-content: center;
   margin-top: 1rem;
+}
+
+.qa-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin: 0;
 }
 
 /* ============================================================

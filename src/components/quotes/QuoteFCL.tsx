@@ -2526,19 +2526,9 @@ function QuoteFCL({
                         <div className="mt-4" ref={routesRef}>
                           {/* Header mejorado */}
                           <div className="d-flex justify-content-between align-items-center mb-3">
-                            <h6 className="mb-0 d-flex align-items-center gap-2">
-                              <i className="bi bi-ship"></i>
-                              Rutas Disponibles
-                              <span className="badge bg-light text-dark border">
-                                {rutasFiltradas.length}
-                              </span>
+                            <h6 className="qa-section-label">
+                              Rutas Disponibles ({rutasFiltradas.length})
                             </h6>
-
-                            {rutasFiltradas.length > 0 && (
-                              <small className="text-muted">
-                                Selecciona la mejor opción para tu envío
-                              </small>
-                            )}
                           </div>
 
                           {rutasFiltradas.length > 0 &&
@@ -2626,7 +2616,12 @@ function QuoteFCL({
                                                 </div>
                                                 <div className="qa-rt-carrier-info">
                                                   <span className="qa-rt-carrier-name">
-                                                    {ruta.carrier}
+                                                    {ruta.carrier
+                                                      .toLowerCase()
+                                                      .replace(
+                                                        /\b\p{L}/gu,
+                                                        (c) => c.toUpperCase(),
+                                                      )}
                                                   </span>
                                                 </div>
                                               </div>
