@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -20,7 +20,11 @@ import {
   type RutaLastMile,
   type ClienteAsignadoLM,
   type QuoteLastMileProps,
+  type PieceDataLM,
 } from "./Handlers/LASTMILE/HandlerQuoteLASTMILE";
+import { PieceAccordionLASTMILE } from "./Handlers/LASTMILE/PieceAccordionLASTMILE";
+import { packageTypeOptions } from "./PackageTypes/PiecestypesAIR";
+import { Modal, Button } from "react-bootstrap";
 import { linbisFetch } from "../../services/linbisFetch";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import { imgUrl } from "../../config/images";
@@ -33,8 +37,30 @@ interface OutletContext {
   onLogout: () => void;
 }
 
-const MAX_CARGO_DESC = 2000;
+const MAX_PIECES_LM = 10;
 const VALIDITY_DAYS = 5;
+
+const createEmptyPieceLM = (id: string): PieceDataLM => ({
+  id,
+  packageType: "",
+  description: "",
+  length: 0,
+  width: 0,
+  height: 0,
+  weight: 0,
+  volume: 0,
+  totalVolume: 0,
+  volumeWeight: 0,
+  totalVolumeWeight: 0,
+  totalWeight: 0,
+});
+
+const isPieceCompleteLM = (p: PieceDataLM): boolean =>
+  p.weight > 0 &&
+  p.length > 0 &&
+  p.width > 0 &&
+  p.height > 0 &&
+  p.description.trim().length > 0;
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
@@ -115,60 +141,13 @@ function QuoteLASTMILE({
   // Datos del cargamento
   const [pickupAddress, setPickupAddress] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [cargoDescription, setCargoDescription] = useState("");
-  // Valores siempre almacenados en SI (cm / kg). El toggle solo afecta la visualización/entrada.
-  const [peso, setPeso] = useState("");
-  const [alto, setAlto] = useState("");
-  const [ancho, setAncho] = useState("");
-  const [largo, setLargo] = useState("");
+  // Piezas del cargamento (mismo modelo que QuoteAIR). Dimensiones en SI (cm/kg).
+  const [piecesData, setPiecesData] = useState<PieceDataLM[]>([
+    createEmptyPieceLM("1"),
+  ]);
+  const [openAccordions, setOpenAccordions] = useState<string[]>(["1"]);
+  const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
   const [useUSCustomary, setUseUSCustomary] = useState(false);
-
-  // Helpers de conversión SI ↔ US Customary
-  const displayDim = (cmStr: string): string => {
-    if (!cmStr) return "";
-    const cm = parseFloat(cmStr);
-    if (!Number.isFinite(cm) || cm === 0) return "";
-    return useUSCustomary
-      ? (cm / 2.54).toFixed(3).replace(/\.?0+$/, "")
-      : cmStr;
-  };
-  const displayWeight = (kgStr: string): string => {
-    if (!kgStr) return "";
-    const kg = parseFloat(kgStr);
-    if (!Number.isFinite(kg) || kg === 0) return "";
-    return useUSCustomary
-      ? (kg / 0.453592).toFixed(3).replace(/\.?0+$/, "")
-      : kgStr;
-  };
-  const handleDimInput = (
-    setter: React.Dispatch<React.SetStateAction<string>>,
-    raw: string,
-  ) => {
-    if (raw === "") {
-      setter("");
-      return;
-    }
-    const num = parseFloat(raw);
-    if (!Number.isFinite(num)) {
-      setter("");
-      return;
-    }
-    const cm = useUSCustomary ? num * 2.54 : num;
-    setter(String(cm));
-  };
-  const handleWeightInput = (raw: string) => {
-    if (raw === "") {
-      setPeso("");
-      return;
-    }
-    const num = parseFloat(raw);
-    if (!Number.isFinite(num)) {
-      setPeso("");
-      return;
-    }
-    const kg = useUSCustomary ? num * 0.453592 : num;
-    setPeso(String(kg));
-  };
 
   // Helpers de presentación según el sistema de unidades activo.
   // Los valores internos siempre están en SI (kg / cm / m³).
@@ -183,10 +162,8 @@ function QuoteLASTMILE({
     const v = useUSCustomary ? m3 * 35.3147 : m3;
     return v.toFixed(3);
   };
-  const fmtDimStr = (cmStr: string) => {
-    if (!cmStr) return "0";
-    const cm = parseFloat(cmStr);
-    if (!Number.isFinite(cm)) return "0";
+  const fmtDim = (cm: number) => {
+    if (!Number.isFinite(cm) || cm === 0) return "0";
     const v = useUSCustomary ? cm / 2.54 : cm;
     return v.toFixed(2).replace(/\.?0+$/, "");
   };
@@ -360,9 +337,10 @@ function QuoteLASTMILE({
     return (
       pickupAddress.trim().length > 0 &&
       deliveryAddress.trim().length > 0 &&
-      cargoDescription.trim().length > 0
+      piecesData.length > 0 &&
+      piecesData.every(isPieceCompleteLM)
     );
-  }, [pickupAddress, deliveryAddress, cargoDescription]);
+  }, [pickupAddress, deliveryAddress, piecesData]);
 
   const visibleProgressSteps = useMemo(
     () => [
@@ -406,37 +384,156 @@ function QuoteLASTMILE({
     [canProceedFromStep1, openSection, step2Completed, step3Completed],
   );
 
-  const dimensionsSummary = useMemo(
-    () =>
-      [
-        peso && `Peso: ${peso} kg`,
-        largo && `Largo: ${largo} cm`,
-        ancho && `Ancho: ${ancho} cm`,
-        alto && `Alto: ${alto} cm`,
+  const dimensionsSummary = useMemo(() => {
+    if (piecesData.length === 0) return "";
+    if (piecesData.length === 1) {
+      const p = piecesData[0];
+      return [
+        p.weight && `Peso: ${fmtWeight(p.weight)} ${weightUnit}`,
+        p.length && `Largo: ${fmtDim(p.length)} ${dimUnit}`,
+        p.width && `Ancho: ${fmtDim(p.width)} ${dimUnit}`,
+        p.height && `Alto: ${fmtDim(p.height)} ${dimUnit}`,
       ]
         .filter(Boolean)
-        .join(" · "),
-    [peso, largo, ancho, alto],
-  );
+        .join(" · ");
+    }
+    return `${piecesData.length} piezas`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [piecesData, useUSCustomary]);
 
   // Totales (volumen, peso real/volumétrico/chargeable) para LASTMILE.
   // Factor volumétrico estándar terrestre/courier internacional: 167 kg/m³ (5000 cm³/kg).
   const cargoTotals = useMemo(() => {
-    const l = parseFloat(largo) || 0;
-    const w = parseFloat(ancho) || 0;
-    const h = parseFloat(alto) || 0;
-    const realWeight = parseFloat(peso) || 0;
-    const volume = l && w && h ? (l * w * h) / 1_000_000 : 0; // m³
-    const volumetricWeight = volume * 167;
+    const realWeight = piecesData.reduce((s, p) => s + (p.weight || 0), 0);
+    const volume = piecesData.reduce((s, p) => s + (p.volume || 0), 0);
+    const volumetricWeight = piecesData.reduce(
+      (s, p) => s + (p.volumeWeight || 0),
+      0,
+    );
     const chargeableWeight = Math.max(realWeight, volumetricWeight);
     return { volume, realWeight, volumetricWeight, chargeableWeight };
-  }, [largo, ancho, alto, peso]);
+  }, [piecesData]);
 
   const cargoDescriptionPreview = useMemo(() => {
-    const trimmedDescription = cargoDescription.trim();
-    if (trimmedDescription.length <= 120) return trimmedDescription;
-    return `${trimmedDescription.slice(0, 117)}...`;
-  }, [cargoDescription]);
+    if (piecesData.length === 0) return "";
+    if (piecesData.length === 1) {
+      const trimmed = piecesData[0].description.trim();
+      if (trimmed.length <= 120) return trimmed;
+      return `${trimmed.slice(0, 117)}...`;
+    }
+    const joined = piecesData
+      .map((p, i) => `Pieza ${i + 1}: ${p.description.trim() || "—"}`)
+      .join(" · ");
+    if (joined.length <= 120) return joined;
+    return `${joined.slice(0, 117)}...`;
+  }, [piecesData]);
+
+  // Resumen textual de piezas (para email y otros usos)
+  const piezasDescSummary = useMemo(
+    () =>
+      piecesData
+        .map(
+          (p, i) =>
+            `Pieza ${i + 1}: ${p.length || 0}×${p.width || 0}×${p.height || 0} cm / ${p.weight || 0} kg${p.description ? ` — ${p.description}` : ""}`,
+        )
+        .join("; "),
+    [piecesData],
+  );
+
+  // ============================================================================
+  // HANDLERS DE PIEZAS (mismo modelo que QuoteAIR)
+  // ============================================================================
+
+  const handleAddPiece = () => {
+    if (piecesData.length >= MAX_PIECES_LM) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+    const newId = (piecesData.length + 1).toString();
+    setPiecesData((prev) => [...prev, createEmptyPieceLM(newId)]);
+    setOpenAccordions((prev) => {
+      const newOpen = [...prev, newId];
+      return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+    });
+  };
+
+  const handleDuplicatePiece = (fromId?: string) => {
+    if (piecesData.length >= MAX_PIECES_LM) {
+      setShowMaxPiecesModal(true);
+      return;
+    }
+    setPiecesData((prev) => {
+      if (prev.length === 0) return prev;
+      let sourceId: string | undefined = fromId;
+      if (!sourceId) {
+        sourceId =
+          openAccordions.length > 0
+            ? openAccordions[openAccordions.length - 1]
+            : undefined;
+      }
+      if (!sourceId) sourceId = prev[prev.length - 1].id;
+
+      const sourceIndex = prev.findIndex((p) => p.id === sourceId);
+      const idx = sourceIndex === -1 ? prev.length - 1 : sourceIndex;
+      const src = prev[idx];
+
+      const cloned: PieceDataLM = {
+        ...src,
+        id: "",
+      };
+
+      const inserted = [
+        ...prev.slice(0, idx + 1),
+        cloned,
+        ...prev.slice(idx + 1),
+      ];
+      const renumbered = inserted.map((p, i) => ({
+        ...p,
+        id: (i + 1).toString(),
+      }));
+      const newIdStr = (idx + 2).toString();
+      setOpenAccordions((prevOpen) => {
+        const newOpen = [...prevOpen, newIdStr];
+        return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+      });
+      return renumbered;
+    });
+  };
+
+  const handleRemovePiece = (id: string) => {
+    const filtered = piecesData.filter((p) => p.id !== id);
+    const renumbered = filtered.map((p, i) => ({
+      ...p,
+      id: (i + 1).toString(),
+    }));
+    setPiecesData(renumbered);
+    setOpenAccordions((prev) => {
+      const remaining = prev.filter((openId) => openId !== id);
+      return remaining.filter((openId) =>
+        renumbered.some((p) => p.id === openId),
+      );
+    });
+  };
+
+  const handleToggleAccordion = (id: string) => {
+    setOpenAccordions((prev) => {
+      const isOpen = prev.includes(id);
+      if (isOpen) return prev.filter((openId) => openId !== id);
+      const newOpen = [...prev, id];
+      return newOpen.length > 2 ? newOpen.slice(-2) : newOpen;
+    });
+  };
+
+  const handleUpdatePiece = (
+    id: string,
+    field: keyof PieceDataLM,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    value: any,
+  ) => {
+    setPiecesData((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
+    );
+  };
 
   useEffect(() => {
     if (!canProceedFromStep1) {
@@ -509,34 +606,31 @@ function QuoteLASTMILE({
       },
     ];
 
-    // Commodity con dimensiones detalladas (mismo formato que QuoteAIR)
-    const pesoNum = parseFloat(peso) || 0;
-    const largoNum = parseFloat(largo) || 0;
-    const anchoNum = parseFloat(ancho) || 0;
-    const altoNum = parseFloat(alto) || 0;
-    const commodity = {
+    // Commodities por pieza (mismo formato que QuoteAIR)
+    const commodities = piecesData.map((p) => ({
       commodityType: "Standard",
+      ...(p.packageType ? { packageType: { id: p.packageType } } : {}),
       pieces: 1,
-      description: cargoDescription.slice(0, 500),
-      weightPerUnitValue: pesoNum,
+      description: (p.description || "").slice(0, 500),
+      weightPerUnitValue: p.weight,
       weightPerUnitUOM: "kg",
-      totalWeightValue: pesoNum,
+      totalWeightValue: p.totalWeight || p.weight,
       totalWeightUOM: "kg",
-      lengthValue: largoNum,
+      lengthValue: p.length,
       lengthUOM: "cm",
-      widthValue: anchoNum,
+      widthValue: p.width,
       widthUOM: "cm",
-      heightValue: altoNum,
+      heightValue: p.height,
       heightUOM: "cm",
-      volumeValue: cargoTotals.volume,
+      volumeValue: p.volume,
       volumeUOM: "m3",
-      totalVolumeValue: cargoTotals.volume,
+      totalVolumeValue: p.totalVolume || p.volume,
       totalVolumeUOM: "m3",
-      volumeWeightValue: cargoTotals.volumetricWeight,
+      volumeWeightValue: p.volumeWeight,
       volumeWeightUOM: "kg",
-      totalVolumeWeightValue: cargoTotals.volumetricWeight,
+      totalVolumeWeightValue: p.totalVolumeWeight || p.volumeWeight,
       totalVolumeWeightUOM: "kg",
-    };
+    }));
 
     return {
       date: new Date().toISOString(),
@@ -559,7 +653,7 @@ function QuoteLASTMILE({
       serviceType: { name: "TERRESTRE" },
       salesRep: { name: salesRepName },
       PaymentTerms: { name: "Prepaid" },
-      commodities: [commodity],
+      commodities,
       charges,
     };
   };
@@ -722,11 +816,12 @@ function QuoteLASTMILE({
               pod: destinoSel.label,
               pickupFromAddress: pickupAddress,
               deliveryToAddress: deliveryAddress,
-              cargoDescription,
-              peso: peso || undefined,
-              largo: largo || undefined,
-              ancho: ancho || undefined,
-              alto: alto || undefined,
+              piezasCount: piecesData.length,
+              piezasDesc: piezasDescSummary,
+              pesoTotal: cargoTotals.realWeight.toFixed(2),
+              volumenTotal: cargoTotals.volume.toFixed(4),
+              pesoVolumetrico: cargoTotals.volumetricWeight.toFixed(2),
+              pesoChargeable: cargoTotals.chargeableWeight.toFixed(2),
             },
             quoteNumber: quoteNumber || undefined,
           }),
@@ -755,11 +850,22 @@ function QuoteLASTMILE({
             pickupFromAddress={pickupAddress}
             deliveryToAddress={deliveryAddress}
             salesRep={salesRepName}
-            cargoDescription={cargoDescription}
-            peso={peso || undefined}
-            alto={alto || undefined}
-            ancho={ancho || undefined}
-            largo={largo || undefined}
+            pieces={piecesData.map((p) => ({
+              id: p.id,
+              description: p.description,
+              packageType: p.packageType,
+              packageTypeName:
+                packageTypeOptions.find(
+                  (opt) => String(opt.id) === p.packageType,
+                )?.name || "",
+              length: p.length,
+              width: p.width,
+              height: p.height,
+              weight: p.weight,
+              volume: p.volume,
+              volumeWeight: p.volumeWeight,
+            }))}
+            totals={cargoTotals}
             seguroActivo={seguroActivo}
             useUSCustomary={useUSCustomary}
             validUntil={validUntilDisplay}
@@ -949,11 +1055,8 @@ function QuoteLASTMILE({
                     setDestinoSel(null);
                     setPickupAddress("");
                     setDeliveryAddress("");
-                    setCargoDescription("");
-                    setPeso("");
-                    setAlto("");
-                    setAncho("");
-                    setLargo("");
+                    setPiecesData([createEmptyPieceLM("1")]);
+                    setOpenAccordions(["1"]);
                     setSeguroActivo(false);
                     setStep2Completed(false);
                     setStep3Completed(false);
@@ -1222,200 +1325,125 @@ function QuoteLASTMILE({
                   onDeliveryChange={setDeliveryAddress}
                 />
 
-                {/* Información del cargamento — estilo PieceAccordion */}
-                <div
-                  className="qa-accordion open mt-4"
-                  style={{ borderRadius: 8 }}
-                >
-                  <div
-                    className="qa-accordion-header open"
-                    style={{ cursor: "default" }}
-                  >
-                    <div style={{ flexGrow: 1 }}>
-                      <strong>Pieza/s</strong>
-                      {cargoDescription.trim() && (
-                        <span className="qa-text-muted ms-3">
-                          ({cargoDescription.length}/{MAX_CARGO_DESC}{" "}
-                          caracteres)
-                        </span>
-                      )}
+                {/* Información del cargamento — sistema de piezas (mismo modelo que QuoteAIR) */}
+                <div className="mt-4">
+                  {/* Toggle Sistema de Unidades (compartido entre todas las piezas) */}
+                  <div className="d-flex align-items-center gap-2 mb-3">
+                    <small className="qa-text-muted fw-semibold">
+                      Unidades:
+                    </small>
+                    <div
+                      className="d-flex"
+                      style={{
+                        border: "1px solid var(--qa-border)",
+                        borderRadius: "6px",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className={`qa-btn qa-btn-sm ${!useUSCustomary ? "qa-btn-primary" : ""}`}
+                        style={{
+                          borderRadius: 0,
+                          border: "none",
+                          padding: "0.2rem 0.8rem",
+                          fontSize: "0.78rem",
+                        }}
+                        onClick={() => setUseUSCustomary(false)}
+                      >
+                        Métrico
+                      </button>
+                      <button
+                        type="button"
+                        className={`qa-btn qa-btn-sm ${useUSCustomary ? "qa-btn-primary" : ""}`}
+                        style={{
+                          borderRadius: 0,
+                          border: "none",
+                          borderLeft: "1px solid var(--qa-border)",
+                          padding: "0.2rem 0.8rem",
+                          fontSize: "0.78rem",
+                        }}
+                        onClick={() => setUseUSCustomary(true)}
+                      >
+                        US Customary
+                      </button>
                     </div>
                   </div>
 
-                  <div className="qa-accordion-content">
-                    <div className="row g-3">
-                      {/* Descripción libre */}
-                      <div className="col-md-12 mb-3">
-                        <label className="qa-label">
-                          Descripción{" "}
-                          <span
-                            className="qa-text-muted"
-                            style={{ fontWeight: 400 }}
-                          >
-                            ({cargoDescription.length}/{MAX_CARGO_DESC})
-                          </span>
-                        </label>
-                        <textarea
-                          className="qa-input"
-                          rows={2}
-                          maxLength={MAX_CARGO_DESC}
-                          placeholder="Describe tu cargamento: paletas, cajas, mercadería suelta, tipo de producto, etc."
-                          value={cargoDescription}
-                          onChange={(e) => setCargoDescription(e.target.value)}
-                          style={{ resize: "vertical" }}
-                        />
-                      </div>
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h4 className="fs-6 fw-bold mb-0">
+                      Detalles de las Piezas
+                    </h4>
+                    <div className="d-flex align-items-center gap-2">
+                      <button
+                        type="button"
+                        className="qa-btn qa-btn-outline qa-btn-sm"
+                        onClick={() => handleDuplicatePiece()}
+                      >
+                        <i className="bi bi-files"></i>
+                        Duplicar Pieza
+                      </button>
+                      <button
+                        type="button"
+                        className="qa-btn qa-btn-primary qa-btn-sm"
+                        onClick={handleAddPiece}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar Pieza
+                      </button>
+                    </div>
+                  </div>
 
-                      {/* Toggle Sistema de Unidades */}
-                      <div className="col-12">
-                        <div className="d-flex align-items-center gap-2">
-                          <small className="qa-text-muted fw-semibold">
-                            Unidades:
-                          </small>
-                          <div
-                            className="d-flex"
-                            style={{
-                              border: "1px solid var(--qa-border)",
-                              borderRadius: "6px",
-                              overflow: "hidden",
-                            }}
-                          >
-                            <button
-                              type="button"
-                              className={`qa-btn qa-btn-sm ${!useUSCustomary ? "qa-btn-primary" : ""}`}
-                              style={{
-                                borderRadius: 0,
-                                border: "none",
-                                padding: "0.2rem 0.8rem",
-                                fontSize: "0.78rem",
-                              }}
-                              onClick={() => setUseUSCustomary(false)}
-                            >
-                              Métrico
-                            </button>
-                            <button
-                              type="button"
-                              className={`qa-btn qa-btn-sm ${useUSCustomary ? "qa-btn-primary" : ""}`}
-                              style={{
-                                borderRadius: 0,
-                                border: "none",
-                                borderLeft: "1px solid var(--qa-border)",
-                                padding: "0.2rem 0.8rem",
-                                fontSize: "0.78rem",
-                              }}
-                              onClick={() => setUseUSCustomary(true)}
-                            >
-                              US Customary
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                  <div className="mb-3">
+                    {piecesData.map((piece, index) => (
+                      <PieceAccordionLASTMILE
+                        key={piece.id}
+                        piece={piece}
+                        index={index}
+                        isOpen={openAccordions.includes(piece.id)}
+                        onToggle={() => handleToggleAccordion(piece.id)}
+                        onRemove={() => handleRemovePiece(piece.id)}
+                        onUpdate={(field, value) =>
+                          handleUpdatePiece(piece.id, field, value)
+                        }
+                        packageTypes={packageTypeOptions.map((opt) => ({
+                          id: String(opt.id),
+                          name: opt.name,
+                        }))}
+                        canRemove={piecesData.length > 1}
+                        useUSCustomary={useUSCustomary}
+                      />
+                    ))}
+                  </div>
 
-                      {/* Grid de dimensiones */}
-                      <div className="col-12">
-                        <div className="qa-grid-4">
-                          <div>
-                            <label className="qa-label">
-                              {useUSCustomary ? "Largo (in)" : "Largo (cm)"}
-                            </label>
-                            <input
-                              type="number"
-                              className="qa-input"
-                              value={displayDim(largo)}
-                              onChange={(e) =>
-                                handleDimInput(setLargo, e.target.value)
-                              }
-                              min="0"
-                              step="0.01"
-                            />
-                          </div>
-                          <div>
-                            <label className="qa-label">
-                              {useUSCustomary ? "Ancho (in)" : "Ancho (cm)"}
-                            </label>
-                            <input
-                              type="number"
-                              className="qa-input"
-                              value={displayDim(ancho)}
-                              onChange={(e) =>
-                                handleDimInput(setAncho, e.target.value)
-                              }
-                              min="0"
-                              step="0.01"
-                            />
-                          </div>
-                          <div>
-                            <label className="qa-label">
-                              {useUSCustomary ? "Alto (in)" : "Alto (cm)"}
-                            </label>
-                            <input
-                              type="number"
-                              className="qa-input"
-                              value={displayDim(alto)}
-                              onChange={(e) =>
-                                handleDimInput(setAlto, e.target.value)
-                              }
-                              min="0"
-                              step="0.01"
-                            />
-                          </div>
-                          <div>
-                            <label className="qa-label">
-                              {useUSCustomary ? "Peso (lbs)" : "Peso (kg)"}
-                            </label>
-                            <input
-                              type="number"
-                              className="qa-input"
-                              value={displayWeight(peso)}
-                              onChange={(e) =>
-                                handleWeightInput(e.target.value)
-                              }
-                              min="0"
-                              step="0.01"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Totals summary bar */}
-                      <div className="col-12">
-                        <div className="qa-totals-bar">
-                          <div className="qa-totals-bar-item">
-                            <span className="qa-totals-bar-value">
-                              {fmtVolume(cargoTotals.volume)} {volumeUnit}
-                            </span>
-                            <span className="qa-totals-bar-label">
-                              Volumen total
-                            </span>
-                          </div>
-                          <div className="qa-totals-bar-item">
-                            <span className="qa-totals-bar-value">
-                              {fmtWeight(cargoTotals.realWeight)} {weightUnit}
-                            </span>
-                            <span className="qa-totals-bar-label">
-                              Peso real
-                            </span>
-                          </div>
-                          <div className="qa-totals-bar-item">
-                            <span className="qa-totals-bar-value">
-                              {fmtWeight(cargoTotals.volumetricWeight)}{" "}
-                              {weightUnit}
-                            </span>
-                            <span className="qa-totals-bar-label">
-                              Peso volumétrico
-                            </span>
-                          </div>
-                          <div className="qa-totals-bar-item">
-                            <span className="qa-totals-bar-value">
-                              {fmtWeight(cargoTotals.chargeableWeight)}{" "}
-                              {weightUnit}
-                            </span>
-                            <span className="qa-totals-bar-label">
-                              Peso chargeable
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                  {/* Totals summary bar */}
+                  <div className="qa-totals-bar">
+                    <div className="qa-totals-bar-item">
+                      <span className="qa-totals-bar-value">
+                        {fmtVolume(cargoTotals.volume)} {volumeUnit}
+                      </span>
+                      <span className="qa-totals-bar-label">Volumen total</span>
+                    </div>
+                    <div className="qa-totals-bar-item">
+                      <span className="qa-totals-bar-value">
+                        {fmtWeight(cargoTotals.realWeight)} {weightUnit}
+                      </span>
+                      <span className="qa-totals-bar-label">Peso real</span>
+                    </div>
+                    <div className="qa-totals-bar-item">
+                      <span className="qa-totals-bar-value">
+                        {fmtWeight(cargoTotals.volumetricWeight)} {weightUnit}
+                      </span>
+                      <span className="qa-totals-bar-label">
+                        Peso volumétrico
+                      </span>
+                    </div>
+                    <div className="qa-totals-bar-item">
+                      <span className="qa-totals-bar-value">
+                        {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
+                      </span>
+                      <span className="qa-totals-bar-label">
+                        Peso chargeable
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1632,35 +1660,66 @@ function QuoteLASTMILE({
                   <div className="p-3 bg-light rounded border mb-3">
                     <h6 className="fw-bold mb-3">
                       <i className="bi bi-box-seam me-2"></i>
-                      Datos del Cargamento
+                      Datos del Cargamento ({piecesData.length} pieza
+                      {piecesData.length !== 1 ? "s" : ""})
                     </h6>
                     <div className="row g-2 small">
-                      <div className="col-6 text-muted">Descripción:</div>
-                      <div className="col-6 text-end fw-bold">
-                        {cargoDescriptionPreview || "—"}
-                      </div>
-                      {peso && (
-                        <>
+                      {piecesData.map((p, i) => (
+                        <React.Fragment key={p.id}>
+                          {i > 0 && (
+                            <div className="col-12 border-top my-2"></div>
+                          )}
+                          <div className="col-12 fw-bold text-uppercase text-muted small">
+                            Pieza {i + 1}
+                          </div>
+                          <div className="col-6 text-muted">Descripción:</div>
+                          <div className="col-6 text-end fw-bold">
+                            {p.description || "—"}
+                          </div>
+                          {p.packageType && (
+                            <>
+                              <div className="col-6 text-muted">
+                                Tipo de paquete:
+                              </div>
+                              <div className="col-6 text-end fw-bold">
+                                {packageTypeOptions.find(
+                                  (opt) => String(opt.id) === p.packageType,
+                                )?.name || "—"}
+                              </div>
+                            </>
+                          )}
                           <div className="col-6 text-muted">Peso:</div>
                           <div className="col-6 text-end fw-bold">
-                            {fmtWeight(parseFloat(peso) || 0)} {weightUnit}
+                            {fmtWeight(p.weight)} {weightUnit}
                           </div>
-                        </>
-                      )}
-                      {(largo || ancho || alto) && (
-                        <>
-                          <div className="col-12 border-top my-2"></div>
                           <div className="col-6 text-muted">
                             Dimensiones (L × A × H):
                           </div>
                           <div className="col-6 text-end fw-bold">
-                            {[largo, ancho, alto]
-                              .map((v) => fmtDimStr(v))
-                              .join(" × ")}{" "}
-                            {dimUnit}
+                            {fmtDim(p.length)} × {fmtDim(p.width)} ×{" "}
+                            {fmtDim(p.height)} {dimUnit}
                           </div>
-                        </>
-                      )}
+                        </React.Fragment>
+                      ))}
+                      <div className="col-12 border-top my-2"></div>
+                      <div className="col-6 text-muted">
+                        <strong>Volumen total:</strong>
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        {fmtVolume(cargoTotals.volume)} {volumeUnit}
+                      </div>
+                      <div className="col-6 text-muted">
+                        <strong>Peso total:</strong>
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        {fmtWeight(cargoTotals.realWeight)} {weightUnit}
+                      </div>
+                      <div className="col-6 text-muted">
+                        <strong>Peso chargeable:</strong>
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
+                      </div>
                     </div>
                   </div>
 
@@ -1746,6 +1805,32 @@ function QuoteLASTMILE({
           </div>
         )}
       </div>
+
+      {showMaxPiecesModal && (
+        <Modal
+          show={showMaxPiecesModal}
+          onHide={() => setShowMaxPiecesModal(false)}
+          centered
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>Límite alcanzado</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>
+              Has alcanzado el límite máximo de {MAX_PIECES_LM} piezas por
+              cotización.
+            </p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              variant="primary"
+              onClick={() => setShowMaxPiecesModal(false)}
+            >
+              Entendido
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
     </>
   );
 }

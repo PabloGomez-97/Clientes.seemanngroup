@@ -32,6 +32,27 @@ export interface QuoteLastMileProps {
 }
 
 /**
+ * Estructura de pieza para Última Milla. Mismo modelo que el sistema de
+ * piezas de QuoteAIR pero sin `noApilable`. Las dimensiones se almacenan
+ * siempre en SI (cm / kg). El factor volumétrico utilizado es 167 kg/m³.
+ */
+export interface PieceDataLM {
+  id: string;
+  packageType: string;
+  description: string;
+  length: number;
+  width: number;
+  height: number;
+  weight: number;
+  // Calculados
+  volume: number;
+  totalVolume: number;
+  volumeWeight: number;
+  totalVolumeWeight: number;
+  totalWeight: number;
+}
+
+/**
  * Parsea el CSV publicado del sheet de Última Milla.
  * Estructura observada:
  *   col[0] vacío | col[1] = Origen | col[2] = Destino
@@ -40,6 +61,7 @@ export interface QuoteLastMileProps {
  * (col[2] en la primera fila con datos). El resultado expande la combinación
  * NxM (típicamente Nx1).
  */
+
 export const parseLastMile = (data: any[]): RutaLastMile[] => {
   const origenes: { raw: string; norm: string }[] = [];
   const destinos: { raw: string; norm: string }[] = [];

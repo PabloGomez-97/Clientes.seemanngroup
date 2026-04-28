@@ -1,5 +1,25 @@
 import React from "react";
 
+export interface PDFLastMilePiece {
+  id: string;
+  description: string;
+  packageType: string;
+  packageTypeName: string;
+  length: number;
+  width: number;
+  height: number;
+  weight: number;
+  volume: number;
+  volumeWeight: number;
+}
+
+export interface PDFLastMileTotals {
+  realWeight: number;
+  volume: number;
+  volumetricWeight: number;
+  chargeableWeight: number;
+}
+
 interface PDFTemplateLastMileProps {
   quoteNumber: string;
   customerName: string;
@@ -10,16 +30,13 @@ interface PDFTemplateLastMileProps {
   pickupFromAddress: string;
   deliveryToAddress: string;
   salesRep: string;
-  /** Texto libre del cargamento (max 2000) */
-  cargoDescription: string;
-  /** Dimensiones opcionales */
-  peso?: string;
-  alto?: string;
-  ancho?: string;
-  largo?: string;
+  /** Lista de piezas del cargamento */
+  pieces: PDFLastMilePiece[];
+  /** Totales agregados de las piezas */
+  totals: PDFLastMileTotals;
   /** ¿Solicitó seguro? */
   seguroActivo?: boolean;
-  /** Sistema de unidades. true = US Customary (lbs/in), false/undefined = Métrico (kg/cm). Los valores recibidos en peso/alto/ancho/largo siempre vienen en SI (kg/cm). */
+  /** Sistema de unidades. true = US Customary (lbs/in), false/undefined = Métrico (kg/cm). Los valores recibidos siempre vienen en SI (kg/cm). */
   useUSCustomary?: boolean;
   /** Número de cotización para footer */
   validUntil?: string;
@@ -47,11 +64,8 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
   pickupFromAddress,
   deliveryToAddress,
   salesRep,
-  cargoDescription,
-  peso,
-  alto,
-  ancho,
-  largo,
+  pieces,
+  totals,
   seguroActivo = false,
   useUSCustomary = false,
   validUntil,
@@ -112,22 +126,31 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
   };
   const cen: React.CSSProperties = { textAlign: "center" };
 
-  // Conversiones SI -> US Customary (los valores entran siempre en kg/cm)
+  // Conversiones SI -> US Customary (los valores entran siempre en kg/cm/m³)
   const KG_TO_LB = 1 / 0.453592;
   const CM_TO_IN = 1 / 2.54;
-  const fmtNum = (v?: string, kind: "weight" | "length" = "length") => {
-    if (!v || v.toString().trim() === "") return "—";
-    const n = parseFloat(v.toString().replace(",", "."));
-    if (!Number.isFinite(n)) return v.toString().trim();
-    const out = useUSCustomary
-      ? n * (kind === "weight" ? KG_TO_LB : CM_TO_IN)
-      : n;
-    // 2 decimales máx, sin ceros colgando
+  const M3_TO_FT3 = 35.3147;
+  const fmtNum = (
+    v: number | undefined,
+    kind: "weight" | "length" | "volume" = "length",
+  ) => {
+    if (v === undefined || v === null || !Number.isFinite(v)) return "—";
+    if (v === 0) return "0";
+    let out = v;
+    if (useUSCustomary) {
+      if (kind === "weight") out = v * KG_TO_LB;
+      else if (kind === "length") out = v * CM_TO_IN;
+      else if (kind === "volume") out = v * M3_TO_FT3;
+    }
     return out.toFixed(2).replace(/\.?0+$/, "");
   };
   const wUnit = useUSCustomary ? "lbs" : "kg";
   const lUnit = useUSCustomary ? "in" : "cm";
-  const hasAnyDim = Boolean(peso || largo || ancho || alto);
+  const vUnit = useUSCustomary ? "ft³" : "m³";
+  const safePieces = pieces && pieces.length > 0 ? pieces : [];
+  const hasAnyDim = safePieces.some(
+    (p) => p.length || p.width || p.height || p.weight,
+  );
 
   return (
     <div id="pdf-content" style={page}>
@@ -356,8 +379,8 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
-              <th style={{ ...th, ...cen, width: "8%" }}>Qty</th>
-              <th style={{ ...th, width: "18%" }}>Commodity</th>
+              <th style={{ ...th, ...cen, width: "6%" }}>#</th>
+              <th style={{ ...th, width: "16%" }}>Commodity</th>
               <th style={th}>Description</th>
               <th style={{ ...th, ...cen, width: "10%" }}>Peso ({wUnit})</th>
               <th style={{ ...th, ...cen, width: "10%" }}>Largo ({lUnit})</th>
@@ -366,15 +389,29 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style={{ ...td, ...cen, fontWeight: 600 }}>1</td>
-              <td style={{ ...td, fontWeight: 600 }}>Última Milla</td>
-              <td style={td}>{truncateForTable(cargoDescription)}</td>
-              <td style={{ ...td, ...cen }}>{fmtNum(peso, "weight")}</td>
-              <td style={{ ...td, ...cen }}>{fmtNum(largo)}</td>
-              <td style={{ ...td, ...cen }}>{fmtNum(ancho)}</td>
-              <td style={{ ...td, ...cen }}>{fmtNum(alto)}</td>
-            </tr>
+            {safePieces.length === 0 ? (
+              <tr>
+                <td style={{ ...td, ...cen }} colSpan={7}>
+                  —
+                </td>
+              </tr>
+            ) : (
+              safePieces.map((p, idx) => (
+                <tr key={p.id || idx}>
+                  <td style={{ ...td, ...cen, fontWeight: 600 }}>{idx + 1}</td>
+                  <td style={{ ...td, fontWeight: 600 }}>
+                    {p.packageTypeName || "Última Milla"}
+                  </td>
+                  <td style={td}>{truncateForTable(p.description)}</td>
+                  <td style={{ ...td, ...cen }}>
+                    {fmtNum(p.weight, "weight")}
+                  </td>
+                  <td style={{ ...td, ...cen }}>{fmtNum(p.length)}</td>
+                  <td style={{ ...td, ...cen }}>{fmtNum(p.width)}</td>
+                  <td style={{ ...td, ...cen }}>{fmtNum(p.height)}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
         {!hasAnyDim && (
@@ -389,6 +426,45 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
             Dimensiones no especificadas.
           </div>
         )}
+
+        {/* Summary strip: Pieces / Volume / Real / Volumetric / Chargeable */}
+        <div
+          style={{
+            marginTop: "6px",
+            display: "grid",
+            gridTemplateColumns: "repeat(5, 1fr)",
+            border: `1px solid ${C.line}`,
+            borderRadius: "3px",
+            backgroundColor: C.bg,
+            overflow: "hidden",
+          }}
+        >
+          {[
+            ["Pieces", String(safePieces.length)],
+            ["Volume", `${fmtNum(totals.volume, "volume")} ${vUnit}`],
+            ["Gross Weight", `${fmtNum(totals.realWeight, "weight")} ${wUnit}`],
+            [
+              "Volumetric Weight",
+              `${fmtNum(totals.volumetricWeight, "weight")} ${wUnit}`,
+            ],
+            [
+              "Chargeable",
+              `${fmtNum(totals.chargeableWeight, "weight")} ${wUnit}`,
+            ],
+          ].map(([lbl, v], i) => (
+            <div
+              key={i}
+              style={{
+                padding: "5px 8px",
+                borderRight: i < 4 ? `1px solid ${C.line}` : "none",
+                textAlign: "center",
+              }}
+            >
+              <div style={label}>{lbl}</div>
+              <div style={{ ...val, fontWeight: 700 }}>{v}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {seguroActivo && (

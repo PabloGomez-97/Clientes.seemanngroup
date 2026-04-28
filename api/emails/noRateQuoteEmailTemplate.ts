@@ -101,21 +101,18 @@ function buildDetailRows(quoteType: string, d: any): string {
 }
 
 function buildLastMileDetailRows(d: any, row: (l: string, v: string) => string): string {
-  const medidas = [
-    d.peso ? `Peso: ${d.peso} kg` : null,
-    d.largo ? `Largo: ${d.largo} cm` : null,
-    d.ancho ? `Ancho: ${d.ancho} cm` : null,
-    d.alto ? `Alto: ${d.alto} cm` : null,
-  ].filter(Boolean).join(' · ');
-
   const rows = [
     row('Origen', d.pol),
     row('Destino', d.pod),
     row('Dirección de recogida', d.pickupFromAddress),
     row('Dirección de entrega', d.deliveryToAddress),
   ];
-  if (d.cargoDescription) rows.push(row('Descripción del cargamento', d.cargoDescription));
-  if (medidas) rows.push(row('Medidas (m)', medidas));
+  if (d.piezasCount) rows.push(row('Cantidad de piezas', String(d.piezasCount)));
+  if (d.piezasDesc) rows.push(row('Detalle de piezas', d.piezasDesc));
+  if (d.pesoTotal) rows.push(row('Peso total (kg)', d.pesoTotal));
+  if (d.volumenTotal) rows.push(row('Volumen total (m³)', d.volumenTotal));
+  if (d.pesoVolumetrico) rows.push(row('Peso volumétrico (kg)', d.pesoVolumetrico));
+  if (d.pesoChargeable) rows.push(row('Peso chargeable (kg)', d.pesoChargeable));
   return rows.join('');
 }
 

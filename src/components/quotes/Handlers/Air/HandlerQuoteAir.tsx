@@ -309,6 +309,7 @@ export interface WeightRangeValidation {
  * Determina si el peso chargeable cae en un rango con precio disponible.
  * Si no hay precio, indica cuál es el siguiente rango con precio disponible.
  */
+
 export const getWeightRangeValidation = (
   ruta: RutaAerea,
   pesoChargeable: number,
