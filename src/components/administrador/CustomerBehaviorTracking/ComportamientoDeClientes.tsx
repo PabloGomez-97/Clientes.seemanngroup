@@ -2325,12 +2325,8 @@ function SummaryCard({
       onClick={onClick}
       className={`cb-metrics-strip__item${onClick ? " cb-metrics-strip__item--clickable" : ""}`}
     >
-      <div className="cb-metrics-strip__label">
-        {label}
-      </div>
-      <div className="cb-metrics-strip__value">
-        {value}
-      </div>
+      <div className="cb-metrics-strip__label">{label}</div>
+      <div className="cb-metrics-strip__value">{value}</div>
       {onClick && (
         <div style={{ fontSize: 10, color: "#d1d5db", marginTop: 4 }}>
           Ver clientes →
