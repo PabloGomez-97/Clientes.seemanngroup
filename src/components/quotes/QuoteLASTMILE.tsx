@@ -28,6 +28,7 @@ import { Modal, Button } from "react-bootstrap";
 import { linbisFetch } from "../../services/linbisFetch";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import { imgUrl } from "../../config/images";
+import { getLastMileCoords } from "../../config/lastmilleCoordinates";
 import "flag-icons/css/flag-icons.min.css";
 import "./QuoteLASTMILE.css";
 
@@ -82,6 +83,14 @@ function expandClientesPorEmpresa(
 const getValidityDate = (): Date =>
   new Date(Date.now() + VALIDITY_DAYS * 24 * 60 * 60 * 1000);
 
+const getLastMileFlagCountryCode = (
+  location: LastMileSelectOption | null,
+): string | null => {
+  const locode = getLastMileCoords(location?.value ?? location?.label)?.code;
+  if (!locode || locode.length < 2) return null;
+  return locode.substring(0, 2).toLowerCase();
+};
+
 function QuoteLASTMILE({
   preselectedOrigin,
   preselectedDestination,
@@ -130,6 +139,8 @@ function QuoteLASTMILE({
   const [destinoSel, setDestinoSel] = useState<LastMileSelectOption | null>(
     null,
   );
+  const originCountryCode = getLastMileFlagCountryCode(origenSel);
+  const destinationCountryCode = getLastMileFlagCountryCode(destinoSel);
 
   const [opcionesOrigen, setOpcionesOrigen] = useState<LastMileSelectOption[]>(
     [],
@@ -1096,10 +1107,21 @@ function QuoteLASTMILE({
                       {origenSel?.label}
                     </div>
                   </div>
-                  <span
-                    className="fi fi-cl"
-                    style={{ fontSize: "2.2em", flexShrink: 0 }}
-                  />
+                  {originCountryCode ? (
+                    <span
+                      className={`fi fi-${originCountryCode}`}
+                      style={{ fontSize: "2.2em", flexShrink: 0 }}
+                    />
+                  ) : (
+                    <i
+                      className="bi bi-geo-alt-fill"
+                      style={{
+                        fontSize: "1.8em",
+                        color: "var(--qf-text-secondary)",
+                        flexShrink: 0,
+                      }}
+                    ></i>
+                  )}
                 </div>
                 <div className="qa-route-summary-arrow">
                   <i className="bi bi-arrow-right"></i>
@@ -1123,10 +1145,21 @@ function QuoteLASTMILE({
                       {destinoSel?.label}
                     </div>
                   </div>
-                  <span
-                    className="fi fi-cl"
-                    style={{ fontSize: "2.2em", flexShrink: 0 }}
-                  />
+                  {destinationCountryCode ? (
+                    <span
+                      className={`fi fi-${destinationCountryCode}`}
+                      style={{ fontSize: "2.2em", flexShrink: 0 }}
+                    />
+                  ) : (
+                    <i
+                      className="bi bi-geo-alt-fill"
+                      style={{
+                        fontSize: "1.8em",
+                        color: "var(--qf-text-secondary)",
+                        flexShrink: 0,
+                      }}
+                    ></i>
+                  )}
                 </div>
               </div>
               <div className="qa-route-summary-meta">
