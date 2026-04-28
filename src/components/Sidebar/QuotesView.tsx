@@ -574,13 +574,16 @@ function QuotesView({
   /* -- Auto-apply initial quote filter (from navigation) ---- */
   useEffect(() => {
     const filterFromProp = initialQuoteFilter;
-    const filterFromState = (location.state as {
-      quoteFilter?: string;
-      quoteFilterNumber?: string;
-    })?.quoteFilterNumber;
+    const filterFromState = (
+      location.state as {
+        quoteFilter?: string;
+        quoteFilterNumber?: string;
+      }
+    )?.quoteFilterNumber;
     const legacyFilterFromState = (location.state as { quoteFilter?: string })
       ?.quoteFilter;
-    const quoteFilter = filterFromProp || filterFromState || legacyFilterFromState;
+    const quoteFilter =
+      filterFromProp || filterFromState || legacyFilterFromState;
     if (!quoteFilter || quotes.length === 0) return;
 
     // Lock: prevent the quick-search effect from resetting this filter
