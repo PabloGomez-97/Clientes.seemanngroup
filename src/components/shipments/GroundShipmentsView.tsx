@@ -290,14 +290,19 @@ function GroundShipmentsView({
       shipmentFilterNumber?: string;
     } | null;
     const incomingFilter = (
-      initialFilterNumber || locationState?.shipmentFilterNumber || ""
+      initialFilterNumber ||
+      locationState?.shipmentFilterNumber ||
+      ""
     ).trim();
 
     if (!incomingFilter || groundShipments.length === 0) return;
     if (appliedInitialFilterRef.current === incomingFilter) return;
 
     const filtered = groundShipments.filter((s) =>
-      (s.number || "").toString().toLowerCase().includes(incomingFilter.toLowerCase()),
+      (s.number || "")
+        .toString()
+        .toLowerCase()
+        .includes(incomingFilter.toLowerCase()),
     );
 
     appliedInitialFilterRef.current = incomingFilter;
@@ -543,9 +548,8 @@ function GroundShipmentsView({
                 background: "var(--primary-color)",
                 color: "#fff",
                 fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
                 padding: "3px 10px",
                 borderRadius: 3,
                 marginBottom: 10,
@@ -558,6 +562,7 @@ function GroundShipmentsView({
                 color: "#fff",
                 fontSize: 24,
                 fontWeight: 700,
+                letterSpacing: "-0.02em",
                 margin: 0,
                 lineHeight: 1.3,
               }}
@@ -568,6 +573,7 @@ function GroundShipmentsView({
               style={{
                 color: "rgba(255,255,255,0.78)",
                 fontSize: 14,
+                letterSpacing: "0.01em",
                 margin: "8px 0 0",
                 maxWidth: 460,
               }}

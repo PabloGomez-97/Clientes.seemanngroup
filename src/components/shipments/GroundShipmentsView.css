@@ -44,6 +44,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  letter-spacing: 0.04em;
   transition: background-color 0.15s, color 0.15s, opacity 0.15s;
   white-space: nowrap;
   line-height: 1.4;
@@ -95,13 +96,12 @@
 .gsv-th {
   padding: 12px 16px;
   text-align: left;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.75rem;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  border-bottom: 2px solid #e5e7eb;
+  color: #9ca3af;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid #ececec;
   background: #fafafa;
   user-select: none;
   white-space: nowrap;
@@ -169,6 +169,7 @@
   padding: 11px 16px;
   color: #374151;
   font-size: 0.8125rem;
+  letter-spacing: 0.01em;
   vertical-align: middle;
   white-space: nowrap;
 }
@@ -180,13 +181,15 @@
   align-items: center;
   gap: 8px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 /* Badge type */
 .gsv-badge {
   display: inline-block;
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   padding: 3px 10px;
   border-radius: 9999px;
 }
@@ -225,14 +228,14 @@
 }
 .gsv-route-card__label {
   font-size: 0.6875rem;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  font-weight: 500;
+  color: #9ca3af;
+  letter-spacing: 0.06em;
 }
 .gsv-route-card__value {
   font-size: 0.875rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--secondary-color);
 }
 .gsv-route-card__date {
@@ -250,6 +253,7 @@
   font-size: 0.75rem;
   color: #6b7280;
   font-weight: 500;
+  letter-spacing: 0.04em;
 }
 
 /*  Tabs (inside accordion)  */
@@ -275,6 +279,7 @@
   font-size: 0.8125rem;
   font-weight: 500;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.03em;
   color: #6b7280;
   background: transparent;
   border: none;
@@ -321,6 +326,7 @@
 .gsv-card h4 {
   font-size: 1rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   margin-bottom: 12px;
   color: var(--secondary-color);
 }
@@ -344,14 +350,14 @@
 }
 .gsv-finance-card__label {
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 500;
   color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.06em;
 }
 .gsv-finance-card__amount {
   font-size: 1.75rem;
   font-weight: 700;
+  letter-spacing: -0.03em;
   color: var(--secondary-color);
   margin-top: 4px;
 }
@@ -390,6 +396,7 @@
 
 .gsv-pagination-label {
   font-size: 0.8125rem;
+  letter-spacing: 0.02em;
   color: #6b7280;
 }
 
@@ -414,6 +421,7 @@
 .gsv-pagination-range {
   font-size: 0.8125rem;
   color: #374151;
+  letter-spacing: 0.01em;
   font-weight: 500;
 }
 

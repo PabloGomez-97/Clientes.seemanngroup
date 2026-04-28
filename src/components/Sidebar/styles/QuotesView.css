@@ -9,6 +9,7 @@
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.2;
+  letter-spacing: -0.02em;
   margin-bottom: 1rem;
   color: var(--secondary-color);
 }
@@ -52,6 +53,7 @@
   padding: 0 12px;
   font-size: 0.8125rem;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.01em;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   outline: none;
@@ -80,6 +82,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  letter-spacing: 0.04em;
   transition: background-color 0.15s, color 0.15s, opacity 0.15s;
   white-space: nowrap;
   line-height: 1.4;
@@ -164,13 +167,12 @@
 .qv-th {
   padding: 12px 16px;
   text-align: left;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.75rem;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  border-bottom: 2px solid #e5e7eb;
+  color: #9ca3af;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid #ececec;
   background: #fafafa;
   user-select: none;
   position: sticky;
@@ -310,6 +312,7 @@
   font-size: 0.8125rem;
   font-weight: 500;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.03em;
   color: #6b7280;
   background: transparent;
   border: none;
@@ -352,6 +355,7 @@
   color: #374151;
   font-size: 0.8125rem;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.01em;
 }
 
 .qv-td--center {
@@ -361,6 +365,7 @@
 .qv-td--number {
   font-weight: 600;
   color: var(--secondary-color);
+  letter-spacing: -0.01em;
 }
 
 /*  Status badges  */
@@ -368,10 +373,9 @@
   display: inline-block;
   padding: 2px 10px;
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 500;
   border-radius: 10px;
-  letter-spacing: 0.2px;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   line-height: 1.6;
 }
 
@@ -419,6 +423,7 @@
 
 .qv-pagination-label {
   font-size: 0.8125rem;
+  letter-spacing: 0.02em;
   color: #6b7280;
 }
 
@@ -436,6 +441,7 @@
 
 .qv-pagination-range {
   font-size: 0.8125rem;
+  letter-spacing: 0.01em;
   color: #374151;
   padding: 0 4px;
 }
@@ -500,6 +506,7 @@
   margin: 0 0 20px;
   font-size: 1.1rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--secondary-color);
 }
 
@@ -517,10 +524,12 @@
   margin: 0;
   font-size: 1.15rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .qv-modal__subheading {
   font-size: 0.8125rem;
+  letter-spacing: 0.02em;
   opacity: 0.8;
 }
 
@@ -585,15 +594,15 @@
 
 .qv-route-card__label {
   font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
+  font-weight: 500;
   color: #9ca3af;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.06em;
 }
 
 .qv-route-card__value {
   font-size: 0.9375rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--secondary-color);
 }
 
@@ -612,7 +621,8 @@
 
 .qv-route-card__transit {
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: #6b7280;
 }
 
@@ -648,6 +658,7 @@
 .qv-collapsible__title {
   font-weight: 600;
   font-size: 0.875rem;
+  letter-spacing: 0.02em;
   color: var(--secondary-color);
 }
 
@@ -684,16 +695,16 @@
 
 .qv-info-field__label {
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 500;
   color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.06em;
   margin-bottom: 2px;
 }
 
 .qv-info-field__value {
   font-size: 0.8125rem;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.01em;
   color: var(--secondary-color);
   word-break: break-word;
 }
@@ -715,6 +726,7 @@
 .qv-card h4 {
   font-size: 1rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   margin-bottom: 12px;
   color: var(--secondary-color);
 }
@@ -731,9 +743,8 @@
 .qv-finance-card__label {
   display: block;
   font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   color: #6b7280;
   margin-bottom: 8px;
 }
@@ -742,6 +753,7 @@
   display: block;
   font-size: 1.75rem;
   font-weight: 700;
+  letter-spacing: -0.03em;
   color: var(--secondary-color);
   margin-bottom: 4px;
 }
@@ -786,6 +798,7 @@
   display: block;
   font-size: 0.8125rem;
   font-weight: 600;
+  letter-spacing: 0.03em;
   color: #374151;
   margin-bottom: 6px;
 }
@@ -793,6 +806,7 @@
 .qv-label--small {
   font-size: 0.75rem;
   font-weight: 500;
+  letter-spacing: 0.04em;
   color: #6b7280;
   margin-bottom: 4px;
 }

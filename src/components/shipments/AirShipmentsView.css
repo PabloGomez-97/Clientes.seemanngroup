@@ -127,6 +127,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  letter-spacing: 0.04em;
   transition: background-color 0.15s, color 0.15s, opacity 0.15s;
   white-space: nowrap;
   line-height: 1.4;
@@ -205,13 +206,12 @@
 .asv-th {
   padding: 12px 16px;
   text-align: left;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.75rem;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  border-bottom: 2px solid #e5e7eb;
+  color: #9ca3af;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid #ececec;
   background: #fafafa;
   user-select: none;
   white-space: nowrap;
@@ -308,14 +308,14 @@
 }
 .asv-route-card__label {
   font-size: 0.6875rem;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  font-weight: 500;
+  color: #9ca3af;
+  letter-spacing: 0.06em;
 }
 .asv-route-card__value {
   font-size: 0.875rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--secondary-color);
 }
 .asv-route-card__date {
@@ -333,6 +333,7 @@
   font-size: 0.75rem;
   color: #6b7280;
   font-weight: 500;
+  letter-spacing: 0.04em;
   text-align: center;
 }
 
@@ -342,6 +343,7 @@
   color: #374151;
   font-size: 0.8125rem;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.01em;
 }
 
 .asv-td--center {
@@ -350,6 +352,7 @@
 
 .asv-td--number {
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--primary-color);
 }
 
@@ -363,10 +366,9 @@
   display: inline-block;
   padding: 2px 10px;
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 500;
   border-radius: 10px;
-  letter-spacing: 0.2px;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   line-height: 1.6;
 }
 
@@ -421,6 +423,7 @@
   font-size: 0.8125rem;
   font-weight: 500;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.03em;
   color: #6b7280;
   background: transparent;
   border: none;
@@ -476,6 +479,7 @@
 .asv-card h4 {
   font-size: 1rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   margin-bottom: 12px;
   color: var(--secondary-color);
 }
@@ -489,10 +493,9 @@
 
 .asv-track-field__label {
   font-size: 0.6875rem;
-  font-weight: 600;
+  font-weight: 500;
   color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.06em;
   margin-bottom: 4px;
 }
 
@@ -577,6 +580,7 @@
   margin: 0 0 20px;
   font-size: 1.1rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--secondary-color);
 }
 
@@ -614,6 +618,7 @@
   display: block;
   font-size: 0.8125rem;
   font-weight: 600;
+  letter-spacing: 0.03em;
   color: #374151;
   margin-bottom: 6px;
 }
@@ -621,6 +626,7 @@
 .asv-label--small {
   font-size: 0.75rem;
   font-weight: 500;
+  letter-spacing: 0.04em;
   color: #6b7280;
   margin-bottom: 4px;
 }

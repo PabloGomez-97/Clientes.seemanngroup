@@ -1199,9 +1199,8 @@ function OceanShipmentsView({
                 background: "var(--primary-color)",
                 color: "#fff",
                 fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
                 padding: "3px 10px",
                 borderRadius: 3,
                 marginBottom: 10,
@@ -1214,6 +1213,7 @@ function OceanShipmentsView({
                 color: "#fff",
                 fontSize: 24,
                 fontWeight: 700,
+                letterSpacing: "-0.02em",
                 margin: 0,
                 lineHeight: 1.3,
               }}
@@ -1224,6 +1224,7 @@ function OceanShipmentsView({
               style={{
                 color: "rgba(255,255,255,0.78)",
                 fontSize: 14,
+                letterSpacing: "0.01em",
                 margin: "8px 0 0",
                 maxWidth: 460,
               }}
