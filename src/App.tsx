@@ -69,6 +69,9 @@ import Novedades from "./components/Sidebar/Novedades";
 import ShippingOrderView from "./components/Sidebar/ShippingOrder";
 import CotizacionEspecial from "./components/Sidebar/Cotizacion-especial";
 import MisDocumentosCliente from "./components/Sidebar/MisDocumentosCliente";
+import PrivacyPolicy from "./components/Footer/PrivacyPolicy";
+import TermsOfService from "./components/Footer/TermsOfService";
+import CookiesSettings from "./components/Footer/CookiesSettings";
 
 // Proveedor Views
 import HomeProveedores from "./components/Proveedores/Homeproveedores";
@@ -278,6 +281,11 @@ function App() {
           <Route path="novedades" element={<Novedades />} />
           <Route path="mis-documentos" element={<MisDocumentosCliente />} />
         </Route>
+
+        {/* Rutas públicas legales */}
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/cookie-settings" element={<CookiesSettings />} />
 
         {/* Ruta por defecto */}
         <Route path="*" element={<Navigate to={getHomeRoute()} replace />} />

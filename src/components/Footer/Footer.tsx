@@ -1,45 +1,57 @@
 // src/components/Footer/Footer.tsx
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Twitter, Instagram, Linkedin, Facebook } from "lucide-react";
 import "./Footer.css";
 
 type FooterLink = {
-  label: string;
+  labelKey: string;
   to: string;
   external?: boolean;
 };
 
 type FooterColumn = {
-  title: string;
+  titleKey: string;
   links: FooterLink[];
 };
 
 const COLUMNS: FooterColumn[] = [
   {
-    title: "Product",
+    titleKey: "footer.columns.product.title",
     links: [
-      { label: "Features", to: "/" },
-      { label: "Pricing", to: "/" },
-      { label: "Integrations", to: "/" },
-      { label: "Changelog", to: "/" },
+      { labelKey: "footer.columns.product.links.features", to: "/novedades" },
+      { labelKey: "footer.columns.product.links.pricing", to: "/newquotes" },
+      {
+        labelKey: "footer.columns.product.links.integrations",
+        to: "/",
+      },
+      { labelKey: "footer.columns.product.links.changelog", to: "/" },
     ],
   },
   {
-    title: "Resources",
+    titleKey: "footer.columns.resources.title",
     links: [
-      { label: "Documentation", to: "/" },
-      { label: "Tutorials", to: "/" },
-      { label: "Blog", to: "/" },
-      { label: "Support", to: "/" },
+      {
+        labelKey: "footer.columns.resources.links.1",
+        to: "/newquotes",
+      },
+      {
+        labelKey: "footer.columns.resources.links.2",
+        to: "/cotizacion-especial",
+      },
+      { labelKey: "footer.columns.resources.links.3", to: "/quotes" },
+      { labelKey: "footer.columns.resources.links.4", to: "/" },
+      { labelKey: "footer.columns.resources.links.5", to: "/trackings" },
+      { labelKey: "footer.columns.resources.links.6", to: "/air-shipments" },
     ],
   },
   {
-    title: "Company",
+    titleKey: "footer.columns.company.title",
     links: [
-      { label: "About", to: "/" },
-      { label: "Careers", to: "/" },
-      { label: "Contact", to: "/" },
-      { label: "Partners", to: "/" },
+      { labelKey: "footer.columns.company.links.about", to: "/" },
+      { labelKey: "footer.columns.company.links.careers", to: "/" },
+      { labelKey: "footer.columns.company.links.contact", to: "/" },
+      { labelKey: "footer.columns.company.links.partners", to: "/" },
     ],
   },
 ];
@@ -64,6 +76,7 @@ const SOCIALS = [
 ];
 
 function Footer() {
+  const { t } = useTranslation();
   const year = new Date().getFullYear();
 
   return (
@@ -81,12 +94,12 @@ function Footer() {
             />
             <span className="sg-footer__brand-name">Seemann Group</span>
           </div>
-          <p className="sg-footer__tagline">
-            Líder en soluciones logísticas internacionales con más de 35 años de
-            experiencia. Conectamos tu negocio con el mundo.
-          </p>
+          <p className="sg-footer__tagline">{t("footer.tagline")}</p>
 
-          <ul className="sg-footer__socials" aria-label="Redes sociales">
+          <ul
+            className="sg-footer__socials"
+            aria-label={t("footer.socialsAriaLabel")}
+          >
             {SOCIALS.map(({ label, href, Icon }) => (
               <li key={label}>
                 <a
@@ -103,13 +116,16 @@ function Footer() {
           </ul>
         </div>
 
-        <nav className="sg-footer__cols" aria-label="Footer">
+        <nav
+          className="sg-footer__cols"
+          aria-label={t("footer.navigationAriaLabel")}
+        >
           {COLUMNS.map((col) => (
-            <div className="sg-footer__col" key={col.title}>
-              <h4 className="sg-footer__col-title">{col.title}</h4>
+            <div className="sg-footer__col" key={col.titleKey}>
+              <h4 className="sg-footer__col-title">{t(col.titleKey)}</h4>
               <ul className="sg-footer__col-list">
                 {col.links.map((link) => (
-                  <li key={link.label}>
+                  <li key={link.labelKey}>
                     {link.external ? (
                       <a
                         href={link.to}
@@ -117,11 +133,11 @@ function Footer() {
                         rel="noopener noreferrer"
                         className="sg-footer__link"
                       >
-                        {link.label}
+                        {t(link.labelKey)}
                       </a>
                     ) : (
                       <Link to={link.to} className="sg-footer__link">
-                        {link.label}
+                        {t(link.labelKey)}
                       </Link>
                     )}
                   </li>
@@ -133,23 +149,21 @@ function Footer() {
       </div>
 
       <div className="sg-footer__bottom">
-        <p className="sg-footer__copy">
-          © {year} Seemann Group. All rights reserved.
-        </p>
+        <p className="sg-footer__copy">{t("footer.copyright", { year })}</p>
         <ul className="sg-footer__legal">
           <li>
-            <Link to="/" className="sg-footer__legal-link">
-              Privacy Policy
+            <Link to="/privacy-policy" className="sg-footer__legal-link">
+              {t("footer.legal.privacyPolicy")}
             </Link>
           </li>
           <li>
-            <Link to="/" className="sg-footer__legal-link">
-              Terms of Service
+            <Link to="/terms-of-service" className="sg-footer__legal-link">
+              {t("footer.legal.termsOfService")}
             </Link>
           </li>
           <li>
-            <Link to="/" className="sg-footer__legal-link">
-              Cookies Settings
+            <Link to="/cookie-settings" className="sg-footer__legal-link">
+              {t("footer.legal.cookiesSettings")}
             </Link>
           </li>
         </ul>

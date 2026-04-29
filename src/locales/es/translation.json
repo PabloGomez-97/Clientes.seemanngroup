@@ -267,6 +267,48 @@
       }
     }
   },
+  "footer": {
+    "tagline": "Líder en soluciones logísticas internacionales con más de 35 años de experiencia. Conectamos tu negocio con el mundo.",
+    "socialsAriaLabel": "Redes sociales",
+    "navigationAriaLabel": "Pie de página",
+    "columns": {
+      "product": {
+        "title": "Servicios e Informaciones",
+        "links": {
+          "features": "Noticias y Novedades",
+          "pricing": "Tarifarios",
+          "integrations": "Contenedores",
+          "changelog": "Contáctenos"
+        }
+      },
+      "resources": {
+        "title": "Negocio en Línea",
+        "links": {
+          "1": "Cotizador",
+          "2": "Cotización Especial",
+          "3": "Mis Cotizaciones",
+          "4": "Itinerario",
+          "5": "Rastreo de Envíos",
+          "6": "Mis Operaciones"
+        }
+      },
+      "company": {
+        "title": "Compañía",
+        "links": {
+          "about": "Nosotros",
+          "careers": "Carreras",
+          "contact": "Contacto",
+          "partners": "Partners"
+        }
+      }
+    },
+    "copyright": "© {{year}} Seemann Group. Todos los derechos reservados.",
+    "legal": {
+      "privacyPolicy": "Política de Privacidad",
+      "termsOfService": "Términos de Servicio",
+      "cookiesSettings": "Configuración de Cookies"
+    }
+  },
   "QuoteAIR": {
     "title": "Cotizador Aéreo",
     "desconsolidacion": "Agregar Gastos Locales (Desconsolidación)",

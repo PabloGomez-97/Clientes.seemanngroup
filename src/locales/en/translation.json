@@ -268,6 +268,48 @@
       }
     }
   },
+  "footer": {
+    "tagline": "Leader in international logistics solutions with more than 35 years of experience. We connect your business with the world.",
+    "socialsAriaLabel": "Social media",
+    "navigationAriaLabel": "Footer",
+    "columns": {
+      "product": {
+        "title": "Services and Information",
+        "links": {
+          "features": "News and Updates",
+          "pricing": "Tariffs",
+          "integrations": "Containers",
+          "changelog": "Contact Us"
+        }
+      },
+      "resources": {
+        "title": "Online Business",
+        "links": {
+          "1": "Quotes",
+          "2": "Special Quotes",
+          "3": "My Quotes",
+          "4": "Itinerary",
+          "5": "Tracking",
+          "6": "My Operations"
+        }
+      },
+      "company": {
+        "title": "Company",
+        "links": {
+          "about": "About",
+          "careers": "Careers",
+          "contact": "Contact",
+          "partners": "Partners"
+        }
+      }
+    },
+    "copyright": "© {{year}} Seemann Group. All rights reserved.",
+    "legal": {
+      "privacyPolicy": "Privacy Policy",
+      "termsOfService": "Terms of Service",
+      "cookiesSettings": "Cookies Settings"
+    }
+  },
   "QuoteAIR": {
     "title": "Air Quote",
     "desconsolidacion": "Add Local Charges (Deconsolidation)",
