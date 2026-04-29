@@ -1281,6 +1281,7 @@ function QuoteAPITester({
       localCharges: 0,
       gastosXKg: 0,
       minGastosXKg: 0,
+      minAirFreight: 0,
       row_number: 0,
       priceForComparison: 0,
       currency: "USD",
@@ -1340,6 +1341,7 @@ function QuoteAPITester({
         localCharges: 0,
         gastosXKg: 0,
         minGastosXKg: 0,
+        minAirFreight: 0,
         row_number: 0,
         priceForComparison: 0,
         currency: "USD",
@@ -1700,11 +1702,29 @@ function QuoteAPITester({
       ? simulatedAirFreightExpenseRate
       : (tarifaAirFreight?.precio ?? 0);
 
+    const rawIncomeAmount = incomeRate * pesoAirFreight;
+    const rawExpenseAmount = expenseRate * pesoAirFreight;
+
+    // Mínimo flete aéreo (CSV row[20]). Se ignora en simulación y cuando no hay
+    // peso a cobrar. Si la celda está vacía/0, no se aplica piso.
+    // El mínimo es el valor FINAL cobrado al cliente (income).
+    // El expense siempre se calcula como tarifa × kg real (lo que se paga al carrier).
+    const minAirFreight =
+      !isSimulationMode && pesoAirFreight > 0
+        ? (rutaSeleccionada?.minAirFreight ?? 0)
+        : 0;
+
+    const incomeAmount =
+      minAirFreight > 0
+        ? Math.max(rawIncomeAmount, minAirFreight)
+        : rawIncomeAmount;
+    const expenseAmount = rawExpenseAmount;
+
     return {
       incomeRate,
       expenseRate,
-      incomeAmount: roundSimulationAmount(incomeRate * pesoAirFreight),
-      expenseAmount: roundSimulationAmount(expenseRate * pesoAirFreight),
+      incomeAmount: roundSimulationAmount(incomeAmount),
+      expenseAmount: roundSimulationAmount(expenseAmount),
       currency: rutaSeleccionada?.currency ?? tarifaAirFreight?.moneda ?? "USD",
     };
   }, [
@@ -1713,6 +1733,7 @@ function QuoteAPITester({
     simulatedAirFreightIncomeRate,
     pesoAirFreight,
     rutaSeleccionada?.currency,
+    rutaSeleccionada?.minAirFreight,
     tarifaAirFreight,
   ]);
 

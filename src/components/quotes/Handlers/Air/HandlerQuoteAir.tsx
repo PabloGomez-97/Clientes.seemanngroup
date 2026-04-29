@@ -30,6 +30,9 @@ export interface RutaAerea {
   gastosXKg: number;
   minGastosXKg: number;
 
+  // Mínimo flete aéreo (CSV column 20). 0 = sin mínimo definido.
+  minAirFreight: number;
+
   row_number: number;
   priceForComparison: number;
   currency: Currency;
@@ -179,6 +182,7 @@ export const parseAEREO = (data: any[]): RutaAerea[] => {
     const localChargesRaw = row[17];
     const gastosXKgRaw = row[18];
     const minGastosXKgRaw = row[19];
+    const minAirFreightRaw = row[20];
 
     if (
       origin &&
@@ -238,6 +242,9 @@ export const parseAEREO = (data: any[]): RutaAerea[] => {
         ),
         minGastosXKg: extractPrice(
           minGastosXKgRaw ? minGastosXKgRaw.toString().trim() : null,
+        ),
+        minAirFreight: extractPrice(
+          minAirFreightRaw ? minAirFreightRaw.toString().trim() : null,
         ),
         row_number: i + 1,
         priceForComparison: lowestPrice.price,
