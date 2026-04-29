@@ -57,32 +57,7 @@ export default function CotizacionEspecial() {
   };
 
   return (
-    <div
-      style={{
-        fontFamily: FONT,
-        maxWidth: 900,
-        margin: "0 auto",
-        padding: "8px 0 32px",
-      }}
-    >
-      {/* Page header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1
-          style={{
-            fontSize: 22,
-            fontWeight: 700,
-            color: "#1f2937",
-            margin: 0,
-          }}
-        >
-          Cotización Especial
-        </h1>
-        <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
-          Para cargas fuera de lo estándar o condiciones especiales, tu
-          ejecutivo comercial te asesorará personalmente.
-        </p>
-      </div>
-
+    <div>
       {/* Main card */}
       <div
         style={{

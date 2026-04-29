@@ -11,6 +11,8 @@ import {
   MAX_VISIBLE_TRACK_FOLLOWERS,
 } from "../../services/trackingEmailPreferences";
 import "./styles/CreateShipmentForm.css";
+import { imgUrl } from "../../config/images";
+import { Colors } from "chart.js";
 
 const API_BASE_URL =
   import.meta.env.MODE === "development"
@@ -227,20 +229,75 @@ function CreateOceanShipmentForm({
 
   return (
     <div className="csf-wrapper">
-      <div className="csf-container">
-        {/* Page Header */}
-        <div className="csf-page-header">
-          <h1>Nuevo seguimiento marítimo</h1>
-          <p>
-            Crea un seguimiento de envío marítimo proporcionando el número de
-            contenedor o booking.
-          </p>
-        </div>
-
-        <div className="csf-card">
-          <div className="csf-card-body">
-            {/* Info Banner */}
-            <div className="csf-info-banner">
+      {/* Image banner */}
+      <div
+        style={{
+          position: "relative",
+          height: 220,
+          overflow: "hidden",
+          background: "#1a1a1a",
+        }}
+      >
+        <img
+          src={imgUrl("/imo.png")}
+          alt="Carga especial"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            opacity: 0.75,
+          }}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(to right, rgba(26,26,26,0.85) 0%, rgba(26,26,26,0.35) 100%)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 32px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                display: "inline-block",
+                background: "var(--primary-color)",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                padding: "3px 10px",
+                borderRadius: 3,
+                marginBottom: 10,
+              }}
+            >
+              Servicio Premium
+            </div>
+            <h2
+              style={{
+                color: "#fff",
+                fontSize: 24,
+                fontWeight: 700,
+                margin: 0,
+                lineHeight: 1.3,
+              }}
+            >
+              Servicio de seguimiento para cargas marítimas
+            </h2>
+            <p
+              style={{
+                color: "rgba(255,255,255,0.78)",
+                fontSize: 14,
+                margin: "8px 0 0",
+                maxWidth: 460,
+              }}
+            >
               <p>
                 Ingrese el <strong>número de contenedor o booking</strong>{" "}
                 proporcionado por su naviera. El sistema detectará
@@ -248,299 +305,298 @@ function CreateOceanShipmentForm({
               </p>
               <p>
                 ¿No conoce su contenedor? Revíselo en{" "}
-                <strong>Operaciones Marítimas</strong>.
+                <strong style={{ color: "#ff6200" }}>
+                  Operaciones Marítimas
+                </strong>
+                .
               </p>
-              <button
-                type="button"
-                className="csf-info-banner-link"
-                onClick={() => navigate("/ocean-shipments")}
-              >
-                Ver mis operaciones marítimas →
-              </button>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="csf-card">
+        <div className="csf-card-body">
+          <form onSubmit={handleSubmit} autoComplete="off">
+            {/* Reference (read-only) */}
+            <div className="csf-form-group">
+              <label className="csf-label" htmlFor="csf-reference">
+                Cliente
+              </label>
+              <input
+                type="text"
+                id="csf-reference"
+                className="csf-input"
+                value={effectiveReference || ""}
+                disabled
+              />
             </div>
 
-            <form onSubmit={handleSubmit} autoComplete="off">
-              {/* Reference (read-only) */}
-              <div className="csf-form-group">
-                <label className="csf-label" htmlFor="csf-reference">
-                  Cliente
-                </label>
-                <input
-                  type="text"
-                  id="csf-reference"
-                  className="csf-input"
-                  value={effectiveReference || ""}
-                  disabled
-                />
-              </div>
-
-              {/* Identifier Type */}
-              <div className="csf-form-group">
-                <label className="csf-label">
-                  Tipo de identificador
-                  <span className="csf-label-required">*</span>
-                </label>
-                <div
+            {/* Identifier Type */}
+            <div className="csf-form-group">
+              <label className="csf-label">
+                Tipo de identificador
+                <span className="csf-label-required">*</span>
+              </label>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "0.75rem",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <label
                   style={{
                     display: "flex",
-                    gap: "0.75rem",
-                    marginBottom: "0.5rem",
+                    alignItems: "center",
+                    gap: "0.375rem",
+                    cursor: "pointer",
+                    fontSize: "0.875rem",
+                    fontWeight:
+                      identifierType === "container_number" ? 600 : 400,
+                    color:
+                      identifierType === "container_number"
+                        ? "#1a1a1a"
+                        : "#6b7280",
                   }}
                 >
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.375rem",
-                      cursor: "pointer",
-                      fontSize: "0.875rem",
-                      fontWeight:
-                        identifierType === "container_number" ? 600 : 400,
-                      color:
-                        identifierType === "container_number"
-                          ? "#1a1a1a"
-                          : "#6b7280",
+                  <input
+                    type="radio"
+                    name="identifierType"
+                    value="container_number"
+                    checked={identifierType === "container_number"}
+                    onChange={() => {
+                      setIdentifierType("container_number");
+                      setIdentifierValue("");
                     }}
-                  >
-                    <input
-                      type="radio"
-                      name="identifierType"
-                      value="container_number"
-                      checked={identifierType === "container_number"}
-                      onChange={() => {
-                        setIdentifierType("container_number");
-                        setIdentifierValue("");
-                      }}
-                    />
-                    Número de contenedor
-                  </label>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.375rem",
-                      cursor: "pointer",
-                      fontSize: "0.875rem",
-                      fontWeight:
-                        identifierType === "booking_number" ? 600 : 400,
-                      color:
-                        identifierType === "booking_number"
-                          ? "#1a1a1a"
-                          : "#6b7280",
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="identifierType"
-                      value="booking_number"
-                      checked={identifierType === "booking_number"}
-                      onChange={() => {
-                        setIdentifierType("booking_number");
-                        setIdentifierValue("");
-                      }}
-                    />
-                    Número de booking
-                  </label>
-                </div>
-              </div>
-
-              {/* Identifier Value */}
-              <div className="csf-form-group">
-                <label className="csf-label" htmlFor="csf-identifier">
-                  {identifierType === "container_number"
-                    ? "Container Number"
-                    : "Booking Number"}
-                  <span className="csf-label-required">*</span>
+                  />
+                  Número de contenedor
                 </label>
-                <input
-                  type="text"
-                  id="csf-identifier"
-                  className={`csf-input csf-input--mono ${
-                    identifierValue
-                      ? identifierValidation.valid
-                        ? "csf-input--valid"
-                        : "csf-input--invalid"
-                      : ""
-                  }`}
-                  placeholder={
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.375rem",
+                    cursor: "pointer",
+                    fontSize: "0.875rem",
+                    fontWeight: identifierType === "booking_number" ? 600 : 400,
+                    color:
+                      identifierType === "booking_number"
+                        ? "#1a1a1a"
+                        : "#6b7280",
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="identifierType"
+                    value="booking_number"
+                    checked={identifierType === "booking_number"}
+                    onChange={() => {
+                      setIdentifierType("booking_number");
+                      setIdentifierValue("");
+                    }}
+                  />
+                  Número de booking
+                </label>
+              </div>
+            </div>
+
+            {/* Identifier Value */}
+            <div className="csf-form-group">
+              <label className="csf-label" htmlFor="csf-identifier">
+                {identifierType === "container_number"
+                  ? "Container Number"
+                  : "Booking Number"}
+                <span className="csf-label-required">*</span>
+              </label>
+              <input
+                type="text"
+                id="csf-identifier"
+                className={`csf-input csf-input--mono ${
+                  identifierValue
+                    ? identifierValidation.valid
+                      ? "csf-input--valid"
+                      : "csf-input--invalid"
+                    : ""
+                }`}
+                placeholder={
+                  identifierType === "container_number"
+                    ? "MSCU1234567"
+                    : "ABC123456"
+                }
+                value={identifierValue}
+                onChange={(e) =>
+                  setIdentifierValue(
                     identifierType === "container_number"
-                      ? "MSCU1234567"
-                      : "ABC123456"
-                  }
-                  value={identifierValue}
-                  onChange={(e) =>
-                    setIdentifierValue(
-                      identifierType === "container_number"
-                        ? e.target.value.toUpperCase()
-                        : e.target.value,
-                    )
-                  }
-                  maxLength={identifierType === "container_number" ? 11 : 128}
-                  required
-                />
-                {identifierValue &&
-                  !identifierValidation.valid &&
-                  identifierValidation.message && (
-                    <div className="csf-field-msg csf-field-msg--error">
-                      {identifierValidation.message}
-                    </div>
-                  )}
-                {identifierValue && identifierValidation.valid && (
-                  <div className="csf-field-msg csf-field-msg--success">
+                      ? e.target.value.toUpperCase()
+                      : e.target.value,
+                  )
+                }
+                maxLength={identifierType === "container_number" ? 11 : 128}
+                required
+              />
+              {identifierValue &&
+                !identifierValidation.valid &&
+                identifierValidation.message && (
+                  <div className="csf-field-msg csf-field-msg--error">
                     {identifierValidation.message}
                   </div>
                 )}
-                <div className="csf-field-msg csf-field-msg--hint">
-                  {identifierType === "container_number"
-                    ? "4 letras mayúsculas + 7 dígitos (ej: MSCU1234567)"
-                    : "Código alfanumérico proporcionado por la naviera"}
+              {identifierValue && identifierValidation.valid && (
+                <div className="csf-field-msg csf-field-msg--success">
+                  {identifierValidation.message}
                 </div>
+              )}
+              <div className="csf-field-msg csf-field-msg--hint">
+                {identifierType === "container_number"
+                  ? "4 letras mayúsculas + 7 dígitos (ej: MSCU1234567)"
+                  : "Código alfanumérico proporcionado por la naviera"}
               </div>
+            </div>
 
-              {/* Tags */}
-              <div className="csf-form-group">
-                <label className="csf-label" htmlFor="csf-tag">
-                  Etiquetas
-                  <span
-                    className="csf-field-msg csf-field-msg--hint"
-                    style={{ marginLeft: "0.5rem", display: "inline" }}
-                  >
-                    ({tags.length}/10)
-                  </span>
-                </label>
-                <div className="csf-input-row">
-                  <input
-                    type="text"
-                    id="csf-tag"
-                    className="csf-input"
-                    placeholder="Escribe una etiqueta y presiona Enter"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyDown={(e) => handleKeyPress(e, addTag)}
-                    maxLength={64}
-                  />
-                  <button
-                    type="button"
-                    className="csf-btn-add"
-                    onClick={addTag}
-                    disabled={!newTag.trim() || tags.length >= 10}
-                  >
-                    Agregar
-                  </button>
-                </div>
-                {tags.length > 0 && (
-                  <ul className="csf-chip-list">
-                    {tags.map((tag, i) => (
-                      <li key={i} className="csf-chip">
-                        {tag}
-                        <button
-                          type="button"
-                          className="csf-chip-remove"
-                          onClick={() => removeTag(tag)}
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* Followers */}
-              <div className="csf-form-group">
-                <label className="csf-label" htmlFor="csf-follower">
-                  Notificaciones
-                  <span
-                    className="csf-field-msg csf-field-msg--hint"
-                    style={{ marginLeft: "0.5rem", display: "inline" }}
-                  >
-                    ({followers.length}/{MAX_VISIBLE_TRACK_FOLLOWERS})
-                  </span>
-                </label>
-
-                <div className="csf-input-row">
-                  <input
-                    type="email"
-                    id="csf-follower"
-                    className="csf-input"
-                    placeholder="correo@ejemplo.com"
-                    value={newFollower}
-                    onChange={(e) => setNewFollower(e.target.value)}
-                    onKeyDown={(e) => handleKeyPress(e, addFollower)}
-                  />
-                  <button
-                    type="button"
-                    className="csf-btn-add"
-                    onClick={addFollower}
-                    disabled={
-                      !newFollower.trim() ||
-                      !isValidEmail(newFollower) ||
-                      followers.length >= MAX_VISIBLE_TRACK_FOLLOWERS
-                    }
-                  >
-                    Agregar
-                  </button>
-                </div>
-                <TrackingEmailSuggestions
-                  savedEmails={savedTrackingEmails}
-                  selectedEmails={followers}
-                  onSelectEmail={handleSelectSuggestedFollower}
-                  onAddAll={handleAddAllSuggestedFollowers}
+            {/* Tags */}
+            <div className="csf-form-group">
+              <label className="csf-label" htmlFor="csf-tag">
+                Etiquetas
+                <span
+                  className="csf-field-msg csf-field-msg--hint"
+                  style={{ marginLeft: "0.5rem", display: "inline" }}
+                >
+                  ({tags.length}/10)
+                </span>
+              </label>
+              <div className="csf-input-row">
+                <input
+                  type="text"
+                  id="csf-tag"
+                  className="csf-input"
+                  placeholder="Escribe una etiqueta y presiona Enter"
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  onKeyDown={(e) => handleKeyPress(e, addTag)}
+                  maxLength={64}
                 />
-                {followers.length > 0 && (
-                  <ul className="csf-chip-list">
-                    {followers.map((email, i) => (
-                      <li key={i} className="csf-chip">
-                        {email}
-                        <button
-                          type="button"
-                          className="csf-chip-remove"
-                          onClick={() => removeFollower(email)}
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
-              {/* Error */}
-              {error && <div className="csf-alert-error">{error}</div>}
-
-              {/* Actions */}
-              <div className="csf-actions">
                 <button
                   type="button"
-                  className="csf-btn csf-btn--secondary"
-                  onClick={() => {
-                    if (onCancel) {
-                      onCancel();
-                    } else {
-                      navigate(-1);
-                    }
-                  }}
-                  disabled={loading}
+                  className="csf-btn-add"
+                  onClick={addTag}
+                  disabled={!newTag.trim() || tags.length >= 10}
                 >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="csf-btn csf-btn--primary"
-                  disabled={loading || !identifierValidation.valid}
-                >
-                  {loading ? (
-                    <>
-                      <span className="csf-btn-spinner" />
-                      Creando...
-                    </>
-                  ) : (
-                    "Crear seguimiento"
-                  )}
+                  Agregar
                 </button>
               </div>
-            </form>
-          </div>
+              {tags.length > 0 && (
+                <ul className="csf-chip-list">
+                  {tags.map((tag, i) => (
+                    <li key={i} className="csf-chip">
+                      {tag}
+                      <button
+                        type="button"
+                        className="csf-chip-remove"
+                        onClick={() => removeTag(tag)}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Followers */}
+            <div className="csf-form-group">
+              <label className="csf-label" htmlFor="csf-follower">
+                Notificaciones
+                <span
+                  className="csf-field-msg csf-field-msg--hint"
+                  style={{ marginLeft: "0.5rem", display: "inline" }}
+                >
+                  ({followers.length}/{MAX_VISIBLE_TRACK_FOLLOWERS})
+                </span>
+              </label>
+
+              <div className="csf-input-row">
+                <input
+                  type="email"
+                  id="csf-follower"
+                  className="csf-input"
+                  placeholder="correo@ejemplo.com"
+                  value={newFollower}
+                  onChange={(e) => setNewFollower(e.target.value)}
+                  onKeyDown={(e) => handleKeyPress(e, addFollower)}
+                />
+                <button
+                  type="button"
+                  className="csf-btn-add"
+                  onClick={addFollower}
+                  disabled={
+                    !newFollower.trim() ||
+                    !isValidEmail(newFollower) ||
+                    followers.length >= MAX_VISIBLE_TRACK_FOLLOWERS
+                  }
+                >
+                  Agregar
+                </button>
+              </div>
+              <TrackingEmailSuggestions
+                savedEmails={savedTrackingEmails}
+                selectedEmails={followers}
+                onSelectEmail={handleSelectSuggestedFollower}
+                onAddAll={handleAddAllSuggestedFollowers}
+              />
+              {followers.length > 0 && (
+                <ul className="csf-chip-list">
+                  {followers.map((email, i) => (
+                    <li key={i} className="csf-chip">
+                      {email}
+                      <button
+                        type="button"
+                        className="csf-chip-remove"
+                        onClick={() => removeFollower(email)}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Error */}
+            {error && <div className="csf-alert-error">{error}</div>}
+
+            {/* Actions */}
+            <div className="csf-actions">
+              <button
+                type="button"
+                className="csf-btn csf-btn--secondary"
+                onClick={() => {
+                  if (onCancel) {
+                    onCancel();
+                  } else {
+                    navigate(-1);
+                  }
+                }}
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="csf-btn csf-btn--primary"
+                disabled={loading || !identifierValidation.valid}
+              >
+                {loading ? (
+                  <>
+                    <span className="csf-btn-spinner" />
+                    Creando...
+                  </>
+                ) : (
+                  "Crear seguimiento"
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 
