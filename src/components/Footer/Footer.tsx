@@ -48,10 +48,22 @@ const COLUMNS: FooterColumn[] = [
   {
     titleKey: "footer.columns.company.title",
     links: [
-      { labelKey: "footer.columns.company.links.about", to: "/" },
-      { labelKey: "footer.columns.company.links.careers", to: "/" },
-      { labelKey: "footer.columns.company.links.contact", to: "/" },
-      { labelKey: "footer.columns.company.links.partners", to: "/" },
+      {
+        labelKey: "footer.columns.company.links.about",
+        to: "https://www.seemanngroup.com/",
+      },
+      {
+        labelKey: "footer.columns.company.links.careers",
+        to: "https://www.seemanngroup.com/",
+      },
+      {
+        labelKey: "footer.columns.company.links.contact",
+        to: "https://www.seemanngroup.com/",
+      },
+      {
+        labelKey: "footer.columns.company.links.partners",
+        to: "https://www.seemanngroup.com/",
+      },
     ],
   },
 ];
