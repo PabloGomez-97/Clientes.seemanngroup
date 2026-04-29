@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Select, { type StylesConfig } from "react-select";
+import "./ItineraryFinder.css";
 
 // ============================================================================
 // TIPOS
@@ -116,8 +117,8 @@ const parseFCL = (data: string[][]): RutaBase[] => {
   for (let i = 2; i < data.length; i++) {
     const row = data[i];
     if (!row) continue;
-    const pol = row[1]; // POL
-    const pod = row[2]; // POD
+    const pol = row[1];
+    const pod = row[2];
     if (pol && pod) {
       rutas.push({
         origin: pol.trim(),
@@ -135,8 +136,8 @@ const parseLCL = (data: string[][]): RutaBase[] => {
   for (let i = 2; i < data.length; i++) {
     const row = data[i];
     if (!row) continue;
-    const pol = row[1]; // POL
-    const pod = row[3]; // POD (columna 3 para LCL)
+    const pol = row[1];
+    const pod = row[3];
     if (pol && pod) {
       rutas.push({
         origin: pol.trim(),
@@ -150,47 +151,135 @@ const parseLCL = (data: string[][]): RutaBase[] => {
 };
 
 // ============================================================================
-// ESTILOS PARA REACT-SELECT
+// ICONOS (inline SVG, color heredado del texto del segmento)
+// ============================================================================
+
+const IconPlane: React.FC = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    width="100%"
+    height="100%"
+  >
+    <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5L21 16Z" />
+  </svg>
+);
+
+const IconContainer: React.FC = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    width="100%"
+    height="100%"
+  >
+    <path d="M3 6h18v12H3V6Zm2 2v8h2V8H5Zm4 0v8h2V8H9Zm4 0v8h2V8h-2Zm4 0v8h2V8h-2Z" />
+  </svg>
+);
+
+const IconBox: React.FC = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    width="100%"
+    height="100%"
+  >
+    <path d="M12 2 3 6.5v11L12 22l9-4.5v-11L12 2Zm0 2.236L18.764 7.5 12 10.764 5.236 7.5 12 4.236ZM5 9.118l6 2.882v7.764l-6-3V9.118Zm14 0v7.646l-6 3V12l6-2.882Z" />
+  </svg>
+);
+
+const IconSearch: React.FC = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    width="16"
+    height="16"
+  >
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
+
+// ============================================================================
+// CONFIGURACIÓN DE TIPOS DE ENVÍO
+// ============================================================================
+
+const TIPO_OPTIONS: Array<{
+  value: Exclude<TipoEnvio, null>;
+  icon: React.FC;
+  i18nKey: string;
+}> = [
+  { value: "AEREO", icon: IconPlane, i18nKey: "home.itinerary.aereo" },
+  { value: "FCL", icon: IconContainer, i18nKey: "home.itinerary.fcl" },
+  { value: "LCL", icon: IconBox, i18nKey: "home.itinerary.lcl" },
+];
+
+// ============================================================================
+// ESTILOS PARA REACT-SELECT (alineados con el resto del Home)
 // ============================================================================
 
 const customSelectStyles: StylesConfig<SelectOption, false> = {
   control: (base, state) => ({
     ...base,
     minHeight: "44px",
-    border: "none",
-    borderBottom: `1px solid ${state.isFocused ? "#0d6efd" : "#ddd"}`,
-    borderRadius: 0,
-    background: "transparent",
-    boxShadow: "none",
+    border: `1px solid ${state.isFocused ? "var(--primary-hover)" : "#e2e5ea"}`,
+    borderRadius: "8px",
+    background: state.isDisabled ? "#f9fafb" : "#ffffff",
+    boxShadow: state.isFocused ? "0 0 0 3px rgba(255, 98, 0, 0.12)" : "none",
+    transition: "border-color 0.2s ease, box-shadow 0.2s ease",
     "&:hover": {
-      borderBottomColor: "#0d6efd",
+      borderColor: state.isFocused ? "var(--primary-hover)" : "#cbd1d9",
     },
+  }),
+  valueContainer: (base) => ({
+    ...base,
+    padding: "2px 10px",
   }),
   placeholder: (base) => ({
     ...base,
-    color: "#6c757d",
-    fontSize: "14px",
+    color: "#9ca3af",
+    fontSize: "0.9375rem",
+  }),
+  input: (base) => ({
+    ...base,
+    fontSize: "0.9375rem",
+  }),
+  singleValue: (base) => ({
+    ...base,
+    fontSize: "0.9375rem",
+    color: "#111827",
   }),
   option: (base, state) => ({
     ...base,
     backgroundColor: state.isSelected
-      ? "#0d6efd"
+      ? "var(--primary-hover)"
       : state.isFocused
-        ? "#e7f1ff"
+        ? "rgba(255, 98, 0, 0.08)"
         : "white",
-    color: state.isSelected ? "white" : "#212529",
-    fontSize: "14px",
+    color: state.isSelected ? "white" : "#111827",
+    fontSize: "0.9375rem",
     padding: "10px 12px",
+    cursor: "pointer",
   }),
   menu: (base) => ({
     ...base,
     borderRadius: "8px",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.12)",
+    overflow: "hidden",
     zIndex: 9999,
   }),
-  singleValue: (base) => ({
+  indicatorSeparator: () => ({ display: "none" }),
+  dropdownIndicator: (base, state) => ({
     ...base,
-    fontSize: "14px",
+    color: state.isFocused ? "var(--primary-hover)" : "#9ca3af",
+    "&:hover": { color: "var(--primary-hover)" },
   }),
 };
 
@@ -202,9 +291,9 @@ const ItineraryFinder: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  // Estados
   const [tipoEnvio, setTipoEnvio] = useState<TipoEnvio>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [rutas, setRutas] = useState<RutaBase[]>([]);
   const [originSeleccionado, setOriginSeleccionado] =
     useState<SelectOption | null>(null);
@@ -212,52 +301,51 @@ const ItineraryFinder: React.FC = () => {
     useState<SelectOption | null>(null);
   const [fecha, setFecha] = useState<string>("");
 
+  // Fecha mínima = hoy
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+
   // Opciones derivadas
-  const opcionesOrigin = useMemo(() => {
-    const originsUnicos = Array.from(new Set(rutas.map((r) => r.origin)))
+  const opcionesOrigin = useMemo<SelectOption[]>(() => {
+    return Array.from(new Set(rutas.map((r) => r.origin)))
       .sort()
       .map((origin) => ({
         value: normalize(origin),
         label: capitalize(origin),
       }));
-    return originsUnicos;
   }, [rutas]);
 
-  const opcionesDestination = useMemo(() => {
+  const opcionesDestination = useMemo<SelectOption[]>(() => {
     if (!originSeleccionado) return [];
-
     const rutasFiltradas = rutas.filter(
       (r) => r.originNormalized === originSeleccionado.value,
     );
-
-    const destinationsUnicos = Array.from(
-      new Set(rutasFiltradas.map((r) => r.destination)),
-    )
+    return Array.from(new Set(rutasFiltradas.map((r) => r.destination)))
       .sort()
       .map((dest) => ({
         value: normalize(dest),
         label: capitalize(dest),
       }));
-
-    return destinationsUnicos;
   }, [rutas, originSeleccionado]);
 
   // Cargar rutas cuando se selecciona un tipo
   useEffect(() => {
     if (!tipoEnvio) {
       setRutas([]);
+      setLoadError(false);
       return;
     }
 
+    let cancelled = false;
+
     const cargarRutas = async () => {
       setLoading(true);
+      setLoadError(false);
       setOriginSeleccionado(null);
       setDestinationSeleccionado(null);
 
       try {
         const response = await fetch(GOOGLE_SHEET_URLS[tipoEnvio]);
         if (!response.ok) throw new Error("Error al cargar rutas");
-
         const csvText = await response.text();
         const data = parseCSV(csvText);
 
@@ -274,16 +362,22 @@ const ItineraryFinder: React.FC = () => {
             break;
         }
 
-        setRutas(rutasParsed);
+        if (!cancelled) setRutas(rutasParsed);
       } catch (err) {
         console.error("Error cargando rutas:", err);
-        setRutas([]);
+        if (!cancelled) {
+          setRutas([]);
+          setLoadError(true);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     cargarRutas();
+    return () => {
+      cancelled = true;
+    };
   }, [tipoEnvio]);
 
   // Reset destino cuando cambia origen
@@ -291,11 +385,8 @@ const ItineraryFinder: React.FC = () => {
     setDestinationSeleccionado(null);
   }, [originSeleccionado]);
 
-  // Manejar búsqueda
   const handleBuscar = () => {
     if (!tipoEnvio || !originSeleccionado || !destinationSeleccionado) return;
-
-    // Navegar al cotizador con los datos pre-seleccionados
     navigate("/newquotes", {
       state: {
         tipoEnvio,
@@ -306,310 +397,128 @@ const ItineraryFinder: React.FC = () => {
     });
   };
 
-  // Resetear selección de tipo
   const handleResetTipo = () => {
     setTipoEnvio(null);
     setOriginSeleccionado(null);
     setDestinationSeleccionado(null);
     setRutas([]);
+    setLoadError(false);
   };
 
-  // Verificar si se puede buscar
-  const canSearch =
-    tipoEnvio && originSeleccionado && destinationSeleccionado && !loading;
+  // Mensaje de estado bajo el formulario
+  const hint = useMemo<{
+    text: string;
+    tone: "neutral" | "ready" | "error";
+  }>(() => {
+    if (loadError)
+      return { text: t("home.itinerary.errorLoading"), tone: "error" };
+    if (!tipoEnvio)
+      return { text: t("home.itinerary.hintSelectType"), tone: "neutral" };
+    if (loading) return { text: t("home.itinerary.loading"), tone: "neutral" };
+    if (!originSeleccionado)
+      return { text: t("home.itinerary.hintSelectOrigin"), tone: "neutral" };
+    if (!destinationSeleccionado)
+      return {
+        text: t("home.itinerary.hintSelectDestination"),
+        tone: "neutral",
+      };
+    return { text: t("home.itinerary.hintReady"), tone: "ready" };
+  }, [
+    loadError,
+    tipoEnvio,
+    loading,
+    originSeleccionado,
+    destinationSeleccionado,
+    t,
+  ]);
 
-  // ============================================================================
-  // RENDER - SELECCIÓN DE TIPO
-  // ============================================================================
+  const canSearch = Boolean(
+    tipoEnvio && originSeleccionado && destinationSeleccionado && !loading,
+  );
 
-  if (!tipoEnvio) {
-    return (
-      <div
-        className="hal-schedule-body"
-        style={{ display: "flex", gap: "20px" }}
-      >
-        {/* Izquierda: Selección de tipo */}
-        <div style={{ flex: 1 }}>
-          <label
-            className="hal-input-label"
-            style={{ marginBottom: "12px", display: "block" }}
-          >
-            {t("home.itinerary.selectType")}
-          </label>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "16px",
-            }}
-          >
-            {/* Radio Aéreo */}
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "500",
-              }}
-            >
-              <input
-                type="radio"
-                name="tipoEnvio"
-                value="AEREO"
-                onChange={() => setTipoEnvio("AEREO")}
-                style={{
-                  margin: 0,
-                  width: "16px",
-                  height: "16px",
-                }}
-              />
-              {t("home.itinerary.aereo")}
-            </label>
+  const isAereo = tipoEnvio === "AEREO";
+  const originLabel = isAereo
+    ? t("home.itinerary.origin")
+    : t("home.itinerary.pol");
+  const destinationLabel = isAereo
+    ? t("home.itinerary.destination")
+    : t("home.itinerary.pod");
 
-            {/* Radio FCL */}
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "500",
-              }}
-            >
-              <input
-                type="radio"
-                name="tipoEnvio"
-                value="FCL"
-                onChange={() => setTipoEnvio("FCL")}
-                style={{
-                  margin: 0,
-                  width: "16px",
-                  height: "16px",
-                }}
-              />
-              {t("home.itinerary.fcl")}
-            </label>
+  const originPlaceholder = !tipoEnvio
+    ? t("home.itinerary.selectTypeFirst")
+    : loading
+      ? t("home.itinerary.loading")
+      : isAereo
+        ? t("home.itinerary.selectOrigin")
+        : t("home.itinerary.selectPol");
 
-            {/* Radio LCL */}
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "500",
-              }}
-            >
-              <input
-                type="radio"
-                name="tipoEnvio"
-                value="LCL"
-                onChange={() => setTipoEnvio("LCL")}
-                style={{
-                  margin: 0,
-                  width: "16px",
-                  height: "16px",
-                }}
-              />
-              {t("home.itinerary.lcl")}
-            </label>
-          </div>
-        </div>
-
-        {/* Derecha: Campos */}
-        <div
-          style={{
-            flex: 2,
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
-        >
-          {/* Arriba: De */}
-          <div className="hal-input-wrapper">
-            <label className="hal-input-label">
-              {t("home.itinerary.from")}
-            </label>
-            <input
-              type="text"
-              className="hal-input"
-              placeholder={t("home.itinerary.selectTypeFirst")}
-              disabled
-            />
-          </div>
-
-          {/* Abajo: Para y Fecha */}
-          <div style={{ display: "flex", gap: "16px" }}>
-            <div className="hal-input-wrapper" style={{ flex: 1 }}>
-              <label className="hal-input-label">
-                {t("home.itinerary.to")}
-              </label>
-              <input
-                type="text"
-                className="hal-input"
-                placeholder={t("home.itinerary.selectTypeFirst")}
-                disabled
-              />
-            </div>
-            <div className="hal-input-wrapper" style={{ flex: 1 }}>
-              <label className="hal-input-label">
-                {t("home.itinerary.date")}
-              </label>
-              <input type="date" className="hal-input" disabled />
-            </div>
-          </div>
-
-          <div className="hal-button-wrapper" style={{ textAlign: "right" }}>
-            <button className="hal-button hal-button--primary" disabled>
-              {t("home.itinerary.search")}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ============================================================================
-  // RENDER - FORMULARIO CON TIPO SELECCIONADO
-  // ============================================================================
-
-  const tipoLabels = {
-    AEREO: { label: "Aéreo", color: "#3b82f6", bg: "#eff6ff" },
-    FCL: { label: "FCL", color: "#10b981", bg: "#ecfdf5" },
-    LCL: { label: "LCL", color: "#f59e0b", bg: "#fffbeb" },
-  };
-
-  const tipoInfo = tipoLabels[tipoEnvio];
+  const destinationPlaceholder = !tipoEnvio
+    ? t("home.itinerary.selectTypeFirst")
+    : !originSeleccionado
+      ? t("home.itinerary.selectOriginFirst")
+      : loading
+        ? t("home.itinerary.loading")
+        : isAereo
+          ? t("home.itinerary.selectDestination")
+          : t("home.itinerary.selectPod");
 
   return (
-    <div className="hal-schedule-body" style={{ display: "flex", gap: "20px" }}>
-      {/* Izquierda: Selección de tipo */}
-      <div style={{ flex: 1 }}>
-        <label
-          className="hal-input-label"
-          style={{ marginBottom: "12px", display: "block" }}
-        >
-          {t("home.itinerary.selectType")}
-        </label>
+    <div className="hal-itin">
+      {/* ----- TOP BAR: Segmented control + meta ----- */}
+      <div className="hal-itin-topbar">
         <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
+          className="hal-itin-segmented"
+          role="radiogroup"
+          aria-label={t("home.itinerary.selectType")}
         >
-          {/* Radio Aéreo */}
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "500",
-            }}
-          >
-            <input
-              type="radio"
-              name="tipoEnvio"
-              value="AEREO"
-              checked={tipoEnvio === "AEREO"}
-              onChange={() => setTipoEnvio("AEREO")}
-              style={{
-                margin: 0,
-                width: "16px",
-                height: "16px",
-              }}
-            />
-            {t("home.itinerary.aereo")}
-          </label>
-
-          {/* Radio FCL */}
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "500",
-            }}
-          >
-            <input
-              type="radio"
-              name="tipoEnvio"
-              value="FCL"
-              checked={tipoEnvio === "FCL"}
-              onChange={() => setTipoEnvio("FCL")}
-              style={{
-                margin: 0,
-                width: "16px",
-                height: "16px",
-              }}
-            />
-            {t("home.itinerary.fcl")}
-          </label>
-
-          {/* Radio LCL */}
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "500",
-            }}
-          >
-            <input
-              type="radio"
-              name="tipoEnvio"
-              value="LCL"
-              checked={tipoEnvio === "LCL"}
-              onChange={() => setTipoEnvio("LCL")}
-              style={{
-                margin: 0,
-                width: "16px",
-                height: "16px",
-              }}
-            />
-            {t("home.itinerary.lcl")}
-          </label>
+          {TIPO_OPTIONS.map(({ value, icon: Icon, i18nKey }) => {
+            const active = tipoEnvio === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                className={`hal-itin-segment${active ? " is-active" : ""}`}
+                onClick={() => setTipoEnvio(value)}
+              >
+                <span className="hal-itin-segment-icon">
+                  <Icon />
+                </span>
+                {t(i18nKey)}
+              </button>
+            );
+          })}
         </div>
+
+        {tipoEnvio && (
+          <div className="hal-itin-meta">
+            {!loading && !loadError && rutas.length > 0 && (
+              <span className="hal-itin-routes-count">
+                {t("home.itinerary.routesAvailable", { count: rutas.length })}
+              </span>
+            )}
+            <button
+              type="button"
+              className="hal-itin-reset"
+              onClick={handleResetTipo}
+            >
+              {t("home.itinerary.reset")}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Derecha: Campos */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}
-      >
-        {/* Arriba: Origen */}
-        <div className="hal-input-wrapper">
-          <label className="hal-input-label">
-            {tipoEnvio === "AEREO"
-              ? t("home.itinerary.origin")
-              : t("home.itinerary.pol")}
-          </label>
+      {/* ----- FORM ROW ----- */}
+      <div className="hal-itin-form">
+        <div className="hal-itin-field">
+          <label className="hal-itin-label">{originLabel}</label>
           <Select
             value={originSeleccionado}
             onChange={(option) => setOriginSeleccionado(option)}
             options={opcionesOrigin}
-            placeholder={
-              loading
-                ? t("home.itinerary.loading")
-                : tipoEnvio === "AEREO"
-                  ? t("home.itinerary.selectOrigin")
-                  : t("home.itinerary.selectPol")
-            }
-            isDisabled={loading}
+            placeholder={originPlaceholder}
+            isDisabled={!tipoEnvio || loading}
             isClearable
             isSearchable
             styles={customSelectStyles}
@@ -617,65 +526,59 @@ const ItineraryFinder: React.FC = () => {
           />
         </div>
 
-        {/* Abajo: Destino y Fecha */}
-        <div style={{ display: "flex", gap: "16px" }}>
-          <div className="hal-input-wrapper" style={{ flex: 1 }}>
-            <label className="hal-input-label">
-              {tipoEnvio === "AEREO"
-                ? t("home.itinerary.destination")
-                : t("home.itinerary.pod")}
-            </label>
-            <Select
-              value={destinationSeleccionado}
-              onChange={(option) => setDestinationSeleccionado(option)}
-              options={opcionesDestination}
-              placeholder={
-                !originSeleccionado
-                  ? t("home.itinerary.selectOriginFirst")
-                  : loading
-                    ? t("home.itinerary.loading")
-                    : tipoEnvio === "AEREO"
-                      ? t("home.itinerary.selectDestination")
-                      : t("home.itinerary.selectPod")
-              }
-              isDisabled={loading || !originSeleccionado}
-              isClearable
-              isSearchable
-              styles={customSelectStyles}
-              noOptionsMessage={() =>
-                originSeleccionado
-                  ? t("home.itinerary.noRoutes")
-                  : t("home.itinerary.selectOriginFirstShort")
-              }
-            />
-          </div>
-          <div className="hal-input-wrapper" style={{ flex: 1 }}>
-            <label className="hal-input-label">
-              {t("home.itinerary.optionalDate")}
-            </label>
-            <input
-              type="date"
-              className="hal-input"
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-            />
-          </div>
+        <div className="hal-itin-field">
+          <label className="hal-itin-label">{destinationLabel}</label>
+          <Select
+            value={destinationSeleccionado}
+            onChange={(option) => setDestinationSeleccionado(option)}
+            options={opcionesDestination}
+            placeholder={destinationPlaceholder}
+            isDisabled={!tipoEnvio || loading || !originSeleccionado}
+            isClearable
+            isSearchable
+            styles={customSelectStyles}
+            noOptionsMessage={() =>
+              originSeleccionado
+                ? t("home.itinerary.noRoutes")
+                : t("home.itinerary.selectOriginFirstShort")
+            }
+          />
         </div>
 
-        {/* Botón Buscar */}
-        <div className="hal-button-wrapper" style={{ textAlign: "right" }}>
-          <button
-            className="hal-button hal-button--primary"
-            onClick={handleBuscar}
-            disabled={!canSearch}
-            style={{
-              opacity: canSearch ? 1 : 0.6,
-              cursor: canSearch ? "pointer" : "not-allowed",
-            }}
-          >
-            {loading ? t("home.itinerary.loading") : t("home.itinerary.search")}
-          </button>
+        <div className="hal-itin-field">
+          <label className="hal-itin-label">
+            {t("home.itinerary.optionalDate")}
+          </label>
+          <input
+            type="date"
+            className="hal-itin-date"
+            value={fecha}
+            min={today}
+            onChange={(e) => setFecha(e.target.value)}
+            disabled={!tipoEnvio}
+          />
         </div>
+
+        <button
+          type="button"
+          className="hal-itin-search"
+          onClick={handleBuscar}
+          disabled={!canSearch}
+          aria-busy={loading}
+        >
+          {loading ? <span className="hal-itin-spinner" /> : <IconSearch />}
+          {t("home.itinerary.search")}
+        </button>
+      </div>
+
+      {/* ----- HINT LINE ----- */}
+      <div
+        className={`hal-itin-hint${hint.tone === "ready" ? " is-ready" : ""}${
+          hint.tone === "error" ? " is-error" : ""
+        }`}
+        aria-live="polite"
+      >
+        {hint.text}
       </div>
     </div>
   );

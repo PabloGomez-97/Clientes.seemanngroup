@@ -53,7 +53,15 @@
       "selectOriginFirst": "Primero selecciona origen",
       "noOptions": "No hay opciones disponibles",
       "noRoutes": "No hay rutas para este origen",
-      "selectOriginFirstShort": "Selecciona un origen primero"
+      "selectOriginFirstShort": "Selecciona un origen primero",
+      "routesAvailable_one": "{{count}} ruta disponible",
+      "routesAvailable_other": "{{count}} rutas disponibles",
+      "hintSelectType": "Selecciona el tipo de envío para comenzar",
+      "hintSelectOrigin": "Selecciona un origen",
+      "hintSelectDestination": "Selecciona un destino",
+      "hintReady": "Todo listo, busca tu itinerario",
+      "reset": "Cambiar",
+      "errorLoading": "No se pudieron cargar las rutas"
     },
     "tracking": {
       "label": "Tracking",

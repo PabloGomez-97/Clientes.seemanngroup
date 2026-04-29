@@ -53,7 +53,15 @@
       "selectOriginFirst": "First select origin",
       "noOptions": "No options available",
       "noRoutes": "No routes available for this origin",
-      "selectOriginFirstShort": "Select an origin first"
+      "selectOriginFirstShort": "Select an origin first",
+      "routesAvailable_one": "{{count}} route available",
+      "routesAvailable_other": "{{count}} routes available",
+      "hintSelectType": "Select a shipment type to begin",
+      "hintSelectOrigin": "Select an origin",
+      "hintSelectDestination": "Select a destination",
+      "hintReady": "All set, search your itinerary",
+      "reset": "Change",
+      "errorLoading": "Could not load routes"
     },
     "tracking": {
       "label": "Tracking",
