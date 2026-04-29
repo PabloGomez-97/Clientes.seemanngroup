@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import ChatWidget from "../components/Chatbot/ChatWidget";
+import Footer from "../components/Footer/Footer";
 import { useLinbisToken } from "../hooks/useLinbisToken";
 
 const MOBILE_BREAKPOINT = 768;
@@ -245,6 +246,7 @@ function UserLayout() {
               onLogout: handleLogout,
             }}
           />
+          <Footer />
         </div>
       </div>
       <ChatWidget />

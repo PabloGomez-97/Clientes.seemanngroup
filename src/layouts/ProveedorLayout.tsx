@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import NavbarAdmin from "./Navbar-admin";
 import SidebarProveedor from "./Sidebar-proveedor";
+import Footer from "../components/Footer/Footer";
 import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";
 
@@ -92,6 +93,7 @@ function ProveedorLayout() {
           style={{ overflowY: "auto", backgroundColor: "#f8f9fa" }}
         >
           <Outlet />
+          <Footer />
         </div>
       </div>
     </div>

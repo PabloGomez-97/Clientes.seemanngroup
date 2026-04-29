@@ -4,6 +4,7 @@ import { Outlet, useLocation, Navigate } from "react-router-dom";
 import NavbarAdmin from "./Navbar-admin";
 import SidebarAdmin from "./Sidebar-admin";
 import ChatWidget from "../components/Chatbot/ChatWidget";
+import Footer from "../components/Footer/Footer";
 import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";
 import { useLinbisToken } from "../hooks/useLinbisToken";
@@ -170,6 +171,7 @@ function AdminLayout() {
               onLogout: handleLogout,
             }}
           />
+          <Footer />
         </div>
       </div>
       <ChatWidget />
