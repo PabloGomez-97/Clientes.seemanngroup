@@ -39,7 +39,7 @@
       "from": "From",
       "to": "To",
       "date": "Date",
-      "optionalDate": "Date (optional)",
+      "optionalDate": "Date",
       "search": "Search",
       "loading": "Loading...",
       "selectTypeFirst": "First select shipment type",
@@ -98,6 +98,35 @@
       "title": "Subscribe to get the latest news and rates",
       "text": "Do you love maritime transport as much as we do? Whether it's exciting stories about our employees on land or at sea, reports on our customers from around the world or the latest information about our services: with our newsletter we always keep you up to date with the latest developments.",
       "button": "Coming soon!"
+    },
+    "services": {
+      "aereo": {
+        "title": "Air Freight",
+        "desc": "Urgent and time-sensitive shipments with the world's leading airlines.",
+        "cta": "Quote Air"
+      },
+      "fcl": {
+        "title": "Full Container Load — FCL",
+        "desc": "Maritime transport in a full container for large cargo volumes.",
+        "cta": "Quote FCL"
+      },
+      "lcl": {
+        "title": "Less Container Load — LCL",
+        "desc": "Consolidate your cargo with other importers and optimize freight costs.",
+        "cta": "Quote LCL"
+      },
+      "lastmile": {
+        "title": "Last Mile",
+        "desc": "Efficient local distribution from port or airport to your final destination.",
+        "cta": "Quote Last Mile"
+      }
+    },
+    "carriers": {
+      "label": "Carriers & Airlines we work with"
+    },
+    "testimonials": {
+      "label": "Our Clients",
+      "title": "What our clients say"
     },
     "navbar": {
       "notifications": {

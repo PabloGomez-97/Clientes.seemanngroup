@@ -39,7 +39,7 @@
       "from": "De",
       "to": "Para",
       "date": "Fecha",
-      "optionalDate": "Fecha (opcional)",
+      "optionalDate": "Fecha",
       "search": "Buscar",
       "loading": "Cargando...",
       "selectTypeFirst": "Primero selecciona el tipo de envío",
@@ -98,6 +98,35 @@
       "title": "Suscríbete para obtener las últimas noticias y tarifas",
       "text": "¿Te gusta el transporte marítimo tanto como a nosotros? Ya sean historias emocionantes sobre nuestros empleados en tierra o en el mar, reportajes sobre nuestros clientes de todo el mundo o la información más reciente sobre nuestros servicios: con nuestro boletín siempre le mantenemos al día de las últimas novedades.",
       "button": "¡Proximamente!"
+    },
+    "services": {
+      "aereo": {
+        "title": "Carga Aérea",
+        "desc": "Envíos urgentes y sensibles al tiempo con las principales aerolíneas del mundo.",
+        "cta": "Cotizar Aéreo"
+      },
+      "fcl": {
+        "title": "Contenedor Completo — FCL",
+        "desc": "Transporte marítimo en contenedor completo para grandes volúmenes de carga.",
+        "cta": "Cotizar FCL"
+      },
+      "lcl": {
+        "title": "Carga Consolidada — LCL",
+        "desc": "Consolide su carga con otros importadores y optimice sus costos de flete.",
+        "cta": "Cotizar LCL"
+      },
+      "lastmile": {
+        "title": "Última Milla",
+        "desc": "Distribución local eficiente desde el puerto o aeropuerto hasta su destino final.",
+        "cta": "Cotizar Última Milla"
+      }
+    },
+    "carriers": {
+      "label": "Carriers & Aerolíneas con quienes trabajamos"
+    },
+    "testimonials": {
+      "label": "Nuestros Clientes",
+      "title": "Lo que dicen nuestros clientes"
     },
     "navbar": {
       "notifications": {

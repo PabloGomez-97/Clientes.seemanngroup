@@ -8,6 +8,7 @@ import { getRecentPosts } from "../../services/contentful";
 import type { BlogPost } from "../../services/contentful";
 import "./styles/Home.css";
 import ItineraryFinder from "../ItineraryFinder";
+import TestimonialsCarousel from "./TestimonialsCarousel";
 
 const Home: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -382,50 +383,8 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* Offices Section */}
-        <div className="sectionheadline">
-          <div className="hal-page-container-content">
-            <div className="hal-section-headline hal-module--border">
-              <h2 className="hal-h4">{t("home.offices.title")}</h2>
-              <h3 className="hal-h1">{t("home.offices.subtitle")}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div className="containermodule parbase">
-          <div className="hal-page-container-content">
-            <div className="hal-container hal-container--plain hal-module--light">
-              <div className="hal-container-content">
-                <div className="hal-stagenews">
-                  <div className="hal-stagenews-scene">
-                    <div className="hal-carousel-item hal-carousel-item--left">
-                      <picture>
-                        <img src={imgUrl("/oficinas.jpg")} alt="Oficinas" />
-                      </picture>
-                      <div className="hal-stagenews-content hal-stagenews-content--left">
-                        <div>
-                          <h3 className="hal-h3">
-                            {t("home.offices.sectionTitle")}
-                          </h3>
-                          <div className="hal-button-container">
-                            <a
-                              className="hal-button hal-button--primary"
-                              href="https://seemanngroup.com/seemanngroup/nuestra_empresa.php#historia-section1"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {t("home.offices.button")}
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* ── Testimonials (replaces Newsletter) ── */}
+        <TestimonialsCarousel />
 
         {/* News Section */}
         <div className="sectionheadline">
@@ -497,19 +456,45 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* Newsletter Section */}
+        {/* Offices Section */}
+        <div className="sectionheadline">
+          <div className="hal-page-container-content">
+            <div className="hal-section-headline hal-module--border">
+              <h2 className="hal-h4">{t("home.offices.title")}</h2>
+              <h3 className="hal-h1">{t("home.offices.subtitle")}</h3>
+            </div>
+          </div>
+        </div>
+
         <div className="containermodule parbase">
           <div className="hal-page-container-content">
             <div className="hal-container hal-container--plain hal-module--light">
               <div className="hal-container-content">
-                <h3 className="hal-h3">{t("home.newsletter.title")}</h3>
-                <div className="hal-richtext">
-                  <p>{t("home.newsletter.text")}</p>
-                </div>
-                <div className="hal-button-container">
-                  <button className="hal-button hal-button--primary">
-                    {t("home.newsletter.button")}
-                  </button>
+                <div className="hal-stagenews">
+                  <div className="hal-stagenews-scene">
+                    <div className="hal-carousel-item hal-carousel-item--left">
+                      <picture>
+                        <img src={imgUrl("/oficinas.jpg")} alt="Oficinas" />
+                      </picture>
+                      <div className="hal-stagenews-content hal-stagenews-content--left">
+                        <div>
+                          <h3 className="hal-h3">
+                            {t("home.offices.sectionTitle")}
+                          </h3>
+                          <div className="hal-button-container">
+                            <a
+                              className="hal-button hal-button--primary"
+                              href="https://seemanngroup.com/seemanngroup/nuestra_empresa.php#historia-section1"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {t("home.offices.button")}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
