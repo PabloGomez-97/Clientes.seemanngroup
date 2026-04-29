@@ -4476,9 +4476,35 @@ function QuoteAPITester({
                                     })}
                                   </tbody>
                                 </table>
-                                <div className="qa-rt-hint">
-                                  <i className="bi bi-info-circle"></i>
-                                  Haz click en la ruta que deseas cotizar
+                                <div
+                                  className="qa-rt-hint"
+                                  style={{
+                                    flexDirection: "column",
+                                    alignItems: "flex-start",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 6,
+                                    }}
+                                  >
+                                    <i className="bi bi-info-circle"></i>
+                                    Haz click en la ruta que deseas cotizar
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 6,
+                                    }}
+                                  >
+                                    <i className="bi bi-exclamation-circle"></i>
+                                    Las tarifas son proporcionadas por el agente
+                                    de carga y pueden presentar variaciones
+                                    entre opciones del mismo carrier.
+                                  </div>
                                 </div>
                                 {hasHiddenRoutes && (
                                   <div className="qa-routes-actions mb-3">
