@@ -532,6 +532,7 @@ function QuoteAPITester({
         (opt) => opt.value === preselectedOrigin.value,
       );
       if (originOption) {
+        setRouteMode("recurrente");
         setOriginSeleccionado(originOption);
       }
     }

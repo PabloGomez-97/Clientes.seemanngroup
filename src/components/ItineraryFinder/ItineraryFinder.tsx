@@ -8,7 +8,7 @@ import "./ItineraryFinder.css";
 // TIPOS
 // ============================================================================
 
-type TipoEnvio = "AEREO" | "FCL" | "LCL" | null;
+type TipoEnvio = "AEREO" | "FCL" | "LCL" | "LASTMILE" | null;
 
 interface SelectOption {
   value: string;
@@ -31,6 +31,8 @@ const GOOGLE_SHEET_URLS = {
     "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBXW_l3kB2V0A9D732Le0AjyGnXDjgV8nasTz1Z3gWUbCklXKICxTE4kEMjYMoaTG4v78XB2aVrHe/pub?output=csv",
   FCL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWzBbNU6lsWnVEhRgzTPNEjtq-eH59rGSQf3QS6UGiRHT98A-g3LumdtuFHKb5lcGmERT4nZjAbMhm/pub?output=csv",
   LCL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT5T29WmDAI_z4RxlPtY3GoB3pm7NyBBiWZGc06cYRR1hg5fdFx7VEr3-i2geKxgw/pub?output=csv",
+  LASTMILE:
+    "https://docs.google.com/spreadsheets/d/e/2PACX-1vQR3oDDQTX5G7AN0yEkV3dzDS_SHP3ERZNkud92VuugEO2tggHh4hi9Ssat8L_VrTsmRmVCrXkQGQ1r/pub?output=csv",
 };
 
 // ============================================================================
@@ -150,6 +152,48 @@ const parseLCL = (data: string[][]): RutaBase[] => {
   return rutas;
 };
 
+/**
+ * El sheet de Última Milla tiene N orígenes en col[1] y M destinos en col[2]
+ * (no necesariamente alineados por fila). Expandimos a todas las combinaciones.
+ */
+const parseLASTMILE = (data: string[][]): RutaBase[] => {
+  const origenes: { raw: string; norm: string }[] = [];
+  const destinos: { raw: string; norm: string }[] = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    if (!row) continue;
+    const colA = (row[1] || row[0] || "").trim();
+    const colB = (row[2] || "").trim();
+
+    if (colA && !/^origen$/i.test(colA)) {
+      const norm = normalize(colA);
+      if (norm && !origenes.find((o) => o.norm === norm)) {
+        origenes.push({ raw: colA, norm });
+      }
+    }
+    if (colB && !/^destino$/i.test(colB)) {
+      const norm = normalize(colB);
+      if (norm && !destinos.find((d) => d.norm === norm)) {
+        destinos.push({ raw: colB, norm });
+      }
+    }
+  }
+
+  const rutas: RutaBase[] = [];
+  for (const o of origenes) {
+    for (const d of destinos) {
+      rutas.push({
+        origin: o.raw,
+        originNormalized: o.norm,
+        destination: d.raw,
+        destinationNormalized: d.norm,
+      });
+    }
+  }
+  return rutas;
+};
+
 // ============================================================================
 // ICONOS (inline SVG, color heredado del texto del segmento)
 // ============================================================================
@@ -190,6 +234,18 @@ const IconBox: React.FC = () => (
   </svg>
 );
 
+const IconTruck: React.FC = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    width="100%"
+    height="100%"
+  >
+    <path d="M3 5h11v9H3V5Zm12 3h3.5L21 11v3h-6V8ZM6.5 19a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm10.5 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z" />
+  </svg>
+);
+
 const IconSearch: React.FC = () => (
   <svg
     viewBox="0 0 24 24"
@@ -219,6 +275,7 @@ const TIPO_OPTIONS: Array<{
   { value: "AEREO", icon: IconPlane, i18nKey: "home.itinerary.aereo" },
   { value: "FCL", icon: IconContainer, i18nKey: "home.itinerary.fcl" },
   { value: "LCL", icon: IconBox, i18nKey: "home.itinerary.lcl" },
+  { value: "LASTMILE", icon: IconTruck, i18nKey: "home.itinerary.lastmile" },
 ];
 
 // ============================================================================
@@ -359,6 +416,9 @@ const ItineraryFinder: React.FC = () => {
             break;
           case "LCL":
             rutasParsed = parseLCL(data);
+            break;
+          case "LASTMILE":
+            rutasParsed = parseLASTMILE(data);
             break;
         }
 

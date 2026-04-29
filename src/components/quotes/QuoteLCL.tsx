@@ -476,6 +476,7 @@ function QuoteLCL({
         (opt) => opt.value === preselectedPOL.value,
       );
       if (polOption) {
+        setRouteMode("recurrente");
         setPolSeleccionado(polOption);
       }
     }
