@@ -272,6 +272,24 @@
   min-width: 0;
 }
 
+.qa-rt-carrier-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qa-rt-carrier-info-icon {
+  font-size: 15px;
+  color: #ff6200;
+  cursor: help;
+  flex-shrink: 0;
+  transition: color 0.12s ease;
+}
+
+.qa-rt-carrier-info-icon:hover {
+  color: var(--qa-primary);
+}
+
 .qa-rt-carrier-name {
   font-size: 14px;
   font-weight: 500;

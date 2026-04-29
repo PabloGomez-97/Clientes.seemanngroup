@@ -4337,143 +4337,199 @@ function QuoteAPITester({
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {rutasVisibles.map((ruta) => {
-                                      const prices = [
-                                        extractPrice(ruta.kg45),
-                                        extractPrice(ruta.kg100),
-                                        extractPrice(ruta.kg300),
-                                        extractPrice(ruta.kg500),
-                                        extractPrice(ruta.kg1000),
-                                      ];
-                                      const isSelected =
-                                        rutaSeleccionada?.id === ruta.id;
+                                    {(() => {
+                                      const carrierCounts =
+                                        rutasVisibles.reduce<
+                                          Record<string, number>
+                                        >((acc, r) => {
+                                          const key = (r.carrier || "")
+                                            .trim()
+                                            .toLowerCase();
+                                          if (!key) return acc;
+                                          acc[key] = (acc[key] || 0) + 1;
+                                          return acc;
+                                        }, {});
+                                      const seenCarriers = new Set<string>();
+                                      return rutasVisibles.map((ruta) => {
+                                        const prices = [
+                                          extractPrice(ruta.kg45),
+                                          extractPrice(ruta.kg100),
+                                          extractPrice(ruta.kg300),
+                                          extractPrice(ruta.kg500),
+                                          extractPrice(ruta.kg1000),
+                                        ];
+                                        const isSelected =
+                                          rutaSeleccionada?.id === ruta.id;
 
-                                      const validityState = getValidityClass(
-                                        ruta.validUntil,
-                                      );
+                                        const validityState = getValidityClass(
+                                          ruta.validUntil,
+                                        );
 
-                                      return (
-                                        <tr
-                                          key={ruta.id}
-                                          onClick={() => {
-                                            if (ruta.priceForComparison === 0) {
-                                              setShowPriceZeroModal(true);
-                                              return;
-                                            }
-                                            setRutaSeleccionada(ruta);
-                                          }}
-                                          className={`qa-rt-row${
-                                            isSelected ? " is-selected" : ""
-                                          }`}
-                                        >
-                                          <td className="qa-rt-td-select">
-                                            {isSelected ? (
-                                              <i className="bi bi-check-circle-fill"></i>
-                                            ) : (
-                                              <i className="bi bi-circle"></i>
-                                            )}
-                                          </td>
-                                          <td className="qa-rt-td-carrier">
-                                            <div className="qa-rt-carrier">
-                                              <div className="qa-rt-carrier-logo">
-                                                {ruta.carrier &&
-                                                ruta.carrier !==
-                                                  "Por Confirmar" ? (
-                                                  <img
-                                                    src={imgUrl(
-                                                      `/logoscarrierair/${ruta.carrier.toLowerCase()}.png`,
-                                                    )}
-                                                    alt={ruta.carrier}
-                                                    onError={(e) => {
-                                                      e.currentTarget.style.display =
-                                                        "none";
-                                                    }}
-                                                  />
-                                                ) : (
-                                                  <i className="bi bi-airplane"></i>
-                                                )}
-                                              </div>
-                                              <div className="qa-rt-carrier-info">
-                                                <span className="qa-rt-carrier-name">
-                                                  {(
-                                                    ruta.carrier ||
-                                                    t("QuoteAIR.porconfirmar")
-                                                  )
-                                                    .toLowerCase()
-                                                    .replace(/\b\p{L}/gu, (c) =>
-                                                      c.toUpperCase(),
-                                                    )}
-                                                </span>
-                                              </div>
-                                            </div>
-                                          </td>
-                                          {prices.map((price, idx) => (
-                                            <td
-                                              key={idx}
-                                              className="qa-rt-td-price"
-                                            >
-                                              {price > 0 ? (
-                                                <>
-                                                  <span className="qa-rt-price-amount">
-                                                    {(price * 1.15).toFixed(2)}
-                                                  </span>
-                                                  <span className="qa-rt-price-cur">
-                                                    {ruta.currency}
-                                                  </span>
-                                                </>
+                                        const carrierKey = (ruta.carrier || "")
+                                          .trim()
+                                          .toLowerCase();
+                                        const isDuplicateCarrier =
+                                          carrierKey.length > 0 &&
+                                          (carrierCounts[carrierKey] || 0) >
+                                            1 &&
+                                          seenCarriers.has(carrierKey);
+                                        if (carrierKey)
+                                          seenCarriers.add(carrierKey);
+
+                                        return (
+                                          <tr
+                                            key={ruta.id}
+                                            onClick={() => {
+                                              if (
+                                                ruta.priceForComparison === 0
+                                              ) {
+                                                setShowPriceZeroModal(true);
+                                                return;
+                                              }
+                                              setRutaSeleccionada(ruta);
+                                            }}
+                                            className={`qa-rt-row${
+                                              isSelected ? " is-selected" : ""
+                                            }`}
+                                          >
+                                            <td className="qa-rt-td-select">
+                                              {isSelected ? (
+                                                <i className="bi bi-check-circle-fill"></i>
                                               ) : (
-                                                <span className="qa-rt-price-empty">
-                                                  —
-                                                </span>
+                                                <i className="bi bi-circle"></i>
                                               )}
                                             </td>
-                                          ))}
-                                          <td className="qa-rt-td-meta">
-                                            {ruta.transitTime ? (
-                                              ruta.transitTime
-                                            ) : (
-                                              <OverlayTrigger
-                                                placement="top"
-                                                overlay={
-                                                  <Tooltip
-                                                    id={`tt-transit-${ruta.id}`}
-                                                  >
-                                                    To Be Confirmed
-                                                  </Tooltip>
-                                                }
-                                              >
-                                                <span className="qa-rt-tbc">
-                                                  TBC
-                                                </span>
-                                              </OverlayTrigger>
-                                            )}
-                                          </td>
-                                          <td className="qa-rt-td-meta">
-                                            {ruta.validUntil ? (
-                                              <span
-                                                className={`qa-validity ${
-                                                  validityState === "valid"
-                                                    ? "valid"
-                                                    : validityState ===
-                                                        "expired"
-                                                      ? "expired"
-                                                      : ""
-                                                }`}
-                                              >
-                                                {ruta.validUntil}
-                                              </span>
-                                            ) : (
-                                              "—"
-                                            )}
-                                          </td>
-                                          {isEjecutivoMode && (
-                                            <td className="qa-rt-td-meta qa-rt-td-agent">
-                                              {ruta.company || "—"}
+                                            <td className="qa-rt-td-carrier">
+                                              <div className="qa-rt-carrier">
+                                                <div className="qa-rt-carrier-logo">
+                                                  {ruta.carrier &&
+                                                  ruta.carrier !==
+                                                    "Por Confirmar" ? (
+                                                    <img
+                                                      src={imgUrl(
+                                                        `/logoscarrierair/${ruta.carrier.toLowerCase()}.png`,
+                                                      )}
+                                                      alt={ruta.carrier}
+                                                      onError={(e) => {
+                                                        e.currentTarget.style.display =
+                                                          "none";
+                                                      }}
+                                                    />
+                                                  ) : (
+                                                    <i className="bi bi-airplane"></i>
+                                                  )}
+                                                </div>
+                                                <div className="qa-rt-carrier-info">
+                                                  <div className="qa-rt-carrier-name-row">
+                                                    <span className="qa-rt-carrier-name">
+                                                      {(
+                                                        ruta.carrier ||
+                                                        t(
+                                                          "QuoteAIR.porconfirmar",
+                                                        )
+                                                      )
+                                                        .toLowerCase()
+                                                        .replace(
+                                                          /\b\p{L}/gu,
+                                                          (c) =>
+                                                            c.toUpperCase(),
+                                                        )}
+                                                    </span>
+                                                    {isDuplicateCarrier && (
+                                                      <OverlayTrigger
+                                                        placement="top"
+                                                        overlay={
+                                                          <Tooltip
+                                                            id={`tt-dup-carrier-${ruta.id}`}
+                                                          >
+                                                            {t(
+                                                              "QuoteAIR.duplicateCarrierTooltip",
+                                                            )}
+                                                          </Tooltip>
+                                                        }
+                                                      >
+                                                        <i
+                                                          className="bi bi-info-circle qa-rt-carrier-info-icon"
+                                                          onClick={(e) =>
+                                                            e.stopPropagation()
+                                                          }
+                                                        ></i>
+                                                      </OverlayTrigger>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </div>
                                             </td>
-                                          )}
-                                        </tr>
-                                      );
-                                    })}
+                                            {prices.map((price, idx) => (
+                                              <td
+                                                key={idx}
+                                                className="qa-rt-td-price"
+                                              >
+                                                {price > 0 ? (
+                                                  <>
+                                                    <span className="qa-rt-price-amount">
+                                                      {(price * 1.15).toFixed(
+                                                        2,
+                                                      )}
+                                                    </span>
+                                                    <span className="qa-rt-price-cur">
+                                                      {ruta.currency}
+                                                    </span>
+                                                  </>
+                                                ) : (
+                                                  <span className="qa-rt-price-empty">
+                                                    —
+                                                  </span>
+                                                )}
+                                              </td>
+                                            ))}
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.transitTime ? (
+                                                ruta.transitTime
+                                              ) : (
+                                                <OverlayTrigger
+                                                  placement="top"
+                                                  overlay={
+                                                    <Tooltip
+                                                      id={`tt-transit-${ruta.id}`}
+                                                    >
+                                                      To Be Confirmed
+                                                    </Tooltip>
+                                                  }
+                                                >
+                                                  <span className="qa-rt-tbc">
+                                                    TBC
+                                                  </span>
+                                                </OverlayTrigger>
+                                              )}
+                                            </td>
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.validUntil ? (
+                                                <span
+                                                  className={`qa-validity ${
+                                                    validityState === "valid"
+                                                      ? "valid"
+                                                      : validityState ===
+                                                          "expired"
+                                                        ? "expired"
+                                                        : ""
+                                                  }`}
+                                                >
+                                                  {ruta.validUntil}
+                                                </span>
+                                              ) : (
+                                                "—"
+                                              )}
+                                            </td>
+                                            {isEjecutivoMode && (
+                                              <td className="qa-rt-td-meta qa-rt-td-agent">
+                                                {ruta.company || "—"}
+                                              </td>
+                                            )}
+                                          </tr>
+                                        );
+                                      });
+                                    })()}
                                   </tbody>
                                 </table>
                                 <div
@@ -4492,18 +4548,6 @@ function QuoteAPITester({
                                   >
                                     <i className="bi bi-info-circle"></i>
                                     Haz click en la ruta que deseas cotizar
-                                  </div>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 6,
-                                    }}
-                                  >
-                                    <i className="bi bi-exclamation-circle"></i>
-                                    Las tarifas son proporcionadas por el agente
-                                    de carga y pueden presentar variaciones
-                                    entre opciones del mismo carrier.
                                   </div>
                                 </div>
                                 {hasHiddenRoutes && (

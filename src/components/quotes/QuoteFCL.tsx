@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Modal, Button } from "react-bootstrap";
+import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -169,6 +169,20 @@ function QuoteFCL({
   const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
     "cotizacion",
   );
+
+  // Estado para ordenamiento de columnas de contenedor
+  const [sortConfig, setSortConfig] = useState<{
+    col: "20GP" | "40HQ" | "40NOR";
+    dir: "asc" | "desc";
+  }>({ col: "20GP", dir: "asc" });
+
+  const handleSortCol = (col: "20GP" | "40HQ" | "40NOR") => {
+    setSortConfig((prev) =>
+      prev.col === col
+        ? { col, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { col, dir: "asc" },
+    );
+  };
 
   // Refs para scroll automático
   const routesRef = useRef<HTMLDivElement>(null);
@@ -978,7 +992,22 @@ function QuoteFCL({
 
       return matchPOL && matchPOD && matchCarrier;
     })
-    .sort((a, b) => a.priceForComparison - b.priceForComparison);
+    .sort((a, b) => {
+      const getColPrice = (r: typeof a) => {
+        const raw =
+          sortConfig.col === "20GP"
+            ? r.gp20
+            : sortConfig.col === "40HQ"
+              ? r.hq40
+              : r.nor40;
+        const val = extractPrice(raw ?? null);
+        // Rutas sin precio van al final siempre
+        if (!val) return sortConfig.dir === "asc" ? Infinity : -Infinity;
+        return val;
+      };
+      const diff = getColPrice(a) - getColPrice(b);
+      return sortConfig.dir === "asc" ? diff : -diff;
+    });
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {
@@ -2546,11 +2575,37 @@ function QuoteFCL({
                                         <th className="qa-rt-th-carrier">
                                           Carrier
                                         </th>
-                                        <th className="qa-rt-th-price">20GP</th>
-                                        <th className="qa-rt-th-price">40HQ</th>
-                                        <th className="qa-rt-th-price">
-                                          40NOR
-                                        </th>
+                                        {(
+                                          ["20GP", "40HQ", "40NOR"] as const
+                                        ).map((col) => (
+                                          <th
+                                            key={col}
+                                            className="qa-rt-th-price qa-rt-th-sortable"
+                                            onClick={() => handleSortCol(col)}
+                                          >
+                                            <span className="qa-rt-th-sort-inner">
+                                              {col}
+                                              <span className="qa-rt-sort-icons">
+                                                <i
+                                                  className={`bi bi-caret-up-fill qa-rt-sort-icon${
+                                                    sortConfig.col === col &&
+                                                    sortConfig.dir === "asc"
+                                                      ? " active"
+                                                      : ""
+                                                  }`}
+                                                />
+                                                <i
+                                                  className={`bi bi-caret-down-fill qa-rt-sort-icon${
+                                                    sortConfig.col === col &&
+                                                    sortConfig.dir === "desc"
+                                                      ? " active"
+                                                      : ""
+                                                  }`}
+                                                />
+                                              </span>
+                                            </span>
+                                          </th>
+                                        ))}
                                         <th className="qa-rt-th-meta">
                                           Tránsito
                                         </th>
@@ -2568,153 +2623,205 @@ function QuoteFCL({
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {rutasFiltradas.map((ruta) => {
-                                        const validityState = getValidityClass(
-                                          ruta.validUntil,
-                                        );
-                                        const isRowSelected =
-                                          rutaSeleccionada?.id === ruta.id;
+                                      {(() => {
+                                        const carrierCounts =
+                                          rutasFiltradas.reduce<
+                                            Record<string, number>
+                                          >((acc, r) => {
+                                            const key = (r.carrier || "")
+                                              .trim()
+                                              .toLowerCase();
+                                            if (!key) return acc;
+                                            acc[key] = (acc[key] || 0) + 1;
+                                            return acc;
+                                          }, {});
+                                        const seenCarriers = new Set<string>();
+                                        return rutasFiltradas.map((ruta) => {
+                                          const validityState =
+                                            getValidityClass(ruta.validUntil);
+                                          const isRowSelected =
+                                            rutaSeleccionada?.id === ruta.id;
 
-                                        const containers: {
-                                          type: ContainerType;
-                                          val?: string | null;
-                                        }[] = [
-                                          { type: "20GP", val: ruta.gp20 },
-                                          { type: "40HQ", val: ruta.hq40 },
-                                          { type: "40NOR", val: ruta.nor40 },
-                                        ];
+                                          const carrierKey = (
+                                            ruta.carrier || ""
+                                          )
+                                            .trim()
+                                            .toLowerCase();
+                                          const isDuplicateCarrier =
+                                            carrierKey.length > 0 &&
+                                            (carrierCounts[carrierKey] || 0) >
+                                              1 &&
+                                            seenCarriers.has(carrierKey);
+                                          if (carrierKey)
+                                            seenCarriers.add(carrierKey);
 
-                                        return (
-                                          <tr
-                                            key={ruta.id}
-                                            className={`qa-rt-row qa-rt-row--passive${
-                                              isRowSelected
-                                                ? " is-row-selected"
-                                                : ""
-                                            }`}
-                                          >
-                                            <td className="qa-rt-td-carrier">
-                                              <div className="qa-rt-carrier">
-                                                <div className="qa-rt-carrier-logo">
-                                                  <img
-                                                    src={imgUrl(
-                                                      `/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`,
-                                                    )}
-                                                    alt={ruta.carrier}
-                                                    onError={(e) => {
-                                                      const target =
-                                                        e.currentTarget;
-                                                      target.style.display =
-                                                        "none";
-                                                      const parent =
-                                                        target.parentElement;
-                                                      if (parent) {
-                                                        parent.innerHTML =
-                                                          '<i class="bi bi-box-seam"></i>';
-                                                      }
-                                                    }}
-                                                  />
-                                                </div>
-                                                <div className="qa-rt-carrier-info">
-                                                  <span className="qa-rt-carrier-name">
-                                                    {ruta.carrier
-                                                      .toLowerCase()
-                                                      .replace(
-                                                        /\b\p{L}/gu,
-                                                        (c) => c.toUpperCase(),
+                                          const containers: {
+                                            type: ContainerType;
+                                            val?: string | null;
+                                          }[] = [
+                                            { type: "20GP", val: ruta.gp20 },
+                                            { type: "40HQ", val: ruta.hq40 },
+                                            { type: "40NOR", val: ruta.nor40 },
+                                          ];
+
+                                          return (
+                                            <tr
+                                              key={ruta.id}
+                                              className={`qa-rt-row qa-rt-row--passive${
+                                                isRowSelected
+                                                  ? " is-row-selected"
+                                                  : ""
+                                              }`}
+                                            >
+                                              <td className="qa-rt-td-carrier">
+                                                <div className="qa-rt-carrier">
+                                                  <div className="qa-rt-carrier-logo">
+                                                    <img
+                                                      src={imgUrl(
+                                                        `/logoscarrierfcl/${ruta.carrier.toLowerCase()}.png`,
                                                       )}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            </td>
-                                            {containers.map(({ type, val }) => {
-                                              const available =
-                                                isContainerAvailable(val);
-                                              const price = available
-                                                ? extractPrice(val!)
-                                                : 0;
-                                              const isCellSelected =
-                                                isRowSelected &&
-                                                containerSeleccionado?.type ===
-                                                  type;
-
-                                              return (
-                                                <td
-                                                  key={type}
-                                                  className={`qa-rt-td-price qa-rt-td-container${
-                                                    available
-                                                      ? " is-available"
-                                                      : ""
-                                                  }${
-                                                    isCellSelected
-                                                      ? " is-selected"
-                                                      : ""
-                                                  }`}
-                                                  onClick={() => {
-                                                    if (!available) return;
-                                                    handleSeleccionarContainer(
-                                                      ruta,
-                                                      type,
-                                                    );
-                                                  }}
-                                                >
-                                                  {available ? (
-                                                    <>
-                                                      <span className="qa-rt-price-amount">
-                                                        {(price * 1.15).toFixed(
-                                                          0,
-                                                        )}
+                                                      alt={ruta.carrier}
+                                                      onError={(e) => {
+                                                        const target =
+                                                          e.currentTarget;
+                                                        target.style.display =
+                                                          "none";
+                                                        const parent =
+                                                          target.parentElement;
+                                                        if (parent) {
+                                                          parent.innerHTML =
+                                                            '<i class="bi bi-box-seam"></i>';
+                                                        }
+                                                      }}
+                                                    />
+                                                  </div>
+                                                  <div className="qa-rt-carrier-info">
+                                                    <div className="qa-rt-carrier-name-row">
+                                                      <span className="qa-rt-carrier-name">
+                                                        {ruta.carrier
+                                                          .toLowerCase()
+                                                          .replace(
+                                                            /\b\p{L}/gu,
+                                                            (c) =>
+                                                              c.toUpperCase(),
+                                                          )}
                                                       </span>
-                                                      <span className="qa-rt-price-cur">
-                                                        {ruta.currency}
-                                                      </span>
-                                                      {isCellSelected && (
-                                                        <i className="bi bi-check-circle-fill qa-rt-cell-check"></i>
+                                                      {isDuplicateCarrier && (
+                                                        <OverlayTrigger
+                                                          placement="top"
+                                                          overlay={
+                                                            <Tooltip
+                                                              id={`tt-dup-carrier-${ruta.id}`}
+                                                            >
+                                                              {t(
+                                                                "QuoteAIR.duplicateCarrierTooltip",
+                                                              )}
+                                                            </Tooltip>
+                                                          }
+                                                        >
+                                                          <i
+                                                            className="bi bi-info-circle qa-rt-carrier-info-icon"
+                                                            onClick={(e) =>
+                                                              e.stopPropagation()
+                                                            }
+                                                          ></i>
+                                                        </OverlayTrigger>
                                                       )}
-                                                    </>
-                                                  ) : (
-                                                    <span className="qa-rt-price-empty">
-                                                      —
-                                                    </span>
-                                                  )}
-                                                </td>
-                                              );
-                                            })}
-                                            <td className="qa-rt-td-meta">
-                                              {ruta.tt || "—"}
-                                              {" días"}
-                                            </td>
-                                            <td className="qa-rt-td-meta">
-                                              {ruta.freeTime
-                                                ? `${ruta.freeTime} días`
-                                                : "—"}
-                                            </td>
-                                            <td className="qa-rt-td-meta">
-                                              {ruta.validUntil ? (
-                                                <span
-                                                  className={`qa-validity ${
-                                                    validityState === "valid"
-                                                      ? "valid"
-                                                      : validityState ===
-                                                          "expired"
-                                                        ? "expired"
-                                                        : ""
-                                                  }`}
-                                                >
-                                                  {ruta.validUntil}
-                                                </span>
-                                              ) : (
-                                                "—"
-                                              )}
-                                            </td>
-                                            {isEjecutivoMode && (
-                                              <td className="qa-rt-td-meta qa-rt-td-agent">
-                                                {ruta.company || "—"}
+                                                    </div>
+                                                  </div>
+                                                </div>
                                               </td>
-                                            )}
-                                          </tr>
-                                        );
-                                      })}
+                                              {containers.map(
+                                                ({ type, val }) => {
+                                                  const available =
+                                                    isContainerAvailable(val);
+                                                  const price = available
+                                                    ? extractPrice(val!)
+                                                    : 0;
+                                                  const isCellSelected =
+                                                    isRowSelected &&
+                                                    containerSeleccionado?.type ===
+                                                      type;
+
+                                                  return (
+                                                    <td
+                                                      key={type}
+                                                      className={`qa-rt-td-price qa-rt-td-container${
+                                                        available
+                                                          ? " is-available"
+                                                          : ""
+                                                      }${
+                                                        isCellSelected
+                                                          ? " is-selected"
+                                                          : ""
+                                                      }`}
+                                                      onClick={() => {
+                                                        if (!available) return;
+                                                        handleSeleccionarContainer(
+                                                          ruta,
+                                                          type,
+                                                        );
+                                                      }}
+                                                    >
+                                                      {available ? (
+                                                        <>
+                                                          <span className="qa-rt-price-amount">
+                                                            {(
+                                                              price * 1.15
+                                                            ).toFixed(0)}
+                                                          </span>
+                                                          <span className="qa-rt-price-cur">
+                                                            {ruta.currency}
+                                                          </span>
+                                                          {isCellSelected && (
+                                                            <i className="bi bi-check-circle-fill qa-rt-cell-check"></i>
+                                                          )}
+                                                        </>
+                                                      ) : (
+                                                        <span className="qa-rt-price-empty">
+                                                          —
+                                                        </span>
+                                                      )}
+                                                    </td>
+                                                  );
+                                                },
+                                              )}
+                                              <td className="qa-rt-td-meta">
+                                                {ruta.tt || "—"}
+                                                {" días"}
+                                              </td>
+                                              <td className="qa-rt-td-meta">
+                                                {ruta.freeTime
+                                                  ? `${ruta.freeTime} días`
+                                                  : "—"}
+                                              </td>
+                                              <td className="qa-rt-td-meta">
+                                                {ruta.validUntil ? (
+                                                  <span
+                                                    className={`qa-validity ${
+                                                      validityState === "valid"
+                                                        ? "valid"
+                                                        : validityState ===
+                                                            "expired"
+                                                          ? "expired"
+                                                          : ""
+                                                    }`}
+                                                  >
+                                                    {ruta.validUntil}
+                                                  </span>
+                                                ) : (
+                                                  "—"
+                                                )}
+                                              </td>
+                                              {isEjecutivoMode && (
+                                                <td className="qa-rt-td-meta qa-rt-td-agent">
+                                                  {ruta.company || "—"}
+                                                </td>
+                                              )}
+                                            </tr>
+                                          );
+                                        });
+                                      })()}
                                     </tbody>
                                   </table>
                                   <div
@@ -2733,19 +2840,6 @@ function QuoteFCL({
                                     >
                                       <i className="bi bi-info-circle"></i>
                                       Haz click en la ruta que deseas cotizar
-                                    </div>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 6,
-                                      }}
-                                    >
-                                      <i className="bi bi-exclamation-circle"></i>
-                                      Las tarifas son proporcionadas por el
-                                      agente de carga y pueden presentar
-                                      variaciones entre opciones del mismo
-                                      carrier.
                                     </div>
                                   </div>
                                 </div>

@@ -5,7 +5,7 @@ import { useAuditLog } from "../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 import Select from "react-select";
 import { packageTypeOptions } from "./PackageTypes/PiecestypesLCL";
-import { Modal, Button } from "react-bootstrap";
+import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { PDFTemplateLCL } from "./Pdftemplate/Pdftemplatelcl";
 import * as bootstrap from "bootstrap";
 import {
@@ -26,6 +26,7 @@ import { imgUrl } from "../../config/images";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL } from "../../config/portCoordinates";
 import "flag-icons/css/flag-icons.min.css";
+import "./QuoteAIR.css";
 import {
   type PieceData,
   type OutletContext,
@@ -3130,118 +3131,168 @@ function QuoteLCL({
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {rutasFiltradas.map((ruta) => {
-                                      const isSelected =
-                                        rutaSeleccionada?.id === ruta.id;
-                                      const validityState = getValidityClass(
-                                        ruta.validUntil,
-                                      );
+                                    {(() => {
+                                      const carrierCounts =
+                                        rutasFiltradas.reduce<
+                                          Record<string, number>
+                                        >((acc, r) => {
+                                          const key = (r.operador || "")
+                                            .trim()
+                                            .toLowerCase();
+                                          if (!key) return acc;
+                                          acc[key] = (acc[key] || 0) + 1;
+                                          return acc;
+                                        }, {});
+                                      const seenCarriers = new Set<string>();
+                                      return rutasFiltradas.map((ruta) => {
+                                        const isSelected =
+                                          rutaSeleccionada?.id === ruta.id;
+                                        const validityState = getValidityClass(
+                                          ruta.validUntil,
+                                        );
 
-                                      return (
-                                        <tr
-                                          key={ruta.id}
-                                          onClick={() => {
-                                            if (ruta.ofWM === 0) {
-                                              setShowPriceZeroModal(true);
-                                              return;
-                                            }
-                                            setRutaSeleccionada(ruta);
-                                            setSinTarifa(false);
-                                            setError(null);
-                                            setResponse(null);
-                                          }}
-                                          className={`qa-rt-row${
-                                            isSelected ? " is-selected" : ""
-                                          }`}
-                                        >
-                                          <td className="qa-rt-td-select">
-                                            {isSelected ? (
-                                              <i className="bi bi-check-circle-fill"></i>
-                                            ) : (
-                                              <i className="bi bi-circle"></i>
-                                            )}
-                                          </td>
-                                          <td className="qa-rt-td-carrier">
-                                            <div className="qa-rt-carrier">
-                                              <div className="qa-rt-carrier-logo">
-                                                <img
-                                                  src={imgUrl(
-                                                    `/logoscarrierlcl/${ruta.operador.toLowerCase().replace(/\s+/g, "_")}.png`,
-                                                  )}
-                                                  alt={ruta.operador}
-                                                  onError={(e) => {
-                                                    e.currentTarget.style.display =
-                                                      "none";
-                                                  }}
-                                                />
-                                              </div>
-                                              <div className="qa-rt-carrier-info">
-                                                <span className="qa-rt-carrier-name">
-                                                  {ruta.operador
-                                                    .toLowerCase()
-                                                    .replace(/\b\p{L}/gu, (c) =>
-                                                      c.toUpperCase(),
-                                                    )}
-                                                </span>
-                                              </div>
-                                            </div>
-                                          </td>
-                                          <td className="qa-rt-td-price">
-                                            {ruta.ofWM > 0 ? (
-                                              <>
-                                                <span className="qa-rt-price-amount">
-                                                  {(ruta.ofWM * 1.35).toFixed(
-                                                    2,
-                                                  )}
-                                                </span>
-                                                <span className="qa-rt-price-cur">
-                                                  {ruta.currency}
-                                                </span>
-                                              </>
-                                            ) : (
-                                              <span className="qa-rt-price-empty">
-                                                —
-                                              </span>
-                                            )}
-                                          </td>
-                                          <td className="qa-rt-td-meta">
-                                            {ruta.servicio || "—"}
-                                          </td>
-                                          <td className="qa-rt-td-meta">
-                                            {ruta.ttAprox || "—"}
-                                          </td>
-                                          <td className="qa-rt-td-meta">
-                                            {ruta.frecuencia || "—"}
-                                          </td>
-                                          <td className="qa-rt-td-meta">
-                                            {ruta.agente || "—"}
-                                          </td>
-                                          <td className="qa-rt-td-meta">
-                                            {ruta.validUntil ? (
-                                              <span
-                                                className={`qa-validity ${
-                                                  validityState === "valid"
-                                                    ? "valid"
-                                                    : validityState ===
-                                                        "expired"
-                                                      ? "expired"
-                                                      : ""
-                                                }`}
-                                              >
-                                                {ruta.validUntil}
-                                              </span>
-                                            ) : (
-                                              "—"
-                                            )}
-                                          </td>
-                                          {isEjecutivoMode && (
-                                            <td className="qa-rt-td-meta qa-rt-td-agent">
-                                              {ruta.operador || "—"}
+                                        const carrierKey = (ruta.operador || "")
+                                          .trim()
+                                          .toLowerCase();
+                                        const isDuplicateCarrier =
+                                          carrierKey.length > 0 &&
+                                          (carrierCounts[carrierKey] || 0) >
+                                            1 &&
+                                          seenCarriers.has(carrierKey);
+                                        if (carrierKey)
+                                          seenCarriers.add(carrierKey);
+
+                                        return (
+                                          <tr
+                                            key={ruta.id}
+                                            onClick={() => {
+                                              if (ruta.ofWM === 0) {
+                                                setShowPriceZeroModal(true);
+                                                return;
+                                              }
+                                              setRutaSeleccionada(ruta);
+                                              setSinTarifa(false);
+                                              setError(null);
+                                              setResponse(null);
+                                            }}
+                                            className={`qa-rt-row${
+                                              isSelected ? " is-selected" : ""
+                                            }`}
+                                          >
+                                            <td className="qa-rt-td-select">
+                                              {isSelected ? (
+                                                <i className="bi bi-check-circle-fill"></i>
+                                              ) : (
+                                                <i className="bi bi-circle"></i>
+                                              )}
                                             </td>
-                                          )}
-                                        </tr>
-                                      );
-                                    })}
+                                            <td className="qa-rt-td-carrier">
+                                              <div className="qa-rt-carrier">
+                                                <div className="qa-rt-carrier-logo">
+                                                  <img
+                                                    src={imgUrl(
+                                                      `/logoscarrierlcl/${ruta.operador.toLowerCase().replace(/\s+/g, "_")}.png`,
+                                                    )}
+                                                    alt={ruta.operador}
+                                                    onError={(e) => {
+                                                      e.currentTarget.style.display =
+                                                        "none";
+                                                    }}
+                                                  />
+                                                </div>
+                                                <div className="qa-rt-carrier-info">
+                                                  <div className="qa-rt-carrier-name-row">
+                                                    <span className="qa-rt-carrier-name">
+                                                      {ruta.operador
+                                                        .toLowerCase()
+                                                        .replace(
+                                                          /\b\p{L}/gu,
+                                                          (c) =>
+                                                            c.toUpperCase(),
+                                                        )}
+                                                    </span>
+                                                    {isDuplicateCarrier && (
+                                                      <OverlayTrigger
+                                                        placement="top"
+                                                        overlay={
+                                                          <Tooltip
+                                                            id={`tt-dup-carrier-${ruta.id}`}
+                                                          >
+                                                            {t(
+                                                              "Quotelcl.duplicateCarrierTooltip",
+                                                            )}
+                                                          </Tooltip>
+                                                        }
+                                                      >
+                                                        <i
+                                                          className="bi bi-info-circle qa-rt-carrier-info-icon"
+                                                          onClick={(e) =>
+                                                            e.stopPropagation()
+                                                          }
+                                                        ></i>
+                                                      </OverlayTrigger>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </td>
+                                            <td className="qa-rt-td-price">
+                                              {ruta.ofWM > 0 ? (
+                                                <>
+                                                  <span className="qa-rt-price-amount">
+                                                    {(ruta.ofWM * 1.35).toFixed(
+                                                      2,
+                                                    )}
+                                                  </span>
+                                                  <span className="qa-rt-price-cur">
+                                                    {ruta.currency}
+                                                  </span>
+                                                </>
+                                              ) : (
+                                                <span className="qa-rt-price-empty">
+                                                  —
+                                                </span>
+                                              )}
+                                            </td>
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.servicio || "—"}
+                                            </td>
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.ttAprox || "—"}
+                                            </td>
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.frecuencia || "—"}
+                                            </td>
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.agente || "—"}
+                                            </td>
+                                            <td className="qa-rt-td-meta">
+                                              {ruta.validUntil ? (
+                                                <span
+                                                  className={`qa-validity ${
+                                                    validityState === "valid"
+                                                      ? "valid"
+                                                      : validityState ===
+                                                          "expired"
+                                                        ? "expired"
+                                                        : ""
+                                                  }`}
+                                                >
+                                                  {ruta.validUntil}
+                                                </span>
+                                              ) : (
+                                                "—"
+                                              )}
+                                            </td>
+                                            {isEjecutivoMode && (
+                                              <td className="qa-rt-td-meta qa-rt-td-agent">
+                                                {ruta.operador || "—"}
+                                              </td>
+                                            )}
+                                          </tr>
+                                        );
+                                      });
+                                    })()}
                                   </tbody>
                                 </table>
                                 <div
@@ -3260,18 +3311,6 @@ function QuoteLCL({
                                   >
                                     <i className="bi bi-info-circle"></i>
                                     Haz click en la ruta que deseas cotizar
-                                  </div>
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 6,
-                                    }}
-                                  >
-                                    <i className="bi bi-exclamation-circle"></i>
-                                    Las tarifas son proporcionadas por el agente
-                                    de carga y pueden presentar variaciones
-                                    entre opciones del mismo carrier.
                                   </div>
                                 </div>
                               </div>
