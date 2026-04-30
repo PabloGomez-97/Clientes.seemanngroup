@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/pricing-expiry-check",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/shipsgo-status-watch",
+      "schedule": "*/15 * * * *"
     }
   ],
   "rewrites": [

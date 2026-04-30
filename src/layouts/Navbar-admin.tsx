@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { imgUrl } from "../config/images";
-import ExecutiveNotificationBell from "../components/notifications/ExecutiveNotificationBell";
+import PortalNotificationBell from "../components/notifications/PortalNotificationBell";
 
 // Design tokens - AWS/Azure inspired (same as client Navbar)
 const colors = {
@@ -255,9 +255,9 @@ function NavbarAdmin({
           )}
         </button>
 
-        {/* Executive Notifications Bell (only for users with ejecutivo role) */}
-        <ExecutiveNotificationBell
-          enabled={!!user?.roles?.ejecutivo}
+        {/* Portal Notifications Bell (ejecutivo + operaciones) */}
+        <PortalNotificationBell
+          enabled={!!user?.roles?.ejecutivo || !!user?.roles?.operaciones}
           navbarColors={colors}
         />
 

@@ -1,5 +1,6 @@
-// src/hooks/useExecutiveNotifications.ts
-// Polls the executive notification feed and exposes actions for the navbar bell.
+// src/hooks/usePortalNotifications.ts
+// Polls the multi-audience portal notification feed and exposes actions for the navbar bell.
+// Replaces the legacy useExecutiveNotifications hook.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 
@@ -10,25 +11,49 @@ const API_BASE_URL =
 
 const POLL_INTERVAL_MS = 45_000;
 
-export interface ExecutiveNotification {
+export type PortalNotificationType =
+  | "QUOTE_COMPLETED"
+  | "QUOTE_ABANDONED"
+  | "TRACKING_CREATED"
+  | "TRACKING_STATUS_CHANGED"
+  | "TRACKING_DELAYED"
+  | "CLIENT_ASSIGNED";
+
+export interface PortalNotification {
   _id: string;
-  ejecutivoEmail: string;
-  sessionId: string;
-  type: "QUOTE_COMPLETED" | "QUOTE_ABANDONED";
-  clientEmail: string;
-  clientUsername: string;
-  clientNombre?: string;
-  quoteType: "AIR" | "FCL" | "LCL" | "LASTMILE";
+  audience: "EJECUTIVO" | "CLIENTE" | "OPERACIONES";
+  recipientEmail: string;
+  recipientUsername?: string;
+  type: PortalNotificationType;
+  dedupKey: string;
+  sessionId?: string;
+  quoteType?: "AIR" | "FCL" | "LCL" | "LASTMILE";
   quoteNumber?: string;
   route?: { origin?: string; destination?: string };
+  shipmentMode?: "AIR" | "OCEAN";
+  shipmentId?: string;
+  reference?: string;
+  awbNumber?: string;
+  containerNumber?: string;
+  oldStatus?: string;
+  newStatus?: string;
+  clientEmail?: string;
+  clientUsername?: string;
+  clientNombre?: string;
+  payload?: {
+    route?: string;
+    openModal?: string;
+    modalTab?: string;
+    [key: string]: unknown;
+  };
   read: boolean;
   readAt?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-interface UseExecutiveNotificationsReturn {
-  notifications: ExecutiveNotification[];
+interface UsePortalNotificationsReturn {
+  notifications: PortalNotification[];
   unreadCount: number;
   loading: boolean;
   refresh: () => Promise<void>;
@@ -36,13 +61,11 @@ interface UseExecutiveNotificationsReturn {
   dismiss: (id: string) => Promise<void>;
 }
 
-export function useExecutiveNotifications(
+export function usePortalNotifications(
   enabled: boolean,
-): UseExecutiveNotificationsReturn {
+): UsePortalNotificationsReturn {
   const { token } = useAuth();
-  const [notifications, setNotifications] = useState<ExecutiveNotification[]>(
-    [],
-  );
+  const [notifications, setNotifications] = useState<PortalNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const timerRef = useRef<number | null>(null);
 
@@ -50,7 +73,7 @@ export function useExecutiveNotifications(
     if (!enabled || !token) return;
     try {
       setLoading(true);
-      const resp = await fetch(`${API_BASE_URL}/api/executive-notifications`, {
+      const resp = await fetch(`${API_BASE_URL}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!resp.ok) return;
@@ -65,7 +88,6 @@ export function useExecutiveNotifications(
     }
   }, [enabled, token]);
 
-  // Initial fetch + polling
   useEffect(() => {
     if (!enabled || !token) {
       setNotifications([]);
@@ -85,19 +107,18 @@ export function useExecutiveNotifications(
 
   const markAllRead = useCallback(async () => {
     if (!enabled || !token) return;
-    // Optimistic update (clears badge immediately)
     setNotifications((prev) =>
       prev.some((n) => !n.read)
         ? prev.map((n) => (n.read ? n : { ...n, read: true }))
         : prev,
     );
     try {
-      await fetch(`${API_BASE_URL}/api/executive-notifications/read-all`, {
+      await fetch(`${API_BASE_URL}/api/notifications/read-all`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch {
-      // ignore
+      /* ignore */
     }
   }, [enabled, token]);
 
@@ -108,7 +129,7 @@ export function useExecutiveNotifications(
       setNotifications((curr) => curr.filter((n) => n._id !== id));
       try {
         const resp = await fetch(
-          `${API_BASE_URL}/api/executive-notifications/${encodeURIComponent(id)}`,
+          `${API_BASE_URL}/api/notifications/${encodeURIComponent(id)}`,
           {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` },

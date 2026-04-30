@@ -1159,62 +1159,144 @@ QuoteTrackingEventSchema.index({ timestamp: -1 });
 const QuoteTrackingEvent = (mongoose.models.QuoteTrackingEvent || mongoose.model<IQuoteTrackingEventDoc>('QuoteTrackingEvent', QuoteTrackingEventSchema)) as QuoteTrackingEventModel;
 
 // ============================================================
-// MODELO EXECUTIVE NOTIFICATION (alertas en navbar para ejecutivos)
-// TTL: 72h auto-expire via MongoDB index on createdAt
+// MODELO PORTAL NOTIFICATION (alertas en navbar — multi-rol)
+// audience: EJECUTIVO | CLIENTE | OPERACIONES
+// TTL: 72h auto-expire vía índice TTL sobre createdAt
 // ============================================================
 
-interface IExecutiveNotification {
-  ejecutivoEmail: string;            // owner of the notification (lowercased)
-  sessionId: string;                  // dedup key for the source quote session
-  type: 'QUOTE_COMPLETED' | 'QUOTE_ABANDONED';
-  clientEmail: string;
-  clientUsername: string;
-  clientNombre?: string;
-  quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
+type PortalNotificationAudience = 'EJECUTIVO' | 'CLIENTE' | 'OPERACIONES';
+type PortalNotificationType =
+  | 'QUOTE_COMPLETED'
+  | 'QUOTE_ABANDONED'
+  | 'TRACKING_CREATED'
+  | 'TRACKING_STATUS_CHANGED'
+  | 'TRACKING_DELAYED'
+  | 'CLIENT_ASSIGNED';
+
+interface IPortalNotification {
+  audience: PortalNotificationAudience;
+  recipientEmail: string;
+  recipientUsername?: string;
+  type: PortalNotificationType;
+  dedupKey: string;          // unique per (recipient, dedupKey) — prevents duplicates
+  // Quote-related
+  sessionId?: string;
+  quoteType?: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
   quoteNumber?: string;
   route?: { origin?: string; destination?: string };
+  // Tracking-related
+  shipmentMode?: 'AIR' | 'OCEAN';
+  shipmentId?: string;       // ShipsGo numeric id, as string
+  reference?: string;        // = client username
+  awbNumber?: string;
+  containerNumber?: string;
+  oldStatus?: string;
+  newStatus?: string;
+  // Client-related
+  clientEmail?: string;
+  clientUsername?: string;
+  clientNombre?: string;
+  // Free-form (UI hints, e.g. modal to open)
+  payload?: Record<string, unknown>;
   read: boolean;
   readAt?: Date;
 }
 
-interface IExecutiveNotificationDoc extends IExecutiveNotification, mongoose.Document {
+interface IPortalNotificationDoc extends IPortalNotification, mongoose.Document {
   createdAt: Date;
   updatedAt: Date;
 }
 
-type ExecutiveNotificationModel = mongoose.Model<IExecutiveNotificationDoc>;
+type PortalNotificationModel = mongoose.Model<IPortalNotificationDoc>;
 
-const ExecutiveNotificationSchema = new mongoose.Schema<IExecutiveNotificationDoc>(
+const PortalNotificationSchema = new mongoose.Schema<IPortalNotificationDoc>(
   {
-    ejecutivoEmail: { type: String, required: true, lowercase: true, trim: true, index: true },
-    sessionId: { type: String, required: true, index: true },
-    type: { type: String, required: true, enum: ['QUOTE_COMPLETED', 'QUOTE_ABANDONED'] },
-    clientEmail: { type: String, required: true, lowercase: true, trim: true },
-    clientUsername: { type: String, required: true, trim: true },
-    clientNombre: { type: String, trim: true },
-    quoteType: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL', 'LASTMILE'] },
+    audience: { type: String, required: true, enum: ['EJECUTIVO', 'CLIENTE', 'OPERACIONES'], index: true },
+    recipientEmail: { type: String, required: true, lowercase: true, trim: true, index: true },
+    recipientUsername: { type: String, trim: true },
+    type: {
+      type: String,
+      required: true,
+      enum: [
+        'QUOTE_COMPLETED', 'QUOTE_ABANDONED',
+        'TRACKING_CREATED', 'TRACKING_STATUS_CHANGED', 'TRACKING_DELAYED',
+        'CLIENT_ASSIGNED',
+      ],
+    },
+    dedupKey: { type: String, required: true },
+    sessionId: { type: String },
+    quoteType: { type: String, enum: ['AIR', 'FCL', 'LCL', 'LASTMILE'] },
     quoteNumber: { type: String, trim: true },
     route: {
       origin: { type: String, trim: true },
       destination: { type: String, trim: true },
     },
+    shipmentMode: { type: String, enum: ['AIR', 'OCEAN'] },
+    shipmentId: { type: String, trim: true },
+    reference: { type: String, trim: true },
+    awbNumber: { type: String, trim: true },
+    containerNumber: { type: String, trim: true },
+    oldStatus: { type: String, trim: true },
+    newStatus: { type: String, trim: true },
+    clientEmail: { type: String, lowercase: true, trim: true },
+    clientUsername: { type: String, trim: true },
+    clientNombre: { type: String, trim: true },
+    payload: { type: mongoose.Schema.Types.Mixed, default: {} },
     read: { type: Boolean, default: false },
     readAt: { type: Date },
   },
   { timestamps: true }
 );
 
-// One notification per (ejecutivo, session) — upsert keeps it idempotent
-ExecutiveNotificationSchema.index({ ejecutivoEmail: 1, sessionId: 1 }, { unique: true });
-ExecutiveNotificationSchema.index({ ejecutivoEmail: 1, createdAt: -1 });
-// Auto-expire 72 hours after creation
-ExecutiveNotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 72 });
+// Dedup: one notification per (recipient, dedupKey)
+PortalNotificationSchema.index({ recipientEmail: 1, dedupKey: 1 }, { unique: true });
+PortalNotificationSchema.index({ recipientEmail: 1, createdAt: -1 });
+// TTL: auto-expire after 72h
+PortalNotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 72 });
 
-const ExecutiveNotification = (mongoose.models.ExecutiveNotification ||
-  mongoose.model<IExecutiveNotificationDoc>('ExecutiveNotification', ExecutiveNotificationSchema)) as ExecutiveNotificationModel;
+const PortalNotification = (mongoose.models.PortalNotification ||
+  mongoose.model<IPortalNotificationDoc>('PortalNotification', PortalNotificationSchema)) as PortalNotificationModel;
 
-// Helper: emit notification for the executive who owns this client (best-effort, never throws)
-async function emitExecutiveNotificationForQuoteEvent(opts: {
+// ──────────────────────────────────────────────────────────────
+// Generic upsert helper (best-effort, never throws)
+// ──────────────────────────────────────────────────────────────
+async function upsertPortalNotification(doc: Partial<IPortalNotification> & {
+  audience: PortalNotificationAudience;
+  recipientEmail: string;
+  type: PortalNotificationType;
+  dedupKey: string;
+}): Promise<void> {
+  try {
+    const recipient = String(doc.recipientEmail).toLowerCase().trim();
+    if (!recipient) return;
+    const { audience, type, dedupKey, ...rest } = doc;
+    await PortalNotification.updateOne(
+      { recipientEmail: recipient, dedupKey },
+      {
+        $set: {
+          ...rest,
+          audience,
+          type,
+          recipientEmail: recipient,
+          read: false,
+          readAt: undefined,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: { dedupKey, createdAt: new Date() },
+      },
+      { upsert: true },
+    );
+  } catch (err) {
+    console.error('[portal-notification] upsert failed:', err);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Specialized emitters
+// ──────────────────────────────────────────────────────────────
+
+// QUOTE events → ejecutivo
+async function emitQuoteEventNotification(opts: {
   clientEmail: string;
   clientUsername: string;
   sessionId: string;
@@ -1227,8 +1309,7 @@ async function emitExecutiveNotificationForQuoteEvent(opts: {
     const clientEmail = String(opts.clientEmail).toLowerCase().trim();
     const clientUser = await User.findOne({ email: clientEmail }).populate('ejecutivoId');
     if (!clientUser?.ejecutivoId) return;
-
-    const ej = (clientUser.ejecutivoId as unknown) as IEjecutivoDoc | null;
+    const ej = clientUser.ejecutivoId as unknown as IEjecutivoDoc | null;
     const ejecutivoEmail = ej?.email ? String(ej.email).toLowerCase().trim() : null;
     if (!ejecutivoEmail) return;
 
@@ -1236,26 +1317,140 @@ async function emitExecutiveNotificationForQuoteEvent(opts: {
       ? (opts.metadata as any).quoteNumber as string
       : undefined;
 
-    await ExecutiveNotification.updateOne(
-      { ejecutivoEmail, sessionId: String(opts.sessionId) },
-      {
-        $set: {
-          type: opts.event,
-          clientEmail,
-          clientUsername: String(opts.clientUsername || '').trim(),
-          clientNombre: clientUser.nombreuser || undefined,
-          quoteType: opts.quoteType,
-          quoteNumber,
-          route: opts.route || undefined,
-          read: false,
-          readAt: undefined,
-        },
-        $setOnInsert: { ejecutivoEmail, sessionId: String(opts.sessionId) },
-      },
-      { upsert: true }
-    );
+    await upsertPortalNotification({
+      audience: 'EJECUTIVO',
+      recipientEmail: ejecutivoEmail,
+      type: opts.event,
+      dedupKey: `QUOTE:${opts.sessionId}`,
+      sessionId: opts.sessionId,
+      quoteType: opts.quoteType,
+      quoteNumber,
+      route: opts.route,
+      clientEmail,
+      clientUsername: opts.clientUsername,
+      clientNombre: clientUser.nombreuser || undefined,
+      payload: { route: '/admin/comportamiento-clientes', clientUsername: opts.clientUsername },
+    });
   } catch (err) {
-    console.error('[executive-notification] emit failed:', err);
+    console.error('[portal-notification] quote emit failed:', err);
+  }
+}
+
+// TRACKING created/status/delay → fan out to ejecutivo + cliente + operaciones
+async function emitTrackingNotification(opts: {
+  type: 'TRACKING_CREATED' | 'TRACKING_STATUS_CHANGED' | 'TRACKING_DELAYED';
+  shipmentMode: 'AIR' | 'OCEAN';
+  shipmentId: string;
+  reference: string;            // client username
+  awbNumber?: string;
+  containerNumber?: string;
+  oldStatus?: string;
+  newStatus?: string;
+}): Promise<void> {
+  try {
+    const reference = String(opts.reference || '').trim();
+    if (!reference) return;
+
+    // Resolve client + executive
+    const clientUser = await User.findOne({
+      $or: [{ username: reference }, { usernames: reference }],
+    }).populate('ejecutivoId');
+
+    const dedupKey = `${opts.type}:${opts.shipmentMode}:${opts.shipmentId}${opts.newStatus ? ':' + opts.newStatus : ''}`;
+
+    const baseDoc = {
+      type: opts.type,
+      dedupKey,
+      shipmentMode: opts.shipmentMode,
+      shipmentId: String(opts.shipmentId),
+      reference,
+      awbNumber: opts.awbNumber,
+      containerNumber: opts.containerNumber,
+      oldStatus: opts.oldStatus,
+      newStatus: opts.newStatus,
+      clientEmail: clientUser?.email,
+      clientUsername: clientUser?.username,
+      clientNombre: clientUser?.nombreuser,
+    } as Partial<IPortalNotification>;
+
+    // CLIENTE → owner of the shipment
+    if (clientUser?.email) {
+      await upsertPortalNotification({
+        ...baseDoc,
+        audience: 'CLIENTE',
+        recipientEmail: clientUser.email,
+        recipientUsername: clientUser.username,
+        type: opts.type,
+        dedupKey,
+        payload: { route: '/shipsgo', shipmentMode: opts.shipmentMode, shipmentId: opts.shipmentId },
+      });
+    }
+
+    // EJECUTIVO → owner of the client
+    if (clientUser?.ejecutivoId) {
+      const ej = clientUser.ejecutivoId as unknown as IEjecutivoDoc | null;
+      const ejecutivoEmail = ej?.email ? String(ej.email).toLowerCase().trim() : null;
+      if (ejecutivoEmail) {
+        await upsertPortalNotification({
+          ...baseDoc,
+          audience: 'EJECUTIVO',
+          recipientEmail: ejecutivoEmail,
+          type: opts.type,
+          dedupKey,
+          payload: {
+            route: '/admin/home',
+            openModal: 'all-trackings',
+            modalTab: opts.shipmentMode === 'AIR' ? 'air' : 'ocean',
+          },
+        });
+      }
+    }
+
+    // OPERACIONES → fan out to all active operaciones executives
+    const opsExecs = await Ejecutivo.find({ activo: true, 'roles.operaciones': true }, { email: 1 }).lean();
+    for (const opEj of opsExecs) {
+      const email = (opEj as any)?.email ? String((opEj as any).email).toLowerCase().trim() : null;
+      if (!email) continue;
+      await upsertPortalNotification({
+        ...baseDoc,
+        audience: 'OPERACIONES',
+        recipientEmail: email,
+        type: opts.type,
+        dedupKey,
+        payload: {
+          route: '/admin/home',
+          openModal: 'all-shipments',
+          modalTab: opts.shipmentMode === 'AIR' ? 'air' : 'ocean',
+        },
+      });
+    }
+  } catch (err) {
+    console.error('[portal-notification] tracking emit failed:', err);
+  }
+}
+
+// CLIENT_ASSIGNED → ejecutivo
+async function emitClientAssignedNotification(opts: {
+  ejecutivoObjectId: mongoose.Types.ObjectId | string;
+  client: { email: string; username: string; nombreuser?: string; _id: mongoose.Types.ObjectId | string };
+}): Promise<void> {
+  try {
+    const ej = await Ejecutivo.findById(opts.ejecutivoObjectId).lean();
+    const ejecutivoEmail = (ej as any)?.email ? String((ej as any).email).toLowerCase().trim() : null;
+    if (!ejecutivoEmail) return;
+
+    await upsertPortalNotification({
+      audience: 'EJECUTIVO',
+      recipientEmail: ejecutivoEmail,
+      type: 'CLIENT_ASSIGNED',
+      dedupKey: `CLIENT_ASSIGNED:${String(opts.client._id)}:${String(opts.ejecutivoObjectId)}`,
+      clientEmail: opts.client.email,
+      clientUsername: opts.client.username,
+      clientNombre: opts.client.nombreuser,
+      payload: { route: '/admin/home', openModal: 'all-clients' },
+    });
+  } catch (err) {
+    console.error('[portal-notification] client-assigned emit failed:', err);
   }
 }
 
@@ -2057,6 +2252,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         await newUser.save();
 
+        // Notify ejecutivo: new client assigned (best-effort)
+        if (ejecutivoId) {
+          void emitClientAssignedNotification({
+            ejecutivoObjectId: ejecutivoId,
+            client: {
+              _id: newUser._id as mongoose.Types.ObjectId,
+              email: newUser.email,
+              username: newUser.username,
+              nombreuser: newUser.nombreuser,
+            },
+          });
+        }
+
         return res.json({
           success: true,
           message: 'Usuario creado exitosamente',
@@ -2216,6 +2424,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         await userToUpdate.save();
+
+        // Notify ejecutivo: client assigned (only when ejecutivoId is set and the user is a cliente).
+        // The dedupKey (CLIENT_ASSIGNED:<clientId>:<ejecutivoId>) absorbs repeated saves.
+        if (ejecutivoId && userToUpdate.username !== 'Ejecutivo') {
+          void emitClientAssignedNotification({
+            ejecutivoObjectId: ejecutivoId,
+            client: {
+              _id: userToUpdate._id as mongoose.Types.ObjectId,
+              email: userToUpdate.email,
+              username: userToUpdate.username,
+              nombreuser: userToUpdate.nombreuser,
+            },
+          });
+        }
 
         console.log('[admin] Usuario actualizado:', userToUpdate.email);
 
@@ -2558,7 +2780,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         console.log(`[shipsgo] Shipment created successfully:`, data.shipment);
-        
+
+        // Notify ejecutivo + cliente + operaciones (best-effort)
+        if (data.shipment) {
+          void emitTrackingNotification({
+            type: 'TRACKING_CREATED',
+            shipmentMode: 'AIR',
+            shipmentId: String((data.shipment as any).id ?? ''),
+            reference: String(reference),
+            awbNumber: (data.shipment as any).awb_number,
+            newStatus: (data.shipment as any).status,
+          });
+        }
+
         return res.status(200).json({
           success: true,
           message: 'Trackeo creado exitosamente',
@@ -3035,6 +3269,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         console.log(`[shipsgo-ocean] Ocean shipment created successfully:`, data.shipment);
+
+        // Notify ejecutivo + cliente + operaciones (best-effort)
+        if (data.shipment) {
+          void emitTrackingNotification({
+            type: 'TRACKING_CREATED',
+            shipmentMode: 'OCEAN',
+            shipmentId: String((data.shipment as any).id ?? ''),
+            reference: String(reference),
+            containerNumber: (data.shipment as any).container_number || container_number,
+            newStatus: (data.shipment as any).status,
+          });
+        }
 
         return res.status(200).json({
           success: true,
@@ -5695,24 +5941,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // ============================================================
-    // EXECUTIVE NOTIFICATIONS (alertas en navbar — solo ejecutivos)
+    // PORTAL NOTIFICATIONS (alertas en navbar — multi-rol)
     // ============================================================
 
-    // GET /api/executive-notifications — list active notifications for current ejecutivo
-    if (path === '/api/executive-notifications' && method === 'GET') {
+    // GET /api/notifications — list active notifications for current user
+    if (path === '/api/notifications' && method === 'GET') {
       try {
         const authHeader = req.headers.authorization;
         if (!authHeader?.startsWith('Bearer ')) {
           return res.status(401).json({ error: 'Token requerido' });
         }
         const decoded = verifyToken(authHeader.slice(7));
-        if (decoded.username !== 'Ejecutivo') {
-          return res.status(403).json({ error: 'No autorizado' });
-        }
-        const ejecutivoEmail = String(decoded.sub || '').toLowerCase().trim();
-        if (!ejecutivoEmail) return res.json({ notifications: [], unreadCount: 0 });
+        const recipientEmail = String(decoded.sub || '').toLowerCase().trim();
+        if (!recipientEmail) return res.json({ notifications: [], unreadCount: 0 });
 
-        const items = await ExecutiveNotification.find({ ejecutivoEmail })
+        const items = await PortalNotification.find({ recipientEmail })
           .sort({ createdAt: -1 })
           .limit(50)
           .lean();
@@ -5720,54 +5963,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const unreadCount = items.filter((n: any) => !n.read).length;
         return res.json({ notifications: items, unreadCount });
       } catch (error: any) {
-        console.error('[executive-notifications] Error GET:', error);
+        console.error('[notifications] Error GET:', error);
         return res.status(500).json({ error: 'Error al obtener notificaciones' });
       }
     }
 
-    // PATCH /api/executive-notifications/read-all — mark all as read for current ejecutivo
-    if (path === '/api/executive-notifications/read-all' && method === 'PATCH') {
+    // PATCH /api/notifications/read-all
+    if (path === '/api/notifications/read-all' && method === 'PATCH') {
       try {
         const authHeader = req.headers.authorization;
         if (!authHeader?.startsWith('Bearer ')) {
           return res.status(401).json({ error: 'Token requerido' });
         }
         const decoded = verifyToken(authHeader.slice(7));
-        if (decoded.username !== 'Ejecutivo') {
-          return res.status(403).json({ error: 'No autorizado' });
-        }
-        const ejecutivoEmail = String(decoded.sub || '').toLowerCase().trim();
-        await ExecutiveNotification.updateMany(
-          { ejecutivoEmail, read: false },
+        const recipientEmail = String(decoded.sub || '').toLowerCase().trim();
+        await PortalNotification.updateMany(
+          { recipientEmail, read: false },
           { $set: { read: true, readAt: new Date() } }
         );
         return res.json({ success: true });
       } catch (error: any) {
-        console.error('[executive-notifications] Error read-all:', error);
+        console.error('[notifications] Error read-all:', error);
         return res.status(500).json({ error: 'Error al marcar como leídas' });
       }
     }
 
-    // DELETE /api/executive-notifications/:id — dismiss a single notification
-    if (path?.startsWith('/api/executive-notifications/') && method === 'DELETE') {
+    // DELETE /api/notifications/:id
+    if (path?.startsWith('/api/notifications/') && method === 'DELETE') {
       try {
         const authHeader = req.headers.authorization;
         if (!authHeader?.startsWith('Bearer ')) {
           return res.status(401).json({ error: 'Token requerido' });
         }
         const decoded = verifyToken(authHeader.slice(7));
-        if (decoded.username !== 'Ejecutivo') {
-          return res.status(403).json({ error: 'No autorizado' });
-        }
-        const ejecutivoEmail = String(decoded.sub || '').toLowerCase().trim();
-        const id = path.replace('/api/executive-notifications/', '').split('/')[0];
+        const recipientEmail = String(decoded.sub || '').toLowerCase().trim();
+        const id = path.replace('/api/notifications/', '').split('/')[0];
         if (!id || !mongoose.Types.ObjectId.isValid(id)) {
           return res.status(400).json({ error: 'ID inválido' });
         }
-        await ExecutiveNotification.deleteOne({ _id: id, ejecutivoEmail });
+        await PortalNotification.deleteOne({ _id: id, recipientEmail });
         return res.json({ success: true });
       } catch (error: any) {
-        console.error('[executive-notifications] Error DELETE:', error);
+        console.error('[notifications] Error DELETE:', error);
         return res.status(500).json({ error: 'Error al eliminar notificación' });
       }
     }
@@ -5809,7 +6046,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Emit executive notification for completed/abandoned quotes (fire-and-forget)
         if (event === 'QUOTE_COMPLETED' || event === 'QUOTE_ABANDONED') {
-          void emitExecutiveNotificationForQuoteEvent({
+          void emitQuoteEventNotification({
             clientEmail,
             clientUsername,
             sessionId,

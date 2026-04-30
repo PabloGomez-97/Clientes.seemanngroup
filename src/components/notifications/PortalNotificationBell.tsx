@@ -1,12 +1,13 @@
-// src/components/notifications/ExecutiveNotificationBell.tsx
-// Bell icon + dropdown for executives. Lives in the admin navbar.
+// src/components/notifications/PortalNotificationBell.tsx
+// Multi-audience notification bell. Replaces ExecutiveNotificationBell.
+// Lives in both admin and client navbars. Displays quote/tracking/client events.
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  useExecutiveNotifications,
-  type ExecutiveNotification,
-} from "../../hooks/useExecutiveNotifications";
+  usePortalNotifications,
+  type PortalNotification,
+} from "../../hooks/usePortalNotifications";
 
 interface Props {
   enabled: boolean;
@@ -20,7 +21,7 @@ interface Props {
   };
 }
 
-const NOTIFICATION_HEIGHT = 92; // approx height of a single item — used to size 5-item viewport
+const NOTIFICATION_HEIGHT = 92;
 
 function relativeTime(iso: string, t: (k: string, o?: any) => string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -33,25 +34,112 @@ function relativeTime(iso: string, t: (k: string, o?: any) => string): string {
   return t("home.navbar.notifications.daysAgo", { n: days });
 }
 
-export default function ExecutiveNotificationBell({
+function dotColorForType(type: PortalNotification["type"]): string {
+  switch (type) {
+    case "QUOTE_COMPLETED":
+      return "#10b981";
+    case "QUOTE_ABANDONED":
+      return "#ef4444";
+    case "TRACKING_CREATED":
+      return "#3b82f6";
+    case "TRACKING_STATUS_CHANGED":
+      return "#8b5cf6";
+    case "TRACKING_DELAYED":
+      return "#f59e0b";
+    case "CLIENT_ASSIGNED":
+      return "#0ea5e9";
+    default:
+      return "#6b7280";
+  }
+}
+
+function buildTitleAndMessage(
+  n: PortalNotification,
+  t: (k: string, o?: any) => string,
+): { title: string; message: string } {
+  const clientName = n.clientNombre || n.clientUsername || "";
+  const ref =
+    n.shipmentMode === "AIR"
+      ? n.awbNumber || n.reference || ""
+      : n.containerNumber || n.reference || "";
+  const mode = n.shipmentMode === "AIR" ? "Air" : "Ocean";
+
+  switch (n.type) {
+    case "QUOTE_COMPLETED":
+      return {
+        title: t("home.navbar.notifications.completedTitle"),
+        message: t("home.navbar.notifications.completedMsg", {
+          client: clientName,
+          type: n.quoteType,
+        }),
+      };
+    case "QUOTE_ABANDONED":
+      return {
+        title: t("home.navbar.notifications.abandonedTitle"),
+        message: t("home.navbar.notifications.abandonedMsg", {
+          client: clientName,
+          type: n.quoteType,
+        }),
+      };
+    case "TRACKING_CREATED":
+      return {
+        title: t("home.navbar.notifications.trackingCreatedTitle"),
+        message: t("home.navbar.notifications.trackingCreatedMsg", {
+          mode,
+          client: clientName,
+          ref,
+        }),
+      };
+    case "TRACKING_STATUS_CHANGED":
+      return {
+        title: t("home.navbar.notifications.statusChangedTitle"),
+        message: t("home.navbar.notifications.statusChangedMsg", {
+          mode,
+          client: clientName,
+          ref,
+          old: n.oldStatus || "—",
+          new: n.newStatus || "—",
+        }),
+      };
+    case "TRACKING_DELAYED":
+      return {
+        title: t("home.navbar.notifications.delayedTitle"),
+        message: t("home.navbar.notifications.delayedMsg", {
+          mode,
+          client: clientName,
+          ref,
+        }),
+      };
+    case "CLIENT_ASSIGNED":
+      return {
+        title: t("home.navbar.notifications.clientAssignedTitle"),
+        message: t("home.navbar.notifications.clientAssignedMsg", {
+          client: clientName,
+        }),
+      };
+    default:
+      return { title: "", message: "" };
+  }
+}
+
+export default function PortalNotificationBell({
   enabled,
   navbarColors,
 }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { notifications, unreadCount, markAllRead, dismiss } =
-    useExecutiveNotifications(enabled);
+    usePortalNotifications(enabled);
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  // Close on outside click + Escape
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (
-        !target.closest(".exec-notification-dropdown") &&
-        !target.closest(".exec-notification-button")
+        !target.closest(".portal-notification-dropdown") &&
+        !target.closest(".portal-notification-button")
       ) {
         setOpen(false);
       }
@@ -75,12 +163,23 @@ export default function ExecutiveNotificationBell({
     }
   };
 
-  const handleNotificationClick = (n: ExecutiveNotification) => {
+  const handleNotificationClick = (n: PortalNotification) => {
     setOpen(false);
-    const target = n.clientUsername
-      ? `/admin/comportamiento-clientes/${encodeURIComponent(n.clientUsername)}`
-      : "/admin/comportamiento-clientes";
-    navigate(target);
+    const route = n.payload?.route;
+    if (!route) {
+      // fallback for legacy quote notifications
+      const target = n.clientUsername
+        ? `/admin/comportamiento-clientes/${encodeURIComponent(n.clientUsername)}`
+        : "/admin/comportamiento-clientes";
+      navigate(target);
+      return;
+    }
+    navigate(route, {
+      state: {
+        openModal: n.payload?.openModal,
+        modalTab: n.payload?.modalTab,
+      },
+    });
   };
 
   const swing = useMemo(
@@ -98,7 +197,7 @@ export default function ExecutiveNotificationBell({
     <div style={{ position: "relative" }}>
       <button
         type="button"
-        className="exec-notification-button"
+        className="portal-notification-button"
         onClick={handleToggle}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -126,7 +225,7 @@ export default function ExecutiveNotificationBell({
             display: "inline-flex",
             transformOrigin: "50% 0%",
             animation: swing
-              ? "execBellSwing 1.6s ease-in-out infinite"
+              ? "portalBellSwing 1.6s ease-in-out infinite"
               : "none",
           }}
         >
@@ -173,7 +272,7 @@ export default function ExecutiveNotificationBell({
 
       {open && (
         <div
-          className="exec-notification-dropdown"
+          className="portal-notification-dropdown"
           style={{
             position: "absolute",
             top: "calc(100% + 8px)",
@@ -190,7 +289,6 @@ export default function ExecutiveNotificationBell({
               '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           }}
         >
-          {/* Header */}
           <div
             style={{
               padding: "12px 16px",
@@ -202,11 +300,7 @@ export default function ExecutiveNotificationBell({
             }}
           >
             <span
-              style={{
-                fontSize: "13px",
-                fontWeight: 600,
-                color: "#111827",
-              }}
+              style={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}
             >
               {t("home.navbar.notifications.title")}
             </span>
@@ -215,7 +309,6 @@ export default function ExecutiveNotificationBell({
             </span>
           </div>
 
-          {/* List */}
           {notifications.length === 0 ? (
             <div
               style={{
@@ -235,15 +328,8 @@ export default function ExecutiveNotificationBell({
               }}
             >
               {notifications.map((n) => {
-                const isCompleted = n.type === "QUOTE_COMPLETED";
-                const dotColor = isCompleted ? "#10b981" : "#ef4444";
-                const titleKey = isCompleted
-                  ? "home.navbar.notifications.completedTitle"
-                  : "home.navbar.notifications.abandonedTitle";
-                const msgKey = isCompleted
-                  ? "home.navbar.notifications.completedMsg"
-                  : "home.navbar.notifications.abandonedMsg";
-                const clientName = n.clientNombre || n.clientUsername;
+                const dotColor = dotColorForType(n.type);
+                const { title, message } = buildTitleAndMessage(n, t);
 
                 return (
                   <div
@@ -292,7 +378,7 @@ export default function ExecutiveNotificationBell({
                             color: "#111827",
                           }}
                         >
-                          {t(titleKey)}
+                          {title}
                         </span>
                         <span
                           style={{
@@ -316,7 +402,7 @@ export default function ExecutiveNotificationBell({
                           WebkitBoxOrient: "vertical",
                         }}
                       >
-                        {t(msgKey, { client: clientName, type: n.quoteType })}
+                        {message}
                       </div>
                       {n.route?.origin && n.route?.destination && (
                         <div
@@ -379,41 +465,11 @@ export default function ExecutiveNotificationBell({
               })}
             </div>
           )}
-
-          {notifications.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                navigate("/admin/comportamiento-clientes");
-              }}
-              style={{
-                width: "100%",
-                padding: "10px 16px",
-                border: "none",
-                borderTop: "1px solid #e5e7eb",
-                backgroundColor: "#f9fafb",
-                color: "#2563eb",
-                fontSize: "12px",
-                fontWeight: 600,
-                cursor: "pointer",
-                textAlign: "center",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#f3f4f6";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#f9fafb";
-              }}
-            >
-              {t("home.navbar.notifications.viewAll")}
-            </button>
-          )}
         </div>
       )}
 
       <style>{`
-        @keyframes execBellSwing {
+        @keyframes portalBellSwing {
           0%   { transform: rotate(0deg); }
           15%  { transform: rotate(12deg); }
           30%  { transform: rotate(-10deg); }

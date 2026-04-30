@@ -5,6 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { imgUrl } from "../config/images";
+import PortalNotificationBell from "../components/notifications/PortalNotificationBell";
 
 // Design tokens - AWS/Azure inspired
 const colors = {
@@ -314,6 +315,9 @@ function Navbar({ onLogout, toggleSidebar, isSidebarCollapsed }: NavbarProps) {
               </svg>
             )}
           </button>
+
+          {/* Portal Notifications Bell */}
+          <PortalNotificationBell enabled navbarColors={colors} />
 
           {/* Language Selector */}
           <div

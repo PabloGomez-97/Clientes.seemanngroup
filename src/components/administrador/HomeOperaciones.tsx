@@ -1,6 +1,6 @@
 // src/components/administrador/HomeOperaciones.tsx — Torre de Control de Operaciones
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import type {
   AirShipment,
@@ -326,6 +326,23 @@ export default function HomeOperaciones() {
     "all",
   );
   const [showCreateTrackingModal, setShowCreateTrackingModal] = useState(false);
+
+  // Auto-open modal when navigated from a notification (router state)
+  const location = useLocation();
+  useEffect(() => {
+    const s = (location.state as any) || null;
+    if (s && typeof s === "object" && s.openModal) {
+      setListModal(s.openModal as ListModalType);
+      if (
+        s.modalTab &&
+        (s.modalTab === "air" || s.modalTab === "ocean" || s.modalTab === "all")
+      ) {
+        setListModalTab(s.modalTab);
+      }
+      window.history.replaceState({}, "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const displayName = user?.nombreuser || user?.username || "Operaciones";
 

@@ -1,6 +1,6 @@
 // src/components/administrador/HomeEjecutivo.tsx — Torre de Control del Ejecutivo
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import type {
   AirShipment,
@@ -505,6 +505,21 @@ export default function HomeEjecutivo() {
     "all",
   );
   const [modalClient, setModalClient] = useState<string | null>(null);
+
+  // Auto-open modal when navigated from a notification (router state)
+  const location = useLocation();
+  useEffect(() => {
+    const s = (location.state as any) || null;
+    if (s && typeof s === "object" && s.openModal) {
+      setListModal(s.openModal as ListModalType);
+      if (s.modalTab && (s.modalTab === "air" || s.modalTab === "ocean" || s.modalTab === "all")) {
+        setListModalTab(s.modalTab);
+      }
+      // Clear router state to prevent re-trigger on re-render
+      window.history.replaceState({}, "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const displayName = user?.nombreuser || user?.username || "Ejecutivo";
 
