@@ -338,6 +338,9 @@ function QuoteAPITester({
   // Estado para Gastos Locales (Desconsolidación)
   const [gastolocal, setGastolocal] = useState(false);
 
+  // Estado para Live Tracking (servicio gratuito)
+  const [liveTrackingActivo, setLiveTrackingActivo] = useState(false);
+
   // Estado para Agencia de Aduanas y Nacionalización
   const [aduanaActivo, setAduanaActivo] = useState(false);
   const [valorProductoAduana, setValorProductoAduana] = useState<string>("");
@@ -2230,6 +2233,18 @@ function QuoteAPITester({
         });
       }
 
+      // Live Tracking (servicio gratuito)
+      if (liveTrackingActivo) {
+        pdfCharges.push({
+          code: "LT",
+          description: "LIVE TRACKING (Free)",
+          quantity: 1,
+          unit: "Shipment",
+          rate: 0,
+          amount: 0,
+        });
+      }
+
       // No Apilable (solo si incoterm es EXW y hay piezas no apilables)
       if (noApilableActivo && incoterm === "EXW") {
         const noApilableAmount = calculateNoApilable();
@@ -3002,6 +3017,51 @@ function QuoteAPITester({
         });
       }
 
+      // Cobro de LIVE TRACKING (gratis - 0)
+      if (liveTrackingActivo) {
+        charges.push({
+          service: {
+            id: 133570,
+            code: "LT",
+            description: "LIVE TRACKING",
+          },
+          income: {
+            quantity: 1,
+            unit: "LIVE TRACKING",
+            rate: 0,
+            amount: 0,
+            showamount: 0,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Live Tracking - Free",
+            showOnDocument: true,
+            notes:
+              "Servicio de Live Tracking gratuito - seguimiento en tiempo real del cargamento",
+          },
+          expense: {
+            quantity: 1,
+            unit: "LIVE TRACKING",
+            rate: 0,
+            amount: 0,
+            showamount: 0,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
+
       // Cobro de NO APILABLE (solo si incoterm es EXW y hay piezas no apilables)
       if (noApilableActivo && incoterm === "EXW") {
         const noApilableAmount = calculateNoApilable();
@@ -3504,6 +3564,51 @@ function QuoteAPITester({
               "Cargo por Gastos Locales (Desconsolidación) agregado desde portal (Overall)",
           },
           expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
+
+      // Cobro de LIVE TRACKING (gratis - 0) - Overall mode
+      if (liveTrackingActivo) {
+        charges.push({
+          service: {
+            id: 133570,
+            code: "LT",
+            description: "LIVE TRACKING",
+          },
+          income: {
+            quantity: 1,
+            unit: "LIVE TRACKING",
+            rate: 0,
+            amount: 0,
+            showamount: 0,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Live Tracking - Free to OVERALL",
+            showOnDocument: true,
+            notes:
+              "Servicio de Live Tracking gratuito - seguimiento en tiempo real del cargamento (Overall)",
+          },
+          expense: {
+            quantity: 1,
+            unit: "LIVE TRACKING",
+            rate: 0,
+            amount: 0,
+            showamount: 0,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
             },
@@ -5319,13 +5424,17 @@ function QuoteAPITester({
           {openSection !== 3 && (
             <div className="qa-route-summary">
               <span className="qa-text-muted" style={{ fontSize: "0.85rem" }}>
-                {seguroActivo || gastolocal || aduanaActivo ? (
+                {seguroActivo ||
+                gastolocal ||
+                aduanaActivo ||
+                liveTrackingActivo ? (
                   <>
                     <i className="bi bi-check-circle-fill text-success me-1"></i>
                     {[
                       seguroActivo && "Seguro de Carga",
                       gastolocal && "Desconsolidación",
                       aduanaActivo && "Agencia de Aduanas",
+                      liveTrackingActivo && "Live Tracking",
                     ]
                       .filter(Boolean)
                       .join(" · ")}
@@ -5429,6 +5538,53 @@ function QuoteAPITester({
                       <button
                         className="qa-addon-btn-remove"
                         onClick={() => setGastolocal(false)}
+                      >
+                        <i className="bi bi-x-lg"></i>Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card: Live Tracking (Free) */}
+                <div
+                  className={`qa-addon-card${liveTrackingActivo ? " is-active" : ""}`}
+                >
+                  <div className="qa-addon-card__image">
+                    <img
+                      src={imgUrl("addcargos/live-tracking.png")}
+                      alt="Live Tracking"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display =
+                          "none";
+                      }}
+                    />
+                  </div>
+                  <div className="qa-addon-card__body">
+                    <h4>
+                      Live Tracking{" "}
+                      <span className="qa-badge qa-badge-primary ms-1">
+                        Free
+                      </span>
+                    </h4>
+                    <p>
+                      Monitorea tu cargamento en tiempo real durante todo el
+                      tránsito. Recibe notificaciones automáticas en cada hito
+                      del envío. Servicio sin costo adicional.
+                    </p>
+                  </div>
+                  <div className="qa-addon-card__action">
+                    {!liveTrackingActivo ? (
+                      <button
+                        className="qa-addon-btn-add"
+                        onClick={() => setLiveTrackingActivo(true)}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar
+                      </button>
+                    ) : (
+                      <button
+                        className="qa-addon-btn-remove"
+                        onClick={() => setLiveTrackingActivo(false)}
                       >
                         <i className="bi bi-x-lg"></i>Remover
                       </button>

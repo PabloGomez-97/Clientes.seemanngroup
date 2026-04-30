@@ -279,6 +279,9 @@ function QuoteLCL({
   // Estado para Gastos Locales + Apertura
   const [gastolocal, setGastolocal] = useState(false);
 
+  // Estado para Live Tracking (servicio gratuito)
+  const [liveTrackingActivo, setLiveTrackingActivo] = useState(false);
+
   // Estado para notificación de oversize al ejecutivo
   const [loadingOversizeNotify, setLoadingOversizeNotify] = useState(false);
 
@@ -1850,6 +1853,18 @@ function QuoteLCL({
         });
       }
 
+      // Live Tracking (servicio gratuito)
+      if (liveTrackingActivo) {
+        pdfCharges.push({
+          code: "LT",
+          description: "LIVE TRACKING (Free)",
+          quantity: 1,
+          unit: "Shipment",
+          rate: 0,
+          amount: 0,
+        });
+      }
+
       // Si sinTarifa, poner todos los montos en 0
       const finalPdfCharges = showPendingQuote
         ? pdfCharges.map((c) => ({ ...c, rate: 0, amount: 0 }))
@@ -2534,6 +2549,51 @@ function QuoteLCL({
           notes: "No Apilable charge created via Client Portal",
         },
         expense: {
+          currency: {
+            abbr: divisa,
+          },
+        },
+      });
+    }
+
+    // Cobro de LIVE TRACKING (servicio gratuito)
+    if (liveTrackingActivo) {
+      charges.push({
+        service: {
+          id: 133570,
+          code: "LT",
+          description: "LIVE TRACKING",
+        },
+        income: {
+          quantity: 1,
+          unit: "LIVE TRACKING",
+          rate: 0,
+          amount: 0,
+          showamount: 0,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: divisa,
+          },
+          reference: "Live Tracking - Free",
+          showOnDocument: true,
+          notes:
+            "Servicio de Live Tracking gratuito - seguimiento en tiempo real del cargamento",
+        },
+        expense: {
+          quantity: 1,
+          unit: "LIVE TRACKING",
+          rate: 0,
+          amount: 0,
+          showamount: 0,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
           currency: {
             abbr: divisa,
           },
@@ -4212,6 +4272,55 @@ function QuoteLCL({
                           <button
                             className="qa-addon-btn-remove"
                             onClick={() => setGastolocal(false)}
+                          >
+                            <i className="bi bi-x-lg"></i>Remover
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card: Live Tracking (Free) */}
+                    <div
+                      className={`qa-addon-card${liveTrackingActivo ? " is-active" : ""}`}
+                    >
+                      <div className="qa-addon-card__image">
+                        <img
+                          src={imgUrl("addcargos/live-tracking.png")}
+                          alt="Live Tracking"
+                          loading="lazy"
+                          onError={(e) => {
+                            (
+                              e.currentTarget as HTMLImageElement
+                            ).style.display = "none";
+                          }}
+                        />
+                      </div>
+                      <div className="qa-addon-card__body">
+                        <h4>
+                          Live Tracking{" "}
+                          <span className="qa-badge qa-badge-primary ms-1">
+                            Free
+                          </span>
+                        </h4>
+                        <p>
+                          Monitorea tu cargamento LCL en tiempo real durante
+                          todo el tránsito marítimo. Recibe notificaciones
+                          automáticas en cada hito del envío. Servicio sin costo
+                          adicional.
+                        </p>
+                      </div>
+                      <div className="qa-addon-card__action">
+                        {!liveTrackingActivo ? (
+                          <button
+                            className="qa-addon-btn-add"
+                            onClick={() => setLiveTrackingActivo(true)}
+                          >
+                            <i className="bi bi-plus-lg"></i>Agregar
+                          </button>
+                        ) : (
+                          <button
+                            className="qa-addon-btn-remove"
+                            onClick={() => setLiveTrackingActivo(false)}
                           >
                             <i className="bi bi-x-lg"></i>Remover
                           </button>

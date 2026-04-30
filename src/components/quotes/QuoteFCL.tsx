@@ -155,6 +155,9 @@ function QuoteFCL({
   // Estado para Gastos Locales (THC + Apertura)
   const [gastolocal, setGastolocal] = useState(false);
 
+  // Estado para Live Tracking (servicio gratuito)
+  const [liveTrackingActivo, setLiveTrackingActivo] = useState(false);
+
   // Estado para controlar el accordion del Paso 1
   const [openSection, setOpenSection] = useState<number>(1);
   const [step2Completed, setStep2Completed] = useState<boolean>(false);
@@ -1437,6 +1440,18 @@ function QuoteFCL({
         });
       }
 
+      // Live Tracking (servicio gratuito)
+      if (liveTrackingActivo) {
+        pdfCharges.push({
+          code: "LT",
+          description: "LIVE TRACKING (Free)",
+          quantity: 1,
+          unit: "Each",
+          rate: 0,
+          amount: 0,
+        });
+      }
+
       // Calcular total
       const finalPdfCharges = showPendingQuote
         ? pdfCharges.map((ch) => ({ ...ch, rate: 0, amount: 0 }))
@@ -2004,6 +2019,51 @@ function QuoteFCL({
           notes: "Apertura - cargo fijo",
         },
         expense: {
+          currency: {
+            abbr: rutaSeleccionada.currency,
+          },
+        },
+      });
+    }
+
+    // Cobro de LIVE TRACKING (servicio gratuito)
+    if (liveTrackingActivo) {
+      charges.push({
+        service: {
+          id: 133570,
+          code: "LT",
+          description: "LIVE TRACKING",
+        },
+        income: {
+          quantity: 1,
+          unit: "LIVE TRACKING",
+          rate: 0,
+          amount: 0,
+          showamount: 0,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: rutaSeleccionada.currency,
+          },
+          reference: "Live Tracking - Free",
+          showOnDocument: true,
+          notes:
+            "Servicio de Live Tracking gratuito - seguimiento en tiempo real del cargamento",
+        },
+        expense: {
+          quantity: 1,
+          unit: "LIVE TRACKING",
+          rate: 0,
+          amount: 0,
+          showamount: 0,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
           currency: {
             abbr: rutaSeleccionada.currency,
           },
@@ -3544,6 +3604,52 @@ function QuoteFCL({
                         <button
                           className="qf-addon-btn-remove"
                           onClick={() => setGastolocal(false)}
+                        >
+                          <i className="bi bi-x-lg"></i>Remover
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {/* Card: Live Tracking (Free) */}
+                  <div
+                    className={`qf-addon-card${liveTrackingActivo ? " is-active" : ""}`}
+                  >
+                    <div className="qf-addon-card__image">
+                      <img
+                        src={imgUrl("addcargos/live-tracking.png")}
+                        alt="Live Tracking"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display =
+                            "none";
+                        }}
+                      />
+                    </div>
+                    <div className="qf-addon-card__body">
+                      <h4>
+                        Live Tracking{" "}
+                        <span className="qf-badge qf-badge-primary ms-1">
+                          Free
+                        </span>
+                      </h4>
+                      <p>
+                        Monitorea tu contenedor en tiempo real durante todo el
+                        tránsito marítimo. Recibe notificaciones automáticas en
+                        cada hito del envío. Servicio sin costo adicional.
+                      </p>
+                    </div>
+                    <div className="qf-addon-card__action">
+                      {!liveTrackingActivo ? (
+                        <button
+                          className="qf-addon-btn-add"
+                          onClick={() => setLiveTrackingActivo(true)}
+                        >
+                          <i className="bi bi-plus-lg"></i>Agregar
+                        </button>
+                      ) : (
+                        <button
+                          className="qf-addon-btn-remove"
+                          onClick={() => setLiveTrackingActivo(false)}
                         >
                           <i className="bi bi-x-lg"></i>Remover
                         </button>

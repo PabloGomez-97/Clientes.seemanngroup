@@ -116,7 +116,7 @@ function SidebarAdmin({
             },
             {
               path: "/admin/op-reporteriaclientes",
-              name: "Directorio de Clientes",
+              name: "Directorio de Clientes [Global]",
             },
             {
               path: "/admin/trackeos",
@@ -124,7 +124,7 @@ function SidebarAdmin({
             },
             {
               path: "/admin/op-trackeos",
-              name: "Monitoreo de Envíos",
+              name: "Monitoreo de Envíos [Global]",
             },
             {
               path: "/admin/op-documentacion",
