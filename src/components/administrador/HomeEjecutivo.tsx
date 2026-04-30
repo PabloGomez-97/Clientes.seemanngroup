@@ -512,7 +512,10 @@ export default function HomeEjecutivo() {
     const s = (location.state as any) || null;
     if (s && typeof s === "object" && s.openModal) {
       setListModal(s.openModal as ListModalType);
-      if (s.modalTab && (s.modalTab === "air" || s.modalTab === "ocean" || s.modalTab === "all")) {
+      if (
+        s.modalTab &&
+        (s.modalTab === "air" || s.modalTab === "ocean" || s.modalTab === "all")
+      ) {
         setListModalTab(s.modalTab);
       }
       // Clear router state to prevent re-trigger on re-render
@@ -1294,7 +1297,7 @@ export default function HomeEjecutivo() {
           </button>
         </div>
         <div className="ej-client-metrics-strip">
-          {/* Clients */}
+          {/* Clients o */}
           <div
             className="ej-kpi ej-kpi--orange ej-kpi--clickable ej-client-metrics-strip__item"
             onClick={() => setListModal("all-clients")}
