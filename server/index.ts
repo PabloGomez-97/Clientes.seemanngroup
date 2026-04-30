@@ -1126,6 +1126,104 @@ QuoteTrackingEventSchema.index({ timestamp: -1 });
 const QuoteTrackingEvent = (mongoose.models.QuoteTrackingEvent || mongoose.model<IQuoteTrackingEventDoc>('QuoteTrackingEvent', QuoteTrackingEventSchema)) as QuoteTrackingEventModel;
 
 // ============================================================
+// MODELO EXECUTIVE NOTIFICATION (alertas en navbar para ejecutivos)
+// TTL: 72h auto-expire via MongoDB index on createdAt
+// ============================================================
+
+interface IExecutiveNotification {
+  ejecutivoEmail: string;
+  sessionId: string;
+  type: 'QUOTE_COMPLETED' | 'QUOTE_ABANDONED';
+  clientEmail: string;
+  clientUsername: string;
+  clientNombre?: string;
+  quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
+  quoteNumber?: string;
+  route?: { origin?: string; destination?: string };
+  read: boolean;
+  readAt?: Date;
+}
+
+interface IExecutiveNotificationDoc extends IExecutiveNotification, mongoose.Document {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type ExecutiveNotificationModel = mongoose.Model<IExecutiveNotificationDoc>;
+
+const ExecutiveNotificationSchema = new mongoose.Schema<IExecutiveNotificationDoc>(
+  {
+    ejecutivoEmail: { type: String, required: true, lowercase: true, trim: true, index: true },
+    sessionId: { type: String, required: true, index: true },
+    type: { type: String, required: true, enum: ['QUOTE_COMPLETED', 'QUOTE_ABANDONED'] },
+    clientEmail: { type: String, required: true, lowercase: true, trim: true },
+    clientUsername: { type: String, required: true, trim: true },
+    clientNombre: { type: String, trim: true },
+    quoteType: { type: String, required: true, enum: ['AIR', 'FCL', 'LCL', 'LASTMILE'] },
+    quoteNumber: { type: String, trim: true },
+    route: {
+      origin: { type: String, trim: true },
+      destination: { type: String, trim: true },
+    },
+    read: { type: Boolean, default: false },
+    readAt: { type: Date },
+  },
+  { timestamps: true }
+);
+
+ExecutiveNotificationSchema.index({ ejecutivoEmail: 1, sessionId: 1 }, { unique: true });
+ExecutiveNotificationSchema.index({ ejecutivoEmail: 1, createdAt: -1 });
+ExecutiveNotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 72 });
+
+const ExecutiveNotification = (mongoose.models.ExecutiveNotification ||
+  mongoose.model<IExecutiveNotificationDoc>('ExecutiveNotification', ExecutiveNotificationSchema)) as ExecutiveNotificationModel;
+
+async function emitExecutiveNotificationForQuoteEvent(opts: {
+  clientEmail: string;
+  clientUsername: string;
+  sessionId: string;
+  event: 'QUOTE_COMPLETED' | 'QUOTE_ABANDONED';
+  quoteType: 'AIR' | 'FCL' | 'LCL' | 'LASTMILE';
+  route?: { origin?: string; destination?: string };
+  metadata?: Record<string, unknown> | null;
+}): Promise<void> {
+  try {
+    const clientEmail = String(opts.clientEmail).toLowerCase().trim();
+    const clientUser = await User.findOne({ email: clientEmail }).populate('ejecutivoId');
+    if (!clientUser?.ejecutivoId) return;
+
+    const ej = (clientUser.ejecutivoId as unknown) as IEjecutivoDoc | null;
+    const ejecutivoEmail = ej?.email ? String(ej.email).toLowerCase().trim() : null;
+    if (!ejecutivoEmail) return;
+
+    const quoteNumber = (opts.metadata && typeof (opts.metadata as any).quoteNumber === 'string')
+      ? (opts.metadata as any).quoteNumber as string
+      : undefined;
+
+    await ExecutiveNotification.updateOne(
+      { ejecutivoEmail, sessionId: String(opts.sessionId) },
+      {
+        $set: {
+          type: opts.event,
+          clientEmail,
+          clientUsername: String(opts.clientUsername || '').trim(),
+          clientNombre: clientUser.nombreuser || undefined,
+          quoteType: opts.quoteType,
+          quoteNumber,
+          route: opts.route || undefined,
+          read: false,
+          readAt: undefined,
+        },
+        $setOnInsert: { ejecutivoEmail, sessionId: String(opts.sessionId) },
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('[executive-notification] emit failed:', err);
+  }
+}
+
+// ============================================================
 // MODELO AGENCIA DE ADUANAS - CONFIG (Singleton)
 // ============================================================
 import {
@@ -5455,6 +5553,69 @@ app.put('/api/agencia-aduana/config', auth, async (req, res) => {
 // BEHAVIOR TRACKING
 // ============================================================
 
+// ============================================================
+// EXECUTIVE NOTIFICATIONS (alertas en navbar — solo ejecutivos)
+// ============================================================
+
+app.get('/api/executive-notifications', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Ejecutivo') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const ejecutivoEmail = String(currentUser.sub || '').toLowerCase().trim();
+    if (!ejecutivoEmail) return res.json({ notifications: [], unreadCount: 0 });
+
+    const items = await ExecutiveNotification.find({ ejecutivoEmail })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    const unreadCount = items.filter((n: any) => !n.read).length;
+    return res.json({ notifications: items, unreadCount });
+  } catch (error: any) {
+    console.error('[executive-notifications] Error GET:', error);
+    return res.status(500).json({ error: 'Error al obtener notificaciones' });
+  }
+});
+
+app.patch('/api/executive-notifications/read-all', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Ejecutivo') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const ejecutivoEmail = String(currentUser.sub || '').toLowerCase().trim();
+    await ExecutiveNotification.updateMany(
+      { ejecutivoEmail, read: false },
+      { $set: { read: true, readAt: new Date() } }
+    );
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[executive-notifications] Error read-all:', error);
+    return res.status(500).json({ error: 'Error al marcar como leídas' });
+  }
+});
+
+app.delete('/api/executive-notifications/:id', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Ejecutivo') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+    const ejecutivoEmail = String(currentUser.sub || '').toLowerCase().trim();
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+    await ExecutiveNotification.deleteOne({ _id: id, ejecutivoEmail });
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('[executive-notifications] Error DELETE:', error);
+    return res.status(500).json({ error: 'Error al eliminar notificación' });
+  }
+});
+
 // POST /api/behavior-tracking — Receive tracking event
 app.post('/api/behavior-tracking', async (req, res) => {
   try {
@@ -5487,6 +5648,18 @@ app.post('/api/behavior-tracking', async (req, res) => {
       metadata: metadata || {},
       timestamp: timestamp ? new Date(timestamp) : new Date(),
     });
+
+    if (event === 'QUOTE_COMPLETED' || event === 'QUOTE_ABANDONED') {
+      void emitExecutiveNotificationForQuoteEvent({
+        clientEmail,
+        clientUsername,
+        sessionId,
+        event,
+        quoteType,
+        route,
+        metadata,
+      });
+    }
 
     return res.status(201).json({ success: true });
   } catch (error: any) {

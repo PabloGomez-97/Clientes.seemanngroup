@@ -957,22 +957,20 @@ export default function HomeEjecutivo() {
   // Abandonment by type — derived from behaviorAnalytics
   const behaviorByType = useMemo(() => {
     if (!behaviorAnalytics?.abandonmentByType) return [];
-    return BEHAVIOR_QUOTE_TYPES
-      .map((type) => {
-        const events = behaviorAnalytics.abandonmentByType.filter(
-          (e) => e.quoteType === type,
-        );
-        const started =
-          events.find((e) => e.event === "QUOTE_STARTED")?.count || 0;
-        const completed =
-          events.find((e) => e.event === "QUOTE_COMPLETED")?.count || 0;
-        const abandoned =
-          events.find((e) => e.event === "QUOTE_ABANDONED")?.count || 0;
-        const abandonRate =
-          started > 0 ? Math.round((abandoned / started) * 100) : 0;
-        return { type, started, completed, abandoned, abandonRate };
-      })
-      .filter((t) => t.started > 0);
+    return BEHAVIOR_QUOTE_TYPES.map((type) => {
+      const events = behaviorAnalytics.abandonmentByType.filter(
+        (e) => e.quoteType === type,
+      );
+      const started =
+        events.find((e) => e.event === "QUOTE_STARTED")?.count || 0;
+      const completed =
+        events.find((e) => e.event === "QUOTE_COMPLETED")?.count || 0;
+      const abandoned =
+        events.find((e) => e.event === "QUOTE_ABANDONED")?.count || 0;
+      const abandonRate =
+        started > 0 ? Math.round((abandoned / started) * 100) : 0;
+      return { type, started, completed, abandoned, abandonRate };
+    }).filter((t) => t.started > 0);
   }, [behaviorAnalytics]);
 
   // Greeting

@@ -135,7 +135,19 @@
         "shipmentUpdated": "Envío actualizado",
         "airShipmentTransit": "AIR-2024-001 en tránsito",
         "pendingDocument": "Documento pendiente",
-        "invoiceReview": "Factura #5678 requiere revisión"
+        "invoiceReview": "Factura #5678 requiere revisión",
+        "title": "Notificaciones",
+        "empty": "No tienes notificaciones",
+        "viewAll": "Ver todas en Comportamiento de Clientes",
+        "completedTitle": "Cotización completada",
+        "abandonedTitle": "Cotización abandonada",
+        "completedMsg": "{{client}} completó una cotización {{type}}",
+        "abandonedMsg": "{{client}} abandonó una cotización {{type}}",
+        "dismiss": "Descartar",
+        "justNow": "ahora",
+        "minutesAgo": "hace {{n}}m",
+        "hoursAgo": "hace {{n}}h",
+        "daysAgo": "hace {{n}}d"
       },
       "profile": {
         "assignedExecutive": "Tu Ejecutivo Asignado",

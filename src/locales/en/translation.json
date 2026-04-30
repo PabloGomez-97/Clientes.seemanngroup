@@ -135,7 +135,19 @@
         "shipmentUpdated": "Shipment updated",
         "airShipmentTransit": "AIR-2024-001 in transit",
         "pendingDocument": "Pending document",
-        "invoiceReview": "Invoice #5678 requires review"
+        "invoiceReview": "Invoice #5678 requires review",
+        "title": "Notifications",
+        "empty": "You have no notifications",
+        "viewAll": "See all in Customer Behavior",
+        "completedTitle": "Quote completed",
+        "abandonedTitle": "Quote abandoned",
+        "completedMsg": "{{client}} completed a {{type}} quote",
+        "abandonedMsg": "{{client}} abandoned a {{type}} quote",
+        "dismiss": "Dismiss",
+        "justNow": "now",
+        "minutesAgo": "{{n}}m ago",
+        "hoursAgo": "{{n}}h ago",
+        "daysAgo": "{{n}}d ago"
       },
       "profile": {
         "assignedExecutive": "Your Assigned Executive",
