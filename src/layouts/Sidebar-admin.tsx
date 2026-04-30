@@ -17,6 +17,7 @@ interface SubMenuItem {
   path: string;
   name: string;
   restrictedTo?: string | string[];
+  hiddenForAdmin?: boolean;
   badge?: {
     text: string;
     type: "new" | "beta" | "admin";
@@ -28,6 +29,7 @@ interface MenuItem {
   name: string;
   icon: string;
   restrictedTo?: string | string[];
+  hiddenForAdmin?: boolean;
   badge?: {
     text: string;
     type: "new" | "beta" | "admin";
@@ -96,6 +98,7 @@ function SidebarAdmin({
           path: "/admin/comportamiento-clientes",
           name: "Análisis de Clientes",
           icon: "fa fa-chart-line",
+          hiddenForAdmin: true,
         },
         {
           path: "/admin/op-comportamiento-clientes",
@@ -114,10 +117,12 @@ function SidebarAdmin({
             {
               path: "/admin/documentacion",
               name: "Documentación de Clientes",
+              hiddenForAdmin: true,
             },
             {
               path: "/admin/reporteriaclientes",
               name: "Directorio de Clientes",
+              hiddenForAdmin: true,
             },
             {
               path: "/admin/op-reporteriaclientes",
@@ -126,6 +131,7 @@ function SidebarAdmin({
             {
               path: "/admin/trackeos",
               name: "Monitoreo de Envíos",
+              hiddenForAdmin: true,
             },
             {
               path: "/admin/op-trackeos",
@@ -219,6 +225,8 @@ function SidebarAdmin({
   ];
 
   // Filter by permission (restrictedTo + roles)
+  const isAdmin = !!user?.roles?.administrador;
+
   const filteredSections = menuSections
     .map((s) => ({
       ...s,
@@ -227,12 +235,15 @@ function SidebarAdmin({
           ...item,
           subItems: item.subItems?.filter(
             (subItem) =>
-              canSeeByEmail(subItem.restrictedTo) && canSeeByRole(subItem.path),
+              canSeeByEmail(subItem.restrictedTo) &&
+              canSeeByRole(subItem.path) &&
+              !(isAdmin && subItem.hiddenForAdmin),
           ),
         }))
         .filter((item) => {
           if (!canSeeByEmail(item.restrictedTo)) return false;
           if (!canSeeByRole(item.path)) return false;
+          if (isAdmin && item.hiddenForAdmin) return false;
           if (item.subItems) return item.subItems.length > 0;
           return true;
         }),
