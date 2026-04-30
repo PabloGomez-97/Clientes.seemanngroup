@@ -40,6 +40,7 @@ import OPReporteriaClientes from "./components/administrador/OP-reporteriaclient
 import Auditoria from "./components/administrador/Auditoria";
 import AgenciaAduanas from "./components/administrador/AgenciaAduanas";
 import ComportamientoDeClientes from "./components/administrador/CustomerBehaviorTracking/ComportamientoDeClientes";
+import OPComportamientoDeClientes from "./components/administrador/CustomerBehaviorTracking/OP-ComportamientoDeClientes";
 import PricingAlertsPanel from "./components/administrador/PricingAlerts/PricingAlertsPanel";
 
 // Reportería Pages
@@ -214,6 +215,10 @@ function App() {
           <Route
             path="comportamiento-clientes/:clientUsername?"
             element={<ComportamientoDeClientes />}
+          />
+          <Route
+            path="op-comportamiento-clientes/:clientUsername?"
+            element={<OPComportamientoDeClientes />}
           />
           <Route path="alertas-pricing" element={<PricingAlertsPanel />} />
           <Route path="settings" element={<SettingsAdmin />} />

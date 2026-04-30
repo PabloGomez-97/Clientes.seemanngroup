@@ -5824,6 +5824,202 @@ app.get('/api/behavior-tracking/analytics', auth, async (req, res) => {
   }
 });
 
+// GET /api/behavior-tracking/all-clients — Summary of ALL clients (admin/global)
+app.get('/api/behavior-tracking/all-clients', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Ejecutivo') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const clients = await User.find(
+      { username: { $ne: 'Ejecutivo' } },
+      { email: 1, username: 1, usernames: 1, nombreuser: 1 }
+    );
+
+    const clientEmails = clients.map(c => c.email.toLowerCase());
+    if (clientEmails.length === 0) {
+      return res.json({ clients: [] });
+    }
+
+    const behaviorStats = await QuoteTrackingEvent.aggregate([
+      { $match: { clientEmail: { $in: clientEmails } } },
+      {
+        $group: {
+          _id: { email: '$clientEmail', sessionId: '$sessionId' },
+          hasStarted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_STARTED'] }, 1, 0] } },
+          hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
+          hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
+          lastActivity: { $max: '$timestamp' },
+          quoteType: { $first: '$quoteType' },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.email',
+          totalEvents: { $sum: 1 },
+          quotesStarted: { $sum: '$hasStarted' },
+          quotesCompleted: { $sum: '$hasCompleted' },
+          quotesAbandoned: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ['$hasAbandoned', 1] }, { $eq: ['$hasCompleted', 0] }] },
+                1, 0,
+              ],
+            },
+          },
+          lastActivity: { $max: '$lastActivity' },
+          quoteTypes: { $addToSet: '$quoteType' },
+        },
+      },
+    ]);
+
+    const statsMap = new Map(behaviorStats.map((s: any) => [s._id, s]));
+
+    const result = clients.map((c) => {
+      const stats = statsMap.get(c.email.toLowerCase()) || null;
+      return {
+        email: c.email,
+        username: c.username,
+        usernames: c.usernames,
+        nombreuser: c.nombreuser,
+        stats: stats
+          ? {
+              totalEvents: stats.totalEvents,
+              quotesStarted: stats.quotesStarted,
+              quotesCompleted: stats.quotesCompleted,
+              quotesAbandoned: stats.quotesAbandoned,
+              completionRate:
+                stats.quotesStarted > 0
+                  ? Math.round((stats.quotesCompleted / stats.quotesStarted) * 100)
+                  : 0,
+              lastActivity: stats.lastActivity,
+              quoteTypes: stats.quoteTypes,
+            }
+          : null,
+      };
+    });
+
+    return res.json({ clients: result });
+  } catch (error: any) {
+    console.error('[behavior-tracking] Error GET all-clients:', error);
+    return res.status(500).json({ error: 'Error al obtener clientes' });
+  }
+});
+
+// GET /api/behavior-tracking/all-analytics — Aggregated analytics across ALL clients
+app.get('/api/behavior-tracking/all-analytics', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    if (currentUser.username !== 'Ejecutivo') {
+      return res.status(403).json({ error: 'No autorizado' });
+    }
+
+    const clients = await User.find(
+      { username: { $ne: 'Ejecutivo' } },
+      { email: 1 }
+    );
+    const clientEmails = clients.map(c => c.email.toLowerCase());
+
+    if (clientEmails.length === 0) {
+      return res.json({
+        abandonmentByStep: [],
+        abandonmentByType: [],
+        topRoutes: [],
+        completionTrend: [],
+      });
+    }
+
+    const abandonmentByStep = await QuoteTrackingEvent.aggregate([
+      { $match: { clientEmail: { $in: clientEmails }, event: 'QUOTE_ABANDONED' } },
+      {
+        $group: {
+          _id: { quoteType: '$quoteType', step: '$step.step' },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 20 },
+    ]);
+
+    const abandonmentByType = await QuoteTrackingEvent.aggregate([
+      { $match: { clientEmail: { $in: clientEmails }, event: { $in: ['QUOTE_STARTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'] } } },
+      {
+        $group: {
+          _id: { quoteType: '$quoteType', event: '$event' },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const topRoutes = await QuoteTrackingEvent.aggregate([
+      { $match: { clientEmail: { $in: clientEmails }, event: 'QUOTE_ROUTE_SELECTED', 'route.origin': { $exists: true } } },
+      {
+        $group: {
+          _id: { origin: '$route.origin', destination: '$route.destination', quoteType: '$quoteType' },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { count: -1 } },
+      { $limit: 15 },
+      {
+        $project: {
+          _id: 0,
+          origin: '$_id.origin',
+          destination: '$_id.destination',
+          quoteType: '$_id.quoteType',
+          count: 1,
+        },
+      },
+    ]);
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const completionTrend = await QuoteTrackingEvent.aggregate([
+      {
+        $match: {
+          clientEmail: { $in: clientEmails },
+          event: { $in: ['QUOTE_STARTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'] },
+          timestamp: { $gte: thirtyDaysAgo },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+            event: '$event',
+          },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { '_id.date': 1 } },
+    ]);
+
+    return res.json({
+      abandonmentByStep: abandonmentByStep.map((a: any) => ({
+        quoteType: a._id.quoteType,
+        step: a._id.step,
+        count: a.count,
+      })),
+      abandonmentByType: abandonmentByType.map((a: any) => ({
+        quoteType: a._id.quoteType,
+        event: a._id.event,
+        count: a.count,
+      })),
+      topRoutes,
+      completionTrend: completionTrend.map((c: any) => ({
+        date: c._id.date,
+        event: c._id.event,
+        count: c.count,
+      })),
+    });
+  } catch (error: any) {
+    console.error('[behavior-tracking] Error GET all-analytics:', error);
+    return res.status(500).json({ error: 'Error al obtener analytics' });
+  }
+});
+
 // ============================================================
 // RUTAS DE ALERTAS DE PRICING
 // ============================================================

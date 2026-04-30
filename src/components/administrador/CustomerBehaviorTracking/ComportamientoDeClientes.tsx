@@ -518,11 +518,39 @@ function ClientAnalyticsPanel({ detail }: { detail: ClientDetail }) {
 // MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════════════════════
 
-export default function ComportamientoDeClientes() {
+interface ComportamientoDeClientesProps {
+  /** 'ejecutivo' shows only the ejecutivo's portfolio (default).
+   *  'admin' shows ALL clients in the portal — used by OP-ComportamientoDeClientes. */
+  scope?: "ejecutivo" | "admin";
+}
+
+export default function ComportamientoDeClientes({
+  scope = "ejecutivo",
+}: ComportamientoDeClientesProps = {}) {
   useOutletContext<OutletContext>();
   const { token } = useAuth();
   const navigate = useNavigate();
   const { clientUsername } = useParams<{ clientUsername?: string }>();
+
+  const isAdminScope = scope === "admin";
+  const CLIENTS_ENDPOINT = isAdminScope
+    ? "/api/behavior-tracking/all-clients"
+    : "/api/behavior-tracking/clients";
+  const ANALYTICS_ENDPOINT = isAdminScope
+    ? "/api/behavior-tracking/all-analytics"
+    : "/api/behavior-tracking/analytics";
+  const ROUTE_BASE = isAdminScope
+    ? "/admin/op-comportamiento-clientes"
+    : "/admin/comportamiento-clientes";
+  const QUOTE_VIEW_ROUTE_BASE = isAdminScope
+    ? "/admin/op-reporteriaclientes"
+    : "/admin/reporteriaclientes";
+  const HEADER_TITLE = isAdminScope
+    ? "Customer Behavior Tracking [Global]"
+    : "Customer Behavior Tracking";
+  const HEADER_SUBTITLE = isAdminScope
+    ? "Seguimiento de cotizaciones de TODOS los clientes del portal"
+    : "Seguimiento de cotizaciones de tus clientes";
 
   const [clients, setClients] = useState<ClientBehavior[]>([]);
   const [loading, setLoading] = useState(true);
@@ -562,12 +590,9 @@ export default function ComportamientoDeClientes() {
     const fetchClients = async () => {
       setLoading(true);
       try {
-        const resp = await fetch(
-          `${API_BASE_URL}/api/behavior-tracking/clients`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          },
-        );
+        const resp = await fetch(`${API_BASE_URL}${CLIENTS_ENDPOINT}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!resp.ok) throw new Error("Error al cargar datos");
         const data = await resp.json();
         setClients(data.clients || []);
@@ -578,19 +603,16 @@ export default function ComportamientoDeClientes() {
       }
     };
     fetchClients();
-  }, [token]);
+  }, [token, CLIENTS_ENDPOINT]);
 
   // ── Fetch analytics ──
   const fetchAnalytics = useCallback(async () => {
     if (!token) return;
     setAnalyticsLoading(true);
     try {
-      const resp = await fetch(
-        `${API_BASE_URL}/api/behavior-tracking/analytics`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const resp = await fetch(`${API_BASE_URL}${ANALYTICS_ENDPOINT}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!resp.ok) throw new Error("Error al cargar analytics");
       setAnalytics(await resp.json());
     } catch {
@@ -598,7 +620,7 @@ export default function ComportamientoDeClientes() {
     } finally {
       setAnalyticsLoading(false);
     }
-  }, [token]);
+  }, [token, ANALYTICS_ENDPOINT]);
 
   useEffect(() => {
     if (view === "analytics" && !analytics) fetchAnalytics();
@@ -613,10 +635,9 @@ export default function ComportamientoDeClientes() {
       setRouteFilter("");
       setSessionPage(1);
       setShowClientAnalytics(false);
-      navigate(
-        `/admin/comportamiento-clientes/${encodeURIComponent(client.username)}`,
-        { replace: true },
-      );
+      navigate(`${ROUTE_BASE}/${encodeURIComponent(client.username)}`, {
+        replace: true,
+      });
       try {
         const resp = await fetch(
           `${API_BASE_URL}/api/behavior-tracking/client/${encodeURIComponent(client.email)}`,
@@ -635,7 +656,7 @@ export default function ComportamientoDeClientes() {
 
   const handleBack = () => {
     setClientDetail(null);
-    navigate("/admin/comportamiento-clientes", { replace: true });
+    navigate(ROUTE_BASE, { replace: true });
   };
 
   // URL is the single source of truth for which client is open.
@@ -1247,33 +1268,33 @@ export default function ComportamientoDeClientes() {
                               {session.status === "completed" &&
                                 session.quoteType !== "LASTMILE" &&
                                 session.isRecurring != null && (
-                                <span
-                                  style={{
-                                    display: "inline-block",
-                                    padding: "2px 8px",
-                                    borderRadius: 20,
-                                    fontSize: 10,
-                                    fontWeight: 600,
-                                    background:
-                                      session.isRecurring === false
-                                        ? "#fff7ed"
-                                        : "#f0fdf4",
-                                    color:
-                                      session.isRecurring === false
-                                        ? "#c2410c"
-                                        : "#15803d",
-                                    border:
-                                      session.isRecurring === false
-                                        ? "1px solid #fed7aa"
-                                        : "1px solid #bbf7d0",
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  {session.isRecurring === false
-                                    ? "No recurrente"
-                                    : "Recurrente"}
-                                </span>
-                              )}
+                                  <span
+                                    style={{
+                                      display: "inline-block",
+                                      padding: "2px 8px",
+                                      borderRadius: 20,
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      background:
+                                        session.isRecurring === false
+                                          ? "#fff7ed"
+                                          : "#f0fdf4",
+                                      color:
+                                        session.isRecurring === false
+                                          ? "#c2410c"
+                                          : "#15803d",
+                                      border:
+                                        session.isRecurring === false
+                                          ? "1px solid #fed7aa"
+                                          : "1px solid #bbf7d0",
+                                      flexShrink: 0,
+                                    }}
+                                  >
+                                    {session.isRecurring === false
+                                      ? "No recurrente"
+                                      : "Recurrente"}
+                                  </span>
+                                )}
 
                               {/* Last step (if abandoned) */}
                               {session.status === "abandoned" &&
@@ -1341,7 +1362,7 @@ export default function ComportamientoDeClientes() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate(
-                                        `/admin/reporteriaclientes/${selectedClient.username}`,
+                                        `${QUOTE_VIEW_ROUTE_BASE}/${selectedClient.username}`,
                                       );
                                     }}
                                     style={{
@@ -1901,10 +1922,10 @@ export default function ComportamientoDeClientes() {
               margin: 0,
             }}
           >
-            Customer Behavior Tracking
+            {HEADER_TITLE}
           </h1>
           <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0" }}>
-            Seguimiento de cotizaciones de tus clientes
+            {HEADER_SUBTITLE}
           </p>
         </div>
         <button

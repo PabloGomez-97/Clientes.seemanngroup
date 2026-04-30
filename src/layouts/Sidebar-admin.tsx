@@ -97,6 +97,11 @@ function SidebarAdmin({
           name: "Análisis de Clientes",
           icon: "fa fa-chart-line",
         },
+        {
+          path: "/admin/op-comportamiento-clientes",
+          name: "Análisis de Clientes [Global]",
+          icon: "fa fa-chart-line",
+        },
       ],
     },
 
