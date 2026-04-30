@@ -5349,7 +5349,7 @@ function QuoteAPITester({
                 >
                   <div className="qa-addon-card__image">
                     <img
-                      src={imgUrl("addcargos/seguro.png")}
+                      src={imgUrl("addcargos/seguro1.png")}
                       alt="Seguro de carga"
                       loading="lazy"
                     />
