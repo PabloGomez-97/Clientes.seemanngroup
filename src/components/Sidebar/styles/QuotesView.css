@@ -366,6 +366,14 @@
   font-weight: 600;
   color: var(--secondary-color);
   letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.qv-td--truncate {
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /*  Status badges  */

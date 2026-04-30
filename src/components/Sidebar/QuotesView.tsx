@@ -1409,8 +1409,18 @@ function QuotesView({
                         <td className="qv-td qv-td--center">
                           <StatusBadge validUntilDate={quote.validUntil_Date} />
                         </td>
-                        <td className="qv-td">{quote.origin || "---"}</td>
-                        <td className="qv-td">{quote.destination || "---"}</td>
+                        <td
+                          className="qv-td qv-td--truncate"
+                          title={quote.origin || "---"}
+                        >
+                          {quote.origin || "---"}
+                        </td>
+                        <td
+                          className="qv-td qv-td--truncate"
+                          title={quote.destination || "---"}
+                        >
+                          {quote.destination || "---"}
+                        </td>
                         <td className="qv-td">
                           {quote.modeOfTransportation || "---"}
                         </td>
