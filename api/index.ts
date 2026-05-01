@@ -6329,12 +6329,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
-        // 1. Abandonment by step (across all sessions)
+        // 1. Abandonment by step — count UNIQUE SESSIONS that ended abandoned
+        // (deduped per session, excluding sessions that also have QUOTE_COMPLETED).
+        // Counting raw events would multi-count beforeunload/pagehide/unmount fires.
         const abandonmentByStep = await QuoteTrackingEvent.aggregate([
-          { $match: { clientEmail: { $in: clientEmails }, event: 'QUOTE_ABANDONED' } },
+          { $match: { clientEmail: { $in: clientEmails } } },
           {
             $group: {
-              _id: { quoteType: '$quoteType', step: '$step.step' },
+              _id: '$sessionId',
+              quoteType: { $first: '$quoteType' },
+              hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
+              hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
+              abandonedSteps: {
+                $push: {
+                  $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, '$step.step', null],
+                },
+              },
+            },
+          },
+          { $match: { hasAbandoned: 1, hasCompleted: 0 } },
+          {
+            $project: {
+              quoteType: 1,
+              step: {
+                $arrayElemAt: [
+                  { $filter: { input: '$abandonedSteps', as: 's', cond: { $ne: ['$$s', null] } } },
+                  0,
+                ],
+              },
+            },
+          },
+          { $match: { step: { $ne: null } } },
+          {
+            $group: {
+              _id: { quoteType: '$quoteType', step: '$step' },
               count: { $sum: 1 },
             },
           },
@@ -6342,16 +6370,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           { $limit: 20 },
         ]);
 
-        // 2. Abandonment by quote type
-        const abandonmentByType = await QuoteTrackingEvent.aggregate([
+        // 2. Started/Completed/Abandoned by quote type — count UNIQUE SESSIONS
+        // (matches the per-session logic used by /clients so totals reconcile).
+        const byTypeAgg = await QuoteTrackingEvent.aggregate([
           { $match: { clientEmail: { $in: clientEmails }, event: { $in: ['QUOTE_STARTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'] } } },
           {
             $group: {
-              _id: { quoteType: '$quoteType', event: '$event' },
-              count: { $sum: 1 },
+              _id: { sessionId: '$sessionId', quoteType: '$quoteType' },
+              hasStarted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_STARTED'] }, 1, 0] } },
+              hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
+              hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
+            },
+          },
+          {
+            $group: {
+              _id: '$_id.quoteType',
+              QUOTE_STARTED: { $sum: '$hasStarted' },
+              QUOTE_COMPLETED: { $sum: '$hasCompleted' },
+              QUOTE_ABANDONED: {
+                $sum: {
+                  $cond: [
+                    { $and: [{ $eq: ['$hasAbandoned', 1] }, { $eq: ['$hasCompleted', 0] }] },
+                    1, 0,
+                  ],
+                },
+              },
             },
           },
         ]);
+        // Flatten back to { quoteType, event, count }[] to keep the API shape stable.
+        const abandonmentByType: Array<{ _id: { quoteType: string; event: string }; count: number }> = [];
+        for (const row of byTypeAgg as any[]) {
+          if (!row?._id) continue;
+          abandonmentByType.push({ _id: { quoteType: row._id, event: 'QUOTE_STARTED' }, count: row.QUOTE_STARTED || 0 });
+          abandonmentByType.push({ _id: { quoteType: row._id, event: 'QUOTE_COMPLETED' }, count: row.QUOTE_COMPLETED || 0 });
+          abandonmentByType.push({ _id: { quoteType: row._id, event: 'QUOTE_ABANDONED' }, count: row.QUOTE_ABANDONED || 0 });
+        }
 
         // 3. Top routes (started, completed, abandoned)
         const topRoutes = await QuoteTrackingEvent.aggregate([
@@ -6399,6 +6453,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+        // Completion trend — count UNIQUE SESSIONS per (date, event), not raw events.
         const completionTrend = await QuoteTrackingEvent.aggregate([
           {
             $match: {
@@ -6409,9 +6464,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           {
             $group: {
+              _id: { sessionId: '$sessionId', event: '$event' },
+              timestamp: { $min: '$timestamp' },
+            },
+          },
+          {
+            $group: {
               _id: {
                 date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
-                event: '$event',
+                event: '$_id.event',
               },
               count: { $sum: 1 },
             },
@@ -6564,11 +6625,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
         }
 
+        // Abandonment by step — UNIQUE SESSIONS that ended abandoned (deduped).
         const abandonmentByStep = await QuoteTrackingEvent.aggregate([
-          { $match: { clientEmail: { $in: clientEmails }, event: 'QUOTE_ABANDONED' } },
+          { $match: { clientEmail: { $in: clientEmails } } },
           {
             $group: {
-              _id: { quoteType: '$quoteType', step: '$step.step' },
+              _id: '$sessionId',
+              quoteType: { $first: '$quoteType' },
+              hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
+              hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
+              abandonedSteps: {
+                $push: {
+                  $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, '$step.step', null],
+                },
+              },
+            },
+          },
+          { $match: { hasAbandoned: 1, hasCompleted: 0 } },
+          {
+            $project: {
+              quoteType: 1,
+              step: {
+                $arrayElemAt: [
+                  { $filter: { input: '$abandonedSteps', as: 's', cond: { $ne: ['$$s', null] } } },
+                  0,
+                ],
+              },
+            },
+          },
+          { $match: { step: { $ne: null } } },
+          {
+            $group: {
+              _id: { quoteType: '$quoteType', step: '$step' },
               count: { $sum: 1 },
             },
           },
@@ -6576,15 +6664,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           { $limit: 20 },
         ]);
 
-        const abandonmentByType = await QuoteTrackingEvent.aggregate([
+        // Started/Completed/Abandoned by quote type — UNIQUE SESSIONS.
+        const byTypeAggAll = await QuoteTrackingEvent.aggregate([
           { $match: { clientEmail: { $in: clientEmails }, event: { $in: ['QUOTE_STARTED', 'QUOTE_COMPLETED', 'QUOTE_ABANDONED'] } } },
           {
             $group: {
-              _id: { quoteType: '$quoteType', event: '$event' },
-              count: { $sum: 1 },
+              _id: { sessionId: '$sessionId', quoteType: '$quoteType' },
+              hasStarted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_STARTED'] }, 1, 0] } },
+              hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
+              hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
+            },
+          },
+          {
+            $group: {
+              _id: '$_id.quoteType',
+              QUOTE_STARTED: { $sum: '$hasStarted' },
+              QUOTE_COMPLETED: { $sum: '$hasCompleted' },
+              QUOTE_ABANDONED: {
+                $sum: {
+                  $cond: [
+                    { $and: [{ $eq: ['$hasAbandoned', 1] }, { $eq: ['$hasCompleted', 0] }] },
+                    1, 0,
+                  ],
+                },
+              },
             },
           },
         ]);
+        const abandonmentByType: Array<{ _id: { quoteType: string; event: string }; count: number }> = [];
+        for (const row of byTypeAggAll as any[]) {
+          if (!row?._id) continue;
+          abandonmentByType.push({ _id: { quoteType: row._id, event: 'QUOTE_STARTED' }, count: row.QUOTE_STARTED || 0 });
+          abandonmentByType.push({ _id: { quoteType: row._id, event: 'QUOTE_COMPLETED' }, count: row.QUOTE_COMPLETED || 0 });
+          abandonmentByType.push({ _id: { quoteType: row._id, event: 'QUOTE_ABANDONED' }, count: row.QUOTE_ABANDONED || 0 });
+        }
 
         const topRoutesResult = await QuoteTrackingEvent.aggregate([
           { $match: { clientEmail: { $in: clientEmails }, event: 'QUOTE_ROUTE_SELECTED', 'route.origin': { $exists: true } } },
@@ -6610,6 +6723,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
+        // Completion trend — UNIQUE SESSIONS per (date, event).
         const completionTrend = await QuoteTrackingEvent.aggregate([
           {
             $match: {
@@ -6620,9 +6734,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           {
             $group: {
+              _id: { sessionId: '$sessionId', event: '$event' },
+              timestamp: { $min: '$timestamp' },
+            },
+          },
+          {
+            $group: {
               _id: {
                 date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
-                event: '$event',
+                event: '$_id.event',
               },
               count: { $sum: 1 },
             },

@@ -1212,6 +1212,19 @@ export default function HomeEjecutivo() {
               </div>
               <div className="ej-behavior-stat">
                 <span className="ej-behavior-stat__value">
+                  {Math.max(
+                    0,
+                    behaviorStats.totalStarted -
+                      behaviorStats.totalCompleted -
+                      behaviorStats.totalAbandoned,
+                  )}
+                </span>
+                <span className="ej-behavior-stat__label">
+                  Cotizaciones En Progreso
+                </span>
+              </div>
+              <div className="ej-behavior-stat">
+                <span className="ej-behavior-stat__value">
                   {behaviorStats.overallRate}%
                 </span>
                 <span className="ej-behavior-stat__label">

@@ -725,6 +725,10 @@ export default function ComportamientoDeClientes({
     (s, c) => s + (c.stats?.quotesAbandoned || 0),
     0,
   );
+  const totalInProgress = Math.max(
+    0,
+    totalStarted - totalCompleted - totalAbandoned,
+  );
   const overallRate =
     totalStarted > 0 ? Math.round((totalCompleted / totalStarted) * 100) : 0;
 
@@ -1965,6 +1969,7 @@ export default function ComportamientoDeClientes({
           value={totalAbandoned}
           onClick={() => setModalType("abandonadas")}
         />
+        <SummaryCard label="En progreso" value={totalInProgress} />
         <SummaryCard label="Tasa global" value={`${overallRate}%`} />
       </div>
 
