@@ -1345,7 +1345,7 @@ function QuoteLASTMILE({
                     <span className="qa-totals-bar-value">
                       {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
                     </span>
-                    <span className="qa-totals-bar-label">Peso chargeable</span>
+                    <span className="qa-totals-bar-label">Peso cargable</span>
                   </div>
                 </div>
               </div>
@@ -1477,9 +1477,7 @@ function QuoteLASTMILE({
                       <span className="qa-totals-bar-value">
                         {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
                       </span>
-                      <span className="qa-totals-bar-label">
-                        Peso chargeable
-                      </span>
+                      <span className="qa-totals-bar-label">Peso cargable</span>
                     </div>
                   </div>
                 </div>
@@ -1751,7 +1749,7 @@ function QuoteLASTMILE({
                         {fmtWeight(cargoTotals.realWeight)} {weightUnit}
                       </div>
                       <div className="col-6 text-muted">
-                        <strong>Peso chargeable:</strong>
+                        <strong>Peso cargable:</strong>
                       </div>
                       <div className="col-6 text-end fw-bold">
                         {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}

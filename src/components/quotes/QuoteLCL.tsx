@@ -3633,7 +3633,7 @@ function QuoteLCL({
                         {chargeableVolume.toFixed(4)} {lclChargeableUnit}
                       </span>
                       <span className="qa-totals-bar-label">
-                        Chargeable (W/M)
+                        Cargable (W/M)
                       </span>
                     </div>
                     <div className="qa-totals-bar-item">
@@ -3662,7 +3662,7 @@ function QuoteLCL({
                         {chargeableVolume.toFixed(4)} {lclChargeableUnit}
                       </span>
                       <span className="qa-totals-bar-label">
-                        Chargeable (W/M)
+                        Cargable (W/M)
                       </span>
                     </div>
                     <div className="qa-totals-bar-item">
@@ -3955,7 +3955,7 @@ function QuoteLCL({
                             {lclChargeableUnit}
                           </span>
                           <span className="qa-totals-bar-label">
-                            Chargeable (W/M)
+                            Cargable (W/M)
                           </span>
                         </div>
                         <div className="qa-totals-bar-item">
@@ -4086,7 +4086,7 @@ function QuoteLCL({
                             {chargeableVolume.toFixed(4)} {lclChargeableUnit}
                           </span>
                           <span className="qa-totals-bar-label">
-                            Chargeable (W/M)
+                            Cargable (W/M)
                           </span>
                         </div>
                         <div className="qa-totals-bar-item">

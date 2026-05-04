@@ -1171,7 +1171,8 @@ type PortalNotificationType =
   | 'TRACKING_CREATED'
   | 'TRACKING_STATUS_CHANGED'
   | 'TRACKING_DELAYED'
-  | 'CLIENT_ASSIGNED';
+  | 'CLIENT_ASSIGNED'
+  | 'CLIENT_COLD';
 
 interface IPortalNotification {
   audience: PortalNotificationAudience;
@@ -1200,6 +1201,7 @@ interface IPortalNotification {
   payload?: Record<string, unknown>;
   read: boolean;
   readAt?: Date;
+  expiresAt?: Date; // optional per-document TTL (overrides 72h default when set)
 }
 
 interface IPortalNotificationDoc extends IPortalNotification, mongoose.Document {
@@ -1220,7 +1222,7 @@ const PortalNotificationSchema = new mongoose.Schema<IPortalNotificationDoc>(
       enum: [
         'QUOTE_COMPLETED', 'QUOTE_ABANDONED',
         'TRACKING_CREATED', 'TRACKING_STATUS_CHANGED', 'TRACKING_DELAYED',
-        'CLIENT_ASSIGNED',
+        'CLIENT_ASSIGNED', 'CLIENT_COLD',
       ],
     },
     dedupKey: { type: String, required: true },
@@ -1244,6 +1246,7 @@ const PortalNotificationSchema = new mongoose.Schema<IPortalNotificationDoc>(
     payload: { type: mongoose.Schema.Types.Mixed, default: {} },
     read: { type: Boolean, default: false },
     readAt: { type: Date },
+    expiresAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
@@ -1251,8 +1254,10 @@ const PortalNotificationSchema = new mongoose.Schema<IPortalNotificationDoc>(
 // Dedup: one notification per (recipient, dedupKey)
 PortalNotificationSchema.index({ recipientEmail: 1, dedupKey: 1 }, { unique: true });
 PortalNotificationSchema.index({ recipientEmail: 1, createdAt: -1 });
-// TTL: auto-expire after 72h
+// TTL: auto-expire after 72h on createdAt (default for most notifications)
 PortalNotificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 72 });
+// TTL: per-document custom expiry (e.g. cold-client = 12h). Null docs are ignored by Mongo TTL.
+PortalNotificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const PortalNotification = (mongoose.models.PortalNotification ||
   mongoose.model<IPortalNotificationDoc>('PortalNotification', PortalNotificationSchema)) as PortalNotificationModel;
@@ -1452,6 +1457,183 @@ async function emitClientAssignedNotification(opts: {
   } catch (err) {
     console.error('[portal-notification] client-assigned emit failed:', err);
   }
+}
+
+// ============================================================
+// CLIENT TEMPERATURE (frío / tibio / caliente / más abandonos)
+// ============================================================
+type ClientTemperatureBucket = 'frio' | 'tibio' | 'caliente' | 'new';
+
+interface ClientTemperatureRecord {
+  email: string;
+  username: string;
+  usernames: string[];
+  nombreuser: string;
+  ejecutivoEmail: string | null;
+  createdAt: Date;
+  completed30d: number;
+  consecutiveAbandons: number;
+  bucket: ClientTemperatureBucket;
+  isCold: boolean;
+  isHotAbandons: boolean;
+  lastActivity: Date | null;
+  lastCompletedAt: Date | null;
+}
+
+interface TemperatureUserInput {
+  email: string;
+  username: string;
+  usernames?: string[];
+  nombreuser?: string;
+  createdAt?: Date | null;
+  ejecutivoEmail?: string | null;
+}
+
+async function buildClientTemperatureRecords(
+  users: TemperatureUserInput[],
+  now: Date = new Date(),
+): Promise<ClientTemperatureRecord[]> {
+  if (users.length === 0) return [];
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const emails = users.map((u) => String(u.email).toLowerCase().trim()).filter(Boolean);
+  if (emails.length === 0) return [];
+
+  const sessions = await QuoteTrackingEvent.aggregate([
+    { $match: { clientEmail: { $in: emails } } },
+    {
+      $group: {
+        _id: { email: '$clientEmail', sessionId: '$sessionId' },
+        hasCompleted: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] } },
+        hasAbandoned: { $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] } },
+        lastActivity: { $max: '$timestamp' },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        email: '$_id.email',
+        status: {
+          $cond: [
+            { $eq: ['$hasCompleted', 1] }, 'completed',
+            { $cond: [{ $eq: ['$hasAbandoned', 1] }, 'abandoned', 'in_progress'] },
+          ],
+        },
+        lastActivity: 1,
+      },
+    },
+    { $sort: { lastActivity: -1 } },
+  ]);
+
+  const byEmail = new Map<string, Array<{ status: string; lastActivity: Date }>>();
+  for (const s of sessions as any[]) {
+    const arr = byEmail.get(s.email) || [];
+    arr.push({ status: s.status, lastActivity: new Date(s.lastActivity) });
+    byEmail.set(s.email, arr);
+  }
+
+  return users.map((u): ClientTemperatureRecord => {
+    const email = String(u.email).toLowerCase().trim();
+    const userSessions = byEmail.get(email) || []; // sorted desc by lastActivity
+
+    const completed30d = userSessions.filter(
+      (s) => s.status === 'completed' && s.lastActivity >= thirtyDaysAgo,
+    ).length;
+
+    let consecutiveAbandons = 0;
+    for (const s of userSessions) {
+      if (s.status === 'completed') break;
+      if (s.status === 'abandoned') consecutiveAbandons++;
+    }
+
+    const lastCompleted = userSessions.find((s) => s.status === 'completed');
+    const lastAny = userSessions[0];
+    const accountCreatedAt = u.createdAt ? new Date(u.createdAt) : new Date(0);
+    const accountAgeMet = accountCreatedAt.getTime() <= thirtyDaysAgo.getTime();
+
+    let bucket: ClientTemperatureBucket;
+    if (completed30d >= 3) bucket = 'caliente';
+    else if (completed30d >= 1) bucket = 'tibio';
+    else if (accountAgeMet) bucket = 'frio';
+    else bucket = 'new';
+
+    return {
+      email: u.email,
+      username: u.username,
+      usernames: Array.isArray(u.usernames) ? u.usernames : [],
+      nombreuser: u.nombreuser || '',
+      ejecutivoEmail: u.ejecutivoEmail ?? null,
+      createdAt: accountCreatedAt,
+      completed30d,
+      consecutiveAbandons,
+      bucket,
+      isCold: bucket === 'frio',
+      isHotAbandons: consecutiveAbandons > 3,
+      lastActivity: lastAny?.lastActivity ?? null,
+      lastCompletedAt: lastCompleted?.lastActivity ?? null,
+    };
+  });
+}
+
+function summarizeTemperature(records: ClientTemperatureRecord[]) {
+  const frioList = records.filter((r) => r.bucket === 'frio');
+  const tibioList = records.filter((r) => r.bucket === 'tibio');
+  const calienteList = records.filter((r) => r.bucket === 'caliente');
+  const masAbandonosList = records.filter((r) => r.isHotAbandons);
+  return {
+    counts: {
+      frio: frioList.length,
+      tibio: tibioList.length,
+      caliente: calienteList.length,
+      masAbandonos: masAbandonosList.length,
+    },
+    lists: {
+      frio: frioList,
+      tibio: tibioList,
+      caliente: calienteList,
+      masAbandonos: masAbandonosList,
+    },
+  };
+}
+
+async function emitColdClientNotifications(
+  records: ClientTemperatureRecord[],
+  now: Date = new Date(),
+): Promise<{ emitted: number }> {
+  const today = now.toISOString().slice(0, 10);
+  const expiresAt = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+  let emitted = 0;
+  for (const r of records) {
+    if (!r.isCold) continue;
+    const ejecutivoEmail = r.ejecutivoEmail ? String(r.ejecutivoEmail).toLowerCase().trim() : '';
+    if (!ejecutivoEmail) continue;
+    try {
+      const referenceDate = r.lastActivity ?? r.createdAt;
+      const daysSince = referenceDate
+        ? Math.floor((now.getTime() - referenceDate.getTime()) / 86400000)
+        : null;
+      await upsertPortalNotification({
+        audience: 'EJECUTIVO',
+        recipientEmail: ejecutivoEmail,
+        type: 'CLIENT_COLD',
+        dedupKey: `CLIENT_COLD:${r.email.toLowerCase()}:${today}`,
+        clientEmail: r.email,
+        clientUsername: r.username,
+        clientNombre: r.nombreuser,
+        payload: {
+          route: '/admin/comportamiento-clientes',
+          clientUsername: r.username,
+          daysSinceActivity: daysSince,
+          hasEverQuoted: r.lastActivity !== null,
+          accountCreatedAt: r.createdAt.toISOString(),
+        },
+        expiresAt,
+      });
+      emitted++;
+    } catch (err) {
+      console.error('[portal-notification] cold client emit failed:', err);
+    }
+  }
+  return { emitted };
 }
 
 // ============================================================
@@ -6771,6 +6953,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (error: any) {
         console.error('[behavior-tracking] Error GET all-analytics:', error);
         return res.status(500).json({ error: 'Error al obtener analytics' });
+      }
+    }
+
+    // ============================================================
+    // BEHAVIOR TRACKING — GET /api/behavior-tracking/temperature
+    // Frío / tibio / caliente / más abandonos para los clientes del ejecutivo
+    // (?scope=admin para incluir TODOS los clientes del portal)
+    // ============================================================
+    if (path === '/api/behavior-tracking/temperature' && method === 'GET') {
+      try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader?.startsWith('Bearer ')) {
+          return res.status(401).json({ error: 'Token requerido' });
+        }
+        const decoded = verifyToken(authHeader.slice(7));
+        if (decoded.username !== 'Ejecutivo') {
+          return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        const scope = String(req.query?.scope || 'ejecutivo').toLowerCase();
+        const userMatch: Record<string, unknown> = { username: { $ne: 'Ejecutivo' } };
+
+        if (scope !== 'admin') {
+          const ejecutivoUser = await User.findOne({ email: decoded.sub }).populate('ejecutivoId');
+          if (!ejecutivoUser) return res.status(404).json({ error: 'Usuario no encontrado' });
+          let ejecutivoObjectId: any = null;
+          if (ejecutivoUser.ejecutivoId) {
+            ejecutivoObjectId = (ejecutivoUser.ejecutivoId as any)._id ?? ejecutivoUser.ejecutivoId;
+          } else {
+            const ej = await Ejecutivo.findOne({ email: String(ejecutivoUser.email).toLowerCase().trim() });
+            if (ej) ejecutivoObjectId = ej._id;
+          }
+          if (!ejecutivoObjectId) {
+            return res.json({ counts: { frio: 0, tibio: 0, caliente: 0, masAbandonos: 0 }, lists: { frio: [], tibio: [], caliente: [], masAbandonos: [] } });
+          }
+          userMatch.ejecutivoId = ejecutivoObjectId;
+        }
+
+        const dbUsers = await User.find(userMatch, { email: 1, username: 1, usernames: 1, nombreuser: 1, createdAt: 1, ejecutivoId: 1 }).populate('ejecutivoId').lean();
+
+        const inputs: TemperatureUserInput[] = dbUsers.map((u: any) => ({
+          email: u.email,
+          username: u.username,
+          usernames: u.usernames,
+          nombreuser: u.nombreuser,
+          createdAt: u.createdAt,
+          ejecutivoEmail: u.ejecutivoId?.email ? String(u.ejecutivoId.email).toLowerCase().trim() : null,
+        }));
+
+        const records = await buildClientTemperatureRecords(inputs);
+        const summary = summarizeTemperature(records);
+
+        // Lazy-emit cold notifications when an ejecutivo views the dashboard.
+        // Always emit only for clients of this ejecutivo (regardless of scope).
+        const myRecords = records.filter(
+          (r) => r.ejecutivoEmail === String(decoded.sub).toLowerCase().trim(),
+        );
+        void emitColdClientNotifications(myRecords);
+
+        return res.json(summary);
+      } catch (error: any) {
+        console.error('[behavior-tracking] Error GET temperature:', error);
+        return res.status(500).json({ error: 'Error al calcular temperatura de clientes' });
       }
     }
 

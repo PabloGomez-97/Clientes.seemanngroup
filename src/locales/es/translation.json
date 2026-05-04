@@ -151,6 +151,8 @@
         "delayedMsg": "{{client}} · {{ref}} no avanzó en el ETA",
         "clientAssignedTitle": "Nuevo cliente asignado",
         "clientAssignedMsg": "{{client}} fue asignado a tu cartera",
+        "clientColdTitle": "Cliente sin actividad",
+        "clientColdMsg": "{{client}} no ha generado cotizaciones en más de {{days}} días",
         "dismiss": "Descartar",
         "justNow": "ahora",
         "minutesAgo": "hace {{n}}m",

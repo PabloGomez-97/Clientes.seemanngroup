@@ -151,6 +151,8 @@
         "delayedMsg": "{{client}} · {{ref}} did not progress past ETA",
         "clientAssignedTitle": "New client assigned",
         "clientAssignedMsg": "{{client}} was assigned to your portfolio",
+        "clientColdTitle": "Inactive client",
+        "clientColdMsg": "{{client}} hasn't generated quotes in over {{days}} days",
         "dismiss": "Dismiss",
         "justNow": "now",
         "minutesAgo": "{{n}}m ago",

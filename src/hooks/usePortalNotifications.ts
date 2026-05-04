@@ -17,7 +17,8 @@ export type PortalNotificationType =
   | "TRACKING_CREATED"
   | "TRACKING_STATUS_CHANGED"
   | "TRACKING_DELAYED"
-  | "CLIENT_ASSIGNED";
+  | "CLIENT_ASSIGNED"
+  | "CLIENT_COLD";
 
 export interface PortalNotification {
   _id: string;

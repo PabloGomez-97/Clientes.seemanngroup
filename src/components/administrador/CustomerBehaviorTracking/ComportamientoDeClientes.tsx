@@ -76,6 +76,37 @@ interface Analytics {
   completionTrend: { date: string; event: string; count: number }[];
 }
 
+interface TemperatureClient {
+  email: string;
+  username: string;
+  usernames: string[];
+  nombreuser: string;
+  ejecutivoEmail: string | null;
+  createdAt: string;
+  completed30d: number;
+  consecutiveAbandons: number;
+  bucket: "frio" | "tibio" | "caliente" | "new";
+  isCold: boolean;
+  isHotAbandons: boolean;
+  lastActivity: string | null;
+  lastCompletedAt: string | null;
+}
+
+interface TemperatureSummary {
+  counts: {
+    frio: number;
+    tibio: number;
+    caliente: number;
+    masAbandonos: number;
+  };
+  lists: {
+    frio: TemperatureClient[];
+    tibio: TemperatureClient[];
+    caliente: TemperatureClient[];
+    masAbandonos: TemperatureClient[];
+  };
+}
+
 // ── Expand accounts with multiple company names into separate list entries ──
 function expandClients(rawClients: ClientBehavior[]): ClientBehavior[] {
   const expanded: ClientBehavior[] = [];
@@ -539,6 +570,9 @@ export default function ComportamientoDeClientes({
   const ANALYTICS_ENDPOINT = isAdminScope
     ? "/api/behavior-tracking/all-analytics"
     : "/api/behavior-tracking/analytics";
+  const TEMPERATURE_ENDPOINT = isAdminScope
+    ? "/api/behavior-tracking/temperature?scope=admin"
+    : "/api/behavior-tracking/temperature";
   const ROUTE_BASE = isAdminScope
     ? "/admin/op-comportamiento-clientes"
     : "/admin/comportamiento-clientes";
@@ -574,6 +608,16 @@ export default function ComportamientoDeClientes({
     "iniciadas" | "completadas" | "abandonadas" | null
   >(null);
 
+  // Modal for clickable temperature cards (frío/tibio/caliente/abandonos)
+  const [tempModalType, setTempModalType] = useState<
+    "frio" | "tibio" | "caliente" | "masAbandonos" | null
+  >(null);
+
+  // Client temperature data
+  const [temperature, setTemperature] = useState<TemperatureSummary | null>(
+    null,
+  );
+
   // Session history filters (client detail)
   const [sessionTab, setSessionTab] = useState<
     "all" | "completed" | "abandoned"
@@ -604,6 +648,28 @@ export default function ComportamientoDeClientes({
     };
     fetchClients();
   }, [token, CLIENTS_ENDPOINT]);
+
+  // ── Fetch client temperature (frío/tibio/caliente/abandonos) ──
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    const fetchTemperature = async () => {
+      try {
+        const resp = await fetch(`${API_BASE_URL}${TEMPERATURE_ENDPOINT}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) return;
+        const data = (await resp.json()) as TemperatureSummary;
+        if (!cancelled) setTemperature(data);
+      } catch {
+        /* silent */
+      }
+    };
+    fetchTemperature();
+    return () => {
+      cancelled = true;
+    };
+  }, [token, TEMPERATURE_ENDPOINT]);
 
   // ── Fetch analytics ──
   const fetchAnalytics = useCallback(async () => {
@@ -1973,6 +2039,53 @@ export default function ComportamientoDeClientes({
         <SummaryCard label="Tasa global" value={`${overallRate}%`} />
       </div>
 
+      <div>
+        <p style={{ fontSize: 13, color: "#6b7280", margin: "4px 0 0" }}>
+          Clasificación de clientes según actividad de cotizaciones en los
+          últimos 30 días
+        </p>
+      </div>
+
+      {/* Temperature strip (frío/tibio/caliente/más abandonos) */}
+      <div className="cb-metrics-strip cb-metrics-strip--four mt-3">
+        <SummaryCard
+          label="Clientes fríos"
+          value={temperature?.counts.frio ?? "—"}
+          onClick={
+            temperature && temperature.counts.frio > 0
+              ? () => setTempModalType("frio")
+              : undefined
+          }
+        />
+        <SummaryCard
+          label="Clientes tibios"
+          value={temperature?.counts.tibio ?? "—"}
+          onClick={
+            temperature && temperature.counts.tibio > 0
+              ? () => setTempModalType("tibio")
+              : undefined
+          }
+        />
+        <SummaryCard
+          label="Clientes calientes"
+          value={temperature?.counts.caliente ?? "—"}
+          onClick={
+            temperature && temperature.counts.caliente > 0
+              ? () => setTempModalType("caliente")
+              : undefined
+          }
+        />
+        <SummaryCard
+          label="Clientes con más abandonos"
+          value={temperature?.counts.masAbandonos ?? "—"}
+          onClick={
+            temperature && temperature.counts.masAbandonos > 0
+              ? () => setTempModalType("masAbandonos")
+              : undefined
+          }
+        />
+      </div>
+
       {/* Search */}
       <div style={{ marginBottom: 16 }}>
         <input
@@ -2342,6 +2455,195 @@ export default function ComportamientoDeClientes({
                     </div>
                   );
                 })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: temperature buckets (frío/tibio/caliente/más abandonos) ── */}
+      {tempModalType && temperature && (
+        <div
+          onClick={() => setTempModalType(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: 14,
+              padding: "24px 28px",
+              width: "100%",
+              maxWidth: 520,
+              maxHeight: "80vh",
+              overflowY: "auto",
+              fontFamily: FONT,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 20,
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: "#1f2937",
+                  margin: 0,
+                }}
+              >
+                {tempModalType === "frio"
+                  ? "Clientes fríos (0 cot. completas en 30 días)"
+                  : tempModalType === "tibio"
+                    ? "Clientes tibios (1–2 cot. completas en 30 días)"
+                    : tempModalType === "caliente"
+                      ? "Clientes calientes (3+ cot. completas en 30 días)"
+                      : "Clientes con más abandonos (4+ consecutivos)"}
+              </h2>
+              <button
+                onClick={() => setTempModalType(null)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 20,
+                  color: "#6b7280",
+                  lineHeight: 1,
+                  padding: 4,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(temperature.lists[tempModalType] || []).map((tc) => {
+                const matched = clients.find(
+                  (c) => c.email.toLowerCase() === tc.email.toLowerCase(),
+                );
+                const display =
+                  tempModalType === "masAbandonos"
+                    ? `${tc.consecutiveAbandons} abandonos`
+                    : tempModalType === "frio"
+                      ? tc.lastActivity
+                        ? `${Math.floor(
+                            (Date.now() - new Date(tc.lastActivity).getTime()) /
+                              86400000,
+                          )} d sin actividad`
+                        : "Sin cotizaciones"
+                      : `${tc.completed30d} en 30d`;
+                const valColor =
+                  tempModalType === "caliente"
+                    ? "#10b981"
+                    : tempModalType === "tibio"
+                      ? "#f59e0b"
+                      : tempModalType === "frio"
+                        ? "#60a5fa"
+                        : "#ef4444";
+                return (
+                  <div
+                    key={`${tc.email}-${tc.username}`}
+                    onClick={() => {
+                      setTempModalType(null);
+                      if (matched) openClientDetail(matched);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "10px 14px",
+                      borderRadius: 8,
+                      border: "1px solid #e5e7eb",
+                      cursor: matched ? "pointer" : "default",
+                      transition: "background 0.1s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#f9fafb")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: "#232f3e",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#fff",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {tc.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#1f2937",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {tc.username}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#6b7280",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {tc.email}
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: valColor,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {display}
+                    </span>
+                  </div>
+                );
+              })}
+              {temperature.lists[tempModalType].length === 0 && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    color: "#6b7280",
+                    fontSize: 12,
+                    padding: 20,
+                  }}
+                >
+                  Sin clientes en esta categoría
+                </div>
+              )}
             </div>
           </div>
         </div>

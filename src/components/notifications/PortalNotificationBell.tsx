@@ -48,6 +48,8 @@ function dotColorForType(type: PortalNotification["type"]): string {
       return "#f59e0b";
     case "CLIENT_ASSIGNED":
       return "#0ea5e9";
+    case "CLIENT_COLD":
+      return "#60a5fa";
     default:
       return "#6b7280";
   }
@@ -117,6 +119,20 @@ function buildTitleAndMessage(
           client: clientName,
         }),
       };
+    case "CLIENT_COLD": {
+      const days =
+        typeof n.payload?.daysSinceActivity === "number" &&
+        n.payload.daysSinceActivity > 0
+          ? n.payload.daysSinceActivity
+          : 30;
+      return {
+        title: t("home.navbar.notifications.clientColdTitle"),
+        message: t("home.navbar.notifications.clientColdMsg", {
+          client: clientName,
+          days,
+        }),
+      };
+    }
     default:
       return { title: "", message: "" };
   }

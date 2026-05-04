@@ -4860,7 +4860,7 @@ function QuoteAPITester({
                           {pesoChargeable.toFixed(2)} kg
                         </span>
                         <span className="qa-totals-bar-label">
-                          Peso chargeable
+                          Peso cargable
                         </span>
                       </div>
                     </div>
@@ -4895,9 +4895,7 @@ function QuoteAPITester({
                       <span className="qa-totals-bar-value">
                         {chargeableWeight.toFixed(2)} kg
                       </span>
-                      <span className="qa-totals-bar-label">
-                        Peso chargeable
-                      </span>
+                      <span className="qa-totals-bar-label">Peso cargable</span>
                     </div>
                   </div>
                 </div>
@@ -5195,7 +5193,7 @@ function QuoteAPITester({
                             {chargeableWeight.toFixed(2)} kg
                           </span>
                           <span className="qa-totals-bar-label">
-                            Peso chargeable
+                            Peso cargable
                           </span>
                         </div>
                       </div>
@@ -5326,7 +5324,7 @@ function QuoteAPITester({
                           {pesoChargeable.toFixed(2)} kg
                         </span>
                         <span className="qa-totals-bar-label">
-                          Peso chargeable
+                          Peso cargable
                         </span>
                       </div>
                     </div>
