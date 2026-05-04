@@ -189,6 +189,45 @@ interface ClientStats {
   trackingOcean: number;
 }
 
+interface TemperatureRecord {
+  email: string;
+  username: string;
+  nombreuser: string;
+  consecutiveAbandons: number;
+  completed30d: number;
+  lastActivity: string | null;
+  bucket: "frio" | "tibio" | "caliente" | "new";
+  isCold: boolean;
+  isHotAbandons: boolean;
+}
+
+interface TemperatureData {
+  counts: {
+    frio: number;
+    tibio: number;
+    caliente: number;
+    masAbandonos: number;
+  };
+  lists: {
+    frio: TemperatureRecord[];
+    tibio: TemperatureRecord[];
+    caliente: TemperatureRecord[];
+    masAbandonos: TemperatureRecord[];
+  };
+}
+
+interface ActivityFeedItem {
+  sessionId: string;
+  clientEmail: string;
+  clientUsername: string;
+  clientNombre: string;
+  event: "QUOTE_STARTED" | "QUOTE_COMPLETED" | "QUOTE_ABANDONED";
+  quoteType: "AIR" | "FCL" | "LCL" | "LASTMILE";
+  route?: { origin?: string; destination?: string } | null;
+  startedAt: string;
+  timestamp: string;
+}
+
 type ListModalType =
   | null
   | "all-clients"
@@ -209,6 +248,16 @@ type ListModalType =
 // ═══════════════════════════════════════════════════════════════════════════
 // Helpers
 // ═══════════════════════════════════════════════════════════════════════════
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "ahora mismo";
+  if (mins < 60) return `hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs}h`;
+  return `hace ${Math.floor(hrs / 24)}d`;
+}
 
 function isAirDelayed(s: AirShipment): boolean {
   if (!s.route) return false;
@@ -484,6 +533,16 @@ export default function HomeEjecutivo() {
   const [behaviorAnalytics, setBehaviorAnalytics] =
     useState<BehaviorAnalytics | null>(null);
   const [behaviorLoading, setBehaviorLoading] = useState(true);
+
+  // Atención Inmediata (temperature buckets)
+  const [temperatureData, setTemperatureData] =
+    useState<TemperatureData | null>(null);
+  const [temperatureLoading, setTemperatureLoading] = useState(true);
+
+  // Feed de actividad reciente
+  const [activityFeed, setActivityFeed] = useState<ActivityFeedItem[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
 
   // ShipsGo data
   const [trackingAir, setTrackingAir] = useState<AirShipment[]>([]);
@@ -784,6 +843,58 @@ export default function HomeEjecutivo() {
     fetchBehaviorData();
   }, [fetchBehaviorData]);
 
+  // ── Fetch temperature data (Atención Inmediata) ───────────
+  const BEHAVIOR_API =
+    import.meta.env.MODE === "development"
+      ? "http://localhost:4000"
+      : "https://portalclientes.seemanngroup.com";
+
+  const fetchTemperatureData = useCallback(async () => {
+    if (!token) return;
+    setTemperatureLoading(true);
+    try {
+      const res = await fetch(
+        `${BEHAVIOR_API}/api/behavior-tracking/temperature`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setTemperatureData(data);
+      }
+    } catch {
+      /* silent */
+    } finally {
+      setTemperatureLoading(false);
+    }
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    fetchTemperatureData();
+  }, [fetchTemperatureData]);
+
+  // ── Fetch activity feed ────────────────────────────────────
+  const fetchActivityFeed = useCallback(async () => {
+    if (!token) return;
+    setActivityLoading(true);
+    try {
+      const res = await fetch("/api/ejecutivo/activity-feed?hours=6&limit=30", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActivityFeed(Array.isArray(data.feed) ? data.feed : []);
+      }
+    } catch {
+      /* silent */
+    } finally {
+      setActivityLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchActivityFeed();
+  }, [fetchActivityFeed]);
+
   // ═══════════════════════════════════════════════════════════════════════
   // Computed values
   // ═══════════════════════════════════════════════════════════════════════
@@ -1079,6 +1190,143 @@ export default function HomeEjecutivo() {
             TORRE DE CONTROL
           </div>
         </div>
+      </div>
+
+      {/* ── Barra de Actividad Reciente ────────────────────────────────── */}
+      <div className="ej-activity-bar">
+        <div className="ej-activity-bar__label">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          Actividad Reciente
+        </div>
+
+        {activityLoading ? (
+          <div className="ej-activity-bar__loading">Cargando actividad...</div>
+        ) : activityFeed.length === 0 && totalDelayed === 0 ? (
+          <div className="ej-activity-bar__empty">
+            Sin actividad de clientes
+          </div>
+        ) : (
+          <div className="ej-activity-bar__carousel">
+            <div className="ej-activity-bar__track">
+              {(() => {
+                // Build combined items: activity + delays
+                const activityItems = activityFeed
+                  .slice(0, 5)
+                  .map((item, idx) => (
+                    <div
+                      key={`act-${item.sessionId}-${idx}`}
+                      className="ej-activity-bar__chip"
+                      onClick={() =>
+                        navigate(
+                          `/admin/comportamiento-clientes/${encodeURIComponent(item.clientUsername)}`,
+                        )
+                      }
+                    >
+                      <div
+                        className={`ej-activity-item__dot ej-activity-item__dot--${
+                          item.event === "QUOTE_COMPLETED"
+                            ? "success"
+                            : item.event === "QUOTE_ABANDONED"
+                              ? "abandon"
+                              : "info"
+                        }`}
+                      />
+                      <span className="ej-activity-bar__chip-client">
+                        {item.clientUsername}
+                      </span>
+                      <span className="ej-activity-bar__chip-action">
+                        {item.event === "QUOTE_COMPLETED"
+                          ? "completó"
+                          : item.event === "QUOTE_ABANDONED"
+                            ? "abandonó"
+                            : "inició"}
+                      </span>
+                      <span className="ej-activity-bar__chip-type">
+                        {item.quoteType}
+                      </span>
+                      <span className="ej-activity-bar__chip-time">
+                        {timeAgo(item.timestamp)}
+                      </span>
+                    </div>
+                  ));
+
+                const delayItems = [
+                  ...airDelayed.slice(0, 3).map((s, idx) => (
+                    <div
+                      key={`delay-air-${s.id}-${idx}`}
+                      className="ej-activity-bar__chip ej-activity-bar__chip--delay"
+                      onClick={() => setSelectedAir(s)}
+                    >
+                      <div className="ej-activity-item__dot ej-activity-item__dot--abandon" />
+                      <span className="ej-activity-bar__chip-delay-label">
+                        Retraso
+                      </span>
+                      <span className="ej-activity-bar__chip-type ej-activity-bar__chip-type--delay">
+                        AIR
+                      </span>
+                      <span className="ej-activity-bar__chip-client">
+                        {s.awb_number}
+                      </span>
+                      {s.route && (
+                        <span className="ej-activity-bar__chip-action">
+                          {s.route.origin.location.iata}→
+                          {s.route.destination.location.iata}
+                        </span>
+                      )}
+                    </div>
+                  )),
+                  ...oceanDelayed.slice(0, 3).map((s, idx) => (
+                    <div
+                      key={`delay-ocean-${s.id}-${idx}`}
+                      className="ej-activity-bar__chip ej-activity-bar__chip--delay"
+                      onClick={() => setSelectedOcean(s)}
+                    >
+                      <div className="ej-activity-item__dot ej-activity-item__dot--abandon" />
+                      <span className="ej-activity-bar__chip-delay-label">
+                        Retraso
+                      </span>
+                      <span className="ej-activity-bar__chip-type ej-activity-bar__chip-type--delay">
+                        FCL
+                      </span>
+                      <span className="ej-activity-bar__chip-client">
+                        {s.container_number || s.booking_number || `#${s.id}`}
+                      </span>
+                      {s.route && (
+                        <span className="ej-activity-bar__chip-action">
+                          {s.route.port_of_loading.location.code}→
+                          {s.route.port_of_discharge.location.code}
+                        </span>
+                      )}
+                    </div>
+                  )),
+                ];
+
+                const allItems = [...activityItems, ...delayItems];
+                // Duplicate for infinite loop
+                return [...allItems, ...allItems];
+              })()}
+            </div>
+          </div>
+        )}
+
+        <button
+          className="ej-activity-bar__see-all"
+          onClick={() => setActivityModalOpen(true)}
+        >
+          {activityFeed.length > 0 ? "Ver todos →" : ""}
+        </button>
       </div>
 
       {/* ── Acceso Rápido ──────────────────────────────────────────────── */}
@@ -1456,6 +1704,263 @@ export default function HomeEjecutivo() {
           </div>
         </div>
       </div>
+
+      {/* ── Atención Inmediata ─────────────────────────────────────────── */}
+      <div className="ej-section">
+        {temperatureLoading ? (
+          <div
+            className="ej-skeleton"
+            style={{ width: "100%", height: 80, borderRadius: 8 }}
+          />
+        ) : (
+          <div className="ej-attention-panel__cols">
+            {/* ── Clientes Fríos ── */}
+            <div className="ej-attention-col">
+              <div className="ej-attention-col__header">
+                <span>Clientes Fríos</span>
+                {temperatureData && temperatureData.counts.frio > 0 && (
+                  <span className="ej-attention-col__count">
+                    {temperatureData.counts.frio}
+                  </span>
+                )}
+              </div>
+              <div className="ej-attention-col__list">
+                {!temperatureData || temperatureData.lists.frio.length === 0 ? (
+                  <div className="ej-attention-col__empty">
+                    Sin clientes fríos
+                  </div>
+                ) : (
+                  temperatureData.lists.frio.slice(0, 5).map((r) => (
+                    <div key={r.email} className="ej-attention-item">
+                      <div className="ej-attention-item__avatar">
+                        {(r.username || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="ej-attention-item__body">
+                        <div className="ej-attention-item__name">
+                          {r.username}
+                        </div>
+                        <div className="ej-attention-item__sub">
+                          {r.lastActivity
+                            ? `Últ. actividad ${timeAgo(r.lastActivity)}`
+                            : "Nunca cotizó"}
+                        </div>
+                      </div>
+                      <button
+                        className="ej-attention-item__btn"
+                        onClick={() =>
+                          navigate(
+                            `/admin/comportamiento-clientes/${encodeURIComponent(r.username)}`,
+                          )
+                        }
+                      >
+                        Ver →
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              {temperatureData && temperatureData.counts.frio > 0 && (
+                <button
+                  className="ej-attention-col__view-all"
+                  onClick={() => navigate("/admin/comportamiento-clientes")}
+                >
+                  Ver todos →
+                </button>
+              )}
+            </div>
+
+            {/* ── Clientes Tibios ── */}
+            <div className="ej-attention-col">
+              <div className="ej-attention-col__header">
+                <span>Clientes Tibios</span>
+                {temperatureData && temperatureData.counts.tibio > 0 && (
+                  <span className="ej-attention-col__count">
+                    {temperatureData.counts.tibio}
+                  </span>
+                )}
+              </div>
+              <div className="ej-attention-col__list">
+                {!temperatureData ||
+                temperatureData.lists.tibio.length === 0 ? (
+                  <div className="ej-attention-col__empty">
+                    Sin clientes tibios
+                  </div>
+                ) : (
+                  temperatureData.lists.tibio.slice(0, 5).map((r) => (
+                    <div key={r.email} className="ej-attention-item">
+                      <div className="ej-attention-item__avatar">
+                        {(r.username || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="ej-attention-item__body">
+                        <div className="ej-attention-item__name">
+                          {r.username}
+                        </div>
+                        <div className="ej-attention-item__sub">
+                          {r.completed30d} cotizaci
+                          {r.completed30d === 1 ? "ón" : "ones"} en 30d
+                        </div>
+                      </div>
+                      <button
+                        className="ej-attention-item__btn"
+                        onClick={() =>
+                          navigate(
+                            `/admin/comportamiento-clientes/${encodeURIComponent(r.username)}`,
+                          )
+                        }
+                      >
+                        Ver →
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              {temperatureData && temperatureData.counts.tibio > 0 && (
+                <button
+                  className="ej-attention-col__view-all"
+                  onClick={() => navigate("/admin/comportamiento-clientes")}
+                >
+                  Ver todos →
+                </button>
+              )}
+            </div>
+
+            {/* ── Múltiples Abandonos ── */}
+            <div className="ej-attention-col">
+              <div className="ej-attention-col__header">
+                <span>Múltiples Abandonos</span>
+                {temperatureData && temperatureData.counts.masAbandonos > 0 && (
+                  <span className="ej-attention-col__count">
+                    {temperatureData.counts.masAbandonos}
+                  </span>
+                )}
+              </div>
+              <div className="ej-attention-col__list">
+                {!temperatureData ||
+                temperatureData.lists.masAbandonos.length === 0 ? (
+                  <div className="ej-attention-col__empty">
+                    Sin abandonos múltiples
+                  </div>
+                ) : (
+                  temperatureData.lists.masAbandonos.slice(0, 5).map((r) => (
+                    <div key={r.email} className="ej-attention-item">
+                      <div className="ej-attention-item__avatar">
+                        {(r.username || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="ej-attention-item__body">
+                        <div className="ej-attention-item__name">
+                          {r.username}
+                        </div>
+                        <div className="ej-attention-item__sub">
+                          {r.consecutiveAbandons} abandono
+                          {r.consecutiveAbandons !== 1 ? "s" : ""} consecutivos
+                        </div>
+                      </div>
+                      <button
+                        className="ej-attention-item__btn"
+                        onClick={() =>
+                          navigate(
+                            `/admin/comportamiento-clientes/${encodeURIComponent(r.username)}`,
+                          )
+                        }
+                      >
+                        Ver →
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              {temperatureData && temperatureData.counts.masAbandonos > 0 && (
+                <button
+                  className="ej-attention-col__view-all"
+                  onClick={() => navigate("/admin/comportamiento-clientes")}
+                >
+                  Ver todos →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Modal de Actividad Reciente (completa) ────────────────────── */}
+      {activityModalOpen && (
+        <div
+          className="ej-list-overlay"
+          onClick={() => setActivityModalOpen(false)}
+        >
+          <div className="ej-list-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ej-list-modal__header">
+              <h2 className="ej-list-modal__title">
+                Actividad Reciente de Clientes
+              </h2>
+              <button
+                className="ej-list-modal__close"
+                onClick={() => setActivityModalOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="ej-list-modal__body">
+              {activityFeed.length === 0 ? (
+                <div className="ej-empty">Sin actividad de clientes</div>
+              ) : (
+                <div className="ej-activity-feed">
+                  {activityFeed.map((item) => (
+                    <div
+                      key={item.sessionId}
+                      className="ej-activity-item"
+                      onClick={() => {
+                        setActivityModalOpen(false);
+                        navigate(
+                          `/admin/comportamiento-clientes/${encodeURIComponent(item.clientUsername)}`,
+                        );
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div
+                        className={`ej-activity-item__dot ej-activity-item__dot--${
+                          item.event === "QUOTE_COMPLETED"
+                            ? "success"
+                            : item.event === "QUOTE_ABANDONED"
+                              ? "warn"
+                              : "info"
+                        }`}
+                      />
+                      <div className="ej-activity-item__body">
+                        <span className="ej-activity-item__client">
+                          {item.clientUsername}
+                        </span>{" "}
+                        <span className="ej-activity-item__action">
+                          {item.event === "QUOTE_COMPLETED"
+                            ? "completó"
+                            : item.event === "QUOTE_ABANDONED"
+                              ? "abandonó"
+                              : "inició"}
+                        </span>{" "}
+                        cotización{" "}
+                        <span
+                          className={`ej-activity-item__type ej-activity-item__type--${item.quoteType.toLowerCase()}`}
+                        >
+                          {item.quoteType}
+                        </span>
+                        {item.route?.origin && item.route?.destination && (
+                          <span className="ej-activity-item__route">
+                            {" "}
+                            {item.route.origin}→{item.route.destination}
+                          </span>
+                        )}
+                      </div>
+                      <span className="ej-activity-item__time">
+                        {timeAgo(item.timestamp)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Distribución de Seguimientos ──────────────────────────────── */}
       {/* ShipsGo Tracking Distribution */}

@@ -2148,6 +2148,131 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // GET /api/ejecutivo/activity-feed — Feed de actividad reciente de clientes
+    if (path === '/api/ejecutivo/activity-feed' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        if (currentUser.username !== 'Ejecutivo') {
+          return res.status(403).json({ error: 'No autorizado' });
+        }
+
+        const query = req.query as Record<string, string | string[]>;
+        const hoursRaw = parseInt(String(typeof query.hours === 'string' ? query.hours : '48'));
+        const hours = isNaN(hoursRaw) ? 48 : Math.min(168, Math.max(1, hoursRaw));
+        const limitRaw = parseInt(String(typeof query.limit === 'string' ? query.limit : '30'));
+        const limit = isNaN(limitRaw) ? 30 : Math.min(100, Math.max(1, limitRaw));
+
+        // Resolve ejecutivo object id
+        const me = await User.findOne({ email: currentUser.sub }).populate('ejecutivoId');
+        if (!me) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        let ejecutivoObjectId: any = null;
+        if (me.ejecutivoId) {
+          ejecutivoObjectId = (me.ejecutivoId as any)._id ?? me.ejecutivoId;
+        } else {
+          const ej = await Ejecutivo.findOne({ email: String(me.email).toLowerCase().trim() });
+          if (ej) ejecutivoObjectId = ej._id;
+        }
+
+        if (!ejecutivoObjectId) return res.json({ feed: [] });
+
+        const clients = await User.find(
+          { ejecutivoId: ejecutivoObjectId, username: { $ne: 'Ejecutivo' } },
+          { email: 1, username: 1, nombreuser: 1 }
+        ).lean();
+
+        if (clients.length === 0) return res.json({ feed: [] });
+
+        const clientEmails = clients.map((c: any) => String(c.email).toLowerCase());
+        const clientByEmail = new Map(
+          clients.map((c: any) => [String(c.email).toLowerCase(), c])
+        );
+
+        const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+        const sessionAgg: Array<{
+          clientEmail: string;
+          sessionId: string;
+          quoteType: string;
+          hasCompleted: number;
+          hasAbandoned: number;
+          firstTimestamp: Date;
+          lastTimestamp: Date;
+          allRoutes: Array<{ origin?: string; destination?: string } | null>;
+        }> = await QuoteTrackingEvent.aggregate([
+          {
+            $match: {
+              clientEmail: { $in: clientEmails },
+              timestamp: { $gte: since },
+            },
+          },
+          {
+            $group: {
+              _id: { email: '$clientEmail', sessionId: '$sessionId' },
+              quoteType: { $first: '$quoteType' },
+              hasCompleted: {
+                $max: { $cond: [{ $eq: ['$event', 'QUOTE_COMPLETED'] }, 1, 0] },
+              },
+              hasAbandoned: {
+                $max: { $cond: [{ $eq: ['$event', 'QUOTE_ABANDONED'] }, 1, 0] },
+              },
+              firstTimestamp: { $min: '$timestamp' },
+              lastTimestamp: { $max: '$timestamp' },
+              allRoutes: { $push: '$route' },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              clientEmail: '$_id.email',
+              sessionId: '$_id.sessionId',
+              quoteType: 1,
+              hasCompleted: 1,
+              hasAbandoned: 1,
+              firstTimestamp: 1,
+              lastTimestamp: 1,
+              allRoutes: 1,
+            },
+          },
+          { $sort: { lastTimestamp: -1 } },
+          { $limit: limit },
+        ]);
+
+        const feed = sessionAgg.map((s) => {
+          const client = clientByEmail.get(s.clientEmail) as any;
+          const event =
+            s.hasCompleted === 1
+              ? 'QUOTE_COMPLETED'
+              : s.hasAbandoned === 1
+                ? 'QUOTE_ABANDONED'
+                : 'QUOTE_STARTED';
+          const route =
+            (s.allRoutes || []).find(
+              (r: any) => r && (r.origin || r.destination)
+            ) || null;
+          return {
+            sessionId: s.sessionId,
+            clientEmail: s.clientEmail,
+            clientUsername: client?.username || s.clientEmail,
+            clientNombre: client?.nombreuser || client?.username || s.clientEmail,
+            event,
+            quoteType: s.quoteType,
+            route,
+            startedAt: s.firstTimestamp,
+            timestamp: s.lastTimestamp,
+          };
+        });
+
+        return res.json({ feed });
+      } catch (e: any) {
+        if (e?.message === 'No auth token' || e?.message === 'Invalid token') {
+          return res.status(401).json({ error: e.message });
+        }
+        console.error('[ejecutivo/activity-feed] error:', e);
+        return res.status(500).json({ error: 'Error interno' });
+      }
+    }
+
     // ============================================================
     // RUTAS DE EJECUTIVOS
     // ============================================================
