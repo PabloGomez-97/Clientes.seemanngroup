@@ -4,7 +4,7 @@
 .hal-page-container {
   width: 100%;
   margin: 0;
-  padding: 0;
+  padding: 2px;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #333;
   background-color: #f0f0f0;
@@ -1033,4 +1033,208 @@ svg {
 .hal-counter {
   transition: color 0.3s;
   font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Client status bar (activity carousel)
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.hm-activity-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% + 48px);
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  padding: 0 32px;
+  height: 40px;
+  box-sizing: border-box;
+  overflow: hidden;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  /* Sticky — sits right below the navbar (scroll container starts after navbar) */
+  position: sticky;
+  top: -24px;
+  z-index: 99;
+  /* Escape the user-layout-main 24px padding so the bar spans full width */
+  margin: -24px -24px 0 -24px;
+}
+
+@media (max-width: 768px) {
+  .hm-activity-bar {
+    /* Mobile: user-layout-main has padding: 12px 0, so no lateral escape needed */
+    margin: -12px 0 0 0;
+    width: 100%;
+    padding: 0 16px;
+  }
+}
+
+.hm-activity-bar__label {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.hm-activity-bar__carousel {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 3%,
+    #000 97%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    #000 3%,
+    #000 97%,
+    transparent 100%
+  );
+}
+
+.ej-activity-bar__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ej-text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.hm-activity-bar__track {
+  display: flex;
+  gap: 6px;
+  width: max-content;
+  animation: hm-marquee 90s linear infinite;
+}
+
+.hm-activity-bar__track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes hm-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.hm-activity-bar__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid #e5e7eb;
+  background: #fafafa;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #374151;
+  transition: background 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+
+.hm-activity-bar__chip:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.hm-activity-bar__badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+}
+
+.hm-activity-bar__badge--air {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.hm-activity-bar__badge--ocean {
+  background: #f0fdfa;
+  color: #0d9488;
+}
+
+/* Delivered states — muted, visually distinct from active */
+.hm-activity-bar__badge--landed {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.hm-activity-bar__badge--discharged {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.hm-activity-bar__chip--delivered {
+  opacity: 0.7;
+  border-style: dashed;
+}
+
+/* Empty state — no activity */
+.hm-activity-bar__chip--empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+  gap: 8px;
+}
+
+.hm-activity-bar__chip--empty:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.hm-activity-bar__empty-icon {
+  font-size: 10px;
+  color: #d1d5db;
+}
+
+.hm-activity-bar__empty-text {
+  font-size: 12px;
+  color: #9ca3af;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.hm-activity-bar__chip-number {
+  font-weight: 600;
+  color: #111827;
+}
+
+.hm-activity-bar__chip-route {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.hm-activity-bar__see-all {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ff6200;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: inherit;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+
+.hm-activity-bar__see-all:hover {
+  background: #fff0e6;
 }
