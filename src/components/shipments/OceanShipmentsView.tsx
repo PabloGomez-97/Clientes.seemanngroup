@@ -58,6 +58,7 @@ interface OceanShippingOrder {
   notifyParty?: { name?: string } | null;
   notifyPartyAddress?: string | null;
   executedAt?: { code?: string; name?: string } | null;
+  destination?: { code?: string; name?: string } | null;
   salesRep?: string | null;
   trackingNumber?: string | null;
   totalCargo?: {
@@ -608,6 +609,7 @@ function OceanShipmentsView({
               notifyParty: detail.notifyParty ?? null,
               notifyPartyAddress: detail.notifyPartyAddress ?? null,
               executedAt: detail.executedAt ?? null,
+              destination: detail.destination ?? null,
               salesRep: detail.salesRep?.name ?? null,
               trackingNumber:
                 detail.trackingNumber ||
@@ -1675,7 +1677,7 @@ function OceanShipmentsView({
                                     Destino
                                   </span>
                                   <span className="osv-route-card__value">
-                                    SCL
+                                    {shipment.destination?.name?.trim() || "-"}
                                   </span>
                                   {shipment.arrivalDate && (
                                     <span className="osv-route-card__date">

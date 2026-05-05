@@ -36,13 +36,6 @@ interface TabDef {
   hidden?: boolean;
 }
 
-interface AirShipmentDetailsResponse {
-  airportOfArrival?: {
-    code?: string;
-    name?: string;
-  };
-}
-
 interface CargoDetailCacheEntry {
   loading: boolean;
   fetched: boolean;
@@ -246,12 +239,6 @@ function AirShipmentsView({
   const [trackEmails, setTrackEmails] = useState<string[]>([""]);
   const [trackLoading, setTrackLoading] = useState(false);
   const [trackError, setTrackError] = useState<string | null>(null);
-
-  // Arrival airport name by shipment id (lazy, fetched on accordion open)
-  const [airportNames, setAirportNames] = useState<
-    Record<string | number, string>
-  >({});
-  const arrivalAirportLoadingIds = useRef<Set<string | number>>(new Set());
 
   // Cargo details (cargoDescription, hazardous) — lazy, fetched on Cargo tab open
   const [cargoDetailsCache, setCargoDetailsCache] = useState<
@@ -482,6 +469,8 @@ function AirShipmentsView({
               trackingNumber:
                 detail.trackingNumber ?? order.trackingNumber ?? null,
               executedAt: detail.executedAt ?? order.executedAt ?? null,
+              origin: detail.origin ?? null,
+              destination: detail.destination ?? null,
               commodities: detail.commodities ?? [],
               departure,
               arrival,
@@ -525,47 +514,6 @@ function AirShipmentsView({
     }
   };
 
-  // Fetches only the arrival airport name — triggered lazily when accordion opens
-  const fetchArrivalAirport = async (
-    shipmentId: string | number | undefined,
-  ) => {
-    if (shipmentId === undefined || shipmentId === null || !accessToken) return;
-    if (airportNames[shipmentId] !== undefined) return;
-    if (arrivalAirportLoadingIds.current.has(shipmentId)) return;
-
-    arrivalAirportLoadingIds.current.add(shipmentId);
-
-    try {
-      const response = await linbisFetch(
-        `https://api.linbis.com/air-shipments/details/${shipmentId}?commoditiesPage=1&commoditiesPageSize=10&barcodingTool=false`,
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        },
-        accessToken,
-        refreshAccessToken,
-      );
-
-      if (!response.ok) throw new Error(`Status ${response.status}`);
-
-      const details: AirShipmentDetailsResponse = await response.json();
-      const arrName = details.airportOfArrival?.name || "";
-      const arrCode = details.airportOfArrival?.code || "";
-
-      setAirportNames((prev) => ({
-        ...prev,
-        [shipmentId]: arrName ? `${arrName} (${arrCode})` : "-",
-      }));
-    } catch {
-      setAirportNames((prev) => ({ ...prev, [shipmentId]: "-" }));
-    } finally {
-      arrivalAirportLoadingIds.current.delete(shipmentId);
-    }
-  };
-
   // Fetches quote number — triggered lazily when accordion opens
   const fetchQuoteNumber = async (
     shipmentId: string | number | undefined,
@@ -602,7 +550,6 @@ function AirShipmentsView({
       const data: any = await resp.json();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const items: any[] = data.items ?? data ?? [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const match = items.find(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (q: any) =>
@@ -692,17 +639,14 @@ function AirShipmentsView({
       setExpandedShipmentId(null);
     } else {
       setExpandedShipmentId(shipmentId);
-      fetchArrivalAirport(shipmentId);
       const s = shipments.find((sh) => (sh.id || sh.number) === shipmentId);
       if (s) fetchQuoteNumber(shipmentId, s.customerReference);
     }
   };
 
   useEffect(() => {
-    setAirportNames({});
     setCargoDetailsCache({});
     setQuoteNumberCache({});
-    arrivalAirportLoadingIds.current.clear();
     setTrackedAwbs(new Set());
   }, [activeUsername]);
 
@@ -1629,9 +1573,8 @@ function AirShipmentsView({
                                     Aeropuerto de Descarga
                                   </span>
                                   <span className="asv-route-card__value">
-                                    {shipment.id != null
-                                      ? (airportNames[shipment.id] ??
-                                        "Cargando...")
+                                    {shipment.destination?.name
+                                      ? `${shipment.destination.name}${shipment.destination.code ? ` (${shipment.destination.code})` : ""}`
                                       : "-"}
                                   </span>
                                   {shipment.arrival?.displayDate && (
