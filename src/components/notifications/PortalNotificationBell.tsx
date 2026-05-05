@@ -59,12 +59,15 @@ function buildTitleAndMessage(
   n: PortalNotification,
   t: (k: string, o?: any) => string,
 ): { title: string; message: string } {
-  const clientName = n.clientNombre || n.clientUsername || "";
+  const clientName = n.clientUsername || n.clientNombre || "";
   const ref =
     n.shipmentMode === "AIR"
       ? n.awbNumber || n.reference || ""
       : n.containerNumber || n.reference || "";
-  const mode = n.shipmentMode === "AIR" ? "Air" : "Ocean";
+  const mode =
+    n.shipmentMode === "AIR"
+      ? t("home.navbar.notifications.modeAir")
+      : t("home.navbar.notifications.modeOcean");
 
   switch (n.type) {
     case "QUOTE_COMPLETED":
@@ -85,7 +88,7 @@ function buildTitleAndMessage(
       };
     case "TRACKING_CREATED":
       return {
-        title: t("home.navbar.notifications.trackingCreatedTitle"),
+        title: t("home.navbar.notifications.trackingCreatedTitle", { mode }),
         message: t("home.navbar.notifications.trackingCreatedMsg", {
           mode,
           client: clientName,
@@ -94,7 +97,7 @@ function buildTitleAndMessage(
       };
     case "TRACKING_STATUS_CHANGED":
       return {
-        title: t("home.navbar.notifications.statusChangedTitle"),
+        title: t("home.navbar.notifications.statusChangedTitle", { mode }),
         message: t("home.navbar.notifications.statusChangedMsg", {
           mode,
           client: clientName,
@@ -105,7 +108,7 @@ function buildTitleAndMessage(
       };
     case "TRACKING_DELAYED":
       return {
-        title: t("home.navbar.notifications.delayedTitle"),
+        title: t("home.navbar.notifications.delayedTitle", { mode }),
         message: t("home.navbar.notifications.delayedMsg", {
           mode,
           client: clientName,
@@ -205,7 +208,10 @@ export default function PortalNotificationBell({
 
   if (!enabled) return null;
 
-  const visibleCount = Math.min(notifications.length, 5);
+  const filteredNotifications = notifications.filter(
+    (n) => n.type !== "CLIENT_COLD",
+  );
+  const visibleCount = Math.min(filteredNotifications.length, 5);
   const dropdownListMaxHeight =
     visibleCount > 0 ? visibleCount * NOTIFICATION_HEIGHT : 120;
 
@@ -321,11 +327,11 @@ export default function PortalNotificationBell({
               {t("home.navbar.notifications.title")}
             </span>
             <span style={{ fontSize: "11px", color: "#6b7280" }}>
-              {notifications.length}
+              {filteredNotifications.length}
             </span>
           </div>
 
-          {notifications.length === 0 ? (
+          {filteredNotifications.length === 0 ? (
             <div
               style={{
                 padding: "24px 16px",
@@ -340,10 +346,10 @@ export default function PortalNotificationBell({
             <div
               style={{
                 maxHeight: `${dropdownListMaxHeight}px`,
-                overflowY: notifications.length > 5 ? "auto" : "hidden",
+                overflowY: filteredNotifications.length > 5 ? "auto" : "hidden",
               }}
             >
-              {notifications.map((n) => {
+              {filteredNotifications.map((n) => {
                 const dotColor = dotColorForType(n.type);
                 const { title, message } = buildTitleAndMessage(n, t);
 

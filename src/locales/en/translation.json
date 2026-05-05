@@ -157,7 +157,9 @@
         "justNow": "now",
         "minutesAgo": "{{n}}m ago",
         "hoursAgo": "{{n}}h ago",
-        "daysAgo": "{{n}}d ago"
+        "daysAgo": "{{n}}d ago",
+        "modeAir": "Air",
+        "modeOcean": "Ocean"
       },
       "profile": {
         "assignedExecutive": "Your Assigned Executive",

@@ -877,9 +877,12 @@ export default function HomeEjecutivo() {
     if (!token) return;
     setActivityLoading(true);
     try {
-      const res = await fetch("/api/ejecutivo/activity-feed?hours=6&limit=30", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        "/api/ejecutivo/activity-feed?hours=12&limit=30",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
       if (res.ok) {
         const data = await res.json();
         setActivityFeed(Array.isArray(data.feed) ? data.feed : []);
