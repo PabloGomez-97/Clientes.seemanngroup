@@ -41,6 +41,101 @@ interface OutletContext {
 const MAX_PIECES_LM = 10;
 const VALIDITY_DAYS = 5;
 
+// =============================================================================
+// TARIFAS LCL + DAP (Última Milla)
+// =============================================================================
+
+/**
+ * Brackets para el cobro DELIVERY - TRUCKING (id 134724, code DELV).
+ * Se aplica el bracket cuyo índice es el MAYOR entre el que cubre el
+ * peso volumétrico (kg) y el que cubre el volumen total (m³).
+ * El amount listado corresponde al INCOME en USD; el EXPENSE se calcula
+ * como income / 1.10 (10% markup).
+ */
+const LCL_DAP_DELIVERY_BRACKETS: Array<{
+  maxKg: number;
+  maxM3: number;
+  amount: number;
+}> = [
+  { maxKg: 500, maxM3: 2.5, amount: 183.26 },
+  { maxKg: 1000, maxM3: 5, amount: 202.9 },
+  { maxKg: 2000, maxM3: 8, amount: 248.71 },
+  { maxKg: 3000, maxM3: 11, amount: 274.89 },
+  { maxKg: 4000, maxM3: 15, amount: 294.53 },
+  { maxKg: 5000, maxM3: 20, amount: 314.16 },
+  { maxKg: 6000, maxM3: 25, amount: 353.43 },
+  { maxKg: 7000, maxM3: 30, amount: 392.7 },
+];
+
+const LCL_DAP_DELIVERY_MAX_KG = 7000;
+const LCL_DAP_DELIVERY_MAX_M3 = 30;
+
+interface DeliveryBracketResult {
+  amount: number;
+  unit: "kg" | "m3";
+  quantity: number;
+  bracketIndex: number;
+}
+
+/**
+ * Determina el bracket DELIVERY a cobrar dado el peso real (kg)
+ * y el volumen total (m³). Se elige el bracket más alto entre ambas
+ * dimensiones (mayor índice = mayor costo). Retorna `null` si la
+ * carga excede el máximo de la tabla.
+ */
+const findDeliveryBracket = (
+  realWeightKg: number,
+  totalVolumeM3: number,
+): DeliveryBracketResult | null => {
+  if (
+    realWeightKg > LCL_DAP_DELIVERY_MAX_KG ||
+    totalVolumeM3 > LCL_DAP_DELIVERY_MAX_M3
+  ) {
+    return null;
+  }
+  // Índice del primer bracket que cubre el peso real
+  const kgIdx = LCL_DAP_DELIVERY_BRACKETS.findIndex(
+    (b) => realWeightKg <= b.maxKg,
+  );
+  // Índice del primer bracket que cubre el volumen
+  const m3Idx = LCL_DAP_DELIVERY_BRACKETS.findIndex(
+    (b) => totalVolumeM3 <= b.maxM3,
+  );
+  if (kgIdx < 0 && m3Idx < 0) return null;
+
+  // El bracket con índice más alto es el más caro y tiene prioridad.
+  // Si ambos son válidos, gana el mayor índice.
+  // Si uno de ellos es -1 (sin límite superior encontrado), usa el otro.
+  let chosenIdx: number;
+  let unit: "kg" | "m3";
+  let quantity: number;
+
+  const effectiveKgIdx = kgIdx >= 0 ? kgIdx : -1;
+  const effectiveM3Idx = m3Idx >= 0 ? m3Idx : -1;
+
+  if (effectiveKgIdx > effectiveM3Idx) {
+    chosenIdx = effectiveKgIdx;
+    unit = "kg";
+    quantity = realWeightKg;
+  } else if (effectiveM3Idx > effectiveKgIdx) {
+    chosenIdx = effectiveM3Idx;
+    unit = "m3";
+    quantity = totalVolumeM3;
+  } else {
+    // Empate de índice: prevalece el volumen (LCL es volumétrico)
+    chosenIdx = effectiveM3Idx;
+    unit = "m3";
+    quantity = totalVolumeM3;
+  }
+
+  return {
+    amount: LCL_DAP_DELIVERY_BRACKETS[chosenIdx].amount,
+    unit,
+    quantity,
+    bracketIndex: chosenIdx,
+  };
+};
+
 const createEmptyPieceLM = (id: string): PieceDataLM => ({
   id,
   packageType: "",
@@ -182,15 +277,22 @@ function QuoteLASTMILE({
   // Servicios adicionales
   const [seguroActivo, setSeguroActivo] = useState(false);
 
+  // Paso 1: Selección de Servicio e Incoterm
+  const [servicioSel, setServicioSel] = useState<
+    "FCL" | "AÉREO" | "LCL" | null
+  >(null);
+  const [incotermSel, setIncotermSel] = useState<"DDP" | "DAP" | null>(null);
+
   // Acordeón
   const [openSection, setOpenSection] = useState<number>(1);
-  const [step2Completed, setStep2Completed] = useState<boolean>(false);
   const [step3Completed, setStep3Completed] = useState<boolean>(false);
+  const [step4Completed, setStep4Completed] = useState<boolean>(false);
   const [tipoAccion] = useState<"cotizacion" | "operacion">("cotizacion");
 
   const section2Ref = useRef<HTMLDivElement>(null);
   const section3Ref = useRef<HTMLDivElement>(null);
   const section4Ref = useRef<HTMLDivElement>(null);
+  const section5Ref = useRef<HTMLDivElement>(null);
 
   // Permisos
   const isPricingRole = user?.roles?.pricing === true;
@@ -307,19 +409,19 @@ function QuoteLASTMILE({
   // Track ruta seleccionada
   useEffect(() => {
     if (origenSel && destinoSel) {
-      trackStep({ step: "route_selection", stepNumber: 1, totalSteps: 4 });
+      trackStep({ step: "route_selection", stepNumber: 2, totalSteps: 5 });
       trackRouteSelected(origenSel.label, destinoSel.label, {
         servicio: "LASTMILE",
       });
     }
   }, [origenSel, destinoSel, trackRouteSelected, trackStep]);
 
-  // Auto avanzar al paso 2 cuando ambos están seleccionados
+  // Auto avanzar al paso 3 cuando ambos están seleccionados
   useEffect(() => {
-    if (origenSel && destinoSel && openSection === 1) {
+    if (origenSel && destinoSel && openSection === 2) {
       const t = setTimeout(() => {
-        setOpenSection(2);
-        trackStep({ step: "datos_cargamento", stepNumber: 2, totalSteps: 4 });
+        setOpenSection(3);
+        trackStep({ step: "datos_cargamento", stepNumber: 3, totalSteps: 5 });
       }, 250);
       return () => clearTimeout(t);
     }
@@ -343,12 +445,18 @@ function QuoteLASTMILE({
           behavior: "smooth",
           block: "start",
         });
+      else if (openSection === 5)
+        section5Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
     }, 150);
     return () => clearTimeout(t);
   }, [openSection]);
 
-  const canProceedFromStep1 = !!(origenSel && destinoSel);
-  const canProceedFromStep2 = useMemo(() => {
+  const step1Completed = !!(servicioSel && incotermSel);
+  const canProceedFromStep2 = !!(origenSel && destinoSel);
+  const canProceedFromStep3 = useMemo(() => {
     return (
       pickupAddress.trim().length > 0 &&
       deliveryAddress.trim().length > 0 &&
@@ -361,25 +469,25 @@ function QuoteLASTMILE({
     () => [
       {
         number: 1,
-        label: "Ruta",
+        label: "Servicio",
         active: openSection === 1,
-        complete: canProceedFromStep1,
+        complete: step1Completed,
       },
-      ...(canProceedFromStep1
+      ...(step1Completed
         ? [
             {
               number: 2,
-              label: "Cargamento",
+              label: "Ruta",
               active: openSection === 2,
-              complete: step2Completed,
+              complete: canProceedFromStep2,
             },
           ]
         : []),
-      ...(step2Completed
+      ...(canProceedFromStep2
         ? [
             {
               number: 3,
-              label: "Servicios",
+              label: "Cargamento",
               active: openSection === 3,
               complete: step3Completed,
             },
@@ -389,14 +497,30 @@ function QuoteLASTMILE({
         ? [
             {
               number: 4,
-              label: "Revisión",
+              label: "Servicios",
               active: openSection === 4,
+              complete: step4Completed,
+            },
+          ]
+        : []),
+      ...(step4Completed
+        ? [
+            {
+              number: 5,
+              label: "Revisión",
+              active: openSection === 5,
               complete: false,
             },
           ]
         : []),
     ],
-    [canProceedFromStep1, openSection, step2Completed, step3Completed],
+    [
+      step1Completed,
+      canProceedFromStep2,
+      openSection,
+      step3Completed,
+      step4Completed,
+    ],
   );
 
   const dimensionsSummary = useMemo(() => {
@@ -551,44 +675,71 @@ function QuoteLASTMILE({
   };
 
   useEffect(() => {
-    if (!canProceedFromStep1) {
-      if (step2Completed) {
-        setStep2Completed(false);
+    if (!step1Completed) {
+      if (canProceedFromStep2) {
+        setOrigenSel(null);
+        setDestinoSel(null);
       }
       if (step3Completed) {
         setStep3Completed(false);
+      }
+      if (step4Completed) {
+        setStep4Completed(false);
       }
       if (openSection !== 1) {
         setOpenSection(1);
       }
     }
-  }, [canProceedFromStep1, openSection, step2Completed, step3Completed]);
+  }, [
+    step1Completed,
+    openSection,
+    canProceedFromStep2,
+    step3Completed,
+    step4Completed,
+  ]);
 
   useEffect(() => {
-    if (step2Completed && !canProceedFromStep2) {
-      setStep2Completed(false);
+    if (!canProceedFromStep2) {
       if (step3Completed) {
         setStep3Completed(false);
       }
-      setOpenSection(2);
+      if (step4Completed) {
+        setStep4Completed(false);
+      }
+      if (openSection !== 1 && openSection !== 2) {
+        setOpenSection(2);
+      }
     }
-  }, [canProceedFromStep2, step2Completed, step3Completed]);
+  }, [canProceedFromStep2, openSection, step3Completed, step4Completed]);
+
+  useEffect(() => {
+    if (step3Completed && !canProceedFromStep3) {
+      setStep3Completed(false);
+      if (step4Completed) {
+        setStep4Completed(false);
+      }
+      setOpenSection(3);
+    }
+  }, [canProceedFromStep3, step3Completed, step4Completed]);
 
   const handleSectionToggle = (section: number) => {
-    if (section === 2 && !canProceedFromStep1) return;
-    if (section === 3 && !step2Completed) return;
+    if (section === 2 && !step1Completed) return;
+    if (section === 3 && !canProceedFromStep2) return;
     if (section === 4 && !step3Completed) return;
+    if (section === 5 && !step4Completed) return;
     setOpenSection(openSection === section ? 0 : section);
     if (section === 2)
-      trackStep({ step: "datos_cargamento", stepNumber: 2, totalSteps: 4 });
+      trackStep({ step: "route_selection", stepNumber: 2, totalSteps: 5 });
     if (section === 3)
+      trackStep({ step: "datos_cargamento", stepNumber: 3, totalSteps: 5 });
+    if (section === 4)
       trackStep({
         step: "servicios_adicionales",
-        stepNumber: 3,
-        totalSteps: 4,
+        stepNumber: 4,
+        totalSteps: 5,
       });
-    if (section === 4)
-      trackStep({ step: "revision", stepNumber: 4, totalSteps: 4 });
+    if (section === 5)
+      trackStep({ step: "revision", stepNumber: 5, totalSteps: 5 });
   };
 
   // ============================================================================
@@ -600,9 +751,146 @@ function QuoteLASTMILE({
 
     const validUntil = getValidityDate().toISOString();
 
-    // Charges con monto 0 (cotización sin valor)
-    const charges = [
-      {
+    // Helper para crear un cobro fijo (income only, expense currency).
+    // Estos cobros se cargan al cliente sin gasto (expense queda en 0).
+    const buildFixedCharge = (
+      serviceId: number,
+      serviceCode: string,
+      unit: string,
+      amount: number,
+      reference: string,
+      notes: string,
+    ) => ({
+      service: { id: serviceId, code: serviceCode },
+      income: {
+        quantity: 1,
+        unit,
+        rate: amount,
+        amount,
+        showamount: amount,
+        payment: "Prepaid",
+        billApplyTo: "Other",
+        billTo: { name: effectiveUsername },
+        currency: { abbr: "USD" as const },
+        reference,
+        showOnDocument: true,
+        notes,
+      },
+      expense: { currency: { abbr: "USD" as const } },
+    });
+
+    const charges: any[] = [];
+
+    if (servicioSel === "LCL" && incotermSel === "DAP") {
+      // -----------------------------------------------------------------
+      // COBROS FIJOS (LCL + DAP)
+      // -----------------------------------------------------------------
+      charges.push(
+        buildFixedCharge(
+          134698,
+          "H",
+          "MIN",
+          75,
+          "Amount to Handling",
+          "Handling - LCL DAP (Última Milla)",
+        ),
+      );
+      charges.push(
+        buildFixedCharge(
+          134703,
+          "BANK",
+          "MIN",
+          50,
+          "Amount to Banking Charge",
+          "Banking Charge - LCL DAP (Última Milla)",
+        ),
+      );
+      charges.push(
+        buildFixedCharge(
+          134710,
+          "GL",
+          "MIN",
+          65,
+          "Amount to Gastos Locales",
+          "Gastos Locales - LCL DAP (Última Milla)",
+        ),
+      );
+
+      // -----------------------------------------------------------------
+      // COBRO VARIABLE 1: DOCUMENTATION OCEAN - LCL (10 USD por m³)
+      // -----------------------------------------------------------------
+      const totalM3 = Number(cargoTotals.volume.toFixed(3));
+      const docRate = 10;
+      const docAmount = Number((totalM3 * docRate).toFixed(2));
+      charges.push({
+        service: { id: 134711, code: "DOC LCL" },
+        income: {
+          quantity: totalM3,
+          unit: "m3",
+          rate: docRate,
+          amount: docAmount,
+          showamount: docAmount,
+          payment: "Prepaid",
+          billApplyTo: "Other",
+          billTo: { name: effectiveUsername },
+          currency: { abbr: "USD" as const },
+          reference: "Amount to Documentation Ocean - LCL",
+          showOnDocument: true,
+          notes: `Documentation Ocean LCL - ${totalM3.toFixed(3)} m³ × ${docRate} USD/m³`,
+        },
+        expense: { currency: { abbr: "USD" as const } },
+      });
+
+      // -----------------------------------------------------------------
+      // COBRO VARIABLE 2: DELIVERY - TRUCKING (bracket por kg/m³)
+      // -----------------------------------------------------------------
+      const bracket = findDeliveryBracket(
+        cargoTotals.realWeight,
+        cargoTotals.volume,
+      );
+      if (bracket) {
+        const incomeAmount = Number(bracket.amount.toFixed(2));
+        const expenseAmount = Number((bracket.amount / 1.1).toFixed(2));
+        const qty = Number(bracket.quantity.toFixed(3));
+        const incomeRate =
+          qty > 0 ? Number((incomeAmount / qty).toFixed(4)) : incomeAmount;
+        const expenseRate =
+          qty > 0 ? Number((expenseAmount / qty).toFixed(4)) : expenseAmount;
+        charges.push({
+          service: { id: 134724, code: "DELV" },
+          income: {
+            quantity: qty,
+            unit: bracket.unit,
+            rate: incomeRate,
+            amount: incomeAmount,
+            showamount: incomeAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: { name: effectiveUsername },
+            currency: { abbr: "USD" as const },
+            reference: "Amount to Delivery - Trucking",
+            showOnDocument: true,
+            notes: `Delivery Trucking - bracket ${bracket.bracketIndex + 1} (≤${LCL_DAP_DELIVERY_BRACKETS[bracket.bracketIndex].maxKg}kg / ≤${LCL_DAP_DELIVERY_BRACKETS[bracket.bracketIndex].maxM3}m³) por ${bracket.unit === "m3" ? "volumen" : "peso volumétrico"}`,
+          },
+          expense: {
+            quantity: qty,
+            unit: bracket.unit,
+            rate: expenseRate,
+            amount: expenseAmount,
+            showamount: expenseAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: { name: effectiveUsername },
+            currency: { abbr: "USD" as const },
+            reference: "Expense Delivery - Trucking",
+            showOnDocument: true,
+            notes: `Delivery Trucking expense - income / 1.10`,
+          },
+        });
+      }
+    } else {
+      // Resto de combinaciones: placeholder pendiente de tarifa
+      charges.push({
         service: { id: 168, code: "B" },
         income: {
           quantity: 1,
@@ -618,8 +906,8 @@ function QuoteLASTMILE({
           notes: "Última Milla - Pendiente tarifa",
         },
         expense: { currency: { abbr: "USD" } },
-      },
-    ];
+      });
+    }
 
     // Commodities por pieza (mismo formato que QuoteAIR)
     const commodities = piecesData.map((p) => ({
@@ -652,7 +940,10 @@ function QuoteLASTMILE({
       validUntil,
       transitDays: null as number | null,
       project: { name: "TERRESTRE" },
-      customerReference: "Portal Created [LASTMILE] - PENDIENTE TARIFA",
+      customerReference:
+        servicioSel && incotermSel
+          ? `${servicioSel} ${incotermSel}`
+          : "Portal Created [LASTMILE] - PENDIENTE TARIFA",
       contact: { name: effectiveUsername },
       origin: { name: origenSel.label },
       carrierBroker: { name: "X" },
@@ -680,15 +971,29 @@ function QuoteLASTMILE({
       );
       return;
     }
-    if (!canProceedFromStep1) {
+    if (!canProceedFromStep2) {
       setError("Debes seleccionar origen y destino.");
       return;
     }
-    if (!canProceedFromStep2) {
+    if (!canProceedFromStep3) {
       setError(
         "Debes ingresar dirección de recogida, dirección de entrega e información del cargamento.",
       );
       return;
+    }
+
+    // Validación de capacidad para LCL + DAP (bracket máximo 7000kg / 30 m³)
+    if (servicioSel === "LCL" && incotermSel === "DAP") {
+      const bracket = findDeliveryBracket(
+        cargoTotals.realWeight,
+        cargoTotals.volume,
+      );
+      if (!bracket) {
+        setError(
+          `La carga excede el rango disponible para LCL DAP (máximo ${LCL_DAP_DELIVERY_MAX_KG} kg de peso volumétrico o ${LCL_DAP_DELIVERY_MAX_M3} m³ de volumen). Por favor contacta a un ejecutivo para una cotización personalizada.`,
+        );
+        return;
+      }
     }
 
     setLoading(true);
@@ -1028,22 +1333,22 @@ function QuoteLASTMILE({
         )}
 
         {/* ============================================================================ */}
-        {/* SECCIÓN 1: SELECCIÓN DE RUTA */}
+        {/* SECCIÓN 1: SELECCIÓN DE SERVICIO E INCOTERM */}
         {/* ============================================================================ */}
         <div className="qa-card">
           <div
             className={`qa-card-header ${openSection === 1 ? "open" : ""}`}
-            onClick={() => handleSectionToggle(1)}
+            onClick={() => setOpenSection(openSection === 1 ? 0 : 1)}
           >
             <div className="d-flex align-items-center">
               <h3>
                 <i
-                  className="bi bi-geo-alt me-2"
+                  className="bi bi-grid-3x2-gap me-2"
                   style={{ color: "var(--qf-primary)" }}
                 ></i>
-                Paso 1: Seleccionar Ruta
+                Paso 1: Selecciona un Servicio
               </h3>
-              {openSection !== 1 && canProceedFromStep1 && (
+              {openSection !== 1 && step1Completed && (
                 <span
                   className="qa-badge ms-3"
                   style={{
@@ -1058,13 +1363,14 @@ function QuoteLASTMILE({
               )}
             </div>
             <div className="d-flex align-items-center gap-2">
-              {openSection !== 1 && canProceedFromStep1 ? (
+              {openSection !== 1 && step1Completed ? (
                 <button
                   type="button"
                   className="qa-btn qa-btn-sm qa-btn-outline"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    // Reset route and all downstream state so auto-advance doesn't retrigger
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setServicioSel(null);
+                    setIncotermSel(null);
                     setOrigenSel(null);
                     setDestinoSel(null);
                     setPickupAddress("");
@@ -1072,8 +1378,8 @@ function QuoteLASTMILE({
                     setPiecesData([createEmptyPieceLM("1")]);
                     setOpenAccordions(["1"]);
                     setSeguroActivo(false);
-                    setStep2Completed(false);
                     setStep3Completed(false);
+                    setStep4Completed(false);
                     setOpenSection(1);
                   }}
                 >
@@ -1088,87 +1394,18 @@ function QuoteLASTMILE({
             </div>
           </div>
 
-          {openSection !== 1 && canProceedFromStep1 && (
+          {openSection !== 1 && step1Completed && (
             <div className="qa-route-summary">
-              <div className="qa-route-summary-cards">
-                <div
-                  className="qa-route-summary-card"
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "12px",
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <small>Origen</small>
-                    <div className="qa-route-summary-iata">
-                      {origenSel?.label.substring(0, 3).toUpperCase()}
-                    </div>
-                    <div className="qa-route-summary-city">
-                      {origenSel?.label}
-                    </div>
-                  </div>
-                  {originCountryCode ? (
-                    <span
-                      className={`fi fi-${originCountryCode}`}
-                      style={{ fontSize: "2.2em", flexShrink: 0 }}
-                    />
-                  ) : (
-                    <i
-                      className="bi bi-geo-alt-fill"
-                      style={{
-                        fontSize: "1.8em",
-                        color: "var(--qf-text-secondary)",
-                        flexShrink: 0,
-                      }}
-                    ></i>
-                  )}
-                </div>
-                <div className="qa-route-summary-arrow">
-                  <i className="bi bi-arrow-right"></i>
-                </div>
-                <div
-                  className="qa-route-summary-card"
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "12px",
-                  }}
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <small>Destino</small>
-                    <div className="qa-route-summary-iata">
-                      {destinoSel?.label.substring(0, 3).toUpperCase()}
-                    </div>
-                    <div className="qa-route-summary-city">
-                      {destinoSel?.label}
-                    </div>
-                  </div>
-                  {destinationCountryCode ? (
-                    <span
-                      className={`fi fi-${destinationCountryCode}`}
-                      style={{ fontSize: "2.2em", flexShrink: 0 }}
-                    />
-                  ) : (
-                    <i
-                      className="bi bi-geo-alt-fill"
-                      style={{
-                        fontSize: "1.8em",
-                        color: "var(--qf-text-secondary)",
-                        flexShrink: 0,
-                      }}
-                    ></i>
-                  )}
-                </div>
-              </div>
               <div className="qa-route-summary-meta">
                 <span className="qa-route-meta-pill">
-                  <i className="bi bi-truck"></i>
-                  Última Milla
+                  <i className="bi bi-box-seam"></i>
+                  {servicioSel}
+                </span>
+                <span className="qa-route-meta-pill">
+                  <i className="bi bi-tag"></i>
+                  {incotermSel === "DDP"
+                    ? "Delivered Duty Paid [DDP]"
+                    : "Delivered At Place [DAP]"}
                 </span>
               </div>
             </div>
@@ -1176,49 +1413,67 @@ function QuoteLASTMILE({
 
           {openSection === 1 && (
             <div>
-              {loadingRutas ? (
-                <div className="text-center py-5">
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Cargando...</span>
-                  </div>
-                  <p className="mt-3 text-muted">
-                    Cargando rutas disponibles...
+              {/* Grid de servicios */}
+              <p className="qa-text-muted mb-3" style={{ fontSize: "0.88rem" }}>
+                Selecciona el tipo de servicio para tu carga de Última Milla.
+              </p>
+              <div className="lm-service-grid">
+                {(["FCL", "AÉREO", "LCL"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`lm-service-card${servicioSel === s ? " lm-service-card--selected" : ""}`}
+                    onClick={() => {
+                      setServicioSel(s);
+                      setIncotermSel(null);
+                    }}
+                  >
+                    <span className="lm-service-card__label">Servicio</span>
+                    <span className="lm-service-card__value">{s}</span>
+                    <span className="lm-service-card__sub">
+                      {s === "FCL" && "Full Container Load"}
+                      {s === "AÉREO" && "Carga Aérea"}
+                      {s === "LCL" && "Less Container Load"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Grid de incoterms (se muestra tras elegir servicio) */}
+              {servicioSel && (
+                <div className="mt-4">
+                  <p
+                    className="qa-text-muted mb-3"
+                    style={{ fontSize: "0.88rem" }}
+                  >
+                    Selecciona el incoterm de entrega.
                   </p>
-                </div>
-              ) : errorRutas ? (
-                <div className="alert alert-danger">❌ {errorRutas}</div>
-              ) : (
-                <div className="row g-3">
-                  <div className="col-md-6">
-                    <label className="qf-label">Origen</label>
-                    <Select
-                      value={origenSel}
-                      onChange={(option) =>
-                        setOrigenSel(option as LastMileSelectOption | null)
-                      }
-                      options={opcionesOrigen}
-                      placeholder="Selecciona origen..."
-                      isClearable
-                      menuPlacement="auto"
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="qf-label">Destino</label>
-                    <Select
-                      value={destinoSel}
-                      onChange={(option) =>
-                        setDestinoSel(option as LastMileSelectOption | null)
-                      }
-                      options={opcionesDestino}
-                      placeholder={
-                        origenSel
-                          ? "Selecciona destino..."
-                          : "Selecciona origen primero"
-                      }
-                      isClearable
-                      isDisabled={!origenSel}
-                      menuPlacement="auto"
-                    />
+                  <div className="lm-service-grid lm-service-grid--2col">
+                    {(["DDP", "DAP"] as const).map((inc) => (
+                      <button
+                        key={inc}
+                        type="button"
+                        className={`lm-service-card${incotermSel === inc ? " lm-service-card--selected" : ""}`}
+                        onClick={() => {
+                          setIncotermSel(inc);
+                          setTimeout(() => {
+                            setOpenSection(2);
+                            trackStep({
+                              step: "route_selection",
+                              stepNumber: 2,
+                              totalSteps: 5,
+                            });
+                          }, 250);
+                        }}
+                      >
+                        <span className="lm-service-card__label">Incoterm</span>
+                        <span className="lm-service-card__value">{inc}</span>
+                        <span className="lm-service-card__sub">
+                          {inc === "DDP" && "Delivered Duty Paid"}
+                          {inc === "DAP" && "Delivered At Place"}
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1226,22 +1481,24 @@ function QuoteLASTMILE({
           )}
         </div>
 
-        {/* PASO 2 */}
-        {canProceedFromStep1 && (
-          <div className="qa-card lm-step-card" ref={section2Ref}>
+        {/* ============================================================================ */}
+        {/* SECCIÓN 2: SELECCIÓN DE RUTA */}
+        {/* ============================================================================ */}
+        {step1Completed && (
+          <div className="qa-card" ref={section2Ref}>
             <div
-              className={`qf-card-header lm-step-header ${openSection === 2 ? "open" : ""}`}
+              className={`qa-card-header ${openSection === 2 ? "open" : ""}`}
               onClick={() => handleSectionToggle(2)}
             >
               <div className="d-flex align-items-center">
                 <h3>
                   <i
-                    className="bi bi-box-seam me-2"
+                    className="bi bi-geo-alt me-2"
                     style={{ color: "var(--qf-primary)" }}
                   ></i>
-                  Paso 2: Datos del Cargamento
+                  Paso 2: Seleccionar Ruta
                 </h3>
-                {openSection !== 2 && step2Completed && (
+                {openSection !== 2 && canProceedFromStep2 && (
                   <span
                     className="qa-badge ms-3"
                     style={{
@@ -1256,12 +1513,21 @@ function QuoteLASTMILE({
                 )}
               </div>
               <div className="d-flex align-items-center gap-2">
-                {openSection !== 2 && step2Completed ? (
+                {openSection !== 2 && canProceedFromStep2 ? (
                   <button
                     type="button"
                     className="qa-btn qa-btn-sm qa-btn-outline"
                     onClick={(event) => {
                       event.stopPropagation();
+                      setOrigenSel(null);
+                      setDestinoSel(null);
+                      setPickupAddress("");
+                      setDeliveryAddress("");
+                      setPiecesData([createEmptyPieceLM("1")]);
+                      setOpenAccordions(["1"]);
+                      setSeguroActivo(false);
+                      setStep3Completed(false);
+                      setStep4Completed(false);
                       setOpenSection(2);
                     }}
                   >
@@ -1276,7 +1542,196 @@ function QuoteLASTMILE({
               </div>
             </div>
 
-            {openSection !== 2 && step2Completed && (
+            {openSection !== 2 && canProceedFromStep2 && (
+              <div className="qa-route-summary">
+                <div className="qa-route-summary-cards">
+                  <div
+                    className="qa-route-summary-card"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <small>Origen</small>
+                      <div className="qa-route-summary-iata">
+                        {origenSel?.label.substring(0, 3).toUpperCase()}
+                      </div>
+                      <div className="qa-route-summary-city">
+                        {origenSel?.label}
+                      </div>
+                    </div>
+                    {originCountryCode ? (
+                      <span
+                        className={`fi fi-${originCountryCode}`}
+                        style={{ fontSize: "2.2em", flexShrink: 0 }}
+                      />
+                    ) : (
+                      <i
+                        className="bi bi-geo-alt-fill"
+                        style={{
+                          fontSize: "1.8em",
+                          color: "var(--qf-text-secondary)",
+                          flexShrink: 0,
+                        }}
+                      ></i>
+                    )}
+                  </div>
+                  <div className="qa-route-summary-arrow">
+                    <i className="bi bi-arrow-right"></i>
+                  </div>
+                  <div
+                    className="qa-route-summary-card"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <small>Destino</small>
+                      <div className="qa-route-summary-iata">
+                        {destinoSel?.label.substring(0, 3).toUpperCase()}
+                      </div>
+                      <div className="qa-route-summary-city">
+                        {destinoSel?.label}
+                      </div>
+                    </div>
+                    {destinationCountryCode ? (
+                      <span
+                        className={`fi fi-${destinationCountryCode}`}
+                        style={{ fontSize: "2.2em", flexShrink: 0 }}
+                      />
+                    ) : (
+                      <i
+                        className="bi bi-geo-alt-fill"
+                        style={{
+                          fontSize: "1.8em",
+                          color: "var(--qf-text-secondary)",
+                          flexShrink: 0,
+                        }}
+                      ></i>
+                    )}
+                  </div>
+                </div>
+                <div className="qa-route-summary-meta">
+                  <span className="qa-route-meta-pill">
+                    <i className="bi bi-truck"></i>
+                    Última Milla
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {openSection === 2 && (
+              <div>
+                {loadingRutas ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Cargando...</span>
+                    </div>
+                    <p className="mt-3 text-muted">
+                      Cargando rutas disponibles...
+                    </p>
+                  </div>
+                ) : errorRutas ? (
+                  <div className="alert alert-danger">❌ {errorRutas}</div>
+                ) : (
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="qf-label">Origen</label>
+                      <Select
+                        value={origenSel}
+                        onChange={(option) =>
+                          setOrigenSel(option as LastMileSelectOption | null)
+                        }
+                        options={opcionesOrigen}
+                        placeholder="Selecciona origen..."
+                        isClearable
+                        menuPlacement="auto"
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="qf-label">Destino</label>
+                      <Select
+                        value={destinoSel}
+                        onChange={(option) =>
+                          setDestinoSel(option as LastMileSelectOption | null)
+                        }
+                        options={opcionesDestino}
+                        placeholder={
+                          origenSel
+                            ? "Selecciona destino..."
+                            : "Selecciona origen primero"
+                        }
+                        isClearable
+                        isDisabled={!origenSel}
+                        menuPlacement="auto"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PASO 3 */}
+        {canProceedFromStep2 && (
+          <div className="qa-card lm-step-card" ref={section3Ref}>
+            <div
+              className={`qf-card-header lm-step-header ${openSection === 3 ? "open" : ""}`}
+              onClick={() => handleSectionToggle(3)}
+            >
+              <div className="d-flex align-items-center">
+                <h3>
+                  <i
+                    className="bi bi-box-seam me-2"
+                    style={{ color: "var(--qf-primary)" }}
+                  ></i>
+                  Paso 3: Datos del Cargamento
+                </h3>
+                {openSection !== 3 && step3Completed && (
+                  <span
+                    className="qa-badge ms-3"
+                    style={{
+                      backgroundColor: "#d1e7dd",
+                      color: "#0f5132",
+                      borderColor: "transparent",
+                    }}
+                  >
+                    <i className="bi bi-check-circle-fill me-1"></i>
+                    Completado
+                  </span>
+                )}
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                {openSection !== 3 && step3Completed ? (
+                  <button
+                    type="button"
+                    className="qa-btn qa-btn-sm qa-btn-outline"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setOpenSection(3);
+                    }}
+                  >
+                    Cambiar
+                  </button>
+                ) : (
+                  <i
+                    className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
+                    style={{ color: "var(--qf-text-secondary)" }}
+                  ></i>
+                )}
+              </div>
+            </div>
+
+            {openSection !== 3 && step3Completed && (
               <div className="qa-grid-1 mb-4 bg-light p-3 rounded border">
                 <div className="qa-totals-bar">
                   <div className="qa-totals-bar-item">
@@ -1351,7 +1806,7 @@ function QuoteLASTMILE({
               </div>
             )}
 
-            {openSection === 2 && (
+            {openSection === 3 && (
               <div>
                 {/* Mapa con autocompletado de direcciones */}
                 <CotizadorAddressMapDual
@@ -1485,15 +1940,15 @@ function QuoteLASTMILE({
                 <div className="mt-4 d-flex justify-content-end">
                   <button
                     className="qf-btn qf-btn-primary"
-                    disabled={!canProceedFromStep2}
+                    disabled={!canProceedFromStep3}
                     onClick={() => {
-                      if (!canProceedFromStep2) return;
-                      setStep2Completed(true);
-                      setOpenSection(3);
+                      if (!canProceedFromStep3) return;
+                      setStep3Completed(true);
+                      setOpenSection(4);
                       trackStep({
                         step: "servicios_adicionales",
-                        stepNumber: 3,
-                        totalSteps: 4,
+                        stepNumber: 4,
+                        totalSteps: 5,
                       });
                     }}
                   >
@@ -1506,12 +1961,12 @@ function QuoteLASTMILE({
           </div>
         )}
 
-        {/* PASO 3 */}
-        {step2Completed && (
-          <div className="qf-card lm-step-card" ref={section3Ref}>
+        {/* PASO 4 */}
+        {step3Completed && (
+          <div className="qf-card lm-step-card" ref={section4Ref}>
             <div
-              className={`qf-card-header lm-step-header ${openSection === 3 ? "open" : ""}`}
-              onClick={() => handleSectionToggle(3)}
+              className={`qf-card-header lm-step-header ${openSection === 4 ? "open" : ""}`}
+              onClick={() => handleSectionToggle(4)}
             >
               <div className="d-flex align-items-center">
                 <h3>
@@ -1519,9 +1974,9 @@ function QuoteLASTMILE({
                     className="bi bi-bag-plus-fill me-2"
                     style={{ color: "var(--qf-primary)" }}
                   ></i>
-                  Paso 3: Servicios Adicionales
+                  Paso 4: Servicios Adicionales
                 </h3>
-                {openSection !== 3 && step3Completed && (
+                {openSection !== 4 && step4Completed && (
                   <span
                     className="qa-badge ms-3"
                     style={{
@@ -1536,27 +1991,27 @@ function QuoteLASTMILE({
                 )}
               </div>
               <div className="d-flex align-items-center gap-2">
-                {openSection !== 3 ? (
+                {openSection !== 4 ? (
                   <button
                     type="button"
                     className="qa-btn qa-btn-sm qa-btn-outline"
                     onClick={(event) => {
                       event.stopPropagation();
-                      setOpenSection(3);
+                      setOpenSection(4);
                     }}
                   >
                     Cambiar
                   </button>
                 ) : (
                   <i
-                    className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
+                    className={`bi bi-chevron-${openSection === 4 ? "up" : "down"}`}
                     style={{ color: "var(--qf-text-secondary)" }}
                   ></i>
                 )}
               </div>
             </div>
 
-            {openSection !== 3 && (
+            {openSection !== 4 && (
               <div className="qa-route-summary">
                 <span className="qa-text-muted" style={{ fontSize: "0.85rem" }}>
                   {seguroActivo
@@ -1566,7 +2021,7 @@ function QuoteLASTMILE({
               </div>
             )}
 
-            {openSection === 3 && (
+            {openSection === 4 && (
               <div>
                 <div className="qf-addons-list">
                   {/* Card: Seguro de Carga */}
@@ -1612,12 +2067,12 @@ function QuoteLASTMILE({
                   <button
                     className="qf-btn qf-btn-primary"
                     onClick={() => {
-                      setStep3Completed(true);
-                      setOpenSection(4);
+                      setStep4Completed(true);
+                      setOpenSection(5);
                       trackStep({
                         step: "revision",
-                        stepNumber: 4,
-                        totalSteps: 4,
+                        stepNumber: 5,
+                        totalSteps: 5,
                       });
                     }}
                   >
@@ -1630,12 +2085,12 @@ function QuoteLASTMILE({
           </div>
         )}
 
-        {/* PASO 4 */}
-        {step2Completed && step3Completed && (
-          <div className="qf-card lm-step-card" ref={section4Ref}>
+        {/* PASO 5 */}
+        {step3Completed && step4Completed && (
+          <div className="qf-card lm-step-card" ref={section5Ref}>
             <div
-              className={`qf-card-header lm-step-header ${openSection === 4 ? "open" : ""}`}
-              onClick={() => handleSectionToggle(4)}
+              className={`qf-card-header lm-step-header ${openSection === 5 ? "open" : ""}`}
+              onClick={() => handleSectionToggle(5)}
             >
               <div className="d-flex align-items-center">
                 <h3>
@@ -1643,20 +2098,38 @@ function QuoteLASTMILE({
                     className="bi bi-clipboard-check me-2"
                     style={{ color: "var(--qf-primary)" }}
                   ></i>
-                  Paso 4: Revisión
+                  Paso 5: Revisión
                 </h3>
               </div>
               <div className="d-flex align-items-center gap-2">
                 <i
-                  className={`bi bi-chevron-${openSection === 4 ? "up" : "down"}`}
+                  className={`bi bi-chevron-${openSection === 5 ? "up" : "down"}`}
                   style={{ color: "var(--qf-text-secondary)" }}
                 ></i>
               </div>
             </div>
 
-            {openSection === 4 && (
+            {openSection === 5 && (
               <>
                 <div className="qa-grid-1 mb-4">
+                  {/* Resumen de Servicio + Incoterm (Paso 1) */}
+                  <div className="p-3 bg-light rounded border mb-3">
+                    <h6 className="fw-bold mb-3">
+                      <i className="bi bi-truck me-2"></i>
+                      Servicio e Incoterm
+                    </h6>
+                    <div className="row g-2 small">
+                      <div className="col-6 text-muted">Servicio:</div>
+                      <div className="col-6 text-end fw-bold">
+                        {servicioSel || "—"}
+                      </div>
+                      <div className="col-6 text-muted">Incoterm:</div>
+                      <div className="col-6 text-end fw-bold">
+                        {incotermSel || "—"}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Resumen de Ruta */}
                   <div className="p-3 bg-light rounded border mb-3">
                     <h6 className="fw-bold mb-3">
@@ -1793,7 +2266,7 @@ function QuoteLASTMILE({
                   <button
                     className="qa-btn qa-btn-primary"
                     disabled={
-                      loading || !canProceedFromStep1 || !canProceedFromStep2
+                      loading || !canProceedFromStep2 || !canProceedFromStep3
                     }
                     onClick={submitQuote}
                   >

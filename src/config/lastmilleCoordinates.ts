@@ -26,7 +26,7 @@ export const lastMileCoordinates: Record<string, LastMileCoords> = {
     name: "Valparaíso",
     code: "CLVAP",
   },
-  santiago_de_chile: {
+  chile: {
     lat: -33.4489,
     lng: -70.6693,
     name: "Santiago de Chile",

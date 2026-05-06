@@ -939,3 +939,97 @@
     justify-content: flex-end;
   }
 }
+
+/* ============================================================
+   Service & Incoterm Selection Cards (Step 1)
+   ============================================================ */
+.lm-service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 0.5px solid var(--qa-border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.lm-service-grid--2col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.lm-service-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  border: none;
+  border-right: 0.5px solid var(--qa-border-color);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.lm-service-card:last-child {
+  border-right: none;
+}
+
+.lm-service-card:hover {
+  background-color: #fff5ee;
+}
+
+.lm-service-card--selected {
+  background-color: #fff0e6;
+  box-shadow: inset 0 0 0 1.5px var(--qa-primary);
+}
+
+.lm-service-card--selected:hover {
+  background-color: #ffe8d6;
+}
+
+.lm-service-card__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--qa-text-secondary);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.lm-service-card__value {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--qa-text-primary);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.lm-service-card--selected .lm-service-card__value {
+  color: var(--qa-primary);
+}
+
+.lm-service-card__sub {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .lm-service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lm-service-card {
+    border-right: none;
+    border-bottom: 0.5px solid var(--qa-border-color);
+  }
+
+  .lm-service-card:last-child {
+    border-bottom: none;
+  }
+
+  .lm-service-grid--2col {
+    grid-template-columns: 1fr;
+  }
+}
