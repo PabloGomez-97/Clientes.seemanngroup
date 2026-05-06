@@ -1,5 +1,14 @@
 import React from "react";
 
+export interface PDFLastMileCharge {
+  code: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  rate: number;
+  amount: number;
+}
+
 export interface PDFLastMilePiece {
   id: string;
   description: string;
@@ -41,6 +50,18 @@ interface PDFTemplateLastMileProps {
   /** Número de cotización para footer */
   validUntil?: string;
   logoSrc?: string;
+  /** Servicio seleccionado (FCL / AÉREO / LCL). Si se omite se muestra "Última Milla". */
+  servicio?: string;
+  /** Incoterm seleccionado (DAP / DDP). */
+  incoterm?: string;
+  /**
+   * Cuando la combinación servicio+incoterm tiene tarifa calculada (ej. LCL+DAP),
+   * se pasan los cobros desglosados para mostrarlos en el PDF.
+   * Si está ausente o vacío se muestra el mensaje "contactar ejecutivo".
+   */
+  charges?: PDFLastMileCharge[];
+  /** Suma total de los importes del income (en USD). */
+  totalCharges?: number;
 }
 
 /**
@@ -70,7 +91,12 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
   useUSCustomary = false,
   validUntil,
   logoSrc,
+  servicio,
+  incoterm,
+  charges,
+  totalCharges,
 }) => {
+  const hasPricing = charges && charges.length > 0;
   const C = {
     text: "#111",
     sub: "#666",
@@ -124,7 +150,16 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
     borderBottom: `1px solid ${C.line}`,
     verticalAlign: "top",
   };
+  const r: React.CSSProperties = { textAlign: "right" };
   const cen: React.CSSProperties = { textAlign: "center" };
+
+  const fmtUSD = (num: number): string => {
+    if (num % 1 === 0) return num.toLocaleString("en-US");
+    return num.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
 
   // Conversiones SI -> US Customary (los valores entran siempre en kg/cm/m³)
   const KG_TO_LB = 1 / 0.453592;
@@ -305,7 +340,8 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
         {(
           [
             ["Customer", customerName, true],
-            ["Service", "Última Milla", false],
+            ["Service", servicio || "Última Milla", false],
+            ...(incoterm ? [["Incoterm", incoterm, false]] : []),
             ["Effective", effectiveDate, false],
             ["Expires", expirationDate, false],
             ["Sales Rep", salesRep, false],
@@ -486,6 +522,88 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
         </div>
       )}
 
+      {/* ── Charges (solo cuando la combinación tiene tarifa calculada) ── */}
+      {hasPricing && (
+        <div style={{ marginBottom: "10px" }}>
+          <div
+            style={{
+              fontSize: "7pt",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.5px",
+              color: C.text,
+              marginBottom: "4px",
+            }}
+          >
+            Charges
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={th}>Code</th>
+                <th style={{ ...th, width: "38%" }}>Description</th>
+                <th style={{ ...th, ...r }}>Qty</th>
+                <th style={{ ...th, ...cen }}>Unit</th>
+                <th style={{ ...th, ...r }}>Rate (USD)</th>
+                <th style={{ ...th, ...r }}>Amount (USD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {charges!.map((ch, i) => (
+                <tr key={i}>
+                  <td style={{ ...td, fontWeight: 600, fontSize: "8pt" }}>
+                    {ch.code}
+                  </td>
+                  <td style={td}>{ch.description}</td>
+                  <td style={{ ...td, ...r }}>
+                    {ch.quantity % 1 === 0
+                      ? ch.quantity
+                      : ch.quantity.toFixed(3)}
+                  </td>
+                  <td style={{ ...td, ...cen }}>{ch.unit}</td>
+                  <td style={{ ...td, ...r }}>{fmtUSD(ch.rate)}</td>
+                  <td style={{ ...td, ...r, fontWeight: 600 }}>
+                    {fmtUSD(ch.amount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {/* Total row */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "baseline",
+              gap: "8px",
+              padding: "8px 8px 0",
+              borderTop: `2px solid ${C.text}`,
+              marginTop: "2px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "7pt",
+                color: C.sub,
+                fontWeight: 600,
+                textTransform: "uppercase",
+              }}
+            >
+              Total
+            </span>
+            <span
+              style={{
+                fontSize: "14pt",
+                fontWeight: 700,
+                letterSpacing: "-0.3px",
+              }}
+            >
+              USD {fmtUSD(totalCharges ?? 0)}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* ── Tracking message ── */}
       <div
         style={{
@@ -506,29 +624,31 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
         updates.
       </div>
 
-      {/* ── Mensaje 48hrs ── */}
-      <div
-        style={{
-          backgroundColor: "#fff5f5",
-          border: "2px solid #dc3545",
-          borderRadius: "4px",
-          padding: "12px 16px",
-          marginBottom: "12px",
-          textAlign: "center",
-        }}
-      >
+      {/* ── Mensaje 48hrs (solo cuando NO hay tarifa calculada) ── */}
+      {!hasPricing && (
         <div
           style={{
-            color: "#dc3545",
-            fontSize: "11pt",
-            fontWeight: 700,
-            lineHeight: 1.4,
+            backgroundColor: "#fff5f5",
+            border: "2px solid #dc3545",
+            borderRadius: "4px",
+            padding: "12px 16px",
+            marginBottom: "12px",
+            textAlign: "center",
           }}
         >
-          Su ejecutivo de ventas le proporcionará una cotización formal en un
-          plazo de 48 horas hábiles para su cotización de Última Milla
+          <div
+            style={{
+              color: "#dc3545",
+              fontSize: "11pt",
+              fontWeight: 700,
+              lineHeight: 1.4,
+            }}
+          >
+            Su ejecutivo de ventas le proporcionará una cotización formal en un
+            plazo de 48 horas hábiles para su cotización de Última Milla
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Terms ── */}
       <div style={{ marginBottom: "10px" }}>

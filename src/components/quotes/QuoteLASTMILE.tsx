@@ -1148,6 +1148,85 @@ function QuoteLASTMILE({
         }).catch(() => {});
       }
 
+      // Calcular charges para el PDF (solo LCL + DAP tiene tarifa fija)
+      type PDFCharge = {
+        code: string;
+        description: string;
+        quantity: number;
+        unit: string;
+        rate: number;
+        amount: number;
+      };
+      let pdfCharges: PDFCharge[] = [];
+      let pdfTotalCharges = 0;
+
+      if (servicioSel === "LCL" && incotermSel === "DAP") {
+        // Cobros fijos
+        const fixedCharges: PDFCharge[] = [
+          {
+            code: "H",
+            description: "Handling",
+            quantity: 1,
+            unit: "MIN",
+            rate: 75,
+            amount: 75,
+          },
+          {
+            code: "BANK",
+            description: "Banking Charge",
+            quantity: 1,
+            unit: "MIN",
+            rate: 50,
+            amount: 50,
+          },
+          {
+            code: "GL",
+            description: "Gastos Locales",
+            quantity: 1,
+            unit: "MIN",
+            rate: 65,
+            amount: 65,
+          },
+        ];
+
+        // DOC LCL variable
+        const totalM3 = Number(cargoTotals.volume.toFixed(3));
+        const docRate = 10;
+        const docAmount = Number((totalM3 * docRate).toFixed(2));
+        const docCharge: PDFCharge = {
+          code: "DOC LCL",
+          description: "Documentation Ocean - LCL",
+          quantity: totalM3,
+          unit: "m3",
+          rate: docRate,
+          amount: docAmount,
+        };
+
+        // DELIVERY variable
+        const bracket = findDeliveryBracket(
+          cargoTotals.realWeight,
+          cargoTotals.volume,
+        );
+        const deliveryCharges: PDFCharge[] = [];
+        if (bracket) {
+          const incomeAmount = Number(bracket.amount.toFixed(2));
+          const qty = Number(bracket.quantity.toFixed(3));
+          const incomeRate =
+            qty > 0 ? Number((incomeAmount / qty).toFixed(4)) : incomeAmount;
+          deliveryCharges.push({
+            code: "DELV",
+            description: "Delivery - Trucking",
+            quantity: qty,
+            unit: bracket.unit,
+            rate: incomeRate,
+            amount: incomeAmount,
+          });
+        }
+
+        pdfCharges = [...fixedCharges, docCharge, ...deliveryCharges];
+        pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
+      }
+
       // Renderizar PDF
       const tempDiv = document.createElement("div");
       tempDiv.style.position = "absolute";
@@ -1189,6 +1268,10 @@ function QuoteLASTMILE({
             useUSCustomary={useUSCustomary}
             validUntil={validUntilDisplay}
             logoSrc="/logo.png"
+            servicio={servicioSel ?? undefined}
+            incoterm={incotermSel ?? undefined}
+            charges={pdfCharges.length > 0 ? pdfCharges : undefined}
+            totalCharges={pdfCharges.length > 0 ? pdfTotalCharges : undefined}
           />,
         );
         setTimeout(resolve, 500);
