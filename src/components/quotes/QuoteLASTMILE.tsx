@@ -27,6 +27,11 @@ import { packageTypeOptions } from "./PackageTypes/PiecestypesAIR";
 import { Modal, Button } from "react-bootstrap";
 import { linbisFetch } from "../../services/linbisFetch";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
+import {
+  useAgenciaAduanas,
+  calculateAduanaCharges,
+  type SupportedCurrency,
+} from "../../hooks/useAgenciaAduanas";
 import { imgUrl } from "../../config/images";
 import { getLastMileCoords } from "../../config/lastmilleCoordinates";
 import "flag-icons/css/flag-icons.min.css";
@@ -283,6 +288,11 @@ function QuoteLASTMILE({
   >(null);
   const [incotermSel, setIncotermSel] = useState<"DDP" | "DAP" | null>(null);
 
+  // Aduana / Extraport expenses (solo aplica para LCL + DDP)
+  const { config: aduanaConfig } = useAgenciaAduanas();
+  const [valorMercaderiaDDP, setValorMercaderiaDDP] = useState<string>("");
+  const [valorSeguroDDP, setValorSeguroDDP] = useState<string>("");
+
   // Acordeón
   const [openSection, setOpenSection] = useState<number>(1);
   const [step3Completed, setStep3Completed] = useState<boolean>(false);
@@ -454,7 +464,14 @@ function QuoteLASTMILE({
     return () => clearTimeout(t);
   }, [openSection]);
 
-  const step1Completed = !!(servicioSel && incotermSel);
+  const isLclDdp = servicioSel === "LCL" && incotermSel === "DDP";
+  const valorMercaderiaDDPNum =
+    parseFloat((valorMercaderiaDDP || "").replace(",", ".")) || 0;
+  const step1Completed = !!(
+    servicioSel &&
+    incotermSel &&
+    (!isLclDdp || valorMercaderiaDDPNum > 0)
+  );
   const canProceedFromStep2 = !!(origenSel && destinoSel);
   const canProceedFromStep3 = useMemo(() => {
     return (
@@ -552,6 +569,56 @@ function QuoteLASTMILE({
     const chargeableWeight = Math.max(realWeight, volumetricWeight);
     return { volume, realWeight, volumetricWeight, chargeableWeight };
   }, [piecesData]);
+
+  // ============================================================================
+  // EXTRAPORT EXPENSES (LCL + DDP)
+  // ============================================================================
+  // Reutiliza la lógica de AduanaSection: CIF = valorMercadería + costoTransporte + seguro.
+  // costoTransporte = suma de TODOS los charges LCL DDP (Handling 75 + Banking 50 +
+  //   Gastos Locales 65 + DOC LCL (10 USD/m³) + Delivery (bracket por kg/m³)).
+  // Si el cliente no ingresa valor de seguro, se usa el seguro teórico:
+  //   ((valorMercadería + costoTransporte) * 1.1) * 0.02
+  const extraportData = useMemo(() => {
+    const valorProd =
+      parseFloat((valorMercaderiaDDP || "").replace(",", ".")) || 0;
+    if (valorProd <= 0) {
+      return { total: 0, costoTransporte: 0, seguroParaCIF: 0 };
+    }
+    const totalM3 = Number(cargoTotals.volume.toFixed(3));
+    const docAmount = Number((totalM3 * 10).toFixed(2));
+    const bracket = findDeliveryBracket(
+      cargoTotals.realWeight,
+      cargoTotals.volume,
+    );
+    const deliveryAmount = bracket ? Number(bracket.amount.toFixed(2)) : 0;
+    const costoTransporte = 75 + 50 + 65 + docAmount + deliveryAmount;
+
+    const seguroIngresado =
+      parseFloat((valorSeguroDDP || "").replace(",", ".")) || 0;
+    const seguroParaCIF =
+      seguroIngresado > 0
+        ? seguroIngresado
+        : (valorProd + costoTransporte) * 1.1 * 0.02;
+
+    const result = calculateAduanaCharges(
+      valorProd,
+      costoTransporte,
+      seguroParaCIF,
+      "USD" as SupportedCurrency,
+      aduanaConfig,
+    );
+    return {
+      total: Number(result.total.toFixed(2)),
+      costoTransporte,
+      seguroParaCIF,
+    };
+  }, [
+    valorMercaderiaDDP,
+    valorSeguroDDP,
+    cargoTotals.volume,
+    cargoTotals.realWeight,
+    aduanaConfig,
+  ]);
 
   const cargoDescriptionPreview = useMemo(() => {
     if (piecesData.length === 0) return "";
@@ -781,9 +848,13 @@ function QuoteLASTMILE({
 
     const charges: any[] = [];
 
-    if (servicioSel === "LCL" && incotermSel === "DAP") {
+    if (
+      servicioSel === "LCL" &&
+      (incotermSel === "DAP" || incotermSel === "DDP")
+    ) {
+      const incotermLabel = incotermSel; // "DAP" | "DDP"
       // -----------------------------------------------------------------
-      // COBROS FIJOS (LCL + DAP)
+      // COBROS FIJOS (LCL + DAP / DDP)
       // -----------------------------------------------------------------
       charges.push(
         buildFixedCharge(
@@ -792,7 +863,7 @@ function QuoteLASTMILE({
           "MIN",
           75,
           "Amount to Handling",
-          "Handling - LCL DAP (Última Milla)",
+          `Handling - LCL ${incotermLabel} (Última Milla)`,
         ),
       );
       charges.push(
@@ -802,7 +873,7 @@ function QuoteLASTMILE({
           "MIN",
           50,
           "Amount to Banking Charge",
-          "Banking Charge - LCL DAP (Última Milla)",
+          `Banking Charge - LCL ${incotermLabel} (Última Milla)`,
         ),
       );
       charges.push(
@@ -812,7 +883,7 @@ function QuoteLASTMILE({
           "MIN",
           65,
           "Amount to Gastos Locales",
-          "Gastos Locales - LCL DAP (Última Milla)",
+          `Gastos Locales - LCL ${incotermLabel} (Última Milla)`,
         ),
       );
 
@@ -886,6 +957,35 @@ function QuoteLASTMILE({
             showOnDocument: true,
             notes: `Delivery Trucking expense - income / 1.10`,
           },
+        });
+      }
+
+      // -----------------------------------------------------------------
+      // COBRO ADICIONAL (solo LCL + DDP): EXTRAPORT EXPENSES
+      // -----------------------------------------------------------------
+      // Reutiliza calculateAduanaCharges (misma lógica que AduanaSection):
+      // CIF = valorMercadería + costoTransporte + seguro
+      // costoTransporte = suma de TODOS los charges anteriores LCL DDP
+      // seguro = ingresado por cliente o teórico ((CIF - seguro) * 1.1 * 0.02)
+      if (incotermSel === "DDP" && extraportData.total > 0) {
+        const eeAmount = Number(extraportData.total.toFixed(2));
+        charges.push({
+          service: { id: 134768, code: "Ee" },
+          income: {
+            quantity: 1,
+            unit: "Each",
+            rate: eeAmount,
+            amount: eeAmount,
+            showamount: eeAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: { name: effectiveUsername },
+            currency: { abbr: "USD" as const },
+            reference: "Amount to Extraport expenses",
+            showOnDocument: true,
+            notes: `Extraport expenses - Aduana/Nacionalización LCL DDP. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${extraportData.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${extraportData.seguroParaCIF.toFixed(2)} USD`,
+          },
+          expense: { currency: { abbr: "USD" as const } },
         });
       }
     } else {
@@ -982,18 +1082,33 @@ function QuoteLASTMILE({
       return;
     }
 
-    // Validación de capacidad para LCL + DAP (bracket máximo 7000kg / 30 m³)
-    if (servicioSel === "LCL" && incotermSel === "DAP") {
+    // Validación de capacidad para LCL + DAP / DDP (bracket máximo 7000kg / 30 m³)
+    if (
+      servicioSel === "LCL" &&
+      (incotermSel === "DAP" || incotermSel === "DDP")
+    ) {
       const bracket = findDeliveryBracket(
         cargoTotals.realWeight,
         cargoTotals.volume,
       );
       if (!bracket) {
         setError(
-          `La carga excede el rango disponible para LCL DAP (máximo ${LCL_DAP_DELIVERY_MAX_KG} kg de peso volumétrico o ${LCL_DAP_DELIVERY_MAX_M3} m³ de volumen). Por favor contacta a un ejecutivo para una cotización personalizada.`,
+          `La carga excede el rango disponible para LCL ${incotermSel} (máximo ${LCL_DAP_DELIVERY_MAX_KG} kg de peso real o ${LCL_DAP_DELIVERY_MAX_M3} m³ de volumen). Por favor contacta a un ejecutivo para una cotización personalizada.`,
         );
         return;
       }
+    }
+
+    // Validación adicional para LCL + DDP: requiere valor de mercadería
+    if (
+      servicioSel === "LCL" &&
+      incotermSel === "DDP" &&
+      valorMercaderiaDDPNum <= 0
+    ) {
+      setError(
+        "Debes ingresar el valor de la mercadería en el Paso 1 para cotizar LCL DDP.",
+      );
+      return;
     }
 
     setLoading(true);
@@ -1160,7 +1275,10 @@ function QuoteLASTMILE({
       let pdfCharges: PDFCharge[] = [];
       let pdfTotalCharges = 0;
 
-      if (servicioSel === "LCL" && incotermSel === "DAP") {
+      if (
+        servicioSel === "LCL" &&
+        (incotermSel === "DAP" || incotermSel === "DDP")
+      ) {
         // Cobros fijos
         const fixedCharges: PDFCharge[] = [
           {
@@ -1224,6 +1342,20 @@ function QuoteLASTMILE({
         }
 
         pdfCharges = [...fixedCharges, docCharge, ...deliveryCharges];
+
+        // Si es LCL + DDP añadimos el cobro Extraport expenses (Aduana)
+        if (incotermSel === "DDP" && extraportData.total > 0) {
+          const eeAmount = Number(extraportData.total.toFixed(2));
+          pdfCharges.push({
+            code: "Ee",
+            description: "Extraport expenses",
+            quantity: 1,
+            unit: "Each",
+            rate: eeAmount,
+            amount: eeAmount,
+          });
+        }
+
         pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
       }
 
@@ -1454,6 +1586,8 @@ function QuoteLASTMILE({
                     e.stopPropagation();
                     setServicioSel(null);
                     setIncotermSel(null);
+                    setValorMercaderiaDDP("");
+                    setValorSeguroDDP("");
                     setOrigenSel(null);
                     setDestinoSel(null);
                     setPickupAddress("");
@@ -1509,6 +1643,8 @@ function QuoteLASTMILE({
                     onClick={() => {
                       setServicioSel(s);
                       setIncotermSel(null);
+                      setValorMercaderiaDDP("");
+                      setValorSeguroDDP("");
                     }}
                   >
                     <span className="lm-service-card__label">Servicio</span>
@@ -1539,14 +1675,21 @@ function QuoteLASTMILE({
                         className={`lm-service-card${incotermSel === inc ? " lm-service-card--selected" : ""}`}
                         onClick={() => {
                           setIncotermSel(inc);
-                          setTimeout(() => {
-                            setOpenSection(2);
-                            trackStep({
-                              step: "route_selection",
-                              stepNumber: 2,
-                              totalSteps: 5,
-                            });
-                          }, 250);
+                          // Si es LCL + DDP no auto-avanzamos: el usuario debe
+                          // ingresar el valor de la mercadería (y opcionalmente
+                          // el seguro) antes de continuar.
+                          const willBeLclDdp =
+                            servicioSel === "LCL" && inc === "DDP";
+                          if (!willBeLclDdp) {
+                            setTimeout(() => {
+                              setOpenSection(2);
+                              trackStep({
+                                step: "route_selection",
+                                stepNumber: 2,
+                                totalSteps: 5,
+                              });
+                            }, 250);
+                          }
                         }}
                       >
                         <span className="lm-service-card__label">Incoterm</span>
@@ -1558,6 +1701,100 @@ function QuoteLASTMILE({
                       </button>
                     ))}
                   </div>
+
+                  {/* Card obligatoria: Aduana / Valor mercadería para LCL + DDP */}
+                  {isLclDdp && (
+                    <div
+                      className="mt-4"
+                      style={{
+                        padding: "1.25rem",
+                        border: "2px solid var(--qf-primary, #e07c2a)",
+                        borderRadius: 12,
+                        background: "rgba(224,124,42,0.04)",
+                      }}
+                    >
+                      <h4 style={{ marginBottom: "0.25rem" }}>
+                        <i
+                          className="bi bi-shield-check me-2"
+                          style={{ color: "var(--qf-primary, #0d6efd)" }}
+                        ></i>
+                        Información Aduanera (Obligatorio)
+                      </h4>
+                      <p
+                        className="qa-text-muted"
+                        style={{ fontSize: "0.85rem", marginBottom: "1rem" }}
+                      >
+                        Como seleccionaste DDP (Delivered Duty Paid),
+                        necesitamos el valor de tu mercadería y el valor del
+                        seguro. En caso que no ingreses valor al seguro, se
+                        utilizará el seguro teórico.
+                      </p>
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <label
+                            className="form-label"
+                            style={{ fontWeight: 600 }}
+                          >
+                            Valor de la mercadería (USD){" "}
+                            <span style={{ color: "#dc3545" }}>*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="form-control"
+                            placeholder="Valor mercadería"
+                            value={valorMercaderiaDDP}
+                            onChange={(e) =>
+                              setValorMercaderiaDDP(e.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="col-md-6">
+                          <label
+                            className="form-label"
+                            style={{ fontWeight: 600 }}
+                          >
+                            Valor del seguro (USD){" "}
+                            <span
+                              className="qa-text-muted"
+                              style={{ fontWeight: 400 }}
+                            >
+                              (opcional)
+                            </span>
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="form-control"
+                            placeholder="Valor seguro"
+                            value={valorSeguroDDP}
+                            onChange={(e) => setValorSeguroDDP(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 d-flex justify-content-end">
+                        <button
+                          type="button"
+                          className="qf-btn qf-btn-primary"
+                          disabled={valorMercaderiaDDPNum <= 0}
+                          onClick={() => {
+                            setOpenSection(2);
+                            trackStep({
+                              step: "route_selection",
+                              stepNumber: 2,
+                              totalSteps: 5,
+                            });
+                          }}
+                        >
+                          Continuar al Paso 2
+                          <i className="bi bi-arrow-right ms-2"></i>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2097,9 +2334,7 @@ function QuoteLASTMILE({
             {openSection !== 4 && (
               <div className="qa-route-summary">
                 <span className="qa-text-muted" style={{ fontSize: "0.85rem" }}>
-                  {seguroActivo
-                    ? "Seguro de carga solicitado"
-                    : "Sin servicios adicionales seleccionados"}
+                  Sin servicios adicionales seleccionados
                 </span>
               </div>
             )}
@@ -2107,42 +2342,22 @@ function QuoteLASTMILE({
             {openSection === 4 && (
               <div>
                 <div className="qf-addons-list">
-                  {/* Card: Seguro de Carga */}
                   <div
-                    className={`qf-addon-card${seguroActivo ? " is-active" : ""}`}
+                    className="qa-text-muted"
+                    style={{
+                      padding: "1.5rem",
+                      textAlign: "center",
+                      fontSize: "0.9rem",
+                      border: "1px dashed var(--qf-border, #dee2e6)",
+                      borderRadius: 8,
+                    }}
                   >
-                    <div className="qf-addon-card__image">
-                      <img
-                        src={imgUrl("addcargos/seguro.png")}
-                        alt="Seguro de carga"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="qf-addon-card__body">
-                      <h4>Agregar Seguro de Carga</h4>
-                      <p>
-                        Protege tu cargamento contra daños, pérdidas y robos
-                        durante el transporte. Tu ejecutivo te contactará con la
-                        cotización del seguro.
-                      </p>
-                    </div>
-                    <div className="qf-addon-card__action">
-                      {!seguroActivo ? (
-                        <button
-                          className="qf-addon-btn-add"
-                          onClick={() => setSeguroActivo(true)}
-                        >
-                          <i className="bi bi-plus-lg"></i>Agregar
-                        </button>
-                      ) : (
-                        <button
-                          className="qf-addon-btn-remove"
-                          onClick={() => setSeguroActivo(false)}
-                        >
-                          <i className="bi bi-x-lg"></i>Remover
-                        </button>
-                      )}
-                    </div>
+                    <i
+                      className="bi bi-info-circle me-2"
+                      style={{ fontSize: "1.1rem" }}
+                    ></i>
+                    No hay servicios adicionales disponibles para esta
+                    cotización.
                   </div>
                 </div>
 
@@ -2313,6 +2528,48 @@ function QuoteLASTMILE({
                     </div>
                   </div>
 
+                  {/* Información de Aduana (solo LCL + DDP) */}
+                  {isLclDdp && (
+                    <div className="p-3 bg-light rounded border mb-3">
+                      <h6 className="fw-bold mb-3">
+                        <i className="bi bi-shield-check me-2"></i>
+                        Aduana / Nacionalización (LCL DDP)
+                      </h6>
+                      <div className="row g-2 small">
+                        <div className="col-6 text-muted">
+                          Valor de la mercadería:
+                        </div>
+                        <div className="col-6 text-end fw-bold">
+                          USD {valorMercaderiaDDPNum.toFixed(2)}
+                        </div>
+                        <div className="col-6 text-muted">
+                          Valor del transporte:
+                        </div>
+                        <div className="col-6 text-end fw-bold">
+                          USD {extraportData.costoTransporte.toFixed(2)}
+                        </div>
+                        <div className="col-6 text-muted">
+                          Valor del seguro
+                          {parseFloat(
+                            (valorSeguroDDP || "").replace(",", "."),
+                          ) > 0
+                            ? ":"
+                            : " (teórico):"}
+                        </div>
+                        <div className="col-6 text-end fw-bold">
+                          USD {extraportData.seguroParaCIF.toFixed(2)}
+                        </div>
+                        <div className="col-12 border-top my-2"></div>
+                        <div className="col-6 text-muted">
+                          <strong>Extraport expenses (Ee):</strong>
+                        </div>
+                        <div className="col-6 text-end fw-bold">
+                          USD {extraportData.total.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Servicios Adicionales */}
                   <div className="p-3 bg-light rounded border mb-3">
                     <h6 className="fw-bold mb-3">
@@ -2320,20 +2577,10 @@ function QuoteLASTMILE({
                       Servicios Adicionales
                     </h6>
                     <div className="small">
-                      {seguroActivo ? (
-                        <span>
-                          <i
-                            className="bi bi-shield-check me-1"
-                            style={{ color: "var(--qa-primary)" }}
-                          ></i>
-                          <strong>Seguro de carga solicitado</strong>
-                        </span>
-                      ) : (
-                        <span className="text-muted">
-                          <i className="bi bi-info-circle me-1"></i>
-                          Sin servicios adicionales seleccionados
-                        </span>
-                      )}
+                      <span className="text-muted">
+                        <i className="bi bi-info-circle me-1"></i>
+                        Sin servicios adicionales seleccionados
+                      </span>
                     </div>
                   </div>
                 </div>
