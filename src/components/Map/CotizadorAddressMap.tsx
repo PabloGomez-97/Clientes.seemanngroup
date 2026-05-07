@@ -75,6 +75,13 @@ interface CotizadorAddressMapProps {
   rows?: number;
   /** Coordenadas del destino (aeropuerto o puerto) para trazar la ruta con Directions API */
   destinationCoords?: DestinationCoords | null;
+  /** Etiqueta opcional para el campo de recogida (mostrada en el header de 2 columnas) */
+  pickupLabel?: string;
+  /** Cuando se provee, muestra un campo de entrega de solo lectura al lado del campo de recogida
+   *  y el mapa ocupa el ancho completo debajo de ambos. */
+  deliveryValue?: string;
+  /** Etiqueta para el campo de entrega */
+  deliveryLabel?: string;
 }
 
 const CotizadorAddressMap = ({
@@ -83,6 +90,9 @@ const CotizadorAddressMap = ({
   placeholder = "Ingrese direccion de recogida",
   rows = 2,
   destinationCoords,
+  pickupLabel,
+  deliveryValue,
+  deliveryLabel,
 }: CotizadorAddressMapProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
@@ -98,7 +108,6 @@ const CotizadorAddressMap = ({
   const [showInfoWindow, setShowInfoWindow] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   const [directions, setDirections] =
     useState<google.maps.DirectionsResult | null>(null);
   const [routeDistance, setRouteDistance] = useState<string | null>(null);
@@ -108,12 +117,11 @@ const CotizadorAddressMap = ({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
 
-  // Close overlay on outside click
+  // Close suggestions on outside click
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
       if (!wrapperRef.current) return;
       if (!wrapperRef.current.contains(event.target as Node)) {
-        setIsOverlayOpen(false);
         setShowSuggestions(false);
       }
     };
@@ -160,7 +168,7 @@ const CotizadorAddressMap = ({
             }),
           );
           setSuggestions(results);
-          setShowSuggestions(isOverlayOpen && results.length > 0);
+          setShowSuggestions(results.length > 0);
         } else {
           // Fallback: old AutocompleteService (for accounts that still have it)
           const service = new google.maps.places.AutocompleteService();
@@ -177,7 +185,7 @@ const CotizadorAddressMap = ({
                   _raw: null,
                 }));
                 setSuggestions(results);
-                setShowSuggestions(isOverlayOpen && results.length > 0);
+                setShowSuggestions(results.length > 0);
               } else {
                 setSuggestions([]);
                 setShowSuggestions(false);
@@ -201,7 +209,7 @@ const CotizadorAddressMap = ({
         window.clearTimeout(debounceRef.current);
       }
     };
-  }, [value, isOverlayOpen, isLoaded]);
+  }, [value, isLoaded]);
 
   // Calculate route when we have both a selected position and airport coords
   useEffect(() => {
@@ -292,28 +300,18 @@ const CotizadorAddressMap = ({
     [onChange],
   );
 
-  const selectFirstSuggestion = () => {
-    if (suggestions.length > 0) {
-      handleSuggestionClick(suggestions[0]);
-      return;
-    }
-    setIsOverlayOpen(false);
-  };
-
   const handleTextareaChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     onChange(event.target.value);
-    setIsOverlayOpen(true);
   };
 
   const handleTextareaKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Escape") {
-      setIsOverlayOpen(false);
       setShowSuggestions(false);
     }
 
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      selectFirstSuggestion();
+      if (suggestions.length > 0) handleSuggestionClick(suggestions[0]);
     }
   };
 
@@ -323,49 +321,155 @@ const CotizadorAddressMap = ({
 
   const showRoute = directions !== null;
 
+  const hasDualLayout = deliveryValue !== undefined;
+
   return (
     <div className="qa-address-map" ref={wrapperRef}>
-      <textarea
-        className="qa-input"
-        value={value}
-        onChange={handleTextareaChange}
-        onFocus={() => {
-          setIsOverlayOpen(true);
-          setShowSuggestions(suggestions.length > 0);
-        }}
-        onKeyDown={handleTextareaKeyDown}
-        placeholder={placeholder}
-        rows={rows}
-      />
-
-      {isOverlayOpen && (
-        <section
-          className="qa-address-map__overlay"
-          aria-label="Busqueda de direccion"
-        >
-          <div className="qa-address-map__toolbar">
-            {!showRoute && (
-              <span>
-                {isLoading
-                  ? "Validando direccion..."
-                  : "Confirma la direccion en el mapa (Enter para seleccionar)"}
-              </span>
+      {hasDualLayout ? (
+        <div className="qa-grid-2 mb-3">
+          {/* Columna izquierda: pickup */}
+          <div>
+            {pickupLabel && (
+              <label className="qa-label">
+                <i className="bi bi-geo-alt me-1"></i>
+                {pickupLabel}
+              </label>
             )}
-            {showRoute && <span />}
-            <button
-              type="button"
-              className="qa-address-map__close"
-              onClick={() => {
-                setIsOverlayOpen(false);
-                setShowSuggestions(false);
+            <div style={{ position: "relative" }}>
+              <textarea
+                className="qa-input"
+                value={value}
+                onChange={handleTextareaChange}
+                onFocus={() => setShowSuggestions(suggestions.length > 0)}
+                onKeyDown={handleTextareaKeyDown}
+                placeholder={placeholder}
+                rows={rows}
+              />
+              {showSuggestions && (
+                <ul
+                  className="qa-address-map__suggestions"
+                  style={{
+                    position: "absolute",
+                    zIndex: 5,
+                    background: "white",
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "4px",
+                    maxHeight: "220px",
+                    overflowY: "auto",
+                    margin: "4px 0 0",
+                    padding: 0,
+                    listStyle: "none",
+                    width: "100%",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                  }}
+                >
+                  {suggestions.map((item) => (
+                    <li key={item.placeId}>
+                      <button
+                        type="button"
+                        onClick={() => handleSuggestionClick(item)}
+                        className="qa-address-map__suggestion-btn"
+                      >
+                        {item.description}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {isLoading && value.trim().length >= 3 && (
+                <p
+                  className="qa-address-map__hint"
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#6c757d",
+                    margin: "4px 0 0",
+                  }}
+                >
+                  Validando direccion...
+                </p>
+              )}
+              {error && (
+                <p
+                  className="qa-address-map__error"
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#dc3545",
+                    margin: "4px 0 0",
+                  }}
+                >
+                  {error}
+                </p>
+              )}
+              {!isLoading &&
+                value.trim().length >= 3 &&
+                suggestions.length === 0 &&
+                !error && (
+                  <p
+                    className="qa-address-map__hint"
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#6c757d",
+                      margin: "4px 0 0",
+                    }}
+                  >
+                    No encontramos coincidencias exactas, pero puedes guardar la
+                    direccion escrita manualmente.
+                  </p>
+                )}
+            </div>
+          </div>
+          {/* Columna derecha: delivery (solo lectura) */}
+          <div>
+            {deliveryLabel && (
+              <label className="qa-label">
+                <i className="bi bi-geo-alt me-1"></i>
+                {deliveryLabel}
+              </label>
+            )}
+            <textarea
+              className="qa-input"
+              value={deliveryValue}
+              readOnly
+              disabled
+              rows={rows}
+              style={{
+                backgroundColor: "#f1f3f4",
+                color: "#6c757d",
+                cursor: "not-allowed",
+                resize: "none",
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div style={{ position: "relative" }}>
+          <textarea
+            className="qa-input"
+            value={value}
+            onChange={handleTextareaChange}
+            onFocus={() => setShowSuggestions(suggestions.length > 0)}
+            onKeyDown={handleTextareaKeyDown}
+            placeholder={placeholder}
+            rows={rows}
+          />
+          {showSuggestions && (
+            <ul
+              className="qa-address-map__suggestions"
+              style={{
+                position: "absolute",
+                zIndex: 5,
+                background: "white",
+                border: "1px solid #e0e0e0",
+                borderRadius: "4px",
+                maxHeight: "220px",
+                overflowY: "auto",
+                margin: "4px 0 0",
+                padding: 0,
+                listStyle: "none",
+                width: "100%",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
               }}
             >
-              Cerrar
-            </button>
-          </div>
-
-          {!showRoute && showSuggestions && (
-            <ul className="qa-address-map__suggestions">
               {suggestions.map((item) => (
                 <li key={item.placeId}>
                   <button
@@ -379,108 +483,142 @@ const CotizadorAddressMap = ({
               ))}
             </ul>
           )}
-
-          {!showRoute && error && (
-            <p className="qa-address-map__error">{error}</p>
+          {isLoading && value.trim().length >= 3 && (
+            <p
+              className="qa-address-map__hint"
+              style={{
+                fontSize: "0.75rem",
+                color: "#6c757d",
+                margin: "4px 0 0",
+              }}
+            >
+              Validando direccion...
+            </p>
           )}
-          {!showRoute &&
-            !isLoading &&
+          {error && (
+            <p
+              className="qa-address-map__error"
+              style={{
+                fontSize: "0.75rem",
+                color: "#dc3545",
+                margin: "4px 0 0",
+              }}
+            >
+              {error}
+            </p>
+          )}
+          {!isLoading &&
             value.trim().length >= 3 &&
             suggestions.length === 0 &&
             !error && (
-              <p className="qa-address-map__hint">
+              <p
+                className="qa-address-map__hint"
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#6c757d",
+                  margin: "4px 0 0",
+                }}
+              >
                 No encontramos coincidencias exactas, pero puedes guardar la
                 direccion escrita manualmente.
               </p>
             )}
+        </div>
+      )}
 
-          <div className="qa-address-map__canvas">
-            {isLoaded ? (
-              <GoogleMap
-                mapContainerStyle={mapContainerStyle}
-                center={hasSelection ? selectedPosition : defaultCenter}
-                zoom={hasSelection ? 15 : 5}
-                onLoad={onMapLoad}
+      <div
+        style={{
+          height: "280px",
+          width: "100%",
+          border: "1px solid #e0e0e0",
+          borderRadius: "6px",
+          overflow: "hidden",
+          background: "#f8f9fa",
+          marginTop: "12px",
+        }}
+      >
+        {isLoaded ? (
+          <GoogleMap
+            mapContainerStyle={mapContainerStyle}
+            center={hasSelection ? selectedPosition : defaultCenter}
+            zoom={hasSelection ? 15 : 5}
+            onLoad={onMapLoad}
+            options={{
+              streetViewControl: false,
+              mapTypeControl: false,
+              fullscreenControl: false,
+            }}
+          >
+            {showRoute ? (
+              <DirectionsRenderer
+                directions={directions}
                 options={{
-                  streetViewControl: false,
-                  mapTypeControl: false,
-                  fullscreenControl: false,
+                  suppressMarkers: false,
+                  polylineOptions: {
+                    strokeColor: "#ff6200",
+                    strokeWeight: 4,
+                  },
                 }}
-              >
-                {showRoute ? (
-                  <DirectionsRenderer
-                    directions={directions}
-                    options={{
-                      suppressMarkers: false,
-                      polylineOptions: {
-                        strokeColor: "#ff6200",
-                        strokeWeight: 4,
-                      },
-                    }}
-                  />
-                ) : (
-                  hasSelection && (
-                    <Marker
-                      position={selectedPosition}
-                      onClick={() => setShowInfoWindow(true)}
-                    >
-                      {showInfoWindow && (
-                        <InfoWindow
-                          position={selectedPosition}
-                          onCloseClick={() => setShowInfoWindow(false)}
-                        >
-                          <div>
-                            <strong>Direccion seleccionada</strong>
-                            <br />
-                            {selectedAddress}
-                            <br />
-                            Lat: {selectedPosition.lat.toFixed(6)} | Lng:{" "}
-                            {selectedPosition.lng.toFixed(6)}
-                          </div>
-                        </InfoWindow>
-                      )}
-                    </Marker>
-                  )
-                )}
-              </GoogleMap>
+              />
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100%",
-                  color: "#6c757d",
-                  fontSize: "0.9rem",
-                }}
-              >
-                Cargando mapa...
-              </div>
+              hasSelection && (
+                <Marker
+                  position={selectedPosition}
+                  onClick={() => setShowInfoWindow(true)}
+                >
+                  {showInfoWindow && (
+                    <InfoWindow
+                      position={selectedPosition}
+                      onCloseClick={() => setShowInfoWindow(false)}
+                    >
+                      <div>
+                        <strong>Direccion seleccionada</strong>
+                        <br />
+                        {selectedAddress}
+                        <br />
+                        Lat: {selectedPosition.lat.toFixed(6)} | Lng:{" "}
+                        {selectedPosition.lng.toFixed(6)}
+                      </div>
+                    </InfoWindow>
+                  )}
+                </Marker>
+              )
             )}
+          </GoogleMap>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: "#6c757d",
+              fontSize: "0.9rem",
+            }}
+          >
+            Cargando mapa...
           </div>
+        )}
+      </div>
 
-          {hasSelection && (
-            <div className="qa-address-map__footer">
-              <p className="qa-address-map__coords">
-                Coordenadas: {selectedPosition.lat.toFixed(6)},{" "}
-                {selectedPosition.lng.toFixed(6)}
-              </p>
-              {showRoute && destinationCoords && (
-                <div className="qa-address-map__route-info">
-                  <i className="bi bi-signpost-2" />
-                  <span>
-                    Distancia hasta <strong>{destinationCoords.name}</strong>
-                    {" ("}
-                    {destinationCoords.code}
-                    {"): "}
-                    <strong>{routeDistance}</strong>
-                    {routeDuration && <> &middot; {routeDuration}</>}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
+      {showRoute && destinationCoords && (
+        <div
+          className="mt-2 d-flex align-items-center gap-2 p-2 rounded"
+          style={{
+            backgroundColor: "rgba(255, 98, 0, 0.08)",
+            fontSize: "0.85rem",
+          }}
+        >
+          <i className="bi bi-signpost-2" style={{ color: "#ff6200" }}></i>
+          <span>
+            Distancia hasta <strong>{destinationCoords.name}</strong>
+            {" ("}
+            {destinationCoords.code}
+            {"):\u00a0"}
+            <strong>{routeDistance}</strong>
+            {routeDuration && <> &middot; {routeDuration}</>}
+          </span>
+        </div>
       )}
     </div>
   );

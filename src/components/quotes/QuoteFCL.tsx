@@ -3365,17 +3365,16 @@ function QuoteFCL({
 
                   {/* Campos condicionales solo para EXW */}
                   {incoterm === "EXW" && (
-                    <div className="qa-grid-2 mb-4 bg-light p-3 rounded border">
-                      <div>
-                        <label className="qa-label">
-                          <i className="bi bi-geo-alt me-1"></i>
-                          {t("QuoteAIR.pickup")}
-                        </label>
+                    <div className="col-12 mb-4">
+                      <div className="bg-light p-3 rounded border">
                         <CotizadorAddressMap
                           value={pickupFromAddress}
                           onChange={setPickupFromAddress}
                           placeholder="Ingrese dirección de recogida"
                           rows={2}
+                          pickupLabel={t("QuoteAIR.pickup")}
+                          deliveryValue={deliveryToAddressDerived}
+                          deliveryLabel={t("QuoteAIR.delivery")}
                           destinationCoords={
                             (polSeleccionado ?? polNR)
                               ? (() => {
@@ -3392,19 +3391,6 @@ function QuoteFCL({
                                 })()
                               : null
                           }
-                        />
-                      </div>
-                      <div>
-                        <label className="qa-label">
-                          <i className="bi bi-geo-alt me-1"></i>
-                          {t("QuoteAIR.delivery")}
-                        </label>
-                        <textarea
-                          className="qa-input"
-                          value={deliveryToAddressDerived}
-                          readOnly
-                          disabled
-                          rows={2}
                         />
                       </div>
                     </div>
