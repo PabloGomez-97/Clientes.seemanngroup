@@ -572,7 +572,7 @@ export const portCoordinates: Record<string, PortCoords> = {
   ludhiana: { lat: 30.9022, lng: 75.8566, name: "ICD Ludhiana", unlocode: "INLUH" },
   lyon: { lat: 45.7144, lng: 4.8322, name: "Port Edouard Herriot (Lyon)", unlocode: "FRLYS" },
   lyttelton: { lat: -43.6066, lng: 172.7166, name: "Port of Lyttelton", unlocode: "NZLYT" },
-
+  
   // ==========================================
   // M - O
   // ==========================================
