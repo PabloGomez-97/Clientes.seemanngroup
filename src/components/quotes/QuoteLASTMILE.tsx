@@ -75,6 +75,33 @@ const LCL_DAP_DELIVERY_BRACKETS: Array<{
 const LCL_DAP_DELIVERY_MAX_KG = 7000;
 const LCL_DAP_DELIVERY_MAX_M3 = 30;
 
+// ============================================================================
+// AÉREO + DAP — Tarifa Transporte Terrestre (TT) por bracket de peso real (kg)
+// ============================================================================
+// El cobro es FIJO por bracket (no por kg), determinado por el peso real
+// total (suma de los kg de todas las piezas).
+const AEREO_DAP_TT_BRACKETS: Array<{ maxKg: number; amount: number }> = [
+  { maxKg: 300, amount: 85.09 },
+  { maxKg: 500, amount: 91.63 },
+  { maxKg: 1000, amount: 104.72 },
+  { maxKg: 1500, amount: 117.81 },
+  { maxKg: 2000, amount: 163.63 },
+];
+const AEREO_DAP_TT_MAX_KG = 2000;
+
+const findAereoTTBracket = (
+  realWeightKg: number,
+): { amount: number; bracketIndex: number; maxKg: number } | null => {
+  if (realWeightKg <= 0 || realWeightKg > AEREO_DAP_TT_MAX_KG) return null;
+  const idx = AEREO_DAP_TT_BRACKETS.findIndex((b) => realWeightKg <= b.maxKg);
+  if (idx < 0) return null;
+  return {
+    amount: AEREO_DAP_TT_BRACKETS[idx].amount,
+    bracketIndex: idx,
+    maxKg: AEREO_DAP_TT_BRACKETS[idx].maxKg,
+  };
+};
+
 interface DeliveryBracketResult {
   amount: number;
   unit: "kg" | "m3";
@@ -1192,6 +1219,72 @@ function QuoteLASTMILE({
           expense: { currency: { abbr: "USD" as const } },
         });
       }
+    } else if (servicioSel === "AÉREO" && incotermSel === "DAP") {
+      // -----------------------------------------------------------------
+      // AÉREO + DAP — Cobros fijos
+      // -----------------------------------------------------------------
+      charges.push(
+        buildFixedCharge(
+          134954,
+          "D",
+          "Each",
+          190,
+          "Amount to Desconsolidación",
+          "Desconsolidación - AÉREO DAP (Última Milla)",
+        ),
+      );
+      charges.push(
+        buildFixedCharge(
+          134698,
+          "H",
+          "MIN",
+          60,
+          "Amount to Handling",
+          "Handling - AÉREO DAP (Última Milla)",
+        ),
+      );
+      charges.push(
+        buildFixedCharge(
+          134703,
+          "BANK",
+          "MIN",
+          50,
+          "Amount to Banking Charge",
+          "Banking Charge - AÉREO DAP (Última Milla)",
+        ),
+      );
+
+      // -----------------------------------------------------------------
+      // AÉREO + DAP — Cobro variable Transporte Terrestre (TT)
+      // -----------------------------------------------------------------
+      // Tarifa fija por bracket de peso real total (kg) sumando todas las piezas:
+      //   1-300   -> 85.09 USD
+      //   301-500 -> 91.63 USD
+      //   501-1000 -> 104.72 USD
+      //   1001-1500 -> 117.81 USD
+      //   1501-2000 -> 163.63 USD
+      const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
+      if (ttBracket) {
+        const ttAmount = ttBracket.amount;
+        charges.push({
+          service: { id: 134796, code: "TT" },
+          income: {
+            quantity: 1,
+            unit: "Each",
+            rate: ttAmount,
+            amount: ttAmount,
+            showamount: ttAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: { name: effectiveUsername },
+            currency: { abbr: "USD" as const },
+            reference: "Amount to Transporte Terrestre",
+            showOnDocument: true,
+            notes: `Transporte Terrestre - bracket ≤${ttBracket.maxKg}kg (peso real total: ${cargoTotals.realWeight.toFixed(2)} kg)`,
+          },
+          expense: { currency: { abbr: "USD" as const } },
+        });
+      }
     } else {
       // Resto de combinaciones: placeholder pendiente de tarifa
       charges.push({
@@ -1640,6 +1733,52 @@ function QuoteLASTMILE({
             unit: "Each",
             rate: eeAmount,
             amount: eeAmount,
+          });
+        }
+
+        pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
+      }
+
+      // AÉREO + DAP — pdfCharges
+      if (servicioSel === "AÉREO" && incotermSel === "DAP") {
+        const fixedCharges: PDFCharge[] = [
+          {
+            code: "D",
+            description: "Desconsolidación",
+            quantity: 1,
+            unit: "Each",
+            rate: 190,
+            amount: 190,
+          },
+          {
+            code: "H",
+            description: "Handling",
+            quantity: 1,
+            unit: "MIN",
+            rate: 60,
+            amount: 60,
+          },
+          {
+            code: "BANK",
+            description: "Banking Charge",
+            quantity: 1,
+            unit: "MIN",
+            rate: 50,
+            amount: 50,
+          },
+        ];
+
+        pdfCharges = [...fixedCharges];
+
+        const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
+        if (ttBracket) {
+          pdfCharges.push({
+            code: "TT",
+            description: `Transporte Terrestre (≤${ttBracket.maxKg}kg)`,
+            quantity: 1,
+            unit: "Each",
+            rate: ttBracket.amount,
+            amount: ttBracket.amount,
           });
         }
 
