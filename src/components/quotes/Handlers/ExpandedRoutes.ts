@@ -192,6 +192,40 @@ export interface ChinaPort {
 }
 
 /**
+ * Distancia haversine en kilómetros entre dos coordenadas (lat/lng en grados).
+ */
+export function haversineKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const R = 6371;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+/**
+ * Devuelve los N puertos chinos más cercanos a una coordenada (típicamente
+ * la dirección de recogida del cliente). Cada puerto incluye `distanceKm`.
+ */
+export function getNearestChinaPorts(
+  origin: { lat: number; lng: number },
+  ports: ChinaPort[],
+  count = 3,
+): Array<ChinaPort & { distanceKm: number }> {
+  return ports
+    .map((p) => ({ ...p, distanceKm: haversineKm(origin, p) }))
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+    .slice(0, count);
+}
+
+/**
  * Parsea el CSV de la hoja "CHINA".
  * El CSV publicado tiene 4 columnas (la primera vacía porque B es la 2da):
  *   row[0] = "" | row[1] = Puerto Principal | row[2] = lat | row[3] = lng

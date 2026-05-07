@@ -52,6 +52,7 @@ import { linbisFetch } from "../../services/linbisFetch";
 import {
   fetchExpandedRoutes,
   fetchChinaPorts,
+  getNearestChinaPorts,
   type ExpandedRoutesData,
   type ChinaPort,
 } from "./Handlers/ExpandedRoutes";
@@ -301,6 +302,11 @@ function QuoteLCL({
   const [chinaPorts, setChinaPorts] = useState<ChinaPort[]>([]);
   const [chinaPortSelected, setChinaPortSelected] =
     useState<SelectOption | null>(null);
+  // Coordenadas de la dirección de recogida (geocodificada por el mapa)
+  const [pickupCoords, setPickupCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   // ============================================================================
   // ESTADOS PARA SELECTOR DUAL: RECURRENTES vs NO RECURRENTES
@@ -351,6 +357,12 @@ function QuoteLCL({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoterm, polSeleccionado?.value, polNR?.value]);
+
+  // Resetear el puerto chino seleccionado cuando cambian las coordenadas
+  // de la dirección de recogida (la lista de puertos cercanos cambia).
+  useEffect(() => {
+    setChinaPortSelected(null);
+  }, [pickupCoords?.lat, pickupCoords?.lng]);
 
   // ── Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) ──
   const isPricingRole = user?.roles?.pricing === true;
@@ -3845,21 +3857,29 @@ function QuoteLCL({
                     const isChinaPol =
                       !!polPort?.unlocode &&
                       polPort.unlocode.toUpperCase().startsWith("CN");
-                    const showChinaPicker = isChinaPol && chinaPorts.length > 0;
+
+                    const nearbyChinaPorts =
+                      isChinaPol && pickupCoords && chinaPorts.length > 0
+                        ? getNearestChinaPorts(pickupCoords, chinaPorts, 4)
+                        : [];
+                    const nearestPort = nearbyChinaPorts[0] ?? null;
+                    const alternativePorts = nearbyChinaPorts.slice(1);
+                    const effectivePort = chinaPortSelected
+                      ? (nearbyChinaPorts.find(
+                          (p) => p.value === chinaPortSelected.value,
+                        ) ?? nearestPort)
+                      : nearestPort;
 
                     let mapDestination: DestinationCoords | null = null;
-                    if (showChinaPicker && chinaPortSelected) {
-                      const port = chinaPorts.find(
-                        (p) => p.value === chinaPortSelected.value,
-                      );
-                      if (port) {
-                        mapDestination = {
-                          lat: port.lat,
-                          lng: port.lng,
-                          name: port.label,
-                          code: polPort?.unlocode ?? "",
-                        };
-                      }
+                    if (isChinaPol && effectivePort) {
+                      mapDestination = {
+                        lat: effectivePort.lat,
+                        lng: effectivePort.lng,
+                        name: effectivePort.label,
+                        code: polPort?.unlocode ?? "",
+                      };
+                    } else if (isChinaPol) {
+                      mapDestination = null;
                     } else if (polPort) {
                       mapDestination = {
                         lat: polPort.lat,
@@ -3869,99 +3889,161 @@ function QuoteLCL({
                       };
                     }
 
-                    return (
-                      <>
-                        {/* Incoterm + Puerto China lado a lado */}
-                        <div
-                          className="col-12 mb-3"
-                          style={{
-                            display: "flex",
-                            gap: "16px",
-                            flexWrap: "wrap",
-                            alignItems: "flex-end",
-                          }}
-                        >
-                          {/* Incoterm */}
-                          <div style={{ flex: 1, minWidth: 180 }}>
-                            <label className="qa-label">
-                              <i className="bi bi-flag me-2"></i>
-                              Incoterm
+                    const portMiddleContent =
+                      incoterm === "EXW" &&
+                      isChinaPol &&
+                      nearbyChinaPorts.length >= 2 ? (
+                        <div style={{ padding: "8px 0 4px" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              marginBottom: 8,
+                              fontSize: "0.75rem",
+                              color: "#475569",
+                            }}
+                          >
+                            <i
+                              className="bi bi-anchor"
+                              style={{ color: "#2563eb" }}
+                            />
+                            <span>Puerto asignado:</span>
+                            <span style={{ fontWeight: 700, color: "#1e3a5f" }}>
+                              {effectivePort?.label ?? "—"}
+                            </span>
+                            <span style={{ color: "#94a3b8" }}>·</span>
+                            <span>
+                              {effectivePort
+                                ? nearbyChinaPorts
+                                    .find(
+                                      (p) => p.value === effectivePort.value,
+                                    )
+                                    ?.distanceKm.toFixed(0)
+                                : "—"}{" "}
+                              km
+                            </span>
+                            {!chinaPortSelected && (
                               <span
-                                className="qf-badge ms-2"
-                                style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                                style={{
+                                  background: "#dcfce7",
+                                  color: "#16a34a",
+                                  borderRadius: 10,
+                                  padding: "1px 7px",
+                                  fontSize: "0.65rem",
+                                  fontWeight: 700,
+                                }}
                               >
-                                Obligatorio
+                                más cercano
                               </span>
-                            </label>
-                            <select
-                              className="qa-select"
-                              value={incoterm}
-                              onChange={(e) =>
-                                setIncoterm(
-                                  e.target.value as "EXW" | "FOB" | "",
-                                )
-                              }
-                              style={{ maxWidth: "300px", width: "100%" }}
-                            >
-                              <option value="">
-                                {t("Quotelcl.selectincoterm")}
-                              </option>
-                              <option value="EXW">Ex Works [EXW]</option>
-                              <option value="FOB">Free On Board [FOB]</option>
-                            </select>
+                            )}
                           </div>
-
-                          {/* Puerto de salida en China (solo EXW + ruta CN) */}
-                          {incoterm === "EXW" && showChinaPicker && (
-                            <div style={{ flex: 1, minWidth: 220 }}>
-                              <label className="qa-label">
-                                <i className="bi bi-flag me-2"></i>
-                                Puerto de salida en China
-                                <span
-                                  className="qf-badge ms-2"
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            {alternativePorts.map((p, i) => {
+                              const isAlt =
+                                chinaPortSelected?.value === p.value;
+                              return (
+                                <button
+                                  key={p.value}
+                                  type="button"
+                                  onClick={() =>
+                                    setChinaPortSelected(
+                                      isAlt
+                                        ? null
+                                        : { value: p.value, label: p.label },
+                                    )
+                                  }
                                   style={{
-                                    fontSize: "0.7rem",
-                                    fontWeight: 400,
+                                    flex: 1,
+                                    minWidth: 100,
+                                    border: isAlt
+                                      ? "1.5px solid #2563eb"
+                                      : "1.5px solid #e2e8f0",
+                                    borderRadius: 8,
+                                    padding: "7px 10px",
+                                    background: isAlt ? "#eff6ff" : "#fff",
+                                    cursor: "pointer",
+                                    textAlign: "left",
+                                    transition:
+                                      "border-color 0.15s, background 0.15s",
                                   }}
                                 >
-                                  Obligatorio
-                                </span>
-                              </label>
-                              <select
-                                className="qa-select"
-                                value={chinaPortSelected?.value ?? ""}
-                                onChange={(e) => {
-                                  const found = chinaPorts.find(
-                                    (p) => p.value === e.target.value,
-                                  );
-                                  setChinaPortSelected(
-                                    found
-                                      ? {
-                                          value: found.value,
-                                          label: found.label,
-                                        }
-                                      : null,
-                                  );
-                                  if (!e.target.value) setPickupFromAddress("");
-                                }}
-                                style={{ maxWidth: 400, width: "100%" }}
-                              >
-                                <option value="">
-                                  Seleccione el puerto de salida
-                                </option>
-                                {chinaPorts.map((p) => (
-                                  <option key={p.value} value={p.value}>
+                                  <div
+                                    style={{
+                                      fontSize: "0.62rem",
+                                      fontWeight: 700,
+                                      textTransform: "uppercase",
+                                      letterSpacing: "0.04em",
+                                      color: isAlt ? "#2563eb" : "#94a3b8",
+                                      marginBottom: 2,
+                                    }}
+                                  >
+                                    {i + 2}° más cercano
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: "0.8rem",
+                                      fontWeight: isAlt ? 700 : 500,
+                                      color: isAlt ? "#1e3a5f" : "#334155",
+                                    }}
+                                  >
                                     {p.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
+                                  </div>
+                                  <div
+                                    style={{
+                                      fontSize: "0.7rem",
+                                      color: "#64748b",
+                                      marginTop: 1,
+                                    }}
+                                  >
+                                    {p.distanceKm.toFixed(0)} km
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null;
+
+                    return (
+                      <>
+                        {/* Incoterm */}
+                        <div className="col-md-6 mb-3">
+                          <label className="qa-label">
+                            <i className="bi bi-flag me-2"></i>
+                            Incoterm
+                            <span
+                              className="qf-badge ms-2"
+                              style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                            >
+                              Obligatorio
+                            </span>
+                          </label>
+                          <select
+                            className="qa-select"
+                            value={incoterm}
+                            onChange={(e) =>
+                              setIncoterm(e.target.value as "EXW" | "FOB" | "")
+                            }
+                            style={{ maxWidth: "300px", width: "100%" }}
+                          >
+                            <option value="">
+                              {t("Quotelcl.selectincoterm")}
+                            </option>
+                            <option value="EXW">Ex Works [EXW]</option>
+                            <option value="FOB">Free On Board [FOB]</option>
+                          </select>
                         </div>
 
                         {/* Dirección de recogida + mapa (solo EXW) */}
                         {incoterm === "EXW" && (
-                          <div className="col-12 mb-4">
+                          <div className="col-12 mb-3">
                             <div className="bg-light p-3 rounded border">
                               <CotizadorAddressMap
                                 value={pickupFromAddress}
@@ -3971,12 +4053,9 @@ function QuoteLCL({
                                 pickupLabel={t("Quotelcl.pickup")}
                                 deliveryValue={deliveryToAddressDerived}
                                 deliveryLabel={t("Quotelcl.delivery")}
-                                disabled={showChinaPicker && !chinaPortSelected}
-                                destinationCoords={
-                                  showChinaPicker && !chinaPortSelected
-                                    ? null
-                                    : mapDestination
-                                }
+                                onPickupCoordsChange={setPickupCoords}
+                                destinationCoords={mapDestination}
+                                middleContent={portMiddleContent}
                               />
                             </div>
                           </div>

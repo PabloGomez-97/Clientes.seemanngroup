@@ -5,6 +5,7 @@ import {
   useState,
   type ChangeEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
 import {
   GoogleMap,
@@ -84,6 +85,12 @@ interface CotizadorAddressMapProps {
   deliveryLabel?: string;
   /** Deshabilita el campo de recogida (p.ej. hasta que se seleccione un puerto) */
   disabled?: boolean;
+  /** Callback que se invoca con las coordenadas de la dirección de recogida
+   *  cuando el cliente selecciona una sugerencia. Se invoca con `null` cuando
+   *  el campo se vacía. */
+  onPickupCoordsChange?: (coords: { lat: number; lng: number } | null) => void;
+  /** Contenido a inyectar entre los inputs y el mapa */
+  middleContent?: ReactNode;
 }
 
 const CotizadorAddressMap = ({
@@ -96,6 +103,8 @@ const CotizadorAddressMap = ({
   deliveryValue,
   deliveryLabel,
   disabled = false,
+  onPickupCoordsChange,
+  middleContent,
 }: CotizadorAddressMapProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
@@ -306,6 +315,20 @@ const CotizadorAddressMap = ({
   const handleTextareaChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     onChange(event.target.value);
   };
+
+  // Notificar al padre las coordenadas de la dirección de recogida
+  // cuando el cliente selecciona una sugerencia (o limpia el campo).
+  useEffect(() => {
+    if (!onPickupCoordsChange) return;
+    if (hasSelection && value.trim().length > 0) {
+      onPickupCoordsChange({
+        lat: selectedPosition.lat,
+        lng: selectedPosition.lng,
+      });
+    } else {
+      onPickupCoordsChange(null);
+    }
+  }, [hasSelection, selectedPosition, value, onPickupCoordsChange]);
 
   const handleTextareaKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Escape") {
@@ -559,6 +582,7 @@ const CotizadorAddressMap = ({
         </div>
       )}
 
+      {middleContent}
       <div
         style={{
           height: "280px",
@@ -567,7 +591,7 @@ const CotizadorAddressMap = ({
           borderRadius: "6px",
           overflow: "hidden",
           background: "#f8f9fa",
-          marginTop: "12px",
+          marginTop: middleContent ? "0" : "12px",
         }}
       >
         {isLoaded ? (
