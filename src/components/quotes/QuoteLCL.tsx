@@ -51,7 +51,9 @@ import {
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   fetchExpandedRoutes,
+  fetchChinaPorts,
   type ExpandedRoutesData,
+  type ChinaPort,
 } from "./Handlers/ExpandedRoutes";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import {
@@ -294,6 +296,13 @@ function QuoteLCL({
   const [sinTarifa, setSinTarifa] = useState(false);
 
   // ============================================================================
+  // PUERTOS DE CHINA (para EXW desde POL chino)
+  // ============================================================================
+  const [chinaPorts, setChinaPorts] = useState<ChinaPort[]>([]);
+  const [chinaPortSelected, setChinaPortSelected] =
+    useState<SelectOption | null>(null);
+
+  // ============================================================================
   // ESTADOS PARA SELECTOR DUAL: RECURRENTES vs NO RECURRENTES
   // ============================================================================
   const [routeMode, setRouteMode] = useState<
@@ -329,6 +338,19 @@ function QuoteLCL({
     ? SIMULATION_MISSING_VALUE
     : "X";
   const showPendingQuote = sinTarifa && !isSimulationMode;
+
+  // Resetear el puerto chino seleccionado si la ruta deja de ser CN+EXW
+  // o si cambia el POL.
+  useEffect(() => {
+    const polOpt = polSeleccionado ?? polNR;
+    const polPort = polOpt ? getPortByPOL(polOpt.value) : null;
+    const isChinaPol =
+      !!polPort?.unlocode && polPort.unlocode.toUpperCase().startsWith("CN");
+    if (incoterm !== "EXW" || !isChinaPol) {
+      if (chinaPortSelected) setChinaPortSelected(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoterm, polSeleccionado?.value, polNR?.value]);
 
   // ── Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) ──
   const isPricingRole = user?.roles?.pricing === true;
@@ -391,12 +413,17 @@ function QuoteLCL({
         setErrorRutas(null);
 
         // Fetch LCL CSV y rutas expandidas en paralelo
-        const [response, expRoutes] = await Promise.all([
+        const [response, expRoutes, chinaPortsData] = await Promise.all([
           fetch(GOOGLE_SHEET_CSV_URL),
           fetchExpandedRoutes(),
+          fetchChinaPorts().catch((err) => {
+            console.warn("⚠️ No se pudieron cargar puertos China:", err);
+            return [] as ChinaPort[];
+          }),
         ]);
 
         setExpandedRoutes(expRoutes);
+        setChinaPorts(chinaPortsData ?? []);
 
         if (!response.ok) {
           throw new Error(
@@ -3812,63 +3839,151 @@ function QuoteLCL({
                 )}
                 <hr className="my-4" />
                 <div className="row g-3">
-                  <div className="col-12 mb-3">
-                    <label className="qa-label">
-                      <i className="bi bi-flag me-2"></i>
-                      Incoterm
-                      <span
-                        className="qf-badge ms-2"
-                        style={{ fontSize: "0.7rem", fontWeight: 400 }}
-                      >
-                        Obligatorio
-                      </span>
-                    </label>
-                    <select
-                      className="qa-select"
-                      value={incoterm}
-                      onChange={(e) =>
-                        setIncoterm(e.target.value as "EXW" | "FOB" | "")
-                      }
-                      style={{ maxWidth: "300px" }}
-                    >
-                      <option value="">{t("Quotelcl.selectincoterm")}</option>
-                      <option value="EXW">Ex Works [EXW]</option>
-                      <option value="FOB">Free On Board [FOB]</option>
-                    </select>
-                  </div>
+                  {(() => {
+                    const polOpt = polSeleccionado ?? polNR;
+                    const polPort = polOpt ? getPortByPOL(polOpt.value) : null;
+                    const isChinaPol =
+                      !!polPort?.unlocode &&
+                      polPort.unlocode.toUpperCase().startsWith("CN");
+                    const showChinaPicker = isChinaPol && chinaPorts.length > 0;
 
-                  {/* Campos condicionales solo para EXW */}
-                  {incoterm === "EXW" && (
-                    <div className="col-12 mb-4">
-                      <div className="bg-light p-3 rounded border">
-                        <CotizadorAddressMap
-                          value={pickupFromAddress}
-                          onChange={setPickupFromAddress}
-                          placeholder="Ingrese dirección de recogida"
-                          rows={2}
-                          pickupLabel={t("Quotelcl.pickup")}
-                          deliveryValue={deliveryToAddressDerived}
-                          deliveryLabel={t("Quotelcl.delivery")}
-                          destinationCoords={
-                            (polSeleccionado ?? polNR)
-                              ? (() => {
-                                  const port = getPortByPOL(
-                                    (polSeleccionado ?? polNR)!.value,
+                    let mapDestination: DestinationCoords | null = null;
+                    if (showChinaPicker && chinaPortSelected) {
+                      const port = chinaPorts.find(
+                        (p) => p.value === chinaPortSelected.value,
+                      );
+                      if (port) {
+                        mapDestination = {
+                          lat: port.lat,
+                          lng: port.lng,
+                          name: port.label,
+                          code: polPort?.unlocode ?? "",
+                        };
+                      }
+                    } else if (polPort) {
+                      mapDestination = {
+                        lat: polPort.lat,
+                        lng: polPort.lng,
+                        name: polPort.name,
+                        code: polPort.unlocode,
+                      };
+                    }
+
+                    return (
+                      <>
+                        {/* Incoterm + Puerto China lado a lado */}
+                        <div
+                          className="col-12 mb-3"
+                          style={{
+                            display: "flex",
+                            gap: "16px",
+                            flexWrap: "wrap",
+                            alignItems: "flex-end",
+                          }}
+                        >
+                          {/* Incoterm */}
+                          <div style={{ flex: 1, minWidth: 180 }}>
+                            <label className="qa-label">
+                              <i className="bi bi-flag me-2"></i>
+                              Incoterm
+                              <span
+                                className="qf-badge ms-2"
+                                style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                              >
+                                Obligatorio
+                              </span>
+                            </label>
+                            <select
+                              className="qa-select"
+                              value={incoterm}
+                              onChange={(e) =>
+                                setIncoterm(
+                                  e.target.value as "EXW" | "FOB" | "",
+                                )
+                              }
+                              style={{ maxWidth: "300px", width: "100%" }}
+                            >
+                              <option value="">
+                                {t("Quotelcl.selectincoterm")}
+                              </option>
+                              <option value="EXW">Ex Works [EXW]</option>
+                              <option value="FOB">Free On Board [FOB]</option>
+                            </select>
+                          </div>
+
+                          {/* Puerto de salida en China (solo EXW + ruta CN) */}
+                          {incoterm === "EXW" && showChinaPicker && (
+                            <div style={{ flex: 1, minWidth: 220 }}>
+                              <label className="qa-label">
+                                <i className="bi bi-flag me-2"></i>
+                                Puerto de salida en China
+                                <span
+                                  className="qf-badge ms-2"
+                                  style={{
+                                    fontSize: "0.7rem",
+                                    fontWeight: 400,
+                                  }}
+                                >
+                                  Obligatorio
+                                </span>
+                              </label>
+                              <select
+                                className="qa-select"
+                                value={chinaPortSelected?.value ?? ""}
+                                onChange={(e) => {
+                                  const found = chinaPorts.find(
+                                    (p) => p.value === e.target.value,
                                   );
-                                  if (!port) return null;
-                                  return {
-                                    lat: port.lat,
-                                    lng: port.lng,
-                                    name: port.name,
-                                    code: port.unlocode,
-                                  } as DestinationCoords;
-                                })()
-                              : null
-                          }
-                        />
-                      </div>
-                    </div>
-                  )}
+                                  setChinaPortSelected(
+                                    found
+                                      ? {
+                                          value: found.value,
+                                          label: found.label,
+                                        }
+                                      : null,
+                                  );
+                                  if (!e.target.value) setPickupFromAddress("");
+                                }}
+                                style={{ maxWidth: 400, width: "100%" }}
+                              >
+                                <option value="">
+                                  Seleccione el puerto de salida
+                                </option>
+                                {chinaPorts.map((p) => (
+                                  <option key={p.value} value={p.value}>
+                                    {p.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Dirección de recogida + mapa (solo EXW) */}
+                        {incoterm === "EXW" && (
+                          <div className="col-12 mb-4">
+                            <div className="bg-light p-3 rounded border">
+                              <CotizadorAddressMap
+                                value={pickupFromAddress}
+                                onChange={setPickupFromAddress}
+                                placeholder="Ingrese dirección de recogida"
+                                rows={2}
+                                pickupLabel={t("Quotelcl.pickup")}
+                                deliveryValue={deliveryToAddressDerived}
+                                deliveryLabel={t("Quotelcl.delivery")}
+                                disabled={showChinaPicker && !chinaPortSelected}
+                                destinationCoords={
+                                  showChinaPicker && !chinaPortSelected
+                                    ? null
+                                    : mapDestination
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Detalles por piezas (solo en modo normal) */}
                   {!overallDimsAndWeight && (

@@ -6,6 +6,14 @@ export const EXPANDED_ROUTES_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?output=csv";
 
 /**
+ * URL del sheet "CHINA" del mismo documento de Rutas Existentes.
+ * Estructura: columna B = "Puerto Principal", C = "lat", D = "lng".
+ * Datos a partir de la fila 3 (B3, C3, D3).
+ */
+export const CHINA_PORTS_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=184920392&single=true&output=csv";
+
+/**
  * Normalizar texto: quitar acentos, lowercase, trim
  */
 const normalize = (str: string): string => {
@@ -170,4 +178,87 @@ export const fetchExpandedRoutes = async (): Promise<ExpandedRoutesData> => {
   }
   const csvText = await response.text();
   return parseExpandedRoutesCSV(csvText);
+};
+
+/**
+ * Puerto principal de China con coordenadas para trazado de ruta de pickup
+ * cuando el cliente escoge Incoterm EXW desde un POL chino (UN/LOCODE CN*).
+ */
+export interface ChinaPort {
+  value: string; // normalized name (lowercase, sin acentos)
+  label: string; // display name (e.g. "Shanghai")
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Parsea el CSV de la hoja "CHINA".
+ * El CSV publicado tiene 4 columnas (la primera vacía porque B es la 2da):
+ *   row[0] = "" | row[1] = Puerto Principal | row[2] = lat | row[3] = lng
+ * La fila 1 (índice 0) es vacía/encabezado de planilla, la fila 2 (índice 1)
+ * son los headers ("Puerto Principal", "lat", "lng"). Los datos comienzan
+ * en la fila 3 (índice 2).
+ */
+export const parseChinaPortsCSV = (csvText: string): ChinaPort[] => {
+  const lines = csvText.split("\n");
+  const ports: ChinaPort[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    // Parser CSV simple (la hoja no tiene comillas complejas)
+    const fields: string[] = [];
+    let currentField = "";
+    let insideQuotes = false;
+    for (let j = 0; j < line.length; j++) {
+      const char = line[j];
+      const nextChar = line[j + 1];
+      if (char === '"') {
+        if (insideQuotes && nextChar === '"') {
+          currentField += '"';
+          j++;
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char === "," && !insideQuotes) {
+        fields.push(currentField.trim());
+        currentField = "";
+      } else {
+        currentField += char;
+      }
+    }
+    fields.push(currentField.trim());
+
+    const nameRaw = fields[1]?.trim();
+    const latRaw = fields[2]?.trim();
+    const lngRaw = fields[3]?.trim();
+
+    if (!nameRaw || !latRaw || !lngRaw) continue;
+    // Saltar header
+    if (nameRaw.toLowerCase() === "puerto principal") continue;
+
+    const lat = parseFloat(latRaw.replace(",", "."));
+    const lng = parseFloat(lngRaw.replace(",", "."));
+    if (Number.isNaN(lat) || Number.isNaN(lng)) continue;
+
+    const norm = nameRaw
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+    ports.push({ value: norm, label: nameRaw.trim(), lat, lng });
+  }
+
+  return ports;
+};
+
+export const fetchChinaPorts = async (): Promise<ChinaPort[]> => {
+  const response = await fetch(CHINA_PORTS_CSV_URL);
+  if (!response.ok) {
+    throw new Error(`Error al cargar puertos China: ${response.status}`);
+  }
+  const csvText = await response.text();
+  return parseChinaPortsCSV(csvText);
 };

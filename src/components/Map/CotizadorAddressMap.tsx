@@ -82,6 +82,8 @@ interface CotizadorAddressMapProps {
   deliveryValue?: string;
   /** Etiqueta para el campo de entrega */
   deliveryLabel?: string;
+  /** Deshabilita el campo de recogida (p.ej. hasta que se seleccione un puerto) */
+  disabled?: boolean;
 }
 
 const CotizadorAddressMap = ({
@@ -93,6 +95,7 @@ const CotizadorAddressMap = ({
   pickupLabel,
   deliveryValue,
   deliveryLabel,
+  disabled = false,
 }: CotizadorAddressMapProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
@@ -340,10 +343,26 @@ const CotizadorAddressMap = ({
                 className="qa-input"
                 value={value}
                 onChange={handleTextareaChange}
-                onFocus={() => setShowSuggestions(suggestions.length > 0)}
+                onFocus={() =>
+                  !disabled && setShowSuggestions(suggestions.length > 0)
+                }
                 onKeyDown={handleTextareaKeyDown}
-                placeholder={placeholder}
+                placeholder={
+                  disabled
+                    ? "Seleccione primero un puerto de salida"
+                    : placeholder
+                }
                 rows={rows}
+                disabled={disabled}
+                style={
+                  disabled
+                    ? {
+                        backgroundColor: "#f1f3f4",
+                        color: "#6c757d",
+                        cursor: "not-allowed",
+                      }
+                    : undefined
+                }
               />
               {showSuggestions && (
                 <ul
@@ -447,10 +466,24 @@ const CotizadorAddressMap = ({
             className="qa-input"
             value={value}
             onChange={handleTextareaChange}
-            onFocus={() => setShowSuggestions(suggestions.length > 0)}
+            onFocus={() =>
+              !disabled && setShowSuggestions(suggestions.length > 0)
+            }
             onKeyDown={handleTextareaKeyDown}
-            placeholder={placeholder}
+            placeholder={
+              disabled ? "Seleccione primero un puerto de salida" : placeholder
+            }
             rows={rows}
+            disabled={disabled}
+            style={
+              disabled
+                ? {
+                    backgroundColor: "#f1f3f4",
+                    color: "#6c757d",
+                    cursor: "not-allowed",
+                  }
+                : undefined
+            }
           />
           {showSuggestions && (
             <ul
