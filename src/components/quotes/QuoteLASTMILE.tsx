@@ -293,8 +293,32 @@ function QuoteLASTMILE({
   const [valorMercaderiaDDP, setValorMercaderiaDDP] = useState<string>("");
   const [valorSeguroDDP, setValorSeguroDDP] = useState<string>("");
 
+  // Contenedores (solo aplica para FCL + DAP)
+  // Solo enteros >= 0; los inputs validan al onChange.
+  const [contenedores20GP, setContenedores20GP] = useState<string>("");
+  const [contenedores40HQ, setContenedores40HQ] = useState<string>("");
+  const [contenedores40NOR, setContenedores40NOR] = useState<string>("");
+
+  // Solo permite enteros positivos en los inputs de contenedores.
+  const handleContenedorChange =
+    (setter: React.Dispatch<React.SetStateAction<string>>) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      if (raw === "") {
+        setter("");
+        return;
+      }
+      // Solo dígitos; rechaza ".", "," y cualquier no-dígito
+      if (/^\d+$/.test(raw)) {
+        setter(raw);
+      }
+    };
+
   // Acordeón
   const [openSection, setOpenSection] = useState<number>(1);
+  // step1Confirmed: el usuario presionó "Continuar al Paso 2" (o el
+  // auto-avance lo hizo). Controla la visibilidad de la Sección 2.
+  const [step1Confirmed, setStep1Confirmed] = useState<boolean>(false);
   const [step3Completed, setStep3Completed] = useState<boolean>(false);
   const [step4Completed, setStep4Completed] = useState<boolean>(false);
   const [tipoAccion] = useState<"cotizacion" | "operacion">("cotizacion");
@@ -467,20 +491,41 @@ function QuoteLASTMILE({
   const isLclDdp = servicioSel === "LCL" && incotermSel === "DDP";
   const valorMercaderiaDDPNum =
     parseFloat((valorMercaderiaDDP || "").replace(",", ".")) || 0;
+
+  const isFclDap = servicioSel === "FCL" && incotermSel === "DAP";
+  const isFclDdp = servicioSel === "FCL" && incotermSel === "DDP";
+  const cont20 = parseInt(contenedores20GP || "0", 10) || 0;
+  const cont40HQ = parseInt(contenedores40HQ || "0", 10) || 0;
+  const cont40NOR = parseInt(contenedores40NOR || "0", 10) || 0;
+  const totalContenedores = cont20 + cont40HQ + cont40NOR;
+
+  // Card de aduana obligatoria: aplica a LCL+DDP y FCL+DDP
+  const needsAduanaCard = isLclDdp || isFclDdp;
+  // Card de contenedores obligatoria: aplica a FCL+DAP y FCL+DDP
+  const needsContenedoresCard = isFclDap || isFclDdp;
+
   const step1Completed = !!(
     servicioSel &&
     incotermSel &&
-    (!isLclDdp || valorMercaderiaDDPNum > 0)
+    (!needsAduanaCard || valorMercaderiaDDPNum > 0) &&
+    (!needsContenedoresCard || totalContenedores > 0)
   );
   const canProceedFromStep2 = !!(origenSel && destinoSel);
   const canProceedFromStep3 = useMemo(() => {
+    // Para FCL (FCL+DAP / FCL+DDP) no se requieren piezas;
+    // solo las direcciones de recogida y entrega.
+    if (servicioSel === "FCL") {
+      return (
+        pickupAddress.trim().length > 0 && deliveryAddress.trim().length > 0
+      );
+    }
     return (
       pickupAddress.trim().length > 0 &&
       deliveryAddress.trim().length > 0 &&
       piecesData.length > 0 &&
       piecesData.every(isPieceCompleteLM)
     );
-  }, [pickupAddress, deliveryAddress, piecesData]);
+  }, [servicioSel, pickupAddress, deliveryAddress, piecesData]);
 
   const visibleProgressSteps = useMemo(
     () => [
@@ -571,11 +616,14 @@ function QuoteLASTMILE({
   }, [piecesData]);
 
   // ============================================================================
-  // EXTRAPORT EXPENSES (LCL + DDP)
+  // EXTRAPORT EXPENSES (LCL + DDP y FCL + DDP)
   // ============================================================================
   // Reutiliza la lógica de AduanaSection: CIF = valorMercadería + costoTransporte + seguro.
-  // costoTransporte = suma de TODOS los charges LCL DDP (Handling 75 + Banking 50 +
-  //   Gastos Locales 65 + DOC LCL (10 USD/m³) + Delivery (bracket por kg/m³)).
+  // costoTransporte =
+  //  - LCL+DDP: suma de TODOS los charges LCL DDP (Handling 75 + Banking 50 +
+  //    Gastos Locales 65 + DOC LCL (10 USD/m³) + Delivery (bracket por kg/m³)).
+  //  - FCL+DDP: suma de TODOS los charges FCL DAP (Handling 75 + Banking 50 +
+  //    BL 60 + TT por contenedor + DTHC por contenedor).
   // Si el cliente no ingresa valor de seguro, se usa el seguro teórico:
   //   ((valorMercadería + costoTransporte) * 1.1) * 0.02
   const extraportData = useMemo(() => {
@@ -584,14 +632,28 @@ function QuoteLASTMILE({
     if (valorProd <= 0) {
       return { total: 0, costoTransporte: 0, seguroParaCIF: 0 };
     }
-    const totalM3 = Number(cargoTotals.volume.toFixed(3));
-    const docAmount = Number((totalM3 * 10).toFixed(2));
-    const bracket = findDeliveryBracket(
-      cargoTotals.realWeight,
-      cargoTotals.volume,
-    );
-    const deliveryAmount = bracket ? Number(bracket.amount.toFixed(2)) : 0;
-    const costoTransporte = 75 + 50 + 65 + docAmount + deliveryAmount;
+
+    let costoTransporte = 0;
+
+    if (servicioSel === "LCL" && incotermSel === "DDP") {
+      const totalM3 = Number(cargoTotals.volume.toFixed(3));
+      const docAmount = Number((totalM3 * 10).toFixed(2));
+      const bracket = findDeliveryBracket(
+        cargoTotals.realWeight,
+        cargoTotals.volume,
+      );
+      const deliveryAmount = bracket ? Number(bracket.amount.toFixed(2)) : 0;
+      costoTransporte = 75 + 50 + 65 + docAmount + deliveryAmount;
+    } else if (servicioSel === "FCL" && incotermSel === "DDP") {
+      const c20 = parseInt(contenedores20GP || "0", 10) || 0;
+      const c40HQ = parseInt(contenedores40HQ || "0", 10) || 0;
+      const c40NOR = parseInt(contenedores40NOR || "0", 10) || 0;
+      const ttTotal = c20 * 690.2 + c40HQ * 547.4 + c40NOR * 547.4;
+      const dthcTotal = c20 * 390.915 + c40HQ * 427.805 + c40NOR * 427.805;
+      costoTransporte = 75 + 50 + 60 + ttTotal + dthcTotal;
+    } else {
+      return { total: 0, costoTransporte: 0, seguroParaCIF: 0 };
+    }
 
     const seguroIngresado =
       parseFloat((valorSeguroDDP || "").replace(",", ".")) || 0;
@@ -613,8 +675,13 @@ function QuoteLASTMILE({
       seguroParaCIF,
     };
   }, [
+    servicioSel,
+    incotermSel,
     valorMercaderiaDDP,
     valorSeguroDDP,
+    contenedores20GP,
+    contenedores40HQ,
+    contenedores40NOR,
     cargoTotals.volume,
     cargoTotals.realWeight,
     aduanaConfig,
@@ -756,6 +823,8 @@ function QuoteLASTMILE({
       if (openSection !== 1) {
         setOpenSection(1);
       }
+      // Resetear confirmación cuando el paso 1 ya no es válido
+      setStep1Confirmed(false);
     }
   }, [
     step1Completed,
@@ -984,6 +1053,141 @@ function QuoteLASTMILE({
             reference: "Amount to Extraport expenses",
             showOnDocument: true,
             notes: `Extraport expenses - Aduana/Nacionalización LCL DDP. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${extraportData.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${extraportData.seguroParaCIF.toFixed(2)} USD`,
+          },
+          expense: { currency: { abbr: "USD" as const } },
+        });
+      }
+    } else if (
+      servicioSel === "FCL" &&
+      (incotermSel === "DAP" || incotermSel === "DDP")
+    ) {
+      // -----------------------------------------------------------------
+      // FCL + DAP / FCL + DDP — Cobros fijos
+      // -----------------------------------------------------------------
+      // FCL+DDP usa exactamente los mismos cobros que FCL+DAP y agrega
+      // al final un cobro "Extraport expenses" (Ee, id 134768) con la
+      // lógica obligatoria de Aduana / Nacionalización.
+      const fclLabel = `FCL ${incotermSel}`;
+      charges.push(
+        buildFixedCharge(
+          134698,
+          "H",
+          "MIN",
+          75,
+          "Amount to Handling",
+          `Handling - ${fclLabel} (Última Milla)`,
+        ),
+      );
+      charges.push(
+        buildFixedCharge(
+          134703,
+          "BANK",
+          "MIN",
+          50,
+          "Amount to Banking Charge",
+          `Banking Charge - ${fclLabel} (Última Milla)`,
+        ),
+      );
+      charges.push(
+        buildFixedCharge(
+          134795,
+          "B",
+          "MIN",
+          60,
+          "Amount to BL",
+          `BL - ${fclLabel} (Última Milla)`,
+        ),
+      );
+
+      // -----------------------------------------------------------------
+      // FCL + DAP — Cobros variables (TT y DTHC) por tipo de contenedor
+      // -----------------------------------------------------------------
+      // Tarifas por tipo de contenedor:
+      //   20GP  -> TT 690.20 USD/cont, DTHC 390.915 USD/cont
+      //   40HQ  -> TT 547.40 USD/cont, DTHC 427.805 USD/cont
+      //   40NOR -> TT 547.40 USD/cont, DTHC 427.805 USD/cont
+      // Se genera UNA línea por cada tipo de contenedor con qty > 0,
+      // tanto para TT (id 134796) como para DTHC (id 134807).
+      const containerTypes: Array<{
+        code: "20GP" | "40HQ" | "40NOR";
+        qty: number;
+        ttRate: number;
+        dthcRate: number;
+      }> = [
+        { code: "20GP", qty: cont20, ttRate: 690.2, dthcRate: 390.915 },
+        { code: "40HQ", qty: cont40HQ, ttRate: 547.4, dthcRate: 427.805 },
+        { code: "40NOR", qty: cont40NOR, ttRate: 547.4, dthcRate: 427.805 },
+      ];
+
+      for (const c of containerTypes) {
+        if (c.qty <= 0) continue;
+        const ttAmount = Number((c.ttRate * c.qty).toFixed(3));
+        charges.push({
+          service: { id: 134796, code: "TT" },
+          income: {
+            quantity: c.qty,
+            unit: "CONTENEDOR",
+            rate: c.ttRate,
+            amount: ttAmount,
+            showamount: ttAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: { name: effectiveUsername },
+            currency: { abbr: "USD" as const },
+            reference: "Amount to Transporte Terrestre",
+            showOnDocument: true,
+            notes: `Transporte Terrestre - ${c.qty} contenedor${c.qty > 1 ? "es" : ""} ${c.code} × ${c.ttRate} USD`,
+          },
+          expense: { currency: { abbr: "USD" as const } },
+        });
+      }
+
+      for (const c of containerTypes) {
+        if (c.qty <= 0) continue;
+        const dthcAmount = Number((c.dthcRate * c.qty).toFixed(3));
+        charges.push({
+          service: { id: 134807, code: "D" },
+          income: {
+            quantity: c.qty,
+            unit: "CONTENEDOR",
+            rate: c.dthcRate,
+            amount: dthcAmount,
+            showamount: dthcAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: { name: effectiveUsername },
+            currency: { abbr: "USD" as const },
+            reference: "Amount to DTHC",
+            showOnDocument: true,
+            notes: `DTHC - ${c.qty} contenedor${c.qty > 1 ? "es" : ""} ${c.code} × ${c.dthcRate} USD`,
+          },
+          expense: { currency: { abbr: "USD" as const } },
+        });
+      }
+
+      // -----------------------------------------------------------------
+      // FCL + DDP — Cobro adicional Ee (Extraport expenses / Aduana)
+      // -----------------------------------------------------------------
+      // Reutiliza calculateAduanaCharges (misma lógica que AduanaSection).
+      // costoTransporte = suma de los cobros FCL DAP arriba (Handling +
+      // Banking + BL + TT por contenedor + DTHC por contenedor).
+      if (incotermSel === "DDP" && extraportData.total > 0) {
+        const eeAmount = extraportData.total;
+        charges.push({
+          service: { id: 134768, code: "Ee" },
+          income: {
+            quantity: 1,
+            unit: "Each",
+            rate: eeAmount,
+            amount: eeAmount,
+            showamount: eeAmount,
+            payment: "Prepaid",
+            billApplyTo: "Other",
+            billTo: { name: effectiveUsername },
+            currency: { abbr: "USD" as const },
+            reference: "Amount to Extraport expenses",
+            showOnDocument: true,
+            notes: `Extraport expenses - Aduana/Nacionalización FCL DDP. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${extraportData.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${extraportData.seguroParaCIF.toFixed(2)} USD`,
           },
           expense: { currency: { abbr: "USD" as const } },
         });
@@ -1359,6 +1563,89 @@ function QuoteLASTMILE({
         pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
       }
 
+      // FCL + DAP / FCL + DDP — pdfCharges
+      if (
+        servicioSel === "FCL" &&
+        (incotermSel === "DAP" || incotermSel === "DDP")
+      ) {
+        const fixedCharges: PDFCharge[] = [
+          {
+            code: "H",
+            description: "Handling",
+            quantity: 1,
+            unit: "MIN",
+            rate: 75,
+            amount: 75,
+          },
+          {
+            code: "BANK",
+            description: "Banking Charge",
+            quantity: 1,
+            unit: "MIN",
+            rate: 50,
+            amount: 50,
+          },
+          {
+            code: "B",
+            description: "BL",
+            quantity: 1,
+            unit: "MIN",
+            rate: 60,
+            amount: 60,
+          },
+        ];
+
+        const containerTypes: Array<{
+          code: "20GP" | "40HQ" | "40NOR";
+          qty: number;
+          ttRate: number;
+          dthcRate: number;
+        }> = [
+          { code: "20GP", qty: cont20, ttRate: 690.2, dthcRate: 390.915 },
+          { code: "40HQ", qty: cont40HQ, ttRate: 547.4, dthcRate: 427.805 },
+          { code: "40NOR", qty: cont40NOR, ttRate: 547.4, dthcRate: 427.805 },
+        ];
+
+        const ttCharges: PDFCharge[] = containerTypes
+          .filter((c) => c.qty > 0)
+          .map((c) => ({
+            code: "TT",
+            description: `Transporte Terrestre (${c.code})`,
+            quantity: c.qty,
+            unit: "CONTENEDOR",
+            rate: c.ttRate,
+            amount: Number((c.ttRate * c.qty).toFixed(3)),
+          }));
+
+        const dthcCharges: PDFCharge[] = containerTypes
+          .filter((c) => c.qty > 0)
+          .map((c) => ({
+            code: "D",
+            description: `DTHC (${c.code})`,
+            quantity: c.qty,
+            unit: "CONTENEDOR",
+            rate: c.dthcRate,
+            amount: Number((c.dthcRate * c.qty).toFixed(3)),
+          }));
+
+        pdfCharges = [...fixedCharges, ...ttCharges, ...dthcCharges];
+
+        // FCL + DDP: agregar cobro Ee (Extraport expenses / Aduana)
+        if (incotermSel === "DDP" && extraportData.total > 0) {
+          const eeAmount = extraportData.total;
+          pdfCharges.push({
+            code: "Ee",
+            description: "Extraport expenses",
+            quantity: 1,
+            unit: "Each",
+            rate: eeAmount,
+            amount: eeAmount,
+          });
+        }
+
+        pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
+      }
+
       // Renderizar PDF
       const tempDiv = document.createElement("div");
       tempDiv.style.position = "absolute";
@@ -1583,11 +1870,14 @@ function QuoteLASTMILE({
                   type="button"
                   className="qa-btn qa-btn-sm qa-btn-outline"
                   onClick={(e) => {
-                    e.stopPropagation();
+                    setStep1Confirmed(false);
                     setServicioSel(null);
                     setIncotermSel(null);
                     setValorMercaderiaDDP("");
                     setValorSeguroDDP("");
+                    setContenedores20GP("");
+                    setContenedores40HQ("");
+                    setContenedores40NOR("");
                     setOrigenSel(null);
                     setDestinoSel(null);
                     setPickupAddress("");
@@ -1645,6 +1935,10 @@ function QuoteLASTMILE({
                       setIncotermSel(null);
                       setValorMercaderiaDDP("");
                       setValorSeguroDDP("");
+                      setContenedores20GP("");
+                      setContenedores40HQ("");
+                      setContenedores40NOR("");
+                      setStep1Confirmed(false);
                     }}
                   >
                     <span className="lm-service-card__label">Servicio</span>
@@ -1675,13 +1969,24 @@ function QuoteLASTMILE({
                         className={`lm-service-card${incotermSel === inc ? " lm-service-card--selected" : ""}`}
                         onClick={() => {
                           setIncotermSel(inc);
-                          // Si es LCL + DDP no auto-avanzamos: el usuario debe
-                          // ingresar el valor de la mercadería (y opcionalmente
-                          // el seguro) antes de continuar.
+                          // Siempre reseteamos la confirmación al cambiar
+                          // incoterm; si no necesita input extra, se confirma
+                          // automáticamente en el setTimeout.
+                          setStep1Confirmed(false);
+                          // Combinaciones que requieren input adicional en
+                          // el Paso 1 antes de avanzar:
+                          //  - LCL + DDP: valor de la mercadería
+                          //  - FCL + DAP: cantidad de contenedores
+                          //  - FCL + DDP: contenedores + valor de la mercadería
                           const willBeLclDdp =
                             servicioSel === "LCL" && inc === "DDP";
-                          if (!willBeLclDdp) {
+                          const willBeFclDap =
+                            servicioSel === "FCL" && inc === "DAP";
+                          const willBeFclDdp =
+                            servicioSel === "FCL" && inc === "DDP";
+                          if (!willBeLclDdp && !willBeFclDap && !willBeFclDdp) {
                             setTimeout(() => {
+                              setStep1Confirmed(true);
                               setOpenSection(2);
                               trackStep({
                                 step: "route_selection",
@@ -1702,8 +2007,8 @@ function QuoteLASTMILE({
                     ))}
                   </div>
 
-                  {/* Card obligatoria: Aduana / Valor mercadería para LCL + DDP */}
-                  {isLclDdp && (
+                  {/* Card obligatoria: Aduana / Valor mercadería para LCL+DDP y FCL+DDP */}
+                  {needsAduanaCard && (
                     <div
                       className="mt-4"
                       style={{
@@ -1775,12 +2080,167 @@ function QuoteLASTMILE({
                         </div>
                       </div>
 
-                      <div className="mt-3 d-flex justify-content-end">
+                      {/* El botón Continuar al Paso 2 solo se muestra acá
+                          si NO hay además card de contenedores (LCL+DDP).
+                          Para FCL+DDP el botón vive en la card de contenedores
+                          y valida ambas entradas. */}
+                      {!needsContenedoresCard && (
+                        <div className="mt-3 d-flex justify-content-end">
+                          <button
+                            type="button"
+                            className="qf-btn qf-btn-primary"
+                            disabled={valorMercaderiaDDPNum <= 0}
+                            onClick={() => {
+                              setStep1Confirmed(true);
+                              setOpenSection(2);
+                              trackStep({
+                                step: "route_selection",
+                                stepNumber: 2,
+                                totalSteps: 5,
+                              });
+                            }}
+                          >
+                            Continuar al Paso 2
+                            <i className="bi bi-arrow-right ms-2"></i>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Card obligatoria: Cantidad de contenedores para FCL+DAP y FCL+DDP */}
+                  {needsContenedoresCard && (
+                    <div
+                      className="mt-4"
+                      style={{
+                        padding: "1.25rem",
+                        border: "2px solid var(--qf-primary, #e07c2a)",
+                        borderRadius: 12,
+                        background: "rgba(224,124,42,0.04)",
+                      }}
+                    >
+                      <h4 style={{ marginBottom: "0.25rem" }}>
+                        <i
+                          className="bi bi-box-seam me-2"
+                          style={{ color: "var(--qf-primary, #e07c2a)" }}
+                        ></i>
+                        Cantidad de contenedores (Obligatorio)
+                      </h4>
+                      <p
+                        className="qa-text-muted"
+                        style={{ fontSize: "0.85rem", marginBottom: "1rem" }}
+                      >
+                        Indica cuántos contenedores trae tu carga. Esta
+                        información determina los cobros variables (Transporte
+                        Terrestre y DTHC). Solo se aceptan números enteros.
+                      </p>
+                      <div className="row g-3">
+                        <div className="col-md-4">
+                          <label
+                            className="form-label"
+                            style={{ fontWeight: 600 }}
+                          >
+                            Contenedores 20GP
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            className="form-control"
+                            placeholder="0"
+                            value={contenedores20GP}
+                            onChange={handleContenedorChange(
+                              setContenedores20GP,
+                            )}
+                            onKeyDown={(e) => {
+                              if (
+                                e.key === "." ||
+                                e.key === "," ||
+                                e.key === "-" ||
+                                e.key === "e" ||
+                                e.key === "+"
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label
+                            className="form-label"
+                            style={{ fontWeight: 600 }}
+                          >
+                            Contenedores 40HQ
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            className="form-control"
+                            placeholder="0"
+                            value={contenedores40HQ}
+                            onChange={handleContenedorChange(
+                              setContenedores40HQ,
+                            )}
+                            onKeyDown={(e) => {
+                              if (
+                                e.key === "." ||
+                                e.key === "," ||
+                                e.key === "-" ||
+                                e.key === "e" ||
+                                e.key === "+"
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label
+                            className="form-label"
+                            style={{ fontWeight: 600 }}
+                          >
+                            Contenedores 40NOR
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            className="form-control"
+                            placeholder="0"
+                            value={contenedores40NOR}
+                            onChange={handleContenedorChange(
+                              setContenedores40NOR,
+                            )}
+                            onKeyDown={(e) => {
+                              if (
+                                e.key === "." ||
+                                e.key === "," ||
+                                e.key === "-" ||
+                                e.key === "e" ||
+                                e.key === "+"
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-3 d-flex justify-content-between align-items-center">
+                        <small className="qa-text-muted">
+                          Total contenedores:{" "}
+                          <strong>{totalContenedores}</strong>
+                        </small>
                         <button
                           type="button"
                           className="qf-btn qf-btn-primary"
-                          disabled={valorMercaderiaDDPNum <= 0}
+                          disabled={
+                            totalContenedores <= 0 ||
+                            (needsAduanaCard && valorMercaderiaDDPNum <= 0)
+                          }
                           onClick={() => {
+                            setStep1Confirmed(true);
                             setOpenSection(2);
                             trackStep({
                               step: "route_selection",
@@ -1804,7 +2264,7 @@ function QuoteLASTMILE({
         {/* ============================================================================ */}
         {/* SECCIÓN 2: SELECCIÓN DE RUTA */}
         {/* ============================================================================ */}
-        {step1Completed && (
+        {step1Confirmed && (
           <div className="qa-card" ref={section2Ref}>
             <div
               className={`qa-card-header ${openSection === 2 ? "open" : ""}`}
@@ -2079,155 +2539,25 @@ function QuoteLASTMILE({
                     </span>
                   </div>
                 </div>
-                {(cargoDescriptionPreview || dimensionsSummary) && (
-                  <div className="qa-route-summary-meta mt-3">
-                    {cargoDescriptionPreview && (
-                      <span className="qa-route-meta-pill">
-                        <i className="bi bi-card-text"></i>
-                        {cargoDescriptionPreview}
-                      </span>
-                    )}
-                    {dimensionsSummary && (
-                      <span className="qa-route-meta-pill">
-                        <i className="bi bi-box"></i>
-                        {dimensionsSummary}
-                      </span>
-                    )}
-                  </div>
-                )}
-                <div className="qa-totals-bar mt-3">
-                  <div className="qa-totals-bar-item">
-                    <span className="qa-totals-bar-value">
-                      {fmtVolume(cargoTotals.volume)} {volumeUnit}
-                    </span>
-                    <span className="qa-totals-bar-label">Volumen total</span>
-                  </div>
-                  <div className="qa-totals-bar-item">
-                    <span className="qa-totals-bar-value">
-                      {fmtWeight(cargoTotals.realWeight)} {weightUnit}
-                    </span>
-                    <span className="qa-totals-bar-label">Peso real</span>
-                  </div>
-                  <div className="qa-totals-bar-item">
-                    <span className="qa-totals-bar-value">
-                      {fmtWeight(cargoTotals.volumetricWeight)} {weightUnit}
-                    </span>
-                    <span className="qa-totals-bar-label">
-                      Peso volumétrico
-                    </span>
-                  </div>
-                  <div className="qa-totals-bar-item">
-                    <span className="qa-totals-bar-value">
-                      {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
-                    </span>
-                    <span className="qa-totals-bar-label">Peso cargable</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {openSection === 3 && (
-              <div>
-                {/* Mapa con autocompletado de direcciones */}
-                <CotizadorAddressMapDual
-                  pickupValue={pickupAddress}
-                  onPickupChange={setPickupAddress}
-                  deliveryValue={deliveryAddress}
-                  onDeliveryChange={setDeliveryAddress}
-                />
-
-                {/* Información del cargamento — sistema de piezas (mismo modelo que QuoteAIR) */}
-                <div className="mt-4">
-                  {/* Toggle Sistema de Unidades (compartido entre todas las piezas) */}
-                  <div className="d-flex align-items-center gap-2 mb-3">
-                    <small className="qa-text-muted fw-semibold">
-                      Unidades:
-                    </small>
-                    <div
-                      className="d-flex"
-                      style={{
-                        border: "1px solid var(--qa-border)",
-                        borderRadius: "6px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        className={`qa-btn qa-btn-sm ${!useUSCustomary ? "qa-btn-primary" : ""}`}
-                        style={{
-                          borderRadius: 0,
-                          border: "none",
-                          padding: "0.2rem 0.8rem",
-                          fontSize: "0.78rem",
-                        }}
-                        onClick={() => setUseUSCustomary(false)}
-                      >
-                        Métrico
-                      </button>
-                      <button
-                        type="button"
-                        className={`qa-btn qa-btn-sm ${useUSCustomary ? "qa-btn-primary" : ""}`}
-                        style={{
-                          borderRadius: 0,
-                          border: "none",
-                          borderLeft: "1px solid var(--qa-border)",
-                          padding: "0.2rem 0.8rem",
-                          fontSize: "0.78rem",
-                        }}
-                        onClick={() => setUseUSCustomary(true)}
-                      >
-                        US Customary
-                      </button>
+                {(cargoDescriptionPreview || dimensionsSummary) &&
+                  servicioSel !== "FCL" && (
+                    <div className="qa-route-summary-meta mt-3">
+                      {cargoDescriptionPreview && (
+                        <span className="qa-route-meta-pill">
+                          <i className="bi bi-card-text"></i>
+                          {cargoDescriptionPreview}
+                        </span>
+                      )}
+                      {dimensionsSummary && (
+                        <span className="qa-route-meta-pill">
+                          <i className="bi bi-box"></i>
+                          {dimensionsSummary}
+                        </span>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h4 className="fs-6 fw-bold mb-0">
-                      Detalles de las Piezas
-                    </h4>
-                    <div className="d-flex align-items-center gap-2">
-                      <button
-                        type="button"
-                        className="qa-btn qa-btn-outline qa-btn-sm"
-                        onClick={() => handleDuplicatePiece()}
-                      >
-                        <i className="bi bi-files"></i>
-                        Duplicar Pieza
-                      </button>
-                      <button
-                        type="button"
-                        className="qa-btn qa-btn-primary qa-btn-sm"
-                        onClick={handleAddPiece}
-                      >
-                        <i className="bi bi-plus-lg"></i>Agregar Pieza
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mb-3">
-                    {piecesData.map((piece, index) => (
-                      <PieceAccordionLASTMILE
-                        key={piece.id}
-                        piece={piece}
-                        index={index}
-                        isOpen={openAccordions.includes(piece.id)}
-                        onToggle={() => handleToggleAccordion(piece.id)}
-                        onRemove={() => handleRemovePiece(piece.id)}
-                        onUpdate={(field, value) =>
-                          handleUpdatePiece(piece.id, field, value)
-                        }
-                        packageTypes={packageTypeOptions.map((opt) => ({
-                          id: String(opt.id),
-                          name: opt.name,
-                        }))}
-                        canRemove={piecesData.length > 1}
-                        useUSCustomary={useUSCustomary}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Totals summary bar */}
-                  <div className="qa-totals-bar">
+                  )}
+                {servicioSel !== "FCL" && (
+                  <div className="qa-totals-bar mt-3">
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
                         {fmtVolume(cargoTotals.volume)} {volumeUnit}
@@ -2255,8 +2585,147 @@ function QuoteLASTMILE({
                       <span className="qa-totals-bar-label">Peso cargable</span>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
+            )}
 
+            {openSection === 3 && (
+              <div>
+                {/* Mapa con autocompletado de direcciones */}
+                <CotizadorAddressMapDual
+                  pickupValue={pickupAddress}
+                  onPickupChange={setPickupAddress}
+                  deliveryValue={deliveryAddress}
+                  onDeliveryChange={setDeliveryAddress}
+                />
+                {/* Información del cargamento: solo para servicios no-FCL
+                    (LCL, AÉREO). Para FCL lo que importa son los contenedores. */}
+                {servicioSel !== "FCL" && (
+                  <div className="mt-4">
+                    {/* Toggle Sistema de Unidades (compartido entre todas las piezas) */}
+                    <div className="d-flex align-items-center gap-2 mb-3">
+                      <small className="qa-text-muted fw-semibold">
+                        Unidades:
+                      </small>
+                      <div
+                        className="d-flex"
+                        style={{
+                          border: "1px solid var(--qa-border)",
+                          borderRadius: "6px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className={`qa-btn qa-btn-sm ${!useUSCustomary ? "qa-btn-primary" : ""}`}
+                          style={{
+                            borderRadius: 0,
+                            border: "none",
+                            padding: "0.2rem 0.8rem",
+                            fontSize: "0.78rem",
+                          }}
+                          onClick={() => setUseUSCustomary(false)}
+                        >
+                          Métrico
+                        </button>
+                        <button
+                          type="button"
+                          className={`qa-btn qa-btn-sm ${useUSCustomary ? "qa-btn-primary" : ""}`}
+                          style={{
+                            borderRadius: 0,
+                            border: "none",
+                            borderLeft: "1px solid var(--qa-border)",
+                            padding: "0.2rem 0.8rem",
+                            fontSize: "0.78rem",
+                          }}
+                          onClick={() => setUseUSCustomary(true)}
+                        >
+                          US Customary
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h4 className="fs-6 fw-bold mb-0">
+                        Detalles de las Piezas
+                      </h4>
+                      <div className="d-flex align-items-center gap-2">
+                        <button
+                          type="button"
+                          className="qa-btn qa-btn-outline qa-btn-sm"
+                          onClick={() => handleDuplicatePiece()}
+                        >
+                          <i className="bi bi-files"></i>
+                          Duplicar Pieza
+                        </button>
+                        <button
+                          type="button"
+                          className="qa-btn qa-btn-primary qa-btn-sm"
+                          onClick={handleAddPiece}
+                        >
+                          <i className="bi bi-plus-lg"></i>Agregar Pieza
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mb-3">
+                      {piecesData.map((piece, index) => (
+                        <PieceAccordionLASTMILE
+                          key={piece.id}
+                          piece={piece}
+                          index={index}
+                          isOpen={openAccordions.includes(piece.id)}
+                          onToggle={() => handleToggleAccordion(piece.id)}
+                          onRemove={() => handleRemovePiece(piece.id)}
+                          onUpdate={(field, value) =>
+                            handleUpdatePiece(piece.id, field, value)
+                          }
+                          packageTypes={packageTypeOptions.map((opt) => ({
+                            id: String(opt.id),
+                            name: opt.name,
+                          }))}
+                          canRemove={piecesData.length > 1}
+                          useUSCustomary={useUSCustomary}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Totals summary bar */}
+                    <div className="qa-totals-bar">
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {fmtVolume(cargoTotals.volume)} {volumeUnit}
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Volumen total
+                        </span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {fmtWeight(cargoTotals.realWeight)} {weightUnit}
+                        </span>
+                        <span className="qa-totals-bar-label">Peso real</span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {fmtWeight(cargoTotals.volumetricWeight)} {weightUnit}
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Peso volumétrico
+                        </span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Peso cargable
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}{" "}
+                {/* fin servicioSel !== "FCL" */}
                 <div className="mt-4 d-flex justify-content-end">
                   <button
                     className="qf-btn qf-btn-primary"
@@ -2528,12 +2997,12 @@ function QuoteLASTMILE({
                     </div>
                   </div>
 
-                  {/* Información de Aduana (solo LCL + DDP) */}
-                  {isLclDdp && (
+                  {/* Información de Aduana (LCL+DDP y FCL+DDP) */}
+                  {needsAduanaCard && (
                     <div className="p-3 bg-light rounded border mb-3">
                       <h6 className="fw-bold mb-3">
                         <i className="bi bi-shield-check me-2"></i>
-                        Aduana / Nacionalización (LCL DDP)
+                        Aduana / Nacionalización ({servicioSel} {incotermSel})
                       </h6>
                       <div className="row g-2 small">
                         <div className="col-6 text-muted">
@@ -2565,6 +3034,55 @@ function QuoteLASTMILE({
                         </div>
                         <div className="col-6 text-end fw-bold">
                           USD {extraportData.total.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Información de Contenedores (FCL+DAP y FCL+DDP) */}
+                  {needsContenedoresCard && (
+                    <div className="p-3 bg-light rounded border mb-3">
+                      <h6 className="fw-bold mb-3">
+                        <i className="bi bi-box-seam me-2"></i>
+                        Contenedores (FCL {incotermSel})
+                      </h6>
+                      <div className="row g-2 small">
+                        {cont20 > 0 && (
+                          <>
+                            <div className="col-6 text-muted">
+                              Contenedores 20GP:
+                            </div>
+                            <div className="col-6 text-end fw-bold">
+                              {cont20}
+                            </div>
+                          </>
+                        )}
+                        {cont40HQ > 0 && (
+                          <>
+                            <div className="col-6 text-muted">
+                              Contenedores 40HQ:
+                            </div>
+                            <div className="col-6 text-end fw-bold">
+                              {cont40HQ}
+                            </div>
+                          </>
+                        )}
+                        {cont40NOR > 0 && (
+                          <>
+                            <div className="col-6 text-muted">
+                              Contenedores 40NOR:
+                            </div>
+                            <div className="col-6 text-end fw-bold">
+                              {cont40NOR}
+                            </div>
+                          </>
+                        )}
+                        <div className="col-12 border-top my-2"></div>
+                        <div className="col-6 text-muted">
+                          <strong>Total contenedores:</strong>
+                        </div>
+                        <div className="col-6 text-end fw-bold">
+                          {totalContenedores}
                         </div>
                       </div>
                     </div>
