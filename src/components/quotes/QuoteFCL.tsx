@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
-import { getPortByPOL } from "../../config/portCoordinates";
+import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
 import { imgUrl } from "../../config/images";
 import {
   GOOGLE_SHEET_CSV_URL,
@@ -215,9 +215,9 @@ function QuoteFCL({
 
   // Delivery is derived from the selected POD and is not editable by the user
   const deliveryToAddressDerived = podSeleccionado
-    ? podSeleccionado.label
+    ? (portCoordinates[podSeleccionado.value]?.name ?? podSeleccionado.label)
     : podNR
-      ? podNR.label
+      ? (portCoordinates[podNR.value]?.name ?? podNR.label)
       : "";
   const routeInfoPlaceholder = isSimulationMode
     ? SIMULATION_MISSING_VALUE

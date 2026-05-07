@@ -24,7 +24,7 @@ import { useTranslation } from "react-i18next";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import { imgUrl } from "../../config/images";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
-import { getPortByPOL } from "../../config/portCoordinates";
+import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
 import "flag-icons/css/flag-icons.min.css";
 import "./QuoteAIR.css";
 import {
@@ -321,9 +321,9 @@ function QuoteLCL({
 
   // Delivery is derived from the selected POD and is not editable by the user
   const deliveryToAddressDerived = podSeleccionado
-    ? podSeleccionado.label
+    ? (portCoordinates[podSeleccionado.value]?.name ?? podSeleccionado.label)
     : podNR
-      ? podNR.label
+      ? (portCoordinates[podNR.value]?.name ?? podNR.label)
       : "";
   const routeInfoPlaceholder = isSimulationMode
     ? SIMULATION_MISSING_VALUE

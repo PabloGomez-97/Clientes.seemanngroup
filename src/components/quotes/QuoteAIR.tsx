@@ -317,9 +317,10 @@ function QuoteAPITester({
 
   // Delivery is derived from the selected Destination and is not editable by the user
   const deliveryToAddressDerived = destinationSeleccionado
-    ? destinationSeleccionado.label
+    ? (getAirportByOrigin(destinationSeleccionado.value)?.name ??
+      destinationSeleccionado.label)
     : destNR
-      ? destNR.label
+      ? (getAirportByOrigin(destNR.value)?.name ?? destNR.label)
       : "";
   const routeInfoPlaceholder = isSimulationMode
     ? SIMULATION_MISSING_VALUE
