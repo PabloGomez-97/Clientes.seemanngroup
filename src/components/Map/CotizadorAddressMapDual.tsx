@@ -49,6 +49,7 @@ interface AddressInputProps {
   placeholder: string;
   rows?: number;
   isLoaded: boolean;
+  disabled?: boolean;
 }
 
 const AddressInput = ({
@@ -58,6 +59,7 @@ const AddressInput = ({
   placeholder,
   rows = 2,
   isLoaded,
+  disabled = false,
 }: AddressInputProps) => {
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,6 +81,14 @@ const AddressInput = ({
 
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
+
+    // No ejecutar autocompletado si el campo está deshabilitado
+    if (disabled) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setIsLoading(false);
+      return;
+    }
 
     if (value.trim().length < 3 || !isLoaded) {
       setSuggestions([]);
@@ -188,6 +198,7 @@ const AddressInput = ({
   );
 
   const handleTextareaChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    if (disabled) return;
     onChange(event.target.value);
   };
 
@@ -205,10 +216,23 @@ const AddressInput = ({
         className="qa-input"
         value={value}
         onChange={handleTextareaChange}
-        onFocus={() => setShowSuggestions(suggestions.length > 0)}
+        onFocus={() => !disabled && setShowSuggestions(suggestions.length > 0)}
         onKeyDown={handleTextareaKeyDown}
         placeholder={placeholder}
         rows={rows}
+        disabled={disabled}
+        readOnly={disabled}
+        style={
+          disabled
+            ? {
+                backgroundColor: "#f1f3f4",
+                color: "#6c757d",
+                cursor: "not-allowed",
+                resize: "none",
+                pointerEvents: "none",
+              }
+            : undefined
+        }
       />
       {showSuggestions && (
         <ul
@@ -268,6 +292,9 @@ interface CotizadorAddressMapDualProps {
   onDeliveryChange: (v: string) => void;
   pickupPlaceholder?: string;
   deliveryPlaceholder?: string;
+  /** Cuando se provee, las coordenadas de recogida se pre-establecen
+   *  (e.g. cuando el origen es un puerto conocido). */
+  lockedPickupCoords?: { lat: number; lng: number } | null;
 }
 
 const CotizadorAddressMapDual = ({
@@ -277,6 +304,7 @@ const CotizadorAddressMapDual = ({
   onDeliveryChange,
   pickupPlaceholder = "Dirección de recogida",
   deliveryPlaceholder = "Dirección de entrega",
+  lockedPickupCoords = null,
 }: CotizadorAddressMapDualProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
@@ -293,10 +321,22 @@ const CotizadorAddressMapDual = ({
   const [routeDuration, setRouteDuration] = useState<string | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
 
-  // Resetear coords si el usuario borra/edita manualmente la dirección
+  // Sincronizar coordenadas cuando el origen es un puerto conocido
   useEffect(() => {
-    if (!pickupValue.trim()) setPickupCoords(null);
-  }, [pickupValue]);
+    if (lockedPickupCoords) {
+      setPickupCoords(lockedPickupCoords);
+    } else {
+      setPickupCoords(null);
+    }
+  }, [lockedPickupCoords]);
+
+  // Resetear coords si el usuario borra/edita manualmente la dirección.
+  // Si hay coordenadas bloqueadas (puerto de origen), restaurarlas en lugar de limpiar.
+  useEffect(() => {
+    if (!pickupValue.trim()) {
+      setPickupCoords(lockedPickupCoords ?? null);
+    }
+  }, [pickupValue, lockedPickupCoords]);
   useEffect(() => {
     if (!deliveryValue.trim()) setDeliveryCoords(null);
   }, [deliveryValue]);
@@ -353,6 +393,7 @@ const CotizadorAddressMapDual = ({
             onSelect={({ coords }) => setPickupCoords(coords)}
             placeholder={pickupPlaceholder}
             isLoaded={isLoaded}
+            disabled={!!lockedPickupCoords}
           />
         </div>
         <div>

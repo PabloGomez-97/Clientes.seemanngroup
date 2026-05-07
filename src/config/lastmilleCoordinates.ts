@@ -15,21 +15,21 @@ export interface LastMileCoords {
  */
 export const lastMileCoordinates: Record<string, LastMileCoords> = {
   san_antonio: {
-    lat: -33.5928,
-    lng: -71.6064,
-    name: "Puerto de San Antonio",
+    lat: -33.5883,
+    lng: -71.6151,
+    name: "Alan Macowan, 2660000 San Antonio, Valparaíso, Chile",
     code: "CLSAI",
   },
   valparaiso: {
-    lat: -33.0472,
-    lng: -71.6127,
-    name: "Puerto de Valparaíso",
+    lat: -33.0359,
+    lng: -71.6281,
+    name: "Av. Errázuriz #25, Valparaíso, Chile",
     code: "CLVAP",
   },
-  chile: {
-    lat: -33.4489,
-    lng: -70.6693,
-    name: "Santiago de Chile",
+  aeropuerto_de_santiago_de_chile: {
+    lat: -33.4060,
+    lng: -70.7909,
+    name: "Aeropuerto Internacional Arturo Merino Benítez, Santiago de Chile, Chile",
     code: "CLSCL",
   },
 

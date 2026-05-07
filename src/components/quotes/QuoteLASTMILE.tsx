@@ -279,6 +279,11 @@ function QuoteLASTMILE({
   // Datos del cargamento
   const [pickupAddress, setPickupAddress] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  // Coordenadas del puerto de origen (auto-rellenadas cuando el origen es un puerto conocido)
+  const [pickupCoordsOverride, setPickupCoordsOverride] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   // Piezas del cargamento (mismo modelo que QuoteAIR). Dimensiones en SI (cm/kg).
   const [piecesData, setPiecesData] = useState<PieceDataLM[]>([
     createEmptyPieceLM("1"),
@@ -466,6 +471,18 @@ function QuoteLASTMILE({
     );
     if (opt) setDestinoSel(opt);
   }, [opcionesDestino, preselectedDestination, origenSel]);
+
+  // Auto-rellenar dirección de recogida cuando el origen es un puerto conocido
+  useEffect(() => {
+    const portCoords = getLastMileCoords(origenSel?.value ?? origenSel?.label);
+    if (portCoords) {
+      setPickupAddress(portCoords.name);
+      setPickupCoordsOverride({ lat: portCoords.lat, lng: portCoords.lng });
+    } else {
+      setPickupCoordsOverride(null);
+      setPickupAddress("");
+    }
+  }, [origenSel]);
 
   // Track ruta seleccionada
   useEffect(() => {
@@ -2997,6 +3014,7 @@ function QuoteLASTMILE({
                   onPickupChange={setPickupAddress}
                   deliveryValue={deliveryAddress}
                   onDeliveryChange={setDeliveryAddress}
+                  lockedPickupCoords={pickupCoordsOverride}
                 />
                 {/* Información del cargamento: solo para servicios no-FCL
                     (LCL, AÉREO). Para FCL lo que importa son los contenedores. */}
