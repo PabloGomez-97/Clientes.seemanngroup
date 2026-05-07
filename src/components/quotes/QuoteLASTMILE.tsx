@@ -521,13 +521,14 @@ function QuoteLASTMILE({
 
   const isFclDap = servicioSel === "FCL" && incotermSel === "DAP";
   const isFclDdp = servicioSel === "FCL" && incotermSel === "DDP";
+  const isAereoDdp = servicioSel === "AÉREO" && incotermSel === "DDP";
   const cont20 = parseInt(contenedores20GP || "0", 10) || 0;
   const cont40HQ = parseInt(contenedores40HQ || "0", 10) || 0;
   const cont40NOR = parseInt(contenedores40NOR || "0", 10) || 0;
   const totalContenedores = cont20 + cont40HQ + cont40NOR;
 
-  // Card de aduana obligatoria: aplica a LCL+DDP y FCL+DDP
-  const needsAduanaCard = isLclDdp || isFclDdp;
+  // Card de aduana obligatoria: aplica a LCL+DDP, FCL+DDP y AÉREO+DDP
+  const needsAduanaCard = isLclDdp || isFclDdp || isAereoDdp;
   // Card de contenedores obligatoria: aplica a FCL+DAP y FCL+DDP
   const needsContenedoresCard = isFclDap || isFclDdp;
 
@@ -678,6 +679,12 @@ function QuoteLASTMILE({
       const ttTotal = c20 * 690.2 + c40HQ * 547.4 + c40NOR * 547.4;
       const dthcTotal = c20 * 390.915 + c40HQ * 427.805 + c40NOR * 427.805;
       costoTransporte = 75 + 50 + 60 + ttTotal + dthcTotal;
+    } else if (servicioSel === "AÉREO" && incotermSel === "DDP") {
+      // AÉREO+DDP: costoTransporte = Desconsolidación 190 + Handling 60 +
+      // Banking 50 + LAC 90 + TT (bracket por peso real total kg).
+      const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
+      const ttAmount = ttBracket ? ttBracket.amount : 0;
+      costoTransporte = 190 + 60 + 50 + 90 + ttAmount;
     } else {
       return { total: 0, costoTransporte: 0, seguroParaCIF: 0 };
     }
@@ -1219,10 +1226,16 @@ function QuoteLASTMILE({
           expense: { currency: { abbr: "USD" as const } },
         });
       }
-    } else if (servicioSel === "AÉREO" && incotermSel === "DAP") {
+    } else if (
+      servicioSel === "AÉREO" &&
+      (incotermSel === "DAP" || incotermSel === "DDP")
+    ) {
       // -----------------------------------------------------------------
-      // AÉREO + DAP — Cobros fijos
+      // AÉREO + DAP / AÉREO + DDP — Cobros fijos
       // -----------------------------------------------------------------
+      // AÉREO+DDP usa exactamente los mismos cobros que AÉREO+DAP y agrega
+      // dos cobros adicionales: LAC (90 USD) y Ee (Aduana / Nacionalización).
+      const aereoLabel = `AÉREO ${incotermSel}`;
       charges.push(
         buildFixedCharge(
           134954,
@@ -1230,7 +1243,7 @@ function QuoteLASTMILE({
           "Each",
           190,
           "Amount to Desconsolidación",
-          "Desconsolidación - AÉREO DAP (Última Milla)",
+          `Desconsolidación - ${aereoLabel} (Última Milla)`,
         ),
       );
       charges.push(
@@ -1240,7 +1253,7 @@ function QuoteLASTMILE({
           "MIN",
           60,
           "Amount to Handling",
-          "Handling - AÉREO DAP (Última Milla)",
+          `Handling - ${aereoLabel} (Última Milla)`,
         ),
       );
       charges.push(
@@ -1250,12 +1263,12 @@ function QuoteLASTMILE({
           "MIN",
           50,
           "Amount to Banking Charge",
-          "Banking Charge - AÉREO DAP (Última Milla)",
+          `Banking Charge - ${aereoLabel} (Última Milla)`,
         ),
       );
 
       // -----------------------------------------------------------------
-      // AÉREO + DAP — Cobro variable Transporte Terrestre (TT)
+      // AÉREO + DAP / DDP — Cobro variable Transporte Terrestre (TT)
       // -----------------------------------------------------------------
       // Tarifa fija por bracket de peso real total (kg) sumando todas las piezas:
       //   1-300   -> 85.09 USD
@@ -1284,6 +1297,47 @@ function QuoteLASTMILE({
           },
           expense: { currency: { abbr: "USD" as const } },
         });
+      }
+
+      // -----------------------------------------------------------------
+      // AÉREO + DDP — Cobros adicionales: LAC + Ee
+      // -----------------------------------------------------------------
+      if (incotermSel === "DDP") {
+        // LOCAL AIRPORT CHARGES (LAC, id 134996) — fijo 90 USD
+        charges.push(
+          buildFixedCharge(
+            134996,
+            "LAC",
+            "Each",
+            90,
+            "Amount to Local Airport Charges",
+            "Local Airport Charges - AÉREO DDP (Última Milla)",
+          ),
+        );
+        // Ee (Extraport expenses / Aduana / Nacionalización)
+        // Reutiliza calculateAduanaCharges. costoTransporte = suma de los
+        // cobros AÉREO arriba (D 190 + H 60 + BANK 50 + LAC 90 + TT bracket).
+        if (extraportData.total > 0) {
+          const eeAmount = extraportData.total;
+          charges.push({
+            service: { id: 134768, code: "Ee" },
+            income: {
+              quantity: 1,
+              unit: "Each",
+              rate: eeAmount,
+              amount: eeAmount,
+              showamount: eeAmount,
+              payment: "Prepaid",
+              billApplyTo: "Other",
+              billTo: { name: effectiveUsername },
+              currency: { abbr: "USD" as const },
+              reference: "Amount to Extraport expenses",
+              showOnDocument: true,
+              notes: `Extraport expenses - Aduana/Nacionalización AÉREO DDP. Valor mercadería: ${valorMercaderiaDDPNum.toFixed(2)} USD; Transporte: ${extraportData.costoTransporte.toFixed(2)} USD; Seguro${parseFloat((valorSeguroDDP || "").replace(",", ".")) > 0 ? "" : " (teórico)"}: ${extraportData.seguroParaCIF.toFixed(2)} USD`,
+            },
+            expense: { currency: { abbr: "USD" as const } },
+          });
+        }
       }
     } else {
       // Resto de combinaciones: placeholder pendiente de tarifa
@@ -1739,8 +1793,11 @@ function QuoteLASTMILE({
         pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
       }
 
-      // AÉREO + DAP — pdfCharges
-      if (servicioSel === "AÉREO" && incotermSel === "DAP") {
+      // AÉREO + DAP / AÉREO + DDP — pdfCharges
+      if (
+        servicioSel === "AÉREO" &&
+        (incotermSel === "DAP" || incotermSel === "DDP")
+      ) {
         const fixedCharges: PDFCharge[] = [
           {
             code: "D",
@@ -1780,6 +1837,28 @@ function QuoteLASTMILE({
             rate: ttBracket.amount,
             amount: ttBracket.amount,
           });
+        }
+
+        // AÉREO + DDP: agregar LAC + Ee al PDF
+        if (incotermSel === "DDP") {
+          pdfCharges.push({
+            code: "LAC",
+            description: "Local Airport Charges",
+            quantity: 1,
+            unit: "Each",
+            rate: 90,
+            amount: 90,
+          });
+          if (extraportData.total > 0) {
+            pdfCharges.push({
+              code: "Ee",
+              description: "Extraport expenses",
+              quantity: 1,
+              unit: "Each",
+              rate: extraportData.total,
+              amount: extraportData.total,
+            });
+          }
         }
 
         pdfTotalCharges = pdfCharges.reduce((sum, ch) => sum + ch.amount, 0);
@@ -2123,7 +2202,14 @@ function QuoteLASTMILE({
                             servicioSel === "FCL" && inc === "DAP";
                           const willBeFclDdp =
                             servicioSel === "FCL" && inc === "DDP";
-                          if (!willBeLclDdp && !willBeFclDap && !willBeFclDdp) {
+                          const willBeAereoDdp =
+                            servicioSel === "AÉREO" && inc === "DDP";
+                          if (
+                            !willBeLclDdp &&
+                            !willBeFclDap &&
+                            !willBeFclDdp &&
+                            !willBeAereoDdp
+                          ) {
                             setTimeout(() => {
                               setStep1Confirmed(true);
                               setOpenSection(2);
