@@ -514,10 +514,10 @@ const CotizadorAddressMapDual = ({
             <Polygon
               paths={VESPUCIO_RING_POLYGON}
               options={{
-                strokeColor: "#0d6efd",
-                strokeOpacity: 0.6,
+                strokeColor: "red",
+                strokeOpacity: 0.8,
                 strokeWeight: 2,
-                fillColor: "#0d6efd",
+                fillColor: "blue",
                 fillOpacity: 0.06,
                 clickable: false,
                 zIndex: 1,
