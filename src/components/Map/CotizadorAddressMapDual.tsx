@@ -10,9 +10,15 @@ import {
   GoogleMap,
   Marker,
   DirectionsRenderer,
+  Polygon,
   useJsApiLoader,
 } from "@react-google-maps/api";
 import "../quotes/QuoteLASTMILE.css";
+import {
+  VESPUCIO_RING_POLYGON,
+  isInsideVespucioRing,
+} from "../../config/vespucioRing";
+import { GOOGLE_MAPS_LIBRARIES } from "../../config/googleMapsConfig";
 
 type Coordinates = { lat: number; lng: number };
 
@@ -30,7 +36,7 @@ const mapContainerStyle: React.CSSProperties = {
   width: "100%",
 };
 
-const libraries: "places"[] = ["places"];
+const libraries = GOOGLE_MAPS_LIBRARIES;
 
 function formatDistanceToKm(
   distance: google.maps.Distance | null | undefined,
@@ -295,6 +301,10 @@ interface CotizadorAddressMapDualProps {
   /** Cuando se provee, las coordenadas de recogida se pre-establecen
    *  (e.g. cuando el origen es un puerto conocido). */
   lockedPickupCoords?: { lat: number; lng: number } | null;
+  /** Notifica si la dirección de entrega cae dentro del Anillo de
+   *  Vespucio. `null` significa que aún no se puede determinar (sin
+   *  coordenadas o librería geometry no cargada). */
+  onDeliveryWithinRingChange?: (status: boolean | null) => void;
 }
 
 const CotizadorAddressMapDual = ({
@@ -305,6 +315,7 @@ const CotizadorAddressMapDual = ({
   pickupPlaceholder = "Dirección de recogida",
   deliveryPlaceholder = "Dirección de entrega",
   lockedPickupCoords = null,
+  onDeliveryWithinRingChange,
 }: CotizadorAddressMapDualProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
@@ -319,7 +330,24 @@ const CotizadorAddressMapDual = ({
     useState<google.maps.DirectionsResult | null>(null);
   const [routeDistance, setRouteDistance] = useState<string | null>(null);
   const [routeDuration, setRouteDuration] = useState<string | null>(null);
+  const [deliveryWithinRing, setDeliveryWithinRing] = useState<boolean | null>(
+    null,
+  );
   const mapRef = useRef<google.maps.Map | null>(null);
+
+  // Evaluar si la dirección de entrega cae dentro del Anillo de Vespucio.
+  // Usa google.maps.geometry.poly.containsLocation, que soporta polígonos
+  // arbitrarios (no solo círculos).
+  useEffect(() => {
+    if (!isLoaded || !deliveryCoords) {
+      setDeliveryWithinRing(null);
+      onDeliveryWithinRingChange?.(null);
+      return;
+    }
+    const inside = isInsideVespucioRing(deliveryCoords);
+    setDeliveryWithinRing(inside);
+    onDeliveryWithinRingChange?.(inside);
+  }, [isLoaded, deliveryCoords, onDeliveryWithinRingChange]);
 
   // Sincronizar coordenadas cuando el origen es un puerto conocido
   useEffect(() => {
@@ -408,6 +436,28 @@ const CotizadorAddressMapDual = ({
             placeholder={deliveryPlaceholder}
             isLoaded={isLoaded}
           />
+          {deliveryCoords && deliveryWithinRing === false && (
+            <div
+              className="mt-2 d-flex align-items-start gap-2 p-2 rounded"
+              style={{
+                backgroundColor: "rgba(255, 193, 7, 0.12)",
+                border: "1px solid rgba(255, 193, 7, 0.45)",
+                fontSize: "0.8rem",
+                color: "#856404",
+              }}
+              role="alert"
+            >
+              <i
+                className="bi bi-exclamation-triangle-fill"
+                style={{ color: "#f0ad4e", marginTop: "2px" }}
+              ></i>
+              <span>
+                La dirección se encuentra fuera de nuestro radio del alcance. Un
+                ejecutivo se comunicará contigo para entregarte una tarifa
+                correspondiente.
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -460,6 +510,19 @@ const CotizadorAddressMapDual = ({
                 )}
               </>
             )}
+            {/* Anillo de Vespucio: muestra el polígono de cobertura */}
+            <Polygon
+              paths={VESPUCIO_RING_POLYGON}
+              options={{
+                strokeColor: "#0d6efd",
+                strokeOpacity: 0.6,
+                strokeWeight: 2,
+                fillColor: "#0d6efd",
+                fillOpacity: 0.06,
+                clickable: false,
+                zIndex: 1,
+              }}
+            />
           </GoogleMap>
         ) : (
           <div

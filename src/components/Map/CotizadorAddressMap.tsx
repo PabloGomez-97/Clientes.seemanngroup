@@ -47,7 +47,11 @@ const mapContainerStyle: React.CSSProperties = {
   width: "100%",
 };
 
-const libraries: "places"[] = ["places"];
+// ⚠️ Importar siempre desde googleMapsConfig para que el singleton del
+// loader reciba exactamente las mismas opciones en toda la aplicación.
+import { GOOGLE_MAPS_LIBRARIES } from "../../config/googleMapsConfig";
+
+const libraries = GOOGLE_MAPS_LIBRARIES;
 
 function formatDistanceToKm(
   distance: google.maps.Distance | null | undefined,
