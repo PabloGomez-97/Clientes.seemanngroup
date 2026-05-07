@@ -17,13 +17,13 @@ export const lastMileCoordinates: Record<string, LastMileCoords> = {
   san_antonio: {
     lat: -33.5928,
     lng: -71.6064,
-    name: "San Antonio",
+    name: "Puerto de San Antonio",
     code: "CLSAI",
   },
   valparaiso: {
     lat: -33.0472,
     lng: -71.6127,
-    name: "Valparaíso",
+    name: "Puerto de Valparaíso",
     code: "CLVAP",
   },
   chile: {
