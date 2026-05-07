@@ -2231,90 +2231,413 @@ function QuoteLASTMILE({
                       </button>
                     ))}
                   </div>
+                  <hr />
 
                   {/* Card obligatoria: Aduana / Valor mercadería para LCL+DDP y FCL+DDP */}
                   {needsAduanaCard && (
                     <div
                       className="mt-4"
                       style={{
-                        padding: "1.25rem",
-                        border: "2px solid var(--qf-primary, #e07c2a)",
-                        borderRadius: 12,
-                        background: "rgba(224,124,42,0.04)",
+                        background: "#fff",
+                        border: "1px solid #e8eaed",
+                        borderRadius: 8,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                        overflow: "hidden",
                       }}
                     >
-                      <h4 style={{ marginBottom: "0.25rem" }}>
-                        <i
-                          className="bi bi-shield-check me-2"
-                          style={{ color: "var(--qf-primary, #0d6efd)" }}
-                        ></i>
-                        Información Aduanera (Obligatorio)
-                      </h4>
-                      <p
-                        className="qa-text-muted"
-                        style={{ fontSize: "0.85rem", marginBottom: "1rem" }}
+                      {/* Header */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          padding: "0.875rem 1.25rem",
+                          borderBottom: "1px solid #f1f3f4",
+                        }}
                       >
-                        Como seleccionaste DDP (Delivered Duty Paid),
-                        necesitamos el valor de tu mercadería y el valor del
-                        seguro. En caso que no ingreses valor al seguro, se
-                        utilizará el seguro teórico.
-                      </p>
-                      <div className="row g-3">
-                        <div className="col-md-6">
-                          <label
-                            className="form-label"
-                            style={{ fontWeight: 600 }}
-                          >
-                            Valor de la mercadería (USD){" "}
-                            <span style={{ color: "#dc3545" }}>*</span>
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            className="form-control"
-                            placeholder="Valor mercadería"
-                            value={valorMercaderiaDDP}
-                            onChange={(e) =>
-                              setValorMercaderiaDDP(e.target.value)
-                            }
-                          />
-                        </div>
-                        <div className="col-md-6">
-                          <label
-                            className="form-label"
-                            style={{ fontWeight: 600 }}
-                          >
-                            Valor del seguro (USD){" "}
-                            <span
-                              className="qa-text-muted"
-                              style={{ fontWeight: 400 }}
-                            >
-                              (opcional)
-                            </span>
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            className="form-control"
-                            placeholder="Valor seguro"
-                            value={valorSeguroDDP}
-                            onChange={(e) => setValorSeguroDDP(e.target.value)}
-                          />
-                        </div>
+                        <i
+                          className="bi bi-shield-check"
+                          style={{ fontSize: "0.9375rem", color: "#ff6200" }}
+                        ></i>
+                        <span
+                          style={{
+                            fontSize: "0.875rem",
+                            fontWeight: 600,
+                            color: "#1a1a1a",
+                            letterSpacing: "-0.01em",
+                          }}
+                        >
+                          Información Aduanera
+                        </span>
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            fontSize: "0.6875rem",
+                            fontWeight: 600,
+                            letterSpacing: "0.05em",
+                            textTransform: "uppercase",
+                            color: "#ff6200",
+                            background: "rgba(255,98,0,0.08)",
+                            padding: "2px 8px",
+                            borderRadius: 4,
+                            flexShrink: 0,
+                          }}
+                        >
+                          Obligatorio
+                        </span>
                       </div>
+                      {/* Body */}
+                      <div style={{ padding: "1.125rem 1.25rem" }}>
+                        <p
+                          style={{
+                            fontSize: "0.8125rem",
+                            color: "#6c757d",
+                            marginBottom: "1rem",
+                            lineHeight: 1.55,
+                          }}
+                        >
+                          Como seleccionaste{" "}
+                          <strong style={{ color: "#374151" }}>DDP</strong>{" "}
+                          (Delivered Duty Paid), necesitamos el valor de tu
+                          mercadería y el del seguro. Si no ingresas el seguro,
+                          se usará el seguro teórico.
+                        </p>
+                        <div className="row g-3">
+                          <div className="col-md-6">
+                            <label
+                              style={{
+                                display: "block",
+                                fontSize: "0.8125rem",
+                                fontWeight: 500,
+                                color: "#374151",
+                                marginBottom: "0.375rem",
+                              }}
+                            >
+                              Valor de la mercadería (USD){" "}
+                              <span style={{ color: "#dc3545" }}>*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="form-control"
+                              style={{
+                                border: "1px solid #dadce0",
+                                borderRadius: 6,
+                                fontSize: "0.875rem",
+                                padding: "0.5rem 0.75rem",
+                                boxShadow: "none",
+                              }}
+                              placeholder="0.00"
+                              value={valorMercaderiaDDP}
+                              onChange={(e) =>
+                                setValorMercaderiaDDP(e.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="col-md-6">
+                            <label
+                              style={{
+                                display: "block",
+                                fontSize: "0.8125rem",
+                                fontWeight: 500,
+                                color: "#374151",
+                                marginBottom: "0.375rem",
+                              }}
+                            >
+                              Valor del seguro (USD){" "}
+                              <span
+                                style={{
+                                  fontSize: "0.75rem",
+                                  color: "#9ca3af",
+                                  fontWeight: 400,
+                                }}
+                              >
+                                — opcional
+                              </span>
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="form-control"
+                              style={{
+                                border: "1px solid #dadce0",
+                                borderRadius: 6,
+                                fontSize: "0.875rem",
+                                padding: "0.5rem 0.75rem",
+                                boxShadow: "none",
+                              }}
+                              placeholder="0.00"
+                              value={valorSeguroDDP}
+                              onChange={(e) =>
+                                setValorSeguroDDP(e.target.value)
+                              }
+                            />
+                          </div>
+                        </div>
 
-                      {/* El botón Continuar al Paso 2 solo se muestra acá
-                          si NO hay además card de contenedores (LCL+DDP).
-                          Para FCL+DDP el botón vive en la card de contenedores
-                          y valida ambas entradas. */}
-                      {!needsContenedoresCard && (
-                        <div className="mt-3 d-flex justify-content-end">
+                        {/* El botón Continuar al Paso 2 solo se muestra acá
+                            si NO hay además card de contenedores (LCL+DDP).
+                            Para FCL+DDP el botón vive en la card de contenedores
+                            y valida ambas entradas. */}
+                        {!needsContenedoresCard && (
+                          <div
+                            style={{
+                              marginTop: "1rem",
+                              paddingTop: "0.875rem",
+                              borderTop: "1px solid #f1f3f4",
+                              display: "flex",
+                              justifyContent: "flex-end",
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className="qf-btn qf-btn-primary"
+                              disabled={valorMercaderiaDDPNum <= 0}
+                              onClick={() => {
+                                setStep1Confirmed(true);
+                                setOpenSection(2);
+                                trackStep({
+                                  step: "route_selection",
+                                  stepNumber: 2,
+                                  totalSteps: 5,
+                                });
+                              }}
+                            >
+                              Continuar al Paso 2
+                              <i className="bi bi-arrow-right ms-2"></i>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Card obligatoria: Cantidad de contenedores para FCL+DAP y FCL+DDP */}
+                  {needsContenedoresCard && (
+                    <div
+                      className="mt-4"
+                      style={{
+                        background: "#fff",
+                        border: "1px solid #e8eaed",
+                        borderRadius: 8,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {/* Header */}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          padding: "0.875rem 1.25rem",
+                          borderBottom: "1px solid #f1f3f4",
+                        }}
+                      >
+                        <i
+                          className="bi bi-box-seam"
+                          style={{ fontSize: "0.9375rem", color: "#ff6200" }}
+                        ></i>
+                        <span
+                          style={{
+                            fontSize: "0.875rem",
+                            fontWeight: 600,
+                            color: "#1a1a1a",
+                            letterSpacing: "-0.01em",
+                          }}
+                        >
+                          Cantidad de contenedores
+                        </span>
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            fontSize: "0.6875rem",
+                            fontWeight: 600,
+                            letterSpacing: "0.05em",
+                            textTransform: "uppercase",
+                            color: "#ff6200",
+                            background: "rgba(255,98,0,0.08)",
+                            padding: "2px 8px",
+                            borderRadius: 4,
+                            flexShrink: 0,
+                          }}
+                        >
+                          Obligatorio
+                        </span>
+                      </div>
+                      {/* Body */}
+                      <div style={{ padding: "1.125rem 1.25rem" }}>
+                        <p
+                          style={{
+                            fontSize: "0.8125rem",
+                            color: "#6c757d",
+                            marginBottom: "1rem",
+                            lineHeight: 1.55,
+                          }}
+                        >
+                          Indica cuántos contenedores trae tu carga. Esta
+                          información determina los cobros variables (Transporte
+                          Terrestre y DTHC). Solo se aceptan números enteros.
+                        </p>
+                        <div className="row g-3">
+                          <div className="col-md-4">
+                            <label
+                              style={{
+                                display: "block",
+                                fontSize: "0.8125rem",
+                                fontWeight: 500,
+                                color: "#374151",
+                                marginBottom: "0.375rem",
+                              }}
+                            >
+                              Contenedores 20GP
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="form-control"
+                              style={{
+                                border: "1px solid #dadce0",
+                                borderRadius: 6,
+                                fontSize: "0.875rem",
+                                padding: "0.5rem 0.75rem",
+                                boxShadow: "none",
+                              }}
+                              placeholder="0"
+                              value={contenedores20GP}
+                              onChange={handleContenedorChange(
+                                setContenedores20GP,
+                              )}
+                              onKeyDown={(e) => {
+                                if (
+                                  e.key === "." ||
+                                  e.key === "," ||
+                                  e.key === "-" ||
+                                  e.key === "e" ||
+                                  e.key === "+"
+                                ) {
+                                  e.preventDefault();
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label
+                              style={{
+                                display: "block",
+                                fontSize: "0.8125rem",
+                                fontWeight: 500,
+                                color: "#374151",
+                                marginBottom: "0.375rem",
+                              }}
+                            >
+                              Contenedores 40HQ
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="form-control"
+                              style={{
+                                border: "1px solid #dadce0",
+                                borderRadius: 6,
+                                fontSize: "0.875rem",
+                                padding: "0.5rem 0.75rem",
+                                boxShadow: "none",
+                              }}
+                              placeholder="0"
+                              value={contenedores40HQ}
+                              onChange={handleContenedorChange(
+                                setContenedores40HQ,
+                              )}
+                              onKeyDown={(e) => {
+                                if (
+                                  e.key === "." ||
+                                  e.key === "," ||
+                                  e.key === "-" ||
+                                  e.key === "e" ||
+                                  e.key === "+"
+                                ) {
+                                  e.preventDefault();
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label
+                              style={{
+                                display: "block",
+                                fontSize: "0.8125rem",
+                                fontWeight: 500,
+                                color: "#374151",
+                                marginBottom: "0.375rem",
+                              }}
+                            >
+                              Contenedores 40NOR
+                            </label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="form-control"
+                              style={{
+                                border: "1px solid #dadce0",
+                                borderRadius: 6,
+                                fontSize: "0.875rem",
+                                padding: "0.5rem 0.75rem",
+                                boxShadow: "none",
+                              }}
+                              placeholder="0"
+                              value={contenedores40NOR}
+                              onChange={handleContenedorChange(
+                                setContenedores40NOR,
+                              )}
+                              onKeyDown={(e) => {
+                                if (
+                                  e.key === "." ||
+                                  e.key === "," ||
+                                  e.key === "-" ||
+                                  e.key === "e" ||
+                                  e.key === "+"
+                                ) {
+                                  e.preventDefault();
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: "1rem",
+                            paddingTop: "0.875rem",
+                            borderTop: "1px solid #f1f3f4",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                          }}
+                        >
+                          <span
+                            style={{ fontSize: "0.8125rem", color: "#6c757d" }}
+                          >
+                            Total{" "}
+                            <strong style={{ color: "#1a1a1a" }}>
+                              {totalContenedores}
+                            </strong>{" "}
+                            {totalContenedores === 1
+                              ? "contenedor"
+                              : "contenedores"}
+                          </span>
                           <button
                             type="button"
                             className="qf-btn qf-btn-primary"
-                            disabled={valorMercaderiaDDPNum <= 0}
+                            disabled={
+                              totalContenedores <= 0 ||
+                              (needsAduanaCard && valorMercaderiaDDPNum <= 0)
+                            }
                             onClick={() => {
                               setStep1Confirmed(true);
                               setOpenSection(2);
@@ -2329,154 +2652,6 @@ function QuoteLASTMILE({
                             <i className="bi bi-arrow-right ms-2"></i>
                           </button>
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Card obligatoria: Cantidad de contenedores para FCL+DAP y FCL+DDP */}
-                  {needsContenedoresCard && (
-                    <div
-                      className="mt-4"
-                      style={{
-                        padding: "1.25rem",
-                        border: "2px solid var(--qf-primary, #e07c2a)",
-                        borderRadius: 12,
-                        background: "rgba(224,124,42,0.04)",
-                      }}
-                    >
-                      <h4 style={{ marginBottom: "0.25rem" }}>
-                        <i
-                          className="bi bi-box-seam me-2"
-                          style={{ color: "var(--qf-primary, #e07c2a)" }}
-                        ></i>
-                        Cantidad de contenedores (Obligatorio)
-                      </h4>
-                      <p
-                        className="qa-text-muted"
-                        style={{ fontSize: "0.85rem", marginBottom: "1rem" }}
-                      >
-                        Indica cuántos contenedores trae tu carga. Esta
-                        información determina los cobros variables (Transporte
-                        Terrestre y DTHC). Solo se aceptan números enteros.
-                      </p>
-                      <div className="row g-3">
-                        <div className="col-md-4">
-                          <label
-                            className="form-label"
-                            style={{ fontWeight: 600 }}
-                          >
-                            Contenedores 20GP
-                          </label>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            className="form-control"
-                            placeholder="0"
-                            value={contenedores20GP}
-                            onChange={handleContenedorChange(
-                              setContenedores20GP,
-                            )}
-                            onKeyDown={(e) => {
-                              if (
-                                e.key === "." ||
-                                e.key === "," ||
-                                e.key === "-" ||
-                                e.key === "e" ||
-                                e.key === "+"
-                              ) {
-                                e.preventDefault();
-                              }
-                            }}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label
-                            className="form-label"
-                            style={{ fontWeight: 600 }}
-                          >
-                            Contenedores 40HQ
-                          </label>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            className="form-control"
-                            placeholder="0"
-                            value={contenedores40HQ}
-                            onChange={handleContenedorChange(
-                              setContenedores40HQ,
-                            )}
-                            onKeyDown={(e) => {
-                              if (
-                                e.key === "." ||
-                                e.key === "," ||
-                                e.key === "-" ||
-                                e.key === "e" ||
-                                e.key === "+"
-                              ) {
-                                e.preventDefault();
-                              }
-                            }}
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label
-                            className="form-label"
-                            style={{ fontWeight: 600 }}
-                          >
-                            Contenedores 40NOR
-                          </label>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            className="form-control"
-                            placeholder="0"
-                            value={contenedores40NOR}
-                            onChange={handleContenedorChange(
-                              setContenedores40NOR,
-                            )}
-                            onKeyDown={(e) => {
-                              if (
-                                e.key === "." ||
-                                e.key === "," ||
-                                e.key === "-" ||
-                                e.key === "e" ||
-                                e.key === "+"
-                              ) {
-                                e.preventDefault();
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="mt-3 d-flex justify-content-between align-items-center">
-                        <small className="qa-text-muted">
-                          Total contenedores:{" "}
-                          <strong>{totalContenedores}</strong>
-                        </small>
-                        <button
-                          type="button"
-                          className="qf-btn qf-btn-primary"
-                          disabled={
-                            totalContenedores <= 0 ||
-                            (needsAduanaCard && valorMercaderiaDDPNum <= 0)
-                          }
-                          onClick={() => {
-                            setStep1Confirmed(true);
-                            setOpenSection(2);
-                            trackStep({
-                              step: "route_selection",
-                              stepNumber: 2,
-                              totalSteps: 5,
-                            });
-                          }}
-                        >
-                          Continuar al Paso 2
-                          <i className="bi bi-arrow-right ms-2"></i>
-                        </button>
                       </div>
                     </div>
                   )}
