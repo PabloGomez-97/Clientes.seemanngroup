@@ -12,6 +12,8 @@ interface PieceAccordionLASTMILEProps {
   canRemove: boolean;
   /** Sistema de unidades compartido a nivel de QuoteLASTMILE */
   useUSCustomary: boolean;
+  /** Callback para cambiar el sistema de unidades */
+  onSetUSCustomary: (val: boolean) => void;
 }
 
 const VOLUMETRIC_FACTOR_LM = 167; // kg/m³
@@ -38,6 +40,7 @@ export const PieceAccordionLASTMILE: React.FC<PieceAccordionLASTMILEProps> = ({
   packageTypes,
   canRemove,
   useUSCustomary,
+  onSetUSCustomary,
 }) => {
   // Conversión SI <-> US Customary para mostrar
   const displayDim = (cm: number): number | string => {
@@ -142,6 +145,49 @@ export const PieceAccordionLASTMILE: React.FC<PieceAccordionLASTMILEProps> = ({
                 onChange={(e) => onUpdate("description", e.target.value)}
                 placeholder="Describe el contenido de esta pieza..."
               />
+            </div>
+
+            {/* Toggle Sistema de Unidades */}
+            <div className="col-12 mb-1">
+              <div className="d-flex align-items-center gap-2">
+                <small className="qa-text-muted fw-semibold">Unidades:</small>
+                <div
+                  className="d-flex"
+                  style={{
+                    border: "1px solid var(--qa-border)",
+                    borderRadius: "6px",
+                    overflow: "hidden",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className={`qa-btn qa-btn-sm ${!useUSCustomary ? "qa-btn-primary" : ""}`}
+                    style={{
+                      borderRadius: 0,
+                      border: "none",
+                      padding: "0.2rem 0.8rem",
+                      fontSize: "0.78rem",
+                    }}
+                    onClick={() => onSetUSCustomary(false)}
+                  >
+                    Métrico
+                  </button>
+                  <button
+                    type="button"
+                    className={`qa-btn qa-btn-sm ${useUSCustomary ? "qa-btn-primary" : ""}`}
+                    style={{
+                      borderRadius: 0,
+                      border: "none",
+                      borderLeft: "1px solid var(--qa-border)",
+                      padding: "0.2rem 0.8rem",
+                      fontSize: "0.78rem",
+                    }}
+                    onClick={() => onSetUSCustomary(true)}
+                  >
+                    US Customary
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Dimensiones */}

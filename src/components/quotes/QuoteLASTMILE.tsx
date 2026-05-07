@@ -3020,49 +3020,6 @@ function QuoteLASTMILE({
                     (LCL, AÉREO). Para FCL lo que importa son los contenedores. */}
                 {servicioSel !== "FCL" && (
                   <div className="mt-4">
-                    {/* Toggle Sistema de Unidades (compartido entre todas las piezas) */}
-                    <div className="d-flex align-items-center gap-2 mb-3">
-                      <small className="qa-text-muted fw-semibold">
-                        Unidades:
-                      </small>
-                      <div
-                        className="d-flex"
-                        style={{
-                          border: "1px solid var(--qa-border)",
-                          borderRadius: "6px",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          className={`qa-btn qa-btn-sm ${!useUSCustomary ? "qa-btn-primary" : ""}`}
-                          style={{
-                            borderRadius: 0,
-                            border: "none",
-                            padding: "0.2rem 0.8rem",
-                            fontSize: "0.78rem",
-                          }}
-                          onClick={() => setUseUSCustomary(false)}
-                        >
-                          Métrico
-                        </button>
-                        <button
-                          type="button"
-                          className={`qa-btn qa-btn-sm ${useUSCustomary ? "qa-btn-primary" : ""}`}
-                          style={{
-                            borderRadius: 0,
-                            border: "none",
-                            borderLeft: "1px solid var(--qa-border)",
-                            padding: "0.2rem 0.8rem",
-                            fontSize: "0.78rem",
-                          }}
-                          onClick={() => setUseUSCustomary(true)}
-                        >
-                          US Customary
-                        </button>
-                      </div>
-                    </div>
-
                     <div className="d-flex justify-content-between align-items-center mb-3">
                       <h4 className="fs-6 fw-bold mb-0">
                         Detalles de las Piezas
@@ -3104,6 +3061,7 @@ function QuoteLASTMILE({
                           }))}
                           canRemove={piecesData.length > 1}
                           useUSCustomary={useUSCustomary}
+                          onSetUSCustomary={setUseUSCustomary}
                         />
                       ))}
                     </div>
