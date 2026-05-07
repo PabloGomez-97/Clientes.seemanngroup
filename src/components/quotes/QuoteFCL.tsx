@@ -44,11 +44,13 @@ import "flag-icons/css/flag-icons.min.css";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   fetchExpandedRoutes,
-  fetchChinaPorts,
-  getNearestChinaPorts,
+  fetchCountryPorts,
+  getNearestPorts,
+  COUNTRY_PORT_CONFIGS,
   type ExpandedRoutesData,
-  type ChinaPort,
+  type CountryPort,
 } from "./Handlers/ExpandedRoutes";
+import NearbyPortSelector from "./NearbyPortSelector";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import {
   SIMULATION_MISSING_VALUE,
@@ -205,11 +207,14 @@ function QuoteFCL({
   const [sinTarifa, setSinTarifa] = useState(false);
 
   // ============================================================================
-  // PUERTOS DE CHINA (para EXW desde POL chino)
+  // PUERTOS POR PAÍS (para EXW desde POL en paíes con soporte de selección)
   // ============================================================================
-  const [chinaPorts, setChinaPorts] = useState<ChinaPort[]>([]);
-  const [chinaPortSelected, setChinaPortSelected] =
+  const [countryPortsMap, setCountryPortsMap] = useState<
+    Record<string, CountryPort[]>
+  >({});
+  const [nearbyPortSelected, setNearbyPortSelected] =
     useState<SelectOption | null>(null);
+
   // Coordenadas de la dirección de recogida (geocodificada por el mapa)
   const [pickupCoords, setPickupCoords] = useState<{
     lat: number;
@@ -239,23 +244,22 @@ function QuoteFCL({
     : "X";
   const showPendingQuote = sinTarifa && !isSimulationMode;
 
-  // Resetear el puerto chino seleccionado si la ruta deja de ser CN+EXW
-  // o si cambia el POL.
+  // Resetear el puerto seleccionado si la ruta deja de ser EXW + país soportado.
   useEffect(() => {
     const polOpt = polSeleccionado ?? polNR;
     const polPort = polOpt ? getPortByPOL(polOpt.value) : null;
-    const isChinaPol =
-      !!polPort?.unlocode && polPort.unlocode.toUpperCase().startsWith("CN");
-    if (incoterm !== "EXW" || !isChinaPol) {
-      if (chinaPortSelected) setChinaPortSelected(null);
+    const prefix = polPort?.unlocode?.substring(0, 2).toUpperCase() ?? null;
+    const hasCountryPorts =
+      prefix !== null && (countryPortsMap[prefix]?.length ?? 0) > 0;
+    if (incoterm !== "EXW" || !hasCountryPorts) {
+      if (nearbyPortSelected) setNearbyPortSelected(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoterm, polSeleccionado?.value, polNR?.value]);
 
-  // Resetear el puerto chino seleccionado cuando cambian las coordenadas
-  // de la dirección de recogida (la lista de puertos cercanos cambia).
+  // Resetear cuando cambia la dirección de recogida.
   useEffect(() => {
-    setChinaPortSelected(null);
+    setNearbyPortSelected(null);
   }, [pickupCoords?.lat, pickupCoords?.lng]);
 
   // Cargar clientes asignados al ejecutivo (solo en modo ejecutivo)
@@ -317,19 +321,29 @@ function QuoteFCL({
         setErrorRutas(null);
 
         // Fetch del CSV desde Google Sheets (tarifas FCL) y rutas expandidas en paralelo
-        const [fclResponse, expandedData, chinaPortsData] = await Promise.all([
+        const portsResults = await Promise.all(
+          COUNTRY_PORT_CONFIGS.map(({ prefix, url }) =>
+            fetchCountryPorts(url)
+              .then((ports) => [prefix, ports] as const)
+              .catch((err) => {
+                console.warn(
+                  `⚠️ No se pudieron cargar puertos ${prefix}:`,
+                  err,
+                );
+                return [prefix, [] as CountryPort[]] as const;
+              }),
+          ),
+        );
+
+        const [fclResponse, expandedData] = await Promise.all([
           fetch(GOOGLE_SHEET_CSV_URL),
           fetchExpandedRoutes().catch((err) => {
             console.warn("⚠️ No se pudieron cargar rutas expandidas:", err);
             return null;
           }),
-          fetchChinaPorts().catch((err) => {
-            console.warn("⚠️ No se pudieron cargar puertos China:", err);
-            return [] as ChinaPort[];
-          }),
         ]);
 
-        setChinaPorts(chinaPortsData ?? []);
+        setCountryPortsMap(Object.fromEntries(portsResults));
 
         if (!fclResponse.ok) {
           throw new Error(
@@ -1602,6 +1616,28 @@ function QuoteFCL({
       tempDiv.style.left = "-9999px";
       document.body.appendChild(tempDiv);
 
+      // Calcular el puerto asignado (EXW + país con soporte) para el PDF
+      const pdfPolOpt = polSeleccionado ?? polNR;
+      const pdfPolPort = pdfPolOpt ? getPortByPOL(pdfPolOpt.value) : null;
+      const pdfPrefix =
+        pdfPolPort?.unlocode?.substring(0, 2).toUpperCase() ?? null;
+      const pdfActivePorts = pdfPrefix
+        ? (countryPortsMap[pdfPrefix] ?? [])
+        : [];
+      const pdfNearbyPorts =
+        pdfActivePorts.length > 0 && pickupCoords
+          ? getNearestPorts(pickupCoords, pdfActivePorts, 4)
+          : [];
+      const pdfEffectivePort = nearbyPortSelected
+        ? (pdfNearbyPorts.find((p) => p.value === nearbyPortSelected.value) ??
+          pdfNearbyPorts[0] ??
+          null)
+        : (pdfNearbyPorts[0] ?? null);
+      const assignedPortLabel =
+        incoterm === "EXW" && pdfEffectivePort
+          ? pdfEffectivePort.label
+          : undefined;
+
       const logoDataUrl = "/logo.png";
       const root = ReactDOM.createRoot(tempDiv);
 
@@ -1671,6 +1707,7 @@ function QuoteFCL({
                 : capitalize(rutaSeleccionada.company || "") || undefined
             }
             logoSrc={logoDataUrl}
+            assignedPort={assignedPortLabel}
           />,
         );
 
@@ -3380,31 +3417,34 @@ function QuoteFCL({
                   {(() => {
                     const polOpt = polSeleccionado ?? polNR;
                     const polPort = polOpt ? getPortByPOL(polOpt.value) : null;
-                    const isChinaPol =
-                      !!polPort?.unlocode &&
-                      polPort.unlocode.toUpperCase().startsWith("CN");
+                    const activePrefix =
+                      polPort?.unlocode?.substring(0, 2).toUpperCase() ?? null;
+                    const activePorts = activePrefix
+                      ? (countryPortsMap[activePrefix] ?? [])
+                      : [];
+                    const isCountryPol = activePorts.length > 0;
 
-                    const nearbyChinaPorts =
-                      isChinaPol && pickupCoords && chinaPorts.length > 0
-                        ? getNearestChinaPorts(pickupCoords, chinaPorts, 4)
+                    const nearbyPorts =
+                      isCountryPol && pickupCoords
+                        ? getNearestPorts(pickupCoords, activePorts, 4)
                         : [];
-                    const nearestPort = nearbyChinaPorts[0] ?? null;
-                    const alternativePorts = nearbyChinaPorts.slice(1);
-                    const effectivePort = chinaPortSelected
-                      ? (nearbyChinaPorts.find(
-                          (p) => p.value === chinaPortSelected.value,
-                        ) ?? nearestPort)
-                      : nearestPort;
+                    const effectivePort = nearbyPortSelected
+                      ? (nearbyPorts.find(
+                          (p) => p.value === nearbyPortSelected.value,
+                        ) ??
+                        nearbyPorts[0] ??
+                        null)
+                      : (nearbyPorts[0] ?? null);
 
                     let mapDestination: DestinationCoords | null = null;
-                    if (isChinaPol && effectivePort) {
+                    if (isCountryPol && effectivePort) {
                       mapDestination = {
                         lat: effectivePort.lat,
                         lng: effectivePort.lng,
                         name: effectivePort.label,
                         code: polPort?.unlocode ?? "",
                       };
-                    } else if (isChinaPol) {
+                    } else if (isCountryPol) {
                       mapDestination = null;
                     } else if (polPort) {
                       mapDestination = {
@@ -3417,124 +3457,13 @@ function QuoteFCL({
 
                     const portMiddleContent =
                       incoterm === "EXW" &&
-                      isChinaPol &&
-                      nearbyChinaPorts.length >= 2 ? (
-                        <div style={{ padding: "8px 0 4px" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 6,
-                              marginBottom: 8,
-                              fontSize: "0.75rem",
-                              color: "#475569",
-                            }}
-                          >
-                            <i
-                              className="bi bi-anchor"
-                              style={{ color: "#2563eb" }}
-                            />
-                            <span>Puerto asignado:</span>
-                            <span style={{ fontWeight: 700, color: "#1e3a5f" }}>
-                              {effectivePort?.label ?? "—"}
-                            </span>
-                            <span style={{ color: "#94a3b8" }}>·</span>
-                            <span>
-                              {effectivePort
-                                ? nearbyChinaPorts
-                                    .find(
-                                      (p) => p.value === effectivePort.value,
-                                    )
-                                    ?.distanceKm.toFixed(0)
-                                : "—"}{" "}
-                              km
-                            </span>
-                            {!chinaPortSelected && (
-                              <span
-                                style={{
-                                  background: "#dcfce7",
-                                  color: "#16a34a",
-                                  borderRadius: 10,
-                                  padding: "1px 7px",
-                                  fontSize: "0.65rem",
-                                  fontWeight: 700,
-                                }}
-                              >
-                                más cercano
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: 8,
-                              flexWrap: "wrap",
-                            }}
-                          >
-                            {alternativePorts.map((p, i) => {
-                              const isAlt =
-                                chinaPortSelected?.value === p.value;
-                              return (
-                                <button
-                                  key={p.value}
-                                  type="button"
-                                  onClick={() =>
-                                    setChinaPortSelected(
-                                      isAlt
-                                        ? null
-                                        : { value: p.value, label: p.label },
-                                    )
-                                  }
-                                  style={{
-                                    flex: 1,
-                                    minWidth: 100,
-                                    border: isAlt
-                                      ? "1.5px solid #2563eb"
-                                      : "1.5px solid #e2e8f0",
-                                    borderRadius: 8,
-                                    padding: "7px 10px",
-                                    background: isAlt ? "#eff6ff" : "#fff",
-                                    cursor: "pointer",
-                                    textAlign: "left",
-                                    transition:
-                                      "border-color 0.15s, background 0.15s",
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      fontSize: "0.62rem",
-                                      fontWeight: 700,
-                                      textTransform: "uppercase",
-                                      letterSpacing: "0.04em",
-                                      color: isAlt ? "#2563eb" : "#94a3b8",
-                                      marginBottom: 2,
-                                    }}
-                                  >
-                                    {i + 2}° más cercano
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: "0.8rem",
-                                      fontWeight: isAlt ? 700 : 500,
-                                      color: isAlt ? "#1e3a5f" : "#334155",
-                                    }}
-                                  >
-                                    {p.label}
-                                  </div>
-                                  <div
-                                    style={{
-                                      fontSize: "0.7rem",
-                                      color: "#64748b",
-                                      marginTop: 1,
-                                    }}
-                                  >
-                                    {p.distanceKm.toFixed(0)} km
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
+                      isCountryPol &&
+                      nearbyPorts.length >= 2 ? (
+                        <NearbyPortSelector
+                          nearbyPorts={nearbyPorts}
+                          selectedPort={nearbyPortSelected}
+                          onSelectPort={setNearbyPortSelected}
+                        />
                       ) : null;
 
                     return (

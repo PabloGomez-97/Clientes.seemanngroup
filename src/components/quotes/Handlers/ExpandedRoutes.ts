@@ -5,13 +5,15 @@
 export const EXPANDED_ROUTES_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?output=csv";
 
-/**
- * URL del sheet "CHINA" del mismo documento de Rutas Existentes.
- * Estructura: columna B = "Puerto Principal", C = "lat", D = "lng".
- * Datos a partir de la fila 3 (B3, C3, D3).
- */
+// ============================================================================
+// URLs POR PAÍS — agregar aquí cada nuevo país (gid del sheet correspondiente)
+// ============================================================================
+
 export const CHINA_PORTS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=184920392&single=true&output=csv";
+
+export const USA_PORTS_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=245350892&single=true&output=csv";
 
 /**
  * Normalizar texto: quitar acentos, lowercase, trim
@@ -180,19 +182,35 @@ export const fetchExpandedRoutes = async (): Promise<ExpandedRoutesData> => {
   return parseExpandedRoutesCSV(csvText);
 };
 
+// ============================================================================
+// API GENÉRICA DE PUERTOS POR PAÍS
+// Para agregar un nuevo país: añadir su URL arriba y una entrada en
+// COUNTRY_PORT_CONFIGS con el prefijo UN/LOCODE correspondiente.
+// ============================================================================
+
 /**
- * Puerto principal de China con coordenadas para trazado de ruta de pickup
- * cuando el cliente escoge Incoterm EXW desde un POL chino (UN/LOCODE CN*).
+ * Registro de países soportados para selección de puerto EXW.
+ * Cada entrada mapea un prefijo UN/LOCODE (2 letras) a la URL de su CSV.
+ * Agregar aquí para soportar un nuevo país — sin tocar ningún otro archivo.
  */
-export interface ChinaPort {
-  value: string; // normalized name (lowercase, sin acentos)
-  label: string; // display name (e.g. "Shanghai")
+export const COUNTRY_PORT_CONFIGS: ReadonlyArray<{ prefix: string; url: string }> = [
+  { prefix: "CN", url: CHINA_PORTS_CSV_URL },
+  { prefix: "US", url: USA_PORTS_CSV_URL },
+];
+
+/**
+ * Puerto con coordenadas para cualquier país.
+ * Estructura: col[1] = nombre, col[2] = lat, col[3] = lng en el CSV.
+ */
+export interface CountryPort {
+  value: string; // nombre normalizado (lowercase, sin acentos)
+  label: string; // nombre para mostrar
   lat: number;
   lng: number;
 }
 
 /**
- * Distancia haversine en kilómetros entre dos coordenadas (lat/lng en grados).
+ * Distancia haversine en kilómetros entre dos coordenadas.
  */
 export function haversineKm(
   a: { lat: number; lng: number },
@@ -211,14 +229,13 @@ export function haversineKm(
 }
 
 /**
- * Devuelve los N puertos chinos más cercanos a una coordenada (típicamente
- * la dirección de recogida del cliente). Cada puerto incluye `distanceKm`.
+ * Devuelve los N puertos más cercanos a una coordenada, con distancia adjunta.
  */
-export function getNearestChinaPorts(
+export function getNearestPorts(
   origin: { lat: number; lng: number },
-  ports: ChinaPort[],
+  ports: CountryPort[],
   count = 3,
-): Array<ChinaPort & { distanceKm: number }> {
+): Array<CountryPort & { distanceKm: number }> {
   return ports
     .map((p) => ({ ...p, distanceKm: haversineKm(origin, p) }))
     .sort((a, b) => a.distanceKm - b.distanceKm)
@@ -226,22 +243,17 @@ export function getNearestChinaPorts(
 }
 
 /**
- * Parsea el CSV de la hoja "CHINA".
- * El CSV publicado tiene 4 columnas (la primera vacía porque B es la 2da):
- *   row[0] = "" | row[1] = Puerto Principal | row[2] = lat | row[3] = lng
- * La fila 1 (índice 0) es vacía/encabezado de planilla, la fila 2 (índice 1)
- * son los headers ("Puerto Principal", "lat", "lng"). Los datos comienzan
- * en la fila 3 (índice 2).
+ * Parsea el CSV de cualquier hoja de puertos por país.
+ * Estructura: col[0] vacía, col[1] = nombre, col[2] = lat, col[3] = lng.
  */
-export const parseChinaPortsCSV = (csvText: string): ChinaPort[] => {
+export const parseCountryPortsCSV = (csvText: string): CountryPort[] => {
   const lines = csvText.split("\n");
-  const ports: ChinaPort[] = [];
+  const ports: CountryPort[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
 
-    // Parser CSV simple (la hoja no tiene comillas complejas)
     const fields: string[] = [];
     let currentField = "";
     let insideQuotes = false;
@@ -269,7 +281,6 @@ export const parseChinaPortsCSV = (csvText: string): ChinaPort[] => {
     const lngRaw = fields[3]?.trim();
 
     if (!nameRaw || !latRaw || !lngRaw) continue;
-    // Saltar header
     if (nameRaw.toLowerCase() === "puerto principal") continue;
 
     const lat = parseFloat(latRaw.replace(",", "."));
@@ -288,11 +299,14 @@ export const parseChinaPortsCSV = (csvText: string): ChinaPort[] => {
   return ports;
 };
 
-export const fetchChinaPorts = async (): Promise<ChinaPort[]> => {
-  const response = await fetch(CHINA_PORTS_CSV_URL);
+/**
+ * Carga y parsea los puertos de un país dado su URL de CSV.
+ */
+export const fetchCountryPorts = async (url: string): Promise<CountryPort[]> => {
+  const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Error al cargar puertos China: ${response.status}`);
+    throw new Error(`Error al cargar puertos: ${response.status}`);
   }
   const csvText = await response.text();
-  return parseChinaPortsCSV(csvText);
+  return parseCountryPortsCSV(csvText);
 };

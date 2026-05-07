@@ -66,6 +66,8 @@ interface PDFTemplateLCLProps {
   isPendingQuote?: boolean;
   company?: string;
   logoSrc?: string;
+  /** Puerto más cercano asignado para el tramo terrestre (solo EXW + país con soporte) */
+  assignedPort?: string;
 }
 
 const fmt = (num: number): string => {
@@ -113,6 +115,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
   isPendingQuote = false,
   company,
   logoSrc,
+  assignedPort,
 }) => {
   const C = {
     text: "#111",
@@ -387,7 +390,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: "8px",
-            marginBottom: "10px",
+            marginBottom: assignedPort ? "6px" : "10px",
           }}
         >
           {pickupFromAddress && (
@@ -416,6 +419,58 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
               <div style={{ ...val, fontSize: "8pt" }}>{deliveryToAddress}</div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Assigned port (EXW nearby-port selection) ── */}
+      {incoterm === "EXW" && assignedPort && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            backgroundColor: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            borderLeft: "3px solid #2563eb",
+            borderRadius: "3px",
+            padding: "7px 12px",
+            marginBottom: "10px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: "6.5pt",
+                fontWeight: 600,
+                color: "#475569",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                marginBottom: "1px",
+              }}
+            >
+              Assigned Port of Loading
+            </div>
+            <div
+              style={{
+                fontSize: "9.5pt",
+                fontWeight: 700,
+                color: "#1e3a5f",
+                letterSpacing: "-0.2px",
+              }}
+            >
+              {assignedPort}
+            </div>
+          </div>
+          <div
+            style={{
+              marginLeft: "auto",
+              fontSize: "6.5pt",
+              color: "#64748b",
+              textAlign: "right",
+            }}
+          >
+            Origin port for land transport.
+          </div>
         </div>
       )}
 
