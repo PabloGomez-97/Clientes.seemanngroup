@@ -2275,7 +2275,7 @@ function QuoteAPITester({
 
       // Gastos Locales (Desconsolidación) - cargo fijo
       if (gastolocal) {
-        const gastoLocalAmount = 190.4;
+        const gastoLocalAmount = 194.4;
         pdfCharges.push({
           code: "D",
           description: "GASTOS LOCALES (Desconsolidación)",
