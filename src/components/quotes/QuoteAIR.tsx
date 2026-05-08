@@ -196,6 +196,14 @@ function QuoteAPITester({
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Button animation phase: idle → loading → check → done
+  type BtnPhase = "idle" | "loading" | "check" | "done";
+  const [btnPhase, setBtnPhase] = useState<BtnPhase>("idle");
+  const pdfFallbackRef = useRef<{ base64: string; filename: string } | null>(
+    null,
+  );
+  const checkDrawRef = useRef<SVGPolylineElement | null>(null);
+
   // Estados para validaciones
   const [weightError, setWeightError] = useState<string | null>(null);
   const [dimensionError, setDimensionError] = useState<string | null>(null);
@@ -828,6 +836,30 @@ function QuoteAPITester({
     }, 150);
     return () => clearTimeout(timeout);
   }, [openSection]);
+
+  // Check animation: when phase becomes 'check', draw the checkmark and schedule 'done'
+  useEffect(() => {
+    if (btnPhase !== "check") return;
+    const rafId = requestAnimationFrame(() => {
+      if (checkDrawRef.current) {
+        checkDrawRef.current.style.strokeDashoffset = "0";
+      }
+    });
+    const timer = setTimeout(() => setBtnPhase("done"), 800);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timer);
+    };
+  }, [btnPhase]);
+
+  // Reset button when route changes after a completed quote
+  useEffect(() => {
+    if (btnPhase === "done") {
+      setBtnPhase("idle");
+      pdfFallbackRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rutaSeleccionada]);
 
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
@@ -2036,6 +2068,7 @@ function QuoteAPITester({
     }
 
     setLoading(true);
+    setBtnPhase("loading");
     setError(null);
     setResponse(null);
 
@@ -2131,7 +2164,9 @@ function QuoteAPITester({
 
       // Generar PDF después de cotización exitosa
       await generateQuotePDF(tipoAccion, data, previousMaxId);
+      setBtnPhase("check");
     } catch (err: any) {
+      setBtnPhase("idle");
       setError(err.message || "Error desconocido");
     } finally {
       setLoading(false);
@@ -2677,6 +2712,7 @@ function QuoteAPITester({
 
         // ── 4. Descargar el PDF localmente (reutiliza el base64 ya generado, sin re-renderizar html2pdf) ──
         if (pdfBase64) {
+          pdfFallbackRef.current = { base64: pdfBase64, filename };
           downloadPDFFromBase64(pdfBase64, filename);
         } else {
           await generatePDF({ filename, element: pdfElement });
@@ -5909,35 +5945,90 @@ function QuoteAPITester({
               )}
 
               <div className="d-flex justify-content-end mt-4">
-                <button
-                  type="button"
-                  className="qa-btn qa-btn-primary"
-                  onClick={() => {
-                    setTipoAccion("cotizacion");
-                    testAPI("cotizacion");
-                  }}
-                  disabled={
-                    loading ||
-                    authLoading ||
-                    !accessToken ||
-                    weightError !== null ||
-                    dimensionError !== null ||
-                    oversizeError !== null ||
-                    heightError !== null ||
-                    (weightRangeError &&
-                      !sinTarifa &&
-                      weightRangeValidation?.pesoMinimoRequerido == null) ||
-                    (isSimulationMode && !hasSimulationBaseRate) ||
-                    !rutaSeleccionada
-                  }
-                >
-                  {loading ? (
-                    <span className="spinner-border spinner-border-sm"></span>
-                  ) : (
-                    t("QuoteAIR.generarcotizacion")
-                  )}
-                  <i className="bi bi-arrow-right ms-1"></i>
-                </button>
+                {btnPhase !== "done" ? (
+                  <button
+                    type="button"
+                    className={`qa-btn qa-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
+                    onClick={() => {
+                      setBtnPhase("loading");
+                      setTipoAccion("cotizacion");
+                      testAPI("cotizacion");
+                    }}
+                    disabled={
+                      btnPhase !== "idle" ||
+                      loading ||
+                      authLoading ||
+                      !accessToken ||
+                      weightError !== null ||
+                      dimensionError !== null ||
+                      oversizeError !== null ||
+                      heightError !== null ||
+                      (weightRangeError &&
+                        !sinTarifa &&
+                        weightRangeValidation?.pesoMinimoRequerido == null) ||
+                      (isSimulationMode && !hasSimulationBaseRate) ||
+                      !rutaSeleccionada
+                    }
+                  >
+                    <span className="quote-btn-content">
+                      {t("QuoteAIR.generarcotizacion")}
+                      <i className="ti ti-arrow-right"></i>
+                    </span>
+                    {btnPhase === "loading" && (
+                      <div className="quote-spinner-ring" />
+                    )}
+                    {btnPhase === "check" && (
+                      <svg
+                        className="quote-check-svg"
+                        width={22}
+                        height={22}
+                        viewBox="0 0 22 22"
+                        fill="none"
+                      >
+                        <circle
+                          cx="11"
+                          cy="11"
+                          r="9"
+                          stroke="rgba(255,255,255,0.3)"
+                          strokeWidth="2.5"
+                        />
+                        <polyline
+                          ref={checkDrawRef}
+                          className="quote-check-polyline"
+                          points="6,11 10,15 16,7"
+                          stroke="white"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                ) : (
+                  <div className="quote-confirm-row">
+                    <span className="quote-confirm-dot">
+                      <i className="ti ti-check" />
+                    </span>
+                    <span className="quote-confirm-text">
+                      Cotización generada
+                    </span>
+                    <button
+                      type="button"
+                      className="quote-confirm-download"
+                      onClick={() => {
+                        if (pdfFallbackRef.current) {
+                          downloadPDFFromBase64(
+                            pdfFallbackRef.current.base64,
+                            pdfFallbackRef.current.filename,
+                          );
+                        }
+                      }}
+                    >
+                      <i className="ti ti-download" />
+                      Descargar PDF
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -6085,26 +6176,6 @@ function QuoteAPITester({
             >
               {error}
             </pre>
-          </div>
-        </div>
-      )}
-
-      {response && (
-        <div
-          className="qa-alert qa-alert-success mb-4"
-          style={{
-            backgroundColor: "#d4edda",
-            color: "#155724",
-            borderColor: "#c3e6cb",
-          }}
-        >
-          <i className="bi bi-check-circle-fill"></i>
-          <div>
-            <strong>Tu cotización se ha generado exitosamente</strong>
-            <div className="mt-1">
-              En unos momentos se descargará automáticamente el PDF de la
-              cotización.
-            </div>
           </div>
         </div>
       )}

@@ -1186,3 +1186,127 @@
     justify-content: flex-end;
   }
 }
+
+/* ====== Generate Quote Button Animation ====== */
+
+@keyframes quote-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes quote-confirm-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.quote-submit-btn {
+  height: 42px;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    width 0.4s cubic-bezier(.4,0,.2,1),
+    border-radius 0.4s cubic-bezier(.4,0,.2,1),
+    padding 0.4s cubic-bezier(.4,0,.2,1),
+    opacity 0.3s ease !important;
+}
+
+.quote-submit-btn.is-morphed {
+  width: 42px !important;
+  min-width: 42px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+}
+
+.quote-btn-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.quote-submit-btn.is-morphed .quote-btn-content {
+  opacity: 0;
+}
+
+.quote-spinner-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  animation: quote-spin 0.7s linear infinite;
+  pointer-events: none;
+}
+
+.quote-check-svg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.quote-check-polyline {
+  stroke-dasharray: 28;
+  stroke-dashoffset: 28;
+  transition: stroke-dashoffset 0.4s ease;
+}
+
+.quote-check-polyline.draw {
+  stroke-dashoffset: 0;
+}
+
+.quote-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: quote-confirm-in 0.35s ease forwards;
+  height: 42px;
+}
+
+.quote-confirm-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #e6f4ea;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.quote-confirm-dot i {
+  color: #2d8a4e;
+  font-size: 11px;
+}
+
+.quote-confirm-text {
+  font-size: 13px;
+  color: var(--qa-text-secondary, #6c757d);
+}
+
+.quote-confirm-download {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #E87820;
+  text-decoration: none;
+}
+
+.quote-confirm-download:hover {
+  text-decoration: underline;
+  color: #c5651a;
+}

@@ -241,6 +241,14 @@ function QuoteLASTMILE({
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Button animation phase: idle → loading → check → done
+  type BtnPhase = "idle" | "loading" | "check" | "done";
+  const [btnPhase, setBtnPhase] = useState<BtnPhase>("idle");
+  const pdfFallbackRef = useRef<{ base64: string; filename: string } | null>(
+    null,
+  );
+  const checkDrawRef = useRef<SVGPolylineElement | null>(null);
+
   // Modo ejecutivo
   const [clientesAsignados, setClientesAsignados] = useState<
     ClienteAsignadoLM[]
@@ -531,6 +539,30 @@ function QuoteLASTMILE({
     }, 150);
     return () => clearTimeout(t);
   }, [openSection]);
+
+  // Check animation: when phase becomes 'check', draw the checkmark and schedule 'done'
+  useEffect(() => {
+    if (btnPhase !== "check") return;
+    const rafId = requestAnimationFrame(() => {
+      if (checkDrawRef.current) {
+        checkDrawRef.current.style.strokeDashoffset = "0";
+      }
+    });
+    const timer = setTimeout(() => setBtnPhase("done"), 800);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timer);
+    };
+  }, [btnPhase]);
+
+  // Reset button when route changes after a completed quote
+  useEffect(() => {
+    if (btnPhase === "done") {
+      setBtnPhase("idle");
+      pdfFallbackRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origenSel, destinoSel]);
 
   const isLclDdp = servicioSel === "LCL" && incotermSel === "DDP";
   const valorMercaderiaDDPNum =
@@ -1480,6 +1512,7 @@ function QuoteLASTMILE({
     }
 
     setLoading(true);
+    setBtnPhase("loading");
     setError(null);
     setResponse(null);
 
@@ -1551,7 +1584,9 @@ function QuoteLASTMILE({
       });
 
       await generateQuotePDF(data, previousMaxId);
+      setBtnPhase("check");
     } catch (err: any) {
+      setBtnPhase("idle");
       setError(err?.message || "Error desconocido");
     } finally {
       setLoading(false);
@@ -1975,6 +2010,7 @@ function QuoteLASTMILE({
         }
 
         if (pdfBase64) {
+          pdfFallbackRef.current = { base64: pdfBase64, filename };
           downloadPDFFromBase64(pdfBase64, filename);
         } else {
           await generatePDF({ filename, element: pdfElement });
@@ -3487,52 +3523,82 @@ function QuoteLASTMILE({
                 )}
 
                 <div className="d-flex justify-content-end mt-4">
-                  <button
-                    className="qa-btn qa-btn-primary"
-                    disabled={
-                      loading || !canProceedFromStep2 || !canProceedFromStep3
-                    }
-                    onClick={submitQuote}
-                  >
-                    {loading ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        ></span>
-                        Generando cotización...
-                      </>
-                    ) : (
-                      <>
+                  {btnPhase !== "done" ? (
+                    <button
+                      className={`qa-btn qa-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
+                      disabled={
+                        btnPhase !== "idle" ||
+                        loading ||
+                        !canProceedFromStep2 ||
+                        !canProceedFromStep3
+                      }
+                      onClick={() => {
+                        setBtnPhase("loading");
+                        submitQuote();
+                      }}
+                    >
+                      <span className="quote-btn-content">
                         Generar Cotización
-                        <i className="bi bi-arrow-right ms-1"></i>
-                      </>
-                    )}
-                  </button>
+                        <i className="ti ti-arrow-right"></i>
+                      </span>
+                      {btnPhase === "loading" && (
+                        <div className="quote-spinner-ring" />
+                      )}
+                      {btnPhase === "check" && (
+                        <svg
+                          className="quote-check-svg"
+                          width={22}
+                          height={22}
+                          viewBox="0 0 22 22"
+                          fill="none"
+                        >
+                          <circle
+                            cx="11"
+                            cy="11"
+                            r="9"
+                            stroke="rgba(255,255,255,0.3)"
+                            strokeWidth="2.5"
+                          />
+                          <polyline
+                            ref={checkDrawRef}
+                            className="quote-check-polyline"
+                            points="6,11 10,15 16,7"
+                            stroke="white"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="quote-confirm-row">
+                      <span className="quote-confirm-dot">
+                        <i className="ti ti-check" />
+                      </span>
+                      <span className="quote-confirm-text">
+                        Cotización generada
+                      </span>
+                      <button
+                        type="button"
+                        className="quote-confirm-download"
+                        onClick={() => {
+                          if (pdfFallbackRef.current) {
+                            downloadPDFFromBase64(
+                              pdfFallbackRef.current.base64,
+                              pdfFallbackRef.current.filename,
+                            );
+                          }
+                        }}
+                      >
+                        <i className="ti ti-download" />
+                        Descargar PDF
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
-          </div>
-        )}
-        {/* Respuesta exitosa */}
-        {response && (
-          <div
-            className="qa-alert qa-alert-success mb-4"
-            style={{
-              backgroundColor: "#d4edda",
-              color: "#155724",
-              borderColor: "#c3e6cb",
-            }}
-          >
-            <i className="bi bi-check-circle-fill"></i>
-            <div>
-              <strong>Tu cotización se ha generado exitosamente</strong>
-              <div className="mt-1">
-                En unos momentos se descargará automáticamente el PDF de la
-                cotización.
-              </div>
-            </div>
           </div>
         )}
       </div>
