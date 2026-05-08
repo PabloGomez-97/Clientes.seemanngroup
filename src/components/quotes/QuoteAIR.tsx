@@ -1432,7 +1432,7 @@ function QuoteAPITester({
   // ============================================================================
   const getValidityClass = (
     validUntil?: string | null,
-  ): "valid" | "expired" | null => {
+  ): "valid" | "expiring-soon" | "expired" | null => {
     if (!validUntil) return null;
 
     const txt = String(validUntil).trim();
@@ -1523,7 +1523,10 @@ function QuoteAPITester({
     if (!expiry || isNaN(expiry.getTime())) return null;
 
     const now = new Date();
-    return expiry >= now ? "valid" : "expired";
+    if (expiry < now) return "expired";
+    const twoDaysMs = 3 * 24 * 60 * 60 * 1000;
+    if (expiry.getTime() - now.getTime() <= twoDaysMs) return "expiring-soon";
+    return "valid";
   };
 
   // ============================================================================
@@ -4717,9 +4720,12 @@ function QuoteAPITester({
                                                     validityState === "valid"
                                                       ? "valid"
                                                       : validityState ===
-                                                          "expired"
-                                                        ? "expired"
-                                                        : ""
+                                                          "expiring-soon"
+                                                        ? "expiring-soon"
+                                                        : validityState ===
+                                                            "expired"
+                                                          ? "expired"
+                                                          : ""
                                                   }`}
                                                 >
                                                   {ruta.validUntil}

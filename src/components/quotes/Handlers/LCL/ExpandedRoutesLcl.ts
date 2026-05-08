@@ -1,6 +1,7 @@
-// ExpandedRoutes.ts
-// Carga y parsea el tercer sheet de "Rutas Existentes" para generar
+// ExpandedRoutesLcl.ts
+// Carga y parsea el sheet de "Rutas Existentes LCL" para generar
 // todas las combinaciones POL × POD expandidas.
+// Sistema independiente para LCL — no comparte estado con FCL ni AÉREO.
 
 export const EXPANDED_ROUTES_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?output=csv";
@@ -10,19 +11,19 @@ export const EXPANDED_ROUTES_CSV_URL =
 // ============================================================================
 
 export const CHINA_PORTS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=184920392&single=true&output=csv";
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQYi3-CA6itt2SBNYumE3fuxpE0SSAtMMPn7K2LaqRPmduRvU3hSu11Vznn8NtG2yuDriuuL2E8VvOG/pub?gid=716544288&single=true&output=csv";
 
 export const USA_PORTS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=245350892&single=true&output=csv";
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQYi3-CA6itt2SBNYumE3fuxpE0SSAtMMPn7K2LaqRPmduRvU3hSu11Vznn8NtG2yuDriuuL2E8VvOG/pub?gid=1034635613&single=true&output=csv";
 
 export const SPAIN_PORTS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=709637566&single=true&output=csv";
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQYi3-CA6itt2SBNYumE3fuxpE0SSAtMMPn7K2LaqRPmduRvU3hSu11Vznn8NtG2yuDriuuL2E8VvOG/pub?gid=940714615&single=true&output=csv";
 
 export const MALAYSIA_PORTS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=364705865&single=true&output=csv";
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQYi3-CA6itt2SBNYumE3fuxpE0SSAtMMPn7K2LaqRPmduRvU3hSu11Vznn8NtG2yuDriuuL2E8VvOG/pub?gid=172775623&single=true&output=csv";
 
 export const UNITED_KINGDOM_PORTS_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=1974204350&single=true&output=csv";
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vQYi3-CA6itt2SBNYumE3fuxpE0SSAtMMPn7K2LaqRPmduRvU3hSu11Vznn8NtG2yuDriuuL2E8VvOG/pub?gid=907888315&single=true&output=csv";
 
 /**
  * Normalizar texto: quitar acentos, lowercase, trim
@@ -192,13 +193,13 @@ export const fetchExpandedRoutes = async (): Promise<ExpandedRoutesData> => {
 };
 
 // ============================================================================
-// API GENÉRICA DE PUERTOS POR PAÍS
+// API GENÉRICA DE PUERTOS POR PAÍS (selector EXW marítimo LCL)
 // Para agregar un nuevo país: añadir su URL arriba y una entrada en
 // COUNTRY_PORT_CONFIGS con el prefijo UN/LOCODE correspondiente.
 // ============================================================================
 
 /**
- * Registro de países soportados para selección de puerto EXW.
+ * Registro de países soportados para selección de puerto EXW (LCL).
  * Cada entrada mapea un prefijo UN/LOCODE (2 letras) a la URL de su CSV.
  * Agregar aquí para soportar un nuevo país — sin tocar ningún otro archivo.
  */

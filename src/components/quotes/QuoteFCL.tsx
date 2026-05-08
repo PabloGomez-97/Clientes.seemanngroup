@@ -49,8 +49,8 @@ import {
   COUNTRY_PORT_CONFIGS,
   type ExpandedRoutesData,
   type CountryPort,
-} from "./Handlers/ExpandedRoutes";
-import NearbyPortSelector from "./NearbyPortSelector";
+} from "./Handlers/FCL/ExpandedRoutesFcl";
+import NearbyPortSelectorFCL from "./NearbyPortSelectorFCL";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import {
   SIMULATION_MISSING_VALUE,
@@ -60,6 +60,8 @@ import {
   parseSimulationRateInput,
   roundSimulationAmount,
 } from "./Handlers/simulationQuote";
+
+const INITIAL_VISIBLE_ROUTES = 5;
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
@@ -177,6 +179,9 @@ function QuoteFCL({
   const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
     "cotizacion",
   );
+
+  // Estado para mostrar todas las rutas o solo las primeras
+  const [showAllRoutes, setShowAllRoutes] = useState(false);
 
   // Estado para ordenamiento de columnas de contenedor
   const [sortConfig, setSortConfig] = useState<{
@@ -832,7 +837,7 @@ function QuoteFCL({
   // ============================================================================
   const getValidityClass = (
     validUntil?: string | null,
-  ): "valid" | "expired" | null => {
+  ): "valid" | "expiring-soon" | "expired" | null => {
     if (!validUntil) return null;
 
     const txt = String(validUntil).trim();
@@ -930,7 +935,10 @@ function QuoteFCL({
     if (!expiry || isNaN(expiry.getTime())) return null;
 
     const now = new Date();
-    return expiry >= now ? "valid" : "expired";
+    if (expiry < now) return "expired";
+    const twoDaysMs = 3 * 24 * 60 * 60 * 1000;
+    if (expiry.getTime() - now.getTime() <= twoDaysMs) return "expiring-soon";
+    return "valid";
   };
 
   // ============================================================================
@@ -1066,6 +1074,12 @@ function QuoteFCL({
       return sortConfig.dir === "asc" ? diff : -diff;
     });
 
+  const rutasVisibles = showAllRoutes
+    ? rutasFiltradas
+    : rutasFiltradas.slice(0, INITIAL_VISIBLE_ROUTES);
+  const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
+  const activeCarriersKey = Array.from(carriersActivos).sort().join("|");
+
   // Scroll a rutas cuando aparecen
   useEffect(() => {
     if (rutasFiltradas.length > 0 && openSection === 1) {
@@ -1078,6 +1092,10 @@ function QuoteFCL({
       return () => clearTimeout(timeout);
     }
   }, [rutasFiltradas.length, openSection]);
+
+  useEffect(() => {
+    setShowAllRoutes(false);
+  }, [polSeleccionado?.value, podSeleccionado?.value, activeCarriersKey]);
 
   // ============================================================================
   // HANDLERS PARA SELECTOR DUAL (RECURRENTES / NO RECURRENTES)
@@ -2773,7 +2791,7 @@ function QuoteFCL({
                                             return acc;
                                           }, {});
                                         const seenCarriers = new Set<string>();
-                                        return rutasFiltradas.map((ruta) => {
+                                        return rutasVisibles.map((ruta) => {
                                           const validityState =
                                             getValidityClass(ruta.validUntil);
                                           const isRowSelected =
@@ -2939,9 +2957,12 @@ function QuoteFCL({
                                                       validityState === "valid"
                                                         ? "valid"
                                                         : validityState ===
-                                                            "expired"
-                                                          ? "expired"
-                                                          : ""
+                                                            "expiring-soon"
+                                                          ? "expiring-soon"
+                                                          : validityState ===
+                                                              "expired"
+                                                            ? "expired"
+                                                            : ""
                                                     }`}
                                                   >
                                                     {ruta.validUntil}
@@ -2979,6 +3000,21 @@ function QuoteFCL({
                                       Haz click en la ruta que deseas cotizar
                                     </div>
                                   </div>
+                                  {hasHiddenRoutes && (
+                                    <div className="qa-routes-actions mb-3">
+                                      <button
+                                        type="button"
+                                        className="qa-btn qa-btn-outline"
+                                        onClick={() =>
+                                          setShowAllRoutes(!showAllRoutes)
+                                        }
+                                      >
+                                        {showAllRoutes
+                                          ? "Mostrar menos rutas"
+                                          : "Mostrar más rutas"}
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })()}
@@ -3459,7 +3495,7 @@ function QuoteFCL({
                       incoterm === "EXW" &&
                       isCountryPol &&
                       nearbyPorts.length >= 2 ? (
-                        <NearbyPortSelector
+                        <NearbyPortSelectorFCL
                           nearbyPorts={nearbyPorts}
                           selectedPort={nearbyPortSelected}
                           onSelectPort={setNearbyPortSelected}
