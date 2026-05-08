@@ -50,7 +50,7 @@ import {
   type ExpandedRoutesData,
   type CountryPort,
 } from "./Handlers/FCL/ExpandedRoutesFcl";
-import NearbyPortSelectorFCL from "./NearbyPortSelectorFCL";
+import NearbyPortSelectorFCL from "./NearbySelector/NearbyPortSelectorFCL";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import {
   SIMULATION_MISSING_VALUE,

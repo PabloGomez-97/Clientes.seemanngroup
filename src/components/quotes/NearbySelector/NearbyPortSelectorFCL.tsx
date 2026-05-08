@@ -1,8 +1,8 @@
-import type { CountryPort } from "./Handlers/LCL/ExpandedRoutesLcl";
+import type { CountryPort } from "../Handlers/FCL/ExpandedRoutesFcl";
 
 type SelectOption = { value: string; label: string };
 
-interface NearbyPortSelectorLCLProps {
+interface NearbyPortSelectorFCLProps {
   /** Los 4 puertos más cercanos (índice 0 = automático, 1-3 = alternativos). */
   nearbyPorts: Array<CountryPort & { distanceKm: number }>;
   /** Puerto seleccionado manualmente por el usuario (null = automático). */
@@ -12,15 +12,15 @@ interface NearbyPortSelectorLCLProps {
 }
 
 /**
- * Selector de puerto cercano para LCL — sistema independiente de FCL y AÉREO.
+ * Selector de puerto cercano para FCL — sistema independiente de LCL y AÉREO.
  * Muestra el puerto asignado (automático o seleccionado) y tarjetas
  * clickeables para los puertos alternativos más cercanos.
  */
-const NearbyPortSelectorLCL = ({
+const NearbyPortSelectorFCL = ({
   nearbyPorts,
   selectedPort,
   onSelectPort,
-}: NearbyPortSelectorLCLProps) => {
+}: NearbyPortSelectorFCLProps) => {
   const effectivePort = selectedPort
     ? (nearbyPorts.find((p) => p.value === selectedPort.value) ??
       nearbyPorts[0] ??
@@ -133,4 +133,4 @@ const NearbyPortSelectorLCL = ({
   );
 };
 
-export default NearbyPortSelectorLCL;
+export default NearbyPortSelectorFCL;

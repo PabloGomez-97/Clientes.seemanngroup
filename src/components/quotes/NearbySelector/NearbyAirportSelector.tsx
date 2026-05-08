@@ -1,4 +1,4 @@
-import type { CountryAirport } from "./Handlers/Air/ExpandedRoutesAir";
+import type { CountryAirport } from "../Handlers/Air/ExpandedRoutesAir";
 
 type SelectOption = { value: string; label: string };
 
