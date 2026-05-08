@@ -59,6 +59,13 @@ import "flag-icons/css/flag-icons.min.css";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getAirportByOrigin } from "../../config/airportCoordinates";
+import {
+  COUNTRY_AIRPORT_CONFIGS,
+  fetchCountryAirports,
+  getNearestAirports,
+  type CountryAirport,
+} from "./Handlers/Air/ExpandedRoutesAir";
+import NearbyAirportSelector from "./NearbyAirportSelector";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   SIMULATION_MISSING_VALUE,
@@ -206,6 +213,15 @@ function QuoteAPITester({
   );
   const [incoterm, setIncoterm] = useState<"EXW" | "FCA" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
+  const [countryAirportsMap, setCountryAirportsMap] = useState<
+    Record<string, CountryAirport[]>
+  >({});
+  const [nearbyAirportSelected, setNearbyAirportSelected] =
+    useState<SelectOption | null>(null);
+  const [pickupCoords, setPickupCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [overallPiecesData, setOverallPiecesData] = useState<
     OverallPieceDataAir[]
   >([createOverallPieceAir("1", 100, 0.48)]);
@@ -405,6 +421,22 @@ function QuoteAPITester({
         setLoadingRutas(true);
         setErrorRutas(null);
 
+        // Cargar aeropuertos por país para selector EXW
+        const airportsResults = await Promise.all(
+          COUNTRY_AIRPORT_CONFIGS.map(({ countryCode, url }) =>
+            fetchCountryAirports(url)
+              .then((airports) => [countryCode, airports] as const)
+              .catch((err) => {
+                console.warn(
+                  `⚠️ No se pudieron cargar aeropuertos ${countryCode}:`,
+                  err,
+                );
+                return [countryCode, [] as CountryAirport[]] as const;
+              }),
+          ),
+        );
+        setCountryAirportsMap(Object.fromEntries(airportsResults));
+
         // Fetch del CSV desde Google Sheets (tarifas aéreas)
         const response = await fetch(GOOGLE_SHEET_CSV_URL);
 
@@ -470,6 +502,26 @@ function QuoteAPITester({
     };
     cargarRutas();
   }, []);
+
+  // Resetear el aeropuerto seleccionado si el origen deja de ser EXW + país soportado.
+  useEffect(() => {
+    const originOpt = originSeleccionado ?? originNR;
+    const originAirport = originOpt
+      ? getAirportByOrigin(originOpt.value)
+      : null;
+    const cc = originAirport?.countryCode?.toUpperCase() ?? null;
+    const hasCountryAirports =
+      cc !== null && (countryAirportsMap[cc]?.length ?? 0) > 0;
+    if (incoterm !== "EXW" || !hasCountryAirports) {
+      if (nearbyAirportSelected) setNearbyAirportSelected(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incoterm, originSeleccionado?.value, originNR?.value]);
+
+  // Resetear cuando cambia la dirección de recogida.
+  useEffect(() => {
+    setNearbyAirportSelected(null);
+  }, [pickupCoords?.lat, pickupCoords?.lng]);
 
   // Cargar clientes asignados al ejecutivo (solo en modo ejecutivo)
   const isPricingRole = user?.roles?.pricing === true;
@@ -2430,6 +2482,33 @@ function QuoteAPITester({
           (sum, piece) => sum + piece.totalVolume,
           0,
         );
+
+        // Calcular aeropuerto asignado (EXW + país con soporte) para el PDF
+        const pdfOriginOpt = originSeleccionado ?? originNR;
+        const pdfOriginAirport = pdfOriginOpt
+          ? getAirportByOrigin(pdfOriginOpt.value)
+          : null;
+        const pdfCountryCode =
+          pdfOriginAirport?.countryCode?.toUpperCase() ?? null;
+        const pdfActiveAirports = pdfCountryCode
+          ? (countryAirportsMap[pdfCountryCode] ?? [])
+          : [];
+        const pdfNearbyAirports =
+          pdfActiveAirports.length > 0 && pickupCoords
+            ? getNearestAirports(pickupCoords, pdfActiveAirports, 4)
+            : [];
+        const pdfEffectiveAirport = nearbyAirportSelected
+          ? (pdfNearbyAirports.find(
+              (a) => a.value === nearbyAirportSelected.value,
+            ) ??
+            pdfNearbyAirports[0] ??
+            null)
+          : (pdfNearbyAirports[0] ?? null);
+        const assignedAirportLabel =
+          incoterm === "EXW" && pdfEffectiveAirport
+            ? pdfEffectiveAirport.label
+            : undefined;
+
         const pdfPiecesData = !overallDimsAndWeight
           ? piecesData.map((piece) => ({
               ...piece,
@@ -2529,6 +2608,7 @@ function QuoteAPITester({
                 : capitalize(rutaSeleccionada.company || "") || undefined
             }
             logoSrc={logoDataUrl}
+            assignedAirport={assignedAirportLabel}
             airFreightMinWeight={
               pesoAirFreight !== pesoChargeable ? pesoAirFreight : undefined
             }
@@ -5062,31 +5142,71 @@ function QuoteAPITester({
 
               {incoterm === "EXW" && (
                 <div className="mb-4 bg-light p-3 rounded border">
-                  <CotizadorAddressMap
-                    value={pickupFromAddress}
-                    onChange={setPickupFromAddress}
-                    placeholder="Ingrese dirección de recogida"
-                    rows={2}
-                    pickupLabel={t("QuoteAIR.pickup")}
-                    deliveryValue={deliveryToAddressDerived}
-                    deliveryLabel={t("QuoteAIR.delivery")}
-                    destinationCoords={
-                      (originSeleccionado ?? originNR)
-                        ? (() => {
-                            const ap = getAirportByOrigin(
-                              (originSeleccionado ?? originNR)!.value,
-                            );
-                            if (!ap) return null;
-                            return {
-                              lat: ap.lat,
-                              lng: ap.lng,
-                              name: ap.name,
-                              code: ap.iata,
-                            } as DestinationCoords;
-                          })()
-                        : null
+                  {(() => {
+                    const originOpt = originSeleccionado ?? originNR;
+                    const originAirport = originOpt
+                      ? getAirportByOrigin(originOpt.value)
+                      : null;
+                    const activeCountryCode =
+                      originAirport?.countryCode?.toUpperCase() ?? null;
+                    const activeAirports = activeCountryCode
+                      ? (countryAirportsMap[activeCountryCode] ?? [])
+                      : [];
+                    const isCountryOrigin = activeAirports.length > 0;
+
+                    const nearbyAirports =
+                      isCountryOrigin && pickupCoords
+                        ? getNearestAirports(pickupCoords, activeAirports, 4)
+                        : [];
+                    const effectiveAirport = nearbyAirportSelected
+                      ? (nearbyAirports.find(
+                          (a) => a.value === nearbyAirportSelected.value,
+                        ) ??
+                        nearbyAirports[0] ??
+                        null)
+                      : (nearbyAirports[0] ?? null);
+
+                    let mapDestination: DestinationCoords | null = null;
+                    if (isCountryOrigin && effectiveAirport) {
+                      mapDestination = {
+                        lat: effectiveAirport.lat,
+                        lng: effectiveAirport.lng,
+                        name: effectiveAirport.label,
+                        code: originAirport?.iata ?? "",
+                      };
+                    } else if (originAirport) {
+                      mapDestination = {
+                        lat: originAirport.lat,
+                        lng: originAirport.lng,
+                        name: originAirport.name,
+                        code: originAirport.iata,
+                      };
                     }
-                  />
+
+                    const airportMiddleContent =
+                      isCountryOrigin && nearbyAirports.length >= 2 ? (
+                        <NearbyAirportSelector
+                          nearbyAirports={nearbyAirports}
+                          selectedAirport={nearbyAirportSelected}
+                          onSelectAirport={setNearbyAirportSelected}
+                        />
+                      ) : null;
+
+                    return (
+                      <CotizadorAddressMap
+                        value={pickupFromAddress}
+                        onChange={setPickupFromAddress}
+                        placeholder="Ingrese dirección de recogida"
+                        rows={2}
+                        pickupLabel={t("QuoteAIR.pickup")}
+                        deliveryValue={deliveryToAddressDerived}
+                        deliveryLabel={t("QuoteAIR.delivery")}
+                        onPickupCoordsChange={setPickupCoords}
+                        destinationCoords={mapDestination}
+                        middleContent={airportMiddleContent}
+                      />
+                    );
+                  })()}
                 </div>
               )}
 

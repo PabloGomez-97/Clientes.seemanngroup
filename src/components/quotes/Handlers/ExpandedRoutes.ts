@@ -21,7 +21,6 @@ export const SPAIN_PORTS_CSV_URL =
 export const MALAYSIA_PORTS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=364705865&single=true&output=csv";
 
-
 export const UNITED_KINGDOM_PORTS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vTqDOOy1LOPWCns63VUeiH2QDRdk7LcTqBT2zKBYE6TZsONKaMlznyyPCNb_TX9z1L8V6znOhL-5sKf/pub?gid=1974204350&single=true&output=csv";
 

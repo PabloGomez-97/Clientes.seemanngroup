@@ -67,6 +67,8 @@ interface PDFTemplateAIRProps {
   logoSrc?: string;
   /** When set, indicates Air Freight was rated at this minimum weight instead of the actual chargeable weight */
   airFreightMinWeight?: number;
+  /** Aeropuerto asignado para recogida EXW (solo cuando hay soporte de aeropuertos cercanos) */
+  assignedAirport?: string;
 }
 
 const fmt = (num: number): string => {
@@ -112,6 +114,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   company,
   logoSrc,
   airFreightMinWeight,
+  assignedAirport,
 }) => {
   const C = {
     text: "#111",
@@ -386,7 +389,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: "8px",
-            marginBottom: "10px",
+            marginBottom: assignedAirport ? "6px" : "10px",
           }}
         >
           {pickupFromAddress && (
@@ -415,6 +418,58 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
               <div style={{ ...val, fontSize: "8pt" }}>{deliveryToAddress}</div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Aeropuerto asignado (EXW con soporte de aeropuertos cercanos) ── */}
+      {incoterm === "EXW" && assignedAirport && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            backgroundColor: "#fff7f0",
+            border: "1px solid #fed7aa",
+            borderLeft: "3px solid #ff6200",
+            borderRadius: "3px",
+            padding: "7px 12px",
+            marginBottom: "10px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: "6.5pt",
+                fontWeight: 600,
+                color: "#475569",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                marginBottom: "1px",
+              }}
+            >
+              Assigned Airport of Origin
+            </div>
+            <div
+              style={{
+                fontSize: "9.5pt",
+                fontWeight: 700,
+                color: "#1e3a5f",
+                letterSpacing: "-0.2px",
+              }}
+            >
+              {assignedAirport}
+            </div>
+          </div>
+          <div
+            style={{
+              marginLeft: "auto",
+              fontSize: "6.5pt",
+              color: "#64748b",
+              textAlign: "right",
+            }}
+          >
+            Origin airport for land transport (EXW)
+          </div>
         </div>
       )}
 
