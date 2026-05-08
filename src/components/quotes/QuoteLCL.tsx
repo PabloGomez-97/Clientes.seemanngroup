@@ -2361,7 +2361,7 @@ function QuoteLCL({
         rate: 60,
         amount: 60,
         showamount: 60,
-        payment: "Prepaid",
+        payment: "Collect",
         billApplyTo: "Other",
         billTo: {
           name: effectiveUsername,
@@ -2392,7 +2392,7 @@ function QuoteLCL({
         rate: 45,
         amount: 45,
         showamount: 45,
-        payment: "Prepaid",
+        payment: "Collect",
         billApplyTo: "Other",
         billTo: {
           name: effectiveUsername,
@@ -2428,7 +2428,7 @@ function QuoteLCL({
           rate: 170,
           amount: exwRate,
           showamount: exwRate,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2462,7 +2462,7 @@ function QuoteLCL({
         rate: tarifaOceanFreight?.incomeRate ?? 0,
         amount: ofIncome,
         showamount: ofIncome,
-        payment: "Prepaid",
+        payment: "Collect",
         billApplyTo: "Other",
         billTo: {
           name: effectiveUsername,
@@ -2480,7 +2480,7 @@ function QuoteLCL({
         rate: tarifaOceanFreight?.expenseRate ?? 0,
         amount: ofExpense,
         showamount: ofExpense,
-        payment: "Prepaid",
+        payment: "Collect",
         billApplyTo: "Other",
         billTo: {
           name: effectiveUsername,
@@ -2508,7 +2508,7 @@ function QuoteLCL({
           rate: seguroAmount,
           amount: seguroAmount,
           showamount: seguroAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2548,7 +2548,7 @@ function QuoteLCL({
           rate: rate,
           amount: gastoLocalAmount,
           showamount: gastoLocalAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2578,7 +2578,7 @@ function QuoteLCL({
           rate: aperturaAmount,
           amount: aperturaAmount,
           showamount: aperturaAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2612,7 +2612,7 @@ function QuoteLCL({
           rate: noApilableAmount,
           amount: noApilableAmount,
           showamount: noApilableAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2646,7 +2646,7 @@ function QuoteLCL({
           rate: 0,
           amount: 0,
           showamount: 0,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2665,7 +2665,7 @@ function QuoteLCL({
           rate: 0,
           amount: 0,
           showamount: 0,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2749,7 +2749,7 @@ function QuoteLCL({
         name: overallDimsAndWeight ? "Overall Dims & Weight" : "LCL",
       },
       PaymentTerms: {
-        name: "Prepaid",
+        name: "Collect",
       },
       salesRep: {
         name: salesRepName,

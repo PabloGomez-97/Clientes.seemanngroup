@@ -2792,7 +2792,7 @@ function QuoteAPITester({
           rate: 45,
           amount: 45,
           showamount: 45,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2828,7 +2828,7 @@ function QuoteAPITester({
               totalRealWeight,
               totalVolumetricWeight,
             ),
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -2860,7 +2860,7 @@ function QuoteAPITester({
           rate: 30,
           amount: 30,
           showamount: 30,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2892,7 +2892,7 @@ function QuoteAPITester({
           rate: 0.15,
           amount: airportTransferAmount,
           showamount: airportTransferAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2923,7 +2923,7 @@ function QuoteAPITester({
           rate: afPrecioConMarkup,
           amount: airFreightQuoteValues.incomeAmount,
           showamount: airFreightQuoteValues.incomeAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2943,7 +2943,7 @@ function QuoteAPITester({
           rate: afPrecio,
           amount: airFreightQuoteValues.expenseAmount,
           showamount: airFreightQuoteValues.expenseAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2974,7 +2974,7 @@ function QuoteAPITester({
               rate: fcaLocalAmount,
               amount: fcaLocalAmount,
               showamount: fcaLocalAmount,
-              payment: "Prepaid",
+              payment: "Collect",
               billApplyTo: "Other",
               billTo: {
                 name: effectiveUsername,
@@ -3008,7 +3008,7 @@ function QuoteAPITester({
               rate: rutaSeleccionada.gastosXKg * FCA_MARKUP,
               amount: gastosXKgAmount,
               showamount: gastosXKgAmount,
-              payment: "Prepaid",
+              payment: "Collect",
               billApplyTo: "Other",
               billTo: {
                 name: effectiveUsername,
@@ -3043,7 +3043,7 @@ function QuoteAPITester({
             rate: seguroAmount,
             amount: seguroAmount,
             showamount: seguroAmount,
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3077,7 +3077,7 @@ function QuoteAPITester({
             rate: gastoLocalAmount,
             amount: gastoLocalAmount,
             showamount: gastoLocalAmount,
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3112,7 +3112,7 @@ function QuoteAPITester({
             rate: 0,
             amount: 0,
             showamount: 0,
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3131,7 +3131,7 @@ function QuoteAPITester({
             rate: 0,
             amount: 0,
             showamount: 0,
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3158,7 +3158,7 @@ function QuoteAPITester({
             rate: noApilableAmount,
             amount: noApilableAmount,
             showamount: noApilableAmount,
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3194,7 +3194,7 @@ function QuoteAPITester({
               rate: aduanaAmount,
               amount: aduanaAmount,
               showamount: aduanaAmount,
-              payment: "Prepaid",
+              payment: "Collect",
               billApplyTo: "Other",
               billTo: {
                 name: effectiveUsername,
@@ -3345,7 +3345,7 @@ function QuoteAPITester({
           rate: 45,
           amount: 45,
           showamount: 45,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -3377,7 +3377,7 @@ function QuoteAPITester({
             rate: calculateEXWRate(manualWeight, manualVolume),
             amount: calculateEXWRate(manualWeight, manualVolume),
             showamount: calculateEXWRate(manualWeight, manualVolume),
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3409,7 +3409,7 @@ function QuoteAPITester({
           rate: 30,
           amount: 30,
           showamount: 30,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -3446,7 +3446,7 @@ function QuoteAPITester({
           rate: 0.15,
           amount: airportTransferAmountOverall,
           showamount: airportTransferAmountOverall,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -3477,7 +3477,7 @@ function QuoteAPITester({
           rate: afPrecioConMarkup,
           amount: airFreightQuoteValues.incomeAmount,
           showamount: airFreightQuoteValues.incomeAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -3497,7 +3497,7 @@ function QuoteAPITester({
           rate: afPrecio,
           amount: airFreightQuoteValues.expenseAmount,
           showamount: airFreightQuoteValues.expenseAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -3528,7 +3528,7 @@ function QuoteAPITester({
               rate: fcaLocalAmount,
               amount: fcaLocalAmount,
               showamount: fcaLocalAmount,
-              payment: "Prepaid",
+              payment: "Collect",
               billApplyTo: "Other",
               billTo: {
                 name: effectiveUsername,
@@ -3562,7 +3562,7 @@ function QuoteAPITester({
               rate: rutaSeleccionada.gastosXKg * FCA_MARKUP,
               amount: gastosXKgAmount,
               showamount: gastosXKgAmount,
-              payment: "Prepaid",
+              payment: "Collect",
               billApplyTo: "Other",
               billTo: {
                 name: effectiveUsername,
@@ -3597,7 +3597,7 @@ function QuoteAPITester({
             rate: seguroAmount,
             amount: seguroAmount,
             showamount: seguroAmount,
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3631,7 +3631,7 @@ function QuoteAPITester({
             rate: gastoLocalAmount,
             amount: gastoLocalAmount,
             showamount: gastoLocalAmount,
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3666,7 +3666,7 @@ function QuoteAPITester({
             rate: 0,
             amount: 0,
             showamount: 0,
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3685,7 +3685,7 @@ function QuoteAPITester({
             rate: 0,
             amount: 0,
             showamount: 0,
-            payment: "Prepaid",
+            payment: "Collect",
             billApplyTo: "Other",
             billTo: {
               name: effectiveUsername,
@@ -3713,7 +3713,7 @@ function QuoteAPITester({
               rate: aduanaAmount,
               amount: aduanaAmount,
               showamount: aduanaAmount,
-              payment: "Prepaid",
+              payment: "Collect",
               billApplyTo: "Other",
               billTo: {
                 name: effectiveUsername,

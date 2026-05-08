@@ -1877,7 +1877,7 @@ function QuoteFCL({
         unit: "BL",
         rate: 60,
         amount: 60,
-        payment: "Prepaid",
+        payment: "Collect",
         billApplyTo: "Other",
         billTo: {
           name: effectiveUsername,
@@ -1907,7 +1907,7 @@ function QuoteFCL({
         unit: "HL",
         rate: 45,
         amount: 45,
-        payment: "Prepaid",
+        payment: "Collect",
         billApplyTo: "Other",
         billTo: {
           name: effectiveUsername,
@@ -1942,7 +1942,7 @@ function QuoteFCL({
           unit: "Container",
           rate: exwRate / cantidadContenedores,
           amount: exwRate,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -1975,7 +1975,7 @@ function QuoteFCL({
         unit: "Container",
         rate: oceanFreightIncome,
         amount: oceanFreightValues.incomeAmount,
-        payment: "Prepaid",
+        payment: "Collect",
         billApplyTo: "Other",
         billTo: {
           name: effectiveUsername,
@@ -2016,7 +2016,7 @@ function QuoteFCL({
           rate: seguroAmount,
           amount: seguroAmount,
           showamount: seguroAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2053,7 +2053,7 @@ function QuoteFCL({
           rate: thcRate,
           amount: thcAmount,
           showamount: thcAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2083,7 +2083,7 @@ function QuoteFCL({
           rate: aperturaAmount,
           amount: aperturaAmount,
           showamount: aperturaAmount,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2117,7 +2117,7 @@ function QuoteFCL({
           rate: 0,
           amount: 0,
           showamount: 0,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2136,7 +2136,7 @@ function QuoteFCL({
           rate: 0,
           amount: 0,
           showamount: 0,
-          payment: "Prepaid",
+          payment: "Collect",
           billApplyTo: "Other",
           billTo: {
             name: effectiveUsername,
@@ -2231,7 +2231,7 @@ function QuoteFCL({
         name: salesRepName,
       },
       PaymentTerms: {
-        name: "Prepaid",
+        name: "Collect",
       },
       commodities: Array.from({ length: cantidadContenedores }, () => ({
         commodityType: "Container",
