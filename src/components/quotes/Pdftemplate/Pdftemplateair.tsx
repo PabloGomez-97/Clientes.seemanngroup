@@ -468,7 +468,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
               textAlign: "right",
             }}
           >
-            Origin airport for land transport (EXW)
+            Origin airport for land transport.
           </div>
         </div>
       )}

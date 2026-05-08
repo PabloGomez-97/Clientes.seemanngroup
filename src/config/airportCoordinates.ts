@@ -60,7 +60,7 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     iata: "LHR",
     countryCode: "GB"
   },
-  Fráncfort: {
+  frankfurt: {
     lat: 50.0485,
     lng: 8.5586,
     name: "Frankfurt am Main Airport",

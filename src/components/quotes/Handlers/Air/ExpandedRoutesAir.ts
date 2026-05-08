@@ -124,6 +124,9 @@ export const fetchExpandedRoutesAir =
 export const USA_AIRPORTS_CSV_URL =
   "https://docs.google.com/spreadsheets/d/e/2PACX-1vRH46DfK8BWlYXwZoR3UdVP_mXiQZn_JdWaQwCQUGPmu5qv6Eov2hNnoaaZHpWXN1VXfL7vqIgpwOyD/pub?gid=333350608&single=true&output=csv";
 
+export const CHINA_AIRPORTS_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRH46DfK8BWlYXwZoR3UdVP_mXiQZn_JdWaQwCQUGPmu5qv6Eov2hNnoaaZHpWXN1VXfL7vqIgpwOyD/pub?gid=1390179997&single=true&output=csv";
+
 /**
  * Registro de países soportados para selección de aeropuerto en EXW aéreo.
  * countryCode = código ISO-3166-1 alpha-2, mismo que AirportCoords.countryCode.
@@ -132,7 +135,10 @@ export const USA_AIRPORTS_CSV_URL =
 export const COUNTRY_AIRPORT_CONFIGS: ReadonlyArray<{
   countryCode: string;
   url: string;
-}> = [{ countryCode: "US", url: USA_AIRPORTS_CSV_URL }];
+}> = [
+  { countryCode: "US", url: USA_AIRPORTS_CSV_URL },
+  { countryCode: "CN", url: CHINA_AIRPORTS_CSV_URL },
+];
 
 /**
  * Aeropuerto con coordenadas para cualquier país.
