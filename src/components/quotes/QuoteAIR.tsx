@@ -76,7 +76,7 @@ import {
   roundSimulationAmount,
 } from "./Handlers/simulationQuote";
 
-// MARKUP CONFIGURABLE PARA COBROS FCA (Local Charges & Gastos x kg)s
+// MARKUP CONFIGURABLE PARA COBROS FCA (Local Charges & Gastos x kg)
 const FCA_MARKUP = 1.2;
 const DEFAULT_OVERALL_AIR_DESCRIPTION = "Cargamento Aéreo";
 const DEFAULT_OVERALL_AIR_PACKAGE_TYPE = "97";
