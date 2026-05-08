@@ -1,4 +1,4 @@
-/* ─────────────────────────────────────────────────────────────────────────
+﻿/* ─────────────────────────────────────────────────────────────────────────
    Testimonials Carousel — TestimonialsCarousel.css
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -49,7 +49,7 @@
   color: #d6e4f0;
   font-style: italic;
   margin: 0 0 24px;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
 }
 
@@ -84,7 +84,7 @@
   color: #fff;
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
 }
 
@@ -98,14 +98,15 @@
 .hal-testimonial-meta strong {
   color: #fff;
   font-size: 0.95rem;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+  letter-spacing: -0.01em;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
 }
 
 .hal-testimonial-meta span {
   color: #8fafc8;
   font-size: 0.82rem;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
 }
 

@@ -1,15 +1,15 @@
-/* ================================================
+﻿/* ================================================
    Novedades (Blog) — Minimalist + Company Colors
    --primary-color: #ff6200
-   --secondary-color: #1a1a1a
-   Font: "Inter", system-ui
+   --secondary-color: #111827
+   Font: "Plus Jakarta Sans", system-ui
    ================================================ */
 
 .novedades-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* ── Header ── */
@@ -20,7 +20,8 @@
 .novedades-title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--secondary-color, #1a1a1a);
+  letter-spacing: -0.025em;
+  color: var(--secondary-color, #111827);
   margin: 0 0 0.5rem;
 }
 
@@ -157,7 +158,8 @@
 .novedades-card-title {
   font-size: 1.05rem;
   font-weight: 600;
-  color: var(--secondary-color, #1a1a1a);
+  letter-spacing: -0.01em;
+  color: var(--secondary-color, #111827);
   margin: 0 0 0.5rem;
   line-height: 1.4;
   display: -webkit-box;
@@ -254,9 +256,10 @@
 .novedades-article-title {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--secondary-color, #1a1a1a);
+  letter-spacing: -0.03em;
+  color: var(--secondary-color, #111827);
   margin: 0 0 1rem;
-  line-height: 1.3;
+  line-height: 1.15;
 }
 
 .novedades-article-meta {
@@ -286,21 +289,24 @@
 .novedades-h1 {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--secondary-color, #1a1a1a);
+  letter-spacing: -0.025em;
+  color: var(--secondary-color, #111827);
   margin: 2rem 0 1rem;
 }
 
 .novedades-h2 {
   font-size: 1.4rem;
   font-weight: 600;
-  color: var(--secondary-color, #1a1a1a);
+  letter-spacing: -0.015em;
+  color: var(--secondary-color, #111827);
   margin: 1.75rem 0 0.75rem;
 }
 
 .novedades-h3 {
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--secondary-color, #1a1a1a);
+  letter-spacing: -0.01em;
+  color: var(--secondary-color, #111827);
   margin: 1.5rem 0 0.5rem;
 }
 

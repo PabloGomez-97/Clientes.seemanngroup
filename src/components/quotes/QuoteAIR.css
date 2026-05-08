@@ -1,14 +1,14 @@
-/* src/components/quotes/QuoteAIR.css */
+﻿/* src/components/quotes/QuoteAIR.css */
 
 /* Variables locales que mapean a las globales */
 :root {
   --qa-primary: var(--primary-color, #ff6200);
-  --qa-secondary: var(--secondary-color, #1a1a1a);
+  --qa-secondary: var(--secondary-color, #111827);
   --qa-bg-light: #f8f9fa;
   --qa-border-color: #e0e0e0;
-  --qa-text-primary: #1a1a1a;
+  --qa-text-primary: #111827;
   --qa-text-secondary: #6c757d;
-  --qa-font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --qa-font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --qa-radius: 8px; /* Radio de borde suave y moderno */
   --qa-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --qa-transition: all 0.2s ease-in-out;

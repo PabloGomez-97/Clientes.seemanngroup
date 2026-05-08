@@ -1,12 +1,12 @@
-/* Hapag-Lloyd Style Home Page */
+﻿/* Hapag-Lloyd Style Home Page */
 
 /* Container styles */
 .hal-page-container {
   width: 100%;
   margin: 0;
   padding: 2px;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #333;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #374151;
   background-color: #f0f0f0;
 }
 
@@ -109,17 +109,20 @@
 }
 
 .hal-h0 {
-  font-size: 3rem;
+  font-size: 2.25rem;
   font-weight: 700;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.2;
-  margin: 0 0 1rem 0;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  margin: 0 0 0.85rem 0;
 }
 
 .hal-copy {
-  font-size: 1.25rem;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.6;
+  font-size: 1rem;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  line-height: 1.65;
+  opacity: 0.88;
   margin-bottom: 2rem;
 }
 
@@ -207,22 +210,23 @@
 }
 
 .hal-h4 {
-  font-size: 1rem;
-  font-weight: 400;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #666;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #9ca3af;
   margin: 0 0 10px 0;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.12em;
 }
 
 .hal-h1 {
-  font-size: 2.5rem;
+  font-size: 1.9rem;
   font-weight: 700;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.2;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   margin: 0;
-  color: #333;
+  color: #111827;
 }
 
 /* Container module */
@@ -302,10 +306,11 @@
 }
 
 .hal-label {
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #333;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #111827;
+  letter-spacing: -0.01em;
 }
 
 .hal-schedule-body,
@@ -336,11 +341,12 @@
 
 .hal-input-label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 0.78rem;
   font-weight: 500;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin-bottom: 8px;
-  color: #555;
+  color: #6b7280;
+  letter-spacing: 0.01em;
 }
 
 .hal-input {
@@ -350,7 +356,7 @@
   border-bottom: 1px solid #ddd;
   border-radius: 0;
   font-size: 1rem;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: transparent;
   transition: border-color 0.3s ease;
 }
@@ -371,7 +377,7 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 0.9rem;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   transition: border-color 0.3s;
 }
 
@@ -385,14 +391,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 20px;
+  padding: 9px 18px;
   border: none;
-  border-radius: 4px;
-  font-size: 0.9rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
   font-weight: 600;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   text-decoration: none;
   gap: 8px;
 }
@@ -439,10 +446,11 @@
 }
 
 .hal-contentqat-text {
-  font-size: 0.9rem;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  color: #666;
+  font-size: 0.8rem;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #6b7280;
 }
 
 .hal-contentqat-button-wrapper {
@@ -501,11 +509,12 @@
 }
 
 .hal-h3 {
-  font-size: 1.75rem;
-  font-weight: 600;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: -0.02em;
   margin: 0 0 20px 0;
-  color: #333;
+  color: #111827;
 }
 
 /* Teasers / News */
@@ -571,9 +580,11 @@
 
 .hal-meta {
   padding: 10px 15px;
-  font-size: 0.875rem;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #666;
+  font-size: 0.75rem;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 500;
+  color: #9ca3af;
+  letter-spacing: 0.01em;
 }
 
 .hal-teaser-bottom {
@@ -582,24 +593,25 @@
 }
 
 .hal-teaser-text {
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.4;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: -0.01em;
+  line-height: 1.45;
   margin: 0;
-  color: #333;
+  color: #111827;
 }
 
 /* Rich text */
 .hal-richtext {
-  font-size: 1rem;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.6;
-  color: #666;
+  font-size: 0.875rem;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.65;
+  color: #6b7280;
 }
 
 .hal-richtext p {
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0 0 15px 0;
 }
 
@@ -687,19 +699,21 @@
 }
 
 .hal-image-with-tiles-headline {
-  font-size: 3rem;
+  font-size: 2.25rem;
   font-weight: 700;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: -0.03em;
   margin: 0 0 10px 0;
   color: #000;
 }
 
 .hal-image-with-tiles-subline {
-  font-size: 1.25rem;
-  font-weight: 400;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   color: #000;
+  opacity: 0.8;
 }
 
 /* Responsive styles */
@@ -721,11 +735,11 @@
   }
 
   .hal-h0 {
-    font-size: 2rem;
+    font-size: 1.7rem;
   }
 
   .hal-h1 {
-    font-size: 2rem;
+    font-size: 1.6rem;
   }
 
   .hal-stage-teaser-img-txt-content {
@@ -781,11 +795,11 @@
   }
 
   .hal-h0 {
-    font-size: 1.75rem;
+    font-size: 1.4rem;
   }
 
   .hal-h1 {
-    font-size: 1.75rem;
+    font-size: 1.4rem;
   }
 
   .hal-stage-teaser-img-txt-content {
@@ -859,7 +873,7 @@ svg {
   font-size: 0.9rem;
   font-weight: 600;
   color: #444;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
 }
 
@@ -939,30 +953,31 @@ svg {
 }
 
 .hal-service-title {
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
-  color: #222;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+  color: #111827;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
 }
 
 .hal-service-desc {
-  font-size: 0.85rem;
-  line-height: 1.55;
-  color: #666;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: #6b7280;
   margin: 0;
   flex: 1;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
 }
 
 .hal-service-cta {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--primary-hover);
   margin-top: 4px;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
 }
 
@@ -996,7 +1011,7 @@ svg {
   letter-spacing: 1.2px;
   color: #999;
   margin: 0 0 14px;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
 }
 
@@ -1014,7 +1029,7 @@ svg {
   font-size: 0.82rem;
   font-weight: 600;
   color: #555;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
   transition: background 0.2s, border-color 0.2s, color 0.2s;
   cursor: default;
@@ -1050,7 +1065,7 @@ svg {
   height: 40px;
   box-sizing: border-box;
   overflow: hidden;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif;
   /* Sticky — sits right below the navbar (scroll container starts after navbar) */
   position: sticky;
