@@ -82,13 +82,13 @@
     },
     "offices": {
       "title": "Alrededor del mundo",
-      "subtitle": "Encuentre su oficina más cercana & información local",
+      "subtitle": "Oficinas globales e información local",
       "sectionTitle": "Oficinas & información local",
       "button": "Descubrir más"
     },
     "news": {
       "title": "Noticias y tendencias",
-      "subtitle": "Top News: A solo un clic",
+      "subtitle": "Noticias y tendencias del comercio global",
       "item1": "Nueva ruta Asia‑América acelera entregas",
       "item2": "Puertos digitales reducen demoras",
       "item3": "Robots en almacenes: picking 24/7",
@@ -126,7 +126,7 @@
     },
     "testimonials": {
       "label": "Nuestros Clientes",
-      "title": "Lo que dicen nuestros clientes"
+      "title": "Clientes que confían en nosotros"
     },
     "navbar": {
       "notifications": {

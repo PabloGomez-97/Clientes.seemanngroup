@@ -82,13 +82,13 @@
     },
     "offices": {
       "title": "Around the world",
-      "subtitle": "Find your nearest office & local information",
+      "subtitle": "Worldwide Offices & Local Information",
       "sectionTitle": "Offices & local information",
       "button": "Discover more"
     },
     "news": {
       "title": "News & Insights",
-      "subtitle": "Top News: Just one click away",
+      "subtitle": "Global Trade Insights",
       "item1": "New Asia-America route speeds up deliveries",
       "item2": "Digital ports reduce delays",
       "item3": "Robots in warehouses: 24/7 picking",
@@ -126,7 +126,7 @@
     },
     "testimonials": {
       "label": "Our Clients",
-      "title": "What our clients say"
+      "title": "Trusted by our clients"
     },
     "navbar": {
       "notifications": {
