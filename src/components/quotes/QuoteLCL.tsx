@@ -234,6 +234,10 @@ function QuoteLCL({
   // Estado para modal de precio 0
   const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
 
+  // Estado para modal de tarifa próxima a vencer
+  const [showExpiringSoonModal, setShowExpiringSoonModal] = useState(false);
+  const [pendingRutaLcl, setPendingRutaLcl] = useState<RutaLCL | null>(null);
+
   // ============================================================================
   // ESTADOS PARA COMMODITY
   // ============================================================================
@@ -281,6 +285,21 @@ function QuoteLCL({
   ]);
   const [showMaxPiecesModal, setShowMaxPiecesModal] = useState(false);
   const [showAllRoutes, setShowAllRoutes] = useState(false);
+
+  // Estado para ordenamiento de columnas LCL
+  type LclSortCol = "ofWM" | "validez";
+  const [sortConfig, setSortConfig] = useState<{
+    col: LclSortCol;
+    dir: "asc" | "desc";
+  }>({ col: "validez", dir: "desc" });
+
+  const handleSortCol = (col: LclSortCol) => {
+    setSortConfig((prev) =>
+      prev.col === col
+        ? { col, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { col, dir: col === "validez" ? "desc" : "asc" },
+    );
+  };
   const [openSection, setOpenSection] = useState<number>(1); // Controla qué paso está abierto
   const [step2Completed, setStep2Completed] = useState<boolean>(false);
   const [step3Completed, setStep3Completed] = useState<boolean>(false);
@@ -595,6 +614,33 @@ function QuoteLCL({
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
   // ============================================================================
+
+  const handleSeleccionarRutaLcl = (ruta: RutaLCL) => {
+    if (ruta.ofWM === 0) {
+      setShowPriceZeroModal(true);
+      return;
+    }
+    if (getValidityClass(ruta.validUntil) === "expiring-soon") {
+      setPendingRutaLcl(ruta);
+      setShowExpiringSoonModal(true);
+      return;
+    }
+    setRutaSeleccionada(ruta);
+    setSinTarifa(false);
+    setError(null);
+    setResponse(null);
+  };
+
+  const handleConfirmExpiringSoon = () => {
+    if (pendingRutaLcl) {
+      setRutaSeleccionada(pendingRutaLcl);
+      setSinTarifa(false);
+      setError(null);
+      setResponse(null);
+    }
+    setShowExpiringSoonModal(false);
+    setPendingRutaLcl(null);
+  };
 
   const refrescarTarifas = async () => {
     try {
@@ -1513,7 +1559,20 @@ function QuoteLCL({
 
       return matchPOL && matchPOD && matchOperador;
     })
-    .sort((a, b) => a.ofWM - b.ofWM);
+    .sort((a, b) => {
+      if (sortConfig.col === "validez") {
+        const dateA = parseValidUntilToISO(a.validUntil);
+        const dateB = parseValidUntilToISO(b.validUntil);
+        const diff = dateA.localeCompare(dateB);
+        return sortConfig.dir === "desc" ? -diff : diff;
+      }
+      // ofWM
+      const inf = sortConfig.dir === "asc" ? Infinity : -Infinity;
+      const effA = a.ofWM === 0 ? inf : a.ofWM;
+      const effB = b.ofWM === 0 ? inf : b.ofWM;
+      const diff = effA - effB;
+      return sortConfig.dir === "asc" ? diff : -diff;
+    });
 
   const rutasVisibles = showAllRoutes
     ? rutasFiltradas
@@ -2257,6 +2316,11 @@ function QuoteLCL({
             }
             logoSrc={logoDataUrl}
             assignedPort={assignedPortLabel}
+            isExpiringSoon={
+              !sinTarifa &&
+              !isSimulationMode &&
+              getValidityClass(rutaSeleccionada.validUntil) === "expiring-soon"
+            }
           />,
         );
 
@@ -3308,10 +3372,33 @@ function QuoteLCL({
                                       <th className="qa-rt-th-carrier">
                                         {t("Quotelcl.operador")}
                                       </th>
-                                      <th className="qa-rt-th-price">
-                                        OF
-                                        <span className="qa-rt-th-unit">
-                                          W/M
+                                      <th
+                                        className="qa-rt-th-price qa-rt-th-sortable"
+                                        onClick={() => handleSortCol("ofWM")}
+                                      >
+                                        <span className="qa-rt-th-sort-inner">
+                                          OF
+                                          <span className="qa-rt-th-unit">
+                                            W/M
+                                          </span>
+                                          <span className="qa-rt-sort-icons">
+                                            <i
+                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${
+                                                sortConfig.col === "ofWM" &&
+                                                sortConfig.dir === "asc"
+                                                  ? " active"
+                                                  : ""
+                                              }`}
+                                            />
+                                            <i
+                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${
+                                                sortConfig.col === "ofWM" &&
+                                                sortConfig.dir === "desc"
+                                                  ? " active"
+                                                  : ""
+                                              }`}
+                                            />
+                                          </span>
                                         </span>
                                       </th>
                                       <th className="qa-rt-th-meta">
@@ -3326,7 +3413,32 @@ function QuoteLCL({
                                       <th className="qa-rt-th-meta">
                                         {t("Quotelcl.agente")}
                                       </th>
-                                      <th className="qa-rt-th-meta">Validez</th>
+                                      <th
+                                        className="qa-rt-th-meta qa-rt-th-sortable"
+                                        onClick={() => handleSortCol("validez")}
+                                      >
+                                        <span className="qa-rt-th-sort-inner">
+                                          Validez
+                                          <span className="qa-rt-sort-icons">
+                                            <i
+                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${
+                                                sortConfig.col === "validez" &&
+                                                sortConfig.dir === "asc"
+                                                  ? " active"
+                                                  : ""
+                                              }`}
+                                            />
+                                            <i
+                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${
+                                                sortConfig.col === "validez" &&
+                                                sortConfig.dir === "desc"
+                                                  ? " active"
+                                                  : ""
+                                              }`}
+                                            />
+                                          </span>
+                                        </span>
+                                      </th>
                                       {isEjecutivoMode && (
                                         <th className="qa-rt-th-meta">
                                           Agente
@@ -3369,16 +3481,9 @@ function QuoteLCL({
                                         return (
                                           <tr
                                             key={ruta.id}
-                                            onClick={() => {
-                                              if (ruta.ofWM === 0) {
-                                                setShowPriceZeroModal(true);
-                                                return;
-                                              }
-                                              setRutaSeleccionada(ruta);
-                                              setSinTarifa(false);
-                                              setError(null);
-                                              setResponse(null);
-                                            }}
+                                            onClick={() =>
+                                              handleSeleccionarRutaLcl(ruta)
+                                            }
                                             className={`qa-rt-row${
                                               isSelected ? " is-selected" : ""
                                             }`}
@@ -4946,6 +5051,53 @@ function QuoteLCL({
             onClick={() => setShowMaxPiecesModal(false)}
           >
             Entendido
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal: tarifa próxima a vencer */}
+      <Modal
+        show={showExpiringSoonModal}
+        onHide={() => {
+          setShowExpiringSoonModal(false);
+          setPendingRutaLcl(null);
+        }}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-exclamation-triangle-fill me-2"
+              style={{ color: "#f5a623" }}
+            ></i>
+            Tarifa próxima a vencer
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-0">
+            La tarifa que has seleccionado está próxima a vencer, el precio
+            final puede variar un porcentaje. ¿Deseas continuar?
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowExpiringSoonModal(false);
+              setPendingRutaLcl(null);
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qf-primary)",
+              borderColor: "var(--qf-primary)",
+            }}
+            onClick={handleConfirmExpiringSoon}
+          >
+            Continuar
           </Button>
         </Modal.Footer>
       </Modal>

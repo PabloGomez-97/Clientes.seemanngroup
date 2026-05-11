@@ -69,6 +69,7 @@ interface PDFTemplateAIRProps {
   airFreightMinWeight?: number;
   /** Aeropuerto asignado para recogida EXW (solo cuando hay soporte de aeropuertos cercanos) */
   assignedAirport?: string;
+  isExpiringSoon?: boolean;
 }
 
 const fmt = (num: number): string => {
@@ -115,6 +116,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   logoSrc,
   airFreightMinWeight,
   assignedAirport,
+  isExpiringSoon = false,
 }) => {
   const C = {
     text: "#111",
@@ -696,6 +698,37 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
         tracking system to monitor your shipment status, ETA, and location
         updates.
       </div>
+
+      {/* ── Aviso de tarifa próxima a vencer ── */}
+      {isExpiringSoon && (
+        <div
+          style={{
+            backgroundColor: "#FFFBEB",
+            border: "1px solid #F59E0B",
+            borderLeft: "4px solid #D97706",
+            borderRadius: "4px",
+            padding: "8px 12px",
+            marginBottom: "10px",
+            fontSize: "7.5pt",
+            color: "#78350F",
+            lineHeight: 1.5,
+          }}
+        >
+          <strong
+            style={{ color: "#D97706", display: "block", marginBottom: "3px" }}
+          >
+            ⚠ Aviso sobre Vigencia Tarifaria
+          </strong>
+          La tarifa aplicada en la presente cotización se encuentra próxima a su
+          fecha de vencimiento. En virtud de lo anterior, se informa que los
+          valores indicados podrían estar sujetos a revisión y/o modificación
+          por parte de los agentes y aerolíneas involucradas, una vez vencido el
+          período de validez. Por ello, el precio final confirmado podría
+          diferir del aquí señalado. Se recomienda proceder con la aceptación
+          formal de la cotización a la brevedad posible a fin de garantizar las
+          condiciones tarifarias actuales.
+        </div>
+      )}
 
       {/* ── Air Freight minimum-range billing notice ── */}
       {airFreightMinWeight !== undefined && !isPendingQuote && (

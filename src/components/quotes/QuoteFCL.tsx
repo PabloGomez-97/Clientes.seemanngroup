@@ -183,6 +183,13 @@ function QuoteFCL({
   const [showSeguroModal, setShowSeguroModal] = useState(false);
   const [tempValorSeguro, setTempValorSeguro] = useState("");
 
+  // Modal: tarifa próxima a vencer
+  const [showExpiringSoonModal, setShowExpiringSoonModal] = useState(false);
+  const [pendingContainerSelection, setPendingContainerSelection] = useState<{
+    ruta: RutaFCL;
+    containerType: ContainerType;
+  } | null>(null);
+
   // Estado para el tipo de acción: cotización u operación
   const [tipoAccion, setTipoAccion] = useState<"cotizacion" | "operacion">(
     "cotizacion",
@@ -193,15 +200,15 @@ function QuoteFCL({
 
   // Estado para ordenamiento de columnas de contenedor
   const [sortConfig, setSortConfig] = useState<{
-    col: "20GP" | "40HQ" | "40NOR";
+    col: "20GP" | "40HQ" | "40NOR" | "validez";
     dir: "asc" | "desc";
-  }>({ col: "20GP", dir: "asc" });
+  }>({ col: "validez", dir: "desc" });
 
-  const handleSortCol = (col: "20GP" | "40HQ" | "40NOR") => {
+  const handleSortCol = (col: "20GP" | "40HQ" | "40NOR" | "validez") => {
     setSortConfig((prev) =>
       prev.col === col
         ? { col, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { col, dir: "asc" },
+        : { col, dir: col === "validez" ? "desc" : "asc" },
     );
   };
 
@@ -1103,6 +1110,12 @@ function QuoteFCL({
       return matchPOL && matchPOD && matchCarrier;
     })
     .sort((a, b) => {
+      if (sortConfig.col === "validez") {
+        const dateA = parseValidUntilToISO(a.validUntil);
+        const dateB = parseValidUntilToISO(b.validUntil);
+        const diff = dateA.localeCompare(dateB);
+        return sortConfig.dir === "desc" ? -diff : diff;
+      }
       const getColPrice = (r: typeof a) => {
         const raw =
           sortConfig.col === "20GP"
@@ -1175,7 +1188,7 @@ function QuoteFCL({
   // FUNCIÓN PARA SELECCIONAR CONTENEDOR
   // ============================================================================
 
-  const handleSeleccionarContainer = (
+  const doSeleccionarContainer = (
     ruta: RutaFCL,
     containerType: ContainerType,
   ) => {
@@ -1216,6 +1229,29 @@ function QuoteFCL({
       podSeleccionado?.label || "",
       { carrier: ruta.carrier, container: containerType },
     );
+  };
+
+  const handleSeleccionarContainer = (
+    ruta: RutaFCL,
+    containerType: ContainerType,
+  ) => {
+    if (getValidityClass(ruta.validUntil) === "expiring-soon") {
+      setPendingContainerSelection({ ruta, containerType });
+      setShowExpiringSoonModal(true);
+      return;
+    }
+    doSeleccionarContainer(ruta, containerType);
+  };
+
+  const handleConfirmExpiringSoon = () => {
+    if (pendingContainerSelection) {
+      doSeleccionarContainer(
+        pendingContainerSelection.ruta,
+        pendingContainerSelection.containerType,
+      );
+    }
+    setShowExpiringSoonModal(false);
+    setPendingContainerSelection(null);
   };
 
   // ============================================================================
@@ -1774,6 +1810,11 @@ function QuoteFCL({
             }
             logoSrc={logoDataUrl}
             assignedPort={assignedPortLabel}
+            isExpiringSoon={
+              !sinTarifa &&
+              !isSimulationMode &&
+              getValidityClass(rutaSeleccionada.validUntil) === "expiring-soon"
+            }
           />,
         );
 
@@ -2816,8 +2857,35 @@ function QuoteFCL({
                                         <th className="qa-rt-th-meta">
                                           Free time
                                         </th>
-                                        <th className="qa-rt-th-meta">
-                                          Validez
+                                        <th
+                                          className="qa-rt-th-meta qa-rt-th-sortable"
+                                          onClick={() =>
+                                            handleSortCol("validez")
+                                          }
+                                        >
+                                          <span className="qa-rt-th-sort-inner">
+                                            Validez
+                                            <span className="qa-rt-sort-icons">
+                                              <i
+                                                className={`bi bi-caret-up-fill qa-rt-sort-icon${
+                                                  sortConfig.col ===
+                                                    "validez" &&
+                                                  sortConfig.dir === "asc"
+                                                    ? " active"
+                                                    : ""
+                                                }`}
+                                              />
+                                              <i
+                                                className={`bi bi-caret-down-fill qa-rt-sort-icon${
+                                                  sortConfig.col ===
+                                                    "validez" &&
+                                                  sortConfig.dir === "desc"
+                                                    ? " active"
+                                                    : ""
+                                                }`}
+                                              />
+                                            </span>
+                                          </span>
                                         </th>
                                         {isEjecutivoMode && (
                                           <th className="qa-rt-th-meta">
@@ -4153,6 +4221,53 @@ function QuoteFCL({
             }}
           >
             Confirmar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal: tarifa próxima a vencer */}
+      <Modal
+        show={showExpiringSoonModal}
+        onHide={() => {
+          setShowExpiringSoonModal(false);
+          setPendingContainerSelection(null);
+        }}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-exclamation-triangle-fill me-2"
+              style={{ color: "#f5a623" }}
+            ></i>
+            Tarifa próxima a vencer
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-0">
+            La tarifa que has seleccionado está próxima a vencer, el precio
+            final puede variar un porcentaje. ¿Deseas continuar?
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowExpiringSoonModal(false);
+              setPendingContainerSelection(null);
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qf-primary)",
+              borderColor: "var(--qf-primary)",
+            }}
+            onClick={handleConfirmExpiringSoon}
+          >
+            Continuar
           </Button>
         </Modal.Footer>
       </Modal>

@@ -306,6 +306,21 @@ function QuoteAPITester({
   );
   const [showAllRoutes, setShowAllRoutes] = useState(false);
 
+  // Estado para ordenamiento de columnas aéreas
+  type AirSortCol = "kg45" | "kg100" | "kg300" | "kg500" | "kg1000" | "validez";
+  const [sortConfig, setSortConfig] = useState<{
+    col: AirSortCol;
+    dir: "asc" | "desc";
+  }>({ col: "validez", dir: "desc" });
+
+  const handleSortCol = (col: AirSortCol) => {
+    setSortConfig((prev) =>
+      prev.col === col
+        ? { col, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { col, dir: col === "validez" ? "desc" : "asc" },
+    );
+  };
+
   // Delivery computed after NR states below
   const [opcionesOrigin, setOpcionesOrigin] = useState<SelectOption[]>([]);
   const [opcionesDestination, setOpcionesDestination] = useState<
@@ -353,6 +368,10 @@ function QuoteAPITester({
 
   // Estado para modal de precio 0
   const [showPriceZeroModal, setShowPriceZeroModal] = useState(false);
+
+  // Estado para modal de tarifa próxima a vencer
+  const [showExpiringSoonModal, setShowExpiringSoonModal] = useState(false);
+  const [pendingRutaAir, setPendingRutaAir] = useState<RutaAerea | null>(null);
 
   // Estado para notificación oversize al ejecutivo
   const [loadingOversizeNotify, setLoadingOversizeNotify] = useState(false);
@@ -883,6 +902,27 @@ function QuoteAPITester({
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE
   // ============================================================================
+
+  const handleSeleccionarRutaAir = (ruta: RutaAerea) => {
+    if (ruta.priceForComparison === 0) {
+      setShowPriceZeroModal(true);
+      return;
+    }
+    if (getValidityClass(ruta.validUntil) === "expiring-soon") {
+      setPendingRutaAir(ruta);
+      setShowExpiringSoonModal(true);
+      return;
+    }
+    setRutaSeleccionada(ruta);
+  };
+
+  const handleConfirmExpiringSoon = () => {
+    if (pendingRutaAir) {
+      setRutaSeleccionada(pendingRutaAir);
+    }
+    setShowExpiringSoonModal(false);
+    setPendingRutaAir(null);
+  };
 
   const refrescarTarifas = async () => {
     try {
@@ -1698,7 +1738,37 @@ function QuoteAPITester({
 
       return matchOrigin && matchDestination && matchCarrier && matchMoneda;
     })
-    .sort((a, b) => a.priceForComparison - b.priceForComparison);
+    .sort((a, b) => {
+      if (sortConfig.col === "validez") {
+        const dateA = parseValidUntilToISO(a.validUntil);
+        const dateB = parseValidUntilToISO(b.validUntil);
+        const diff = dateA.localeCompare(dateB);
+        return sortConfig.dir === "desc" ? -diff : diff;
+      }
+      const getRaw = (r: typeof a) => {
+        switch (sortConfig.col) {
+          case "kg45":
+            return r.kg45;
+          case "kg100":
+            return r.kg100;
+          case "kg300":
+            return r.kg300;
+          case "kg500":
+            return r.kg500;
+          case "kg1000":
+            return r.kg1000;
+          default:
+            return r.kg45;
+        }
+      };
+      const valA = extractPrice(getRaw(a));
+      const valB = extractPrice(getRaw(b));
+      const inf = sortConfig.dir === "asc" ? Infinity : -Infinity;
+      const effA = valA === 0 ? inf : valA;
+      const effB = valB === 0 ? inf : valB;
+      const diff = effA - effB;
+      return sortConfig.dir === "asc" ? diff : -diff;
+    });
 
   const rutasVisibles = showAllRoutes
     ? rutasFiltradas
@@ -2668,6 +2738,11 @@ function QuoteAPITester({
             assignedAirport={assignedAirportLabel}
             airFreightMinWeight={
               pesoAirFreight !== pesoChargeable ? pesoAirFreight : undefined
+            }
+            isExpiringSoon={
+              !sinTarifa &&
+              !isSimulationMode &&
+              getValidityClass(rutaSeleccionada.validUntil) === "expiring-soon"
             }
           />,
         );
@@ -4572,27 +4647,86 @@ function QuoteAPITester({
                                         Carrier
                                       </th>
                                       {[
-                                        "1–99",
-                                        "100–299",
-                                        "300–499",
-                                        "500–999",
-                                        "+1000",
-                                      ].map((label, idx) => (
+                                        {
+                                          label: "1–99",
+                                          col: "kg45" as AirSortCol,
+                                        },
+                                        {
+                                          label: "100–299",
+                                          col: "kg100" as AirSortCol,
+                                        },
+                                        {
+                                          label: "300–499",
+                                          col: "kg300" as AirSortCol,
+                                        },
+                                        {
+                                          label: "500–999",
+                                          col: "kg500" as AirSortCol,
+                                        },
+                                        {
+                                          label: "+1000",
+                                          col: "kg1000" as AirSortCol,
+                                        },
+                                      ].map(({ label, col }) => (
                                         <th
-                                          key={idx}
-                                          className="qa-rt-th-price"
+                                          key={col}
+                                          className="qa-rt-th-price qa-rt-th-sortable"
+                                          onClick={() => handleSortCol(col)}
                                         >
-                                          {label}
-                                          <span className="qa-rt-th-unit">
-                                            kg
+                                          <span className="qa-rt-th-sort-inner">
+                                            {label}
+                                            <span className="qa-rt-th-unit">
+                                              kg
+                                            </span>
+                                            <span className="qa-rt-sort-icons">
+                                              <i
+                                                className={`bi bi-caret-up-fill qa-rt-sort-icon${
+                                                  sortConfig.col === col &&
+                                                  sortConfig.dir === "asc"
+                                                    ? " active"
+                                                    : ""
+                                                }`}
+                                              />
+                                              <i
+                                                className={`bi bi-caret-down-fill qa-rt-sort-icon${
+                                                  sortConfig.col === col &&
+                                                  sortConfig.dir === "desc"
+                                                    ? " active"
+                                                    : ""
+                                                }`}
+                                              />
+                                            </span>
                                           </span>
                                         </th>
                                       ))}
                                       <th className="qa-rt-th-meta">
                                         {t("QuoteAIR.tiempoenruta")}
                                       </th>
-                                      <th className="qa-rt-th-meta">
-                                        {t("QuoteAIR.valido")}
+                                      <th
+                                        className="qa-rt-th-meta qa-rt-th-sortable"
+                                        onClick={() => handleSortCol("validez")}
+                                      >
+                                        <span className="qa-rt-th-sort-inner">
+                                          {t("QuoteAIR.valido")}
+                                          <span className="qa-rt-sort-icons">
+                                            <i
+                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${
+                                                sortConfig.col === "validez" &&
+                                                sortConfig.dir === "asc"
+                                                  ? " active"
+                                                  : ""
+                                              }`}
+                                            />
+                                            <i
+                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${
+                                                sortConfig.col === "validez" &&
+                                                sortConfig.dir === "desc"
+                                                  ? " active"
+                                                  : ""
+                                              }`}
+                                            />
+                                          </span>
+                                        </span>
                                       </th>
                                       {isEjecutivoMode && (
                                         <th className="qa-rt-th-meta">
@@ -4644,15 +4778,9 @@ function QuoteAPITester({
                                         return (
                                           <tr
                                             key={ruta.id}
-                                            onClick={() => {
-                                              if (
-                                                ruta.priceForComparison === 0
-                                              ) {
-                                                setShowPriceZeroModal(true);
-                                                return;
-                                              }
-                                              setRutaSeleccionada(ruta);
-                                            }}
+                                            onClick={() =>
+                                              handleSeleccionarRutaAir(ruta)
+                                            }
                                             className={`qa-rt-row${
                                               isSelected ? " is-selected" : ""
                                             }`}
@@ -6394,6 +6522,53 @@ function QuoteAPITester({
           </Modal.Footer>
         </Modal>
       )}
+
+      {/* Modal: tarifa próxima a vencer */}
+      <Modal
+        show={showExpiringSoonModal}
+        onHide={() => {
+          setShowExpiringSoonModal(false);
+          setPendingRutaAir(null);
+        }}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-exclamation-triangle-fill me-2"
+              style={{ color: "#f5a623" }}
+            ></i>
+            Tarifa próxima a vencer
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-0">
+            La tarifa que has seleccionado está próxima a vencer, el precio
+            final puede variar un porcentaje. ¿Deseas continuar?
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowExpiringSoonModal(false);
+              setPendingRutaAir(null);
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qf-primary)",
+              borderColor: "var(--qf-primary)",
+            }}
+            onClick={handleConfirmExpiringSoon}
+          >
+            Continuar
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }
