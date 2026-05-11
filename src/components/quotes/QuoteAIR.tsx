@@ -852,14 +852,33 @@ function QuoteAPITester({
     };
   }, [btnPhase]);
 
-  // Reset button when route changes after a completed quote
+  // Reset button when any quote input changes after a completed quote
   useEffect(() => {
-    if (btnPhase === "done") {
-      setBtnPhase("idle");
-      pdfFallbackRef.current = null;
-    }
+    if (btnPhase !== "done") return;
+    setBtnPhase("idle");
+    setResponse(null);
+    pdfFallbackRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rutaSeleccionada]);
+  }, [
+    rutaSeleccionada,
+    originSeleccionado,
+    destinationSeleccionado,
+    originNR,
+    destNR,
+    piecesData,
+    overallPiecesData,
+    overallDimsAndWeight,
+    incoterm,
+    pickupFromAddress,
+    nearbyAirportSelected,
+    seguroActivo,
+    valorMercaderia,
+    gastolocal,
+    liveTrackingActivo,
+    aduanaActivo,
+    valorProductoAduana,
+    clienteSeleccionado,
+  ]);
 
   // ============================================================================
   // FUNCIÓN PARA REFRESCAR TARIFAS MANUALMENTE

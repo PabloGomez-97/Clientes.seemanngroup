@@ -555,14 +555,27 @@ function QuoteLASTMILE({
     };
   }, [btnPhase]);
 
-  // Reset button when route changes after a completed quote
+  // Reset button when any quote input changes after a completed quote
   useEffect(() => {
-    if (btnPhase === "done") {
-      setBtnPhase("idle");
-      pdfFallbackRef.current = null;
-    }
+    if (btnPhase !== "done") return;
+    setBtnPhase("idle");
+    setResponse(null);
+    pdfFallbackRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [origenSel, destinoSel]);
+  }, [
+    origenSel,
+    destinoSel,
+    servicioSel,
+    incotermSel,
+    piecesData,
+    contenedores20GP,
+    contenedores40HQ,
+    contenedores40NOR,
+    pickupAddress,
+    deliveryAddress,
+    seguroActivo,
+    clienteSeleccionado,
+  ]);
 
   const isLclDdp = servicioSel === "LCL" && incotermSel === "DDP";
   const valorMercaderiaDDPNum =

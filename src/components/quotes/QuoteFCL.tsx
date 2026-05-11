@@ -854,14 +854,30 @@ function QuoteFCL({
     };
   }, [btnPhase]);
 
-  // Reset button when route changes after a completed quote
+  // Reset button when any quote input changes after a completed quote
   useEffect(() => {
-    if (btnPhase === "done") {
-      setBtnPhase("idle");
-      pdfFallbackRef.current = null;
-    }
+    if (btnPhase !== "done") return;
+    setBtnPhase("idle");
+    setResponse(null);
+    pdfFallbackRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rutaSeleccionada]);
+  }, [
+    rutaSeleccionada,
+    polSeleccionado,
+    podSeleccionado,
+    polNR,
+    podNR,
+    containerSeleccionado,
+    cantidadContenedores,
+    incoterm,
+    pickupFromAddress,
+    nearbyPortSelected,
+    seguroActivo,
+    valorMercaderia,
+    gastolocal,
+    liveTrackingActivo,
+    clienteSeleccionado,
+  ]);
   // Formato esperado: DD/M/YYYY (ej: 28/2/2026)
   // ============================================================================
   const getValidityClass = (
