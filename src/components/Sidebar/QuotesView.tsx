@@ -138,11 +138,11 @@ function StatusBadge({ validUntilDate }: { validUntilDate?: string }) {
   if (valid === null)
     return <span className="qv-badge qv-badge--neutral">---</span>;
   return valid ? (
-    <span className="qv-badge qv-badge--valid">
+    <span className="qv-badge qv-badge--neutral">
       {t("quotesView.statusValid")}
     </span>
   ) : (
-    <span className="qv-badge qv-badge--expired">
+    <span className="qv-badge qv-badge--neutral" style={{ color: "#6b7280" }}>
       {t("quotesView.statusExpired")}
     </span>
   );
@@ -155,8 +155,8 @@ function FlowBadge({ currentFlow }: { currentFlow?: string | null }) {
     Pricing: { label: "Tarificación" },
     Revision: { label: "Revisión" },
     Sent: { label: "Enviado" },
-    Approved: { label: "Aprobado", extraClass: "qv-badge--valid" },
-    Completed: { label: "Completado", extraClass: "qv-badge--completed" },
+    Approved: { label: "Aprobado", extraClass: "qv-badge--completed" },
+    Completed: { label: "Completado", extraClass: "qv-badge--valid" },
     Canceled: { label: "Cancelado", extraClass: "qv-badge--expired" },
   };
   const entry = flowMap[flow] ?? { label: flow };
@@ -1348,11 +1348,11 @@ function QuotesView({
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("number")}
                   >
-                    <span>N° Cotización</span>
+                    <span>{t("quotesView.thNumber")}</span>
                     <SortIcon column="number" />
                   </th>
                   <th className="qv-th qv-th--center">
-                    <span>Etapa Actual</span>
+                    <span>Etapa</span>
                   </th>
                   <th className="qv-th qv-th--center">
                     <span>Vigencia</span>
@@ -1361,42 +1361,42 @@ function QuotesView({
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("origin")}
                   >
-                    <span>Origen</span>
+                    <span>{t("quotesView.thOrigin")}</span>
                     <SortIcon column="origin" />
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("destination")}
                   >
-                    <span>Destino</span>
+                    <span>{t("quotesView.thDestination")}</span>
                     <SortIcon column="destination" />
                   </th>
                   <th className="qv-th">
-                    <span>Transporte</span>
+                    <span>{t("quotesView.thTransport")}</span>
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("date")}
                   >
-                    <span>Fecha Emisión</span>
+                    <span>{t("quotesView.thIssueDate")}</span>
                     <SortIcon column="date" />
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("validUntil")}
                   >
-                    <span>Válida Hasta</span>
+                    <span>{t("quotesView.thValidUntil")}</span>
                     <SortIcon column="validUntil" />
                   </th>
                   <th
                     className="qv-th qv-th--center qv-th--sortable"
                     onClick={() => handleSort("transit")}
                   >
-                    <span>Tránsito</span>
+                    <span>{t("quotesView.thTransit")}</span>
                     <SortIcon column="transit" />
                   </th>
                   <th className="qv-th qv-th--center">
-                    <span>PDF</span>
+                    <span>{t("quotesView.thPDF")}</span>
                   </th>
                 </tr>
               </thead>
@@ -1461,12 +1461,7 @@ function QuotesView({
                         >
                           {availablePDFs.has(quote.number || "") ? (
                             <button
-                              className="qv-btn qv-btn--primary"
-                              style={{
-                                fontSize: "11px",
-                                padding: "4px 10px",
-                                whiteSpace: "nowrap",
-                              }}
+                              className="qv-pdf-btn"
                               disabled={downloadingPDF === quote.number}
                               onClick={() =>
                                 handleDownloadPDF(quote.number || "")
@@ -1475,31 +1470,16 @@ function QuotesView({
                               {downloadingPDF === quote.number ? (
                                 <span
                                   className="spinner-border spinner-border-sm"
-                                  style={{ width: "12px", height: "12px" }}
+                                  style={{ width: "10px", height: "10px" }}
                                 />
                               ) : (
-                                <>
-                                  <svg
-                                    width="12"
-                                    height="12"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    style={{ marginRight: "4px" }}
-                                  >
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                    <polyline points="7 10 12 15 17 10" />
-                                    <line x1="12" y1="15" x2="12" y2="3" />
-                                  </svg>
-                                  {t("quotesView.download")}
-                                </>
+                                "Descargar"
                               )}
                             </button>
                           ) : (
-                            <span style={{ color: "#999", fontSize: "11px" }}>
+                            <span
+                              style={{ color: "#d1d5db", fontSize: "11px" }}
+                            >
                               ---
                             </span>
                           )}

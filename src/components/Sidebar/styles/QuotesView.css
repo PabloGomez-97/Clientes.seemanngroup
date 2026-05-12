@@ -132,6 +132,31 @@
   color: #9ca3af;
 }
 
+/*  PDF inline button  */
+.qv-pdf-btn {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.qv-pdf-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.qv-pdf-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /*  Table  */
 .qv-table-wrapper {
   border: 1px solid #e5e7eb;
