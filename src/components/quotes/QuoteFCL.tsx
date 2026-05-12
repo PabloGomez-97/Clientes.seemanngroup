@@ -183,6 +183,9 @@ function QuoteFCL({
   const [showSeguroModal, setShowSeguroModal] = useState(false);
   const [tempValorSeguro, setTempValorSeguro] = useState("");
 
+  // Modal: imagen del contenedor
+  const [showContainerModal, setShowContainerModal] = useState(false);
+
   // Modal: tarifa próxima a vencer
   const [showExpiringSoonModal, setShowExpiringSoonModal] = useState(false);
   const [pendingContainerSelection, setPendingContainerSelection] = useState<{
@@ -3566,129 +3569,189 @@ function QuoteFCL({
                     </div>
                   </div>
                 )}
-                <div className="row g-3">
-                  {(() => {
-                    const polOpt = polSeleccionado ?? polNR;
-                    const polPort = polOpt ? getPortByPOL(polOpt.value) : null;
-                    const activePrefix =
-                      polPort?.unlocode?.substring(0, 2).toUpperCase() ?? null;
-                    const activePorts = activePrefix
-                      ? (countryPortsMap[activePrefix] ?? [])
-                      : [];
-                    const isCountryPol = activePorts.length > 0;
+                <div className="row g-4 align-items-start">
+                  {/* Columna izquierda: Incoterm + Cantidad */}
+                  <div className="col-lg-7">
+                    <div className="row g-3">
+                      {(() => {
+                        const polOpt = polSeleccionado ?? polNR;
+                        const polPort = polOpt
+                          ? getPortByPOL(polOpt.value)
+                          : null;
+                        const activePrefix =
+                          polPort?.unlocode?.substring(0, 2).toUpperCase() ??
+                          null;
+                        const activePorts = activePrefix
+                          ? (countryPortsMap[activePrefix] ?? [])
+                          : [];
+                        const isCountryPol = activePorts.length > 0;
 
-                    const nearbyPorts =
-                      isCountryPol && pickupCoords
-                        ? getNearestPorts(pickupCoords, activePorts, 4)
-                        : [];
-                    const effectivePort = nearbyPortSelected
-                      ? (nearbyPorts.find(
-                          (p) => p.value === nearbyPortSelected.value,
-                        ) ??
-                        nearbyPorts[0] ??
-                        null)
-                      : (nearbyPorts[0] ?? null);
+                        const nearbyPorts =
+                          isCountryPol && pickupCoords
+                            ? getNearestPorts(pickupCoords, activePorts, 4)
+                            : [];
+                        const effectivePort = nearbyPortSelected
+                          ? (nearbyPorts.find(
+                              (p) => p.value === nearbyPortSelected.value,
+                            ) ??
+                            nearbyPorts[0] ??
+                            null)
+                          : (nearbyPorts[0] ?? null);
 
-                    let mapDestination: DestinationCoords | null = null;
-                    if (isCountryPol && effectivePort) {
-                      mapDestination = {
-                        lat: effectivePort.lat,
-                        lng: effectivePort.lng,
-                        name: effectivePort.label,
-                        code: polPort?.unlocode ?? "",
-                      };
-                    } else if (isCountryPol) {
-                      mapDestination = null;
-                    } else if (polPort) {
-                      mapDestination = {
-                        lat: polPort.lat,
-                        lng: polPort.lng,
-                        name: polPort.name,
-                        code: polPort.unlocode,
-                      };
-                    }
+                        let mapDestination: DestinationCoords | null = null;
+                        if (isCountryPol && effectivePort) {
+                          mapDestination = {
+                            lat: effectivePort.lat,
+                            lng: effectivePort.lng,
+                            name: effectivePort.label,
+                            code: polPort?.unlocode ?? "",
+                          };
+                        } else if (isCountryPol) {
+                          mapDestination = null;
+                        } else if (polPort) {
+                          mapDestination = {
+                            lat: polPort.lat,
+                            lng: polPort.lng,
+                            name: polPort.name,
+                            code: polPort.unlocode,
+                          };
+                        }
 
-                    const portMiddleContent =
-                      incoterm === "EXW" &&
-                      isCountryPol &&
-                      nearbyPorts.length >= 2 ? (
-                        <NearbyPortSelectorFCL
-                          nearbyPorts={nearbyPorts}
-                          selectedPort={nearbyPortSelected}
-                          onSelectPort={setNearbyPortSelected}
-                        />
-                      ) : null;
+                        const portMiddleContent =
+                          incoterm === "EXW" &&
+                          isCountryPol &&
+                          nearbyPorts.length >= 2 ? (
+                            <NearbyPortSelectorFCL
+                              nearbyPorts={nearbyPorts}
+                              selectedPort={nearbyPortSelected}
+                              onSelectPort={setNearbyPortSelected}
+                            />
+                          ) : null;
 
-                    return (
-                      <>
-                        {/* Incoterm */}
-                        <div className="col-md-6 mb-3">
-                          <label className="qf-label">
-                            <i className="bi bi-flag me-2"></i>
-                            Incoterm
-                            <span
-                              className="qf-badge ms-2"
-                              style={{ fontSize: "0.7rem", fontWeight: 400 }}
-                            >
-                              Obligatorio
-                            </span>
-                          </label>
-                          <select
-                            className="qf-select"
-                            value={incoterm}
-                            onChange={(e) =>
-                              setIncoterm(e.target.value as "EXW" | "FOB" | "")
-                            }
-                            style={{ maxWidth: 400, width: "100%" }}
-                          >
-                            <option value="">Seleccione un Incoterm</option>
-                            <option value="EXW">Ex Works [EXW]</option>
-                            <option value="FOB">FOB</option>
-                          </select>
-                        </div>
-
-                        {/* Dirección de recogida + mapa (solo EXW) */}
-                        {incoterm === "EXW" && (
-                          <div className="col-12 mb-3">
-                            <div className="bg-light p-3 rounded border">
-                              <CotizadorAddressMap
-                                value={pickupFromAddress}
-                                onChange={setPickupFromAddress}
-                                placeholder="Ingrese dirección de recogida"
-                                rows={2}
-                                pickupLabel={t("QuoteAIR.pickup")}
-                                deliveryValue={deliveryToAddressDerived}
-                                deliveryLabel={t("QuoteAIR.delivery")}
-                                onPickupCoordsChange={setPickupCoords}
-                                destinationCoords={mapDestination}
-                                middleContent={portMiddleContent}
-                              />
+                        return (
+                          <>
+                            {/* Incoterm */}
+                            <div className="col-12 mb-3">
+                              <label className="qf-label">
+                                <i className="bi bi-flag me-2"></i>
+                                Incoterm
+                                <span
+                                  className="qf-badge ms-2"
+                                  style={{
+                                    fontSize: "0.7rem",
+                                    fontWeight: 400,
+                                  }}
+                                >
+                                  Obligatorio
+                                </span>
+                              </label>
+                              <select
+                                className="qf-select"
+                                value={incoterm}
+                                onChange={(e) =>
+                                  setIncoterm(
+                                    e.target.value as "EXW" | "FOB" | "",
+                                  )
+                                }
+                                style={{ maxWidth: 400, width: "100%" }}
+                              >
+                                <option value="">Seleccione un Incoterm</option>
+                                <option value="EXW">Ex Works [EXW]</option>
+                                <option value="FOB">FOB</option>
+                              </select>
                             </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
 
-                {/* Cantidad de Contenedores */}
-                <div className="col-md-4">
-                  <label className="qf-label">Cantidad de Contenedores</label>
-                  <input
-                    type="number"
-                    className="qf-input"
-                    value={cantidadContenedores}
-                    onChange={(e) =>
-                      setCantidadContenedores(
-                        Math.max(1, Math.floor(Number(e.target.value) || 1)),
-                      )
-                    }
-                    min="1"
-                    step="1"
-                  />
-                  <small className="text-muted">
-                    Ingrese la cantidad de contenedores que desea cotizar
-                  </small>
+                            {/* Dirección de recogida + mapa (solo EXW) */}
+                            {incoterm === "EXW" && (
+                              <div className="col-12 mb-3">
+                                <div className="bg-light p-3 rounded border">
+                                  <CotizadorAddressMap
+                                    value={pickupFromAddress}
+                                    onChange={setPickupFromAddress}
+                                    placeholder="Ingrese dirección de recogida"
+                                    rows={2}
+                                    pickupLabel={t("QuoteAIR.pickup")}
+                                    deliveryValue={deliveryToAddressDerived}
+                                    deliveryLabel={t("QuoteAIR.delivery")}
+                                    onPickupCoordsChange={setPickupCoords}
+                                    destinationCoords={mapDestination}
+                                    middleContent={portMiddleContent}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Cantidad de Contenedores */}
+                    <div className="col-8 mb-3">
+                      <label className="qf-label">
+                        Cantidad de Contenedores
+                      </label>
+                      <input
+                        type="number"
+                        className="qf-input"
+                        value={cantidadContenedores}
+                        onChange={(e) =>
+                          setCantidadContenedores(
+                            Math.max(
+                              1,
+                              Math.floor(Number(e.target.value) || 1),
+                            ),
+                          )
+                        }
+                        min="1"
+                        step="1"
+                      />
+                      <small className="text-muted">
+                        Ingrese la cantidad de contenedores que desea cotizar
+                      </small>
+                    </div>
+                  </div>
+
+                  {/* Columna derecha: imagen del contenedor seleccionado */}
+                  <div className="col-lg-5 d-flex align-items-center justify-content-center">
+                    <div
+                      role="button"
+                      title="Ver especificaciones completas"
+                      onClick={() => setShowContainerModal(true)}
+                      style={{ cursor: "zoom-in", position: "relative" }}
+                    >
+                      <img
+                        src={imgUrl(
+                          containerSeleccionado.type === "40HQ"
+                            ? "containers/40hq.png"
+                            : containerSeleccionado.type === "40NOR"
+                              ? "containers/40nor.png"
+                              : "containers/20gp.png",
+                        )}
+                        alt={`Contenedor ${containerSeleccionado.type}`}
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: 280,
+                          objectFit: "contain",
+                          borderRadius: 8,
+                        }}
+                      />
+                      <span
+                        style={{
+                          position: "absolute",
+                          bottom: 6,
+                          right: 6,
+                          background: "rgba(0,0,0,0.45)",
+                          color: "#fff",
+                          borderRadius: 6,
+                          padding: "2px 7px",
+                          fontSize: "0.72rem",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <i className="bi bi-zoom-in me-1"></i>Ver en detalle
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Botón Siguiente */}
@@ -4165,6 +4228,41 @@ function QuoteFCL({
           </div>
         )}
       </div>
+
+      {/* Modal: Imagen del contenedor */}
+      <Modal
+        show={showContainerModal}
+        onHide={() => setShowContainerModal(false)}
+        centered
+        size="xl"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-box-seam me-2"
+              style={{ color: "var(--qf-primary)" }}
+            ></i>
+            Especificaciones — Contenedor {containerSeleccionado?.type}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-2 text-center">
+          <img
+            src={imgUrl(
+              containerSeleccionado?.type === "40HQ"
+                ? "containers/40hq.png"
+                : containerSeleccionado?.type === "40NOR"
+                  ? "containers/40nor.png"
+                  : "containers/20gp.png",
+            )}
+            alt={`Especificaciones contenedor ${containerSeleccionado?.type}`}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "80vh",
+              objectFit: "contain",
+            }}
+          />
+        </Modal.Body>
+      </Modal>
 
       {/* Modal: Seguro de Carga */}
       <Modal
