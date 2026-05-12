@@ -128,6 +128,7 @@ function ReporteriaClientes() {
   const [trackingInitialTab, setTrackingInitialTab] = useState<"air" | "ocean">(
     "air",
   );
+  const [opsOpen, setOpsOpen] = useState(false);
 
   // ── Fetch clients list (with cache) ──
   useEffect(() => {
@@ -173,6 +174,7 @@ function ReporteriaClientes() {
       setShowAllExw(false);
       setSelectedClient(cliente);
       setActiveTab("air");
+      setOpsOpen(false);
       setShipmentFilterNumber(undefined);
       setQuoteFilterNumber(undefined);
       navigate(
@@ -191,6 +193,7 @@ function ReporteriaClientes() {
   // Go back to list — only navigate; the useEffect below clears selectedClient
   const handleBack = () => {
     setShowAllExw(false);
+    setOpsOpen(false);
     navigate("/admin/reporteriaclientes", { replace: true });
   };
 
@@ -424,179 +427,388 @@ function ReporteriaClientes() {
       setActiveTab("quotes");
     };
 
-    const tabs = [
-      { key: "air" as const, label: "Operaciones Aéreas", icon: "" },
-      {
-        key: "ocean" as const,
-        label: "Operaciones Marítimas",
-        icon: "",
-      },
-      {
-        key: "ground" as const,
-        label: "Operaciones Terrestres",
-        icon: "",
-      },
-      { key: "quotes" as const, label: "Mis cotizaciones", icon: "" },
-
-      { key: "exw" as const, label: "Cargos EXW", icon: "" },
-      {
-        key: "tracking" as const,
-        label: "Seguimiento del cliente",
-        icon: "",
-      },
-      {
-        key: "settings" as const,
-        label: "Configuraciones",
-        icon: "",
-      },
-    ];
-
     return (
       <div style={{ fontFamily: FONT }}>
-        {/* Back button */}
-        <button
-          onClick={handleBack}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "8px 16px",
-            background: "none",
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            cursor: "pointer",
-            fontSize: 13,
-            fontWeight: 500,
-            color: "#374151",
-            marginBottom: 20,
-            transition: "all 0.15s",
-            fontFamily: FONT,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#f9fafb";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "none";
-          }}
-        >
-          <svg
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            viewBox="0 0 24 24"
-          >
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Volver a la lista
-        </button>
-
-        {/* Client Header */}
+        {/* ── Client context header con breadcrumb y tabs ── */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            marginBottom: 20,
+            marginBottom: 24,
+            borderBottom: "1px solid #e5e7eb",
+            background: "#fff",
+            marginLeft: -24,
+            marginRight: -24,
+            paddingLeft: 24,
+            paddingRight: 24,
           }}
         >
+          {/* Fila superior: breadcrumb + botón volver */}
           <div
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: "#232f3e",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              fontSize: 18,
-              fontWeight: 700,
-              color: "#fff",
-              flexShrink: 0,
+              justifyContent: "space-between",
+              paddingTop: 16,
+              paddingBottom: 10,
             }}
           >
-            {(selectedClient.username || "?").charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                color: "#1f2937",
-                margin: 0,
-              }}
-            >
-              {selectedClient.username}
-            </h1>
-            <p style={{ fontSize: 14, color: "#6b7280", margin: "2px 0 0" }}>
-              {selectedClient.parentUsername && (
-                <span
-                  style={{
-                    background: "#fef3c7",
-                    color: "#92400e",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    padding: "2px 8px",
-                    borderRadius: 4,
-                    marginRight: 8,
-                  }}
-                >
-                  Cuenta: {selectedClient.parentUsername}
-                </span>
-              )}
-              {selectedClient.email} · Registrado el{" "}
-              {new Date(selectedClient.createdAt).toLocaleDateString("es-CL", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            </p>
-          </div>
-        </div>
-
-        {/* Tabs Navigation */}
-        <div
-          style={{
-            display: "flex",
-            gap: 4,
-            marginBottom: 24,
-            borderBottom: "2px solid #e5e7eb",
-            paddingBottom: 0,
-            overflowX: "auto",
-          }}
-        >
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+            {/* Breadcrumb */}
+            <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                padding: "10px 20px",
+                fontSize: 12,
+                color: "#9ca3af",
+              }}
+            >
+              <svg
+                width="13"
+                height="13"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+              >
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <span>Directorio de clientes</span>
+              <svg
+                width="12"
+                height="12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+              <span style={{ color: "#1f2937", fontWeight: 500 }}>
+                {selectedClient.username}
+              </span>
+            </div>
+            {/* Botón volver */}
+            <button
+              onClick={handleBack}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "5px 12px",
                 background: "none",
+                border: "1px solid #e5e7eb",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 500,
+                color: "#6b7280",
+                transition: "all 0.15s",
+                fontFamily: FONT,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#f9fafb";
+                e.currentTarget.style.borderColor = "#d1d5db";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "none";
+                e.currentTarget.style.borderColor = "#e5e7eb";
+              }}
+            >
+              <svg
+                width="13"
+                height="13"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+              >
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Volver a la lista
+            </button>
+          </div>
+
+          {/* Nombre del cliente e info */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 14,
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                background: "#232f3e",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 15,
+                fontWeight: 700,
+                color: "#fff",
+                flexShrink: 0,
+              }}
+            >
+              {(selectedClient.username || "?").charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1
+                style={{
+                  fontSize: 17,
+                  fontWeight: 700,
+                  color: "#1f2937",
+                  margin: 0,
+                  lineHeight: 1.2,
+                }}
+              >
+                {selectedClient.username}
+              </h1>
+              <p style={{ fontSize: 12, color: "#9ca3af", margin: "2px 0 0" }}>
+                {selectedClient.parentUsername && (
+                  <span
+                    style={{
+                      background: "#fef3c7",
+                      color: "#92400e",
+                      fontSize: 11,
+                      fontWeight: 500,
+                      padding: "1px 6px",
+                      borderRadius: 3,
+                      marginRight: 6,
+                    }}
+                  >
+                    Cuenta: {selectedClient.parentUsername}
+                  </span>
+                )}
+                {selectedClient.email} · Registrado el{" "}
+                {new Date(selectedClient.createdAt).toLocaleDateString(
+                  "es-CL",
+                  { day: "2-digit", month: "short", year: "numeric" },
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Tabs con borde superior activo */}
+          <div style={{ display: "flex", gap: 2, overflowX: "auto" }}>
+            {/* Cotizaciones */}
+            <button
+              onClick={() => {
+                setActiveTab("quotes");
+                setOpsOpen(false);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "7px 14px",
+                background: activeTab === "quotes" ? "#fff" : "none",
                 border: "none",
-                borderBottom:
-                  activeTab === tab.key
+                borderTop:
+                  activeTab === "quotes"
                     ? "2px solid #ff6200"
                     : "2px solid transparent",
-                marginBottom: -2,
+                borderRadius: "4px 4px 0 0",
+                marginBottom: -1,
                 cursor: "pointer",
-                fontSize: 13,
-                fontWeight: activeTab === tab.key ? 600 : 500,
-                color: activeTab === tab.key ? "#ff6200" : "#6b7280",
+                fontSize: 12,
+                fontWeight: activeTab === "quotes" ? 600 : 400,
+                color: activeTab === "quotes" ? "#ff6200" : "#6b7280",
                 transition: "all 0.15s",
                 whiteSpace: "nowrap",
                 fontFamily: FONT,
               }}
             >
-              <span style={{ fontSize: 15 }}>{tab.icon}</span>
-              {tab.label}
+              Cotizaciones
             </button>
-          ))}
+
+            {/* Operaciones accordion trigger */}
+            <button
+              onClick={() => setOpsOpen((o) => !o)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "7px 14px",
+                background:
+                  activeTab === "air" ||
+                  activeTab === "ocean" ||
+                  activeTab === "ground"
+                    ? "#fff"
+                    : "none",
+                border: "none",
+                borderTop:
+                  activeTab === "air" ||
+                  activeTab === "ocean" ||
+                  activeTab === "ground"
+                    ? "2px solid #ff6200"
+                    : "2px solid transparent",
+                borderRadius: "4px 4px 0 0",
+                marginBottom: -1,
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight:
+                  activeTab === "air" ||
+                  activeTab === "ocean" ||
+                  activeTab === "ground"
+                    ? 600
+                    : 400,
+                color:
+                  activeTab === "air" ||
+                  activeTab === "ocean" ||
+                  activeTab === "ground"
+                    ? "#ff6200"
+                    : "#6b7280",
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+                fontFamily: FONT,
+              }}
+            >
+              Operaciones
+              <svg
+                width="11"
+                height="11"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                viewBox="0 0 24 24"
+                style={{
+                  transform: opsOpen ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.15s",
+                }}
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {/* Seguimientos */}
+            <button
+              onClick={() => {
+                setActiveTab("tracking");
+                setOpsOpen(false);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "7px 14px",
+                background: activeTab === "tracking" ? "#fff" : "none",
+                border: "none",
+                borderTop:
+                  activeTab === "tracking"
+                    ? "2px solid #ff6200"
+                    : "2px solid transparent",
+                borderRadius: "4px 4px 0 0",
+                marginBottom: -1,
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: activeTab === "tracking" ? 600 : 400,
+                color: activeTab === "tracking" ? "#ff6200" : "#6b7280",
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+                fontFamily: FONT,
+              }}
+            >
+              Seguimientos
+            </button>
+
+            {/* Configuraciones */}
+            <button
+              onClick={() => {
+                setActiveTab("settings");
+                setOpsOpen(false);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "7px 14px",
+                background: activeTab === "settings" ? "#fff" : "none",
+                border: "none",
+                borderTop:
+                  activeTab === "settings"
+                    ? "2px solid #ff6200"
+                    : "2px solid transparent",
+                borderRadius: "4px 4px 0 0",
+                marginBottom: -1,
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: activeTab === "settings" ? 600 : 400,
+                color: activeTab === "settings" ? "#ff6200" : "#6b7280",
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+                fontFamily: FONT,
+              }}
+            >
+              Configuraciones
+            </button>
+          </div>
+          {/* Operaciones accordion panel */}
+          <div
+            style={{
+              maxHeight: opsOpen ? "120px" : "0",
+              overflow: "hidden",
+              transition: "max-height 0.22s ease",
+            }}
+          >
+            <ul
+              style={{
+                listStyle: "none",
+                margin: "4px 0 6px 28px",
+                padding: "0",
+                borderLeft: "2px solid rgba(141, 153, 168, 0.2)",
+              }}
+            >
+              {(
+                [
+                  { key: "air" as const, label: "Aéreo" },
+                  { key: "ocean" as const, label: "Marítimo" },
+                  { key: "ground" as const, label: "Terrestre" },
+                ] as const
+              ).map((op) => (
+                <li key={op.key}>
+                  <button
+                    onClick={() => {
+                      setActiveTab(op.key);
+                      setOpsOpen(false);
+                    }}
+                    style={{
+                      display: "block",
+                      padding: "8px 16px",
+                      background: "none",
+                      border: "none",
+                      borderLeft:
+                        activeTab === op.key
+                          ? "2px solid #ff6200"
+                          : "2px solid transparent",
+                      marginLeft: "-2px",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: activeTab === op.key ? 600 : 400,
+                      color: activeTab === op.key ? "#1f2937" : "#6b7280",
+                      transition: "all 0.15s",
+                      whiteSpace: "nowrap",
+                      fontFamily: FONT,
+                    }}
+                  >
+                    {op.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         {/* Tab Content — wraps views with the client's username override */}
@@ -613,7 +825,6 @@ function ReporteriaClientes() {
             {activeTab === "ground" && (
               <GroundShipmentsView initialFilterNumber={shipmentFilterNumber} />
             )}
-            {activeTab === "exw" && <EXWChargesView />}
             {activeTab === "quotes" && (
               <QuotesView initialQuoteFilter={quoteFilterNumber} />
             )}
