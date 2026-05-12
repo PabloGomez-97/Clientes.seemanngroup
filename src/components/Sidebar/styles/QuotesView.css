@@ -392,6 +392,11 @@
   color: #047857;
 }
 
+.qv-badge--completed {
+  background-color: rgba(37, 99, 235, 0.08);
+  color: #2563EB;
+}
+
 .qv-badge--expired {
   background-color: rgba(239, 68, 68, 0.08);
   color: #b91c1c;

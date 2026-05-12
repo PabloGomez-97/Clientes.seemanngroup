@@ -148,6 +148,25 @@ function StatusBadge({ validUntilDate }: { validUntilDate?: string }) {
   );
 }
 
+function FlowBadge({ currentFlow }: { currentFlow?: string | null }) {
+  const flow = currentFlow || "Requested";
+  const flowMap: Record<string, { label: string; extraClass?: string }> = {
+    Requested: { label: "Solicitado" },
+    Pricing: { label: "Tarificación" },
+    Revision: { label: "Revisión" },
+    Sent: { label: "Enviado" },
+    Approved: { label: "Aprobado", extraClass: "qv-badge--valid" },
+    Completed: { label: "Completado", extraClass: "qv-badge--completed" },
+    Canceled: { label: "Cancelado", extraClass: "qv-badge--expired" },
+  };
+  const entry = flowMap[flow] ?? { label: flow };
+  return (
+    <span className={`qv-badge ${entry.extraClass ?? "qv-badge--neutral"}`}>
+      {entry.label}
+    </span>
+  );
+}
+
 /* -- InfoField (modal) -------------------------------------- */
 function InfoField({
   label,
@@ -1333,7 +1352,7 @@ function QuotesView({
                     <SortIcon column="number" />
                   </th>
                   <th className="qv-th qv-th--center">
-                    <span>{t("quotesView.thStatus")}</span>
+                    <span>Vigencia</span>
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
@@ -1353,7 +1372,7 @@ function QuotesView({
                     <span>{t("quotesView.thTransport")}</span>
                   </th>
                   <th className="qv-th qv-th--center">
-                    <span>{t("quotesView.thPieces")}</span>
+                    <span>Etapa Actual</span>
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
@@ -1425,7 +1444,7 @@ function QuotesView({
                           {quote.modeOfTransportation || "---"}
                         </td>
                         <td className="qv-td qv-td--center">
-                          {quote.totalCargo_Pieces ?? "---"}
+                          <FlowBadge currentFlow={quote.currentFlow} />
                         </td>
                         <td className="qv-td">{formatDateShort(quote.date)}</td>
                         <td className="qv-td">
