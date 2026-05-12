@@ -1348,8 +1348,11 @@ function QuotesView({
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("number")}
                   >
-                    <span>{t("quotesView.thNumber")}</span>
+                    <span>N° Cotización</span>
                     <SortIcon column="number" />
+                  </th>
+                  <th className="qv-th qv-th--center">
+                    <span>Etapa Actual</span>
                   </th>
                   <th className="qv-th qv-th--center">
                     <span>Vigencia</span>
@@ -1358,45 +1361,42 @@ function QuotesView({
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("origin")}
                   >
-                    <span>{t("quotesView.thOrigin")}</span>
+                    <span>Origen</span>
                     <SortIcon column="origin" />
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("destination")}
                   >
-                    <span>{t("quotesView.thDestination")}</span>
+                    <span>Destino</span>
                     <SortIcon column="destination" />
                   </th>
                   <th className="qv-th">
-                    <span>{t("quotesView.thTransport")}</span>
-                  </th>
-                  <th className="qv-th qv-th--center">
-                    <span>Etapa Actual</span>
+                    <span>Transporte</span>
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("date")}
                   >
-                    <span>{t("quotesView.thIssueDate")}</span>
+                    <span>Fecha Emisión</span>
                     <SortIcon column="date" />
                   </th>
                   <th
                     className="qv-th qv-th--sortable"
                     onClick={() => handleSort("validUntil")}
                   >
-                    <span>{t("quotesView.thValidUntil")}</span>
+                    <span>Válida Hasta</span>
                     <SortIcon column="validUntil" />
                   </th>
                   <th
                     className="qv-th qv-th--center qv-th--sortable"
                     onClick={() => handleSort("transit")}
                   >
-                    <span>{t("quotesView.thTransit")}</span>
+                    <span>Tránsito</span>
                     <SortIcon column="transit" />
                   </th>
                   <th className="qv-th qv-th--center">
-                    <span>{t("quotesView.thPDF")}</span>
+                    <span>PDF</span>
                   </th>
                 </tr>
               </thead>
@@ -1426,6 +1426,9 @@ function QuotesView({
                           {quote.number || "---"}
                         </td>
                         <td className="qv-td qv-td--center">
+                          <FlowBadge currentFlow={quote.currentFlow} />
+                        </td>
+                        <td className="qv-td qv-td--center">
                           <StatusBadge validUntilDate={quote.validUntil_Date} />
                         </td>
                         <td
@@ -1442,9 +1445,6 @@ function QuotesView({
                         </td>
                         <td className="qv-td">
                           {quote.modeOfTransportation || "---"}
-                        </td>
-                        <td className="qv-td qv-td--center">
-                          <FlowBadge currentFlow={quote.currentFlow} />
                         </td>
                         <td className="qv-td">{formatDateShort(quote.date)}</td>
                         <td className="qv-td">
