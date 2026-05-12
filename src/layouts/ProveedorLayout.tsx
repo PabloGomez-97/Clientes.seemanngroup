@@ -75,6 +75,7 @@ function ProveedorLayout() {
         isCollapsed={sidebarCollapsed}
         isMobile={isMobile}
         onCloseMobile={() => setSidebarCollapsed(true)}
+        onToggle={toggleSidebar}
       />
 
       <div

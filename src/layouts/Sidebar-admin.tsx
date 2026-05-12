@@ -11,6 +11,7 @@ interface SidebarAdminProps {
   isCollapsed: boolean;
   isMobile: boolean;
   onCloseMobile: () => void;
+  onToggle: () => void;
 }
 
 interface SubMenuItem {
@@ -42,21 +43,22 @@ interface MenuSection {
   items: MenuItem[];
 }
 
-// Design tokens - AWS/Azure inspired (same as client Sidebar)
+// Design tokens - Enterprise Dark + Brand (same as client Sidebar)
 const colors = {
   bg: "#232f3e",
   bgHover: "#2d3a4a",
-  bgActive: "#1a242f",
+  bgActive: "rgba(255, 98, 0, 0.14)",
   text: "#ffffff",
   textMuted: "#8d99a8",
   border: "#3b4754",
-  accent: "#ff9900",
+  accent: "#ff6200",
 };
 
 function SidebarAdmin({
   isCollapsed,
   isMobile,
   onCloseMobile,
+  onToggle,
 }: SidebarAdminProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -439,27 +441,33 @@ function SidebarAdmin({
                           display: "flex",
                           textDecoration: "none",
                           padding:
-                            isCollapsed && !isMobile ? "15px 0" : "15px 8px",
+                            isCollapsed && !isMobile ? "13px 0" : "11px 12px",
                           alignItems: "center",
                           justifyContent:
                             isCollapsed && !isMobile ? "center" : "flex-start",
-                          gap: isCollapsed && !isMobile ? "0" : "8px",
+                          gap: isCollapsed && !isMobile ? "0" : "10px",
                           cursor: "pointer",
-                          transition: "all 0.12s ease",
-                          backgroundColor: isItemActive
-                            ? colors.bgActive
-                            : isHovered
-                              ? colors.bgHover
-                              : "transparent",
-                          borderLeft: isItemActive
-                            ? `3px solid ${colors.accent}`
-                            : "3px solid transparent",
-                          color: isItemActive ? colors.text : colors.textMuted,
-                          fontSize: "13px",
-                          fontWeight: isItemActive ? "bold" : "normal",
-                          marginLeft: "0",
-                          marginRight: "0",
-                          borderRadius: "0",
+                          transition:
+                            "color 0.18s ease, background-color 0.18s ease",
+                          backgroundColor:
+                            !hasSubItems && isItemActive
+                              ? "rgba(255, 255, 255, 0.08)"
+                              : isHovered
+                                ? colors.bgHover
+                                : "transparent",
+                          borderLeft: "none",
+                          color:
+                            !hasSubItems && isItemActive
+                              ? colors.text
+                              : isHovered
+                                ? colors.text
+                                : colors.textMuted,
+                          fontSize: "14.5px",
+                          fontWeight:
+                            !hasSubItems && isItemActive ? "600" : "400",
+                          margin:
+                            isCollapsed && !isMobile ? "4px 10px" : "2px 8px",
+                          borderRadius: "8px",
                         }}
                       >
                         {/* Sección de iconos */}
@@ -469,12 +477,12 @@ function SidebarAdmin({
                             display: "inline-flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            width: "24px",
-                            height: "24px",
-                            fontSize: "15px",
+                            width: "20px",
+                            height: "20px",
+                            fontSize: "14px",
                             textAlign: "center",
-                            opacity: isItemActive ? 1 : 0.75,
                             flexShrink: 0,
+                            transition: "color 0.18s ease",
                           }}
                         />
 
@@ -484,8 +492,9 @@ function SidebarAdmin({
                               style={{
                                 flex: 1,
                                 fontSize:
-                                  "13px" /* tamaño del texto del sidebar */,
-                                fontWeight: isItemActive ? "bold" : "normal",
+                                  "13.5px" /* tamaño del texto del sidebar */,
+                                fontWeight:
+                                  !hasSubItems && isItemActive ? "600" : "400",
                               }}
                             >
                               {item.name}
@@ -494,16 +503,20 @@ function SidebarAdmin({
                             {item.badge && (
                               <span
                                 style={{
-                                  padding: "2px 6px",
-                                  borderRadius: "3px",
+                                  padding: "2px 7px",
+                                  borderRadius: "4px",
                                   fontSize: "9px",
-                                  fontWeight: "bold",
+                                  fontWeight: "700",
                                   backgroundColor:
                                     item.badge.type === "new"
                                       ? colors.accent
-                                      : "rgba(255, 255, 255, 0.15)",
-                                  color: colors.text,
+                                      : "rgba(255, 255, 255, 0.12)",
+                                  color:
+                                    item.badge.type === "new"
+                                      ? "#ffffff"
+                                      : "rgba(255,255,255,0.75)",
                                   textTransform: "uppercase",
+                                  letterSpacing: "0.4px",
                                 }}
                               >
                                 {item.badge.text}
@@ -514,12 +527,12 @@ function SidebarAdmin({
                               <i
                                 className="fa fa-chevron-right"
                                 style={{
-                                  fontSize: "10px",
+                                  fontSize: "12px",
                                   transition: "transform 0.2s ease",
                                   transform: isExpanded
                                     ? "rotate(90deg)"
                                     : "rotate(0deg)",
-                                  opacity: 0.5,
+                                  opacity: 0.7,
                                 }}
                               />
                             )}
@@ -532,16 +545,18 @@ function SidebarAdmin({
                         visibleSubItems.length > 0 && (
                           <div
                             style={{
-                              maxHeight: isExpanded ? "300px" : "0",
+                              maxHeight: isExpanded ? "400px" : "0",
                               overflow: "hidden",
-                              transition: "max-height 0.2s ease",
+                              transition: "max-height 0.22s ease",
                             }}
                           >
                             <ul
                               style={{
                                 listStyle: "none",
                                 padding: "4px 0",
-                                margin: 0,
+                                margin: "0 8px 6px 28px",
+                                borderLeft:
+                                  "2px solid rgba(141, 153, 168, 0.2)",
                               }}
                             >
                               {visibleSubItems.map((subItem, subIdx) => {
@@ -564,46 +579,44 @@ function SidebarAdmin({
                                       style={{
                                         display: "flex",
                                         alignItems: "center",
-                                        gap: "8px",
-                                        padding: "13px 12px 13px 36px",
+                                        padding: "8px 12px 8px 14px",
                                         cursor: "pointer",
-                                        transition: "all 0.12s ease",
-                                        backgroundColor: isSubActive
-                                          ? colors.bgActive
-                                          : isSubHovered
+                                        transition:
+                                          "color 0.18s ease, background-color 0.18s ease",
+                                        backgroundColor:
+                                          isSubHovered && !isSubActive
                                             ? colors.bgHover
                                             : "transparent",
                                         color: isSubActive
                                           ? colors.text
-                                          : colors.textMuted,
-                                        fontSize:
-                                          "13px" /* tamaño del texto del subitem del sidebar */,
-                                        fontWeight: isSubActive
-                                          ? "bold"
-                                          : "normal",
-                                        position: "relative",
-                                        marginLeft: "0",
-                                        marginRight: "0",
-                                        borderRadius: "0",
+                                          : isSubHovered
+                                            ? colors.text
+                                            : colors.textMuted,
+                                        fontSize: "13px",
+                                        fontWeight: isSubActive ? "600" : "400",
                                         textDecoration: "none",
+                                        borderLeft: isSubActive
+                                          ? `2px solid ${colors.accent}`
+                                          : "2px solid transparent",
+                                        marginLeft: "-2px",
+                                        borderRadius: "0 6px 6px 0",
                                       }}
                                     >
-                                      {/* indicator removed for a minimal look */}
                                       <span style={{ flex: 1 }}>
                                         {subItem.name}
                                       </span>
                                       {subItem.badge && (
                                         <span
                                           style={{
-                                            padding: "2px 6px",
-                                            borderRadius: "3px",
-                                            fontSize:
-                                              "9px" /* tamaño del texto del badge */,
-                                            fontWeight: "bold",
+                                            padding: "2px 7px",
+                                            borderRadius: "4px",
+                                            fontSize: "9px",
+                                            fontWeight: "700",
                                             backgroundColor:
-                                              "rgba(255, 255, 255, 0.15)",
-                                            color: colors.text,
+                                              "rgba(255, 255, 255, 0.12)",
+                                            color: "rgba(255,255,255,0.75)",
                                             textTransform: "uppercase",
+                                            letterSpacing: "0.4px",
                                           }}
                                         >
                                           {subItem.badge.text}
@@ -623,6 +636,81 @@ function SidebarAdmin({
             </div>
           ))}
         </nav>
+
+        {/* Bottom toggle button — only on desktop */}
+        {!isMobile && (
+          <div
+            style={{
+              borderTop: `1px solid ${colors.border}`,
+              padding: "10px",
+              flexShrink: 0,
+            }}
+          >
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-label={
+                isCollapsed
+                  ? "Expandir barra lateral"
+                  : "Colapsar barra lateral"
+              }
+              title={isCollapsed ? "Expandir" : "Colapsar"}
+              style={{
+                width: "100%",
+                height: "34px",
+                borderRadius: "6px",
+                border: `1px solid ${colors.border}`,
+                backgroundColor: "transparent",
+                color: colors.textMuted,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: isCollapsed ? "center" : "flex-start",
+                gap: "10px",
+                padding: isCollapsed ? "0" : "0 12px",
+                cursor: "pointer",
+                transition: "background-color 0.18s ease, color 0.18s ease",
+                fontSize: "12px",
+                fontWeight: "500",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = colors.bgHover;
+                e.currentTarget.style.color = colors.text;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.color = colors.textMuted;
+              }}
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 16 16"
+                fill="none"
+                style={{ flexShrink: 0 }}
+              >
+                <path
+                  d={
+                    isCollapsed
+                      ? "M5.5 3.5 9 8l-3.5 4.5"
+                      : "M10.5 3.5 7 8l3.5 4.5"
+                  }
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M3 2.5v11"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  opacity="0.65"
+                />
+              </svg>
+              {!isCollapsed && <span>Colapsar menú</span>}
+            </button>
+          </div>
+        )}
 
         <style>{`
           .sidebar-admin-scroll::-webkit-scrollbar {

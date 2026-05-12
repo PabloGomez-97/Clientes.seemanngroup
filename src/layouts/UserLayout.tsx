@@ -218,6 +218,7 @@ function UserLayout() {
         isCollapsed={sidebarCollapsed}
         isMobile={isMobile}
         onCloseMobile={() => setSidebarCollapsed(true)}
+        onToggle={toggleSidebar}
       />
 
       <div

@@ -6,14 +6,14 @@ import i18n from "../i18n";
 import { imgUrl } from "../config/images";
 import PortalNotificationBell from "../components/notifications/PortalNotificationBell";
 
-// Design tokens - AWS/Azure inspired (same as client Navbar)
+// Design tokens - Enterprise Dark + Brand (same as client Navbar)
 const colors = {
   bg: "#232f3e",
   bgHover: "#2d3a4a",
   text: "#ffffff",
   textMuted: "#8d99a8",
   border: "#3b4754",
-  accent: "#ff9900",
+  accent: "#ff6200",
 };
 
 interface NavbarAdminProps {
@@ -121,7 +121,7 @@ function NavbarAdmin({
         borderBottom: `1px solid ${colors.border}`,
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
+        justifyContent: "flex-end",
         padding: "0 20px",
         gap: "12px",
         position: "sticky",
@@ -131,60 +131,6 @@ function NavbarAdmin({
           '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          aria-label={
-            i18n.language === "es" ? "Alternar barra lateral" : "Toggle sidebar"
-          }
-          title={
-            i18n.language === "es" ? "Alternar barra lateral" : "Toggle sidebar"
-          }
-          style={{
-            width: "38px",
-            height: "38px",
-            borderRadius: "6px",
-            border: `1px solid ${colors.border}`,
-            backgroundColor: "transparent",
-            color: colors.text,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = colors.bgHover;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "transparent";
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-            <path
-              d={
-                isSidebarCollapsed
-                  ? "M5.5 3.5 9 8l-3.5 4.5"
-                  : "M10.5 3.5 7 8l3.5 4.5"
-              }
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M3 2.5v11"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              opacity="0.65"
-            />
-          </svg>
-        </button>
-      </div>
-
       {/* Right Section - Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         {/* Dark Mode Toggle */}
@@ -388,16 +334,16 @@ function NavbarAdmin({
           >
             <div
               style={{
-                width: "26px",
-                height: "26px",
-                borderRadius: "4px",
-                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                backgroundColor: colors.accent,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: colors.text,
+                color: "#ffffff",
                 fontSize: "11px",
-                fontWeight: "600",
+                fontWeight: "700",
                 overflow: "hidden",
               }}
             >
@@ -472,16 +418,16 @@ function NavbarAdmin({
                 >
                   <div
                     style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "6px",
-                      backgroundColor: colors.bg,
+                      width: "42px",
+                      height: "42px",
+                      borderRadius: "50%",
+                      backgroundColor: colors.accent,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       color: "#ffffff",
                       fontSize: "16px",
-                      fontWeight: "600",
+                      fontWeight: "700",
                       overflow: "hidden",
                     }}
                   >
@@ -582,10 +528,15 @@ function NavbarAdmin({
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        .main-navbar-admin {
+          box-shadow: 0 1px 0 #e4e7ec;
+        }
         
         /* Responsive: Tablets */
         @media (max-width: 1024px) {
           .main-navbar-admin {
+            box-shadow: 0 1px 0 #e4e7ec;
             height: 60px !important;
             min-height: 60px !important;
             max-height: 60px !important;

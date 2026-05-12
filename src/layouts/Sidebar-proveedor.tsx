@@ -11,6 +11,7 @@ interface SidebarProveedorProps {
   isCollapsed: boolean;
   isMobile: boolean;
   onCloseMobile: () => void;
+  onToggle: () => void;
 }
 
 interface SubMenuItem {
@@ -30,21 +31,22 @@ interface MenuSection {
   items: MenuItem[];
 }
 
-// Design tokens — misma paleta que Sidebar-admin
+// Design tokens — Enterprise Dark + Brand
 const colors = {
   bg: "#232f3e",
   bgHover: "#2d3a4a",
-  bgActive: "#1a242f",
+  bgActive: "rgba(255, 98, 0, 0.14)",
   text: "#ffffff",
   textMuted: "#8d99a8",
   border: "#3b4754",
-  accent: "#ff9900",
+  accent: "#ff6200",
 };
 
 function SidebarProveedor({
   isCollapsed,
   isMobile,
   onCloseMobile,
+  onToggle,
 }: SidebarProveedorProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -299,34 +301,43 @@ function SidebarProveedor({
                           display: "flex",
                           textDecoration: "none",
                           padding:
-                            isCollapsed && !isMobile ? "14px 0" : "15px 20px",
+                            isCollapsed && !isMobile ? "13px 0" : "11px 12px",
                           alignItems: "center",
                           justifyContent:
                             isCollapsed && !isMobile ? "center" : "flex-start",
-                          gap: isCollapsed && !isMobile ? "0" : "14px",
+                          gap: isCollapsed && !isMobile ? "0" : "10px",
                           cursor: "pointer",
-                          transition: "all 0.12s ease",
-                          backgroundColor: isItemActive
-                            ? colors.bgActive
-                            : isHovered
-                              ? colors.bgHover
-                              : "transparent",
-                          borderLeft: isItemActive
-                            ? `3px solid ${colors.accent}`
-                            : "3px solid transparent",
-                          color: isItemActive ? colors.text : colors.textMuted,
-                          fontSize: "14px",
-                          fontWeight: isItemActive ? "500" : "400",
+                          transition:
+                            "color 0.18s ease, background-color 0.18s ease",
+                          backgroundColor:
+                            !hasSubItems && isItemActive
+                              ? "rgba(255, 255, 255, 0.08)"
+                              : isHovered
+                                ? colors.bgHover
+                                : "transparent",
+                          borderLeft: "none",
+                          color:
+                            !hasSubItems && isItemActive
+                              ? colors.text
+                              : isHovered
+                                ? colors.text
+                                : colors.textMuted,
+                          fontSize: "14.5px",
+                          fontWeight:
+                            !hasSubItems && isItemActive ? "600" : "400",
+                          margin:
+                            isCollapsed && !isMobile ? "4px 10px" : "2px 8px",
+                          borderRadius: "8px",
                         }}
                       >
                         <i
                           className={item.icon}
                           style={{
-                            fontSize: "18px",
-                            width: "22px",
+                            fontSize: "14px",
+                            width: "20px",
                             textAlign: "center",
-                            opacity: isItemActive ? 1 : 0.75,
                             flexShrink: 0,
+                            transition: "color 0.18s ease",
                           }}
                         />
                         {!isCollapsed && (
@@ -344,12 +355,12 @@ function SidebarProveedor({
                               <i
                                 className="fa fa-chevron-right"
                                 style={{
-                                  fontSize: "10px",
+                                  fontSize: "12px",
                                   transition: "transform 0.2s ease",
                                   transform: isExpanded
                                     ? "rotate(90deg)"
                                     : "rotate(0deg)",
-                                  opacity: 0.5,
+                                  opacity: 0.7,
                                 }}
                               />
                             )}
@@ -360,16 +371,17 @@ function SidebarProveedor({
                       {!isCollapsed && hasSubItems && (
                         <div
                           style={{
-                            maxHeight: isExpanded ? "300px" : "0",
+                            maxHeight: isExpanded ? "400px" : "0",
                             overflow: "hidden",
-                            transition: "max-height 0.2s ease",
+                            transition: "max-height 0.22s ease",
                           }}
                         >
                           <ul
                             style={{
                               listStyle: "none",
                               padding: "4px 0",
-                              margin: 0,
+                              margin: "0 8px 6px 28px",
+                              borderLeft: `2px solid rgba(141, 153, 168, 0.2)`,
                             }}
                           >
                             {item.subItems!.map((subItem, subIdx) => {
@@ -389,38 +401,31 @@ function SidebarProveedor({
                                     }
                                     onMouseLeave={() => setHoveredItem(null)}
                                     style={{
-                                      display: "block",
-                                      padding: "10px 20px 10px 56px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      padding: "10px 12px 10px 14px",
                                       textDecoration: "none",
                                       cursor: "pointer",
-                                      transition: "all 0.12s ease",
-                                      backgroundColor: isSubActive
-                                        ? colors.bgActive
-                                        : isSubHovered
+                                      transition:
+                                        "color 0.18s ease, background-color 0.18s ease",
+                                      backgroundColor:
+                                        isSubHovered && !isSubActive
                                           ? colors.bgHover
                                           : "transparent",
                                       color: isSubActive
                                         ? colors.text
-                                        : colors.textMuted,
+                                        : isSubHovered
+                                          ? colors.text
+                                          : colors.textMuted,
                                       fontSize: "14px",
-                                      fontWeight: isSubActive ? "500" : "400",
-                                      position: "relative",
+                                      fontWeight: isSubActive ? "600" : "400",
+                                      borderLeft: isSubActive
+                                        ? `2px solid ${colors.accent}`
+                                        : "2px solid transparent",
+                                      marginLeft: "-2px",
+                                      borderRadius: "0 6px 6px 0",
                                     }}
                                   >
-                                    <span
-                                      style={{
-                                        position: "absolute",
-                                        left: "40px",
-                                        top: "50%",
-                                        transform: "translateY(-50%)",
-                                        width: "5px",
-                                        height: "5px",
-                                        borderRadius: "50%",
-                                        backgroundColor: isSubActive
-                                          ? colors.accent
-                                          : colors.textMuted,
-                                      }}
-                                    />
                                     {subItem.name}
                                   </a>
                                 </li>
@@ -436,6 +441,81 @@ function SidebarProveedor({
             </div>
           ))}
         </nav>
+
+        {/* Bottom toggle button — only on desktop */}
+        {!isMobile && (
+          <div
+            style={{
+              borderTop: `1px solid ${colors.border}`,
+              padding: "10px",
+              flexShrink: 0,
+            }}
+          >
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-label={
+                isCollapsed
+                  ? "Expandir barra lateral"
+                  : "Colapsar barra lateral"
+              }
+              title={isCollapsed ? "Expandir" : "Colapsar"}
+              style={{
+                width: "100%",
+                height: "34px",
+                borderRadius: "6px",
+                border: `1px solid ${colors.border}`,
+                backgroundColor: "transparent",
+                color: colors.textMuted,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: isCollapsed ? "center" : "flex-start",
+                gap: "10px",
+                padding: isCollapsed ? "0" : "0 12px",
+                cursor: "pointer",
+                transition: "background-color 0.18s ease, color 0.18s ease",
+                fontSize: "12px",
+                fontWeight: "500",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = colors.bgHover;
+                e.currentTarget.style.color = colors.text;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+                e.currentTarget.style.color = colors.textMuted;
+              }}
+            >
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 16 16"
+                fill="none"
+                style={{ flexShrink: 0 }}
+              >
+                <path
+                  d={
+                    isCollapsed
+                      ? "M5.5 3.5 9 8l-3.5 4.5"
+                      : "M10.5 3.5 7 8l3.5 4.5"
+                  }
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M3 2.5v11"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  opacity="0.65"
+                />
+              </svg>
+              {!isCollapsed && <span>Colapsar menú</span>}
+            </button>
+          </div>
+        )}
 
         <style>{`
           .sidebar-proveedor-scroll::-webkit-scrollbar {
