@@ -81,6 +81,9 @@ function ShipsGoTrackingAdmin() {
 
   // Key to force remount ShipsGoTracking after creating a new tracking
   const [trackingKey, setTrackingKey] = useState(0);
+  const [sortMode, setSortMode] = useState<"az" | "recent" | "subcuentas">(
+    "az",
+  );
 
   // ── Fetch ejecutivo's own clients via /api/ejecutivo/clientes ──
   useEffect(() => {
@@ -176,6 +179,23 @@ function ShipsGoTrackingAdmin() {
         (c.parentUsername && c.parentUsername.toLowerCase().includes(q)),
     );
   }, [clientes, searchQuery]);
+
+  const sortedClients = useMemo(() => {
+    let list = [...filteredClients];
+    if (sortMode === "az") {
+      list.sort((a, b) =>
+        a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
+      );
+    } else if (sortMode === "recent") {
+      list.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    } else if (sortMode === "subcuentas") {
+      list = list.filter((c) => !!c.parentUsername);
+    }
+    return list;
+  }, [filteredClients, sortMode]);
 
   const handleSelectClient = useCallback(
     (client: Cliente) => {
@@ -515,57 +535,148 @@ function ShipsGoTrackingAdmin() {
   // ── Client List View ──
   return (
     <div style={{ fontFamily: FONT, maxWidth: 1200 }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1
-          style={{ fontSize: 22, fontWeight: 700, color: "#1f2937", margin: 0 }}
-        >
-          Rastreo de Envíos
-        </h1>
-        <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
-          Selecciona un cliente para ver y gestionar sus trackeos.
-        </p>
-      </div>
-
-      {/* Summary bar */}
+      {/* ── Header compacto con stats y acciones ── */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 20,
-          marginBottom: 20,
-          padding: "14px 20px",
-          background: "#fff",
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
+          justifyContent: "space-between",
+          marginBottom: 16,
           flexWrap: "wrap",
+          gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
-            {clientes.length}
-          </span>
-          <span style={{ fontSize: 13, color: "#6b7280" }}>clientes</span>
+        <div>
+          <h1
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#1f2937",
+              margin: 0,
+            }}
+          >
+            Rastreo de Envíos
+          </h1>
+          <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
+            Selecciona un cliente para ver y gestionar sus envíos.
+          </p>
         </div>
-        {shipmentsLoaded && (
-          <>
-            <div style={{ width: 1, height: 28, background: "#e5e7eb" }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 15 }}>✈️</span>
-              <span style={{ fontSize: 20, fontWeight: 700, color: "#1f2937" }}>
-                {totalAir}
-              </span>
-              <span style={{ fontSize: 12, color: "#6b7280" }}>aéreos</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 15 }}>🚢</span>
-              <span style={{ fontSize: 20, fontWeight: 700, color: "#1f2937" }}>
-                {totalOcean}
-              </span>
-              <span style={{ fontSize: 12, color: "#6b7280" }}>marítimos</span>
-            </div>
-          </>
-        )}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          {/* Pill: clientes */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 10px",
+              background: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: 20,
+              fontSize: 12,
+              color: "#6b7280",
+            }}
+          >
+            <svg
+              width="13"
+              height="13"
+              fill="none"
+              stroke="#ff6200"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 24 24"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <strong style={{ color: "#1f2937", fontWeight: 500 }}>
+              {clientes.length}
+            </strong>{" "}
+            clientes
+          </div>
+          {/* Pills: shipment counts */}
+          {shipmentsLoaded && (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "4px 10px",
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  borderRadius: 20,
+                  fontSize: 12,
+                  color: "#2563eb",
+                }}
+              >
+                <span>✈️</span>
+                <strong style={{ fontWeight: 600 }}>{totalAir}</strong> aéreos
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "4px 10px",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: 20,
+                  fontSize: 12,
+                  color: "#16a34a",
+                }}
+              >
+                <span>🚢</span>
+                <strong style={{ fontWeight: 600 }}>{totalOcean}</strong>{" "}
+                marítimos
+              </div>
+            </>
+          )}
+          {/* Botón actualizar */}
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            title="Recargar"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 10px",
+              background: "#fff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 20,
+              cursor: "pointer",
+              fontSize: 12,
+              color: "#6b7280",
+              fontFamily: FONT,
+            }}
+          >
+            <svg
+              width="13"
+              height="13"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 24 24"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -624,9 +735,45 @@ function ShipsGoTrackingAdmin() {
         )}
       </div>
 
+      {/* ── Chips de ordenamiento ── */}
+      <div
+        style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}
+      >
+        {(
+          [
+            { key: "az" as const, label: "A → Z" },
+            { key: "recent" as const, label: "Más recientes" },
+            { key: "subcuentas" as const, label: "Solo subcuentas" },
+          ] as const
+        ).map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => setSortMode(opt.key)}
+            style={{
+              padding: "4px 12px",
+              background: sortMode === opt.key ? "#fff7ed" : "#fff",
+              border:
+                sortMode === opt.key
+                  ? "1px solid #ff6200"
+                  : "1px solid #e5e7eb",
+              borderRadius: 20,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: sortMode === opt.key ? 500 : 400,
+              color: sortMode === opt.key ? "#9a3412" : "#6b7280",
+              transition: "all 0.15s",
+              fontFamily: FONT,
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {/* Client List */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {filteredClients.map((client) => {
+        {sortedClients.map((client) => {
           const counts = clientShipmentCounts.get(client.username);
           const airCount = counts?.air ?? 0;
           const oceanCount = counts?.ocean ?? 0;
@@ -679,41 +826,43 @@ function ShipsGoTrackingAdmin() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#1f2937",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    flexWrap: "wrap",
                   }}
                 >
-                  {client.username}
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#9ca3af",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {client.email}
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "#1f2937",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {client.username}
+                  </div>
                   {client.parentUsername && (
                     <span
                       style={{
                         background: "#fef3c7",
                         color: "#92400e",
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: 500,
-                        padding: "2px 8px",
-                        borderRadius: 4,
-                        marginLeft: 8,
+                        padding: "1px 6px",
+                        borderRadius: 3,
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
                       }}
                     >
-                      Cuenta: {client.parentUsername}
+                      subcuenta de {client.parentUsername}
                     </span>
                   )}
+                </div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                  {client.email}
                 </div>
               </div>
 
@@ -771,7 +920,7 @@ function ShipsGoTrackingAdmin() {
         })}
       </div>
 
-      {filteredClients.length === 0 && (
+      {sortedClients.length === 0 && (
         <div
           style={{
             textAlign: "center",
@@ -780,9 +929,11 @@ function ShipsGoTrackingAdmin() {
             fontSize: 14,
           }}
         >
-          {searchQuery
-            ? `No se encontraron clientes para "${searchQuery}"`
-            : "No hay clientes asignados."}
+          {sortMode === "subcuentas"
+            ? "Ningún cliente tiene subcuentas asignadas."
+            : searchQuery
+              ? `No se encontraron clientes para "${searchQuery}"`
+              : "No hay clientes asignados."}
         </div>
       )}
     </div>

@@ -136,6 +136,9 @@ function Documentacion() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClient, setSelectedClient] = useState<Cliente | null>(null);
   const [documentCounts, setDocumentCounts] = useState<DocumentCounts>({});
+  const [sortMode, setSortMode] = useState<"az" | "recent" | "subcuentas">(
+    "az",
+  );
 
   // Fetch clients
   useEffect(() => {
@@ -274,6 +277,23 @@ function Documentacion() {
         (c.parentUsername && c.parentUsername.toLowerCase().includes(q)),
     );
   }, [clientes, searchQuery]);
+
+  const sortedClients = useMemo(() => {
+    let list = [...filteredClients];
+    if (sortMode === "az") {
+      list.sort((a, b) =>
+        a.username.localeCompare(b.username, "es", { sensitivity: "base" }),
+      );
+    } else if (sortMode === "recent") {
+      list.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+    } else if (sortMode === "subcuentas") {
+      list = list.filter((c) => !!c.parentUsername);
+    }
+    return list;
+  }, [filteredClients, sortMode]);
 
   const uniqueAccountCount = useMemo(
     () => new Set(clientes.map((c) => c.id)).size,
@@ -459,13 +479,13 @@ function Documentacion() {
   // ── Client List View ──
   return (
     <div style={{ fontFamily: FONT, maxWidth: 1200 }}>
-      {/* Header */}
+      {/* ── Header compacto con stats y acciones ── */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 12,
-          marginBottom: 24,
+          justifyContent: "space-between",
+          marginBottom: 16,
         }}
       >
         <div>
@@ -477,79 +497,101 @@ function Documentacion() {
               margin: 0,
             }}
           >
-            Documentación
+            Documentación de clientes
           </h1>
           <p style={{ fontSize: 14, color: "#6b7280", margin: "4px 0 0" }}>
-            Selecciona un cliente para ver sus documentos.
+            Selecciona un cliente para ver sus documentos cargados y
+            cotizaciones.
           </p>
         </div>
-      </div>
-
-      {/* Summary bar */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-          marginBottom: 20,
-          padding: "14px 20px",
-          background: "#fff",
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-        }}
-      >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <i
-            className="fa fa-users"
-            style={{ fontSize: 16, color: "#ff9900" }}
-          />
-          <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
-            {uniqueAccountCount}
-          </span>
-          <span style={{ fontSize: 13, color: "#6b7280" }}>
-            cuentas asignadas
-          </span>
-          {clientes.length > uniqueAccountCount && (
-            <>
-              <span style={{ fontSize: 13, color: "#d1d5db" }}>·</span>
-              <span style={{ fontSize: 24, fontWeight: 700, color: "#1f2937" }}>
-                {clientes.length}
-              </span>
-              <span style={{ fontSize: 13, color: "#6b7280" }}>empresas</span>
-            </>
-          )}
-        </div>
-        <div style={{ flex: 1 }} />
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 10px",
+              background: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: 20,
+              fontSize: 12,
+              color: "#6b7280",
+            }}
+          >
+            <svg
+              width="13"
+              height="13"
+              fill="none"
+              stroke="#ff6200"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 24 24"
+            >
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <strong style={{ color: "#1f2937", fontWeight: 500 }}>
+              {uniqueAccountCount}
+            </strong>{" "}
+            cuentas
+            {clientes.length > uniqueAccountCount && (
+              <>
+                {" "}
+                ·{" "}
+                <strong style={{ color: "#1f2937", fontWeight: 500 }}>
+                  {clientes.length}
+                </strong>{" "}
+                empresas
+              </>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => {
               try {
                 localStorage.removeItem(CLIENTS_CACHE_KEY);
               } catch {
-                // ignore quota or access errors
+                /* ignore */
               }
-              // Reload the page so the component refetches without cache
               window.location.reload();
             }}
+            title="Limpiar caché y recargar"
             style={{
-              padding: "8px 12px",
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 10px",
               background: "#fff",
               border: "1px solid #e5e7eb",
-              borderRadius: 8,
+              borderRadius: 20,
               cursor: "pointer",
-              fontSize: 13,
-              color: "#374151",
+              fontSize: 12,
+              color: "#6b7280",
+              fontFamily: FONT,
             }}
-            title="Limpiar caché de clientes y recargar la página"
           >
-            Actualizar página
+            <svg
+              width="13"
+              height="13"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 24 24"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            Actualizar
+            <span style={{ fontSize: 10, color: "#d1d5db" }}>
+              {getCachedClients() ? "· caché activo" : ""}
+            </span>
           </button>
-
-          <div style={{ fontSize: 12, color: "#9ca3af" }}>
-            Caché: {getCachedClients() ? "activo" : "sin caché"}
-          </div>
         </div>
       </div>
 
@@ -609,9 +651,45 @@ function Documentacion() {
         </div>
       )}
 
+      {/* ── Chips de ordenamiento ── */}
+      <div
+        style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}
+      >
+        {(
+          [
+            { key: "az" as const, label: "A → Z" },
+            { key: "recent" as const, label: "Más recientes" },
+            { key: "subcuentas" as const, label: "Solo subcuentas" },
+          ] as const
+        ).map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => setSortMode(opt.key)}
+            style={{
+              padding: "4px 12px",
+              background: sortMode === opt.key ? "#fff7ed" : "#fff",
+              border:
+                sortMode === opt.key
+                  ? "1px solid #ff6200"
+                  : "1px solid #e5e7eb",
+              borderRadius: 20,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: sortMode === opt.key ? 500 : 400,
+              color: sortMode === opt.key ? "#9a3412" : "#6b7280",
+              transition: "all 0.15s",
+              fontFamily: FONT,
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {/* Client list */}
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {filteredClients.map((client) => (
+        {sortedClients.map((client) => (
           <div
             key={`${client.id}:${normalizeAccountName(client.username)}`}
             onClick={() => handleSelectClient(client)}
@@ -655,41 +733,43 @@ function Documentacion() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#1f2937",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flexWrap: "wrap",
                 }}
               >
-                {client.username}
-              </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "#9ca3af",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {client.email}
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#1f2937",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {client.username}
+                </div>
                 {client.parentUsername && (
                   <span
                     style={{
                       background: "#fef3c7",
                       color: "#92400e",
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 500,
-                      padding: "2px 8px",
-                      borderRadius: 4,
-                      marginLeft: 8,
+                      padding: "1px 6px",
+                      borderRadius: 3,
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
                     }}
                   >
-                    Cuenta: {client.parentUsername}
+                    subcuenta de {client.parentUsername}
                   </span>
                 )}
+              </div>
+              <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                {client.email}
               </div>
             </div>
             <div style={{ fontSize: 11, color: "#9ca3af", flexShrink: 0 }}>
@@ -728,7 +808,7 @@ function Documentacion() {
         ))}
       </div>
 
-      {filteredClients.length === 0 && (
+      {sortedClients.length === 0 && (
         <div
           style={{
             textAlign: "center",
@@ -737,9 +817,11 @@ function Documentacion() {
             fontSize: 14,
           }}
         >
-          {searchQuery
-            ? `Sin resultados para "${searchQuery}"`
-            : "No hay clientes asignados."}
+          {sortMode === "subcuentas"
+            ? "Ningún cliente tiene subcuentas asignadas."
+            : searchQuery
+              ? `Sin resultados para "${searchQuery}"`
+              : "No hay clientes asignados."}
         </div>
       )}
     </div>
