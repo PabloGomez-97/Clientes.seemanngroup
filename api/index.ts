@@ -5535,14 +5535,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             : d.contenidoBase64;
           const fileBuffer = Buffer.from(base64Content, 'base64');
           const docId = new mongoose.Types.ObjectId();
-          const quoteFolder = String(quoteNumber).replace(/^[A-Za-z]+0*/,'') || String(quoteNumber);
+          // La carpeta en R2 es el número de cotización stripped + 84 (offset de IDs internos de Linbis)
+          const strippedNum = parseInt(String(quoteNumber).replace(/^[A-Za-z]+0*/, ''), 10);
+          const quoteFolder = !isNaN(strippedNum) ? String(strippedNum + 84) : String(quoteNumber);
           const r2Key = buildDocR2Key('documentos', ownerUsername, quoteFolder, docId.toString(), String(d.nombreArchivo));
 
           await uploadDocument(r2Key, fileBuffer, mimeType);
 
           await Documento.create({
             _id: docId,
-            quoteId: String(quoteNumber),
+            quoteId: quoteFolder,
             tipo: d.tipo,
             nombreArchivo: String(d.nombreArchivo),
             tipoArchivo: mimeType,

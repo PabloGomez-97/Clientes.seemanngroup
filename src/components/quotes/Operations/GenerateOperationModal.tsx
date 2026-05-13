@@ -240,6 +240,13 @@ export default function GenerateOperationModal({
                 quedará disponible para revisarla más tarde sin generar la
                 operación.
               </p>
+              <p>
+                <strong>
+                  Es importante mencionar que si la tarifa tiene una validez
+                  cercana a la fecha y no se genera la cotización, estará sujeta
+                  a cambios por parte del proveedor.
+                </strong>
+              </p>
             </div>
             <div className="go-modal__footer">
               <button
