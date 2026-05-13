@@ -74,6 +74,8 @@ function ShipsGoTracking({
     null,
   );
   const [showModal, setShowModal] = useState(false);
+  const [airExpanded, setAirExpanded] = useState(false);
+  const [oceanExpanded, setOceanExpanded] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -116,6 +118,16 @@ function ShipsGoTracking({
       ).length,
       delayed: userOcean.filter(isOceanDelayed).length,
     }),
+    [userOcean],
+  );
+
+  const showAirTagsColumn = useMemo(
+    () => userAir.some((s) => s.tags.length > 0),
+    [userAir],
+  );
+
+  const showOceanTagsColumn = useMemo(
+    () => userOcean.some((s) => s.tags.length > 0),
     [userOcean],
   );
 
@@ -296,141 +308,7 @@ function ShipsGoTracking({
     }
   };
 
-  const isLoading = activeTab === "air" ? airLoading : oceanLoading;
-  const currentError = activeTab === "air" ? airError : oceanError;
-  const refetchCurrent = activeTab === "air" ? fetchAir : fetchOcean;
-  const currentShipments = activeTab === "air" ? userAir : userOcean;
-
   // ─── Render ───
-
-  // Loading
-  if (isLoading) {
-    return (
-      <div className="sg-wrapper">
-        <div className="sg-container">
-          <div className="sg-page-header">
-            <div className="sg-page-header-left">
-              <h1>Rastreo de envíos</h1>
-              <p>{effectiveUsername}</p>
-            </div>
-          </div>
-          <div className="sg-tabs">
-            <button
-              className={`sg-tab ${activeTab === "air" ? "sg-tab--active" : ""}`}
-              onClick={() => setActiveTab("air")}
-            >
-              ✈️ Aéreo
-            </button>
-            <button
-              className={`sg-tab ${activeTab === "ocean" ? "sg-tab--active" : ""}`}
-              onClick={() => setActiveTab("ocean")}
-            >
-              🚢 Marítimo
-            </button>
-          </div>
-          <div className="sg-loading">
-            <div className="sg-spinner" />
-            <p>
-              Cargando envíos {activeTab === "air" ? "aéreos" : "marítimos"}...
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Error
-  if (currentError) {
-    return (
-      <div className="sg-wrapper">
-        <div className="sg-container">
-          <div className="sg-page-header">
-            <div className="sg-page-header-left">
-              <h1>Rastreo de envíos</h1>
-              <p>{effectiveUsername}</p>
-            </div>
-          </div>
-          <div className="sg-tabs">
-            <button
-              className={`sg-tab ${activeTab === "air" ? "sg-tab--active" : ""}`}
-              onClick={() => setActiveTab("air")}
-            >
-              ✈️ Aéreo
-            </button>
-            <button
-              className={`sg-tab ${activeTab === "ocean" ? "sg-tab--active" : ""}`}
-              onClick={() => setActiveTab("ocean")}
-            >
-              🚢 Marítimo
-            </button>
-          </div>
-          <div className="sg-error">
-            <h4>Error</h4>
-            <p>{currentError}</p>
-            <button className="sg-error-btn" onClick={refetchCurrent}>
-              Reintentar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Empty
-  if (currentShipments.length === 0) {
-    return (
-      <div className="sg-wrapper">
-        <div className="sg-container">
-          <div className="sg-page-header">
-            <div className="sg-page-header-left">
-              <h1>Rastreo de envíos</h1>
-              <p>{effectiveUsername}</p>
-            </div>
-          </div>
-          <div className="sg-tabs">
-            <button
-              className={`sg-tab ${activeTab === "air" ? "sg-tab--active" : ""}`}
-              onClick={() => setActiveTab("air")}
-            >
-              ✈️ Aéreo ({userAir.length})
-            </button>
-            <button
-              className={`sg-tab ${activeTab === "ocean" ? "sg-tab--active" : ""}`}
-              onClick={() => setActiveTab("ocean")}
-            >
-              🚢 Marítimo ({userOcean.length})
-            </button>
-          </div>
-          <div className="sg-empty">
-            <h3>
-              Sin envíos {activeTab === "air" ? "aéreos" : "marítimos"}{" "}
-              registrados
-            </h3>
-            <p>
-              Comienza creando tu primer seguimiento de envío{" "}
-              {activeTab === "air" ? "aéreo" : "marítimo"}.
-            </p>
-            <button
-              className="sg-empty-btn"
-              onClick={() => {
-                if (onNewTracking) {
-                  onNewTracking(activeTab);
-                } else {
-                  navigate(
-                    activeTab === "air"
-                      ? "/new-tracking"
-                      : "/new-ocean-tracking",
-                  );
-                }
-              }}
-            >
-              <span>+</span> Nuevo seguimiento
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Main
   return (
@@ -477,433 +355,545 @@ function ShipsGoTracking({
         {/* === AIR TAB === */}
         {activeTab === "air" && (
           <>
-            {/* Stats */}
-            <div className="sg-stats">
-              <div className="sg-stat-item">
-                <div className="sg-stat-label">Total</div>
-                <div className="sg-stat-value">{airStats.total}</div>
+            {airLoading ? (
+              <div className="sg-loading">
+                <div className="sg-spinner" />
+                <p>Cargando envíos aéreos...</p>
               </div>
-              <div className="sg-stat-item">
-                <div className="sg-stat-label">En tránsito</div>
-                <div className="sg-stat-value">{airStats.inTransit}</div>
+            ) : airError ? (
+              <div className="sg-error">
+                <h4>Error</h4>
+                <p>{airError}</p>
+                <button className="sg-error-btn" onClick={fetchAir}>
+                  Reintentar
+                </button>
               </div>
-              <div className="sg-stat-item">
-                <div className="sg-stat-label">Entregados</div>
-                <div className="sg-stat-value">{airStats.delivered}</div>
+            ) : userAir.length === 0 ? (
+              <div className="sg-empty-state">
+                <span className="sg-empty-state-icon">✈️</span>
+                <h3 className="sg-empty-state-heading">
+                  No tienes envíos registrados
+                </h3>
+                <p className="sg-empty-state-text">
+                  Agrega un nuevo seguimiento para comenzar a rastrear tus
+                  envíos.
+                </p>
+                <button
+                  className="sg-btn-new"
+                  onClick={() => {
+                    if (onNewTracking) {
+                      onNewTracking("air");
+                    } else {
+                      navigate("/new-tracking");
+                    }
+                  }}
+                >
+                  <span>+</span> Nuevo seguimiento
+                </button>
               </div>
-              {airStats.delayed > 0 && (
-                <div className="sg-stat-item">
-                  <div className="sg-stat-label">Con retraso</div>
-                  <div className="sg-stat-value">{airStats.delayed}</div>
+            ) : (
+              <>
+                {/* Stats */}
+                <div className="sg-stats">
+                  <div className="sg-stat-item">
+                    <div className="sg-stat-label">Total</div>
+                    <div className="sg-stat-value">{airStats.total}</div>
+                  </div>
+                  <div className="sg-stat-item">
+                    <div className="sg-stat-label">En tránsito</div>
+                    <div className="sg-stat-value">{airStats.inTransit}</div>
+                  </div>
+                  <div className="sg-stat-item">
+                    <div className="sg-stat-label">Entregados</div>
+                    <div className="sg-stat-value">{airStats.delivered}</div>
+                  </div>
+                  <div className="sg-stat-item">
+                    <div className="sg-stat-label">Demorados</div>
+                    <div
+                      className={`sg-stat-value${airStats.delayed > 0 ? " sg-stat-value--delayed" : ""}`}
+                    >
+                      {airStats.delayed}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Delay alerts */}
-            {userAir.filter(isAirDelayed).map((s) => (
-              <div key={`d-${s.id}`} className="sg-delay-banner">
-                AWB <strong>{s.awb_number}</strong> — Envío con posible retraso.
-              </div>
-            ))}
+                {/* Delay alerts */}
+                {userAir.filter(isAirDelayed).map((s) => (
+                  <div key={`d-${s.id}`} className="sg-delay-banner">
+                    AWB <strong>{s.awb_number}</strong> — Envío con posible
+                    retraso.
+                  </div>
+                ))}
 
-            {/* Table */}
-            <div className="sg-table-wrapper">
-              <table className="sg-table">
-                <thead>
-                  <tr>
-                    <th>Estado</th>
-                    <th>AWB</th>
-                    <th>Aerolínea</th>
-                    <th>Origen</th>
-                    <th>Destino</th>
-                    <th>Progreso</th>
-                    <th>Etiquetas</th>
-                    <th>Fecha</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {userAir.map((s) => (
-                    <tr key={s.id}>
-                      <td>
-                        <span className={getStatusClass(s.status)}>
-                          {AIR_STATUS_LABELS[s.status] || s.status}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="sg-awb">{s.awb_number}</span>
-                      </td>
-                      <td>
-                        <span className="sg-airline">
-                          {s.airline?.name || "—"}
-                        </span>
-                      </td>
-                      <td>
-                        {s.route ? (
-                          <div className="sg-location">
-                            <span className="sg-location-code">
-                              {s.route.origin.location.iata}
-                              <img
-                                src={getFlagUrl(
-                                  s.route.origin.location.country.code,
-                                )}
-                                alt=""
-                                className="sg-location-flag"
-                              />
-                            </span>
-                            <span className="sg-location-date">
-                              {formatDate(s.route.origin.date_of_dep)}
-                            </span>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        {s.route ? (
-                          <div className="sg-location">
-                            <span className="sg-location-code">
-                              {s.route.destination.location.iata}
-                              <img
-                                src={getFlagUrl(
-                                  s.route.destination.location.country.code,
-                                )}
-                                alt=""
-                                className="sg-location-flag"
-                              />
-                            </span>
-                            <span className="sg-location-date">
-                              {formatDate(s.route.destination.date_of_rcf)}
-                            </span>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        {s.route ? (
-                          <div className="sg-progress-cell">
-                            <div className="sg-progress-bar">
-                              <div
-                                className={`sg-progress-fill ${s.route.transit_percentage === 100 ? "sg-progress-fill--done" : ""}`}
-                                style={{
-                                  width: `${s.route.transit_percentage}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="sg-progress-pct">
-                              {s.route.transit_percentage}%
-                            </span>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        {s.tags.length > 0 ? (
-                          <div className="sg-tags">
-                            {s.tags.map((t) => (
-                              <span key={t.id} className="sg-tag">
-                                {t.name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        <span className="sg-date">
-                          {formatDate(s.created_at)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="sg-row-actions">
-                          <button
-                            type="button"
-                            className="sg-btn-view"
+                {/* Table */}
+                <div className="sg-table-wrapper">
+                  <table className="sg-table">
+                    <thead>
+                      <tr>
+                        <th>Estado</th>
+                        <th>AWB</th>
+                        <th>Aerolínea</th>
+                        <th>Origen</th>
+                        <th>Destino</th>
+                        <th>Progreso</th>
+                        {showAirTagsColumn && <th>Etiquetas</th>}
+                        <th>Fecha</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(airExpanded ? userAir : userAir.slice(0, 10)).map(
+                        (s) => (
+                          <tr
+                            key={s.id}
                             onClick={() => {
                               setSelectedAir(s);
                               setSelectedOcean(null);
                               setShowModal(true);
                             }}
                           >
-                            Ver
-                          </button>
-                          {airMapTokens[s.id] && (
-                            <a
-                              className="sg-link-live"
-                              href={`https://map.shipsgo.com/air/shipments/${s.id}?token=${airMapTokens[s.id]}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Ver en vivo
-                            </a>
-                          )}
-                          <button
-                            type="button"
-                            className="sg-btn-delete"
-                            onClick={() =>
-                              setDeleteTarget({
-                                type: "air",
-                                id: s.id,
-                                label: `AWB ${s.awb_number}`,
-                              })
-                            }
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div
-              className="sg-new-tracking-warning"
-              style={{
-                marginTop: "1rem",
-                padding: "0.6rem 0.75rem",
-                backgroundColor: "#fff8e1",
-                borderLeft: "4px solid #f59e0b",
-                color: "#92400e",
-                borderRadius: "0.25rem",
-                fontSize: "0.875rem",
-              }}
-            >
-              ⚠️ Los seguimientos recién creados pueden tardar unos minutos en
-              cargarse. Por favor, no volver a crear el mismo seguimiento.
-            </div>
+                            <td>
+                              <span className={getStatusClass(s.status)}>
+                                {AIR_STATUS_LABELS[s.status] || s.status}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="sg-awb">{s.awb_number}</span>
+                            </td>
+                            <td>
+                              <span className="sg-airline">
+                                {s.airline?.name || "—"}
+                              </span>
+                            </td>
+                            <td>
+                              {s.route ? (
+                                <div className="sg-location">
+                                  <span className="sg-location-code">
+                                    {s.route.origin.location.iata}
+                                    <img
+                                      src={getFlagUrl(
+                                        s.route.origin.location.country.code,
+                                      )}
+                                      alt=""
+                                      className="sg-location-flag"
+                                    />
+                                  </span>
+                                  <span className="sg-location-date">
+                                    {formatDate(s.route.origin.date_of_dep)}
+                                  </span>
+                                </div>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td>
+                              {s.route ? (
+                                <div className="sg-location">
+                                  <span className="sg-location-code">
+                                    {s.route.destination.location.iata}
+                                    <img
+                                      src={getFlagUrl(
+                                        s.route.destination.location.country
+                                          .code,
+                                      )}
+                                      alt=""
+                                      className="sg-location-flag"
+                                    />
+                                  </span>
+                                  <span className="sg-location-date">
+                                    {formatDate(
+                                      s.route.destination.date_of_rcf,
+                                    )}
+                                  </span>
+                                </div>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td>
+                              {s.route ? (
+                                <div className="sg-progress-cell">
+                                  <div className="sg-progress-bar">
+                                    <div
+                                      className={`sg-progress-fill ${s.route.transit_percentage === 100 ? "sg-progress-fill--done" : ""}`}
+                                      style={{
+                                        width: `${s.route.transit_percentage}%`,
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="sg-progress-pct">
+                                    {s.route.transit_percentage}%
+                                  </span>
+                                </div>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            {showAirTagsColumn && (
+                              <td>
+                                {s.tags.length > 0 ? (
+                                  <div className="sg-tags">
+                                    {s.tags.map((t) => (
+                                      <span key={t.id} className="sg-tag">
+                                        {t.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                            )}
+                            <td>
+                              <span className="sg-date">
+                                {formatDate(s.created_at)}
+                              </span>
+                            </td>
+                            <td>
+                              <div
+                                className="sg-row-actions"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {airMapTokens[s.id] && (
+                                  <a
+                                    className="sg-link-live"
+                                    href={`https://map.shipsgo.com/air/shipments/${s.id}?token=${airMapTokens[s.id]}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    Ver en vivo
+                                  </a>
+                                )}
+                                <button
+                                  type="button"
+                                  className="sg-btn-delete-icon"
+                                  title="Eliminar seguimiento"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteTarget({
+                                      type: "air",
+                                      id: s.id,
+                                      label: `AWB ${s.awb_number}`,
+                                    });
+                                  }}
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {userAir.length > 10 && (
+                  <div className="sg-show-more">
+                    <button
+                      type="button"
+                      className="sg-btn-show-more"
+                      onClick={() => setAirExpanded((v) => !v)}
+                    >
+                      {airExpanded
+                        ? `Ver menos ▲`
+                        : `Ver más (${userAir.length - 10} restantes) ▼`}
+                    </button>
+                  </div>
+                )}
+                <div className="sg-new-tracking-warning">
+                  ⚠️ Los seguimientos recién creados pueden tardar unos minutos
+                  en cargarse. Por favor, no volver a crear el mismo
+                  seguimiento.
+                </div>
+              </>
+            )}
           </>
         )}
 
         {/* === OCEAN TAB === */}
         {activeTab === "ocean" && (
           <>
-            {/* Stats */}
-            <div className="sg-stats">
-              <div className="sg-stat-item">
-                <div className="sg-stat-label">Total</div>
-                <div className="sg-stat-value">{oceanStats.total}</div>
+            {oceanLoading ? (
+              <div className="sg-loading">
+                <div className="sg-spinner" />
+                <p>Cargando envíos marítimos...</p>
               </div>
-              <div className="sg-stat-item">
-                <div className="sg-stat-label">Navegando</div>
-                <div className="sg-stat-value">{oceanStats.sailing}</div>
+            ) : oceanError ? (
+              <div className="sg-error">
+                <h4>Error</h4>
+                <p>{oceanError}</p>
+                <button className="sg-error-btn" onClick={fetchOcean}>
+                  Reintentar
+                </button>
               </div>
-              <div className="sg-stat-item">
-                <div className="sg-stat-label">Llegados</div>
-                <div className="sg-stat-value">{oceanStats.arrived}</div>
+            ) : userOcean.length === 0 ? (
+              <div className="sg-empty-state">
+                <span className="sg-empty-state-icon">🚢</span>
+                <h3 className="sg-empty-state-heading">
+                  No tienes envíos registrados
+                </h3>
+                <p className="sg-empty-state-text">
+                  Agrega un nuevo seguimiento para comenzar a rastrear tus
+                  envíos.
+                </p>
+                <button
+                  className="sg-btn-new"
+                  onClick={() => {
+                    if (onNewTracking) {
+                      onNewTracking("ocean");
+                    } else {
+                      navigate("/new-ocean-tracking");
+                    }
+                  }}
+                >
+                  <span>+</span> Nuevo seguimiento
+                </button>
               </div>
-              {oceanStats.delayed > 0 && (
-                <div className="sg-stat-item">
-                  <div className="sg-stat-label">Con retraso</div>
-                  <div className="sg-stat-value">{oceanStats.delayed}</div>
+            ) : (
+              <>
+                {/* Stats */}
+                <div className="sg-stats">
+                  <div className="sg-stat-item">
+                    <div className="sg-stat-label">Total</div>
+                    <div className="sg-stat-value">{oceanStats.total}</div>
+                  </div>
+                  <div className="sg-stat-item">
+                    <div className="sg-stat-label">Navegando</div>
+                    <div className="sg-stat-value">{oceanStats.sailing}</div>
+                  </div>
+                  <div className="sg-stat-item">
+                    <div className="sg-stat-label">Llegados</div>
+                    <div className="sg-stat-value">{oceanStats.arrived}</div>
+                  </div>
+                  <div className="sg-stat-item">
+                    <div className="sg-stat-label">Demorados</div>
+                    <div
+                      className={`sg-stat-value${oceanStats.delayed > 0 ? " sg-stat-value--delayed" : ""}`}
+                    >
+                      {oceanStats.delayed}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Delay alerts */}
-            {userOcean.filter(isOceanDelayed).map((s) => (
-              <div key={`d-${s.id}`} className="sg-delay-banner">
-                {s.container_number
-                  ? `Container ${s.container_number}`
-                  : `Booking ${s.booking_number}`}{" "}
-                — Envío con posible retraso.
-              </div>
-            ))}
-
-            {/* Table */}
-            <div className="sg-table-wrapper">
-              <table className="sg-table">
-                <thead>
-                  <tr>
-                    <th>Estado</th>
-                    <th>Container / Booking</th>
-                    <th>Naviera</th>
-                    <th>Puerto Carga</th>
-                    <th>Puerto Descarga</th>
-                    <th>Progreso</th>
-                    <th>Etiquetas</th>
-                    <th>Fecha</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {userOcean.map((s) => (
-                    <tr key={s.id}>
-                      <td>
-                        <span className={getStatusClass(s.status)}>
-                          {OCEAN_STATUS_LABELS[s.status] || s.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div>
-                          {s.container_number && (
-                            <span className="sg-awb">{s.container_number}</span>
-                          )}
-                          {s.booking_number && (
-                            <div
-                              style={{ fontSize: "0.75rem", color: "#6b7280" }}
-                            >
-                              {s.booking_number}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <span className="sg-airline">
-                          {s.carrier?.name || "—"}
-                        </span>
-                      </td>
-                      <td>
-                        {s.route ? (
-                          <div className="sg-location">
-                            <span className="sg-location-code">
-                              {s.route.port_of_loading.location.code}
-                              <img
-                                src={getFlagUrl(
-                                  s.route.port_of_loading.location.country.code,
-                                )}
-                                alt=""
-                                className="sg-location-flag"
-                              />
-                            </span>
-                            <span className="sg-location-date">
-                              {formatDate(
-                                s.route.port_of_loading.date_of_loading,
-                              )}
-                            </span>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        {s.route ? (
-                          <div className="sg-location">
-                            <span className="sg-location-code">
-                              {s.route.port_of_discharge.location.code}
-                              <img
-                                src={getFlagUrl(
-                                  s.route.port_of_discharge.location.country
-                                    .code,
-                                )}
-                                alt=""
-                                className="sg-location-flag"
-                              />
-                            </span>
-                            <span className="sg-location-date">
-                              {formatDate(
-                                s.route.port_of_discharge.date_of_discharge,
-                              )}
-                            </span>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        {s.route ? (
-                          <div className="sg-progress-cell">
-                            <div className="sg-progress-bar">
-                              <div
-                                className={`sg-progress-fill ${s.route.transit_percentage === 100 ? "sg-progress-fill--done" : ""}`}
-                                style={{
-                                  width: `${s.route.transit_percentage}%`,
-                                }}
-                              />
-                            </div>
-                            <span className="sg-progress-pct">
-                              {s.route.transit_percentage}%
-                            </span>
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        {s.tags.length > 0 ? (
-                          <div className="sg-tags">
-                            {s.tags.map((t) => (
-                              <span key={t.id} className="sg-tag">
-                                {t.name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td>
-                        <span className="sg-date">
-                          {formatDate(s.created_at)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="sg-row-actions">
-                          <button
-                            type="button"
-                            className="sg-btn-view"
+                {/* Delay alerts */}
+                {userOcean.filter(isOceanDelayed).map((s) => (
+                  <div key={`d-${s.id}`} className="sg-delay-banner">
+                    {s.container_number
+                      ? `Container ${s.container_number}`
+                      : `Booking ${s.booking_number}`}{" "}
+                    — Envío con posible retraso.
+                  </div>
+                ))}
+                {/* Table */}
+                <div className="sg-table-wrapper">
+                  <table className="sg-table">
+                    <thead>
+                      <tr>
+                        <th>Estado</th>
+                        <th>Container / Booking</th>
+                        <th>Naviera</th>
+                        <th>Puerto Carga</th>
+                        <th>Puerto Descarga</th>
+                        <th>Progreso</th>
+                        {showOceanTagsColumn && <th>Etiquetas</th>}
+                        <th>Fecha</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(oceanExpanded ? userOcean : userOcean.slice(0, 10)).map(
+                        (s) => (
+                          <tr
+                            key={s.id}
                             onClick={() => {
                               setSelectedOcean(s);
                               setSelectedAir(null);
                               setShowModal(true);
                             }}
                           >
-                            Ver
-                          </button>
-
-                          {(s.container_number || s.booking_number) && (
-                            <a
-                              className="sg-link-live"
-                              href={`https://shipsgo.com/live-map-container-tracking?query=${encodeURIComponent(
-                                s.container_number || s.booking_number || "",
-                              )}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Ver en vivo
-                            </a>
-                          )}
-                          <button
-                            type="button"
-                            className="sg-btn-delete"
-                            onClick={() =>
-                              setDeleteTarget({
-                                type: "ocean",
-                                id: s.id,
-                                label:
-                                  s.container_number ||
-                                  s.booking_number ||
-                                  `Tracking ${s.id}`,
-                              })
-                            }
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div
-              className="sg-new-tracking-warning"
-              style={{
-                marginTop: "1rem",
-                padding: "0.6rem 0.75rem",
-                backgroundColor: "#fff8e1",
-                borderLeft: "4px solid #f59e0b",
-                color: "#92400e",
-                borderRadius: "0.25rem",
-                fontSize: "0.875rem",
-              }}
-            >
-              ⚠️ Los seguimientos recién creados pueden tardar unos minutos en
-              cargarse. Por favor, no volver a crear el mismo seguimiento.
-            </div>
+                            <td>
+                              <span className={getStatusClass(s.status)}>
+                                {OCEAN_STATUS_LABELS[s.status] || s.status}
+                              </span>
+                            </td>
+                            <td>
+                              <div>
+                                {s.container_number && (
+                                  <span className="sg-awb">
+                                    {s.container_number}
+                                  </span>
+                                )}
+                                {s.booking_number && (
+                                  <div
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      color: "#6b7280",
+                                    }}
+                                  >
+                                    {s.booking_number}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <span className="sg-airline">
+                                {s.carrier?.name || "—"}
+                              </span>
+                            </td>
+                            <td>
+                              {s.route ? (
+                                <div className="sg-location">
+                                  <span className="sg-location-code">
+                                    {s.route.port_of_loading.location.code}
+                                    <img
+                                      src={getFlagUrl(
+                                        s.route.port_of_loading.location.country
+                                          .code,
+                                      )}
+                                      alt=""
+                                      className="sg-location-flag"
+                                    />
+                                  </span>
+                                  <span className="sg-location-date">
+                                    {formatDate(
+                                      s.route.port_of_loading.date_of_loading,
+                                    )}
+                                  </span>
+                                </div>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td>
+                              {s.route ? (
+                                <div className="sg-location">
+                                  <span className="sg-location-code">
+                                    {s.route.port_of_discharge.location.code}
+                                    <img
+                                      src={getFlagUrl(
+                                        s.route.port_of_discharge.location
+                                          .country.code,
+                                      )}
+                                      alt=""
+                                      className="sg-location-flag"
+                                    />
+                                  </span>
+                                  <span className="sg-location-date">
+                                    {formatDate(
+                                      s.route.port_of_discharge
+                                        .date_of_discharge,
+                                    )}
+                                  </span>
+                                </div>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td>
+                              {s.route ? (
+                                <div className="sg-progress-cell">
+                                  <div className="sg-progress-bar">
+                                    <div
+                                      className={`sg-progress-fill ${s.route.transit_percentage === 100 ? "sg-progress-fill--done" : ""}`}
+                                      style={{
+                                        width: `${s.route.transit_percentage}%`,
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="sg-progress-pct">
+                                    {s.route.transit_percentage}%
+                                  </span>
+                                </div>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            {showOceanTagsColumn && (
+                              <td>
+                                {s.tags.length > 0 ? (
+                                  <div className="sg-tags">
+                                    {s.tags.map((t) => (
+                                      <span key={t.id} className="sg-tag">
+                                        {t.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                            )}
+                            <td>
+                              <span className="sg-date">
+                                {formatDate(s.created_at)}
+                              </span>
+                            </td>
+                            <td>
+                              <div
+                                className="sg-row-actions"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {(s.container_number || s.booking_number) && (
+                                  <a
+                                    className="sg-link-live"
+                                    href={`https://shipsgo.com/live-map-container-tracking?query=${encodeURIComponent(
+                                      s.container_number ||
+                                        s.booking_number ||
+                                        "",
+                                    )}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    Ver en vivo
+                                  </a>
+                                )}
+                                <button
+                                  type="button"
+                                  className="sg-btn-delete-icon"
+                                  title="Eliminar seguimiento"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteTarget({
+                                      type: "ocean",
+                                      id: s.id,
+                                      label:
+                                        s.container_number ||
+                                        s.booking_number ||
+                                        `Tracking ${s.id}`,
+                                    });
+                                  }}
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ),
+                      )}
+                    </tbody>
+                  </table>
+                </div>{" "}
+                {userOcean.length > 10 && (
+                  <div className="sg-show-more">
+                    <button
+                      type="button"
+                      className="sg-btn-show-more"
+                      onClick={() => setOceanExpanded((v) => !v)}
+                    >
+                      {oceanExpanded
+                        ? `Ver menos ▲`
+                        : `Ver más (${userOcean.length - 10} restantes) ▼`}
+                    </button>
+                  </div>
+                )}{" "}
+                <div className="sg-new-tracking-warning">
+                  ⚠️ Los seguimientos recién creados pueden tardar unos minutos
+                  en cargarse. Por favor, no volver a crear el mismo
+                  seguimiento.
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

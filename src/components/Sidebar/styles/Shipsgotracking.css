@@ -1801,3 +1801,111 @@
   border-radius: 3px;
   text-align: center;
 }
+
+/* ====================================
+   CLICKABLE ROWS
+   ==================================== */
+.sg-table tbody tr {
+  cursor: pointer;
+}
+
+/* ====================================
+   DELETE ICON BUTTON
+   ==================================== */
+.sg-btn-delete-icon {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 1rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.sg-btn-delete-icon:hover {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+/* ====================================
+   DELAYED STAT VALUE
+   ==================================== */
+.sg-stat-value--delayed {
+  color: #dc2626;
+}
+
+/* ====================================
+   WARNING BANNER
+   ==================================== */
+.sg-new-tracking-warning {
+  margin-top: 1rem;
+  padding: 0.6rem 0.75rem;
+  background-color: #fff8e1;
+  border-left: 4px solid #f59e0b;
+  color: #92400e;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* ====================================
+   EMPTY STATE
+   ==================================== */
+.sg-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  gap: 0.75rem;
+}
+
+.sg-empty-state-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.sg-empty-state-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.sg-empty-state-text {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+  text-align: center;
+}
+
+/* ====================================
+   SHOW MORE / SHOW LESS
+   ==================================== */
+.sg-show-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.sg-btn-show-more {
+  padding: 0.4375rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: #374151;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.sg-btn-show-more:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
