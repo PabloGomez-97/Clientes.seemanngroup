@@ -28,6 +28,8 @@ export interface GenerateOperationModalProps {
   tipoServicio: "AIR" | "FCL" | "LCL";
   /** Datos resumen para el correo al ejecutivo */
   emailContext?: CrearOperacionPayload["emailContext"];
+  /** Fecha de validez de la tarifa (string raw del CSV, ej: "2026-05-31" o serial Excel) */
+  validUntil?: string | null;
   /** Cliente por cuenta del cual se opera (modo ejecutivo) */
   ownerUsername?: string;
 }
@@ -58,10 +60,75 @@ export default function GenerateOperationModal({
   quoteId,
   tipoServicio,
   emailContext,
+  validUntil,
   ownerUsername,
 }: GenerateOperationModalProps) {
   const { token } = useAuth();
   const [step, setStep] = useState<Step>("confirm");
+
+  // Formatea validUntil a "DD/MM/YYYY" para mostrar al usuario
+  const validUntilDisplay = useMemo(() => {
+    if (!validUntil) return null;
+    const txt = String(validUntil).trim();
+    // Intento 1: serial de Excel (número puro)
+    const asNum = Number(txt);
+    if (!isNaN(asNum) && asNum > 1000) {
+      const epoch = new Date(1899, 11, 30);
+      const d = new Date(epoch.getTime() + asNum * 86400000);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("es-CL", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+      }
+    }
+    // Intento 2: "DD MMMM" en español sin año (ej: "31 mayo", "15 junio")
+    // → inferimos el año: este año si la fecha aún no ha pasado, si no el próximo.
+    const MESES: Record<string, number> = {
+      enero: 0,
+      febrero: 1,
+      marzo: 2,
+      abril: 3,
+      mayo: 4,
+      junio: 5,
+      julio: 6,
+      agosto: 7,
+      septiembre: 8,
+      octubre: 9,
+      noviembre: 10,
+      diciembre: 11,
+    };
+    const dmMatch = txt.match(/^(\d{1,2})\s+([a-záéíóúñ]+)$/i);
+    if (dmMatch) {
+      const day = parseInt(dmMatch[1], 10);
+      const month = MESES[dmMatch[2].toLowerCase()];
+      if (month !== undefined) {
+        const now = new Date();
+        let year = now.getFullYear();
+        // Si ya pasó este año, saltar al próximo
+        if (new Date(year, month, day) < now) year++;
+        return new Date(year, month, day).toLocaleDateString("es-CL", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+      }
+      // Mes no reconocido → mostrar tal cual
+      return txt;
+    }
+    // Intento 3: ISO o formato reconocible
+    const d = new Date(txt);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("es-CL", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    }
+    // Fallback: mostrar tal cual
+    return txt;
+  }, [validUntil]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [loadingProveedores, setLoadingProveedores] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -241,11 +308,14 @@ export default function GenerateOperationModal({
                 operación.
               </p>
               <p>
+                La tarifa seleccionada tiene validez hasta el{" "}
                 <strong>
-                  Es importante mencionar que si la tarifa tiene una validez
-                  cercana a la fecha y no se genera la cotización, estará sujeta
-                  a cambios por parte del proveedor.
-                </strong>
+                  {validUntilDisplay ?? "fecha indicada en la cotización"}.
+                </strong>{" "}
+                Si la fecha de validez se encuentra próxima a vencer, los
+                valores podrían variar según actualización o disponibilidad del
+                proveedor. Por este motivo, recomendamos revisar la cotización
+                y, si está conforme, solicitar la operación lo antes posible.
               </p>
             </div>
             <div className="go-modal__footer">

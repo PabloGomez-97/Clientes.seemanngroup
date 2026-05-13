@@ -333,6 +333,7 @@ function QuoteLCL({
   const [operationModalCtx, setOperationModalCtx] = useState<{
     quoteNumber: string;
     quoteId?: string;
+    validUntil?: string | null;
     emailContext: CrearOperacionPayload["emailContext"];
   } | null>(null);
 
@@ -2445,6 +2446,7 @@ function QuoteLCL({
         setOperationModalCtx({
           quoteNumber,
           quoteId: (apiResponse || response)?.quote?.id,
+          validUntil: rutaSeleccionada.validUntil ?? null,
           emailContext: {
             origen: rutaSeleccionada.pol,
             destino: rutaSeleccionada.pod,
@@ -5139,6 +5141,7 @@ function QuoteLCL({
           quoteNumber={operationModalCtx.quoteNumber}
           quoteId={operationModalCtx.quoteId}
           tipoServicio="LCL"
+          validUntil={operationModalCtx.validUntil}
           emailContext={operationModalCtx.emailContext}
           ownerUsername={isEjecutivoMode ? effectiveUsername : undefined}
         />

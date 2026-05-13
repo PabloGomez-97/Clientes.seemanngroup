@@ -202,6 +202,7 @@ function QuoteAPITester({
   const [operationModalCtx, setOperationModalCtx] = useState<{
     quoteNumber: string;
     quoteId?: string;
+    validUntil?: string | null;
     emailContext: CrearOperacionPayload["emailContext"];
   } | null>(null);
 
@@ -2872,6 +2873,7 @@ function QuoteAPITester({
         setOperationModalCtx({
           quoteNumber,
           quoteId: (apiResponse || response)?.quote?.id,
+          validUntil: rutaSeleccionada.validUntil ?? null,
           emailContext: {
             origen: rutaSeleccionada.origin,
             destino: rutaSeleccionada.destination,
@@ -6611,6 +6613,7 @@ function QuoteAPITester({
           quoteNumber={operationModalCtx.quoteNumber}
           quoteId={operationModalCtx.quoteId}
           tipoServicio="AIR"
+          validUntil={operationModalCtx.validUntil}
           emailContext={operationModalCtx.emailContext}
           ownerUsername={isEjecutivoMode ? effectiveUsername : undefined}
         />
