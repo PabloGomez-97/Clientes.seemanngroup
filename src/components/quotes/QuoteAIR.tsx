@@ -2869,7 +2869,7 @@ function QuoteAPITester({
       // ── Auto-abrir modal para convertir cotización en operación ──
       // Solo cuando es ruta recurrente, no es simulación y no es modo ejecutivo,
       // y se obtuvo un quoteNumber real desde Linbis.
-      if (!sinTarifa && !isSimulationMode && !isEjecutivoMode && quoteNumber) {
+      if (!sinTarifa && !isSimulationMode && quoteNumber) {
         setOperationModalCtx({
           quoteNumber,
           quoteId: (apiResponse || response)?.quote?.id,

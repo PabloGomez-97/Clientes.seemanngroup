@@ -1939,7 +1939,7 @@ function QuoteFCL({
       }
 
       // ── Auto-abrir modal para convertir cotización en operación ──
-      if (!sinTarifa && !isSimulationMode && !isEjecutivoMode && quoteNumber) {
+      if (!sinTarifa && !isSimulationMode && quoteNumber) {
         setOperationModalCtx({
           quoteNumber,
           quoteId: (apiResponse || response)?.quote?.id,
