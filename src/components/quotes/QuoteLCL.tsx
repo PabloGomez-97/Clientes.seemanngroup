@@ -27,6 +27,8 @@ import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
 import "flag-icons/css/flag-icons.min.css";
 import "./QuoteAIR.css";
+import GenerateOperationModal from "./Operations/GenerateOperationModal";
+import type { CrearOperacionPayload } from "../../services/operaciones";
 import {
   type PieceData,
   type OutletContext,
@@ -326,6 +328,13 @@ function QuoteLCL({
     useState<ExpandedRoutesData | null>(null);
   // Indica si la ruta seleccionada NO tiene tarifa en el sheet LCL
   const [sinTarifa, setSinTarifa] = useState(false);
+
+  // Modal para convertir cotización en operación tras descargar PDF
+  const [operationModalCtx, setOperationModalCtx] = useState<{
+    quoteNumber: string;
+    quoteId?: string;
+    emailContext: CrearOperacionPayload["emailContext"];
+  } | null>(null);
 
   // ============================================================================
   // PUERTOS POR PAÍS (para EXW desde POL en paíes con soporte de selección)
@@ -2428,6 +2437,27 @@ function QuoteLCL({
           keepalive: true,
         }).catch((error) => {
           console.error("Error enviando notificación por correo:", error);
+        });
+      }
+
+      // ── Auto-abrir modal para convertir cotización en operación ──
+      if (!sinTarifa && !isSimulationMode && !isEjecutivoMode && quoteNumber) {
+        setOperationModalCtx({
+          quoteNumber,
+          quoteId: (apiResponse || response)?.quote?.id,
+          emailContext: {
+            origen: rutaSeleccionada.pol,
+            destino: rutaSeleccionada.pod,
+            carrier: rutaSeleccionada.operador || undefined,
+            incoterm: incoterm || undefined,
+            pickupFromAddress:
+              incoterm === "EXW" ? pickupFromAddress : undefined,
+            deliveryToAddress:
+              incoterm === "EXW" ? deliveryToAddressDerived : undefined,
+            currency: rutaSeleccionada.currency,
+            total: total,
+            agente: rutaSeleccionada.operador || undefined,
+          },
         });
       }
     } catch (error) {
@@ -5101,6 +5131,18 @@ function QuoteLCL({
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {operationModalCtx && (
+        <GenerateOperationModal
+          show={!!operationModalCtx}
+          onClose={() => setOperationModalCtx(null)}
+          quoteNumber={operationModalCtx.quoteNumber}
+          quoteId={operationModalCtx.quoteId}
+          tipoServicio="LCL"
+          emailContext={operationModalCtx.emailContext}
+          ownerUsername={isEjecutivoMode ? effectiveUsername : undefined}
+        />
+      )}
     </div>
   );
 }

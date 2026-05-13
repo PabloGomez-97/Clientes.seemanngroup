@@ -1652,6 +1652,31 @@ const AgenciaAduanaConfig = (
 ) as AgenciaAduanaConfigModel;
 
 // ============================================================
+// MODELO OPERACIÓN + CLIENTE-PROVEEDOR
+// ============================================================
+import {
+  OperacionSchema,
+  type IOperacionDoc,
+  type OperacionModel,
+} from './models/Operacion.js';
+import {
+  ClienteProveedorSchema,
+  normalizeEmpresaName,
+  type IClienteProveedorDoc,
+  type ClienteProveedorModel,
+} from './models/ClienteProveedor.js';
+
+const Operacion = (
+  mongoose.models.Operacion ||
+  mongoose.model<IOperacionDoc>('Operacion', OperacionSchema)
+) as OperacionModel;
+
+const ClienteProveedor = (
+  mongoose.models.ClienteProveedor ||
+  mongoose.model<IClienteProveedorDoc>('ClienteProveedor', ClienteProveedorSchema)
+) as ClienteProveedorModel;
+
+// ============================================================
 // MODELO ALUMNOS PRÁCTICA
 // ============================================================
 interface IAlumnoPuntaje {
@@ -5261,6 +5286,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           // Agente y número de cotización
           agente,
           quoteNumber,
+          proveedor,
         } = req.body;
 
         const tipoAccionResolved = (tipoAccion || tipo) as 'cotizacion' | 'operacion' | undefined;
@@ -5286,6 +5312,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             tipoAccion: tipoAccionResolved,
             agente: agente || undefined,
             quoteNumber: quoteNumber || undefined,
+            proveedor: proveedor || undefined,
           };
           subject = getFclQuoteEmailSubject(emailData);
           htmlContent = buildFclQuoteEmailHTML(emailData);
@@ -5305,6 +5332,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             tipoAccion: tipoAccionResolved,
             agente: agente || undefined,
             quoteNumber: quoteNumber || undefined,
+            proveedor: proveedor || undefined,
           };
           subject = getLclQuoteEmailSubject(emailData);
           htmlContent = buildLclQuoteEmailHTML(emailData);
@@ -5330,6 +5358,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             tipoAccion: tipoAccionResolved,
             agente: agente || undefined,
             quoteNumber: quoteNumber || undefined,
+            proveedor: proveedor || undefined,
           };
           subject = getAirQuoteEmailSubject(emailData);
           htmlContent = buildAirQuoteEmailHTML(emailData);
@@ -5362,6 +5391,320 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
         console.error('Error en /api/send-operation-email:', error);
         return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+    }
+
+    // ============================================================
+    // RUTAS: CLIENTE-PROVEEDORES + OPERACIONES
+    // ============================================================
+
+    // GET /api/cliente-proveedores - Lista proveedores guardados por el cliente actual
+    if (path === '/api/cliente-proveedores' && method === 'GET') {
+      try {
+        const currentUser = requireAuth(req);
+        if (!currentUser?.username) return res.status(401).json({ error: 'No autorizado' });
+
+        const ownerUsername = await resolveDocumentOwnerUsername(
+          currentUser,
+          (req.query?.ownerUsername as string) || undefined,
+        );
+
+        const proveedores = await ClienteProveedor.find({ usuarioId: ownerUsername })
+          .sort({ ultimoUso: -1, updatedAt: -1 })
+          .limit(50)
+          .lean();
+
+        return res.status(200).json({
+          proveedores: proveedores.map((p: any) => ({
+            id: String(p._id),
+            nombreEmpresa: p.nombreEmpresa,
+            nombreContacto: p.nombreContacto,
+            email: p.email,
+            telefono: p.telefono,
+          })),
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        console.error('[cliente-proveedores] Error:', error);
+        return res.status(500).json({ error: 'Error interno' });
+      }
+    }
+
+    // POST /api/operaciones - Crear operación a partir de cotización (atómico)
+    // Body: { quoteNumber, quoteId?, tipoServicio: 'AIR'|'FCL'|'LCL',
+    //         proveedor: { nombreEmpresa, nombreContacto, email, telefono },
+    //         documentos: [ { tipo, nombreArchivo, contenidoBase64 } ],
+    //         emailContext: { origen, destino, carrier, ... } }
+    if (path === '/api/operaciones' && method === 'POST') {
+      try {
+        const currentUser = requireAuth(req);
+        if (!currentUser?.sub || !currentUser?.username) {
+          return res.status(401).json({ error: 'No autorizado' });
+        }
+
+        const {
+          quoteNumber,
+          quoteId,
+          tipoServicio,
+          proveedor,
+          documentos,
+          emailContext,
+        } = req.body || {};
+
+        // ── Validación ──
+        if (!quoteNumber || !tipoServicio) {
+          return res.status(400).json({ error: 'Faltan quoteNumber o tipoServicio' });
+        }
+        if (!['AIR', 'FCL', 'LCL'].includes(tipoServicio)) {
+          return res.status(400).json({ error: 'tipoServicio debe ser AIR, FCL o LCL' });
+        }
+        if (!proveedor || typeof proveedor !== 'object') {
+          return res.status(400).json({ error: 'Datos de proveedor requeridos' });
+        }
+        const provFields = ['nombreEmpresa', 'nombreContacto', 'email', 'telefono'] as const;
+        for (const f of provFields) {
+          if (!proveedor[f] || String(proveedor[f]).trim() === '') {
+            return res.status(400).json({ error: `Campo proveedor.${f} requerido` });
+          }
+        }
+        if (!EMAIL_REGEX.test(String(proveedor.email))) {
+          return res.status(400).json({ error: 'Email del proveedor inválido' });
+        }
+        if (!Array.isArray(documentos) || documentos.length === 0) {
+          return res.status(400).json({ error: 'Documentos requeridos' });
+        }
+
+        const REQUIRED_TIPOS = ['Orden de compra', 'Invoice', 'Packing List'];
+        const tiposPresentes = new Set(documentos.map((d: any) => d?.tipo));
+        for (const t of REQUIRED_TIPOS) {
+          if (!tiposPresentes.has(t)) {
+            return res.status(400).json({ error: `Falta documento obligatorio: ${t}` });
+          }
+        }
+
+        // Resolver owner (igual que en /api/documentos/upload)
+        const ownerUsername = await resolveDocumentOwnerUsername(
+          currentUser,
+          getRequestedDocumentOwnerUsername(req),
+        );
+
+        // Verificar que la cotización existe y pertenece al cliente
+        const quotePdf = await QuotePDF.findOne({ quoteNumber, usuarioId: ownerUsername }).lean();
+        if (!quotePdf) {
+          return res.status(404).json({ error: 'Cotización no encontrada' });
+        }
+
+        // Verificar que no exista ya una operación para esta cotización
+        const yaExiste = await Operacion.findOne({ quoteNumber, usuarioId: ownerUsername }).lean();
+        if (yaExiste) {
+          return res.status(409).json({ error: 'Ya existe una operación para esta cotización' });
+        }
+
+        // ── Validar y subir cada documento a R2 + crear Documento ──
+        const docIdsCreados: mongoose.Types.ObjectId[] = [];
+        const tiposPermitidos = ['Orden de compra', 'Invoice', 'Packing List', 'Certificado de Origen', 'Póliza de seguro', 'Guía de Despacho', 'Declaración de Ingreso'];
+
+        for (const d of documentos) {
+          if (!d?.tipo || !d?.nombreArchivo || !d?.contenidoBase64) {
+            return res.status(400).json({ error: 'Cada documento requiere tipo, nombreArchivo y contenidoBase64' });
+          }
+          if (!tiposPermitidos.includes(d.tipo)) {
+            return res.status(400).json({ error: `Tipo de documento inválido: ${d.tipo}` });
+          }
+          if (!validateBase64(d.contenidoBase64)) {
+            return res.status(400).json({ error: `Documento "${d.nombreArchivo}" no es base64 válido` });
+          }
+          const mimeType = getMimeTypeFromBase64(d.contenidoBase64);
+          if (!mimeType || !ALLOWED_MIME_TYPES.includes(mimeType)) {
+            return res.status(400).json({ error: `Tipo de archivo no permitido para "${d.nombreArchivo}"` });
+          }
+          const fileSize = getBase64Size(d.contenidoBase64);
+          if (fileSize > MAX_FILE_SIZE) {
+            return res.status(400).json({ error: `"${d.nombreArchivo}" excede 5MB` });
+          }
+        }
+
+        // Pasaron todas las validaciones → subir
+        for (const d of documentos) {
+          const mimeType = getMimeTypeFromBase64(d.contenidoBase64) as string;
+          const fileSize = getBase64Size(d.contenidoBase64);
+          const base64Content = d.contenidoBase64.includes('base64,')
+            ? d.contenidoBase64.split('base64,')[1]
+            : d.contenidoBase64;
+          const fileBuffer = Buffer.from(base64Content, 'base64');
+          const docId = new mongoose.Types.ObjectId();
+          const quoteFolder = String(quoteNumber).replace(/^[A-Za-z]+0*/,'') || String(quoteNumber);
+          const r2Key = buildDocR2Key('documentos', ownerUsername, quoteFolder, docId.toString(), String(d.nombreArchivo));
+
+          await uploadDocument(r2Key, fileBuffer, mimeType);
+
+          await Documento.create({
+            _id: docId,
+            quoteId: String(quoteNumber),
+            tipo: d.tipo,
+            nombreArchivo: String(d.nombreArchivo),
+            tipoArchivo: mimeType,
+            tamanoBytes: fileSize,
+            r2Key,
+            subidoPor: currentUser.sub,
+            usuarioId: ownerUsername,
+          });
+          docIdsCreados.push(docId);
+        }
+
+        // ── Crear Operacion ──
+        const ec = (emailContext && typeof emailContext === 'object') ? emailContext : {};
+        const operacion = await Operacion.create({
+          quoteNumber: String(quoteNumber),
+          quoteId: quoteId ? String(quoteId) : null,
+          usuarioId: ownerUsername,
+          generadoPor: currentUser.sub,
+          tipoServicio,
+          proveedor: {
+            nombreEmpresa: String(proveedor.nombreEmpresa).trim(),
+            nombreContacto: String(proveedor.nombreContacto).trim(),
+            email: String(proveedor.email).toLowerCase().trim(),
+            telefono: String(proveedor.telefono).trim(),
+          },
+          documentos: docIdsCreados,
+          origen: ec.origen || quotePdf.origen || '',
+          destino: ec.destino || quotePdf.destino || '',
+          carrier: ec.carrier || '',
+          containerType: ec.containerType || '',
+          cantidadContenedores: typeof ec.cantidadContenedores === 'number' ? ec.cantidadContenedores : undefined,
+          incoterm: ec.incoterm || '',
+          pickupFromAddress: ec.pickupFromAddress || '',
+          deliveryToAddress: ec.deliveryToAddress || '',
+          description: ec.description || '',
+          chargeableWeight: ec.chargeableWeight ? String(ec.chargeableWeight) : '',
+          currency: ec.currency || '',
+          total: ec.total || '',
+          agente: ec.agente || '',
+        });
+
+        // ── Upsert ClienteProveedor (auto-guardar para autocompletado futuro) ──
+        const nombreEmpresaNormalizado = normalizeEmpresaName(operacion.proveedor.nombreEmpresa);
+        try {
+          await ClienteProveedor.updateOne(
+            { usuarioId: ownerUsername, nombreEmpresaNormalizado },
+            {
+              $set: {
+                usuarioId: ownerUsername,
+                nombreEmpresa: operacion.proveedor.nombreEmpresa,
+                nombreEmpresaNormalizado,
+                nombreContacto: operacion.proveedor.nombreContacto,
+                email: operacion.proveedor.email,
+                telefono: operacion.proveedor.telefono,
+                ultimoUso: new Date(),
+              },
+            },
+            { upsert: true },
+          );
+        } catch (provErr) {
+          console.error('[operaciones] Error upsert proveedor:', provErr);
+        }
+
+        // ── Enviar email al ejecutivo (fire-and-forget) ──
+        try {
+          const ownerUserDoc = await User.findOne({
+            $or: [{ username: ownerUsername }, { usernames: ownerUsername }],
+          }).populate('ejecutivoId');
+          const ejecutivoEmail = (ownerUserDoc?.ejecutivoId as any)?.email;
+          const ejecutivoNombre = (ownerUserDoc?.ejecutivoId as any)?.nombre || 'Ejecutivo';
+
+          if (ejecutivoEmail && process.env.BREVO_API_KEY) {
+            const tipoServicioLabel =
+              tipoServicio === 'FCL' ? 'Marítimo FCL'
+              : tipoServicio === 'LCL' ? 'Marítimo LCL'
+              : 'Aéreo';
+
+            let subject: string;
+            let htmlContent: string;
+            const baseEmail = {
+              ejecutivoNombre,
+              clienteUsername: ownerUserDoc?.username || ownerUsername,
+              clienteNombre: ownerUserDoc?.nombreuser,
+              currency: operacion.currency || 'USD',
+              total: operacion.total || '',
+              tipoAccion: 'operacion' as const,
+              incoterm: operacion.incoterm || undefined,
+              pickupFromAddress: operacion.incoterm === 'EXW' ? (operacion.pickupFromAddress || undefined) : undefined,
+              deliveryToAddress: operacion.incoterm === 'EXW' ? (operacion.deliveryToAddress || undefined) : undefined,
+              agente: operacion.agente || undefined,
+              quoteNumber: operacion.quoteNumber,
+              proveedor: operacion.proveedor,
+            };
+
+            if (tipoServicioLabel === 'Marítimo FCL') {
+              const data: FclQuoteEmailData = {
+                ...baseEmail,
+                pol: operacion.origen || '',
+                pod: operacion.destino || '',
+                carrier: operacion.carrier || '',
+                containerType: operacion.containerType || undefined,
+                cantidadContenedores: operacion.cantidadContenedores || undefined,
+              };
+              subject = getFclQuoteEmailSubject(data);
+              htmlContent = buildFclQuoteEmailHTML(data);
+            } else if (tipoServicioLabel === 'Marítimo LCL') {
+              const data: LclQuoteEmailData = {
+                ...baseEmail,
+                pol: operacion.origen || '',
+                pod: operacion.destino || '',
+                operador: operacion.carrier || '',
+              };
+              subject = getLclQuoteEmailSubject(data);
+              htmlContent = buildLclQuoteEmailHTML(data);
+            } else {
+              const data: AirQuoteEmailData = {
+                ...baseEmail,
+                origen: operacion.origen || '',
+                destino: operacion.destino || '',
+                carrier: operacion.carrier || '',
+                descripcionCarga: operacion.description || '',
+                pesoChargeable: operacion.chargeableWeight || '',
+              };
+              subject = getAirQuoteEmailSubject(data);
+              htmlContent = buildAirQuoteEmailHTML(data);
+            }
+
+            fetch('https://api.brevo.com/v3/smtp/email', {
+              method: 'POST',
+              headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sender: { name: 'Portal Clientes Seemann Group', email: 'noreply@sphereglobal.io' },
+                to: [{ email: ejecutivoEmail }],
+                subject,
+                htmlContent,
+              }),
+            }).catch((e) => console.error('[operaciones] Error email:', e));
+          }
+        } catch (emailErr) {
+          console.error('[operaciones] Error preparando email:', emailErr);
+        }
+
+        return res.status(201).json({
+          success: true,
+          operacion: {
+            id: String(operacion._id),
+            quoteNumber: operacion.quoteNumber,
+            tipoServicio: operacion.tipoServicio,
+            proveedor: operacion.proveedor,
+            documentosCount: docIdsCreados.length,
+            createdAt: operacion.createdAt,
+          },
+        });
+      } catch (error: any) {
+        if (error?.message === 'No auth token' || error?.message === 'Invalid token') {
+          return res.status(401).json({ error: error.message });
+        }
+        if (error?.code === 11000) {
+          return res.status(409).json({ error: 'Ya existe una operación para esta cotización' });
+        }
+        console.error('[operaciones] Error:', error);
+        return res.status(500).json({ error: 'Error interno al crear operación' });
       }
     }
 

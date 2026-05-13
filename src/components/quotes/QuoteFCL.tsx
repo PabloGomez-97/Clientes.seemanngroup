@@ -41,6 +41,8 @@ import {
 import "./QuoteAIR.css";
 import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
+import GenerateOperationModal from "./Operations/GenerateOperationModal";
+import type { CrearOperacionPayload } from "../../services/operaciones";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   fetchExpandedRoutes,
@@ -155,6 +157,13 @@ function QuoteFCL({
   const [cantidadContenedores, setCantidadContenedores] = useState(1);
   const [incoterm, setIncoterm] = useState<"EXW" | "FOB" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
+
+  // Modal para convertir cotización en operación tras descargar PDF
+  const [operationModalCtx, setOperationModalCtx] = useState<{
+    quoteNumber: string;
+    quoteId?: string;
+    emailContext: CrearOperacionPayload["emailContext"];
+  } | null>(null);
 
   const [opcionesPOL, setOpcionesPOL] = useState<SelectOption[]>([]);
   const [opcionesPOD, setOpcionesPOD] = useState<SelectOption[]>([]);
@@ -1925,6 +1934,29 @@ function QuoteFCL({
           keepalive: true,
         }).catch((error) => {
           console.error("Error enviando notificación por correo:", error);
+        });
+      }
+
+      // ── Auto-abrir modal para convertir cotización en operación ──
+      if (!sinTarifa && !isSimulationMode && !isEjecutivoMode && quoteNumber) {
+        setOperationModalCtx({
+          quoteNumber,
+          quoteId: (apiResponse || response)?.quote?.id,
+          emailContext: {
+            origen: rutaSeleccionada.pol,
+            destino: rutaSeleccionada.pod,
+            carrier: rutaSeleccionada.carrier || undefined,
+            containerType: containerSeleccionado?.type || undefined,
+            cantidadContenedores: cantidadContenedores,
+            incoterm: incoterm || undefined,
+            pickupFromAddress:
+              incoterm === "EXW" ? pickupFromAddress : undefined,
+            deliveryToAddress:
+              incoterm === "EXW" ? deliveryToAddressDerived : undefined,
+            currency: rutaSeleccionada.currency,
+            total: total,
+            agente: rutaSeleccionada.company || undefined,
+          },
         });
       }
     } catch (error) {
@@ -4369,6 +4401,18 @@ function QuoteFCL({
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {operationModalCtx && (
+        <GenerateOperationModal
+          show={!!operationModalCtx}
+          onClose={() => setOperationModalCtx(null)}
+          quoteNumber={operationModalCtx.quoteNumber}
+          quoteId={operationModalCtx.quoteId}
+          tipoServicio="FCL"
+          emailContext={operationModalCtx.emailContext}
+          ownerUsername={isEjecutivoMode ? effectiveUsername : undefined}
+        />
+      )}
     </>
   );
 }

@@ -56,6 +56,8 @@ import {
 } from "./Handlers/Air/ExpandedRoutesAir";
 import "./QuoteAIR.css";
 import "flag-icons/css/flag-icons.min.css";
+import GenerateOperationModal from "./Operations/GenerateOperationModal";
+import type { CrearOperacionPayload } from "../../services/operaciones";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getAirportByOrigin } from "../../config/airportCoordinates";
@@ -195,6 +197,13 @@ function QuoteAPITester({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Estado para abrir modal de generación de operación tras descargar PDF
+  const [operationModalCtx, setOperationModalCtx] = useState<{
+    quoteNumber: string;
+    quoteId?: string;
+    emailContext: CrearOperacionPayload["emailContext"];
+  } | null>(null);
 
   // Button animation phase: idle → loading → check → done
   type BtnPhase = "idle" | "loading" | "check" | "done";
@@ -2853,6 +2862,31 @@ function QuoteAPITester({
           keepalive: true,
         }).catch((emailErr) => {
           console.error("Error enviando notificación por correo:", emailErr);
+        });
+      }
+
+      // ── Auto-abrir modal para convertir cotización en operación ──
+      // Solo cuando es ruta recurrente, no es simulación y no es modo ejecutivo,
+      // y se obtuvo un quoteNumber real desde Linbis.
+      if (!sinTarifa && !isSimulationMode && !isEjecutivoMode && quoteNumber) {
+        setOperationModalCtx({
+          quoteNumber,
+          quoteId: (apiResponse || response)?.quote?.id,
+          emailContext: {
+            origen: rutaSeleccionada.origin,
+            destino: rutaSeleccionada.destination,
+            carrier: rutaSeleccionada.carrier || undefined,
+            incoterm: incoterm || undefined,
+            pickupFromAddress:
+              incoterm === "EXW" ? pickupFromAddress : undefined,
+            deliveryToAddress:
+              incoterm === "EXW" ? deliveryToAddressDerived : undefined,
+            description: description || "Cargamento Aéreo",
+            chargeableWeight: chargeableWeight,
+            currency: rutaSeleccionada.currency,
+            total: rutaSeleccionada.currency + " " + totalCharges.toFixed(2),
+            agente: rutaSeleccionada.company || undefined,
+          },
         });
       }
     } catch (error) {
@@ -6569,6 +6603,18 @@ function QuoteAPITester({
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {operationModalCtx && (
+        <GenerateOperationModal
+          show={!!operationModalCtx}
+          onClose={() => setOperationModalCtx(null)}
+          quoteNumber={operationModalCtx.quoteNumber}
+          quoteId={operationModalCtx.quoteId}
+          tipoServicio="AIR"
+          emailContext={operationModalCtx.emailContext}
+          ownerUsername={isEjecutivoMode ? effectiveUsername : undefined}
+        />
+      )}
     </div>
   );
 }

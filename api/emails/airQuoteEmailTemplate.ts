@@ -20,6 +20,12 @@ export interface AirQuoteEmailData {
   deliveryToAddress?: string;
   agente?: string;
   quoteNumber?: string;
+  proveedor?: {
+    nombreEmpresa: string;
+    nombreContacto: string;
+    email: string;
+    telefono: string;
+  };
 }
 
 const LOGO_URL = 'https://portalclientes.seemanngroup.com/logocompleto.png';
@@ -70,6 +76,25 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
   const agenteRow = data.agente ? highlightedRow('Agente', data.agente) : '';
   const quoteNumberRow = data.quoteNumber ? highlightedRow('N° de cotización', data.quoteNumber) : '';
 
+  const proveedorBlock = data.proveedor ? `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+      <tr>
+        <td style="padding:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:${C.muted};">
+          Datos del proveedor
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${C.border};border-radius:4px;overflow:hidden;">
+            ${row('Empresa', data.proveedor.nombreEmpresa)}
+            ${row('Contacto', data.proveedor.nombreContacto)}
+            ${row('Email', data.proveedor.email)}
+            ${row('Teléfono', data.proveedor.telefono)}
+          </table>
+        </td>
+      </tr>
+    </table>` : '';
+
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -107,7 +132,7 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
                     <img src="${LOGO_URL}" alt="Seemann Group" width="130" style="display:block;max-width:130px;height:auto;" />
                   </td>
                   <td align="right" style="vertical-align:middle;">
-                    <span style="color:${C.air};font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">Cotización Aérea</span>
+                    <span style="color:${C.air};font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">${tipo} Aérea</span>
                   </td>
                 </tr>
               </table>
@@ -157,6 +182,8 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
                   <td class="detail-value" style="padding:8px 12px;font-size:13px;font-weight:600;color:${C.text};">${fecha}</td>
                 </tr>
               </table>
+
+              ${proveedorBlock}
 
               <p style="margin:0 0 24px;font-size:14px;color:${C.text};line-height:1.6;">
                 Por favor, revisa esta ${tipo} en el portal para dar seguimiento a tu cliente.
