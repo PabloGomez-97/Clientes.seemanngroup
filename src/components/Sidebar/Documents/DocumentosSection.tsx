@@ -8,6 +8,7 @@ import "./DocumentosSection.css";
 // ============================================================
 
 type TipoDocumento =
+  | "Orden de compra"
   | "Invoice"
   | "Packing List"
   | "Certificado de Origen"
@@ -53,6 +54,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
 
   // Referencias para los inputs de archivo
   const fileInputRefs = {
+    "Orden de compra": useRef<HTMLInputElement>(null),
     Invoice: useRef<HTMLInputElement>(null),
     "Packing List": useRef<HTMLInputElement>(null),
     "Certificado de Origen": useRef<HTMLInputElement>(null),
@@ -381,6 +383,7 @@ export const DocumentosSection: React.FC<DocumentosSectionProps> = ({
   // ============================================================
 
   const tiposDocumento: TipoDocumento[] = [
+    "Orden de compra",
     "Invoice",
     "Packing List",
     "Certificado de Origen",
