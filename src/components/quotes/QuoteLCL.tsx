@@ -4758,7 +4758,6 @@ function QuoteLCL({
                 {btnPhase !== "done" ? (
                   <button
                     onClick={() => {
-                      setBtnPhase("loading");
                       setTipoAccion("cotizacion");
                       testAPI("cotizacion");
                     }}

@@ -3546,7 +3546,6 @@ function QuoteLASTMILE({
                         !canProceedFromStep3
                       }
                       onClick={() => {
-                        setBtnPhase("loading");
                         submitQuote();
                       }}
                     >

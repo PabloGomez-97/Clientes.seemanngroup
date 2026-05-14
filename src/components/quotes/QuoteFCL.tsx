@@ -4164,7 +4164,6 @@ function QuoteFCL({
                     <button
                       className={`qf-btn qf-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
                       onClick={() => {
-                        setBtnPhase("loading");
                         setTipoAccion("cotizacion");
                         testAPI("cotizacion");
                       }}

@@ -6133,7 +6133,6 @@ function QuoteAPITester({
                     type="button"
                     className={`qa-btn qa-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
                     onClick={() => {
-                      setBtnPhase("loading");
                       setTipoAccion("cotizacion");
                       testAPI("cotizacion");
                     }}
