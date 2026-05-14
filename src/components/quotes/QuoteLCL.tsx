@@ -2004,10 +2004,9 @@ function QuoteLCL({
       if (gastolocal) {
         const rate = 11.9;
         const aperturaAmount = 53.55;
-        // Determinar si el cargo se calcula por Weight (tons) o por Volume (m3)
-        const isWeight = totalWeightTons > totalVolume;
-        const quantity = isWeight ? chargeableVolume : totalVolume;
-        const unit = isWeight ? "W/M" : "m³";
+        // Siempre se cobra por W/M Cargable con piso mínimo de 1
+        const quantity = Math.max(chargeableVolume, 1);
+        const unit = "W/M";
         const gastoLocalAmount = rate * quantity;
 
         pdfCharges.push({
@@ -2696,9 +2695,9 @@ function QuoteLCL({
     if (gastolocal) {
       const rate = 11.9;
       const aperturaAmount = 53.55;
-      const isWeight = totalWeightTons > totalVolume;
-      const quantity = isWeight ? chargeableVolume : totalVolume;
-      const unit = isWeight ? "W/M" : "m3";
+      // Siempre se cobra por W/M Cargable con piso mínimo de 1
+      const quantity = Math.max(chargeableVolume, 1);
+      const unit = "W/M";
       const gastoLocalAmount = rate * quantity;
 
       charges.push({
