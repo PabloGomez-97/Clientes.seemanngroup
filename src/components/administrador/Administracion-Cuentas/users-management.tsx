@@ -579,18 +579,17 @@ function UsersManagement() {
             <div>
               <h2
                 style={{
-                  fontSize: "28px",
-                  fontWeight: "700",
-                  color: "#1f2937",
-                  marginBottom: "8px",
-                  letterSpacing: "-0.5px",
+                  fontSize: "22px",
+                  fontWeight: "600",
+                  color: "#111827",
+                  marginBottom: "4px",
                 }}
               >
                 Gestión de Usuarios
               </h2>
               <p
                 style={{
-                  fontSize: "15px",
+                  fontSize: "14px",
                   color: "#6b7280",
                   margin: 0,
                 }}
@@ -603,24 +602,24 @@ function UsersManagement() {
                 <button
                   onClick={handleDownloadClients}
                   style={{
-                    backgroundColor: "#10b981",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    padding: "12px 24px",
-                    fontSize: "15px",
-                    fontWeight: "600",
+                    backgroundColor: "transparent",
+                    color: "#374151",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    padding: "8px 14px",
+                    fontSize: "13px",
+                    fontWeight: "500",
                     cursor: "pointer",
-                    transition: "all 0.2s",
+                    transition: "background-color 0.15s",
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
+                    gap: "6px",
                   }}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#059669")
+                    (e.currentTarget.style.backgroundColor = "#f9fafb")
                   }
                   onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#10b981")
+                    (e.currentTarget.style.backgroundColor = "transparent")
                   }
                 >
                   <svg
@@ -646,27 +645,27 @@ function UsersManagement() {
                     }
                   }}
                   style={{
-                    backgroundColor: showForm ? "#6b7280" : "#2563eb",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    padding: "12px 24px",
-                    fontSize: "15px",
+                    backgroundColor: showForm ? "transparent" : "#2563eb",
+                    color: showForm ? "#374151" : "white",
+                    border: showForm ? "1px solid #d1d5db" : "none",
+                    borderRadius: "6px",
+                    padding: "8px 16px",
+                    fontSize: "13px",
                     fontWeight: "600",
                     cursor: "pointer",
-                    transition: "all 0.2s",
+                    transition: "all 0.15s",
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
+                    gap: "6px",
                   }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.backgroundColor = showForm
-                      ? "#4b5563"
+                      ? "#f3f4f6"
                       : "#1d4ed8")
                   }
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.backgroundColor = showForm
-                      ? "#6b7280"
+                      ? "transparent"
                       : "#2563eb")
                   }
                 >
@@ -712,268 +711,75 @@ function UsersManagement() {
             </div>
           </div>
 
-          {/* ✨ NUEVO: Cards de Estadísticas con Toggle */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: "20px",
-              marginBottom: "24px",
-            }}
-          >
-            {/* Card Usuarios */}
-            <div
-              onClick={() => setShowAdmins(false)}
-              style={{
-                backgroundColor: showAdmins ? "white" : "#eff6ff",
-                border: showAdmins ? "1px solid #e5e7eb" : "2px solid #3b82f6",
-                borderRadius: "12px",
-                padding: "24px",
-                cursor: "pointer",
-                transition: "all 0.3s ease",
-                transform: showAdmins ? "scale(1)" : "scale(1.02)",
-                boxShadow: showAdmins
-                  ? "0 1px 3px rgba(0,0,0,0.1)"
-                  : "0 4px 12px rgba(59, 130, 246, 0.2)",
-              }}
-              onMouseEnter={(e) => {
-                if (showAdmins) {
-                  e.currentTarget.style.transform = "scale(1.02)";
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 12px rgba(0,0,0,0.1)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (showAdmins) {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
-                }
-              }}
-            >
-              <div
+          {/* Tab navigation */}
+          <div style={{ borderBottom: "1px solid #e5e7eb", marginBottom: "0" }}>
+            <div style={{ display: "flex", gap: "0" }}>
+              <button
+                onClick={() => setShowAdmins(false)}
                 style={{
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: showAdmins
+                    ? "2px solid transparent"
+                    : "2px solid #2563eb",
+                  padding: "10px 20px 12px",
+                  fontSize: "14px",
+                  fontWeight: showAdmins ? "400" : "600",
+                  color: showAdmins ? "#6b7280" : "#2563eb",
+                  cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "12px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "48px",
-                    height: "48px",
-                    borderRadius: "10px",
-                    backgroundColor: showAdmins ? "#dbeafe" : "#3b82f6",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  <svg
-                    width="24"
-                    height="24"
-                    fill={showAdmins ? "#3b82f6" : "white"}
-                    viewBox="0 0 16 16"
-                  >
-                    <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8Zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022ZM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816ZM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
-                  </svg>
-                </div>
-                {!showAdmins && (
-                  <div
-                    style={{
-                      backgroundColor: "#10b981",
-                      color: "white",
-                      padding: "4px 10px",
-                      borderRadius: "20px",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      animation: "pulse 2s infinite",
-                    }}
-                  >
-                    ACTIVO
-                  </div>
-                )}
-              </div>
-              <h3
-                style={{
-                  fontSize: "32px",
-                  fontWeight: "700",
-                  color: showAdmins ? "#1f2937" : "#1e40af",
-                  marginBottom: "4px",
-                  transition: "all 0.3s ease",
-                }}
-              >
-                {userCount}
-              </h3>
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: showAdmins ? "#6b7280" : "#1e40af",
-                  fontWeight: showAdmins ? "500" : "600",
-                  margin: 0,
+                  gap: "8px",
+                  transition: "color 0.15s",
                 }}
               >
                 Clientes / Usuarios
-              </p>
-            </div>
-
-            {/* Card Ejecutivos */}
-            <div
-              onClick={() => setShowAdmins(true)}
-              style={{
-                backgroundColor: showAdmins ? "#faf5ff" : "white",
-                border: showAdmins ? "2px solid #a855f7" : "1px solid #e5e7eb",
-                borderRadius: "12px",
-                padding: "24px",
-                cursor: "pointer",
-                transition: "all 0.3s ease",
-                transform: showAdmins ? "scale(1.02)" : "scale(1)",
-                boxShadow: showAdmins
-                  ? "0 4px 12px rgba(168, 85, 247, 0.2)"
-                  : "0 1px 3px rgba(0,0,0,0.1)",
-              }}
-              onMouseEnter={(e) => {
-                if (!showAdmins) {
-                  e.currentTarget.style.transform = "scale(1.02)";
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 12px rgba(0,0,0,0.1)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!showAdmins) {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)";
-                }
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "12px",
-                }}
-              >
-                <div
+                <span
                   style={{
-                    width: "48px",
-                    height: "48px",
+                    backgroundColor: showAdmins ? "#f3f4f6" : "#eff6ff",
+                    color: showAdmins ? "#6b7280" : "#2563eb",
                     borderRadius: "10px",
-                    backgroundColor: showAdmins ? "#a855f7" : "#f3e8ff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    transition: "all 0.3s ease",
+                    padding: "1px 7px",
+                    fontSize: "12px",
+                    fontWeight: "600",
                   }}
                 >
-                  <svg
-                    width="24"
-                    height="24"
-                    fill={showAdmins ? "white" : "#a855f7"}
-                    viewBox="0 0 16 16"
-                  >
-                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                    <path
-                      fillRule="evenodd"
-                      d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5Z"
-                    />
-                  </svg>
-                </div>
-                {showAdmins && (
-                  <div
-                    style={{
-                      backgroundColor: "#10b981",
-                      color: "white",
-                      padding: "4px 10px",
-                      borderRadius: "20px",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      animation: "pulse 2s infinite",
-                    }}
-                  >
-                    ACTIVO
-                  </div>
-                )}
-              </div>
-              <h3
+                  {userCount}
+                </span>
+              </button>
+              <button
+                onClick={() => setShowAdmins(true)}
                 style={{
-                  fontSize: "32px",
-                  fontWeight: "700",
-                  color: showAdmins ? "#7e22ce" : "#1f2937",
-                  marginBottom: "4px",
-                  transition: "all 0.3s ease",
-                }}
-              >
-                {adminCount}
-              </h3>
-              <p
-                style={{
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: showAdmins
+                    ? "2px solid #2563eb"
+                    : "2px solid transparent",
+                  padding: "10px 20px 12px",
                   fontSize: "14px",
-                  color: showAdmins ? "#7e22ce" : "#6b7280",
-                  fontWeight: showAdmins ? "600" : "500",
-                  margin: 0,
+                  fontWeight: showAdmins ? "600" : "400",
+                  color: showAdmins ? "#2563eb" : "#6b7280",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  transition: "color 0.15s",
                 }}
               >
                 Ejecutivos
-              </p>
-            </div>
-
-            {/* Card Total */}
-            <div
-              style={{
-                backgroundColor: "white",
-                border: "1px solid #e5e7eb",
-                borderRadius: "12px",
-                padding: "24px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "12px",
-                }}
-              >
-                <div
+                <span
                   style={{
-                    width: "48px",
-                    height: "48px",
+                    backgroundColor: showAdmins ? "#eff6ff" : "#f3f4f6",
+                    color: showAdmins ? "#2563eb" : "#6b7280",
                     borderRadius: "10px",
-                    background:
-                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    padding: "1px 7px",
+                    fontSize: "12px",
+                    fontWeight: "600",
                   }}
                 >
-                  <svg width="24" height="24" fill="white" viewBox="0 0 16 16">
-                    <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
-                  </svg>
-                </div>
-              </div>
-              <h3
-                style={{
-                  fontSize: "32px",
-                  fontWeight: "700",
-                  color: "#1f2937",
-                  marginBottom: "4px",
-                }}
-              >
-                {users.length}
-              </h3>
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: "#6b7280",
-                  fontWeight: "500",
-                  margin: 0,
-                }}
-              >
-                Total de Cuentas
-              </p>
+                  {adminCount}
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -983,13 +789,13 @@ function UsersManagement() {
       {error && (
         <div
           style={{
-            backgroundColor: "#fee2e2",
-            border: "1px solid #fecaca",
-            borderRadius: "8px",
-            padding: "14px 16px",
-            marginBottom: "24px",
-            color: "#991b1b",
-            animation: "slideDown 0.3s ease",
+            borderLeft: "3px solid #dc2626",
+            backgroundColor: "#fef2f2",
+            borderRadius: "4px",
+            padding: "12px 16px",
+            marginBottom: "20px",
+            color: "#b91c1c",
+            fontSize: "14px",
           }}
         >
           {error}
@@ -999,13 +805,13 @@ function UsersManagement() {
       {success && (
         <div
           style={{
-            backgroundColor: "#d1fae5",
-            border: "1px solid #a7f3d0",
-            borderRadius: "8px",
-            padding: "14px 16px",
-            marginBottom: "24px",
-            color: "#065f46",
-            animation: "slideDown 0.3s ease",
+            borderLeft: "3px solid #16a34a",
+            backgroundColor: "#f0fdf4",
+            borderRadius: "4px",
+            padding: "12px 16px",
+            marginBottom: "20px",
+            color: "#15803d",
+            fontSize: "14px",
           }}
         >
           {success}
@@ -1019,55 +825,59 @@ function UsersManagement() {
             <div
               style={{
                 backgroundColor: "white",
-                borderRadius: "12px",
-                padding: "32px",
+                borderRadius: "8px",
+                padding: "24px",
                 border: "1px solid #e5e7eb",
-                boxShadow: "0 4px 6px rgba(0, 0, 0, 0.07)",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.06)",
               }}
             >
-              <h5
+              <div
                 style={{
-                  fontSize: "20px",
-                  fontWeight: "600",
-                  color: "#1f2937",
-                  marginBottom: "24px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
+                  marginBottom: "20px",
+                  paddingBottom: "16px",
+                  borderBottom: "1px solid #f3f4f6",
                 }}
               >
-                {editingUserId ? (
-                  <>
-                    <svg
-                      width="20"
-                      height="20"
-                      fill="currentColor"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
-                      <path
-                        fillRule="evenodd"
-                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"
-                      />
-                    </svg>
-                    {isEditingEjecutivo ? "Editar Ejecutivo" : "Editar Usuario"}
-                  </>
-                ) : accountType === "ejecutivo" ? (
-                  "Crear Nuevo Ejecutivo"
-                ) : (
-                  "Crear Nuevo Cliente"
-                )}
-              </h5>
+                <h5
+                  style={{
+                    fontSize: "15px",
+                    fontWeight: "600",
+                    color: "#111827",
+                    margin: 0,
+                  }}
+                >
+                  {editingUserId
+                    ? isEditingEjecutivo
+                      ? "Editar Ejecutivo"
+                      : "Editar Usuario"
+                    : accountType === "ejecutivo"
+                      ? "Nuevo Ejecutivo"
+                      : "Nuevo Cliente"}
+                </h5>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "#6b7280",
+                    margin: "2px 0 0",
+                  }}
+                >
+                  {editingUserId
+                    ? "Modifica los datos del usuario"
+                    : accountType === "ejecutivo"
+                      ? "Cuenta interna con roles del sistema"
+                      : "Cuenta de cliente con empresa asignada"}
+                </p>
+              </div>
 
               <form onSubmit={handleSubmit}>
-                <div style={{ marginBottom: "16px" }}>
+                <div style={{ marginBottom: "14px" }}>
                   <label
                     style={{
                       display: "block",
-                      fontSize: "14px",
-                      fontWeight: "600",
+                      fontSize: "13px",
+                      fontWeight: "500",
                       color: "#374151",
-                      marginBottom: "8px",
+                      marginBottom: "6px",
                     }}
                   >
                     {isEditingEjecutivo ||
@@ -1088,18 +898,19 @@ function UsersManagement() {
                     }
                     style={{
                       width: "100%",
-                      padding: "10px 14px",
-                      fontSize: "15px",
+                      padding: "9px 12px",
+                      fontSize: "14px",
                       border: "1px solid #d1d5db",
-                      borderRadius: "8px",
+                      borderRadius: "6px",
                       outline: "none",
-                      transition: "border-color 0.2s",
-                      backgroundColor: editingUserId ? "#f3f4f6" : "white",
+                      transition: "border-color 0.15s",
+                      backgroundColor: editingUserId ? "#f9fafb" : "white",
                       cursor: editingUserId ? "not-allowed" : "text",
+                      color: "#111827",
                     }}
                     onFocus={(e) =>
                       !editingUserId &&
-                      (e.currentTarget.style.borderColor = "#3b82f6")
+                      (e.currentTarget.style.borderColor = "#2563eb")
                     }
                     onBlur={(e) =>
                       (e.currentTarget.style.borderColor = "#d1d5db")
@@ -1108,8 +919,8 @@ function UsersManagement() {
                   {editingUserId && (
                     <p
                       style={{
-                        fontSize: "12px",
-                        color: "#6b7280",
+                        fontSize: "11px",
+                        color: "#9ca3af",
                         marginTop: "4px",
                         marginBottom: 0,
                       }}
@@ -1119,128 +930,12 @@ function UsersManagement() {
                   )}
                 </div>
 
-                {/* Selector de tipo de cuenta (solo al crear) */}
-                {!editingUserId && (
-                  <div style={{ marginBottom: "20px" }}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        color: "#374151",
-                        marginBottom: "10px",
-                      }}
-                    >
-                      Tipo de cuenta *
-                    </label>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "12px",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAccountType("cliente");
-                          setEditRoles({
-                            administrador: false,
-                            pricing: false,
-                            ejecutivo: true,
-                            proveedor: false,
-                            operaciones: false,
-                          });
-                          setTelefono("");
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "14px 16px",
-                          borderRadius: "10px",
-                          border:
-                            accountType === "cliente"
-                              ? "2px solid #3b82f6"
-                              : "1px solid #d1d5db",
-                          backgroundColor:
-                            accountType === "cliente" ? "#eff6ff" : "white",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                          textAlign: "left",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontWeight: "600",
-                            fontSize: "14px",
-                            color:
-                              accountType === "cliente" ? "#1d4ed8" : "#374151",
-                          }}
-                        >
-                          👤 Cliente
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            color: "#6b7280",
-                            marginTop: "4px",
-                          }}
-                        >
-                          Cuenta con empresa y ejecutivo asignado
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAccountType("ejecutivo");
-                          setUsernames([""]);
-                          setEjecutivoId("");
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "14px 16px",
-                          borderRadius: "10px",
-                          border:
-                            accountType === "ejecutivo"
-                              ? "2px solid #a855f7"
-                              : "1px solid #d1d5db",
-                          backgroundColor:
-                            accountType === "ejecutivo" ? "#faf5ff" : "white",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                          textAlign: "left",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontWeight: "600",
-                            fontSize: "14px",
-                            color:
-                              accountType === "ejecutivo"
-                                ? "#7e22ce"
-                                : "#374151",
-                          }}
-                        >
-                          🛡️ Ejecutivo
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            color: "#6b7280",
-                            marginTop: "4px",
-                          }}
-                        >
-                          Cuenta interna con roles del sistema
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ marginBottom: "20px" }}>
+                <div style={{ marginBottom: "14px" }}>
                   <label
                     style={{
                       display: "block",
-                      marginBottom: "8px",
-                      fontSize: "14px",
+                      marginBottom: "6px",
+                      fontSize: "13px",
                       fontWeight: "500",
                       color: "#374151",
                     }}
@@ -1258,34 +953,33 @@ function UsersManagement() {
                     placeholder="Ej: Juan Pérez / Empresa S.A."
                     style={{
                       width: "100%",
-                      padding: "10px 14px",
-                      borderRadius: "8px",
+                      padding: "9px 12px",
+                      borderRadius: "6px",
                       border: "1px solid #d1d5db",
                       fontSize: "14px",
-                      transition: "all 0.2s",
+                      outline: "none",
+                      transition: "border-color 0.15s",
+                      color: "#111827",
                     }}
                     onFocus={(e) => {
-                      e.currentTarget.style.borderColor = "#3b82f6";
-                      e.currentTarget.style.boxShadow =
-                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                      e.currentTarget.style.borderColor = "#2563eb";
                     }}
                     onBlur={(e) => {
                       e.currentTarget.style.borderColor = "#d1d5db";
-                      e.currentTarget.style.boxShadow = "none";
                     }}
                   />
                 </div>
 
                 {!isEditingEjecutivo &&
                   !(!editingUserId && accountType === "ejecutivo") && (
-                    <div style={{ marginBottom: "16px" }}>
+                    <div style={{ marginBottom: "14px" }}>
                       <label
                         style={{
                           display: "block",
-                          fontSize: "14px",
-                          fontWeight: "600",
+                          fontSize: "13px",
+                          fontWeight: "500",
                           color: "#374151",
-                          marginBottom: "8px",
+                          marginBottom: "6px",
                         }}
                       >
                         Nombre / Empresa *{" "}
@@ -1329,15 +1023,16 @@ function UsersManagement() {
                             }
                             style={{
                               flex: 1,
-                              padding: "10px 14px",
-                              fontSize: "15px",
+                              padding: "9px 12px",
+                              fontSize: "14px",
                               border: "1px solid #d1d5db",
-                              borderRadius: "8px",
+                              borderRadius: "6px",
                               outline: "none",
-                              transition: "border-color 0.2s",
+                              transition: "border-color 0.15s",
+                              color: "#111827",
                             }}
                             onFocus={(e) =>
-                              (e.currentTarget.style.borderColor = "#3b82f6")
+                              (e.currentTarget.style.borderColor = "#2563eb")
                             }
                             onBlur={(e) =>
                               (e.currentTarget.style.borderColor = "#d1d5db")
@@ -1446,10 +1141,10 @@ function UsersManagement() {
                     <label
                       style={{
                         display: "block",
-                        fontSize: "14px",
-                        fontWeight: "600",
+                        fontSize: "13px",
+                        fontWeight: "500",
                         color: "#374151",
-                        marginBottom: "12px",
+                        marginBottom: "10px",
                       }}
                     >
                       Roles del Ejecutivo *
@@ -1470,15 +1165,13 @@ function UsersManagement() {
                           padding: "12px 16px",
                           borderRadius: "8px",
                           border: editRoles.administrador
-                            ? "2px solid #7e22ce"
+                            ? "2px solid #2563eb"
                             : "1px solid #d1d5db",
                           cursor:
                             editRoles.proveedor || editRoles.operaciones
                               ? "not-allowed"
                               : "pointer",
-                          backgroundColor: editRoles.administrador
-                            ? "#faf5ff"
-                            : "white",
+                          backgroundColor: "white",
                           opacity:
                             editRoles.proveedor || editRoles.operaciones
                               ? 0.5
@@ -1514,7 +1207,7 @@ function UsersManagement() {
                           style={{
                             width: "18px",
                             height: "18px",
-                            accentColor: "#7e22ce",
+                            accentColor: "#2563eb",
                           }}
                         />
                         <div style={{ flex: 1 }}>
@@ -1535,7 +1228,7 @@ function UsersManagement() {
                           <span
                             style={{
                               padding: "2px 8px",
-                              backgroundColor: "#7e22ce",
+                              backgroundColor: "#374151",
                               color: "white",
                               fontSize: "11px",
                               fontWeight: "600",
@@ -1564,9 +1257,7 @@ function UsersManagement() {
                             editRoles.operaciones
                               ? "not-allowed"
                               : "pointer",
-                          backgroundColor: editRoles.pricing
-                            ? "#eff6ff"
-                            : "white",
+                          backgroundColor: "white",
                           opacity:
                             editRoles.administrador ||
                             editRoles.proveedor ||
@@ -1621,7 +1312,7 @@ function UsersManagement() {
                           padding: "12px 16px",
                           borderRadius: "8px",
                           border: editRoles.ejecutivo
-                            ? "2px solid #16a34a"
+                            ? "2px solid #2563eb"
                             : "1px solid #d1d5db",
                           cursor:
                             editRoles.administrador ||
@@ -1629,9 +1320,7 @@ function UsersManagement() {
                             editRoles.operaciones
                               ? "not-allowed"
                               : "pointer",
-                          backgroundColor: editRoles.ejecutivo
-                            ? "#f0fdf4"
-                            : "white",
+                          backgroundColor: "white",
                           opacity:
                             editRoles.administrador ||
                             editRoles.proveedor ||
@@ -1658,7 +1347,7 @@ function UsersManagement() {
                           style={{
                             width: "18px",
                             height: "18px",
-                            accentColor: "#16a34a",
+                            accentColor: "#2563eb",
                           }}
                         />
                         <div>
@@ -1686,15 +1375,13 @@ function UsersManagement() {
                           padding: "12px 16px",
                           borderRadius: "8px",
                           border: editRoles.proveedor
-                            ? "2px solid #ea580c"
+                            ? "2px solid #2563eb"
                             : "1px solid #d1d5db",
                           cursor:
                             editRoles.administrador || editRoles.operaciones
                               ? "not-allowed"
                               : "pointer",
-                          backgroundColor: editRoles.proveedor
-                            ? "#fff7ed"
-                            : "white",
+                          backgroundColor: "white",
                           opacity:
                             editRoles.administrador || editRoles.operaciones
                               ? 0.5
@@ -1730,7 +1417,7 @@ function UsersManagement() {
                           style={{
                             width: "18px",
                             height: "18px",
-                            accentColor: "#ea580c",
+                            accentColor: "#2563eb",
                           }}
                         />
                         <div style={{ flex: 1 }}>
@@ -1751,7 +1438,7 @@ function UsersManagement() {
                           <span
                             style={{
                               padding: "2px 8px",
-                              backgroundColor: "#ea580c",
+                              backgroundColor: "#374151",
                               color: "white",
                               fontSize: "11px",
                               fontWeight: "600",
@@ -1772,15 +1459,13 @@ function UsersManagement() {
                           padding: "12px 16px",
                           borderRadius: "8px",
                           border: editRoles.operaciones
-                            ? "2px solid #0891b2"
+                            ? "2px solid #2563eb"
                             : "1px solid #d1d5db",
                           cursor:
                             editRoles.administrador || editRoles.proveedor
                               ? "not-allowed"
                               : "pointer",
-                          backgroundColor: editRoles.operaciones
-                            ? "#ecfeff"
-                            : "white",
+                          backgroundColor: "white",
                           opacity:
                             editRoles.administrador || editRoles.proveedor
                               ? 0.5
@@ -1816,7 +1501,7 @@ function UsersManagement() {
                           style={{
                             width: "18px",
                             height: "18px",
-                            accentColor: "#0891b2",
+                            accentColor: "#2563eb",
                           }}
                         />
                         <div style={{ flex: 1 }}>
@@ -1837,7 +1522,7 @@ function UsersManagement() {
                           <span
                             style={{
                               padding: "2px 8px",
-                              backgroundColor: "#0891b2",
+                              backgroundColor: "#374151",
                               color: "white",
                               fontSize: "11px",
                               fontWeight: "600",
@@ -1870,10 +1555,10 @@ function UsersManagement() {
                     <label
                       style={{
                         display: "block",
-                        fontSize: "14px",
-                        fontWeight: "600",
+                        fontSize: "13px",
+                        fontWeight: "500",
                         color: "#374151",
-                        marginBottom: "8px",
+                        marginBottom: "6px",
                       }}
                     >
                       Teléfono *
@@ -1886,15 +1571,16 @@ function UsersManagement() {
                       placeholder="+56 9 1234 5678"
                       style={{
                         width: "100%",
-                        padding: "10px 14px",
-                        fontSize: "15px",
+                        padding: "9px 12px",
+                        fontSize: "14px",
                         border: "1px solid #d1d5db",
-                        borderRadius: "8px",
+                        borderRadius: "6px",
                         outline: "none",
-                        transition: "border-color 0.2s",
+                        transition: "border-color 0.15s",
+                        color: "#111827",
                       }}
                       onFocus={(e) =>
-                        (e.currentTarget.style.borderColor = "#3b82f6")
+                        (e.currentTarget.style.borderColor = "#2563eb")
                       }
                       onBlur={(e) =>
                         (e.currentTarget.style.borderColor = "#d1d5db")
@@ -1904,14 +1590,14 @@ function UsersManagement() {
                 )}
 
                 {editingUserId && (
-                  <div style={{ marginBottom: "16px" }}>
+                  <div style={{ marginBottom: "14px" }}>
                     <label
                       style={{
                         display: "block",
-                        fontSize: "14px",
-                        fontWeight: "600",
+                        fontSize: "13px",
+                        fontWeight: "500",
                         color: "#374151",
-                        marginBottom: "8px",
+                        marginBottom: "6px",
                       }}
                     >
                       Contraseña
@@ -1924,15 +1610,16 @@ function UsersManagement() {
                       minLength={password ? 6 : undefined}
                       style={{
                         width: "100%",
-                        padding: "10px 14px",
-                        fontSize: "15px",
+                        padding: "9px 12px",
+                        fontSize: "14px",
                         border: "1px solid #d1d5db",
-                        borderRadius: "8px",
+                        borderRadius: "6px",
                         outline: "none",
-                        transition: "border-color 0.2s",
+                        transition: "border-color 0.15s",
+                        color: "#111827",
                       }}
                       onFocus={(e) =>
-                        (e.currentTarget.style.borderColor = "#3b82f6")
+                        (e.currentTarget.style.borderColor = "#2563eb")
                       }
                       onBlur={(e) =>
                         (e.currentTarget.style.borderColor = "#d1d5db")
@@ -1940,8 +1627,8 @@ function UsersManagement() {
                     />
                     <p
                       style={{
-                        fontSize: "12px",
-                        color: "#6b7280",
+                        fontSize: "11px",
+                        color: "#9ca3af",
                         marginTop: "4px",
                         marginBottom: 0,
                       }}
@@ -1953,14 +1640,14 @@ function UsersManagement() {
 
                 {!isEditingEjecutivo &&
                   !(!editingUserId && accountType === "ejecutivo") && (
-                    <div style={{ marginBottom: "24px" }}>
+                    <div style={{ marginBottom: "18px" }}>
                       <label
                         style={{
                           display: "block",
-                          fontSize: "14px",
-                          fontWeight: "600",
+                          fontSize: "13px",
+                          fontWeight: "500",
                           color: "#374151",
-                          marginBottom: "8px",
+                          marginBottom: "6px",
                         }}
                       >
                         Ejecutivo Asignado
@@ -1970,17 +1657,18 @@ function UsersManagement() {
                         onChange={(e) => setEjecutivoId(e.target.value)}
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          fontSize: "15px",
+                          padding: "9px 12px",
+                          fontSize: "14px",
                           border: "1px solid #d1d5db",
-                          borderRadius: "8px",
+                          borderRadius: "6px",
                           outline: "none",
-                          transition: "border-color 0.2s",
+                          transition: "border-color 0.15s",
                           backgroundColor: "white",
                           cursor: "pointer",
+                          color: "#111827",
                         }}
                         onFocus={(e) =>
-                          (e.currentTarget.style.borderColor = "#3b82f6")
+                          (e.currentTarget.style.borderColor = "#2563eb")
                         }
                         onBlur={(e) =>
                           (e.currentTarget.style.borderColor = "#d1d5db")
@@ -2018,12 +1706,12 @@ function UsersManagement() {
                         backgroundColor: formLoading ? "#93c5fd" : "#2563eb",
                         color: "white",
                         border: "none",
-                        borderRadius: "8px",
-                        padding: "14px",
-                        fontSize: "15px",
+                        borderRadius: "6px",
+                        padding: "10px",
+                        fontSize: "14px",
                         fontWeight: "600",
                         cursor: formLoading ? "not-allowed" : "pointer",
-                        transition: "background-color 0.2s",
+                        transition: "background-color 0.15s",
                       }}
                       onMouseEnter={(e) => {
                         if (!formLoading)
@@ -2052,15 +1740,15 @@ function UsersManagement() {
                         type="button"
                         onClick={resetForm}
                         style={{
-                          padding: "14px 24px",
+                          padding: "10px 20px",
                           backgroundColor: "transparent",
                           color: "#6b7280",
                           border: "1px solid #d1d5db",
-                          borderRadius: "8px",
-                          fontSize: "15px",
-                          fontWeight: "600",
+                          borderRadius: "6px",
+                          fontSize: "14px",
+                          fontWeight: "500",
                           cursor: "pointer",
-                          transition: "all 0.2s",
+                          transition: "background-color 0.15s",
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = "#f3f4f6";
@@ -2117,9 +1805,7 @@ function UsersManagement() {
               style={{
                 padding: "20px 24px",
                 borderBottom: "1px solid #e5e7eb",
-                background: showAdmins
-                  ? "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)"
-                  : "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+                backgroundColor: "white",
               }}
             >
               <div
@@ -2140,43 +1826,15 @@ function UsersManagement() {
                     gap: "12px",
                   }}
                 >
-                  {showAdmins ? (
-                    <>
-                      <svg
-                        width="20"
-                        height="20"
-                        fill="#a855f7"
-                        viewBox="0 0 16 16"
-                      >
-                        <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4Zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10Z" />
-                        <path
-                          fillRule="evenodd"
-                          d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5Z"
-                        />
-                      </svg>
-                      Ejecutivos
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        width="20"
-                        height="20"
-                        fill="#3b82f6"
-                        viewBox="0 0 16 16"
-                      >
-                        <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8Zm-7.978-1A.261.261 0 0 1 7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002a.274.274 0 0 1-.014.002H7.022ZM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM6.936 9.28a5.88 5.88 0 0 0-1.23-.247A7.35 7.35 0 0 0 5 9c-4 0-5 3-5 4 0 .667.333 1 1 1h4.216A2.238 2.238 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816ZM4.92 10A5.493 5.493 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0Zm3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z" />
-                      </svg>
-                      Clientes / Usuarios
-                    </>
-                  )}
+                  {showAdmins ? "Ejecutivos" : "Clientes / Usuarios"}
                   <span
                     style={{
-                      padding: "4px 12px",
-                      borderRadius: "20px",
-                      fontSize: "13px",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      fontSize: "12px",
                       fontWeight: "600",
-                      backgroundColor: showAdmins ? "#f3e8ff" : "#dbeafe",
-                      color: showAdmins ? "#7e22ce" : "#1e40af",
+                      backgroundColor: "#f3f4f6",
+                      color: "#374151",
                     }}
                   >
                     {filteredUsers.length}
@@ -2336,12 +1994,11 @@ function UsersManagement() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredUsers.map((user, index) => (
+                    {filteredUsers.map((user) => (
                       <tr
                         key={user.id}
                         style={{
                           borderTop: "1px solid #e5e7eb",
-                          animation: `fadeInUp 0.3s ease ${index * 0.05}s backwards`,
                         }}
                       >
                         <td
@@ -2380,7 +2037,7 @@ function UsersManagement() {
                                 return (
                                   <span
                                     style={{
-                                      color: "var(--primary-color)",
+                                      color: "#9ca3af",
                                       fontStyle: "italic",
                                       fontSize: "12px",
                                     }}
@@ -2388,6 +2045,43 @@ function UsersManagement() {
                                     Sin rol
                                   </span>
                                 );
+                              const roleDotColor = (role: string) => {
+                                const map: Record<string, string> = {
+                                  Admin: "#7e22ce",
+                                  Pricing: "#2563eb",
+                                  Ejecutivo: "#16a34a",
+                                  Operaciones: "#0891b2",
+                                  Proveedor: "#ea580c",
+                                };
+                                return map[role] ?? "#6b7280";
+                              };
+                              const roleBadge = (label: string) => (
+                                <span
+                                  key={label}
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "5px",
+                                    fontSize: "12px",
+                                    color: "#374151",
+                                    padding: "2px 8px",
+                                    backgroundColor: "#f3f4f6",
+                                    border: "1px solid #e5e7eb",
+                                    borderRadius: "4px",
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: "6px",
+                                      height: "6px",
+                                      borderRadius: "50%",
+                                      backgroundColor: roleDotColor(label),
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                  {label}
+                                </span>
+                              );
                               return (
                                 <div
                                   style={{
@@ -2396,76 +2090,12 @@ function UsersManagement() {
                                     flexWrap: "wrap",
                                   }}
                                 >
-                                  {ej.roles.administrador && (
-                                    <span
-                                      style={{
-                                        padding: "2px 8px",
-                                        backgroundColor: "var(--primary-color)",
-                                        color: "white",
-                                        fontSize: "11px",
-                                        fontWeight: "600",
-                                        borderRadius: "4px",
-                                      }}
-                                    >
-                                      Admin
-                                    </span>
-                                  )}
-                                  {ej.roles.pricing && (
-                                    <span
-                                      style={{
-                                        padding: "2px 8px",
-                                        backgroundColor: "var(--primary-color)",
-                                        color: "white",
-                                        fontSize: "11px",
-                                        fontWeight: "600",
-                                        borderRadius: "4px",
-                                      }}
-                                    >
-                                      Pricing
-                                    </span>
-                                  )}
-                                  {ej.roles.ejecutivo && (
-                                    <span
-                                      style={{
-                                        padding: "2px 8px",
-                                        backgroundColor: "var(--primary-color)",
-                                        color: "white",
-                                        fontSize: "11px",
-                                        fontWeight: "600",
-                                        borderRadius: "4px",
-                                      }}
-                                    >
-                                      Ejecutivo
-                                    </span>
-                                  )}
-                                  {ej.roles.operaciones && (
-                                    <span
-                                      style={{
-                                        padding: "2px 8px",
-                                        backgroundColor: "#0891b2",
-                                        color: "white",
-                                        fontSize: "11px",
-                                        fontWeight: "600",
-                                        borderRadius: "4px",
-                                      }}
-                                    >
-                                      Operaciones
-                                    </span>
-                                  )}
-                                  {ej.roles.proveedor && (
-                                    <span
-                                      style={{
-                                        padding: "2px 8px",
-                                        backgroundColor: "#ea580c",
-                                        color: "white",
-                                        fontSize: "11px",
-                                        fontWeight: "600",
-                                        borderRadius: "4px",
-                                      }}
-                                    >
-                                      Proveedor
-                                    </span>
-                                  )}
+                                  {ej.roles.administrador && roleBadge("Admin")}
+                                  {ej.roles.pricing && roleBadge("Pricing")}
+                                  {ej.roles.ejecutivo && roleBadge("Ejecutivo")}
+                                  {ej.roles.operaciones &&
+                                    roleBadge("Operaciones")}
+                                  {ej.roles.proveedor && roleBadge("Proveedor")}
                                 </div>
                               );
                             })()}
@@ -2497,16 +2127,12 @@ function UsersManagement() {
                                       key={i}
                                       style={{
                                         padding: "2px 8px",
-                                        backgroundColor:
-                                          i === 0 ? "#dbeafe" : "#f3f4f6",
-                                        color: i === 0 ? "#1e40af" : "#374151",
+                                        backgroundColor: "#f3f4f6",
+                                        color: "#374151",
                                         fontSize: "12px",
                                         fontWeight: "500",
                                         borderRadius: "4px",
-                                        border:
-                                          i === 0
-                                            ? "1px solid #bfdbfe"
-                                            : "1px solid #e5e7eb",
+                                        border: "1px solid #e5e7eb",
                                       }}
                                     >
                                       {name}
@@ -2579,26 +2205,22 @@ function UsersManagement() {
                               onClick={() => handleEditUser(user)}
                               style={{
                                 backgroundColor: "transparent",
-                                color: "#2563eb",
-                                border: "1px solid #bfdbfe",
+                                color: "#6b7280",
+                                border: "1px solid #e5e7eb",
                                 borderRadius: "6px",
                                 padding: "6px 12px",
                                 fontSize: "13px",
                                 fontWeight: "500",
                                 cursor: "pointer",
-                                transition: "all 0.2s",
+                                transition: "all 0.15s",
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor =
-                                  "#eff6ff";
-                                e.currentTarget.style.transform =
-                                  "translateY(-1px)";
+                                e.currentTarget.style.borderColor = "#2563eb";
+                                e.currentTarget.style.color = "#2563eb";
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor =
-                                  "transparent";
-                                e.currentTarget.style.transform =
-                                  "translateY(0)";
+                                e.currentTarget.style.borderColor = "#e5e7eb";
+                                e.currentTarget.style.color = "#6b7280";
                               }}
                             >
                               Editar
@@ -2614,26 +2236,22 @@ function UsersManagement() {
                               }
                               style={{
                                 backgroundColor: "transparent",
-                                color: "#dc2626",
-                                border: "1px solid #fecaca",
+                                color: "#6b7280",
+                                border: "1px solid #e5e7eb",
                                 borderRadius: "6px",
                                 padding: "6px 12px",
                                 fontSize: "13px",
                                 fontWeight: "500",
                                 cursor: "pointer",
-                                transition: "all 0.2s",
+                                transition: "all 0.15s",
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor =
-                                  "#fee2e2";
-                                e.currentTarget.style.transform =
-                                  "translateY(-1px)";
+                                e.currentTarget.style.borderColor = "#dc2626";
+                                e.currentTarget.style.color = "#dc2626";
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor =
-                                  "transparent";
-                                e.currentTarget.style.transform =
-                                  "translateY(0)";
+                                e.currentTarget.style.borderColor = "#e5e7eb";
+                                e.currentTarget.style.color = "#6b7280";
                               }}
                             >
                               Eliminar
@@ -2650,54 +2268,13 @@ function UsersManagement() {
         </div>
       </div>
 
-      {/* ✨ Agregar animaciones CSS */}
       <style>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
         @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.7;
-          }
+          to { transform: rotate(360deg); }
         }
       `}</style>
     </div>
