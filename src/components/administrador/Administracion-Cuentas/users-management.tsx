@@ -1156,7 +1156,7 @@ function UsersManagement() {
                     {isEditingEjecutivo ||
                     (!editingUserId && accountType === "ejecutivo")
                       ? "Email del Ejecutivo *"
-                      : "Email del Cliente *"}
+                      : "Email de la Empresa *"}
                   </label>
                   {!editingUserId && accountType === "cliente" ? (
                     <div
@@ -1183,7 +1183,7 @@ function UsersManagement() {
                           setEmailPrefix(e.target.value.replace(/@.*/g, ""))
                         }
                         required
-                        placeholder="Ingresar correo"
+                        placeholder="Ej: Seemanngroup"
                         style={{
                           flex: 1,
                           padding: "9px 12px",
