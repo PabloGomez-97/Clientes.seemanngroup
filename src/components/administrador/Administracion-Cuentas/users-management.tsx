@@ -2138,7 +2138,7 @@ function UsersManagement() {
                       margin: 0,
                     }}
                   >
-                    Buscar empresa en Linbis
+                    Buscar empresa
                   </h5>
                   <p
                     style={{
@@ -2147,7 +2147,7 @@ function UsersManagement() {
                       margin: "2px 0 0",
                     }}
                   >
-                    Encuentra empresas existentes y autocompleta el formulario
+                    Coloca el nombre de la empresa para buscarla.
                   </p>
                 </div>
 
@@ -2171,7 +2171,7 @@ function UsersManagement() {
                       type="text"
                       value={linbisSearchTerm}
                       onChange={(e) => setLinbisSearchTerm(e.target.value)}
-                      placeholder="Ej: SCANCONTROLS"
+                      placeholder="Ej: Seemann Group"
                       style={{
                         flex: 1,
                         padding: "9px 12px",
