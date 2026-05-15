@@ -2450,7 +2450,7 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
 
     // ✅ MODIFICADO: Recibir ejecutivoId, nombreuser y usernames
     const { email, username, nombreuser, password, ejecutivoId, usernames } = (req.body as any) || {}; // ✅ AGREGADO usernames
-    if (!email || !username || !nombreuser || !password) { // ✅ AGREGADO nombreuser
+    if (!email || !username || !nombreuser) { // ✅ AGREGADO nombreuser
       return res.status(400).json({ error: 'Faltan campos requeridos' });
     }
 
@@ -2460,7 +2460,13 @@ app.post('/api/admin/create-user', auth, async (req, res) => {
       return res.status(400).json({ error: 'El email ya está registrado' });
     }
 
-    const passwordHash = bcrypt.hashSync(String(password), 12);
+    // Use provided password (executive accounts) or server-side default for clients
+    const DEFAULT_CLIENT_PASSWORD = process.env.DEFAULT_CLIENT_PASSWORD;
+    const resolvedPassword = password ? String(password) : DEFAULT_CLIENT_PASSWORD;
+    if (!resolvedPassword) {
+      return res.status(500).json({ error: 'Contraseña por defecto no configurada en el servidor' });
+    }
+    const passwordHash = bcrypt.hashSync(resolvedPassword, 12);
 
     // Construir array de usernames
     const usernamesArray = Array.isArray(usernames) && usernames.length > 0

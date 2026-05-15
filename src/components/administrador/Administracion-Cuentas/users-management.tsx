@@ -332,6 +332,16 @@ function UsersManagement() {
     fetchUsers();
   }, [token]);
 
+  // Auto-dismiss success banners after 5 seconds
+  useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(() => {
+      setSuccess(null);
+      setNewAccountInfo(null);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [success]);
+
   // Filtrar usuarios según el toggle y búsqueda
   const filteredUsers = users.filter((user) => {
     const isAdmin = user.username === "Ejecutivo";
@@ -520,7 +530,6 @@ function UsersManagement() {
             username: "Ejecutivo",
             usernames: ["Ejecutivo"],
             nombreuser,
-            password: "Seemann@2026",
           }),
         });
 
@@ -589,7 +598,6 @@ function UsersManagement() {
           username: cleanUsernames[0],
           usernames: cleanUsernames,
           nombreuser,
-          password: "Seemann@2026",
           ejecutivoId: ejecutivoId || undefined,
         }),
       });
