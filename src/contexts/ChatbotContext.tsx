@@ -1,5 +1,6 @@
 // src/contexts/ChatbotContext.tsx
-import { createContext, useContext, ReactNode } from "react";
+import { createContext, useContext } from "react";
+import type { ReactNode } from "react";
 import { useChatbot } from "../hooks/useChatbot";
 
 type ChatbotContextType = ReturnType<typeof useChatbot>;

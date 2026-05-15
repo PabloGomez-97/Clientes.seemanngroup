@@ -400,7 +400,7 @@ async function fetchAduanaConfig(): Promise<AduanaConfig> {
   const ctx = getToolContext();
   const res = await fetch(`${ctx.baseUrl}/api/agencia-aduana/config`);
   if (!res.ok) throw new Error('Aduana config unavailable');
-  return res.json();
+  return res.json() as Promise<AduanaConfig>;
 }
 
 function toCLP(amount: number, currency: string, rates: ExchangeRates): number {
