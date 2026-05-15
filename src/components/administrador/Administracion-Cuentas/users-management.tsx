@@ -44,6 +44,85 @@ const normalizeCompanyName = (value: string): string =>
     .replace(/\s+/g, " ")
     .trim();
 
+/**
+ * Genera un alias de correo sugerido a partir de la razón social de Linbis.
+ * Elimina sufijos legales y palabras genéricas, luego une lo que queda sin espacios.
+ * Si el resultado colisiona con un email existente, agrega un sufijo hasta encontrar uno libre.
+ */
+const LEGAL_SUFFIXES = new Set([
+  "sa",
+  "spa",
+  "ltda",
+  "limitada",
+  "eirl",
+  "sociedad",
+  "comercial",
+  "comercializadora",
+  "distribuidora",
+  "distribuciones",
+  "importadora",
+  "exportadora",
+  "inversiones",
+  "servicios",
+  "transportes",
+  "compania",
+  "companhia",
+  "cia",
+  "chile",
+  "chilena",
+  "y",
+  "de",
+  "del",
+  "el",
+  "la",
+  "los",
+  "las",
+]);
+
+const generateCompanyEmailPrefix = (
+  companyName: string,
+  existingUsers: { email: string }[] = [],
+): string => {
+  // 1. Normalizar: minúsculas, sin tildes, sin puntos/símbolos, solo letras y números
+  const normalized = companyName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .trim();
+
+  // 2. Dividir en palabras y filtrar sufijos/palabras genéricas
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const filtered = words.filter((w) => !LEGAL_SUFFIXES.has(w));
+
+  // 3. Si después de filtrar no queda nada útil, usar todas las palabras
+  const base = (filtered.length > 0 ? filtered : words).join("");
+
+  // 4. Si aun así queda vacío, devolver un genérico seguro
+  if (!base) return "cliente";
+
+  // 5. Verificar colisión con emails existentes y buscar alternativa libre
+  const existingEmails = new Set(
+    existingUsers.map((u) => u.email.toLowerCase()),
+  );
+
+  const candidates = [
+    base,
+    base + "chile",
+    base + "cl",
+    ...Array.from({ length: 10 }, (_, i) => base + (i + 1)),
+  ];
+
+  for (const candidate of candidates) {
+    if (!existingEmails.has(candidate + "@seemanngroup.com")) {
+      return candidate;
+    }
+  }
+
+  // Fallback extremo: añadir timestamp
+  return base + Date.now().toString().slice(-4);
+};
+
 function UsersManagement() {
   const { accessToken } = useOutletContext<OutletContext>();
   const { token } = useAuth();
@@ -54,6 +133,9 @@ function UsersManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [newAccountInfo, setNewAccountInfo] = useState<{
+    email: string;
+  } | null>(null);
 
   // ✨ NUEVO: Estado para el toggle
   const [showAdmins, setShowAdmins] = useState(false);
@@ -179,10 +261,12 @@ function UsersManagement() {
 
     // Siempre sobreescribir todos los campos (incluso con vacío) para no
     // arrastrar datos de una empresa usada anteriormente.
-    setNombreuser(acc.contact || "");
+    // Si no hay contacto, usar el nombre de la empresa como nombre del cliente
+    setNombreuser(acc.contact || acc.name || "");
     setUsernames([acc.name || ""]);
-    // Email prefix no se autorrellena: el dominio @seemanngroup.com es obligatorio
-    setEmailPrefix("");
+    // Sugerir prefijo de email a partir de la razón social de Linbis
+    const suggestedPrefix = generateCompanyEmailPrefix(acc.name || "", users);
+    setEmailPrefix(suggestedPrefix);
 
     // Buscar el ejecutivo por nombre (case-insensitive) y asignarlo si existe
     const matchedEj = acc.salesRepName
@@ -327,6 +411,7 @@ function UsersManagement() {
     setShowForm(false);
     setIsEditingEjecutivo(false);
     setAccountType("cliente");
+    setNewAccountInfo(null);
     setTelefono("");
     setEditRoles({
       administrador: false,
@@ -528,6 +613,7 @@ function UsersManagement() {
         },
       });
       resetForm();
+      setNewAccountInfo({ email: clientEmail });
       fetchUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -962,12 +1048,35 @@ function UsersManagement() {
             backgroundColor: "#f0fdf4",
             borderRadius: "4px",
             padding: "12px 16px",
-            marginBottom: "20px",
+            marginBottom: newAccountInfo ? "8px" : "20px",
             color: "#15803d",
             fontSize: "14px",
           }}
         >
           {success}
+        </div>
+      )}
+
+      {newAccountInfo && (
+        <div
+          style={{
+            borderLeft: "3px solid #16a34a",
+            backgroundColor: "#f0fdf4",
+            borderRadius: "4px",
+            padding: "12px 16px",
+            marginBottom: "20px",
+            fontSize: "13px",
+            fontFamily: "monospace",
+            color: "#166534",
+            lineHeight: "1.7",
+          }}
+        >
+          <div>
+            <strong>Account:</strong> {newAccountInfo.email}
+          </div>
+          <div>
+            <strong>Password:</strong> Seemann@2026
+          </div>
         </div>
       )}
 
