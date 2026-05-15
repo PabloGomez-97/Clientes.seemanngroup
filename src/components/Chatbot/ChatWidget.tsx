@@ -1,11 +1,11 @@
-// src/components/ChatWidget.tsx
+﻿// src/components/ChatWidget.tsx — AI Mode Design
 import { useState, useRef, useEffect } from "react";
-import { useChatbot } from "../../hooks/useChatbot";
+import { useChatbotContext } from "../../contexts/ChatbotContext";
 import { useAuth } from "../../auth/AuthContext";
 import { imgUrl } from "../../config/images";
 
 export default function ChatWidget() {
-  const { user, activeUsername } = useAuth();
+  const { activeUsername } = useAuth();
   const {
     messages,
     isOpen,
@@ -14,19 +14,17 @@ export default function ChatWidget() {
     toggleChat,
     sendMessage,
     clearChat,
-  } = useChatbot();
+  } = useChatbotContext();
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll al último mensaje
   useEffect(() => {
     if (isOpen && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isOpen]);
 
-  // Focus en el input cuando se abre el chat
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
@@ -36,7 +34,6 @@ export default function ChatWidget() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
-
     const message = inputValue;
     setInputValue("");
     await sendMessage(message);
@@ -47,34 +44,29 @@ export default function ChatWidget() {
   };
 
   const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    return `${hours}:${minutes}`;
+    const d = new Date(timestamp);
+    return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
   };
 
-  // Función para renderizar texto con markdown básico (negrita, listas, saltos de línea)
   const renderMessageContent = (content: string) => {
-    // Dividir por saltos de línea para manejar párrafos
-    const lines = content.split("\n");
-    return lines.map((line, lineIdx) => {
-      // Renderizar negrita dentro de cada línea
-      const parts = line.split(/(\*\*.*?\*\*)/g);
-      const rendered = parts.map((part, partIdx) => {
+    return content.split("\n").map((line, lineIdx, arr) => {
+      const parts = line.split(/(\*\*.*?\*\*)/g).map((part, partIdx) => {
         if (part.startsWith("**") && part.endsWith("**")) {
-          const boldText = part.slice(2, -2);
-          return <strong key={`${lineIdx}-${partIdx}`}>{boldText}</strong>;
+          return (
+            <strong
+              key={`${lineIdx}-${partIdx}`}
+              style={{ color: "#c084fc", fontWeight: 700 }}
+            >
+              {part.slice(2, -2)}
+            </strong>
+          );
         }
         return <span key={`${lineIdx}-${partIdx}`}>{part}</span>;
       });
-
-      // Si es la última línea, no agregar <br>
-      if (lineIdx === lines.length - 1) {
-        return <span key={lineIdx}>{rendered}</span>;
-      }
+      if (lineIdx === arr.length - 1) return <span key={lineIdx}>{parts}</span>;
       return (
         <span key={lineIdx}>
-          {rendered}
+          {parts}
           <br />
         </span>
       );
@@ -88,117 +80,199 @@ export default function ChatWidget() {
     }
   };
 
+  const quickOptions = [
+    { text: "¿Qué es FOB y en qué se diferencia de CIF?", icon: "" },
+    { text: "Dame un resumen de mi cuenta", icon: "" },
+  ];
+
   return (
     <>
-      {/* Chat Window */}
       {isOpen && (
         <div
+          className="ai-chat-window"
           style={{
             position: "fixed",
-            bottom: "100px",
+            bottom: "24px",
             right: "24px",
             width: "420px",
             maxWidth: "calc(100vw - 48px)",
-            height: "650px",
-            maxHeight: "calc(100vh - 150px)",
-            backgroundColor: "#ffffff",
+            height: "665px",
+            maxHeight: "calc(100vh - 100px)",
+            background: "#080c18",
             borderRadius: "16px",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+            boxShadow:
+              "0 30px 70px rgba(0,0,0,0.65), 0 0 0 1px rgba(162,45,125,0.45), 0 0 60px rgba(28,110,242,0.08)",
             display: "flex",
             flexDirection: "column",
             zIndex: 9999,
-            border: "1px solid #e5e7eb",
             overflow: "hidden",
             fontFamily:
-              "'Inter', 'Roboto', 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           }}
         >
-          {/* Header minimalista */}
+          {/* HEADER */}
           <div
             style={{
-              backgroundColor: "#425b76",
-              color: "white",
-              padding: "18px 20px",
+              background: "linear-gradient(135deg, #0d1225 0%, #1a0e38 100%)",
+              padding: "15px 16px",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+              borderBottom: "1px solid rgba(162,45,125,0.45)",
+              position: "relative",
+              overflow: "hidden",
+              flexShrink: 0,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                position: "absolute",
+                top: "-24px",
+                right: "70px",
+                width: "90px",
+                height: "90px",
+                background:
+                  "radial-gradient(circle, rgba(28,110,242,0.28) 0%, transparent 70%)",
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: "-12px",
+                left: "50px",
+                width: "70px",
+                height: "70px",
+                background:
+                  "radial-gradient(circle, rgba(231,10,62,0.22) 0%, transparent 70%)",
+                pointerEvents: "none",
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                position: "relative",
+              }}
+            >
               <div
                 style={{
-                  width: "36px",
-                  height: "36px",
-                  backgroundColor: "rgba(255, 255, 255, 0.15)",
+                  width: "40px",
+                  height: "40px",
                   borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  overflow: "hidden",
+                  background:
+                    "linear-gradient(135deg, #1C6EF2, #a21d7d, #E70A3E)",
+                  padding: "2px",
+                  flexShrink: 0,
+                  boxShadow: "0 0 14px rgba(162,45,125,0.5)",
                 }}
               >
-                <img
-                  src={imgUrl("/logo.png")}
-                  alt="Seemann Group"
+                <div
                   style={{
-                    width: "24px",
-                    height: "auto",
-                    objectFit: "contain",
-                  }}
-                />
-              </div>
-              <div>
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: "15px",
-                    fontWeight: "600",
-                    letterSpacing: "-0.01em",
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "50%",
+                    background: "#0d1225",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
                   }}
                 >
-                  Seemann Group [AI Beta]
-                </h3>
+                  <img
+                    src={imgUrl("/logo.png")}
+                    alt="Seemann Group"
+                    style={{
+                      width: "24px",
+                      height: "auto",
+                      objectFit: "contain",
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <h3
+                    style={{
+                      margin: 0,
+                      fontSize: "15px",
+                      fontWeight: 700,
+                      background:
+                        "linear-gradient(135deg, #93c5fd 0%, #e879f9 55%, #fb7185 100%)",
+                      backgroundClip: "text",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
+                    Seemann Group
+                  </h3>
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      background:
+                        "linear-gradient(135deg, rgba(28,110,242,0.3), rgba(231,10,62,0.3))",
+                      border: "1px solid rgba(162,45,125,0.65)",
+                      borderRadius: "10px",
+                      padding: "2px 7px",
+                      color: "#c084fc",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    AI Beta
+                  </span>
+                </div>
                 <p
                   style={{
-                    margin: 0,
-                    fontSize: "12px",
-                    opacity: 0.85,
-                    fontWeight: "400",
+                    margin: "2px 0 0",
+                    fontSize: "11px",
+                    color: "rgba(196,181,253,0.65)",
+                    fontWeight: 400,
                   }}
                 >
                   Asistente de logística
                 </p>
               </div>
             </div>
-            <div style={{ display: "flex", gap: "4px" }}>
+
+            <div style={{ display: "flex", gap: "6px", position: "relative" }}>
               {messages.length > 0 && (
                 <button
                   onClick={clearChat}
+                  title="Limpiar conversación"
                   style={{
-                    background: "transparent",
-                    border: "none",
-                    borderRadius: "6px",
-                    padding: "8px",
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(162,45,125,0.3)",
+                    borderRadius: "8px",
+                    padding: "7px",
                     cursor: "pointer",
-                    color: "rgba(255, 255, 255, 0.9)",
+                    color: "rgba(196,181,253,0.75)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    transition: "background-color 0.2s",
+                    transition: "all 0.2s",
                   }}
-                  title="Limpiar conversación"
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      "rgba(255, 255, 255, 0.1)";
+                    e.currentTarget.style.background = "rgba(231,10,62,0.14)";
+                    e.currentTarget.style.borderColor = "rgba(231,10,62,0.5)";
+                    e.currentTarget.style.color = "#fb7185";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                    e.currentTarget.style.borderColor = "rgba(162,45,125,0.3)";
+                    e.currentTarget.style.color = "rgba(196,181,253,0.75)";
                   }}
                 >
                   <svg
-                    width="18"
-                    height="18"
+                    width="14"
+                    height="14"
                     fill="currentColor"
                     viewBox="0 0 16 16"
                   >
@@ -213,28 +287,29 @@ export default function ChatWidget() {
               <button
                 onClick={toggleChat}
                 style={{
-                  background: "transparent",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "8px",
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(162,45,125,0.3)",
+                  borderRadius: "8px",
+                  padding: "7px",
                   cursor: "pointer",
-                  color: "rgba(255, 255, 255, 0.9)",
+                  color: "rgba(196,181,253,0.75)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  transition: "background-color 0.2s",
+                  transition: "all 0.2s",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    "rgba(255, 255, 255, 0.1)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                  e.currentTarget.style.color = "#e2e8f0";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                  e.currentTarget.style.color = "rgba(196,181,253,0.75)";
                 }}
               >
                 <svg
-                  width="18"
-                  height="18"
+                  width="14"
+                  height="14"
                   fill="currentColor"
                   viewBox="0 0 16 16"
                 >
@@ -244,99 +319,22 @@ export default function ChatWidget() {
             </div>
           </div>
 
-          {/* Messages Area */}
+          {/* MESSAGES */}
           <div
+            className="ai-chat-messages"
             style={{
               flex: 1,
               overflowY: "auto",
-              padding: "24px 20px",
-              backgroundColor: "#fafbfc",
+              padding: "20px 16px",
+              background: "#070b14",
               display: "flex",
               flexDirection: "column",
-              gap: "20px",
+              gap: "16px",
+              backgroundImage:
+                "radial-gradient(rgba(162,45,125,0.1) 1px, transparent 1px)",
+              backgroundSize: "28px 28px",
             }}
           >
-            {/* Botones de opciones predeterminadas (solo si no hay mensajes) */}
-            {messages.length === 0 && (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  marginTop: "20px",
-                  animation: "fadeIn 0.4s ease-out",
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: "14px",
-                    color: "#6b7280",
-                    textAlign: "center",
-                    marginBottom: "12px",
-                    fontWeight: "500",
-                  }}
-                >
-                  Bienvenido {activeUsername ?? ""}
-                </p>
-                <p
-                  style={{
-                    fontSize: "14px",
-                    color: "#6b7280",
-                    textAlign: "center",
-                    marginBottom: "12px",
-                    fontWeight: "500",
-                  }}
-                >
-                  Selecciona una opción para comenzar:
-                </p>
-
-                {[
-                  "¿Quién es mi ejecutivo comercial?",
-                  "¿Cómo creo un seguimiento de contenedor?",
-                  "¿Qué servicios ofrece Seemann Group?",
-                  "¿Dónde puedo cotizar un envío?",
-                ].map((option, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleQuickOption(option)}
-                    disabled={isLoading}
-                    style={{
-                      padding: "14px 18px",
-                      backgroundColor: "#ffffff",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "10px",
-                      fontSize: "14px",
-                      color: "#374151",
-                      cursor: isLoading ? "not-allowed" : "pointer",
-                      textAlign: "left",
-                      transition: "all 0.2s ease",
-                      fontWeight: "500",
-                      boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isLoading) {
-                        e.currentTarget.style.backgroundColor = "#f9fafb";
-                        e.currentTarget.style.borderColor = "#425b76";
-                        e.currentTarget.style.transform = "translateY(-1px)";
-                        e.currentTarget.style.boxShadow =
-                          "0 4px 6px rgba(0, 0, 0, 0.1)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#ffffff";
-                      e.currentTarget.style.borderColor = "#e5e7eb";
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow =
-                        "0 1px 2px rgba(0, 0, 0, 0.05)";
-                    }}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Mensajes */}
             {messages.map((msg, idx) => (
               <div
                 key={idx}
@@ -344,84 +342,97 @@ export default function ChatWidget() {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: msg.role === "user" ? "flex-end" : "flex-start",
-                  gap: "6px",
-                  animation: "slideIn 0.3s ease-out",
+                  gap: "4px",
+                  animation: "aiSlideIn 0.3s ease-out",
                 }}
               >
-                {/* Nombre del remitente */}
                 <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    paddingLeft: msg.role === "assistant" ? "0" : "0",
-                    paddingRight: msg.role === "user" ? "0" : "0",
-                  }}
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
                 >
                   {msg.role === "assistant" && (
                     <div
                       style={{
-                        width: "24px",
-                        height: "24px",
-                        backgroundColor: "#425b76",
+                        width: "20px",
+                        height: "20px",
                         borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        overflow: "hidden",
+                        background: "linear-gradient(135deg, #1C6EF2, #E70A3E)",
+                        padding: "1.5px",
+                        flexShrink: 0,
                       }}
                     >
-                      <img
-                        src={imgUrl("/logo.png")}
-                        alt="Bot"
+                      <div
                         style={{
-                          width: "16px",
-                          height: "auto",
-                          objectFit: "contain",
+                          width: "100%",
+                          height: "100%",
+                          borderRadius: "50%",
+                          background: "#0d1225",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          overflow: "hidden",
                         }}
-                      />
+                      >
+                        <img
+                          src={imgUrl("/logo.png")}
+                          alt="AI"
+                          style={{ width: "12px", objectFit: "contain" }}
+                        />
+                      </div>
                     </div>
                   )}
                   <span
                     style={{
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                      letterSpacing: "-0.01em",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color:
+                        msg.role === "user"
+                          ? "rgba(147,197,253,0.55)"
+                          : "rgba(196,181,253,0.55)",
+                      letterSpacing: "0.02em",
                     }}
                   >
-                    {msg.role === "user" ? "Tú" : "Seemann Group"}
+                    {msg.role === "user" ? "Tú" : "Seemann AI"}
                   </span>
                 </div>
 
-                {/* Mensaje */}
                 <div
                   style={{
-                    maxWidth: "85%",
-                    padding: "12px 16px",
-                    borderRadius: "12px",
-                    backgroundColor:
-                      msg.role === "user" ? "#425b76" : "#eaf0f6",
-                    color: msg.role === "user" ? "#ffffff" : "#1f2937",
-                    fontSize: "14px",
-                    lineHeight: "1.6",
+                    maxWidth: "83%",
+                    padding: "11px 15px",
+                    borderRadius:
+                      msg.role === "user"
+                        ? "14px 14px 4px 14px"
+                        : "14px 14px 14px 4px",
+                    background:
+                      msg.role === "user"
+                        ? "linear-gradient(135deg, #1C6EF2 0%, #7c3aed 55%, #be185d 100%)"
+                        : "rgba(255,255,255,0.05)",
+                    border:
+                      msg.role === "user"
+                        ? "none"
+                        : "1px solid rgba(162,45,125,0.22)",
+                    color: msg.role === "user" ? "#ffffff" : "#d4c8f8",
+                    fontSize: "13.5px",
+                    lineHeight: 1.65,
                     wordBreak: "break-word",
+                    backdropFilter:
+                      msg.role === "assistant" ? "blur(8px)" : "none",
                     boxShadow:
                       msg.role === "user"
-                        ? "0 2px 8px rgba(66, 91, 118, 0.2)"
-                        : "0 1px 3px rgba(0, 0, 0, 0.08)",
+                        ? "0 4px 18px rgba(28,110,242,0.35)"
+                        : "0 2px 10px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04)",
                   }}
                 >
                   {renderMessageContent(msg.content)}
                 </div>
 
-                {/* Hora (solo para mensajes del usuario) */}
-                {msg.role === "user" && (
+                {msg.timestamp > 0 && (
                   <span
                     style={{
-                      fontSize: "11px",
-                      color: "#9ca3af",
-                      paddingRight: "4px",
+                      fontSize: "10px",
+                      color: "rgba(148,163,184,0.35)",
+                      paddingRight: msg.role === "user" ? "2px" : "0",
+                      paddingLeft: msg.role === "assistant" ? "2px" : "0",
                     }}
                   >
                     {formatTime(msg.timestamp)}
@@ -430,115 +441,105 @@ export default function ChatWidget() {
               </div>
             ))}
 
-            {/* Loading indicator */}
             {isLoading && (
               <div
                 style={{
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "flex-start",
-                  gap: "6px",
-                  animation: "fadeIn 0.3s ease-out",
+                  gap: "4px",
+                  animation: "aiFadeIn 0.3s ease-out",
                 }}
               >
                 <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
                 >
                   <div
                     style={{
-                      width: "24px",
-                      height: "24px",
-                      backgroundColor: "#425b76",
+                      width: "20px",
+                      height: "20px",
                       borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      overflow: "hidden",
+                      background: "linear-gradient(135deg, #1C6EF2, #E70A3E)",
+                      padding: "1.5px",
                     }}
                   >
-                    <img
-                      src={imgUrl("/logo.png")}
-                      alt="Bot"
+                    <div
                       style={{
-                        width: "16px",
-                        height: "auto",
-                        objectFit: "contain",
+                        width: "100%",
+                        height: "100%",
+                        borderRadius: "50%",
+                        background: "#0d1225",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        overflow: "hidden",
                       }}
-                    />
+                    >
+                      <img
+                        src={imgUrl("/logo.png")}
+                        alt="AI"
+                        style={{ width: "12px", objectFit: "contain" }}
+                      />
+                    </div>
                   </div>
                   <span
                     style={{
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color: "#6b7280",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: "rgba(196,181,253,0.55)",
                     }}
                   >
-                    Seemann Group
+                    Seemann AI
                   </span>
                 </div>
                 <div
                   style={{
-                    padding: "12px 16px",
-                    borderRadius: "12px",
-                    backgroundColor: "#eaf0f6",
+                    padding: "13px 18px",
+                    borderRadius: "14px 14px 14px 4px",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(162,45,125,0.22)",
                     display: "flex",
                     gap: "6px",
                     alignItems: "center",
+                    boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
                   }}
                 >
-                  <div
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: "#425b76",
-                      animation: "pulse 1.4s ease-in-out infinite",
-                    }}
-                  />
-                  <div
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: "#425b76",
-                      animation: "pulse 1.4s ease-in-out 0.2s infinite",
-                    }}
-                  />
-                  <div
-                    style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      backgroundColor: "#425b76",
-                      animation: "pulse 1.4s ease-in-out 0.4s infinite",
-                    }}
-                  />
+                  {[0, 0.25, 0.5].map((delay, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: "7px",
+                        height: "7px",
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #1C6EF2, #E70A3E)",
+                        animation: `aiDotPulse 1.4s ease-in-out ${delay}s infinite`,
+                      }}
+                    />
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* Error message */}
             {error && (
               <div
                 style={{
-                  backgroundColor: "#fef2f2",
-                  border: "1px solid #fecaca",
+                  background: "rgba(231,10,62,0.1)",
+                  border: "1px solid rgba(231,10,62,0.3)",
                   borderRadius: "10px",
                   padding: "12px 14px",
                   fontSize: "13px",
-                  color: "#991b1b",
+                  color: "#fb7185",
                   display: "flex",
                   gap: "10px",
                   alignItems: "start",
-                  animation: "slideIn 0.3s ease-out",
                 }}
               >
                 <svg
-                  width="16"
-                  height="16"
+                  width="15"
+                  height="15"
                   fill="currentColor"
                   viewBox="0 0 16 16"
-                  style={{ flexShrink: 0, marginTop: "2px" }}
+                  style={{ flexShrink: 0, marginTop: "1px" }}
                 >
                   <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
                   <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z" />
@@ -550,20 +551,20 @@ export default function ChatWidget() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Area */}
+          {/* INPUT */}
           <form
             onSubmit={handleSubmit}
             style={{
-              padding: "16px 20px",
-              borderTop: "1px solid #e5e7eb",
-              backgroundColor: "#ffffff",
+              padding: "13px 16px 14px",
+              borderTop: "1px solid rgba(162,45,125,0.35)",
+              background: "#080c18",
+              flexShrink: 0,
             }}
           >
-            <div
-              style={{ display: "flex", gap: "10px", alignItems: "flex-end" }}
-            >
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               <input
                 ref={inputRef}
+                className="ai-chat-input"
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
@@ -572,61 +573,77 @@ export default function ChatWidget() {
                 disabled={isLoading}
                 style={{
                   flex: 1,
-                  padding: "12px 16px",
-                  border: "1px solid #e5e7eb",
+                  padding: "11px 15px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(162,45,125,0.35)",
                   borderRadius: "10px",
-                  fontSize: "14px",
+                  fontSize: "13.5px",
                   outline: "none",
-                  transition: "all 0.2s",
-                  backgroundColor: "#fafbfc",
+                  color: "#e2e8f0",
                   fontFamily: "inherit",
+                  transition: "all 0.2s",
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "#425b76";
-                  e.currentTarget.style.backgroundColor = "#ffffff";
+                  e.currentTarget.style.borderColor = "rgba(162,45,125,0.85)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.07)";
+                  e.currentTarget.style.boxShadow =
+                    "0 0 0 3px rgba(162,45,125,0.12)";
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "#e5e7eb";
-                  e.currentTarget.style.backgroundColor = "#fafbfc";
+                  e.currentTarget.style.borderColor = "rgba(162,45,125,0.35)";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                  e.currentTarget.style.boxShadow = "none";
                 }}
               />
               <button
                 type="submit"
                 disabled={isLoading || !inputValue.trim()}
                 style={{
-                  padding: "12px 14px",
-                  backgroundColor:
-                    isLoading || !inputValue.trim() ? "#9ca3af" : "#425b76",
-                  color: "white",
-                  border: "none",
+                  width: "42px",
+                  height: "42px",
+                  flexShrink: 0,
+                  background:
+                    isLoading || !inputValue.trim()
+                      ? "rgba(255,255,255,0.06)"
+                      : "linear-gradient(135deg, #1C6EF2, #7c3aed, #E70A3E)",
+                  border:
+                    isLoading || !inputValue.trim()
+                      ? "1px solid rgba(162,45,125,0.2)"
+                      : "none",
                   borderRadius: "10px",
                   cursor:
                     isLoading || !inputValue.trim() ? "not-allowed" : "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  color:
+                    isLoading || !inputValue.trim()
+                      ? "rgba(255,255,255,0.22)"
+                      : "#ffffff",
                   transition: "all 0.2s",
-                  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                  boxShadow:
+                    isLoading || !inputValue.trim()
+                      ? "none"
+                      : "0 4px 14px rgba(124,58,237,0.45)",
                 }}
                 onMouseEnter={(e) => {
                   if (!isLoading && inputValue.trim()) {
-                    e.currentTarget.style.backgroundColor = "#364a5f";
-                    e.currentTarget.style.transform = "translateY(-1px)";
                     e.currentTarget.style.boxShadow =
-                      "0 4px 8px rgba(0, 0, 0, 0.15)";
+                      "0 6px 20px rgba(124,58,237,0.6)";
+                    e.currentTarget.style.transform = "translateY(-1px)";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    isLoading || !inputValue.trim() ? "#9ca3af" : "#425b76";
                   e.currentTarget.style.transform = "translateY(0)";
                   e.currentTarget.style.boxShadow =
-                    "0 2px 4px rgba(0, 0, 0, 0.1)";
+                    isLoading || !inputValue.trim()
+                      ? "none"
+                      : "0 4px 14px rgba(124,58,237,0.45)";
                 }}
               >
                 <svg
-                  width="20"
-                  height="20"
+                  width="17"
+                  height="17"
                   fill="currentColor"
                   viewBox="0 0 16 16"
                 >
@@ -634,105 +651,78 @@ export default function ChatWidget() {
                 </svg>
               </button>
             </div>
+
+            <div
+              style={{
+                marginTop: "9px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px",
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                <defs>
+                  <linearGradient
+                    id="poweredGrad"
+                    x1="0%"
+                    y1="100%"
+                    x2="100%"
+                    y2="0%"
+                  >
+                    <stop offset="0%" stopColor="#E70A3E" />
+                    <stop offset="100%" stopColor="#1C6EF2" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"
+                  fill="url(#poweredGrad)"
+                />
+              </svg>
+              <span
+                style={{
+                  fontSize: "10px",
+                  background: "linear-gradient(135deg, #93c5fd, #e879f9)",
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  fontWeight: 500,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                Powered by Seemann AI
+              </span>
+            </div>
           </form>
         </div>
       )}
 
-      {!isOpen && (
-        <button
-          onClick={toggleChat}
-          style={{
-            position: "fixed",
-            bottom: "24px",
-            right: "24px",
-            width: "60px",
-            height: "60px",
-            borderRadius: "50%",
-            backgroundColor: "#425b76",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 4px 16px rgba(66, 91, 118, 0.3)",
-            zIndex: 9999,
-            transition: "all 0.3s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.08)";
-            e.currentTarget.style.boxShadow =
-              "0 6px 20px rgba(66, 91, 118, 0.4)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.boxShadow =
-              "0 4px 16px rgba(66, 91, 118, 0.3)";
-          }}
-          aria-label="Abrir asistente"
-          title="Abrir asistente"
-        >
-          <svg width="28" height="28" fill="white" viewBox="0 0 16 16">
-            <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z" />
-          </svg>
-        </button>
-      )}
-
-      {/* CSS Animations */}
       <style>{`
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 0.3;
-            transform: scale(0.8);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.1);
-          }
+        @keyframes aiDotPulse {
+          0%, 100% { opacity: 0.25; transform: scale(0.75); }
+          50%       { opacity: 1;    transform: scale(1.2);  }
+        }
+        @keyframes aiFadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes aiSlideIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0);   }
         }
 
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
+        .ai-chat-messages::-webkit-scrollbar        { width: 4px; }
+        .ai-chat-messages::-webkit-scrollbar-track  { background: transparent; }
+        .ai-chat-messages::-webkit-scrollbar-thumb  { background: rgba(162,45,125,0.4); border-radius: 10px; }
+        .ai-chat-messages::-webkit-scrollbar-thumb:hover { background: rgba(162,45,125,0.7); }
 
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
+        .ai-chat-input::placeholder { color: rgba(196,181,253,0.32); }
 
-        /* Scrollbar personalizado */
-        div::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        div::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        div::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 10px;
-        }
-
-        div::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-
-        /* Responsivo */
         @media (max-width: 480px) {
-          div[style*="width: 420px"] {
+          .ai-chat-window {
             width: calc(100vw - 32px) !important;
             right: 16px !important;
+            bottom: 16px !important;
           }
         }
       `}</style>

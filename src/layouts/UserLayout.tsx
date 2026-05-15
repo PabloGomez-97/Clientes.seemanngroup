@@ -6,6 +6,7 @@ import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import ChatWidget from "../components/Chatbot/ChatWidget";
 import Footer from "../components/Footer/Footer";
+import { ChatbotProvider } from "../contexts/ChatbotContext";
 import { useLinbisToken } from "../hooks/useLinbisToken";
 
 const MOBILE_BREAKPOINT = 768;
@@ -210,49 +211,50 @@ function UserLayout() {
   }
 
   return (
-    <div
-      className="d-flex user-layout-shell"
-      style={{ height: "100vh", position: "relative" }}
-    >
-      <Sidebar
-        isCollapsed={sidebarCollapsed}
-        isMobile={isMobile}
-        onCloseMobile={() => setSidebarCollapsed(true)}
-        onToggle={toggleSidebar}
-      />
-
+    <ChatbotProvider>
       <div
-        className="flex-fill d-flex flex-column user-layout-frame"
-        style={{ overflow: "hidden" }}
+        className="d-flex user-layout-shell"
+        style={{ height: "100vh", position: "relative" }}
       >
-        <Navbar
-          onLogout={handleLogout}
-          toggleSidebar={toggleSidebar}
-          isSidebarCollapsed={sidebarCollapsed}
+        <Sidebar
+          isCollapsed={sidebarCollapsed}
+          isMobile={isMobile}
+          onCloseMobile={() => setSidebarCollapsed(true)}
+          onToggle={toggleSidebar}
         />
 
         <div
-          ref={mainRef}
-          className="flex-fill user-layout-main"
-          style={{
-            overflowY: "auto",
-            backgroundColor: "#f8f9fa",
-            minHeight: 0,
-          }}
+          className="flex-fill d-flex flex-column user-layout-frame"
+          style={{ overflow: "hidden" }}
         >
-          <Outlet
-            context={{
-              accessToken,
-              refreshAccessToken,
-              onLogout: handleLogout,
-            }}
+          <Navbar
+            onLogout={handleLogout}
+            toggleSidebar={toggleSidebar}
+            isSidebarCollapsed={sidebarCollapsed}
           />
-          <Footer />
-        </div>
-      </div>
-      <ChatWidget />
 
-      <style>{`
+          <div
+            ref={mainRef}
+            className="flex-fill user-layout-main"
+            style={{
+              overflowY: "auto",
+              backgroundColor: "#f8f9fa",
+              minHeight: 0,
+            }}
+          >
+            <Outlet
+              context={{
+                accessToken,
+                refreshAccessToken,
+                onLogout: handleLogout,
+              }}
+            />
+            <Footer />
+          </div>
+        </div>
+        <ChatWidget />
+
+        <style>{`
         .user-layout-main {
           padding: 24px;
         }
@@ -263,7 +265,8 @@ function UserLayout() {
           }
         }
       `}</style>
-    </div>
+      </div>
+    </ChatbotProvider>
   );
 }
 

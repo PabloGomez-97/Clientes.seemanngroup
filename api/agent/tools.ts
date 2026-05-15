@@ -5,31 +5,17 @@
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { CLIENT_NAVIGATION, COMPANY_INFO, findPortalSection, findGlossaryTerm } from './knowledgeBase.js';
+import { EXTRA_TOOLS } from './toolsExtra.js';
+import { getToolContext, setToolContext, type ToolContext } from './toolsContext.js';
 
-// ============================================================================
-// CONTEXT — información inyectada en runtime
-// ============================================================================
+// Re-export para compatibilidad con graph.ts
+export { setToolContext };
+export type { ToolContext };
 
-export interface ToolContext {
-  activeUsername: string;
-  linbisAccessToken: string;
-  userToken: string; // JWT del usuario autenticado
-  baseUrl: string;   // URL base del servidor (para ShipsGo proxy)
-  ejecutivo: { nombre: string; email: string; telefono: string } | null;
-}
-
-// Variable global de contexto (se setea antes de ejecutar el agente)
-let _ctx: ToolContext = {
-  activeUsername: '',
-  linbisAccessToken: '',
-  userToken: '',
-  baseUrl: '',
-  ejecutivo: null,
-};
-
-export function setToolContext(ctx: ToolContext) {
-  _ctx = ctx;
-}
+// Helper local para acceder al contexto en este archivo.
+const _ctx: ToolContext = new Proxy({} as ToolContext, {
+  get(_t, prop) { return (getToolContext() as unknown as Record<string, unknown>)[prop as string]; },
+});
 
 // ============================================================================
 // HELPERS
@@ -111,19 +97,47 @@ function parseCSV(csvText: string): string[][] {
 // 1. Buscar cotizaciones (Linbis) — MÁXIMO 3 resultados
 export const searchQuotes = tool(
   async ({ quoteNumber }): Promise<string> => {
+    // La API de Linbis no soporta filtro por número — siempre traemos todos
+    // y filtramos en el cliente. Traemos hasta 100 para cubrir historiales largos.
+    const itemsPerPage = quoteNumber ? '100' : '5';
     const params = new URLSearchParams({
       ConsigneeName: _ctx.activeUsername,
       Page: '1',
-      ItemsPerPage: '5',
+      ItemsPerPage: itemsPerPage,
       SortBy: 'newest',
     });
-    if (quoteNumber) params.set('Number', quoteNumber);
 
     const data = await linbisFetch(`/Quotes?${params}`);
-    const items = extractItems(data);
+    let items = extractItems(data);
     if (items.length === 0) return JSON.stringify({ found: false, message: 'No se encontraron cotizaciones.' });
 
-    // Solo las primeras 3
+    // Filtro client-side por número si se proporcionó
+    if (quoteNumber) {
+      const q = quoteNumber.trim().toLowerCase();
+      const match = items.find((item) => String(item.number || '').toLowerCase() === q);
+      if (match) {
+        return JSON.stringify({
+          found: true,
+          count: 1,
+          quotes: [{
+            number: match.number || 'N/A',
+            date: match.date || 'N/A',
+            origin: match.origin || 'N/A',
+            destination: match.destination || 'N/A',
+            mode: match.modeOfTransportation || 'N/A',
+            status: match.currentFlow || 'N/A',
+            total: match.totalCharge_IncomeDisplayValue || 'N/A',
+          }],
+        });
+      }
+      // Si no se encontró en las últimas 100, avisar
+      return JSON.stringify({
+        found: false,
+        message: `No se encontró la cotización "${quoteNumber}" entre las 100 más recientes. Verifica el número o búscala en /quotes.`,
+      });
+    }
+
+    // Sin filtro: devolver las 3 más recientes
     const top = items.slice(0, 3).map((q) => ({
       number: q.number || 'N/A',
       date: q.date || 'N/A',
@@ -134,13 +148,13 @@ export const searchQuotes = tool(
       total: q.totalCharge_IncomeDisplayValue || 'N/A',
     }));
 
-    return JSON.stringify({ found: true, count: items.length, showing: top.length, quotes: top, hint: items.length > 3 ? `Hay ${items.length} cotizaciones en total. El cliente puede ver todas en /quotes.` : undefined });
+    return JSON.stringify({ found: true, count: items.length, showing: top.length, quotes: top, hint: items.length > 3 ? `Hay ${items.length} cotizaciones en total. Ver todas en /quotes.` : undefined });
   },
   {
     name: 'search_quotes',
-    description: 'Busca cotizaciones del cliente en Linbis. Retorna máximo 3 resultados para mantener la respuesta breve. Si pide una específica, usa quoteNumber.',
+    description: 'Busca cotizaciones del cliente en Linbis. Si se da un quoteNumber específico, lo busca entre las 100 más recientes. Sin número, muestra las 3 más recientes.',
     schema: z.object({
-      quoteNumber: z.string().optional().describe('Número de cotización específica a buscar (ej: "Q-1234")'),
+      quoteNumber: z.string().optional().describe('Número de cotización específica a buscar (ej: "QUO0019716")'),
     }),
   },
 );
@@ -537,4 +551,5 @@ export const ALL_TOOLS = [
   getEjecutivoInfo,
   getCompanyInfo,
   lookupGlossary,
+  ...EXTRA_TOOLS,
 ];

@@ -5,6 +5,7 @@ import NavbarAdmin from "./Navbar-admin";
 import SidebarAdmin from "./Sidebar-admin";
 import ChatWidget from "../components/Chatbot/ChatWidget";
 import Footer from "../components/Footer/Footer";
+import { ChatbotProvider } from "../contexts/ChatbotContext";
 import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";
 import { useLinbisToken } from "../hooks/useLinbisToken";
@@ -137,46 +138,48 @@ function AdminLayout() {
   }
 
   return (
-    <div className="d-flex" style={{ height: "100vh", position: "relative" }}>
-      <SidebarAdmin
-        isCollapsed={sidebarCollapsed}
-        isMobile={isMobile}
-        onCloseMobile={() => setSidebarCollapsed(true)}
-        onToggle={toggleSidebar}
-      />
-
-      <div
-        className="flex-fill d-flex flex-column"
-        style={{ overflow: "hidden" }}
-      >
-        <NavbarAdmin
-          accessToken={accessToken}
-          onLogout={handleLogout}
-          toggleSidebar={toggleSidebar}
-          isSidebarCollapsed={sidebarCollapsed}
+    <ChatbotProvider>
+      <div className="d-flex" style={{ height: "100vh", position: "relative" }}>
+        <SidebarAdmin
+          isCollapsed={sidebarCollapsed}
+          isMobile={isMobile}
+          onCloseMobile={() => setSidebarCollapsed(true)}
+          onToggle={toggleSidebar}
         />
 
         <div
-          ref={mainRef}
-          className="flex-fill p-4"
-          style={{
-            overflowY: "auto",
-            backgroundColor: "#f8f9fa",
-            minHeight: 0,
-          }}
+          className="flex-fill d-flex flex-column"
+          style={{ overflow: "hidden" }}
         >
-          <Outlet
-            context={{
-              accessToken,
-              refreshAccessToken,
-              onLogout: handleLogout,
-            }}
+          <NavbarAdmin
+            accessToken={accessToken}
+            onLogout={handleLogout}
+            toggleSidebar={toggleSidebar}
+            isSidebarCollapsed={sidebarCollapsed}
           />
-          <Footer />
+
+          <div
+            ref={mainRef}
+            className="flex-fill p-4"
+            style={{
+              overflowY: "auto",
+              backgroundColor: "#f8f9fa",
+              minHeight: 0,
+            }}
+          >
+            <Outlet
+              context={{
+                accessToken,
+                refreshAccessToken,
+                onLogout: handleLogout,
+              }}
+            />
+            <Footer />
+          </div>
         </div>
+        <ChatWidget />
       </div>
-      <ChatWidget />
-    </div>
+    </ChatbotProvider>
   );
 }
 

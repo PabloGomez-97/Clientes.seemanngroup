@@ -20,9 +20,17 @@ interface UseChatbotReturn {
 
 const STORAGE_KEY = 'chatbot_history';
 
+const INITIAL_MESSAGES: Message[] = [
+  {
+    role: 'assistant',
+    content: 'Hola, soy **SeemannAI** — el asistente inteligente de Seemann Group.\n\nPuedo consultarte tarifas en tiempo real, rastrear tus envíos, calcular pesos y costos de aduana, explicar incoterms y mucho más.\n\n¿En qué puedo ayudarte hoy?',
+    timestamp: 0,
+  },
+];
+
 export function useChatbot(): UseChatbotReturn {
   const { token, activeUsername, user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +42,9 @@ export function useChatbot(): UseChatbotReturn {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        setMessages(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+        }
       }
     } catch (err) {
       console.error('Error loading chat history:', err);
@@ -69,7 +79,7 @@ export function useChatbot(): UseChatbotReturn {
       clearInterval(typingIntervalRef.current);
       typingIntervalRef.current = null;
     }
-    setMessages([]);
+    setMessages(INITIAL_MESSAGES);
     localStorage.removeItem(STORAGE_KEY);
     setError(null);
     setIsLoading(false);
