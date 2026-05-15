@@ -62,6 +62,7 @@ function UsersManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const [emailPrefix, setEmailPrefix] = useState("");
   const [usernames, setUsernames] = useState<string[]>([""]);
   const [nombreuser, setNombreuser] = useState("");
   const [password, setPassword] = useState("");
@@ -88,6 +89,117 @@ function UsersManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 7;
+
+  // 🔍 Búsqueda de empresas en Linbis
+  interface LinbisAccount {
+    id: number;
+    name: string;
+    email: string;
+    contact: string;
+    salesRepId: number | null;
+    salesRepName: string;
+  }
+  const [linbisSearchTerm, setLinbisSearchTerm] = useState("");
+  const [linbisResults, setLinbisResults] = useState<LinbisAccount[]>([]);
+  const [linbisLoading, setLinbisLoading] = useState(false);
+  const [linbisError, setLinbisError] = useState<string | null>(null);
+  const [linbisSearched, setLinbisSearched] = useState(false);
+
+  const handleSearchLinbis = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const term = linbisSearchTerm.trim();
+    if (!term) {
+      setLinbisError("Ingresa parte del nombre de la empresa");
+      return;
+    }
+    setLinbisLoading(true);
+    setLinbisError(null);
+    setLinbisSearched(true);
+    try {
+      const tokenRes = await fetch("/api/linbis-token");
+      if (!tokenRes.ok) throw new Error("No se pudo obtener token de Linbis");
+      const { token: linbisToken } = await tokenRes.json();
+
+      const headers = { Authorization: `Bearer ${linbisToken}` };
+      const [accountsRes, salesRepsRes] = await Promise.all([
+        fetch(
+          `https://api.linbis.com/accounts/list?searchTerm=${encodeURIComponent(term)}&take=10`,
+          { headers },
+        ),
+        fetch(`https://api.linbis.com/salesreps/list?take=100`, { headers }),
+      ]);
+
+      if (!accountsRes.ok) throw new Error("Error al consultar Linbis");
+
+      const accountsData = await accountsRes.json();
+      const salesRepsData = salesRepsRes.ok ? await salesRepsRes.json() : [];
+
+      const salesRepMap = new Map<number, string>();
+      if (Array.isArray(salesRepsData)) {
+        for (const sr of salesRepsData as Array<{ id: number; name: string }>) {
+          if (sr.id != null) salesRepMap.set(Number(sr.id), sr.name || "");
+        }
+      }
+
+      type RawAccount = {
+        id?: number;
+        name?: string;
+        email?: string;
+        contact?: string;
+        salesRepId?: number | null;
+      };
+      const raw = (
+        Array.isArray(accountsData) ? accountsData : []
+      ) as RawAccount[];
+      const list: LinbisAccount[] = raw.map((a) => {
+        const repId = a.salesRepId != null ? Number(a.salesRepId) : null;
+        return {
+          id: Number(a.id ?? 0),
+          name: a.name || "",
+          email: a.email || "",
+          contact: a.contact || "",
+          salesRepId: repId,
+          salesRepName: repId != null ? (salesRepMap.get(repId) ?? "") : "",
+        };
+      });
+      setLinbisResults(list);
+    } catch (err) {
+      setLinbisError(
+        err instanceof Error ? err.message : "Error al buscar en Linbis",
+      );
+      setLinbisResults([]);
+    } finally {
+      setLinbisLoading(false);
+    }
+  };
+
+  const handleUseLinbisAccount = (acc: LinbisAccount) => {
+    if (!showForm) setShowForm(true);
+    setAccountType("cliente");
+
+    // Siempre sobreescribir todos los campos (incluso con vacío) para no
+    // arrastrar datos de una empresa usada anteriormente.
+    setNombreuser(acc.contact || "");
+    setUsernames([acc.name || ""]);
+    // Email prefix no se autorrellena: el dominio @seemanngroup.com es obligatorio
+    setEmailPrefix("");
+
+    // Buscar el ejecutivo por nombre (case-insensitive) y asignarlo si existe
+    const matchedEj = acc.salesRepName
+      ? ejecutivos.find(
+          (ej) =>
+            ej.nombre.trim().toLowerCase() ===
+            acc.salesRepName.trim().toLowerCase(),
+        )
+      : undefined;
+    setEjecutivoId(matchedEj ? matchedEj.id : "");
+
+    setTimeout(
+      () =>
+        topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      0,
+    );
+  };
 
   // Cargar ejecutivos
   const fetchEjecutivos = async () => {
@@ -206,6 +318,7 @@ function UsersManagement() {
 
   const resetForm = () => {
     setEmail("");
+    setEmailPrefix("");
     setUsernames([""]);
     setNombreuser("");
     setPassword("");
@@ -356,6 +469,13 @@ function UsersManagement() {
     }
 
     // Flujo para clientes
+    const clientEmail = emailPrefix.trim() + "@seemanngroup.com";
+    if (!emailPrefix.trim()) {
+      setError("El prefijo del email es requerido");
+      setFormLoading(false);
+      return;
+    }
+
     const cleanUsernames = usernames.map((u) => u.trim()).filter(Boolean);
     if (cleanUsernames.length === 0) {
       setError("Debe agregar al menos una empresa");
@@ -380,7 +500,7 @@ function UsersManagement() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
+          email: clientEmail,
           username: cleanUsernames[0],
           usernames: cleanUsernames,
           nombreuser,
@@ -399,9 +519,9 @@ function UsersManagement() {
       registrarEvento({
         accion: "USUARIO_CREADO",
         categoria: "GESTION_USUARIOS",
-        descripcion: `Usuario creado: ${nombreuser} (${email})`,
+        descripcion: `Usuario creado: ${nombreuser} (${clientEmail})`,
         detalles: {
-          email,
+          email: clientEmail,
           usernames: cleanUsernames,
           nombreuser,
           ejecutivoId: ejecutivoId || "sin asignar",
@@ -918,37 +1038,86 @@ function UsersManagement() {
                       ? "Email del Ejecutivo *"
                       : "Email del Cliente *"}
                   </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required={!editingUserId}
-                    disabled={!!editingUserId}
-                    placeholder={
-                      accountType === "ejecutivo"
-                        ? "ejecutivo@seemanngroup.com"
-                        : "cliente@empresa.com"
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "9px 12px",
-                      fontSize: "14px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      outline: "none",
-                      transition: "border-color 0.15s",
-                      backgroundColor: editingUserId ? "#f9fafb" : "white",
-                      cursor: editingUserId ? "not-allowed" : "text",
-                      color: "#111827",
-                    }}
-                    onFocus={(e) =>
-                      !editingUserId &&
-                      (e.currentTarget.style.borderColor = "#2563eb")
-                    }
-                    onBlur={(e) =>
-                      (e.currentTarget.style.borderColor = "#d1d5db")
-                    }
-                  />
+                  {!editingUserId && accountType === "cliente" ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        overflow: "hidden",
+                        transition: "border-color 0.15s",
+                      }}
+                      onFocusCapture={(e) =>
+                        ((e.currentTarget as HTMLDivElement).style.borderColor =
+                          "#2563eb")
+                      }
+                      onBlurCapture={(e) =>
+                        ((e.currentTarget as HTMLDivElement).style.borderColor =
+                          "#d1d5db")
+                      }
+                    >
+                      <input
+                        type="text"
+                        value={emailPrefix}
+                        onChange={(e) =>
+                          setEmailPrefix(e.target.value.replace(/@.*/g, ""))
+                        }
+                        required
+                        placeholder="Ingresar correo"
+                        style={{
+                          flex: 1,
+                          padding: "9px 12px",
+                          fontSize: "14px",
+                          border: "none",
+                          outline: "none",
+                          color: "#111827",
+                          minWidth: 0,
+                        }}
+                      />
+                      <span
+                        style={{
+                          padding: "9px 12px",
+                          backgroundColor: "#f3f4f6",
+                          color: "#6b7280",
+                          fontSize: "14px",
+                          borderLeft: "1px solid #d1d5db",
+                          whiteSpace: "nowrap",
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        @seemanngroup.com
+                      </span>
+                    </div>
+                  ) : (
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required={!editingUserId}
+                      disabled={!!editingUserId}
+                      placeholder="ejecutivo@seemanngroup.com"
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        fontSize: "14px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        outline: "none",
+                        transition: "border-color 0.15s",
+                        backgroundColor: editingUserId ? "#f9fafb" : "white",
+                        cursor: editingUserId ? "not-allowed" : "text",
+                        color: "#111827",
+                      }}
+                      onFocus={(e) =>
+                        !editingUserId &&
+                        (e.currentTarget.style.borderColor = "#2563eb")
+                      }
+                      onBlur={(e) =>
+                        (e.currentTarget.style.borderColor = "#d1d5db")
+                      }
+                    />
+                  )}
                   {editingUserId && (
                     <p
                       style={{
@@ -1818,6 +1987,299 @@ function UsersManagement() {
               </form>
             </div>
           </div>
+
+          {/* 🔍 Buscador de empresas en Linbis */}
+          {!editingUserId && accountType === "cliente" && (
+            <div className="col-lg-6">
+              <div
+                style={{
+                  backgroundColor: "white",
+                  borderRadius: "8px",
+                  padding: "24px",
+                  border: "1px solid #e5e7eb",
+                  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.06)",
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <div
+                  style={{
+                    marginBottom: "20px",
+                    paddingBottom: "16px",
+                    borderBottom: "1px solid #f3f4f6",
+                  }}
+                >
+                  <h5
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: "600",
+                      color: "#111827",
+                      margin: 0,
+                    }}
+                  >
+                    Buscar empresa en Linbis
+                  </h5>
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      margin: "2px 0 0",
+                    }}
+                  >
+                    Encuentra empresas existentes y autocompleta el formulario
+                  </p>
+                </div>
+
+                <form
+                  onSubmit={handleSearchLinbis}
+                  style={{ marginBottom: "16px" }}
+                >
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "13px",
+                      fontWeight: "500",
+                      color: "#374151",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Nombre de la empresa
+                  </label>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      value={linbisSearchTerm}
+                      onChange={(e) => setLinbisSearchTerm(e.target.value)}
+                      placeholder="Ej: SCANCONTROLS"
+                      style={{
+                        flex: 1,
+                        padding: "9px 12px",
+                        fontSize: "14px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        outline: "none",
+                        transition: "border-color 0.15s",
+                        color: "#111827",
+                      }}
+                      onFocus={(e) =>
+                        (e.currentTarget.style.borderColor = "#2563eb")
+                      }
+                      onBlur={(e) =>
+                        (e.currentTarget.style.borderColor = "#d1d5db")
+                      }
+                    />
+                    <button
+                      type="submit"
+                      disabled={linbisLoading}
+                      style={{
+                        backgroundColor: "#2563eb",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "9px 16px",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        cursor: linbisLoading ? "not-allowed" : "pointer",
+                        opacity: linbisLoading ? 0.7 : 1,
+                        transition: "background-color 0.15s",
+                        whiteSpace: "nowrap",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!linbisLoading)
+                          e.currentTarget.style.backgroundColor = "#1d4ed8";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!linbisLoading)
+                          e.currentTarget.style.backgroundColor = "#2563eb";
+                      }}
+                    >
+                      {linbisLoading ? "Buscando..." : "Buscar"}
+                    </button>
+                  </div>
+                </form>
+
+                {linbisError && (
+                  <div
+                    style={{
+                      borderLeft: "3px solid #dc2626",
+                      backgroundColor: "#fef2f2",
+                      borderRadius: "4px",
+                      padding: "10px 12px",
+                      marginBottom: "12px",
+                      color: "#b91c1c",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {linbisError}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    flex: 1,
+                    overflowY: "auto",
+                    maxHeight: "420px",
+                  }}
+                >
+                  {linbisResults.length === 0 &&
+                    linbisSearched &&
+                    !linbisLoading &&
+                    !linbisError && (
+                      <p
+                        style={{
+                          fontSize: "13px",
+                          color: "#6b7280",
+                          margin: 0,
+                          padding: "16px 0",
+                          textAlign: "center",
+                        }}
+                      >
+                        No se encontraron empresas con ese nombre.
+                      </p>
+                    )}
+
+                  {linbisResults.length === 0 && !linbisSearched && (
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "#9ca3af",
+                        margin: 0,
+                        padding: "8px 0",
+                      }}
+                    >
+                      Los resultados aparecerán aquí.
+                    </p>
+                  )}
+
+                  {linbisResults.map((acc) => (
+                    <div
+                      key={acc.id}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "6px",
+                        padding: "12px",
+                        marginBottom: "10px",
+                        backgroundColor: "#fafafa",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          gap: "10px",
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: "13.5px",
+                              fontWeight: "600",
+                              color: "#111827",
+                              marginBottom: "4px",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {acc.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "11.5px",
+                              color: "#6b7280",
+                              marginBottom: "2px",
+                            }}
+                          >
+                            ID Linbis: {acc.id}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              color: "#374151",
+                              marginBottom: "2px",
+                            }}
+                          >
+                            <strong style={{ color: "#6b7280" }}>
+                              Contacto:
+                            </strong>{" "}
+                            {acc.contact || (
+                              <span
+                                style={{
+                                  color: "#9ca3af",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Sin contacto
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              color: "#374151",
+                              wordBreak: "break-all",
+                              marginBottom: "2px",
+                            }}
+                          >
+                            <strong style={{ color: "#6b7280" }}>Email:</strong>{" "}
+                            {acc.email || (
+                              <span
+                                style={{
+                                  color: "#9ca3af",
+                                  fontStyle: "italic",
+                                }}
+                              >
+                                Sin email
+                              </span>
+                            )}
+                          </div>
+                          {acc.salesRepName && (
+                            <div
+                              style={{
+                                fontSize: "12px",
+                                color: "#374151",
+                              }}
+                            >
+                              <strong style={{ color: "#6b7280" }}>
+                                Ejecutivo:
+                              </strong>{" "}
+                              {acc.salesRepName}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleUseLinbisAccount(acc)}
+                          style={{
+                            backgroundColor: "white",
+                            color: "#2563eb",
+                            border: "1px solid #2563eb",
+                            borderRadius: "6px",
+                            padding: "6px 10px",
+                            fontSize: "12px",
+                            fontWeight: "500",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                            transition: "all 0.15s",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#2563eb";
+                            e.currentTarget.style.color = "white";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "white";
+                            e.currentTarget.style.color = "#2563eb";
+                          }}
+                        >
+                          Usar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
