@@ -101,16 +101,19 @@ const generateCompanyEmailPrefix = (
   // 4. Si aun así queda vacío, devolver un genérico seguro
   if (!base) return "cliente";
 
-  // 5. Verificar colisión con emails existentes y buscar alternativa libre
+  // 5. Truncar a máximo 13 caracteres para evitar prefijos excesivamente largos
+  const truncated = base.slice(0, 13);
+
+  // 6. Verificar colisión con emails existentes y buscar alternativa libre
   const existingEmails = new Set(
     existingUsers.map((u) => u.email.toLowerCase()),
   );
 
   const candidates = [
-    base,
-    base + "chile",
-    base + "cl",
-    ...Array.from({ length: 10 }, (_, i) => base + (i + 1)),
+    truncated,
+    truncated + "chile",
+    truncated + "cl",
+    ...Array.from({ length: 10 }, (_, i) => truncated + (i + 1)),
   ];
 
   for (const candidate of candidates) {
@@ -120,7 +123,7 @@ const generateCompanyEmailPrefix = (
   }
 
   // Fallback extremo: añadir timestamp
-  return base + Date.now().toString().slice(-4);
+  return truncated + Date.now().toString().slice(-4);
 };
 
 function UsersManagement() {
