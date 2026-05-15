@@ -84,6 +84,11 @@ function UsersManagement() {
     operaciones: false,
   });
 
+  // Búsqueda y paginación
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 7;
+
   // Cargar ejecutivos
   const fetchEjecutivos = async () => {
     try {
@@ -131,11 +136,31 @@ function UsersManagement() {
     fetchUsers();
   }, [token]);
 
-  // ✨ NUEVO: Filtrar usuarios según el toggle
+  // Filtrar usuarios según el toggle y búsqueda
   const filteredUsers = users.filter((user) => {
     const isAdmin = user.username === "Ejecutivo";
-    return showAdmins ? isAdmin : !isAdmin;
+    if (showAdmins ? !isAdmin : isAdmin) return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const emailMatch = user.email?.toLowerCase().includes(q);
+    const nameMatch = user.nombreuser?.toLowerCase().includes(q);
+    const empresaMatch =
+      !showAdmins &&
+      (user.username?.toLowerCase().includes(q) ||
+        (Array.isArray(user.usernames) &&
+          user.usernames.some((n: string) => n.toLowerCase().includes(q))));
+    const ejecutivoMatch =
+      !!user.ejecutivo &&
+      (user.ejecutivo.nombre?.toLowerCase().includes(q) ||
+        user.ejecutivo.email?.toLowerCase().includes(q));
+    return !!(emailMatch || nameMatch || empresaMatch || ejecutivoMatch);
   });
+
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE,
+  );
 
   // ✨ NUEVO: Contar admins y usuarios
   const adminCount = users.filter((u) => u.username === "Ejecutivo").length;
@@ -715,7 +740,11 @@ function UsersManagement() {
           <div style={{ borderBottom: "1px solid #e5e7eb", marginBottom: "0" }}>
             <div style={{ display: "flex", gap: "0" }}>
               <button
-                onClick={() => setShowAdmins(false)}
+                onClick={() => {
+                  setShowAdmins(false);
+                  setCurrentPage(1);
+                  setSearchQuery("");
+                }}
                 style={{
                   background: "transparent",
                   border: "none",
@@ -748,7 +777,11 @@ function UsersManagement() {
                 </span>
               </button>
               <button
-                onClick={() => setShowAdmins(true)}
+                onClick={() => {
+                  setShowAdmins(true);
+                  setCurrentPage(1);
+                  setSearchQuery("");
+                }}
                 style={{
                   background: "transparent",
                   border: "none",
@@ -1840,6 +1873,55 @@ function UsersManagement() {
                     {filteredUsers.length}
                   </span>
                 </h5>
+                <div style={{ position: "relative" }}>
+                  <svg
+                    width="14"
+                    height="14"
+                    fill="#9ca3af"
+                    viewBox="0 0 16 16"
+                    style={{
+                      position: "absolute",
+                      left: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.856a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder={
+                      showAdmins
+                        ? "Buscar por nombre o email..."
+                        : "Buscar por email, empresa o ejecutivo..."
+                    }
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      paddingLeft: "32px",
+                      paddingRight: "12px",
+                      paddingTop: "7px",
+                      paddingBottom: "7px",
+                      fontSize: "13px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "6px",
+                      outline: "none",
+                      width: "260px",
+                      color: "#111827",
+                      backgroundColor: "white",
+                    }}
+                    onFocus={(e) =>
+                      (e.currentTarget.style.borderColor = "#2563eb")
+                    }
+                    onBlur={(e) =>
+                      (e.currentTarget.style.borderColor = "#e5e7eb")
+                    }
+                  />
+                </div>
               </div>
             </div>
 
@@ -1882,9 +1964,11 @@ function UsersManagement() {
                   </svg>
                 </div>
                 <p style={{ color: "#6b7280", fontSize: "15px" }}>
-                  {showAdmins
-                    ? "No hay ejecutivos registrados"
-                    : "No hay clientes registrados"}
+                  {searchQuery.trim()
+                    ? "Sin resultados para tu búsqueda"
+                    : showAdmins
+                      ? "No hay ejecutivos registrados"
+                      : "No hay clientes registrados"}
                 </p>
               </div>
             ) : (
@@ -1994,7 +2078,7 @@ function UsersManagement() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredUsers.map((user) => (
+                    {paginatedUsers.map((user) => (
                       <tr
                         key={user.id}
                         style={{
@@ -2262,6 +2346,85 @@ function UsersManagement() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {!loading && totalPages > 1 && (
+              <div
+                style={{
+                  padding: "12px 24px",
+                  borderTop: "1px solid #e5e7eb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: "white",
+                }}
+              >
+                <span style={{ fontSize: "13px", color: "#6b7280" }}>
+                  Página {currentPage} de {totalPages} — {filteredUsers.length}{" "}
+                  resultado
+                  {filteredUsers.length !== 1 ? "s" : ""}
+                </span>
+                <div
+                  style={{ display: "flex", gap: "4px", alignItems: "center" }}
+                >
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    style={{
+                      padding: "4px 10px",
+                      fontSize: "14px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "6px",
+                      backgroundColor: "white",
+                      color: currentPage === 1 ? "#d1d5db" : "#374151",
+                      cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    ‹
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        style={{
+                          padding: "4px 10px",
+                          fontSize: "13px",
+                          border: "1px solid",
+                          borderColor:
+                            currentPage === page ? "#2563eb" : "#e5e7eb",
+                          borderRadius: "6px",
+                          backgroundColor:
+                            currentPage === page ? "#2563eb" : "white",
+                          color: currentPage === page ? "white" : "#374151",
+                          cursor: "pointer",
+                          fontWeight: currentPage === page ? "600" : "400",
+                          minWidth: "30px",
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ),
+                  )}
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    style={{
+                      padding: "4px 10px",
+                      fontSize: "14px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "6px",
+                      backgroundColor: "white",
+                      color: currentPage === totalPages ? "#d1d5db" : "#374151",
+                      cursor:
+                        currentPage === totalPages ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    ›
+                  </button>
+                </div>
               </div>
             )}
           </div>
