@@ -827,17 +827,17 @@ function QuoteFCL({
       if (openSection === 2)
         section2Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "start",
+          block: "nearest",
         });
       else if (openSection === 3)
         section3Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "start",
+          block: "nearest",
         });
       else if (openSection === 4)
         section4Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "start",
+          block: "nearest",
         });
     }, 150);
     return () => clearTimeout(timeout);
@@ -3514,7 +3514,7 @@ function QuoteFCL({
               )}
               <div className="row g-4 align-items-start">
                 {/* Columna izquierda: Incoterm + Cantidad */}
-                <div className="col-lg-7">
+                <div className={incoterm === "EXW" ? "col-12" : "col-lg-7"}>
                   <div className="row g-3">
                     {(() => {
                       const polOpt = polSeleccionado ?? polNR;
@@ -3649,47 +3649,49 @@ function QuoteFCL({
                   </div>
                 </div>
 
-                {/* Columna derecha: imagen del contenedor seleccionado */}
-                <div className="col-lg-5 d-flex align-items-center justify-content-center">
-                  <div
-                    role="button"
-                    title="Ver especificaciones completas"
-                    onClick={() => setShowContainerModal(true)}
-                    style={{ cursor: "zoom-in", position: "relative" }}
-                  >
-                    <img
-                      src={imgUrl(
-                        containerSeleccionado.type === "40HQ"
-                          ? "containers/40hq.png"
-                          : containerSeleccionado.type === "40NOR"
-                            ? "containers/40nor.png"
-                            : "containers/20gp.png",
-                      )}
-                      alt={`Contenedor ${containerSeleccionado.type}`}
-                      style={{
-                        maxWidth: "100%",
-                        maxHeight: 280,
-                        objectFit: "contain",
-                        borderRadius: 8,
-                      }}
-                    />
-                    <span
-                      style={{
-                        position: "absolute",
-                        bottom: 6,
-                        right: 6,
-                        background: "rgba(0,0,0,0.45)",
-                        color: "#fff",
-                        borderRadius: 6,
-                        padding: "2px 7px",
-                        fontSize: "0.72rem",
-                        pointerEvents: "none",
-                      }}
+                {/* Columna derecha: imagen del contenedor seleccionado (oculta en EXW) */}
+                {incoterm !== "EXW" && (
+                  <div className="col-lg-5 d-flex align-items-center justify-content-center">
+                    <div
+                      role="button"
+                      title="Ver especificaciones completas"
+                      onClick={() => setShowContainerModal(true)}
+                      style={{ cursor: "zoom-in", position: "relative" }}
                     >
-                      <i className="bi bi-zoom-in me-1"></i>Ver en detalle
-                    </span>
+                      <img
+                        src={imgUrl(
+                          containerSeleccionado.type === "40HQ"
+                            ? "containers/40hq.png"
+                            : containerSeleccionado.type === "40NOR"
+                              ? "containers/40nor.png"
+                              : "containers/20gp.png",
+                        )}
+                        alt={`Contenedor ${containerSeleccionado.type}`}
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: 280,
+                          objectFit: "contain",
+                          borderRadius: 8,
+                        }}
+                      />
+                      <span
+                        style={{
+                          position: "absolute",
+                          bottom: 6,
+                          right: 6,
+                          background: "rgba(0,0,0,0.45)",
+                          color: "#fff",
+                          borderRadius: 6,
+                          padding: "2px 7px",
+                          fontSize: "0.72rem",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <i className="bi bi-zoom-in me-1"></i>Ver en detalle
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Botón Siguiente */}

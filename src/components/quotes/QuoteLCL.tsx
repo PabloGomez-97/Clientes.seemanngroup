@@ -1073,17 +1073,17 @@ function QuoteLCL({
       if (openSection === 2)
         section2Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "start",
+          block: "nearest",
         });
       else if (openSection === 3)
         section3Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "start",
+          block: "nearest",
         });
       else if (openSection === 4)
         section4Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "start",
+          block: "nearest",
         });
     }, 150);
     return () => clearTimeout(timeout);
