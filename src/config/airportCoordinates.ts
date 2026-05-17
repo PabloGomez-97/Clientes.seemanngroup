@@ -53,12 +53,19 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     iata: "BCN",
     countryCode: "ES"
   },
-  londres: {
+  london: {
     lat: 51.4694,
     lng: -0.4535,
     name: "London Heathrow Airport",
     iata: "LHR",
     countryCode: "GB"
+  },
+  ezhou: {
+    lat: 30.3426,
+    lng: 115.0263,
+    name: "Ezhou Airport",
+    iata: "EZH",
+    countryCode: "CN"
   },
   frankfurt: {
     lat: 50.0485,
@@ -68,6 +75,13 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     countryCode: "DE"
   },
   brasil: {
+    lat: -23.0100,
+    lng: -47.1449,
+    name: "Campinas Viracopos International Airport",
+    iata: "VCP",
+    countryCode: "BR"
+  },
+  viracopos: {
     lat: -23.0100,
     lng: -47.1449,
     name: "Campinas Viracopos International Airport",
@@ -88,7 +102,7 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     iata: "HKG",
     countryCode: "HK"
   },
-  Milán: {
+  milan: {
     lat: 45.6272,
     lng: 8.7125,
     name: "Milan Malpensa Airport",
@@ -102,7 +116,7 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     iata: "LIS",
     countryCode: "PT"
   },
-  nanjin: {
+  nanjing: {
     lat: 31.7342,
     lng: 118.8714,
     name: "Nanjing Lukou International Airport",
@@ -311,6 +325,13 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     name: "Aeropuerto Internacional Benito Juárez",
     iata: "MEX",
     countryCode: "MX"
+  },
+  johannesburgo: {
+    lat: -26.1316,
+    lng: 28.2295,
+    name: "O.R. Tambo International Airport",
+    iata: "JNB",
+    countryCode: "ZA"
   },
   ciudad_de_panama: {
     lat: 9.0713,

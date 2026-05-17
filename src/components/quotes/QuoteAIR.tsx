@@ -68,6 +68,7 @@ import {
   type CountryAirport,
 } from "./Handlers/Air/ExpandedRoutesAir";
 import NearbyAirportSelector from "./NearbySelector/NearbyAirportSelector";
+import AirportSelectorAIR from "./AirportSelectorAIR";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   SIMULATION_MISSING_VALUE,
@@ -4608,51 +4609,32 @@ function QuoteAPITester({
                   <div className="mb-4">
                     <div className="row g-3 mb-4">
                       <div className="col-md-6">
-                        <label className="qa-label">
-                          {t("QuoteAIR.Origen")}
-                        </label>
-                        <Select
+                        <AirportSelectorAIR
+                          id="air-origin-recurrente"
+                          label={t("QuoteAIR.Origen")}
+                          icon="bi-airplane-fill"
                           value={originSeleccionado}
                           onChange={handleOriginRecurrenteChange}
                           options={opcionesOrigin}
-                          placeholder={t("QuoteAIR.seleccionaorigen")}
-                          isClearable
-                          classNamePrefix="qa-react-select"
-                          menuPlacement="top"
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              borderColor: "#e0e0e0",
-                              boxShadow: "none",
-                              "&:hover": { borderColor: "#b0b0b0" },
-                            }),
-                          }}
+                          placeholder="Ingresa Aeropuerto o Código IATA"
+                          menuPlacement="bottom"
                         />
                       </div>
                       <div className="col-md-6">
-                        <label className="qa-label">
-                          {t("QuoteAIR.Destino")}
-                        </label>
-                        <Select
+                        <AirportSelectorAIR
+                          id="air-dest-recurrente"
+                          label={t("QuoteAIR.Destino")}
+                          icon="bi-geo-alt"
                           value={destinationSeleccionado}
                           onChange={setDestinationSeleccionado}
                           options={opcionesDestination}
                           placeholder={
                             originSeleccionado
-                              ? t("QuoteAIR.seleccionadestino")
-                              : t("QuoteAIR.seleccionaprimerorigen")
+                              ? "Ingresa Aeropuerto o Código IATA"
+                              : "Selecciona primero el origen"
                           }
-                          isClearable
                           isDisabled={!originSeleccionado}
-                          menuPlacement="top"
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              borderColor: "#e0e0e0",
-                              boxShadow: "none",
-                              "&:hover": { borderColor: "#b0b0b0" },
-                            }),
-                          }}
+                          menuPlacement="bottom"
                         />
                       </div>
                     </div>
@@ -5011,51 +4993,32 @@ function QuoteAPITester({
                   <div>
                     <div className="row g-3 mb-4">
                       <div className="col-md-6">
-                        <label className="qa-label">
-                          {t("QuoteAIR.Origen")}
-                        </label>
-                        <Select
+                        <AirportSelectorAIR
+                          id="air-origin-nr"
+                          label={t("QuoteAIR.Origen")}
+                          icon="bi-airplane-fill"
                           value={originNR}
                           onChange={handleOriginNRChange}
                           options={opcionesOrigin_NR}
-                          placeholder={t("QuoteAIR.seleccionaorigen")}
-                          isClearable
-                          classNamePrefix="qa-react-select"
-                          menuPlacement="top"
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              borderColor: "#e0e0e0",
-                              boxShadow: "none",
-                              "&:hover": { borderColor: "#b0b0b0" },
-                            }),
-                          }}
+                          placeholder="Ingresa Aeropuerto o Código IATA"
+                          menuPlacement="bottom"
                         />
                       </div>
                       <div className="col-md-6">
-                        <label className="qa-label">
-                          {t("QuoteAIR.Destino")}
-                        </label>
-                        <Select
+                        <AirportSelectorAIR
+                          id="air-dest-nr"
+                          label={t("QuoteAIR.Destino")}
+                          icon="bi-geo-alt"
                           value={destNR}
                           onChange={handleDestNRChange}
                           options={opcionesDest_NR}
                           placeholder={
                             originNR
-                              ? t("QuoteAIR.seleccionadestino")
-                              : t("QuoteAIR.seleccionaprimerorigen")
+                              ? "Ingresa Aeropuerto o Código IATA"
+                              : "Selecciona primero el origen"
                           }
-                          isClearable
                           isDisabled={!originNR}
-                          menuPlacement="top"
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              borderColor: "#e0e0e0",
-                              boxShadow: "none",
-                              "&:hover": { borderColor: "#b0b0b0" },
-                            }),
-                          }}
+                          menuPlacement="bottom"
                         />
                       </div>
                     </div>

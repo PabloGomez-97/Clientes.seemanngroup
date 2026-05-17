@@ -615,7 +615,7 @@ export const portCoordinates: Record<string, PortCoords> = {
   // ==========================================
   paita: { lat: -5.0866, lng: -81.1122, name: "Puerto de Paita", unlocode: "PEPAI" },
   palembang: { lat: -2.9966, lng: 104.7666, name: "Port of Palembang", unlocode: "IDPLM" },
-  panama_city_balboa: { lat: 8.9511, lng: -79.5666, name: "Port of Balboa", unlocode: "PABLB" },
+  balboa: { lat: 8.9511, lng: -79.5666, name: "Port of Balboa", unlocode: "PABLB" },
   panjang: { lat: -5.4666, lng: 105.3222, name: "Port of Panjang", unlocode: "IDPNJ" },
   paris: { lat: 48.9166, lng: 2.3022, name: "Port of Paris (Gennevilliers)", unlocode: "FRPAR" },
   pecem: { lat: -3.5411, lng: -38.8022, name: "Porto de Pecém", unlocode: "BRPEC" },

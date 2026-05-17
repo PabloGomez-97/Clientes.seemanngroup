@@ -53,6 +53,7 @@ import {
   type CountryPort,
 } from "./Handlers/FCL/ExpandedRoutesFcl";
 import NearbyPortSelectorFCL from "./NearbySelector/NearbyPortSelectorFCL";
+import PortSelectorFCL from "./PortSelectorFCL";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import {
   SIMULATION_MISSING_VALUE,
@@ -2765,70 +2766,33 @@ function QuoteFCL({
                     <div className="mb-4">
                       <div className="row g-3 mb-4">
                         <div className="col-md-6">
-                          <label className="qf-label">
-                            Puerto de Origen (POL)
-                          </label>
-                          <Select
+                          <PortSelectorFCL
+                            id="fcl-pol-recurrente"
+                            label="Puerto de Origen (POL)"
+                            icon="bi-send"
                             value={polSeleccionado}
                             onChange={handlePolRecurrenteChange}
                             options={opcionesPOL}
-                            placeholder="Selecciona puerto de origen..."
-                            isClearable
-                            menuPlacement="top"
-                            styles={{
-                              control: (base) => ({
-                                ...base,
-                                borderColor: "var(--qf-border-color)",
-                                "&:hover": { borderColor: "var(--qf-primary)" },
-                                boxShadow: "none",
-                              }),
-                              option: (base, state) => ({
-                                ...base,
-                                backgroundColor: state.isSelected
-                                  ? "var(--qf-primary)"
-                                  : state.isFocused
-                                    ? "var(--qf-bg-light)"
-                                    : "white",
-                              }),
-                            }}
+                            placeholder="Escribe ciudad, país o código UNLOCODE..."
+                            menuPlacement="bottom"
                           />
                         </div>
 
                         <div className="col-md-6">
-                          <label className="qf-label">
-                            Puerto de Destino (POD)
-                          </label>
-                          <Select
+                          <PortSelectorFCL
+                            id="fcl-pod-recurrente"
+                            label="Puerto de Destino (POD)"
+                            icon="bi-geo-alt"
                             value={podSeleccionado}
                             onChange={setPodSeleccionado}
                             options={opcionesPOD}
                             placeholder={
                               polSeleccionado
-                                ? "Selecciona puerto de destino..."
-                                : "Selecciona origen primero"
+                                ? "Escribe ciudad, país o código UNLOCODE..."
+                                : "Selecciona primero el origen"
                             }
-                            isClearable
                             isDisabled={!polSeleccionado}
-                            menuPlacement="top"
-                            styles={{
-                              control: (base) => ({
-                                ...base,
-                                borderColor: "var(--qf-border-color)",
-                                "&:hover": { borderColor: "var(--qf-primary)" },
-                                backgroundColor: !polSeleccionado
-                                  ? "var(--qf-bg-light)"
-                                  : "white",
-                                boxShadow: "none",
-                              }),
-                              option: (base, state) => ({
-                                ...base,
-                                backgroundColor: state.isSelected
-                                  ? "var(--qf-primary)"
-                                  : state.isFocused
-                                    ? "var(--qf-bg-light)"
-                                    : "white",
-                              }),
-                            }}
+                            menuPlacement="bottom"
                           />
                         </div>
                       </div>
@@ -3182,70 +3146,33 @@ function QuoteFCL({
                     <div>
                       <div className="row g-3 mb-4">
                         <div className="col-md-6">
-                          <label className="qf-label">
-                            Puerto de Origen (POL)
-                          </label>
-                          <Select
+                          <PortSelectorFCL
+                            id="fcl-pol-nr"
+                            label="Puerto de Origen (POL)"
+                            icon="bi-send"
                             value={polNR}
                             onChange={handlePolNRChange}
                             options={opcionesPOL_NR}
-                            placeholder="Selecciona puerto de origen..."
-                            isClearable
-                            menuPlacement="top"
-                            styles={{
-                              control: (base) => ({
-                                ...base,
-                                borderColor: "var(--qf-border-color)",
-                                "&:hover": { borderColor: "var(--qf-primary)" },
-                                boxShadow: "none",
-                              }),
-                              option: (base, state) => ({
-                                ...base,
-                                backgroundColor: state.isSelected
-                                  ? "var(--qf-primary)"
-                                  : state.isFocused
-                                    ? "var(--qf-bg-light)"
-                                    : "white",
-                              }),
-                            }}
+                            placeholder="Escribe ciudad, país o código UNLOCODE..."
+                            menuPlacement="bottom"
                           />
                         </div>
 
                         <div className="col-md-6">
-                          <label className="qf-label">
-                            Puerto de Destino (POD)
-                          </label>
-                          <Select
+                          <PortSelectorFCL
+                            id="fcl-pod-nr"
+                            label="Puerto de Destino (POD)"
+                            icon="bi-geo-alt"
                             value={podNR}
                             onChange={handlePodNRChange}
                             options={opcionesPOD_NR}
                             placeholder={
                               polNR
-                                ? "Selecciona puerto de destino..."
-                                : "Selecciona origen primero"
+                                ? "Escribe ciudad, país o código UNLOCODE..."
+                                : "Selecciona primero el origen"
                             }
-                            isClearable
-                            menuPlacement="top"
                             isDisabled={!polNR}
-                            styles={{
-                              control: (base) => ({
-                                ...base,
-                                borderColor: "var(--qf-border-color)",
-                                "&:hover": { borderColor: "var(--qf-primary)" },
-                                backgroundColor: !polNR
-                                  ? "var(--qf-bg-light)"
-                                  : "white",
-                                boxShadow: "none",
-                              }),
-                              option: (base, state) => ({
-                                ...base,
-                                backgroundColor: state.isSelected
-                                  ? "var(--qf-primary)"
-                                  : state.isFocused
-                                    ? "var(--qf-bg-light)"
-                                    : "white",
-                              }),
-                            }}
+                            menuPlacement="bottom"
                           />
                         </div>
                       </div>

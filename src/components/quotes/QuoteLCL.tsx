@@ -60,6 +60,7 @@ import {
   type CountryPort,
 } from "./Handlers/LCL/ExpandedRoutesLcl";
 import NearbyPortSelectorLCL from "./NearbySelector/NearbyPortSelectorLCL.tsx";
+import PortSelectorFCL from "./PortSelectorFCL";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import {
   SIMULATION_MISSING_VALUE,
@@ -3335,51 +3336,33 @@ function QuoteLCL({
                   <div className="mb-4">
                     <div className="row g-3 mb-4">
                       <div className="col-md-6">
-                        <label className="qa-label">
-                          {t("Quotelcl.puertoorigen")}
-                        </label>
-                        <Select
+                        <PortSelectorFCL
+                          id="lcl-pol-recurrente"
+                          label={t("Quotelcl.puertoorigen")}
+                          icon="bi-send"
                           value={polSeleccionado}
                           onChange={handlePolRecurrenteChange}
                           options={opcionesPOL}
-                          placeholder={t("Quotelcl.selectpuerto")}
-                          isClearable
-                          menuPlacement="top"
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              borderColor: "#e0e0e0",
-                              boxShadow: "none",
-                              "&:hover": { borderColor: "#b0b0b0" },
-                            }),
-                          }}
+                          placeholder="Escribe ciudad, país o código UNLOCODE..."
+                          menuPlacement="bottom"
                         />
                       </div>
 
                       <div className="col-md-6">
-                        <label className="qa-label">
-                          {t("Quotelcl.puertodest")}
-                        </label>
-                        <Select
+                        <PortSelectorFCL
+                          id="lcl-pod-recurrente"
+                          label={t("Quotelcl.puertodest")}
+                          icon="bi-geo-alt"
                           value={podSeleccionado}
                           onChange={setPodSeleccionado}
                           options={opcionesPOD}
                           placeholder={
                             polSeleccionado
-                              ? t("Quotelcl.selectdest")
-                              : t("Quotelcl.primeropol")
+                              ? "Escribe ciudad, país o código UNLOCODE..."
+                              : "Selecciona primero el origen"
                           }
-                          isClearable
-                          menuPlacement="top"
                           isDisabled={!polSeleccionado}
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              borderColor: "#e0e0e0",
-                              boxShadow: "none",
-                              "&:hover": { borderColor: "#b0b0b0" },
-                            }),
-                          }}
+                          menuPlacement="bottom"
                         />
                       </div>
                     </div>
@@ -3684,51 +3667,33 @@ function QuoteLCL({
                   <div>
                     <div className="row g-3 mb-4">
                       <div className="col-md-6">
-                        <label className="qa-label">
-                          {t("Quotelcl.puertoorigen")}
-                        </label>
-                        <Select
+                        <PortSelectorFCL
+                          id="lcl-pol-nr"
+                          label={t("Quotelcl.puertoorigen")}
+                          icon="bi-send"
                           value={polNR}
                           onChange={handlePolNRChange}
                           options={opcionesPOL_NR}
-                          placeholder={t("Quotelcl.selectpuerto")}
-                          isClearable
-                          menuPlacement="top"
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              borderColor: "#e0e0e0",
-                              boxShadow: "none",
-                              "&:hover": { borderColor: "#b0b0b0" },
-                            }),
-                          }}
+                          placeholder="Escribe ciudad, país o código UNLOCODE..."
+                          menuPlacement="bottom"
                         />
                       </div>
 
                       <div className="col-md-6">
-                        <label className="qa-label">
-                          {t("Quotelcl.puertodest")}
-                        </label>
-                        <Select
+                        <PortSelectorFCL
+                          id="lcl-pod-nr"
+                          label={t("Quotelcl.puertodest")}
+                          icon="bi-geo-alt"
                           value={podNR}
                           onChange={handlePodNRChange}
                           options={opcionesPOD_NR}
                           placeholder={
                             polNR
-                              ? t("Quotelcl.selectdest")
-                              : t("Quotelcl.primeropol")
+                              ? "Escribe ciudad, país o código UNLOCODE..."
+                              : "Selecciona primero el origen"
                           }
-                          isClearable
-                          menuPlacement="top"
                           isDisabled={!polNR}
-                          styles={{
-                            control: (base) => ({
-                              ...base,
-                              borderColor: "#e0e0e0",
-                              boxShadow: "none",
-                              "&:hover": { borderColor: "#b0b0b0" },
-                            }),
-                          }}
+                          menuPlacement="bottom"
                         />
                       </div>
                     </div>
