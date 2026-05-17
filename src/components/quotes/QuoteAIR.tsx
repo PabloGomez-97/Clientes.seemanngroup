@@ -4094,7 +4094,7 @@ function QuoteAPITester({
   // ============================================================================
 
   return (
-    <div className="qa-container">
+    <>
       <div className="qa-section-header">
         <div>
           <h2 className="qa-title">{t("QuoteAIR.title")}</h2>
@@ -6580,7 +6580,7 @@ function QuoteAPITester({
           ownerUsername={isEjecutivoMode ? effectiveUsername : undefined}
         />
       )}
-    </div>
+    </>
   );
 }
 

@@ -2968,7 +2968,7 @@ function QuoteLCL({
   // ============================================================================
 
   return (
-    <div className="qa-container">
+    <>
       <div className="qa-section-header">
         <div>
           <h2 className="qa-title">{t("Quotelcl.title")}</h2>
@@ -5109,7 +5109,7 @@ function QuoteLCL({
           ownerUsername={isEjecutivoMode ? effectiveUsername : undefined}
         />
       )}
-    </div>
+    </>
   );
 }
 

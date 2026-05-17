@@ -2043,667 +2043,421 @@ function QuoteLASTMILE({
 
   return (
     <>
-      <div className="qf-container">
-        <div className="qa-section-header">
-          <div>
-            <h2 className="qa-title">Cotizador Última Milla</h2>
-            <p className="qa-subtitle">
-              Genera cotizaciones para transporte terrestre de última milla
-            </p>
+      <div className="qa-section-header">
+        <div>
+          <h2 className="qa-title">Cotizador Última Milla</h2>
+          <p className="qa-subtitle">
+            Genera cotizaciones para transporte terrestre de última milla
+          </p>
+        </div>
+      </div>
+
+      {/* Selector de cliente (modo ejecutivo) */}
+      {isEjecutivoMode && (
+        <div className="card shadow-sm mb-4 lm-client-card">
+          <div className="card-body">
+            {loadingClientes ? (
+              <div className="text-center py-3">
+                <div
+                  className="spinner-border spinner-border-sm text-primary"
+                  role="status"
+                >
+                  <span className="visually-hidden">Cargando...</span>
+                </div>
+                <span className="ms-2 text-muted">
+                  Cargando clientes asignados...
+                </span>
+              </div>
+            ) : errorClientes ? (
+              <div className="alert alert-danger mb-0">
+                <strong>Error:</strong> {errorClientes}
+              </div>
+            ) : clientesAsignados.length === 0 ? (
+              <div className="alert alert-warning mb-0">
+                <strong>Sin clientes asignados</strong>
+              </div>
+            ) : (
+              <div className="row g-3">
+                <div className="col-md-8">
+                  <label className="form-label fw-semibold">
+                    Cliente para esta cotización
+                  </label>
+                  <Select
+                    value={
+                      clienteSeleccionado
+                        ? {
+                            value: clienteSeleccionado.username,
+                            label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
+                          }
+                        : null
+                    }
+                    onChange={(option) => {
+                      const cliente = clientesAsignados.find(
+                        (c) => c.username === option?.value,
+                      );
+                      setClienteSeleccionado(cliente || null);
+                    }}
+                    options={clientesAsignados.map((c) => ({
+                      value: c.username,
+                      label: `${c.username} (${c.email})`,
+                    }))}
+                    placeholder="Selecciona un cliente..."
+                    isClearable={false}
+                  />
+                  {!clienteSeleccionado && (
+                    <small className="text-danger d-block mt-1">
+                      Debes seleccionar un cliente para continuar con la
+                      cotización.
+                    </small>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================================ */}
+      {/* SECCIÓN 1: SELECCIÓN DE SERVICIO E INCOTERM */}
+      {/* ============================================================================ */}
+      <div className="qa-card">
+        <div
+          className={`qa-card-header ${openSection === 1 ? "open" : ""}`}
+          onClick={() => setOpenSection(openSection === 1 ? 0 : 1)}
+        >
+          <div className="d-flex align-items-center">
+            <h3>
+              <i
+                className="bi bi-grid-3x2-gap me-2"
+                style={{ color: "var(--qf-primary)" }}
+              ></i>
+              Paso 1: Selecciona un Servicio
+            </h3>
+            {openSection !== 1 && step1Completed && (
+              <span
+                className="qa-badge ms-3"
+                style={{
+                  backgroundColor: "#d1e7dd",
+                  color: "#0f5132",
+                  borderColor: "transparent",
+                }}
+              >
+                <i className="bi bi-check-circle-fill me-1"></i>
+                Completado
+              </span>
+            )}
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            {openSection !== 1 && step1Completed ? (
+              <button
+                type="button"
+                className="qa-btn qa-btn-sm qa-btn-outline"
+                onClick={(e) => {
+                  setStep1Confirmed(false);
+                  setServicioSel(null);
+                  setIncotermSel(null);
+                  setValorMercaderiaDDP("");
+                  setValorSeguroDDP("");
+                  setContenedores20GP("");
+                  setContenedores40HQ("");
+                  setContenedores40NOR("");
+                  setOrigenSel(null);
+                  setDestinoSel(null);
+                  setPickupAddress("");
+                  setDeliveryAddress("");
+                  setPiecesData([createEmptyPieceLM("1")]);
+                  setOpenAccordions(["1"]);
+                  setSeguroActivo(false);
+                  setStep3Completed(false);
+                  setStep4Completed(false);
+                  setOpenSection(1);
+                }}
+              >
+                Cambiar
+              </button>
+            ) : (
+              <i
+                className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
+                style={{ color: "var(--qf-text-secondary)" }}
+              ></i>
+            )}
           </div>
         </div>
 
-        {/* Selector de cliente (modo ejecutivo) */}
-        {isEjecutivoMode && (
-          <div className="card shadow-sm mb-4 lm-client-card">
-            <div className="card-body">
-              {loadingClientes ? (
-                <div className="text-center py-3">
-                  <div
-                    className="spinner-border spinner-border-sm text-primary"
-                    role="status"
-                  >
-                    <span className="visually-hidden">Cargando...</span>
-                  </div>
-                  <span className="ms-2 text-muted">
-                    Cargando clientes asignados...
-                  </span>
-                </div>
-              ) : errorClientes ? (
-                <div className="alert alert-danger mb-0">
-                  <strong>Error:</strong> {errorClientes}
-                </div>
-              ) : clientesAsignados.length === 0 ? (
-                <div className="alert alert-warning mb-0">
-                  <strong>Sin clientes asignados</strong>
-                </div>
-              ) : (
-                <div className="row g-3">
-                  <div className="col-md-8">
-                    <label className="form-label fw-semibold">
-                      Cliente para esta cotización
-                    </label>
-                    <Select
-                      value={
-                        clienteSeleccionado
-                          ? {
-                              value: clienteSeleccionado.username,
-                              label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
-                            }
-                          : null
-                      }
-                      onChange={(option) => {
-                        const cliente = clientesAsignados.find(
-                          (c) => c.username === option?.value,
-                        );
-                        setClienteSeleccionado(cliente || null);
-                      }}
-                      options={clientesAsignados.map((c) => ({
-                        value: c.username,
-                        label: `${c.username} (${c.email})`,
-                      }))}
-                      placeholder="Selecciona un cliente..."
-                      isClearable={false}
-                    />
-                    {!clienteSeleccionado && (
-                      <small className="text-danger d-block mt-1">
-                        Debes seleccionar un cliente para continuar con la
-                        cotización.
-                      </small>
-                    )}
-                  </div>
-                </div>
-              )}
+        {openSection !== 1 && step1Completed && (
+          <div className="qa-route-summary">
+            <div className="qa-route-summary-meta">
+              <span className="qa-route-meta-pill">
+                <i className="bi bi-box-seam"></i>
+                {servicioSel}
+              </span>
+              <span className="qa-route-meta-pill">
+                <i className="bi bi-tag"></i>
+                {incotermSel === "DDP"
+                  ? "Delivered Duty Paid [DDP]"
+                  : "Delivered At Place [DAP]"}
+              </span>
             </div>
           </div>
         )}
 
-        {/* ============================================================================ */}
-        {/* SECCIÓN 1: SELECCIÓN DE SERVICIO E INCOTERM */}
-        {/* ============================================================================ */}
-        <div className="qa-card">
-          <div
-            className={`qa-card-header ${openSection === 1 ? "open" : ""}`}
-            onClick={() => setOpenSection(openSection === 1 ? 0 : 1)}
-          >
-            <div className="d-flex align-items-center">
-              <h3>
-                <i
-                  className="bi bi-grid-3x2-gap me-2"
-                  style={{ color: "var(--qf-primary)" }}
-                ></i>
-                Paso 1: Selecciona un Servicio
-              </h3>
-              {openSection !== 1 && step1Completed && (
-                <span
-                  className="qa-badge ms-3"
-                  style={{
-                    backgroundColor: "#d1e7dd",
-                    color: "#0f5132",
-                    borderColor: "transparent",
-                  }}
-                >
-                  <i className="bi bi-check-circle-fill me-1"></i>
-                  Completado
-                </span>
-              )}
-            </div>
-            <div className="d-flex align-items-center gap-2">
-              {openSection !== 1 && step1Completed ? (
+        {openSection === 1 && (
+          <div>
+            {/* Grid de servicios */}
+            <p className="qa-text-muted mb-3" style={{ fontSize: "0.88rem" }}>
+              Selecciona el tipo de servicio para tu carga de Última Milla.
+            </p>
+            <div className="lm-service-grid">
+              {(["FCL", "AÉREO", "LCL"] as const).map((s) => (
                 <button
+                  key={s}
                   type="button"
-                  className="qa-btn qa-btn-sm qa-btn-outline"
-                  onClick={(e) => {
-                    setStep1Confirmed(false);
-                    setServicioSel(null);
+                  className={`lm-service-card${servicioSel === s ? " lm-service-card--selected" : ""}`}
+                  onClick={() => {
+                    setServicioSel(s);
                     setIncotermSel(null);
                     setValorMercaderiaDDP("");
                     setValorSeguroDDP("");
                     setContenedores20GP("");
                     setContenedores40HQ("");
                     setContenedores40NOR("");
-                    setOrigenSel(null);
-                    setDestinoSel(null);
-                    setPickupAddress("");
-                    setDeliveryAddress("");
-                    setPiecesData([createEmptyPieceLM("1")]);
-                    setOpenAccordions(["1"]);
-                    setSeguroActivo(false);
-                    setStep3Completed(false);
-                    setStep4Completed(false);
-                    setOpenSection(1);
+                    setStep1Confirmed(false);
                   }}
                 >
-                  Cambiar
+                  <span className="lm-service-card__label">Servicio</span>
+                  <span className="lm-service-card__value">{s}</span>
+                  <span className="lm-service-card__sub">
+                    {s === "FCL" && "Full Container Load"}
+                    {s === "AÉREO" && "Carga Aérea"}
+                    {s === "LCL" && "Less Container Load"}
+                  </span>
                 </button>
-              ) : (
-                <i
-                  className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
-                  style={{ color: "var(--qf-text-secondary)" }}
-                ></i>
-              )}
+              ))}
             </div>
-          </div>
 
-          {openSection !== 1 && step1Completed && (
-            <div className="qa-route-summary">
-              <div className="qa-route-summary-meta">
-                <span className="qa-route-meta-pill">
-                  <i className="bi bi-box-seam"></i>
-                  {servicioSel}
-                </span>
-                <span className="qa-route-meta-pill">
-                  <i className="bi bi-tag"></i>
-                  {incotermSel === "DDP"
-                    ? "Delivered Duty Paid [DDP]"
-                    : "Delivered At Place [DAP]"}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {openSection === 1 && (
-            <div>
-              {/* Grid de servicios */}
-              <p className="qa-text-muted mb-3" style={{ fontSize: "0.88rem" }}>
-                Selecciona el tipo de servicio para tu carga de Última Milla.
-              </p>
-              <div className="lm-service-grid">
-                {(["FCL", "AÉREO", "LCL"] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`lm-service-card${servicioSel === s ? " lm-service-card--selected" : ""}`}
-                    onClick={() => {
-                      setServicioSel(s);
-                      setIncotermSel(null);
-                      setValorMercaderiaDDP("");
-                      setValorSeguroDDP("");
-                      setContenedores20GP("");
-                      setContenedores40HQ("");
-                      setContenedores40NOR("");
-                      setStep1Confirmed(false);
-                    }}
-                  >
-                    <span className="lm-service-card__label">Servicio</span>
-                    <span className="lm-service-card__value">{s}</span>
-                    <span className="lm-service-card__sub">
-                      {s === "FCL" && "Full Container Load"}
-                      {s === "AÉREO" && "Carga Aérea"}
-                      {s === "LCL" && "Less Container Load"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Grid de incoterms (se muestra tras elegir servicio) */}
-              {servicioSel && (
-                <div className="mt-4">
-                  <p
-                    className="qa-text-muted mb-3"
-                    style={{ fontSize: "0.88rem" }}
-                  >
-                    Selecciona el incoterm de entrega.
-                  </p>
-                  <div className="lm-service-grid lm-service-grid--2col">
-                    {(["DDP", "DAP"] as const).map((inc) => (
-                      <button
-                        key={inc}
-                        type="button"
-                        className={`lm-service-card${incotermSel === inc ? " lm-service-card--selected" : ""}`}
-                        onClick={() => {
-                          setIncotermSel(inc);
-                          // Siempre reseteamos la confirmación al cambiar
-                          // incoterm; si no necesita input extra, se confirma
-                          // automáticamente en el setTimeout.
-                          setStep1Confirmed(false);
-                          // Combinaciones que requieren input adicional en
-                          // el Paso 1 antes de avanzar:
-                          //  - LCL + DDP: valor de la mercadería
-                          //  - FCL + DAP: cantidad de contenedores
-                          //  - FCL + DDP: contenedores + valor de la mercadería
-                          const willBeLclDdp =
-                            servicioSel === "LCL" && inc === "DDP";
-                          const willBeFclDap =
-                            servicioSel === "FCL" && inc === "DAP";
-                          const willBeFclDdp =
-                            servicioSel === "FCL" && inc === "DDP";
-                          const willBeAereoDdp =
-                            servicioSel === "AÉREO" && inc === "DDP";
-                          if (
-                            !willBeLclDdp &&
-                            !willBeFclDap &&
-                            !willBeFclDdp &&
-                            !willBeAereoDdp
-                          ) {
-                            setTimeout(() => {
-                              setStep1Confirmed(true);
-                              setOpenSection(2);
-                              trackStep({
-                                step: "route_selection",
-                                stepNumber: 2,
-                                totalSteps: 5,
-                              });
-                            }, 250);
-                          }
-                        }}
-                      >
-                        <span className="lm-service-card__label">Incoterm</span>
-                        <span className="lm-service-card__value">{inc}</span>
-                        <span className="lm-service-card__sub">
-                          {inc === "DDP" && "Delivered Duty Paid"}
-                          {inc === "DAP" && "Delivered At Place"}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <hr />
-
-                  {/* Card obligatoria: Aduana / Valor mercadería para LCL+DDP y FCL+DDP */}
-                  {needsAduanaCard && (
-                    <div
-                      className="mt-4"
-                      style={{
-                        background: "#fff",
-                        border: "1px solid #e8eaed",
-                        borderRadius: 8,
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-                        overflow: "hidden",
+            {/* Grid de incoterms (se muestra tras elegir servicio) */}
+            {servicioSel && (
+              <div className="mt-4">
+                <p
+                  className="qa-text-muted mb-3"
+                  style={{ fontSize: "0.88rem" }}
+                >
+                  Selecciona el incoterm de entrega.
+                </p>
+                <div className="lm-service-grid lm-service-grid--2col">
+                  {(["DDP", "DAP"] as const).map((inc) => (
+                    <button
+                      key={inc}
+                      type="button"
+                      className={`lm-service-card${incotermSel === inc ? " lm-service-card--selected" : ""}`}
+                      onClick={() => {
+                        setIncotermSel(inc);
+                        // Siempre reseteamos la confirmación al cambiar
+                        // incoterm; si no necesita input extra, se confirma
+                        // automáticamente en el setTimeout.
+                        setStep1Confirmed(false);
+                        // Combinaciones que requieren input adicional en
+                        // el Paso 1 antes de avanzar:
+                        //  - LCL + DDP: valor de la mercadería
+                        //  - FCL + DAP: cantidad de contenedores
+                        //  - FCL + DDP: contenedores + valor de la mercadería
+                        const willBeLclDdp =
+                          servicioSel === "LCL" && inc === "DDP";
+                        const willBeFclDap =
+                          servicioSel === "FCL" && inc === "DAP";
+                        const willBeFclDdp =
+                          servicioSel === "FCL" && inc === "DDP";
+                        const willBeAereoDdp =
+                          servicioSel === "AÉREO" && inc === "DDP";
+                        if (
+                          !willBeLclDdp &&
+                          !willBeFclDap &&
+                          !willBeFclDdp &&
+                          !willBeAereoDdp
+                        ) {
+                          setTimeout(() => {
+                            setStep1Confirmed(true);
+                            setOpenSection(2);
+                            trackStep({
+                              step: "route_selection",
+                              stepNumber: 2,
+                              totalSteps: 5,
+                            });
+                          }, 250);
+                        }
                       }}
                     >
-                      {/* Header */}
-                      <div
+                      <span className="lm-service-card__label">Incoterm</span>
+                      <span className="lm-service-card__value">{inc}</span>
+                      <span className="lm-service-card__sub">
+                        {inc === "DDP" && "Delivered Duty Paid"}
+                        {inc === "DAP" && "Delivered At Place"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <hr />
+
+                {/* Card obligatoria: Aduana / Valor mercadería para LCL+DDP y FCL+DDP */}
+                {needsAduanaCard && (
+                  <div
+                    className="mt-4"
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e8eaed",
+                      borderRadius: 8,
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Header */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.875rem 1.25rem",
+                        borderBottom: "1px solid #f1f3f4",
+                      }}
+                    >
+                      <i
+                        className="bi bi-shield-check"
+                        style={{ fontSize: "0.9375rem", color: "#ff6200" }}
+                      ></i>
+                      <span
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.5rem",
-                          padding: "0.875rem 1.25rem",
-                          borderBottom: "1px solid #f1f3f4",
+                          fontSize: "0.875rem",
+                          fontWeight: 600,
+                          color: "#1a1a1a",
+                          letterSpacing: "-0.01em",
                         }}
                       >
-                        <i
-                          className="bi bi-shield-check"
-                          style={{ fontSize: "0.9375rem", color: "#ff6200" }}
-                        ></i>
-                        <span
-                          style={{
-                            fontSize: "0.875rem",
-                            fontWeight: 600,
-                            color: "#1a1a1a",
-                            letterSpacing: "-0.01em",
-                          }}
-                        >
-                          Información Aduanera
-                        </span>
-                        <span
-                          style={{
-                            marginLeft: "auto",
-                            fontSize: "0.6875rem",
-                            fontWeight: 600,
-                            letterSpacing: "0.05em",
-                            textTransform: "uppercase",
-                            color: "#ff6200",
-                            background: "rgba(255,98,0,0.08)",
-                            padding: "2px 8px",
-                            borderRadius: 4,
-                            flexShrink: 0,
-                          }}
-                        >
-                          Obligatorio
-                        </span>
-                      </div>
-                      {/* Body */}
-                      <div style={{ padding: "1.125rem 1.25rem" }}>
-                        <p
-                          style={{
-                            fontSize: "0.8125rem",
-                            color: "#6c757d",
-                            marginBottom: "1rem",
-                            lineHeight: 1.55,
-                          }}
-                        >
-                          Como seleccionaste{" "}
-                          <strong style={{ color: "#374151" }}>DDP</strong>{" "}
-                          (Delivered Duty Paid), necesitamos el valor de tu
-                          mercadería y el del seguro. Si no ingresas el seguro,
-                          se usará el seguro teórico.
-                        </p>
-                        <div className="row g-3">
-                          <div className="col-md-6">
-                            <label
-                              style={{
-                                display: "block",
-                                fontSize: "0.8125rem",
-                                fontWeight: 500,
-                                color: "#374151",
-                                marginBottom: "0.375rem",
-                              }}
-                            >
-                              Valor de la mercadería (USD){" "}
-                              <span style={{ color: "#dc3545" }}>*</span>
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              className="form-control"
-                              style={{
-                                border: "1px solid #dadce0",
-                                borderRadius: 6,
-                                fontSize: "0.875rem",
-                                padding: "0.5rem 0.75rem",
-                                boxShadow: "none",
-                              }}
-                              placeholder="0.00"
-                              value={valorMercaderiaDDP}
-                              onChange={(e) =>
-                                setValorMercaderiaDDP(e.target.value)
-                              }
-                            />
-                          </div>
-                          <div className="col-md-6">
-                            <label
-                              style={{
-                                display: "block",
-                                fontSize: "0.8125rem",
-                                fontWeight: 500,
-                                color: "#374151",
-                                marginBottom: "0.375rem",
-                              }}
-                            >
-                              Valor del seguro (USD){" "}
-                              <span
-                                style={{
-                                  fontSize: "0.75rem",
-                                  color: "#9ca3af",
-                                  fontWeight: 400,
-                                }}
-                              >
-                                — opcional
-                              </span>
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              className="form-control"
-                              style={{
-                                border: "1px solid #dadce0",
-                                borderRadius: 6,
-                                fontSize: "0.875rem",
-                                padding: "0.5rem 0.75rem",
-                                boxShadow: "none",
-                              }}
-                              placeholder="0.00"
-                              value={valorSeguroDDP}
-                              onChange={(e) =>
-                                setValorSeguroDDP(e.target.value)
-                              }
-                            />
-                          </div>
+                        Información Aduanera
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: "0.6875rem",
+                          fontWeight: 600,
+                          letterSpacing: "0.05em",
+                          textTransform: "uppercase",
+                          color: "#ff6200",
+                          background: "rgba(255,98,0,0.08)",
+                          padding: "2px 8px",
+                          borderRadius: 4,
+                          flexShrink: 0,
+                        }}
+                      >
+                        Obligatorio
+                      </span>
+                    </div>
+                    {/* Body */}
+                    <div style={{ padding: "1.125rem 1.25rem" }}>
+                      <p
+                        style={{
+                          fontSize: "0.8125rem",
+                          color: "#6c757d",
+                          marginBottom: "1rem",
+                          lineHeight: 1.55,
+                        }}
+                      >
+                        Como seleccionaste{" "}
+                        <strong style={{ color: "#374151" }}>DDP</strong>{" "}
+                        (Delivered Duty Paid), necesitamos el valor de tu
+                        mercadería y el del seguro. Si no ingresas el seguro, se
+                        usará el seguro teórico.
+                      </p>
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "0.8125rem",
+                              fontWeight: 500,
+                              color: "#374151",
+                              marginBottom: "0.375rem",
+                            }}
+                          >
+                            Valor de la mercadería (USD){" "}
+                            <span style={{ color: "#dc3545" }}>*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="form-control"
+                            style={{
+                              border: "1px solid #dadce0",
+                              borderRadius: 6,
+                              fontSize: "0.875rem",
+                              padding: "0.5rem 0.75rem",
+                              boxShadow: "none",
+                            }}
+                            placeholder="0.00"
+                            value={valorMercaderiaDDP}
+                            onChange={(e) =>
+                              setValorMercaderiaDDP(e.target.value)
+                            }
+                          />
                         </div>
+                        <div className="col-md-6">
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "0.8125rem",
+                              fontWeight: 500,
+                              color: "#374151",
+                              marginBottom: "0.375rem",
+                            }}
+                          >
+                            Valor del seguro (USD){" "}
+                            <span
+                              style={{
+                                fontSize: "0.75rem",
+                                color: "#9ca3af",
+                                fontWeight: 400,
+                              }}
+                            >
+                              — opcional
+                            </span>
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="form-control"
+                            style={{
+                              border: "1px solid #dadce0",
+                              borderRadius: 6,
+                              fontSize: "0.875rem",
+                              padding: "0.5rem 0.75rem",
+                              boxShadow: "none",
+                            }}
+                            placeholder="0.00"
+                            value={valorSeguroDDP}
+                            onChange={(e) => setValorSeguroDDP(e.target.value)}
+                          />
+                        </div>
+                      </div>
 
-                        {/* El botón Continuar al Paso 2 solo se muestra acá
+                      {/* El botón Continuar al Paso 2 solo se muestra acá
                             si NO hay además card de contenedores (LCL+DDP).
                             Para FCL+DDP el botón vive en la card de contenedores
                             y valida ambas entradas. */}
-                        {!needsContenedoresCard && (
-                          <div
-                            style={{
-                              marginTop: "1rem",
-                              paddingTop: "0.875rem",
-                              borderTop: "1px solid #f1f3f4",
-                              display: "flex",
-                              justifyContent: "flex-end",
-                            }}
-                          >
-                            <button
-                              type="button"
-                              className="qf-btn qf-btn-primary"
-                              disabled={valorMercaderiaDDPNum <= 0}
-                              onClick={() => {
-                                setStep1Confirmed(true);
-                                setOpenSection(2);
-                                trackStep({
-                                  step: "route_selection",
-                                  stepNumber: 2,
-                                  totalSteps: 5,
-                                });
-                              }}
-                            >
-                              Continuar al Paso 2
-                              <i className="bi bi-arrow-right ms-2"></i>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Card obligatoria: Cantidad de contenedores para FCL+DAP y FCL+DDP */}
-                  {needsContenedoresCard && (
-                    <div
-                      className="mt-4"
-                      style={{
-                        background: "#fff",
-                        border: "1px solid #e8eaed",
-                        borderRadius: 8,
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {/* Header */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.5rem",
-                          padding: "0.875rem 1.25rem",
-                          borderBottom: "1px solid #f1f3f4",
-                        }}
-                      >
-                        <i
-                          className="bi bi-box-seam"
-                          style={{ fontSize: "0.9375rem", color: "#ff6200" }}
-                        ></i>
-                        <span
-                          style={{
-                            fontSize: "0.875rem",
-                            fontWeight: 600,
-                            color: "#1a1a1a",
-                            letterSpacing: "-0.01em",
-                          }}
-                        >
-                          Cantidad de contenedores
-                        </span>
-                        <span
-                          style={{
-                            marginLeft: "auto",
-                            fontSize: "0.6875rem",
-                            fontWeight: 600,
-                            letterSpacing: "0.05em",
-                            textTransform: "uppercase",
-                            color: "#ff6200",
-                            background: "rgba(255,98,0,0.08)",
-                            padding: "2px 8px",
-                            borderRadius: 4,
-                            flexShrink: 0,
-                          }}
-                        >
-                          Obligatorio
-                        </span>
-                      </div>
-                      {/* Body */}
-                      <div style={{ padding: "1.125rem 1.25rem" }}>
-                        <p
-                          style={{
-                            fontSize: "0.8125rem",
-                            color: "#6c757d",
-                            marginBottom: "1rem",
-                            lineHeight: 1.55,
-                          }}
-                        >
-                          Indica cuántos contenedores trae tu carga. Esta
-                          información determina los cobros variables (Transporte
-                          Terrestre y DTHC). Solo se aceptan números enteros.
-                        </p>
-                        <div className="row g-3">
-                          <div className="col-md-4">
-                            <label
-                              style={{
-                                display: "block",
-                                fontSize: "0.8125rem",
-                                fontWeight: 500,
-                                color: "#374151",
-                                marginBottom: "0.375rem",
-                              }}
-                            >
-                              Contenedores 20GP
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              className="form-control"
-                              style={{
-                                border: "1px solid #dadce0",
-                                borderRadius: 6,
-                                fontSize: "0.875rem",
-                                padding: "0.5rem 0.75rem",
-                                boxShadow: "none",
-                              }}
-                              placeholder="0"
-                              value={contenedores20GP}
-                              onChange={handleContenedorChange(
-                                setContenedores20GP,
-                              )}
-                              onKeyDown={(e) => {
-                                if (
-                                  e.key === "." ||
-                                  e.key === "," ||
-                                  e.key === "-" ||
-                                  e.key === "e" ||
-                                  e.key === "+"
-                                ) {
-                                  e.preventDefault();
-                                }
-                              }}
-                            />
-                          </div>
-                          <div className="col-md-4">
-                            <label
-                              style={{
-                                display: "block",
-                                fontSize: "0.8125rem",
-                                fontWeight: 500,
-                                color: "#374151",
-                                marginBottom: "0.375rem",
-                              }}
-                            >
-                              Contenedores 40HQ
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              className="form-control"
-                              style={{
-                                border: "1px solid #dadce0",
-                                borderRadius: 6,
-                                fontSize: "0.875rem",
-                                padding: "0.5rem 0.75rem",
-                                boxShadow: "none",
-                              }}
-                              placeholder="0"
-                              value={contenedores40HQ}
-                              onChange={handleContenedorChange(
-                                setContenedores40HQ,
-                              )}
-                              onKeyDown={(e) => {
-                                if (
-                                  e.key === "." ||
-                                  e.key === "," ||
-                                  e.key === "-" ||
-                                  e.key === "e" ||
-                                  e.key === "+"
-                                ) {
-                                  e.preventDefault();
-                                }
-                              }}
-                            />
-                          </div>
-                          <div className="col-md-4">
-                            <label
-                              style={{
-                                display: "block",
-                                fontSize: "0.8125rem",
-                                fontWeight: 500,
-                                color: "#374151",
-                                marginBottom: "0.375rem",
-                              }}
-                            >
-                              Contenedores 40NOR
-                            </label>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              className="form-control"
-                              style={{
-                                border: "1px solid #dadce0",
-                                borderRadius: 6,
-                                fontSize: "0.875rem",
-                                padding: "0.5rem 0.75rem",
-                                boxShadow: "none",
-                              }}
-                              placeholder="0"
-                              value={contenedores40NOR}
-                              onChange={handleContenedorChange(
-                                setContenedores40NOR,
-                              )}
-                              onKeyDown={(e) => {
-                                if (
-                                  e.key === "." ||
-                                  e.key === "," ||
-                                  e.key === "-" ||
-                                  e.key === "e" ||
-                                  e.key === "+"
-                                ) {
-                                  e.preventDefault();
-                                }
-                              }}
-                            />
-                          </div>
-                        </div>
-
+                      {!needsContenedoresCard && (
                         <div
                           style={{
                             marginTop: "1rem",
                             paddingTop: "0.875rem",
                             borderTop: "1px solid #f1f3f4",
                             display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
+                            justifyContent: "flex-end",
                           }}
                         >
-                          <span
-                            style={{ fontSize: "0.8125rem", color: "#6c757d" }}
-                          >
-                            Total{" "}
-                            <strong style={{ color: "#1a1a1a" }}>
-                              {totalContenedores}
-                            </strong>{" "}
-                            {totalContenedores === 1
-                              ? "contenedor"
-                              : "contenedores"}
-                          </span>
                           <button
                             type="button"
                             className="qf-btn qf-btn-primary"
-                            disabled={
-                              totalContenedores <= 0 ||
-                              (needsAduanaCard && valorMercaderiaDDPNum <= 0)
-                            }
+                            disabled={valorMercaderiaDDPNum <= 0}
                             onClick={() => {
                               setStep1Confirmed(true);
                               setOpenSection(2);
@@ -2718,207 +2472,249 @@ function QuoteLASTMILE({
                             <i className="bi bi-arrow-right ms-2"></i>
                           </button>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ============================================================================ */}
-        {/* SECCIÓN 2: SELECCIÓN DE RUTA */}
-        {/* ============================================================================ */}
-        {step1Confirmed && (
-          <div className="qa-card" ref={section2Ref}>
-            <div
-              className={`qa-card-header ${openSection === 2 ? "open" : ""}`}
-              onClick={() => handleSectionToggle(2)}
-            >
-              <div className="d-flex align-items-center">
-                <h3>
-                  <i
-                    className="bi bi-geo-alt me-2"
-                    style={{ color: "var(--qf-primary)" }}
-                  ></i>
-                  Paso 2: Seleccionar Ruta
-                </h3>
-                {openSection !== 2 && canProceedFromStep2 && (
-                  <span
-                    className="qa-badge ms-3"
-                    style={{
-                      backgroundColor: "#d1e7dd",
-                      color: "#0f5132",
-                      borderColor: "transparent",
-                    }}
-                  >
-                    <i className="bi bi-check-circle-fill me-1"></i>
-                    Completado
-                  </span>
+                  </div>
                 )}
-              </div>
-              <div className="d-flex align-items-center gap-2">
-                {openSection !== 2 && canProceedFromStep2 ? (
-                  <button
-                    type="button"
-                    className="qa-btn qa-btn-sm qa-btn-outline"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setOrigenSel(null);
-                      setDestinoSel(null);
-                      setPickupAddress("");
-                      setDeliveryAddress("");
-                      setPiecesData([createEmptyPieceLM("1")]);
-                      setOpenAccordions(["1"]);
-                      setSeguroActivo(false);
-                      setStep3Completed(false);
-                      setStep4Completed(false);
-                      setOpenSection(2);
-                    }}
-                  >
-                    Cambiar
-                  </button>
-                ) : (
-                  <i
-                    className={`bi bi-chevron-${openSection === 2 ? "up" : "down"}`}
-                    style={{ color: "var(--qf-text-secondary)" }}
-                  ></i>
-                )}
-              </div>
-            </div>
 
-            {openSection !== 2 && canProceedFromStep2 && (
-              <div className="qa-route-summary">
-                <div className="qa-route-summary-cards">
+                {/* Card obligatoria: Cantidad de contenedores para FCL+DAP y FCL+DDP */}
+                {needsContenedoresCard && (
                   <div
-                    className="qa-route-summary-card"
+                    className="mt-4"
                     style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "12px",
+                      background: "#fff",
+                      border: "1px solid #e8eaed",
+                      borderRadius: 8,
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+                      overflow: "hidden",
                     }}
                   >
-                    <div style={{ minWidth: 0 }}>
-                      <small>Origen</small>
-                      <div className="qa-route-summary-iata">
-                        {origenSel?.label.substring(0, 3).toUpperCase()}
-                      </div>
-                      <div className="qa-route-summary-city">
-                        {origenSel?.label}
-                      </div>
-                    </div>
-                    {originCountryCode ? (
-                      <span
-                        className={`fi fi-${originCountryCode}`}
-                        style={{ fontSize: "2.2em", flexShrink: 0 }}
-                      />
-                    ) : (
+                    {/* Header */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.875rem 1.25rem",
+                        borderBottom: "1px solid #f1f3f4",
+                      }}
+                    >
                       <i
-                        className="bi bi-geo-alt-fill"
+                        className="bi bi-box-seam"
+                        style={{ fontSize: "0.9375rem", color: "#ff6200" }}
+                      ></i>
+                      <span
                         style={{
-                          fontSize: "1.8em",
-                          color: "var(--qf-text-secondary)",
+                          fontSize: "0.875rem",
+                          fontWeight: 600,
+                          color: "#1a1a1a",
+                          letterSpacing: "-0.01em",
+                        }}
+                      >
+                        Cantidad de contenedores
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: "auto",
+                          fontSize: "0.6875rem",
+                          fontWeight: 600,
+                          letterSpacing: "0.05em",
+                          textTransform: "uppercase",
+                          color: "#ff6200",
+                          background: "rgba(255,98,0,0.08)",
+                          padding: "2px 8px",
+                          borderRadius: 4,
                           flexShrink: 0,
                         }}
-                      ></i>
-                    )}
-                  </div>
-                  <div className="qa-route-summary-arrow">
-                    <i className="bi bi-arrow-right"></i>
-                  </div>
-                  <div
-                    className="qa-route-summary-card"
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "12px",
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <small>Destino</small>
-                      <div className="qa-route-summary-iata">
-                        {destinoSel?.label.substring(0, 3).toUpperCase()}
-                      </div>
-                      <div className="qa-route-summary-city">
-                        {destinoSel?.label}
-                      </div>
+                      >
+                        Obligatorio
+                      </span>
                     </div>
-                    {destinationCountryCode ? (
-                      <span
-                        className={`fi fi-${destinationCountryCode}`}
-                        style={{ fontSize: "2.2em", flexShrink: 0 }}
-                      />
-                    ) : (
-                      <i
-                        className="bi bi-geo-alt-fill"
+                    {/* Body */}
+                    <div style={{ padding: "1.125rem 1.25rem" }}>
+                      <p
                         style={{
-                          fontSize: "1.8em",
-                          color: "var(--qf-text-secondary)",
-                          flexShrink: 0,
+                          fontSize: "0.8125rem",
+                          color: "#6c757d",
+                          marginBottom: "1rem",
+                          lineHeight: 1.55,
                         }}
-                      ></i>
-                    )}
-                  </div>
-                </div>
-                <div className="qa-route-summary-meta">
-                  <span className="qa-route-meta-pill">
-                    <i className="bi bi-truck"></i>
-                    Última Milla
-                  </span>
-                </div>
-              </div>
-            )}
+                      >
+                        Indica cuántos contenedores trae tu carga. Esta
+                        información determina los cobros variables (Transporte
+                        Terrestre y DTHC). Solo se aceptan números enteros.
+                      </p>
+                      <div className="row g-3">
+                        <div className="col-md-4">
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "0.8125rem",
+                              fontWeight: 500,
+                              color: "#374151",
+                              marginBottom: "0.375rem",
+                            }}
+                          >
+                            Contenedores 20GP
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            className="form-control"
+                            style={{
+                              border: "1px solid #dadce0",
+                              borderRadius: 6,
+                              fontSize: "0.875rem",
+                              padding: "0.5rem 0.75rem",
+                              boxShadow: "none",
+                            }}
+                            placeholder="0"
+                            value={contenedores20GP}
+                            onChange={handleContenedorChange(
+                              setContenedores20GP,
+                            )}
+                            onKeyDown={(e) => {
+                              if (
+                                e.key === "." ||
+                                e.key === "," ||
+                                e.key === "-" ||
+                                e.key === "e" ||
+                                e.key === "+"
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "0.8125rem",
+                              fontWeight: 500,
+                              color: "#374151",
+                              marginBottom: "0.375rem",
+                            }}
+                          >
+                            Contenedores 40HQ
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            className="form-control"
+                            style={{
+                              border: "1px solid #dadce0",
+                              borderRadius: 6,
+                              fontSize: "0.875rem",
+                              padding: "0.5rem 0.75rem",
+                              boxShadow: "none",
+                            }}
+                            placeholder="0"
+                            value={contenedores40HQ}
+                            onChange={handleContenedorChange(
+                              setContenedores40HQ,
+                            )}
+                            onKeyDown={(e) => {
+                              if (
+                                e.key === "." ||
+                                e.key === "," ||
+                                e.key === "-" ||
+                                e.key === "e" ||
+                                e.key === "+"
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: "0.8125rem",
+                              fontWeight: 500,
+                              color: "#374151",
+                              marginBottom: "0.375rem",
+                            }}
+                          >
+                            Contenedores 40NOR
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            className="form-control"
+                            style={{
+                              border: "1px solid #dadce0",
+                              borderRadius: 6,
+                              fontSize: "0.875rem",
+                              padding: "0.5rem 0.75rem",
+                              boxShadow: "none",
+                            }}
+                            placeholder="0"
+                            value={contenedores40NOR}
+                            onChange={handleContenedorChange(
+                              setContenedores40NOR,
+                            )}
+                            onKeyDown={(e) => {
+                              if (
+                                e.key === "." ||
+                                e.key === "," ||
+                                e.key === "-" ||
+                                e.key === "e" ||
+                                e.key === "+"
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
 
-            {openSection === 2 && (
-              <div>
-                {loadingRutas ? (
-                  <div className="text-center py-5">
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Cargando...</span>
-                    </div>
-                    <p className="mt-3 text-muted">
-                      Cargando rutas disponibles...
-                    </p>
-                  </div>
-                ) : errorRutas ? (
-                  <div className="alert alert-danger">❌ {errorRutas}</div>
-                ) : (
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="qf-label">Origen</label>
-                      <Select
-                        value={origenSel}
-                        onChange={(option) =>
-                          setOrigenSel(option as LastMileSelectOption | null)
-                        }
-                        options={opcionesOrigen}
-                        placeholder="Selecciona origen..."
-                        isClearable
-                        menuPlacement="auto"
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="qf-label">Destino</label>
-                      <Select
-                        value={destinoSel}
-                        onChange={(option) =>
-                          setDestinoSel(option as LastMileSelectOption | null)
-                        }
-                        options={opcionesDestino}
-                        placeholder={
-                          origenSel
-                            ? "Selecciona destino..."
-                            : "Selecciona origen primero"
-                        }
-                        isClearable
-                        isDisabled={!origenSel}
-                        menuPlacement="auto"
-                      />
+                      <div
+                        style={{
+                          marginTop: "1rem",
+                          paddingTop: "0.875rem",
+                          borderTop: "1px solid #f1f3f4",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <span
+                          style={{ fontSize: "0.8125rem", color: "#6c757d" }}
+                        >
+                          Total{" "}
+                          <strong style={{ color: "#1a1a1a" }}>
+                            {totalContenedores}
+                          </strong>{" "}
+                          {totalContenedores === 1
+                            ? "contenedor"
+                            : "contenedores"}
+                        </span>
+                        <button
+                          type="button"
+                          className="qf-btn qf-btn-primary"
+                          disabled={
+                            totalContenedores <= 0 ||
+                            (needsAduanaCard && valorMercaderiaDDPNum <= 0)
+                          }
+                          onClick={() => {
+                            setStep1Confirmed(true);
+                            setOpenSection(2);
+                            trackStep({
+                              step: "route_selection",
+                              stepNumber: 2,
+                              totalSteps: 5,
+                            });
+                          }}
+                        >
+                          Continuar al Paso 2
+                          <i className="bi bi-arrow-right ms-2"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2926,104 +2722,398 @@ function QuoteLASTMILE({
             )}
           </div>
         )}
+      </div>
 
-        {/* PASO 3 */}
-        {canProceedFromStep2 && (
-          <div className="qa-card lm-step-card" ref={section3Ref}>
-            <div
-              className={`qf-card-header lm-step-header ${openSection === 3 ? "open" : ""}`}
-              onClick={() => handleSectionToggle(3)}
-            >
-              <div className="d-flex align-items-center">
-                <h3>
-                  <i
-                    className="bi bi-box-seam me-2"
-                    style={{ color: "var(--qf-primary)" }}
-                  ></i>
-                  Paso 3: Datos del Cargamento
-                </h3>
-                {openSection !== 3 && step3Completed && (
-                  <span
-                    className="qa-badge ms-3"
-                    style={{
-                      backgroundColor: "#d1e7dd",
-                      color: "#0f5132",
-                      borderColor: "transparent",
-                    }}
-                  >
-                    <i className="bi bi-check-circle-fill me-1"></i>
-                    Completado
-                  </span>
-                )}
+      {/* ============================================================================ */}
+      {/* SECCIÓN 2: SELECCIÓN DE RUTA */}
+      {/* ============================================================================ */}
+      {step1Confirmed && (
+        <div className="qa-card" ref={section2Ref}>
+          <div
+            className={`qa-card-header ${openSection === 2 ? "open" : ""}`}
+            onClick={() => handleSectionToggle(2)}
+          >
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-geo-alt me-2"
+                  style={{ color: "var(--qf-primary)" }}
+                ></i>
+                Paso 2: Seleccionar Ruta
+              </h3>
+              {openSection !== 2 && canProceedFromStep2 && (
+                <span
+                  className="qa-badge ms-3"
+                  style={{
+                    backgroundColor: "#d1e7dd",
+                    color: "#0f5132",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Completado
+                </span>
+              )}
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              {openSection !== 2 && canProceedFromStep2 ? (
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-sm qa-btn-outline"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setOrigenSel(null);
+                    setDestinoSel(null);
+                    setPickupAddress("");
+                    setDeliveryAddress("");
+                    setPiecesData([createEmptyPieceLM("1")]);
+                    setOpenAccordions(["1"]);
+                    setSeguroActivo(false);
+                    setStep3Completed(false);
+                    setStep4Completed(false);
+                    setOpenSection(2);
+                  }}
+                >
+                  Cambiar
+                </button>
+              ) : (
+                <i
+                  className={`bi bi-chevron-${openSection === 2 ? "up" : "down"}`}
+                  style={{ color: "var(--qf-text-secondary)" }}
+                ></i>
+              )}
+            </div>
+          </div>
+
+          {openSection !== 2 && canProceedFromStep2 && (
+            <div className="qa-route-summary">
+              <div className="qa-route-summary-cards">
+                <div
+                  className="qa-route-summary-card"
+                  style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <small>Origen</small>
+                    <div className="qa-route-summary-iata">
+                      {origenSel?.label.substring(0, 3).toUpperCase()}
+                    </div>
+                    <div className="qa-route-summary-city">
+                      {origenSel?.label}
+                    </div>
+                  </div>
+                  {originCountryCode ? (
+                    <span
+                      className={`fi fi-${originCountryCode}`}
+                      style={{ fontSize: "2.2em", flexShrink: 0 }}
+                    />
+                  ) : (
+                    <i
+                      className="bi bi-geo-alt-fill"
+                      style={{
+                        fontSize: "1.8em",
+                        color: "var(--qf-text-secondary)",
+                        flexShrink: 0,
+                      }}
+                    ></i>
+                  )}
+                </div>
+                <div className="qa-route-summary-arrow">
+                  <i className="bi bi-arrow-right"></i>
+                </div>
+                <div
+                  className="qa-route-summary-card"
+                  style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "12px",
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <small>Destino</small>
+                    <div className="qa-route-summary-iata">
+                      {destinoSel?.label.substring(0, 3).toUpperCase()}
+                    </div>
+                    <div className="qa-route-summary-city">
+                      {destinoSel?.label}
+                    </div>
+                  </div>
+                  {destinationCountryCode ? (
+                    <span
+                      className={`fi fi-${destinationCountryCode}`}
+                      style={{ fontSize: "2.2em", flexShrink: 0 }}
+                    />
+                  ) : (
+                    <i
+                      className="bi bi-geo-alt-fill"
+                      style={{
+                        fontSize: "1.8em",
+                        color: "var(--qf-text-secondary)",
+                        flexShrink: 0,
+                      }}
+                    ></i>
+                  )}
+                </div>
               </div>
-              <div className="d-flex align-items-center gap-2">
-                {openSection !== 3 && step3Completed ? (
-                  <button
-                    type="button"
-                    className="qa-btn qa-btn-sm qa-btn-outline"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setOpenSection(3);
-                    }}
-                  >
-                    Cambiar
-                  </button>
-                ) : (
-                  <i
-                    className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
-                    style={{ color: "var(--qf-text-secondary)" }}
-                  ></i>
-                )}
+              <div className="qa-route-summary-meta">
+                <span className="qa-route-meta-pill">
+                  <i className="bi bi-truck"></i>
+                  Última Milla
+                </span>
               </div>
             </div>
+          )}
 
-            {openSection !== 3 && step3Completed && (
-              <div className="qa-grid-1 mb-4 bg-light p-3 rounded border">
-                <div className="qa-totals-bar">
-                  <div className="qa-totals-bar-item">
-                    <span className="qa-totals-bar-label">
-                      <i
-                        className="bi bi-geo-alt-fill me-1"
-                        style={{ color: "#ff6200" }}
-                      ></i>
-                      Dirección de Recogida
-                    </span>
-                    <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                      {pickupAddress || "—"}
-                    </span>
+          {openSection === 2 && (
+            <div>
+              {loadingRutas ? (
+                <div className="text-center py-5">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Cargando...</span>
                   </div>
-                  <div className="qa-totals-bar-item">
-                    <span className="qa-totals-bar-label">
-                      <i
-                        className="bi bi-flag-fill me-1"
-                        style={{ color: "#ff6200" }}
-                      ></i>
-                      Dirección de Entrega
-                    </span>
-                    <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>
-                      {deliveryAddress || "—"}
-                    </span>
+                  <p className="mt-3 text-muted">
+                    Cargando rutas disponibles...
+                  </p>
+                </div>
+              ) : errorRutas ? (
+                <div className="alert alert-danger">❌ {errorRutas}</div>
+              ) : (
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="qf-label">Origen</label>
+                    <Select
+                      value={origenSel}
+                      onChange={(option) =>
+                        setOrigenSel(option as LastMileSelectOption | null)
+                      }
+                      options={opcionesOrigen}
+                      placeholder="Selecciona origen..."
+                      isClearable
+                      menuPlacement="auto"
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="qf-label">Destino</label>
+                    <Select
+                      value={destinoSel}
+                      onChange={(option) =>
+                        setDestinoSel(option as LastMileSelectOption | null)
+                      }
+                      options={opcionesDestino}
+                      placeholder={
+                        origenSel
+                          ? "Selecciona destino..."
+                          : "Selecciona origen primero"
+                      }
+                      isClearable
+                      isDisabled={!origenSel}
+                      menuPlacement="auto"
+                    />
                   </div>
                 </div>
-                {(cargoDescriptionPreview || dimensionsSummary) &&
-                  servicioSel !== "FCL" && (
-                    <div className="qa-route-summary-meta mt-3">
-                      {cargoDescriptionPreview && (
-                        <span className="qa-route-meta-pill">
-                          <i className="bi bi-card-text"></i>
-                          {cargoDescriptionPreview}
-                        </span>
-                      )}
-                      {dimensionsSummary && (
-                        <span className="qa-route-meta-pill">
-                          <i className="bi bi-box"></i>
-                          {dimensionsSummary}
-                        </span>
-                      )}
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PASO 3 */}
+      {canProceedFromStep2 && (
+        <div className="qa-card lm-step-card" ref={section3Ref}>
+          <div
+            className={`qf-card-header lm-step-header ${openSection === 3 ? "open" : ""}`}
+            onClick={() => handleSectionToggle(3)}
+          >
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-box-seam me-2"
+                  style={{ color: "var(--qf-primary)" }}
+                ></i>
+                Paso 3: Datos del Cargamento
+              </h3>
+              {openSection !== 3 && step3Completed && (
+                <span
+                  className="qa-badge ms-3"
+                  style={{
+                    backgroundColor: "#d1e7dd",
+                    color: "#0f5132",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Completado
+                </span>
+              )}
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              {openSection !== 3 && step3Completed ? (
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-sm qa-btn-outline"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setOpenSection(3);
+                  }}
+                >
+                  Cambiar
+                </button>
+              ) : (
+                <i
+                  className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
+                  style={{ color: "var(--qf-text-secondary)" }}
+                ></i>
+              )}
+            </div>
+          </div>
+
+          {openSection !== 3 && step3Completed && (
+            <div className="qa-grid-1 mb-4 bg-light p-3 rounded border">
+              <div className="qa-totals-bar">
+                <div className="qa-totals-bar-item">
+                  <span className="qa-totals-bar-label">
+                    <i
+                      className="bi bi-geo-alt-fill me-1"
+                      style={{ color: "#ff6200" }}
+                    ></i>
+                    Dirección de Recogida
+                  </span>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>
+                    {pickupAddress || "—"}
+                  </span>
+                </div>
+                <div className="qa-totals-bar-item">
+                  <span className="qa-totals-bar-label">
+                    <i
+                      className="bi bi-flag-fill me-1"
+                      style={{ color: "#ff6200" }}
+                    ></i>
+                    Dirección de Entrega
+                  </span>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>
+                    {deliveryAddress || "—"}
+                  </span>
+                </div>
+              </div>
+              {(cargoDescriptionPreview || dimensionsSummary) &&
+                servicioSel !== "FCL" && (
+                  <div className="qa-route-summary-meta mt-3">
+                    {cargoDescriptionPreview && (
+                      <span className="qa-route-meta-pill">
+                        <i className="bi bi-card-text"></i>
+                        {cargoDescriptionPreview}
+                      </span>
+                    )}
+                    {dimensionsSummary && (
+                      <span className="qa-route-meta-pill">
+                        <i className="bi bi-box"></i>
+                        {dimensionsSummary}
+                      </span>
+                    )}
+                  </div>
+                )}
+              {servicioSel !== "FCL" && (
+                <div className="qa-totals-bar mt-3">
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {fmtVolume(cargoTotals.volume)} {volumeUnit}
+                    </span>
+                    <span className="qa-totals-bar-label">Volumen total</span>
+                  </div>
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {fmtWeight(cargoTotals.realWeight)} {weightUnit}
+                    </span>
+                    <span className="qa-totals-bar-label">Peso real</span>
+                  </div>
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {fmtWeight(cargoTotals.volumetricWeight)} {weightUnit}
+                    </span>
+                    <span className="qa-totals-bar-label">
+                      Peso volumétrico
+                    </span>
+                  </div>
+                  <div className="qa-totals-bar-item">
+                    <span className="qa-totals-bar-value">
+                      {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
+                    </span>
+                    <span className="qa-totals-bar-label">Peso cargable</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {openSection === 3 && (
+            <div>
+              {/* Mapa con autocompletado de direcciones */}
+              <CotizadorAddressMapDual
+                pickupValue={pickupAddress}
+                onPickupChange={setPickupAddress}
+                deliveryValue={deliveryAddress}
+                onDeliveryChange={setDeliveryAddress}
+                lockedPickupCoords={pickupCoordsOverride}
+              />
+              {/* Información del cargamento: solo para servicios no-FCL
+                    (LCL, AÉREO). Para FCL lo que importa son los contenedores. */}
+              {servicioSel !== "FCL" && (
+                <div className="mt-4">
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h4 className="fs-6 fw-bold mb-0">
+                      Detalles de las Piezas
+                    </h4>
+                    <div className="d-flex align-items-center gap-2">
+                      <button
+                        type="button"
+                        className="qa-btn qa-btn-outline qa-btn-sm"
+                        onClick={() => handleDuplicatePiece()}
+                      >
+                        <i className="bi bi-files"></i>
+                        Duplicar Pieza
+                      </button>
+                      <button
+                        type="button"
+                        className="qa-btn qa-btn-primary qa-btn-sm"
+                        onClick={handleAddPiece}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar Pieza
+                      </button>
                     </div>
-                  )}
-                {servicioSel !== "FCL" && (
-                  <div className="qa-totals-bar mt-3">
+                  </div>
+
+                  <div className="mb-3">
+                    {piecesData.map((piece, index) => (
+                      <PieceAccordionLASTMILE
+                        key={piece.id}
+                        piece={piece}
+                        index={index}
+                        isOpen={openAccordions.includes(piece.id)}
+                        onToggle={() => handleToggleAccordion(piece.id)}
+                        onRemove={() => handleRemovePiece(piece.id)}
+                        onUpdate={(field, value) =>
+                          handleUpdatePiece(piece.id, field, value)
+                        }
+                        packageTypes={packageTypeOptions.map((opt) => ({
+                          id: String(opt.id),
+                          name: opt.name,
+                        }))}
+                        canRemove={piecesData.length > 1}
+                        useUSCustomary={useUSCustomary}
+                        onSetUSCustomary={setUseUSCustomary}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Totals summary bar */}
+                  <div className="qa-totals-bar">
                     <div className="qa-totals-bar-item">
                       <span className="qa-totals-bar-value">
                         {fmtVolume(cargoTotals.volume)} {volumeUnit}
@@ -3051,569 +3141,467 @@ function QuoteLASTMILE({
                       <span className="qa-totals-bar-label">Peso cargable</span>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-
-            {openSection === 3 && (
-              <div>
-                {/* Mapa con autocompletado de direcciones */}
-                <CotizadorAddressMapDual
-                  pickupValue={pickupAddress}
-                  onPickupChange={setPickupAddress}
-                  deliveryValue={deliveryAddress}
-                  onDeliveryChange={setDeliveryAddress}
-                  lockedPickupCoords={pickupCoordsOverride}
-                />
-                {/* Información del cargamento: solo para servicios no-FCL
-                    (LCL, AÉREO). Para FCL lo que importa son los contenedores. */}
-                {servicioSel !== "FCL" && (
-                  <div className="mt-4">
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h4 className="fs-6 fw-bold mb-0">
-                        Detalles de las Piezas
-                      </h4>
-                      <div className="d-flex align-items-center gap-2">
-                        <button
-                          type="button"
-                          className="qa-btn qa-btn-outline qa-btn-sm"
-                          onClick={() => handleDuplicatePiece()}
-                        >
-                          <i className="bi bi-files"></i>
-                          Duplicar Pieza
-                        </button>
-                        <button
-                          type="button"
-                          className="qa-btn qa-btn-primary qa-btn-sm"
-                          onClick={handleAddPiece}
-                        >
-                          <i className="bi bi-plus-lg"></i>Agregar Pieza
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mb-3">
-                      {piecesData.map((piece, index) => (
-                        <PieceAccordionLASTMILE
-                          key={piece.id}
-                          piece={piece}
-                          index={index}
-                          isOpen={openAccordions.includes(piece.id)}
-                          onToggle={() => handleToggleAccordion(piece.id)}
-                          onRemove={() => handleRemovePiece(piece.id)}
-                          onUpdate={(field, value) =>
-                            handleUpdatePiece(piece.id, field, value)
-                          }
-                          packageTypes={packageTypeOptions.map((opt) => ({
-                            id: String(opt.id),
-                            name: opt.name,
-                          }))}
-                          canRemove={piecesData.length > 1}
-                          useUSCustomary={useUSCustomary}
-                          onSetUSCustomary={setUseUSCustomary}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Totals summary bar */}
-                    <div className="qa-totals-bar">
-                      <div className="qa-totals-bar-item">
-                        <span className="qa-totals-bar-value">
-                          {fmtVolume(cargoTotals.volume)} {volumeUnit}
-                        </span>
-                        <span className="qa-totals-bar-label">
-                          Volumen total
-                        </span>
-                      </div>
-                      <div className="qa-totals-bar-item">
-                        <span className="qa-totals-bar-value">
-                          {fmtWeight(cargoTotals.realWeight)} {weightUnit}
-                        </span>
-                        <span className="qa-totals-bar-label">Peso real</span>
-                      </div>
-                      <div className="qa-totals-bar-item">
-                        <span className="qa-totals-bar-value">
-                          {fmtWeight(cargoTotals.volumetricWeight)} {weightUnit}
-                        </span>
-                        <span className="qa-totals-bar-label">
-                          Peso volumétrico
-                        </span>
-                      </div>
-                      <div className="qa-totals-bar-item">
-                        <span className="qa-totals-bar-value">
-                          {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
-                        </span>
-                        <span className="qa-totals-bar-label">
-                          Peso cargable
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}{" "}
-                {/* fin servicioSel !== "FCL" */}
-                <div className="mt-4 d-flex justify-content-end">
-                  <button
-                    className="qf-btn qf-btn-primary"
-                    disabled={!canProceedFromStep3}
-                    onClick={() => {
-                      if (!canProceedFromStep3) return;
-                      setStep3Completed(true);
-                      setOpenSection(4);
-                      trackStep({
-                        step: "servicios_adicionales",
-                        stepNumber: 4,
-                        totalSteps: 5,
-                      });
-                    }}
-                  >
-                    Siguiente
-                    <i className="bi bi-arrow-right ms-1"></i>
-                  </button>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* PASO 4 */}
-        {step3Completed && (
-          <div className="qf-card lm-step-card" ref={section4Ref}>
-            <div
-              className={`qf-card-header lm-step-header ${openSection === 4 ? "open" : ""}`}
-              onClick={() => handleSectionToggle(4)}
-            >
-              <div className="d-flex align-items-center">
-                <h3>
-                  <i
-                    className="bi bi-bag-plus-fill me-2"
-                    style={{ color: "var(--qf-primary)" }}
-                  ></i>
-                  Paso 4: Servicios Adicionales
-                </h3>
-                {openSection !== 4 && step4Completed && (
-                  <span
-                    className="qa-badge ms-3"
-                    style={{
-                      backgroundColor: "#d1e7dd",
-                      color: "#0f5132",
-                      borderColor: "transparent",
-                    }}
-                  >
-                    <i className="bi bi-check-circle-fill me-1"></i>
-                    Completado
-                  </span>
-                )}
-              </div>
-              <div className="d-flex align-items-center gap-2">
-                {openSection !== 4 ? (
-                  <button
-                    type="button"
-                    className="qa-btn qa-btn-sm qa-btn-outline"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setOpenSection(4);
-                    }}
-                  >
-                    Cambiar
-                  </button>
-                ) : (
-                  <i
-                    className={`bi bi-chevron-${openSection === 4 ? "up" : "down"}`}
-                    style={{ color: "var(--qf-text-secondary)" }}
-                  ></i>
-                )}
+              )}{" "}
+              {/* fin servicioSel !== "FCL" */}
+              <div className="mt-4 d-flex justify-content-end">
+                <button
+                  className="qf-btn qf-btn-primary"
+                  disabled={!canProceedFromStep3}
+                  onClick={() => {
+                    if (!canProceedFromStep3) return;
+                    setStep3Completed(true);
+                    setOpenSection(4);
+                    trackStep({
+                      step: "servicios_adicionales",
+                      stepNumber: 4,
+                      totalSteps: 5,
+                    });
+                  }}
+                >
+                  Siguiente
+                  <i className="bi bi-arrow-right ms-1"></i>
+                </button>
               </div>
             </div>
+          )}
+        </div>
+      )}
 
-            {openSection !== 4 && (
-              <div className="qa-route-summary">
-                <span className="qa-text-muted" style={{ fontSize: "0.85rem" }}>
-                  Sin servicios adicionales seleccionados
-                </span>
-              </div>
-            )}
-
-            {openSection === 4 && (
-              <div>
-                <div className="qf-addons-list">
-                  <div
-                    className="qa-text-muted"
-                    style={{
-                      padding: "1.5rem",
-                      textAlign: "center",
-                      fontSize: "0.9rem",
-                      border: "1px dashed var(--qf-border, #dee2e6)",
-                      borderRadius: 8,
-                    }}
-                  >
-                    <i
-                      className="bi bi-info-circle me-2"
-                      style={{ fontSize: "1.1rem" }}
-                    ></i>
-                    No hay servicios adicionales disponibles para esta
-                    cotización.
-                  </div>
-                </div>
-
-                <div className="mt-4 d-flex justify-content-end">
-                  <button
-                    className="qf-btn qf-btn-primary"
-                    onClick={() => {
-                      setStep4Completed(true);
-                      setOpenSection(5);
-                      trackStep({
-                        step: "revision",
-                        stepNumber: 5,
-                        totalSteps: 5,
-                      });
-                    }}
-                  >
-                    Siguiente
-                    <i className="bi bi-arrow-right ms-1"></i>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* PASO 5 */}
-        {step3Completed && step4Completed && (
-          <div className="qf-card lm-step-card" ref={section5Ref}>
-            <div
-              className={`qf-card-header lm-step-header ${openSection === 5 ? "open" : ""}`}
-              onClick={() => handleSectionToggle(5)}
-            >
-              <div className="d-flex align-items-center">
-                <h3>
-                  <i
-                    className="bi bi-clipboard-check me-2"
-                    style={{ color: "var(--qf-primary)" }}
-                  ></i>
-                  Paso 5: Revisión
-                </h3>
-              </div>
-              <div className="d-flex align-items-center gap-2">
+      {/* PASO 4 */}
+      {step3Completed && (
+        <div className="qf-card lm-step-card" ref={section4Ref}>
+          <div
+            className={`qf-card-header lm-step-header ${openSection === 4 ? "open" : ""}`}
+            onClick={() => handleSectionToggle(4)}
+          >
+            <div className="d-flex align-items-center">
+              <h3>
                 <i
-                  className={`bi bi-chevron-${openSection === 5 ? "up" : "down"}`}
+                  className="bi bi-bag-plus-fill me-2"
+                  style={{ color: "var(--qf-primary)" }}
+                ></i>
+                Paso 4: Servicios Adicionales
+              </h3>
+              {openSection !== 4 && step4Completed && (
+                <span
+                  className="qa-badge ms-3"
+                  style={{
+                    backgroundColor: "#d1e7dd",
+                    color: "#0f5132",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Completado
+                </span>
+              )}
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              {openSection !== 4 ? (
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-sm qa-btn-outline"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setOpenSection(4);
+                  }}
+                >
+                  Cambiar
+                </button>
+              ) : (
+                <i
+                  className={`bi bi-chevron-${openSection === 4 ? "up" : "down"}`}
                   style={{ color: "var(--qf-text-secondary)" }}
                 ></i>
+              )}
+            </div>
+          </div>
+
+          {openSection !== 4 && (
+            <div className="qa-route-summary">
+              <span className="qa-text-muted" style={{ fontSize: "0.85rem" }}>
+                Sin servicios adicionales seleccionados
+              </span>
+            </div>
+          )}
+
+          {openSection === 4 && (
+            <div>
+              <div className="qf-addons-list">
+                <div
+                  className="qa-text-muted"
+                  style={{
+                    padding: "1.5rem",
+                    textAlign: "center",
+                    fontSize: "0.9rem",
+                    border: "1px dashed var(--qf-border, #dee2e6)",
+                    borderRadius: 8,
+                  }}
+                >
+                  <i
+                    className="bi bi-info-circle me-2"
+                    style={{ fontSize: "1.1rem" }}
+                  ></i>
+                  No hay servicios adicionales disponibles para esta cotización.
+                </div>
+              </div>
+
+              <div className="mt-4 d-flex justify-content-end">
+                <button
+                  className="qf-btn qf-btn-primary"
+                  onClick={() => {
+                    setStep4Completed(true);
+                    setOpenSection(5);
+                    trackStep({
+                      step: "revision",
+                      stepNumber: 5,
+                      totalSteps: 5,
+                    });
+                  }}
+                >
+                  Siguiente
+                  <i className="bi bi-arrow-right ms-1"></i>
+                </button>
               </div>
             </div>
+          )}
+        </div>
+      )}
 
-            {openSection === 5 && (
-              <>
-                <div className="qa-grid-1 mb-4">
-                  {/* Resumen de Servicio + Incoterm (Paso 1) */}
-                  <div className="p-3 bg-light rounded border mb-3">
-                    <h6 className="fw-bold mb-3">
-                      <i className="bi bi-truck me-2"></i>
-                      Servicio e Incoterm
-                    </h6>
-                    <div className="row g-2 small">
-                      <div className="col-6 text-muted">Servicio:</div>
-                      <div className="col-6 text-end fw-bold">
-                        {servicioSel || "—"}
-                      </div>
-                      <div className="col-6 text-muted">Incoterm:</div>
-                      <div className="col-6 text-end fw-bold">
-                        {incotermSel || "—"}
-                      </div>
+      {/* PASO 5 */}
+      {step3Completed && step4Completed && (
+        <div className="qf-card lm-step-card" ref={section5Ref}>
+          <div
+            className={`qf-card-header lm-step-header ${openSection === 5 ? "open" : ""}`}
+            onClick={() => handleSectionToggle(5)}
+          >
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-clipboard-check me-2"
+                  style={{ color: "var(--qf-primary)" }}
+                ></i>
+                Paso 5: Revisión
+              </h3>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <i
+                className={`bi bi-chevron-${openSection === 5 ? "up" : "down"}`}
+                style={{ color: "var(--qf-text-secondary)" }}
+              ></i>
+            </div>
+          </div>
+
+          {openSection === 5 && (
+            <>
+              <div className="qa-grid-1 mb-4">
+                {/* Resumen de Servicio + Incoterm (Paso 1) */}
+                <div className="p-3 bg-light rounded border mb-3">
+                  <h6 className="fw-bold mb-3">
+                    <i className="bi bi-truck me-2"></i>
+                    Servicio e Incoterm
+                  </h6>
+                  <div className="row g-2 small">
+                    <div className="col-6 text-muted">Servicio:</div>
+                    <div className="col-6 text-end fw-bold">
+                      {servicioSel || "—"}
+                    </div>
+                    <div className="col-6 text-muted">Incoterm:</div>
+                    <div className="col-6 text-end fw-bold">
+                      {incotermSel || "—"}
                     </div>
                   </div>
+                </div>
 
-                  {/* Resumen de Ruta */}
+                {/* Resumen de Ruta */}
+                <div className="p-3 bg-light rounded border mb-3">
+                  <h6 className="fw-bold mb-3">
+                    <i className="bi bi-geo-alt me-2"></i>
+                    Ruta Seleccionada
+                  </h6>
+                  <div className="row g-2 small">
+                    <div className="col-6 text-muted">Origen:</div>
+                    <div className="col-6 text-end fw-bold">
+                      {origenSel?.label || "—"}
+                    </div>
+                    <div className="col-6 text-muted">Destino:</div>
+                    <div className="col-6 text-end fw-bold">
+                      {destinoSel?.label || "—"}
+                    </div>
+                    <div className="col-12 border-top my-2"></div>
+                    <div className="col-6 text-muted">
+                      <i className="bi bi-geo-alt-fill me-1"></i>
+                      Dirección de recogida:
+                    </div>
+                    <div className="col-6 text-end fw-bold">
+                      {pickupAddress || "—"}
+                    </div>
+                    <div className="col-6 text-muted">
+                      <i className="bi bi-flag-fill me-1"></i>
+                      Dirección de entrega:
+                    </div>
+                    <div className="col-6 text-end fw-bold">
+                      {deliveryAddress || "—"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resumen de Cargamento */}
+                <div className="p-3 bg-light rounded border mb-3">
+                  <h6 className="fw-bold mb-3">
+                    <i className="bi bi-box-seam me-2"></i>
+                    Datos del Cargamento ({piecesData.length} pieza
+                    {piecesData.length !== 1 ? "s" : ""})
+                  </h6>
+                  <div className="row g-2 small">
+                    {piecesData.map((p, i) => (
+                      <React.Fragment key={p.id}>
+                        {i > 0 && (
+                          <div className="col-12 border-top my-2"></div>
+                        )}
+                        <div className="col-12 fw-bold text-uppercase text-muted small">
+                          Pieza {i + 1}
+                        </div>
+                        <div className="col-6 text-muted">Descripción:</div>
+                        <div className="col-6 text-end fw-bold">
+                          {p.description || "—"}
+                        </div>
+                        {p.packageType && (
+                          <>
+                            <div className="col-6 text-muted">
+                              Tipo de paquete:
+                            </div>
+                            <div className="col-6 text-end fw-bold">
+                              {packageTypeOptions.find(
+                                (opt) => String(opt.id) === p.packageType,
+                              )?.name || "—"}
+                            </div>
+                          </>
+                        )}
+                        <div className="col-6 text-muted">Peso:</div>
+                        <div className="col-6 text-end fw-bold">
+                          {fmtWeight(p.weight)} {weightUnit}
+                        </div>
+                        <div className="col-6 text-muted">
+                          Dimensiones (L × A × H):
+                        </div>
+                        <div className="col-6 text-end fw-bold">
+                          {fmtDim(p.length)} × {fmtDim(p.width)} ×{" "}
+                          {fmtDim(p.height)} {dimUnit}
+                        </div>
+                      </React.Fragment>
+                    ))}
+                    <div className="col-12 border-top my-2"></div>
+                    <div className="col-6 text-muted">
+                      <strong>Volumen total:</strong>
+                    </div>
+                    <div className="col-6 text-end fw-bold">
+                      {fmtVolume(cargoTotals.volume)} {volumeUnit}
+                    </div>
+                    <div className="col-6 text-muted">
+                      <strong>Peso total:</strong>
+                    </div>
+                    <div className="col-6 text-end fw-bold">
+                      {fmtWeight(cargoTotals.realWeight)} {weightUnit}
+                    </div>
+                    <div className="col-6 text-muted">
+                      <strong>Peso cargable:</strong>
+                    </div>
+                    <div className="col-6 text-end fw-bold">
+                      {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Información de Aduana (LCL+DDP y FCL+DDP) */}
+                {needsAduanaCard && (
                   <div className="p-3 bg-light rounded border mb-3">
                     <h6 className="fw-bold mb-3">
-                      <i className="bi bi-geo-alt me-2"></i>
-                      Ruta Seleccionada
+                      <i className="bi bi-shield-check me-2"></i>
+                      Aduana / Nacionalización ({servicioSel} {incotermSel})
                     </h6>
                     <div className="row g-2 small">
-                      <div className="col-6 text-muted">Origen:</div>
-                      <div className="col-6 text-end fw-bold">
-                        {origenSel?.label || "—"}
+                      <div className="col-6 text-muted">
+                        Valor de la mercadería:
                       </div>
-                      <div className="col-6 text-muted">Destino:</div>
                       <div className="col-6 text-end fw-bold">
-                        {destinoSel?.label || "—"}
+                        USD {valorMercaderiaDDPNum.toFixed(2)}
+                      </div>
+                      <div className="col-6 text-muted">
+                        Valor del transporte:
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        USD {extraportData.costoTransporte.toFixed(2)}
+                      </div>
+                      <div className="col-6 text-muted">
+                        Valor del seguro
+                        {parseFloat((valorSeguroDDP || "").replace(",", ".")) >
+                        0
+                          ? ":"
+                          : " (teórico):"}
+                      </div>
+                      <div className="col-6 text-end fw-bold">
+                        USD {extraportData.seguroParaCIF.toFixed(2)}
                       </div>
                       <div className="col-12 border-top my-2"></div>
                       <div className="col-6 text-muted">
-                        <i className="bi bi-geo-alt-fill me-1"></i>
-                        Dirección de recogida:
+                        <strong>Extraport expenses (Ee):</strong>
                       </div>
                       <div className="col-6 text-end fw-bold">
-                        {pickupAddress || "—"}
-                      </div>
-                      <div className="col-6 text-muted">
-                        <i className="bi bi-flag-fill me-1"></i>
-                        Dirección de entrega:
-                      </div>
-                      <div className="col-6 text-end fw-bold">
-                        {deliveryAddress || "—"}
+                        USD {extraportData.total.toFixed(2)}
                       </div>
                     </div>
                   </div>
+                )}
 
-                  {/* Resumen de Cargamento */}
+                {/* Información de Contenedores (FCL+DAP y FCL+DDP) */}
+                {needsContenedoresCard && (
                   <div className="p-3 bg-light rounded border mb-3">
                     <h6 className="fw-bold mb-3">
                       <i className="bi bi-box-seam me-2"></i>
-                      Datos del Cargamento ({piecesData.length} pieza
-                      {piecesData.length !== 1 ? "s" : ""})
+                      Contenedores (FCL {incotermSel})
                     </h6>
                     <div className="row g-2 small">
-                      {piecesData.map((p, i) => (
-                        <React.Fragment key={p.id}>
-                          {i > 0 && (
-                            <div className="col-12 border-top my-2"></div>
-                          )}
-                          <div className="col-12 fw-bold text-uppercase text-muted small">
-                            Pieza {i + 1}
-                          </div>
-                          <div className="col-6 text-muted">Descripción:</div>
-                          <div className="col-6 text-end fw-bold">
-                            {p.description || "—"}
-                          </div>
-                          {p.packageType && (
-                            <>
-                              <div className="col-6 text-muted">
-                                Tipo de paquete:
-                              </div>
-                              <div className="col-6 text-end fw-bold">
-                                {packageTypeOptions.find(
-                                  (opt) => String(opt.id) === p.packageType,
-                                )?.name || "—"}
-                              </div>
-                            </>
-                          )}
-                          <div className="col-6 text-muted">Peso:</div>
-                          <div className="col-6 text-end fw-bold">
-                            {fmtWeight(p.weight)} {weightUnit}
-                          </div>
+                      {cont20 > 0 && (
+                        <>
                           <div className="col-6 text-muted">
-                            Dimensiones (L × A × H):
+                            Contenedores 20GP:
+                          </div>
+                          <div className="col-6 text-end fw-bold">{cont20}</div>
+                        </>
+                      )}
+                      {cont40HQ > 0 && (
+                        <>
+                          <div className="col-6 text-muted">
+                            Contenedores 40HQ:
                           </div>
                           <div className="col-6 text-end fw-bold">
-                            {fmtDim(p.length)} × {fmtDim(p.width)} ×{" "}
-                            {fmtDim(p.height)} {dimUnit}
+                            {cont40HQ}
                           </div>
-                        </React.Fragment>
-                      ))}
+                        </>
+                      )}
+                      {cont40NOR > 0 && (
+                        <>
+                          <div className="col-6 text-muted">
+                            Contenedores 40NOR:
+                          </div>
+                          <div className="col-6 text-end fw-bold">
+                            {cont40NOR}
+                          </div>
+                        </>
+                      )}
                       <div className="col-12 border-top my-2"></div>
                       <div className="col-6 text-muted">
-                        <strong>Volumen total:</strong>
+                        <strong>Total contenedores:</strong>
                       </div>
                       <div className="col-6 text-end fw-bold">
-                        {fmtVolume(cargoTotals.volume)} {volumeUnit}
-                      </div>
-                      <div className="col-6 text-muted">
-                        <strong>Peso total:</strong>
-                      </div>
-                      <div className="col-6 text-end fw-bold">
-                        {fmtWeight(cargoTotals.realWeight)} {weightUnit}
-                      </div>
-                      <div className="col-6 text-muted">
-                        <strong>Peso cargable:</strong>
-                      </div>
-                      <div className="col-6 text-end fw-bold">
-                        {fmtWeight(cargoTotals.chargeableWeight)} {weightUnit}
+                        {totalContenedores}
                       </div>
                     </div>
-                  </div>
-
-                  {/* Información de Aduana (LCL+DDP y FCL+DDP) */}
-                  {needsAduanaCard && (
-                    <div className="p-3 bg-light rounded border mb-3">
-                      <h6 className="fw-bold mb-3">
-                        <i className="bi bi-shield-check me-2"></i>
-                        Aduana / Nacionalización ({servicioSel} {incotermSel})
-                      </h6>
-                      <div className="row g-2 small">
-                        <div className="col-6 text-muted">
-                          Valor de la mercadería:
-                        </div>
-                        <div className="col-6 text-end fw-bold">
-                          USD {valorMercaderiaDDPNum.toFixed(2)}
-                        </div>
-                        <div className="col-6 text-muted">
-                          Valor del transporte:
-                        </div>
-                        <div className="col-6 text-end fw-bold">
-                          USD {extraportData.costoTransporte.toFixed(2)}
-                        </div>
-                        <div className="col-6 text-muted">
-                          Valor del seguro
-                          {parseFloat(
-                            (valorSeguroDDP || "").replace(",", "."),
-                          ) > 0
-                            ? ":"
-                            : " (teórico):"}
-                        </div>
-                        <div className="col-6 text-end fw-bold">
-                          USD {extraportData.seguroParaCIF.toFixed(2)}
-                        </div>
-                        <div className="col-12 border-top my-2"></div>
-                        <div className="col-6 text-muted">
-                          <strong>Extraport expenses (Ee):</strong>
-                        </div>
-                        <div className="col-6 text-end fw-bold">
-                          USD {extraportData.total.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Información de Contenedores (FCL+DAP y FCL+DDP) */}
-                  {needsContenedoresCard && (
-                    <div className="p-3 bg-light rounded border mb-3">
-                      <h6 className="fw-bold mb-3">
-                        <i className="bi bi-box-seam me-2"></i>
-                        Contenedores (FCL {incotermSel})
-                      </h6>
-                      <div className="row g-2 small">
-                        {cont20 > 0 && (
-                          <>
-                            <div className="col-6 text-muted">
-                              Contenedores 20GP:
-                            </div>
-                            <div className="col-6 text-end fw-bold">
-                              {cont20}
-                            </div>
-                          </>
-                        )}
-                        {cont40HQ > 0 && (
-                          <>
-                            <div className="col-6 text-muted">
-                              Contenedores 40HQ:
-                            </div>
-                            <div className="col-6 text-end fw-bold">
-                              {cont40HQ}
-                            </div>
-                          </>
-                        )}
-                        {cont40NOR > 0 && (
-                          <>
-                            <div className="col-6 text-muted">
-                              Contenedores 40NOR:
-                            </div>
-                            <div className="col-6 text-end fw-bold">
-                              {cont40NOR}
-                            </div>
-                          </>
-                        )}
-                        <div className="col-12 border-top my-2"></div>
-                        <div className="col-6 text-muted">
-                          <strong>Total contenedores:</strong>
-                        </div>
-                        <div className="col-6 text-end fw-bold">
-                          {totalContenedores}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Servicios Adicionales */}
-                  <div className="p-3 bg-light rounded border mb-3">
-                    <h6 className="fw-bold mb-3">
-                      <i className="bi bi-shield-plus me-2"></i>
-                      Servicios Adicionales
-                    </h6>
-                    <div className="small">
-                      <span className="text-muted">
-                        <i className="bi bi-info-circle me-1"></i>
-                        Sin servicios adicionales seleccionados
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="qa-alert qa-alert-danger mb-3">
-                    <i className="bi bi-x-circle-fill"></i>
-                    <div>{error}</div>
                   </div>
                 )}
 
-                <div className="d-flex justify-content-end mt-4">
-                  {btnPhase !== "done" ? (
+                {/* Servicios Adicionales */}
+                <div className="p-3 bg-light rounded border mb-3">
+                  <h6 className="fw-bold mb-3">
+                    <i className="bi bi-shield-plus me-2"></i>
+                    Servicios Adicionales
+                  </h6>
+                  <div className="small">
+                    <span className="text-muted">
+                      <i className="bi bi-info-circle me-1"></i>
+                      Sin servicios adicionales seleccionados
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {error && (
+                <div className="qa-alert qa-alert-danger mb-3">
+                  <i className="bi bi-x-circle-fill"></i>
+                  <div>{error}</div>
+                </div>
+              )}
+
+              <div className="d-flex justify-content-end mt-4">
+                {btnPhase !== "done" ? (
+                  <button
+                    className={`qa-btn qa-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
+                    disabled={
+                      btnPhase !== "idle" ||
+                      loading ||
+                      !canProceedFromStep2 ||
+                      !canProceedFromStep3
+                    }
+                    onClick={() => {
+                      submitQuote();
+                    }}
+                  >
+                    <span className="quote-btn-content">
+                      Generar Cotización
+                      <i className="ti ti-arrow-right"></i>
+                    </span>
+                    {btnPhase === "loading" && (
+                      <div className="quote-spinner-ring" />
+                    )}
+                    {btnPhase === "check" && (
+                      <svg
+                        className="quote-check-svg"
+                        width={22}
+                        height={22}
+                        viewBox="0 0 22 22"
+                        fill="none"
+                      >
+                        <circle
+                          cx="11"
+                          cy="11"
+                          r="9"
+                          stroke="rgba(255,255,255,0.3)"
+                          strokeWidth="2.5"
+                        />
+                        <polyline
+                          ref={checkDrawRef}
+                          className="quote-check-polyline"
+                          points="6,11 10,15 16,7"
+                          stroke="white"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                ) : (
+                  <div className="quote-confirm-row">
+                    <span className="quote-confirm-dot">
+                      <i className="ti ti-check" />
+                    </span>
+                    <span className="quote-confirm-text">
+                      Cotización generada
+                    </span>
                     <button
-                      className={`qa-btn qa-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
-                      disabled={
-                        btnPhase !== "idle" ||
-                        loading ||
-                        !canProceedFromStep2 ||
-                        !canProceedFromStep3
-                      }
+                      type="button"
+                      className="quote-confirm-download"
                       onClick={() => {
-                        submitQuote();
+                        if (pdfFallbackRef.current) {
+                          downloadPDFFromBase64(
+                            pdfFallbackRef.current.base64,
+                            pdfFallbackRef.current.filename,
+                          );
+                        }
                       }}
                     >
-                      <span className="quote-btn-content">
-                        Generar Cotización
-                        <i className="ti ti-arrow-right"></i>
-                      </span>
-                      {btnPhase === "loading" && (
-                        <div className="quote-spinner-ring" />
-                      )}
-                      {btnPhase === "check" && (
-                        <svg
-                          className="quote-check-svg"
-                          width={22}
-                          height={22}
-                          viewBox="0 0 22 22"
-                          fill="none"
-                        >
-                          <circle
-                            cx="11"
-                            cy="11"
-                            r="9"
-                            stroke="rgba(255,255,255,0.3)"
-                            strokeWidth="2.5"
-                          />
-                          <polyline
-                            ref={checkDrawRef}
-                            className="quote-check-polyline"
-                            points="6,11 10,15 16,7"
-                            stroke="white"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
+                      <i className="ti ti-download" />
+                      Descargar PDF
                     </button>
-                  ) : (
-                    <div className="quote-confirm-row">
-                      <span className="quote-confirm-dot">
-                        <i className="ti ti-check" />
-                      </span>
-                      <span className="quote-confirm-text">
-                        Cotización generada
-                      </span>
-                      <button
-                        type="button"
-                        className="quote-confirm-download"
-                        onClick={() => {
-                          if (pdfFallbackRef.current) {
-                            downloadPDFFromBase64(
-                              pdfFallbackRef.current.base64,
-                              pdfFallbackRef.current.filename,
-                            );
-                          }
-                        }}
-                      >
-                        <i className="ti ti-download" />
-                        Descargar PDF
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {showMaxPiecesModal && (
         <Modal
