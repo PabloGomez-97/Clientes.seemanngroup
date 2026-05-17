@@ -3343,7 +3343,7 @@ function QuoteLCL({
                           value={polSeleccionado}
                           onChange={handlePolRecurrenteChange}
                           options={opcionesPOL}
-                          placeholder="Escribe ciudad, país o código UNLOCODE..."
+                          placeholder="Ingresa Puerto o UN/LOCODE"
                           menuPlacement="bottom"
                         />
                       </div>
@@ -3358,7 +3358,7 @@ function QuoteLCL({
                           options={opcionesPOD}
                           placeholder={
                             polSeleccionado
-                              ? "Escribe ciudad, país o código UNLOCODE..."
+                              ? "Ingresa Puerto o UN/LOCODE"
                               : "Selecciona primero el origen"
                           }
                           isDisabled={!polSeleccionado}
@@ -3674,7 +3674,7 @@ function QuoteLCL({
                           value={polNR}
                           onChange={handlePolNRChange}
                           options={opcionesPOL_NR}
-                          placeholder="Escribe ciudad, país o código UNLOCODE..."
+                          placeholder="Ingresa Puerto o UN/LOCODE"
                           menuPlacement="bottom"
                         />
                       </div>
@@ -3689,7 +3689,7 @@ function QuoteLCL({
                           options={opcionesPOD_NR}
                           placeholder={
                             polNR
-                              ? "Escribe ciudad, país o código UNLOCODE..."
+                              ? "Ingresa Puerto o UN/LOCODE"
                               : "Selecciona primero el origen"
                           }
                           isDisabled={!polNR}
