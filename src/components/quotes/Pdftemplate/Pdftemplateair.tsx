@@ -749,14 +749,15 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
           <strong
             style={{ color: "#D35400", display: "block", marginBottom: "4px" }}
           >
-            ⓘ Air Freight — Minimum Billable Weight Notice
+            ⓘ Flete Aéreo — Aviso de peso mínimo facturable
           </strong>
-          The chargeable weight you declared ({fmt(chargeableWeight)} kg) does
-          not fall within a rated weight bracket for this route. In accordance
-          with airline tariff rules, Air Freight has been assessed at the
-          minimum weight of the next available bracket ({airFreightMinWeight}{" "}
-          kg). All other charges (Handling, AWB, Airport Transfer, etc.) remain
-          based on your declared weight of {fmt(chargeableWeight)} kg.
+          El peso cobrable declarado ({fmt(chargeableWeight)} kg) no se
+          encuentra dentro de un tramo de peso tarifado para esta ruta. De
+          acuerdo con las condiciones tarifarias de la aerolínea, el Flete Aéreo
+          ha sido calculado considerando el peso mínimo entregado (
+          {airFreightMinWeight} kg). Todos los demás cargos (Handling, AWB,
+          Traslado a Aeropuerto, etc.) se mantienen calculados según el peso
+          declarado de {fmt(chargeableWeight)} kg.
         </div>
       )}
       {/* ── Mensaje 48hrs para cotizaciones sin tarifa ── */}
