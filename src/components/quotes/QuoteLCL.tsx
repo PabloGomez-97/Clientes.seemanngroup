@@ -26,6 +26,7 @@ import { imgUrl } from "../../config/images";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
 import "flag-icons/css/flag-icons.min.css";
+import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
 import "./QuoteAIR.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import type { CrearOperacionPayload } from "../../services/operaciones";
@@ -1083,40 +1084,10 @@ function QuoteLCL({
     }
   };
 
-  // Refs para scroll automático
   const routesRef = useRef<HTMLDivElement>(null);
-  const section1Ref = useRef<HTMLDivElement>(null);
-  const section2Ref = useRef<HTMLDivElement>(null);
-  const section3Ref = useRef<HTMLDivElement>(null);
-  const section4Ref = useRef<HTMLDivElement>(null);
-  // ============================================================================
+  const wizardRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll al cambiar de paso
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (currentStep === 1)
-        section1Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 2)
-        section2Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 3)
-        section3Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 4)
-        section4Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-    }, 150);
-    return () => clearTimeout(timeout);
-  }, [currentStep]);
+  useScrollToTopOnStepChange(currentStep, wizardRef);
 
   // Check animation: when phase becomes 'check', draw the checkmark and schedule 'done'
   useEffect(() => {
@@ -2939,7 +2910,7 @@ function QuoteLCL({
       {/* ============================================================================ */}
       {/* WIZARD: barra de progreso de pasos                                            */}
       {/* ============================================================================ */}
-      <div className="qa-wizard-steps" role="tablist" aria-label="Pasos">
+      <div className="qa-wizard-steps" ref={wizardRef} role="tablist" aria-label="Pasos">
         {WIZARD_STEPS.map((s, idx) => {
           const isActive = currentStep === s.id;
           const isCompleted = s.id < currentStep;
@@ -2975,7 +2946,7 @@ function QuoteLCL({
       {/* ============================================================================ */}
 
       {currentStep === 1 && (
-        <div className="qa-card" ref={section1Ref}>
+        <div className="qa-card">
           <div className="qa-card-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -3559,7 +3530,7 @@ function QuoteLCL({
 
       {currentStep === 2 && rutaSeleccionada && (
         <>
-          <div className="qa-card" ref={section2Ref}>
+          <div className="qa-card">
             <div className="qa-card-header open">
               <div className="d-flex align-items-center">
                 <h3>
@@ -4048,7 +4019,7 @@ function QuoteLCL({
 
       {currentStep === 3 && rutaSeleccionada && (
         <>
-          <div className="qa-card" ref={section3Ref}>
+          <div className="qa-card">
             <div className="qa-card-header open">
               <div className="d-flex align-items-center">
                 <h3>
@@ -4223,7 +4194,7 @@ function QuoteLCL({
       {/* ============================================================================ */}
 
       {currentStep === 4 && rutaSeleccionada && (
-        <div className="qa-card" ref={section4Ref}>
+        <div className="qa-card">
           <div className="qa-card-header open">
             <div className="d-flex align-items-center">
               <h3>

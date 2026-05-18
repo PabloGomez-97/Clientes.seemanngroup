@@ -38,6 +38,7 @@ import {
   type QuoteFCLProps,
   type ClienteAsignado,
 } from "./Handlers/FCL/HandlerQuoteFCL";
+import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
 import "./QuoteAIR.css";
 import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
@@ -237,12 +238,8 @@ function QuoteFCL({
     );
   };
 
-  // Refs para scroll automático
   const routesRef = useRef<HTMLDivElement>(null);
-  const section1Ref = useRef<HTMLDivElement>(null);
-  const section2Ref = useRef<HTMLDivElement>(null);
-  const section3Ref = useRef<HTMLDivElement>(null);
-  const section4Ref = useRef<HTMLDivElement>(null);
+  const wizardRef = useRef<HTMLDivElement>(null);
 
   // ============================================================================
   // ESTADOS PARA RUTAS EXPANDIDAS (tercer sheet)
@@ -853,32 +850,7 @@ function QuoteFCL({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerSeleccionado]);
 
-  // Auto-scroll al cambiar de paso
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (currentStep === 1)
-        section1Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 2)
-        section2Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 3)
-        section3Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 4)
-        section4Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-    }, 150);
-    return () => clearTimeout(timeout);
-  }, [currentStep]);
+  useScrollToTopOnStepChange(currentStep, wizardRef);
 
   // Check animation: when phase becomes 'check', draw the checkmark and schedule 'done'
   useEffect(() => {
@@ -2349,7 +2321,7 @@ function QuoteFCL({
       {/* ============================================================================ */}
       {/* WIZARD: barra de progreso de pasos                                            */}
       {/* ============================================================================ */}
-      <div className="qf-wizard-steps" role="tablist" aria-label="Pasos">
+      <div className="qf-wizard-steps" ref={wizardRef} role="tablist" aria-label="Pasos">
         {WIZARD_STEPS.map((s, idx) => {
           const isActive = currentStep === s.id;
           const isCompleted = s.id < currentStep;
@@ -2385,7 +2357,7 @@ function QuoteFCL({
       {/* ============================================================================ */}
 
       {currentStep === 1 && (
-        <div className="qf-card" ref={section1Ref}>
+        <div className="qf-card">
           <div className="qf-card-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -3023,7 +2995,7 @@ function QuoteFCL({
       {/* ============================================================================ */}
 
       {currentStep === 2 && rutaSeleccionada && containerSeleccionado && (
-        <div className="qf-card mt-4" ref={section2Ref}>
+        <div className="qf-card mt-4">
           <div className="qf-card-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -3381,7 +3353,7 @@ function QuoteFCL({
       {/* ============================================================================ */}
 
       {currentStep === 3 && rutaSeleccionada && containerSeleccionado && (
-        <div className="qf-card mt-4" ref={section3Ref}>
+        <div className="qf-card mt-4">
           <div className="qf-card-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -3559,7 +3531,7 @@ function QuoteFCL({
       {/* ============================================================================ */}
 
       {currentStep === 4 && rutaSeleccionada && containerSeleccionado && (
-        <div className="qf-card mt-4" ref={section4Ref}>
+        <div className="qf-card mt-4">
           <div className="qf-card-header open">
             <div className="d-flex align-items-center">
               <h3>

@@ -54,6 +54,7 @@ import {
   fetchExpandedRoutesAir,
   type ExpandedRoutesAirData,
 } from "./Handlers/Air/ExpandedRoutesAir";
+import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
 import "./QuoteAIR.css";
 import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
@@ -853,37 +854,9 @@ function QuoteAPITester({
 
   // Ref para scroll a la lista de rutas
   const routesRef = useRef<HTMLDivElement>(null);
-  const section1Ref = useRef<HTMLDivElement>(null);
-  const section2Ref = useRef<HTMLDivElement>(null);
-  const section3Ref = useRef<HTMLDivElement>(null);
-  const section4Ref = useRef<HTMLDivElement>(null);
+  const wizardRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll al cambiar de paso
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (currentStep === 1)
-        section1Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 2)
-        section2Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 3)
-        section3Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 4)
-        section4Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-    }, 150);
-    return () => clearTimeout(timeout);
-  }, [currentStep]);
+  useScrollToTopOnStepChange(currentStep, wizardRef);
 
   // Check animation: when phase becomes 'check', draw the checkmark and schedule 'done'
   useEffect(() => {
@@ -4073,7 +4046,7 @@ function QuoteAPITester({
       {/* ============================================================================ */}
       {/* WIZARD: barra de progreso de pasos                                            */}
       {/* ============================================================================ */}
-      <div className="qa-wizard-steps" role="tablist" aria-label="Pasos">
+      <div className="qa-wizard-steps" ref={wizardRef} role="tablist" aria-label="Pasos">
         {WIZARD_STEPS.map((s, idx) => {
           const isActive = currentStep === s.id;
           const isCompleted = s.id < currentStep;
@@ -4109,7 +4082,7 @@ function QuoteAPITester({
       {/* ============================================================================ */}
 
       {currentStep === 1 && (
-        <div className="qa-card" ref={section1Ref}>
+        <div className="qa-card">
           <div className="qa-card-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -4744,7 +4717,7 @@ function QuoteAPITester({
       {/* ============================================================================ */}
 
       {currentStep === 2 && rutaSeleccionada && (
-        <div className="qa-card" ref={section2Ref}>
+        <div className="qa-card">
           <div className="qa-card-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -5242,7 +5215,7 @@ function QuoteAPITester({
       {/* ============================================================================ */}
 
       {currentStep === 3 && rutaSeleccionada && (
-        <div className="qa-card" ref={section3Ref}>
+        <div className="qa-card">
           <div className="qa-card-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -5494,7 +5467,7 @@ function QuoteAPITester({
       {/* ============================================================================ */}
 
       {currentStep === 4 && rutaSeleccionada && (
-        <div className="qa-card" ref={section4Ref}>
+        <div className="qa-card">
           <div className="qa-card-header open">
             <div className="d-flex align-items-center">
               <h3>

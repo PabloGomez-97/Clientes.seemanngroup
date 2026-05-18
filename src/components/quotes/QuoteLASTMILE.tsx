@@ -35,6 +35,7 @@ import {
 import { imgUrl } from "../../config/images";
 import { getLastMileCoords } from "../../config/lastmilleCoordinates";
 import "flag-icons/css/flag-icons.min.css";
+import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
 import "./QuoteLASTMILE.css";
 
 interface OutletContext {
@@ -620,43 +621,9 @@ function QuoteLASTMILE({
     return { volume, realWeight, volumetricWeight, chargeableWeight };
   }, [piecesData]);
 
-  const section1Ref = useRef<HTMLDivElement>(null);
-  const section2Ref = useRef<HTMLDivElement>(null);
-  const section3Ref = useRef<HTMLDivElement>(null);
-  const section4Ref = useRef<HTMLDivElement>(null);
-  const section5Ref = useRef<HTMLDivElement>(null);
+  const wizardRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll al cambiar de paso
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (currentStep === 1)
-        section1Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 2)
-        section2Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 3)
-        section3Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 4)
-        section4Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      else if (currentStep === 5)
-        section5Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-    }, 150);
-    return () => clearTimeout(timeout);
-  }, [currentStep]);
+  useScrollToTopOnStepChange(currentStep, wizardRef);
 
   // ============================================================================
   // EXTRAPORT EXPENSES (LCL + DDP y FCL + DDP)
@@ -2061,7 +2028,7 @@ function QuoteLASTMILE({
       {/* ============================================================================ */}
       {/* WIZARD: BARRA DE PROGRESO */}
       {/* ============================================================================ */}
-      <div className="qlm-wizard-progress" role="navigation" aria-label="Pasos">
+      <div className="qlm-wizard-progress" ref={wizardRef} role="navigation" aria-label="Pasos">
         {WIZARD_STEPS.map((step, idx) => {
           const isActive = currentStep === step.id;
           const isCompleted = step.id < currentStep;
@@ -2095,7 +2062,7 @@ function QuoteLASTMILE({
       {/* SECCIÓN 1: SELECCIÓN DE SERVICIO E INCOTERM */}
       {/* ============================================================================ */}
       {currentStep === 1 && (
-        <div className="qa-card" ref={section1Ref}>
+        <div className="qa-card">
           <div className="qa-card-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -2629,7 +2596,7 @@ function QuoteLASTMILE({
       {/* SECCIÓN 2: SELECCIÓN DE RUTA */}
       {/* ============================================================================ */}
       {currentStep === 2 && step1Completed && (
-        <div className="qa-card" ref={section2Ref}>
+        <div className="qa-card">
           <div className="qa-card-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -2693,7 +2660,7 @@ function QuoteLASTMILE({
 
       {/* PASO 3 */}
       {currentStep === 3 && canProceedFromStep2 && (
-        <div className="qa-card lm-step-card" ref={section3Ref}>
+        <div className="qa-card lm-step-card">
           <div className="qf-card-header lm-step-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -2819,7 +2786,7 @@ function QuoteLASTMILE({
 
       {/* PASO 4 */}
       {currentStep === 4 && (
-        <div className="qf-card lm-step-card" ref={section4Ref}>
+        <div className="qf-card lm-step-card">
           <div className="qf-card-header lm-step-header open">
             <div className="d-flex align-items-center">
               <h3>
@@ -2869,7 +2836,7 @@ function QuoteLASTMILE({
 
       {/* PASO 5 */}
       {currentStep === 5 && (
-        <div className="qf-card lm-step-card" ref={section5Ref}>
+        <div className="qf-card lm-step-card">
           <div className="qf-card-header lm-step-header open">
             <div className="d-flex align-items-center">
               <h3>
