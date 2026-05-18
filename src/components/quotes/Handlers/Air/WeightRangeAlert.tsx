@@ -46,8 +46,8 @@ export const WeightRangeAlert: React.FC<WeightRangeAlertProps> = ({
       >
         <div className="d-flex align-items-start gap-2">
           <i
-            className="bi bi-info-circle-fill"
-            style={{ fontSize: "1.25rem", marginTop: "2px", color: "#D35400" }}
+            className="bi bi-exclamation-triangle-fill"
+            style={{ fontSize: "1.25rem", marginTop: "2px", color: "#DC3545" }}
           ></i>
           <div className="flex-grow-1">
             <h6 className="fw-bold mb-2" style={{ color: "#D35400" }}>
@@ -61,24 +61,6 @@ export const WeightRangeAlert: React.FC<WeightRangeAlertProps> = ({
                 rangoSiguiente: validation.siguienteRangoDisponible,
               })}
             </p>
-            <div
-              className="p-2 rounded"
-              style={{ backgroundColor: "rgba(255,255,255,0.7)" }}
-            >
-              <p className="mb-1 small fw-bold" style={{ color: "#1a5276" }}>
-                <i className="bi bi-calculator me-1"></i>
-                {t("WeightRangeAlert.calculoAirFreight", {
-                  pesoAirFreight,
-                })}
-              </p>
-            </div>
-            <div className="p-2">
-              <p className="mb-2 small" style={{ color: "#1f618d" }}>
-                {t("WeightRangeAlert.segundoaviso", {
-                  peso: pesoChargeable.toFixed(2),
-                })}
-              </p>
-            </div>
 
             {/* Visualización de rangos disponibles */}
             <div className="mt-3">
@@ -89,13 +71,12 @@ export const WeightRangeAlert: React.FC<WeightRangeAlertProps> = ({
                 {validation.rangosDisponibles.map((rango) => (
                   <span
                     key={rango.rango}
-                    className={`badge ${
-                      rango.rango === validation.rangoActual
-                        ? "bg-danger"
-                        : rango.disponible
-                          ? "bg-success"
-                          : "bg-secondary"
-                    }`}
+                    className={`badge ${rango.rango === validation.rangoActual
+                      ? "bg-danger"
+                      : rango.disponible
+                        ? "bg-success"
+                        : "bg-secondary"
+                      }`}
                     style={{ fontSize: "0.7rem" }}
                   >
                     {rango.disponible ? (
@@ -158,13 +139,12 @@ export const WeightRangeAlert: React.FC<WeightRangeAlertProps> = ({
               {validation.rangosDisponibles.map((rango) => (
                 <span
                   key={rango.rango}
-                  className={`badge ${
-                    rango.rango === validation.rangoActual
-                      ? "bg-danger"
-                      : rango.disponible
-                        ? "bg-success"
-                        : "bg-secondary"
-                  }`}
+                  className={`badge ${rango.rango === validation.rangoActual
+                    ? "bg-danger"
+                    : rango.disponible
+                      ? "bg-success"
+                      : "bg-secondary"
+                    }`}
                   style={{ fontSize: "0.7rem" }}
                 >
                   {rango.disponible ? (
