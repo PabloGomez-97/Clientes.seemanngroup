@@ -755,9 +755,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
           encuentra dentro de un tramo de peso tarifado para esta ruta. De
           acuerdo con las condiciones tarifarias de la aerolínea, el Flete Aéreo
           ha sido calculado considerando el peso mínimo entregado (
-          {airFreightMinWeight} kg). Todos los demás cargos (Handling, AWB,
-          Traslado a Aeropuerto, etc.) se mantienen calculados según el peso
-          declarado de {fmt(chargeableWeight)} kg.
+          {airFreightMinWeight} kg).
         </div>
       )}
       {/* ── Mensaje 48hrs para cotizaciones sin tarifa ── */}
