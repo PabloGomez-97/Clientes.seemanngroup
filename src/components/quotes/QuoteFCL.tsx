@@ -854,22 +854,22 @@ function QuoteFCL({
       if (currentStep === 1)
         section1Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "nearest",
+          block: "center",
         });
       else if (currentStep === 2)
         section2Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "nearest",
+          block: "center",
         });
       else if (currentStep === 3)
         section3Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "nearest",
+          block: "center",
         });
       else if (currentStep === 4)
         section4Ref.current?.scrollIntoView({
           behavior: "smooth",
-          block: "nearest",
+          block: "center",
         });
     }, 150);
     return () => clearTimeout(timeout);
