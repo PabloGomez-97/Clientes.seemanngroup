@@ -123,7 +123,7 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     iata: "NKG",
     countryCode: "CN"
   },
-  santiago: {
+  santiago_de_chile: {
     lat: -33.3972,
     lng: -70.7931,
     name: "Comodoro Arturo Merino Benítez International Airport",

@@ -63,6 +63,11 @@ import {
   parseSimulationRateInput,
   roundSimulationAmount,
 } from "./Handlers/simulationQuote";
+import {
+  getValidityClass,
+  parseValidUntilToISO,
+  formatValidUntilDisplay,
+} from "./Handlers/handlerFechas";
 
 const INITIAL_VISIBLE_ROUTES = 5;
 
@@ -914,208 +919,8 @@ function QuoteFCL({
     liveTrackingActivo,
     clienteSeleccionado,
   ]);
-  // Formato esperado: DD/M/YYYY (ej: 28/2/2026)
-  // ============================================================================
-  const getValidityClass = (
-    validUntil?: string | null,
-  ): "valid" | "expiring-soon" | "expired" | null => {
-    if (!validUntil) return null;
-
-    const txt = String(validUntil).trim();
-    if (!txt) return null;
-
-    let expiry: Date | null = null;
-
-    // 1) Intentar formato numérico serial de Google Sheets (ej: 46072)
-    if (/^\d{5}$/.test(txt)) {
-      const serial = parseInt(txt, 10);
-      // Google Sheets usa epoch 30/12/1899
-      const epoch = new Date(1899, 11, 30);
-      expiry = new Date(epoch.getTime() + serial * 86400000);
-    }
-
-    // 2) Intentar formato ISO YYYY-MM-DD (ej: 2026-02-06)
-    if (!expiry) {
-      const match = txt.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (match) {
-        const year = parseInt(match[1], 10);
-        const month = parseInt(match[2], 10);
-        const day = parseInt(match[3], 10);
-        expiry = new Date(year, month - 1, day, 23, 59, 59, 999);
-      }
-    }
-
-    // 3) Intentar formato DD/MM/YYYY, DD/M/YYYY o DD-MM-YYYY (con guiones)
-    if (!expiry) {
-      const match = txt.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-      if (match) {
-        const part1 = parseInt(match[1], 10);
-        const part2 = parseInt(match[2], 10);
-        const year = parseInt(match[3], 10);
-
-        // Si part1 > 12, es definitivamente DD/M/YYYY
-        // Si part2 > 12, es definitivamente M/D/YYYY
-        // Si ambos <= 12, asumimos DD/M/YYYY (formato latino)
-        if (part1 > 12) {
-          // DD/M/YYYY → part1=día, part2=mes
-          expiry = new Date(year, part2 - 1, part1, 23, 59, 59, 999);
-        } else if (part2 > 12) {
-          // M/D/YYYY → part1=mes, part2=día
-          expiry = new Date(year, part1 - 1, part2, 23, 59, 59, 999);
-        } else {
-          // Ambos <= 12: asumimos DD/M/YYYY (formato del Excel en español)
-          expiry = new Date(year, part2 - 1, part1, 23, 59, 59, 999);
-        }
-      }
-    }
-
-    // 4) Intentar formato texto español (ej: "28 febrero 2026" o "28 febrero")
-    if (!expiry) {
-      const matchText = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
-      if (matchText) {
-        const day = parseInt(matchText[1], 10);
-        const monthName = matchText[2].toLowerCase();
-        const year = matchText[3]
-          ? parseInt(matchText[3], 10)
-          : new Date().getFullYear();
-
-        const monthMap: Record<string, number> = {
-          enero: 0,
-          febrero: 1,
-          marzo: 2,
-          abril: 3,
-          mayo: 4,
-          junio: 5,
-          julio: 6,
-          agosto: 7,
-          septiembre: 8,
-          octubre: 9,
-          noviembre: 10,
-          diciembre: 11,
-          ene: 0,
-          feb: 1,
-          mar: 2,
-          abr: 3,
-          may: 4,
-          jun: 5,
-          jul: 6,
-          ago: 7,
-          sep: 8,
-          oct: 9,
-          nov: 10,
-          dic: 11,
-        };
-
-        const monthIndex = monthMap[monthName];
-        if (monthIndex !== undefined) {
-          expiry = new Date(year, monthIndex, day, 23, 59, 59, 999);
-        }
-      }
-    }
-
-    if (!expiry || isNaN(expiry.getTime())) return null;
-
-    const now = new Date();
-    if (expiry < now) return "expired";
-    const twoDaysMs = 3 * 24 * 60 * 60 * 1000;
-    if (expiry.getTime() - now.getTime() <= twoDaysMs) return "expiring-soon";
-    return "valid";
-  };
-
-  // ============================================================================
-  // CONVERTIR validUntil A ISO 8601 (soporta DD/M/YYYY, serial GSheets, texto español)
-  // ============================================================================
-  const parseValidUntilToISO = (validUntil?: string | null): string => {
-    const fallback = new Date(
-      Date.now() + 7 * 24 * 60 * 60 * 1000,
-    ).toISOString();
-    if (!validUntil) return fallback;
-
-    const txt = String(validUntil).trim();
-    if (!txt) return fallback;
-
-    let expiry: Date | null = null;
-
-    // 1) Serial de Google Sheets (ej: 46072)
-    if (/^\d{5}$/.test(txt)) {
-      const serial = parseInt(txt, 10);
-      const epoch = new Date(Date.UTC(1899, 11, 30));
-      expiry = new Date(epoch.getTime() + serial * 86400000);
-    }
-
-    // 2) Formato ISO YYYY-MM-DD (ej: 2026-03-10)
-    if (!expiry) {
-      const match = txt.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (match) {
-        const year = parseInt(match[1], 10);
-        const month = parseInt(match[2], 10);
-        const day = parseInt(match[3], 10);
-        expiry = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-      }
-    }
-
-    // 3) Formato DD/MM/YYYY o DD/M/YYYY
-    if (!expiry) {
-      const match = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-      if (match) {
-        const part1 = parseInt(match[1], 10);
-        const part2 = parseInt(match[2], 10);
-        const year = parseInt(match[3], 10);
-        if (part1 > 12) {
-          expiry = new Date(Date.UTC(year, part2 - 1, part1, 23, 59, 59, 999));
-        } else if (part2 > 12) {
-          expiry = new Date(Date.UTC(year, part1 - 1, part2, 23, 59, 59, 999));
-        } else {
-          expiry = new Date(Date.UTC(year, part2 - 1, part1, 23, 59, 59, 999));
-        }
-      }
-    }
-
-    // 4) Texto español ("28 febrero 2026" o "28 marzo")
-    if (!expiry) {
-      const matchText = txt.match(/(\d{1,2})\s+([a-zñáéíóú]+)(?:\s+(\d{4}))?/i);
-      if (matchText) {
-        const day = parseInt(matchText[1], 10);
-        const monthName = matchText[2].toLowerCase();
-        const year = matchText[3]
-          ? parseInt(matchText[3], 10)
-          : new Date().getFullYear();
-        const monthMap: Record<string, number> = {
-          enero: 0,
-          febrero: 1,
-          marzo: 2,
-          abril: 3,
-          mayo: 4,
-          junio: 5,
-          julio: 6,
-          agosto: 7,
-          septiembre: 8,
-          octubre: 9,
-          noviembre: 10,
-          diciembre: 11,
-          ene: 0,
-          feb: 1,
-          mar: 2,
-          abr: 3,
-          may: 4,
-          jun: 5,
-          jul: 6,
-          ago: 7,
-          sep: 8,
-          oct: 9,
-          nov: 10,
-          dic: 11,
-        };
-        const monthIndex = monthMap[monthName];
-        if (monthIndex !== undefined) {
-          expiry = new Date(Date.UTC(year, monthIndex, day, 23, 59, 59, 999));
-        }
-      }
-    }
-
-    if (!expiry || isNaN(expiry.getTime())) return fallback;
-    return expiry.toISOString();
-  };
+  // Las funciones getValidityClass, parseValidUntilToISO y formatValidUntilDisplay
+  // provienen del módulo centralizado ./Handlers/handlerFechas
 
   // ============================================================================
   // FILTRAR RUTAS (excluye rutas con fecha vencida)
@@ -3108,7 +2913,9 @@ function QuoteFCL({
                                                           : ""
                                                   }`}
                                                 >
-                                                  {ruta.validUntil}
+                                                  {formatValidUntilDisplay(
+                                                    ruta.validUntil,
+                                                  )}
                                                 </span>
                                               ) : (
                                                 "—"

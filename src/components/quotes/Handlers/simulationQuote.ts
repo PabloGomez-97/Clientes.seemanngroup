@@ -33,8 +33,13 @@ export const getSimulationValidUntilDate = (): Date => {
   return validUntil;
 };
 
-export const getSimulationValidUntilDisplay = (): string =>
-  getSimulationValidUntilDate().toLocaleDateString("es-CL");
+export const getSimulationValidUntilDisplay = (): string => {
+  const d = getSimulationValidUntilDate();
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
 
 export const getSimulationValidUntilISO = (): string =>
   getSimulationValidUntilDate().toISOString();
