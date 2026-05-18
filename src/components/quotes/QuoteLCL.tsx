@@ -639,6 +639,11 @@ function QuoteLCL({
   // ============================================================================
 
   const handleSeleccionarRutaLcl = (ruta: RutaLCL) => {
+    // Si ya está seleccionada, solo avanzar al siguiente paso
+    if (rutaSeleccionada?.id === ruta.id) {
+      advanceToStep(2);
+      return;
+    }
     if (ruta.ofWM === 0) {
       setShowPriceZeroModal(true);
       return;

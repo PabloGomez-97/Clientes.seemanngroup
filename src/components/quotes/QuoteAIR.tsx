@@ -933,6 +933,11 @@ function QuoteAPITester({
   // ============================================================================
 
   const handleSeleccionarRutaAir = (ruta: RutaAerea) => {
+    // Si ya está seleccionada, solo avanzar al siguiente paso
+    if (rutaSeleccionada?.id === ruta.id) {
+      advanceToStep(2);
+      return;
+    }
     if (ruta.priceForComparison === 0) {
       setShowPriceZeroModal(true);
       return;

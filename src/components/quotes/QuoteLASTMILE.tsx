@@ -885,6 +885,19 @@ function QuoteLASTMILE({
   // Navegación del wizard: solo permitir retroceder a pasos ya alcanzados.
   const goToStep = (step: number) => {
     if (step >= 1 && step <= maxStepReached && step < currentStep) {
+      // Al volver al paso de Ruta, limpiar selecciones para permitir
+      // elegir una ruta diferente y evitar el auto-avance inmediato
+      if (step === 2) {
+        setOrigenSel(null);
+        setDestinoSel(null);
+        setOpcionesDestino([]);
+        setPiecesData([createEmptyPieceLM("1")]);
+        setOpenAccordions(["1"]);
+        setPickupAddress("");
+        setDeliveryAddress("");
+        setPickupCoordsOverride(null);
+        setSeguroActivo(false);
+      }
       setCurrentStep(step);
     }
   };
