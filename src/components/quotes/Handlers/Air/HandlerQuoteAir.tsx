@@ -322,7 +322,7 @@ export const getWeightRangeValidation = (
   pesoChargeable: number,
 ): WeightRangeValidation => {
   const rangos = [
-    { limiteInferior: 0, tarifa: ruta.kg45, nombre: "1-99kg" },
+    { limiteInferior: 0, tarifa: ruta.kg45, nombre: "45-99kg" },
     { limiteInferior: 100, tarifa: ruta.kg100, nombre: "100-299kg" },
     { limiteInferior: 300, tarifa: ruta.kg300, nombre: "300-499kg" },
     { limiteInferior: 500, tarifa: ruta.kg500, nombre: "500-999kg" },

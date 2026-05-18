@@ -4361,7 +4361,7 @@ function QuoteAPITester({
                                       </th>
                                       {[
                                         {
-                                          label: "1–99",
+                                          label: "45–99",
                                           col: "kg45" as AirSortCol,
                                         },
                                         {
