@@ -1579,9 +1579,9 @@ function QuoteAPITester({
       }
     }
 
-    // 3) Intentar formato DD/MM/YYYY o DD/M/YYYY
+    // 3) Intentar formato DD/MM/YYYY, DD/M/YYYY o DD-MM-YYYY (con guiones)
     if (!expiry) {
-      const match = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      const match = txt.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
       if (match) {
         const part1 = parseInt(match[1], 10);
         const part2 = parseInt(match[2], 10);
