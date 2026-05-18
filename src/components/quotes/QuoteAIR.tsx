@@ -1688,10 +1688,17 @@ function QuoteAPITester({
       : pesoChargeable;
 
   // Mínimo 45 kg obligatorio cuando la ruta tiene tarifa en el rango kg45 y el peso
-  // declarado es menor a 45 kg. No aplica al sistema de "siguiente rango disponible"
-  // (weightRangeError) ni al piso de minAirFreight (row[20]), que se gestiona por separado.
+  // declarado es menor a 45 kg.
+  // NO aplica cuando:
+  //   - hay weightRangeError (sistema de "siguiente rango" tiene su propia lógica), o
+  //   - la ruta tiene minAirFreight (row[20]) > 0, que ya actúa como piso del flete y
+  //     tiene prioridad sobre la regla de 45kg (ej: rate=9.49, minAF=220, 1kg →
+  //     cobrar 220, NO 45×9.49=427.05).
   const pesoAirFreight =
-    !weightRangeError && rutaSeleccionada?.kg45 && pesoAirFreightBase < 45
+    !weightRangeError &&
+    rutaSeleccionada?.kg45 &&
+    pesoAirFreightBase < 45 &&
+    !(rutaSeleccionada?.minAirFreight > 0)
       ? 45
       : pesoAirFreightBase;
 
