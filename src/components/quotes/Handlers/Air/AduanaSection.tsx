@@ -90,66 +90,8 @@ export const AduanaSection: React.FC<AduanaSectionProps> = ({
 
   return (
     <div className="mt-2">
-      {/* Toggle */}
-      <div
-        className="qa-switch-container"
-        style={{ width: "fit-content", padding: "0.4rem 0.8rem" }}
-      >
-        <input
-          className="form-check-input"
-          type="checkbox"
-          id="aduanaCheckbox"
-          checked={activo}
-          onChange={(e) => onToggle(e.target.checked)}
-          disabled={configLoading}
-        />
-        <label className="form-check-label small" htmlFor="aduanaCheckbox">
-          {t("AgenciaAduana.toggle")}
-        </label>
-        <OverlayTrigger
-          placement="top"
-          overlay={<Tooltip>{t("AgenciaAduana.tooltip")}</Tooltip>}
-        >
-          <i
-            className="bi bi-info-circle text-muted ms-2"
-            style={{ cursor: "pointer", fontSize: "0.9rem" }}
-          />
-        </OverlayTrigger>
-      </div>
-
       {activo && (
         <div className="mt-2 ps-4">
-          {/* Valor del producto */}
-          <label htmlFor="valorProductoAduana" className="qa-label">
-            {t("AgenciaAduana.valorProducto")} ({currency}){" "}
-            <span className="text-danger">*</span>
-          </label>
-          <input
-            type="text"
-            className="qa-input"
-            id="valorProductoAduana"
-            placeholder="Ej: 10000 o 10000,50"
-            value={valorProducto}
-            disabled={valorProductoDisabled}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === "" || /^[\d,.]+$/.test(value)) {
-                onValorProductoChange(value);
-              }
-            }}
-            style={{
-              maxWidth: "300px",
-              backgroundColor: valorProductoDisabled ? "#f0f0f0" : undefined,
-              cursor: valorProductoDisabled ? "not-allowed" : undefined,
-            }}
-          />
-          {valorProductoDisabled && (
-            <small className="text-muted ms-1">
-              <i className="bi bi-lock-fill me-1"></i>
-              {t("QuoteAIR.sincronizadoConSeguro")}
-            </small>
-          )}
-
           {/* Desglose CIF */}
           {valorProductoNum > 0 && aduanaResult && (
             <div className="mt-3">

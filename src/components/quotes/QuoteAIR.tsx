@@ -5439,6 +5439,25 @@ function QuoteAPITester({
               )}
             </div>
 
+            {/* Desglose Agencia de Aduanas */}
+            {aduanaActivo && !aduanaConfigLoading && aduanaConfig && rutaSeleccionada && (
+              <div className="mt-3 px-1">
+                <AduanaSection
+                  activo={aduanaActivo}
+                  onToggle={handleToggleAduana}
+                  valorProducto={valorProductoAduana}
+                  onValorProductoChange={handleValorProductoAduanaChange}
+                  costoTransporte={calculateCostoTransporteBase()}
+                  seguroActivo={seguroActivo}
+                  seguroMonto={seguroActivo ? calculateSeguro() : 0}
+                  currency={rutaSeleccionada.currency as SupportedCurrency}
+                  config={aduanaConfig}
+                  configLoading={aduanaConfigLoading}
+                  valorProductoDisabled={aduanaMaster === false}
+                />
+              </div>
+            )}
+
             {/* Botón Continuar */}
             <div className="d-flex justify-content-end mt-4 pt-3 border-top">
               <button
