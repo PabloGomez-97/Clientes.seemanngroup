@@ -1310,3 +1310,94 @@
   text-decoration: underline;
   color: #c5651a;
 }
+
+/* ============================================================================
+   Wizard de pasos (reemplaza accordions apilados)
+   ============================================================================ */
+.qa-wizard-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid var(--qa-border-color);
+  border-radius: var(--qa-radius);
+  box-shadow: var(--qa-shadow-sm);
+  flex-wrap: wrap;
+}
+
+.qa-wizard-step {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 0.5rem;
+  color: var(--qa-text-secondary);
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: var(--qa-transition);
+  user-select: none;
+}
+
+.qa-wizard-step__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e9ecef;
+  color: var(--qa-text-secondary);
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  transition: var(--qa-transition);
+}
+
+.qa-wizard-step__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qa-wizard-step__sep {
+  flex: 1 1 auto;
+  height: 2px;
+  background: #e9ecef;
+  margin: 0 0.75rem;
+  min-width: 16px;
+}
+
+.qa-wizard-step.is-active {
+  color: var(--qa-primary);
+  font-weight: 700;
+}
+.qa-wizard-step.is-active .qa-wizard-step__num {
+  background: var(--qa-primary);
+  color: #fff;
+}
+
+.qa-wizard-step.is-completed {
+  color: var(--qa-text-primary);
+}
+.qa-wizard-step.is-completed .qa-wizard-step__num {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+.qa-wizard-step.is-completed .qa-wizard-step__sep {
+  background: var(--qa-primary);
+}
+
+.qa-wizard-step.is-clickable:hover .qa-wizard-step__num {
+  outline: 2px solid var(--qa-primary);
+  outline-offset: 2px;
+}
+.qa-wizard-step.is-clickable:hover .qa-wizard-step__label {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .qa-wizard-step__label { display: none; }
+  .qa-wizard-step.is-active .qa-wizard-step__label { display: inline; }
+}

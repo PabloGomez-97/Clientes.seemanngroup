@@ -184,11 +184,17 @@ function QuoteFCL({
   // Estado para Live Tracking (servicio gratuito)
   const [liveTrackingActivo, setLiveTrackingActivo] = useState(false);
 
-  // Estado para controlar el accordion del Paso 1
-  const [openSection, setOpenSection] = useState<number>(1);
-  const [step2Completed, setStep2Completed] = useState<boolean>(false);
-  const [step3Completed, setStep3Completed] = useState<boolean>(false);
-  const [openSection4, setOpenSection4] = useState<boolean>(false);
+  // Wizard de pasos: solo un paso visible a la vez.
+  // El usuario solo puede retroceder a pasos ya alcanzados; avanzar se hace
+  // explícitamente con los botones "Continuar" de cada paso.
+  const WIZARD_STEPS = [
+    { id: 1, label: "Ruta" },
+    { id: 2, label: "Cargamento" },
+    { id: 3, label: "Servicios" },
+    { id: 4, label: "Revisión" },
+  ] as const;
+  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [maxStepReached, setMaxStepReached] = useState<number>(1);
 
   // Modal Seguro
   const [showSeguroModal, setShowSeguroModal] = useState(false);
@@ -228,6 +234,7 @@ function QuoteFCL({
 
   // Refs para scroll automático
   const routesRef = useRef<HTMLDivElement>(null);
+  const section1Ref = useRef<HTMLDivElement>(null);
   const section2Ref = useRef<HTMLDivElement>(null);
   const section3Ref = useRef<HTMLDivElement>(null);
   const section4Ref = useRef<HTMLDivElement>(null);
@@ -803,45 +810,25 @@ function QuoteFCL({
     return true;
   }, [incoterm, pickupFromAddress]);
 
-  // Puede pasar al Paso 4 siempre que haya llegado al Paso 3
-  const canProceedToStep4 = true;
-
-  useEffect(() => {
-    if (step2Completed && !canProceedToStep3) {
-      setStep2Completed(false);
-      setOpenSection(2);
-    }
-  }, [canProceedToStep3, step2Completed]);
-
-  const handleSectionToggle = (section: number) => {
-    const newSection = openSection === section ? 0 : section;
-    setOpenSection(newSection);
-    if (newSection === 2) {
-      trackStep({ step: "incoterm_charges", stepNumber: 2, totalSteps: 3 });
+  // Navegación del wizard: solo permitir retroceder a pasos ya alcanzados.
+  const goToStep = (step: number) => {
+    if (step >= 1 && step <= maxStepReached && step < currentStep) {
+      setCurrentStep(step);
     }
   };
+  const advanceToStep = (step: number) => {
+    setCurrentStep(step);
+    setMaxStepReached((prev) => Math.max(prev, step));
+  };
 
-  // Auto-scroll al cambiar de sección
+  // Auto-rollback: si el usuario invalida el Paso 2 después de haberlo
+  // completado, volver al Paso 2 (mantiene la lógica original).
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (openSection === 2)
-        section2Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      else if (openSection === 3)
-        section3Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      else if (openSection === 4)
-        section4Ref.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-    }, 150);
-    return () => clearTimeout(timeout);
-  }, [openSection]);
+    if (currentStep > 2 && !canProceedToStep3) {
+      setCurrentStep(2);
+      setMaxStepReached(2);
+    }
+  }, [canProceedToStep3, currentStep]);
 
   useEffect(() => {
     const tooltipTriggerList = document.querySelectorAll(
@@ -852,13 +839,41 @@ function QuoteFCL({
     });
   }, []);
 
-  // Cerrar Paso 1 cuando se selecciona un contenedor
+  // Avance automático del wizard al seleccionar un contenedor
   useEffect(() => {
-    if (containerSeleccionado) {
-      setOpenSection(2);
+    if (containerSeleccionado && currentStep === 1) {
+      advanceToStep(2);
       trackStep({ step: "incoterm_charges", stepNumber: 2, totalSteps: 3 });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerSeleccionado]);
+
+  // Auto-scroll al cambiar de paso
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (currentStep === 1)
+        section1Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      else if (currentStep === 2)
+        section2Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      else if (currentStep === 3)
+        section3Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      else if (currentStep === 4)
+        section4Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+    }, 150);
+    return () => clearTimeout(timeout);
+  }, [currentStep]);
 
   // Check animation: when phase becomes 'check', draw the checkmark and schedule 'done'
   useEffect(() => {
@@ -1154,7 +1169,7 @@ function QuoteFCL({
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {
-    if (rutasFiltradas.length > 0 && openSection === 1) {
+    if (rutasFiltradas.length > 0 && currentStep === 1) {
       const timeout = setTimeout(() => {
         routesRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -1163,7 +1178,7 @@ function QuoteFCL({
       }, 200);
       return () => clearTimeout(timeout);
     }
-  }, [rutasFiltradas.length, openSection]);
+  }, [rutasFiltradas.length, currentStep]);
 
   useEffect(() => {
     setShowAllRoutes(false);
@@ -2397,10 +2412,7 @@ function QuoteFCL({
     <>
       <div className="qf-section-header">
         <div>
-          <h2 className="qf-title">Cotizador FCL</h2>
-          <p className="qf-subtitle">
-            Genera cotizaciones para envíos Full Container Load
-          </p>
+          <h2 className="qf-title">Cotización FCL</h2>
         </div>
       </div>
 
@@ -2530,72 +2542,99 @@ function QuoteFCL({
       )}
 
       {/* ============================================================================ */}
+      {/* WIZARD: barra de progreso de pasos                                            */}
+      {/* ============================================================================ */}
+      <div className="qf-wizard-steps" role="tablist" aria-label="Pasos">
+        {WIZARD_STEPS.map((s, idx) => {
+          const isActive = currentStep === s.id;
+          const isCompleted = s.id < currentStep;
+          const isReachable = s.id <= maxStepReached && s.id < currentStep;
+          return (
+            <div
+              key={s.id}
+              className={`qf-wizard-step${isActive ? " is-active" : ""}${
+                isCompleted ? " is-completed" : ""
+              }${isReachable ? " is-clickable" : ""}`}
+              onClick={() => goToStep(s.id)}
+              role="tab"
+              aria-selected={isActive}
+              aria-disabled={!isReachable && !isActive}
+              style={{ cursor: isReachable ? "pointer" : "default" }}
+            >
+              <span className="qf-wizard-step__num">
+                {isCompleted ? <i className="bi bi-check-lg"></i> : s.id}
+              </span>
+              <span className="qf-wizard-step__label">
+                Paso {s.id}: {s.label}
+              </span>
+              {idx < WIZARD_STEPS.length - 1 && (
+                <span className="qf-wizard-step__sep" aria-hidden="true" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ============================================================================ */}
       {/* SECCIÓN 1: SELECCIÓN DE RUTA Y CONTENEDOR */}
       {/* ============================================================================ */}
 
-      <div className="qf-card">
-        <div
-          className={`qf-card-header ${openSection === 1 ? "open" : ""}`}
-          onClick={() => handleSectionToggle(1)}
-        >
-          <div className="d-flex align-items-center">
-            <h3>
-              <i
-                className="bi bi-geo-alt me-2"
-                style={{ color: "var(--qf-primary)" }}
-              ></i>
-              Paso 1: Seleccionar Ruta
-            </h3>
-            {containerSeleccionado && (
-              <span
-                className="qf-badge ms-3"
-                style={{
-                  backgroundColor: "#d1e7dd",
-                  color: "#0f5132",
-                  borderColor: "transparent",
-                }}
-              >
-                <i className="bi bi-check-circle-fill me-1"></i>
-                Completado
-              </span>
-            )}
+      {currentStep === 1 && (
+        <div className="qf-card" ref={section1Ref}>
+          <div className="qf-card-header open">
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-geo-alt me-2"
+                  style={{ color: "var(--qf-primary)" }}
+                ></i>
+                Paso 1: Seleccionar Ruta
+              </h3>
+              {containerSeleccionado && (
+                <span
+                  className="qf-badge ms-3"
+                  style={{
+                    backgroundColor: "#d1e7dd",
+                    color: "#0f5132",
+                    borderColor: "transparent",
+                  }}
+                >
+                  <i className="bi bi-check-circle-fill me-1"></i>
+                  Completado
+                </span>
+              )}
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              {!containerSeleccionado && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    refrescarTarifas();
+                  }}
+                  disabled={loadingRutas}
+                  className="qf-btn qf-btn-sm qf-btn-outline"
+                  title="Actualizar tarifas desde Google Sheets"
+                >
+                  {loadingRutas ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-1"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      Actualizando...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-arrow-clockwise me-1"></i>
+                      Actualizar Tarifas
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
-          <div className="d-flex align-items-center gap-2">
-            {!containerSeleccionado && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  refrescarTarifas();
-                }}
-                disabled={loadingRutas}
-                className="qf-btn qf-btn-sm qf-btn-outline"
-                title="Actualizar tarifas desde Google Sheets"
-              >
-                {loadingRutas ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-1"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    Actualizando...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-arrow-clockwise me-1"></i>
-                    Actualizar Tarifas
-                  </>
-                )}
-              </button>
-            )}
-            <i
-              className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
-              style={{ color: "var(--qf-text-secondary)" }}
-            ></i>
-          </div>
-        </div>
 
-        {openSection === 1 && (
           <div>
             {lastUpdate && !loadingRutas && !errorRutas && (
               <div
@@ -3167,157 +3206,18 @@ function QuoteFCL({
               </>
             )}
           </div>
-        )}
 
-        {/* Resumen colapsado cuando está cerrado (estilo QuoteAIR) */}
-        {openSection !== 1 &&
-          containerSeleccionado &&
-          rutaSeleccionada &&
-          (() => {
-            const originPort = getPortByPOL(rutaSeleccionada.polNormalized);
-            const destPort = getPortByPOL(rutaSeleccionada.podNormalized);
-            const originCode = (
-              (rutaSeleccionada.polNormalized || rutaSeleccionada.pol) + ""
-            )
-              .toString()
-              .slice(0, 3)
-              .toUpperCase();
-            const destCode = (
-              (rutaSeleccionada.podNormalized || rutaSeleccionada.pod) + ""
-            )
-              .toString()
-              .slice(0, 3)
-              .toUpperCase();
-            const originCountryCode = originPort?.unlocode
-              ?.substring(0, 2)
-              .toLowerCase();
-            const destCountryCode = destPort?.unlocode
-              ?.substring(0, 2)
-              .toLowerCase();
-            const originLabel = rutaSeleccionada.pol;
-            const destLabel = rutaSeleccionada.pod;
-
-            return (
-              <div className="qa-route-summary">
-                <div className="qa-route-summary-cards">
-                  <div
-                    className="qa-route-summary-card"
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "12px",
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <small>Origen</small>
-                      <div className="qa-route-summary-iata">{originCode}</div>
-                      <div className="qa-route-summary-city">{originLabel}</div>
-                    </div>
-                    {originCountryCode && (
-                      <span
-                        className={`fi fi-${originCountryCode}`}
-                        style={{ fontSize: "2.2em", flexShrink: 0 }}
-                      />
-                    )}
-                  </div>
-
-                  <div className="qa-route-summary-arrow">
-                    <i className="bi bi-arrow-right"></i>
-                  </div>
-
-                  <div
-                    className="qa-route-summary-card"
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "12px",
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <small>Destino</small>
-                      <div className="qa-route-summary-iata">{destCode}</div>
-                      <div className="qa-route-summary-city">{destLabel}</div>
-                    </div>
-                    {destCountryCode && (
-                      <span
-                        className={`fi fi-${destCountryCode}`}
-                        style={{ fontSize: "2.2em", flexShrink: 0 }}
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <div className="qa-route-summary-meta">
-                  {rutaSeleccionada.carrier &&
-                    rutaSeleccionada.carrier !== "X" && (
-                      <span className="qa-route-meta-pill">
-                        <i className="bi bi-ship"></i>
-                        {rutaSeleccionada.carrier}
-                      </span>
-                    )}
-
-                  {rutaSeleccionada.validUntil &&
-                    rutaSeleccionada.validUntil !== "X" && (
-                      <span className="qa-route-meta-pill">
-                        <i className="bi bi-calendar3"></i>
-                        Válido hasta {rutaSeleccionada.validUntil}
-                      </span>
-                    )}
-
-                  {rutaSeleccionada.tt && rutaSeleccionada.tt !== "X" && (
-                    <span className="qa-route-meta-pill">
-                      <i className="bi bi-clock"></i>
-                      {rutaSeleccionada.tt} Días Tránsito
-                    </span>
-                  )}
-
-                  {rutaSeleccionada.freeTime &&
-                    rutaSeleccionada.freeTime !== "X" && (
-                      <span className="qa-route-meta-pill">
-                        <i className="bi bi-hourglass-split"></i>
-                        Free Time: {rutaSeleccionada.freeTime} Días
-                      </span>
-                    )}
-
-                  {isEjecutivoMode && rutaSeleccionada.company && (
-                    <span
-                      className="qa-route-meta-pill"
-                      style={{
-                        backgroundColor: "rgba(255, 98, 0, 0.12)",
-                        color: "#ff6200",
-                        borderColor: "rgba(255, 98, 0, 0.3)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      <i className="bi bi-building"></i>
-                      Agente: {rutaSeleccionada.company}
-                    </span>
-                  )}
-
-                  {sinTarifa && (
-                    <span className="qa-route-meta-pill">Sin tarifa</span>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-      </div>
+          {/* Resumen colapsado eliminado: wizard solo muestra un paso a la vez */}
+        </div>
+      )}
 
       {/* ============================================================================ */}
       {/* SECCIÓN 2: DATOS DEL CARGAMENTO */}
       {/* ============================================================================ */}
 
-      {rutaSeleccionada && containerSeleccionado && (
+      {currentStep === 2 && rutaSeleccionada && containerSeleccionado && (
         <div className="qf-card mt-4" ref={section2Ref}>
-          <div
-            className={`qf-card-header ${openSection === 2 ? "open" : ""}`}
-            onClick={() => handleSectionToggle(2)}
-            style={{ cursor: "pointer" }}
-          >
+          <div className="qf-card-header open">
             <div className="d-flex align-items-center">
               <h3>
                 <i
@@ -3326,60 +3226,12 @@ function QuoteFCL({
                 ></i>
                 Paso 2: Datos del Cargamento
               </h3>
-              {step2Completed && (
-                <span
-                  className="qf-badge ms-3"
-                  style={{
-                    backgroundColor: "#d1e7dd",
-                    color: "#0f5132",
-                    borderColor: "transparent",
-                  }}
-                >
-                  <i className="bi bi-check-circle-fill me-1"></i>
-                  Completado
-                </span>
-              )}
             </div>
-            <i
-              className={`bi bi-chevron-${openSection === 2 ? "up" : "down"}`}
-              style={{ color: "var(--qf-text-secondary)" }}
-            ></i>
           </div>
 
-          {/* Resumen colapsado Paso 2 (pills neutrales, estilo QuoteAIR) */}
-          {openSection !== 2 && step2Completed && (
-            <div className="qa-route-summary">
-              <div className="qa-route-summary-meta">
-                {incoterm && (
-                  <span className="qa-route-meta-pill">
-                    <i className="bi bi-flag me-1"></i>
-                    Incoterm: {incoterm}
-                  </span>
-                )}
+          {/* Resumen colapsado eliminado: wizard solo muestra un paso a la vez */}
 
-                <span className="qa-route-meta-pill">
-                  <i className="bi bi-boxes me-1"></i>
-                  {cantidadContenedores} × {containerSeleccionado.type}
-                </span>
-
-                {seguroActivo && (
-                  <span className="qa-route-meta-pill">
-                    <i className="bi bi-shield-check me-1"></i>
-                    Seguro activo
-                  </span>
-                )}
-
-                {gastolocal && (
-                  <span className="qa-route-meta-pill">
-                    <i className="bi bi-receipt me-1"></i>
-                    THC + Apertura
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {openSection === 2 && (
+          {currentStep === 2 && (
             <div>
               {/* Simulación del valor del contenedor para rutas sin tarifa */}
               {isSimulationMode && (
@@ -3700,8 +3552,7 @@ function QuoteFCL({
                   className="qa-btn qa-btn-primary"
                   disabled={!canProceedToStep3}
                   onClick={() => {
-                    setStep2Completed(true);
-                    setOpenSection(3);
+                    advanceToStep(3);
                     trackStep({
                       step: "review",
                       stepNumber: 3,
@@ -3722,13 +3573,9 @@ function QuoteFCL({
       {/* SECCIÓN 3: SERVICIOS ADICIONALES */}
       {/* ============================================================================ */}
 
-      {rutaSeleccionada && containerSeleccionado && step2Completed && (
+      {currentStep === 3 && rutaSeleccionada && containerSeleccionado && (
         <div className="qf-card mt-4" ref={section3Ref}>
-          <div
-            className={`qf-card-header ${openSection === 3 ? "open" : ""}`}
-            onClick={() => handleSectionToggle(3)}
-            style={{ cursor: "pointer" }}
-          >
+          <div className="qf-card-header open">
             <div className="d-flex align-items-center">
               <h3>
                 <i
@@ -3737,50 +3584,12 @@ function QuoteFCL({
                 ></i>
                 Paso 3: Servicios Adicionales
               </h3>
-              {step3Completed && (
-                <span
-                  className="qf-badge ms-3"
-                  style={{
-                    backgroundColor: "#d1e7dd",
-                    color: "#0f5132",
-                    borderColor: "transparent",
-                  }}
-                >
-                  <i className="bi bi-check-circle-fill me-1"></i>
-                  Completado
-                </span>
-              )}
             </div>
-            <i
-              className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
-              style={{ color: "var(--qf-text-secondary)" }}
-            ></i>
           </div>
 
-          {openSection !== 3 && (
-            <div className="qf-route-summary">
-              <span style={{ fontSize: "0.85rem" }}>
-                {seguroActivo || gastolocal ? (
-                  <>
-                    <i className="bi bi-check-circle-fill text-success me-1"></i>
-                    {[
-                      seguroActivo && "Seguro de Carga",
-                      gastolocal && "Gastos Locales",
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </>
-                ) : (
-                  <span className="qa-text-muted">
-                    <i className="bi bi-info-circle me-1"></i>
-                    Sin servicios adicionales seleccionados.
-                  </span>
-                )}
-              </span>
-            </div>
-          )}
+          {/* Resumen colapsado eliminado: wizard solo muestra un paso a la vez */}
 
-          {openSection === 3 && (
+          {currentStep === 3 && (
             <div>
               <div className="qf-addons-list">
                 {/* Card: Seguro */}
@@ -3926,8 +3735,7 @@ function QuoteFCL({
                 <button
                   className="qf-btn qf-btn-primary"
                   onClick={() => {
-                    setStep3Completed(true);
-                    setOpenSection(4);
+                    advanceToStep(4);
                   }}
                 >
                   Continuar a Revisión
@@ -3943,13 +3751,9 @@ function QuoteFCL({
       {/* SECCIÓN 4: REVISIÓN DE PIEZAS Y COSTOS */}
       {/* ============================================================================ */}
 
-      {rutaSeleccionada && containerSeleccionado && step3Completed && (
+      {currentStep === 4 && rutaSeleccionada && containerSeleccionado && (
         <div className="qf-card mt-4" ref={section4Ref}>
-          <div
-            className={`qf-card-header ${openSection === 4 ? "open" : ""}`}
-            onClick={() => setOpenSection(openSection === 4 ? 0 : 4)}
-            style={{ cursor: "pointer" }}
-          >
+          <div className="qf-card-header open">
             <div className="d-flex align-items-center">
               <h3>
                 <i
@@ -3959,13 +3763,9 @@ function QuoteFCL({
                 Paso 4: Revisión de Piezas y Costos
               </h3>
             </div>
-            <i
-              className={`bi bi-chevron-${openSection === 4 ? "up" : "down"}`}
-              style={{ color: "var(--qf-text-secondary)" }}
-            ></i>
           </div>
 
-          {openSection === 4 && (
+          {currentStep === 4 && (
             <div>
               {/* Resumen del Cargamento */}
               <div

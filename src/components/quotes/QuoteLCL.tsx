@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -176,7 +176,7 @@ function QuoteLCL({
   const { trackStart, trackStep, trackRouteSelected, trackComplete } =
     useQuoteTracking("LCL");
 
-  // ── Estados para selección de cliente (modo ejecutivo) ──
+  // -- Estados para selección de cliente (modo ejecutivo) --
   const [clientesAsignados, setClientesAsignados] = useState<ClienteAsignado[]>(
     [],
   );
@@ -185,7 +185,7 @@ function QuoteLCL({
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [errorClientes, setErrorClientes] = useState<string | null>(null);
 
-  // ── Username efectivo: en modo ejecutivo usa el cliente seleccionado ──
+  // -- Username efectivo: en modo ejecutivo usa el cliente seleccionado --
   const effectiveUsername = isEjecutivoMode
     ? clienteSeleccionado?.username || user?.username || ""
     : activeUsername || "";
@@ -197,7 +197,7 @@ function QuoteLCL({
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Button animation phase: idle → loading → check → done
+  // Button animation phase: idle ? loading ? check ? done
   type BtnPhase = "idle" | "loading" | "check" | "done";
   const [btnPhase, setBtnPhase] = useState<BtnPhase>("idle");
   const pdfFallbackRef = useRef<{ base64: string; filename: string } | null>(
@@ -303,10 +303,17 @@ function QuoteLCL({
         : { col, dir: col === "validez" ? "desc" : "asc" },
     );
   };
-  const [openSection, setOpenSection] = useState<number>(1); // Controla qué paso está abierto
-  const [step2Completed, setStep2Completed] = useState<boolean>(false);
-  const [step3Completed, setStep3Completed] = useState<boolean>(false);
-  const [openSection4, setOpenSection4] = useState<boolean>(false);
+  // Wizard de pasos: solo un paso visible a la vez.
+  // El usuario solo puede retroceder a pasos ya alcanzados; avanzar se hace
+  // explícitamente con los botones "Continuar" de cada paso.
+  const WIZARD_STEPS = [
+    { id: 1, label: "Ruta" },
+    { id: 2, label: "Cargamento" },
+    { id: 3, label: "Servicios" },
+    { id: 4, label: "Revisión" },
+  ] as const;
+  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [maxStepReached, setMaxStepReached] = useState<number>(1);
   const [showSeguroModal, setShowSeguroModal] = useState<boolean>(false);
   const [tempValorSeguro, setTempValorSeguro] = useState<string>("");
 
@@ -339,7 +346,7 @@ function QuoteLCL({
   } | null>(null);
 
   // ============================================================================
-  // PUERTOS POR PAÍS (para EXW desde POL en paíes con soporte de selección)
+  // PUERTOS POR PAÍS (para EXW desde POL en países con soporte de selección)
   // ============================================================================
   const [countryPortsMap, setCountryPortsMap] = useState<
     Record<string, CountryPort[]>
@@ -408,7 +415,7 @@ function QuoteLCL({
     setNearbyPortSelected(null);
   }, [pickupCoords?.lat, pickupCoords?.lng]);
 
-  // ── Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) ──
+  // -- Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) --
   const isPricingRole = user?.roles?.pricing === true;
 
   // Track quote start on mount
@@ -475,7 +482,7 @@ function QuoteLCL({
               .then((ports) => [prefix, ports] as const)
               .catch((err) => {
                 console.warn(
-                  `⚠️ No se pudieron cargar puertos ${prefix}:`,
+                  `?? No se pudieron cargar puertos ${prefix}:`,
                   err,
                 );
                 return [prefix, [] as CountryPort[]] as const;
@@ -1035,60 +1042,71 @@ function QuoteLCL({
   ]);
 
   useEffect(() => {
-    if (step2Completed && !canProceedToStep3) {
-      setStep2Completed(false);
-      setOpenSection(2);
+    if (currentStep > 2 && !canProceedToStep3) {
+      setCurrentStep(2);
+      setMaxStepReached(2);
     }
-  }, [canProceedToStep3, step2Completed]);
+  }, [canProceedToStep3, currentStep]);
 
   const canProceedToStep4 = useMemo(() => {
     return true;
   }, []);
 
   useEffect(() => {
-    if (step3Completed && !canProceedToStep4) {
-      setStep3Completed(false);
-      setOpenSection4(false);
-      setOpenSection(3);
+    if (currentStep > 3 && !canProceedToStep4) {
+      setCurrentStep(3);
+      setMaxStepReached(3);
     }
-  }, [canProceedToStep4, step3Completed]);
+  }, [canProceedToStep4, currentStep]);
 
-  const handleSectionToggle = (section: number) => {
-    const newSection = openSection === section ? 0 : section;
-    setOpenSection(newSection);
-    if (newSection === 3) {
+  // Navegación del wizard: solo permitir retroceder a pasos ya alcanzados.
+  const goToStep = (step: number) => {
+    if (step >= 1 && step <= maxStepReached && step < currentStep) {
+      setCurrentStep(step);
+    }
+  };
+  const advanceToStep = (step: number) => {
+    setCurrentStep(step);
+    setMaxStepReached((prev) => Math.max(prev, step));
+    if (step === 3) {
       trackStep({ step: "incoterm_charges", stepNumber: 3, totalSteps: 3 });
     }
   };
 
   // Refs para scroll automático
   const routesRef = useRef<HTMLDivElement>(null);
+  const section1Ref = useRef<HTMLDivElement>(null);
   const section2Ref = useRef<HTMLDivElement>(null);
   const section3Ref = useRef<HTMLDivElement>(null);
   const section4Ref = useRef<HTMLDivElement>(null);
+  // ============================================================================
 
-  // Auto-scroll al cambiar de sección
+  // Auto-scroll al cambiar de paso
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (openSection === 2)
+      if (currentStep === 1)
+        section1Ref.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      else if (currentStep === 2)
         section2Ref.current?.scrollIntoView({
           behavior: "smooth",
           block: "nearest",
         });
-      else if (openSection === 3)
+      else if (currentStep === 3)
         section3Ref.current?.scrollIntoView({
           behavior: "smooth",
           block: "nearest",
         });
-      else if (openSection === 4)
+      else if (currentStep === 4)
         section4Ref.current?.scrollIntoView({
           behavior: "smooth",
           block: "nearest",
         });
     }, 150);
     return () => clearTimeout(timeout);
-  }, [openSection]);
-  // ============================================================================
+  }, [currentStep]);
 
   // Check animation: when phase becomes 'check', draw the checkmark and schedule 'done'
   useEffect(() => {
@@ -1241,7 +1259,7 @@ function QuoteLCL({
   // Cerrar Paso 1 y abrir Paso 2 cuando se selecciona una ruta
   useEffect(() => {
     if (rutaSeleccionada) {
-      setOpenSection(2); // Abrir automáticamente el Paso 2
+      advanceToStep(2); // Avanzar automáticamente al Paso 2
       trackStep({ step: "commodity", stepNumber: 2, totalSteps: 3 });
       trackRouteSelected(
         polSeleccionado?.label || polNR?.label || "",
@@ -1593,7 +1611,7 @@ function QuoteLCL({
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {
-    if (rutasFiltradas.length > 0 && openSection === 1) {
+    if (rutasFiltradas.length > 0 && currentStep === 1) {
       const timeout = setTimeout(() => {
         routesRef.current?.scrollIntoView({
           behavior: "smooth",
@@ -1602,7 +1620,7 @@ function QuoteLCL({
       }, 200);
       return () => clearTimeout(timeout);
     }
-  }, [rutasFiltradas.length, openSection]);
+  }, [rutasFiltradas.length, currentStep]);
 
   useEffect(() => {
     setShowAllRoutes(false);
@@ -2065,7 +2083,7 @@ function QuoteLCL({
         0,
       );
 
-      // ── 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF ──
+      // -- 1. Obtener el quoteNumber real de Linbis ANTES de renderizar el PDF --
       let quoteNumber = "";
       try {
         console.log(
@@ -2073,7 +2091,7 @@ function QuoteLCL({
           previousMaxId,
           ")...",
         );
-        // Polling con backoff: intenta hasta 3 veces (500ms → 1000ms → 1000ms)
+        // Polling con backoff: intenta hasta 3 veces (500ms ? 1000ms ? 1000ms)
         const pollDelays = [500, 1000, 1000];
         for (
           let attempt = 0;
@@ -2105,7 +2123,7 @@ function QuoteLCL({
               if (Number(newestQuote.id) > (previousMaxId || 0)) {
                 quoteNumber = newestQuote.number;
                 console.log(
-                  `✅ [QuoteLCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
+                  `? [QuoteLCL] NUEVA COTIZACIÓN CONFIRMADA: ${quoteNumber}`,
                 );
               }
             }
@@ -2178,7 +2196,7 @@ function QuoteLCL({
         }).catch(() => {});
       }
 
-      // ── 2. Renderizar el PDF con quoteNumber real ──
+      // -- 2. Renderizar el PDF con quoteNumber real --
       const tempDiv = document.createElement("div");
       tempDiv.style.position = "absolute";
       tempDiv.style.left = "-9999px";
@@ -2337,7 +2355,7 @@ function QuoteLCL({
         setTimeout(resolve, 500);
       });
 
-      // ── 3. Generar base64 + subir a MongoDB ANTES de descargar ──
+      // -- 3. Generar base64 + subir a MongoDB ANTES de descargar --
       const pdfElement = tempDiv.querySelector("#pdf-content") as HTMLElement;
       if (pdfElement) {
         const customerClean = (effectiveUsername || "Cliente").replace(
@@ -2390,7 +2408,7 @@ function QuoteLCL({
           }
         }
 
-        // ── 4. Descargar el PDF localmente (reutiliza el base64 ya generado, sin re-renderizar html2pdf) ──
+        // -- 4. Descargar el PDF localmente (reutiliza el base64 ya generado, sin re-renderizar html2pdf) --
         if (pdfBase64) {
           pdfFallbackRef.current = { base64: pdfBase64, filename };
           downloadPDFFromBase64(pdfBase64, filename);
@@ -2441,7 +2459,7 @@ function QuoteLCL({
         });
       }
 
-      // ── Auto-abrir modal para convertir cotización en operación ──
+      // -- Auto-abrir modal para convertir cotización en operación --
       if (!sinTarifa && !isSimulationMode && quoteNumber) {
         setOperationModalCtx({
           quoteNumber,
@@ -2971,8 +2989,7 @@ function QuoteLCL({
     <>
       <div className="qa-section-header">
         <div>
-          <h2 className="qa-title">{t("Quotelcl.title")}</h2>
-          <p className="qa-subtitle">{t("Quotelcl.subtitle")}</p>
+          <h2 className="qa-title">Cotización LCL</h2>
         </div>
       </div>
 
@@ -3105,72 +3122,86 @@ function QuoteLCL({
       )}
 
       {/* ============================================================================ */}
+      {/* WIZARD: barra de progreso de pasos                                            */}
+      {/* ============================================================================ */}
+      <div className="qa-wizard-steps" role="tablist" aria-label="Pasos">
+        {WIZARD_STEPS.map((s, idx) => {
+          const isActive = currentStep === s.id;
+          const isCompleted = s.id < currentStep;
+          const isReachable = s.id <= maxStepReached && s.id < currentStep;
+          return (
+            <div
+              key={s.id}
+              className={`qa-wizard-step${isActive ? " is-active" : ""}${
+                isCompleted ? " is-completed" : ""
+              }${isReachable ? " is-clickable" : ""}`}
+              onClick={() => goToStep(s.id)}
+              role="tab"
+              aria-selected={isActive}
+              aria-disabled={!isReachable && !isActive}
+              style={{ cursor: isReachable ? "pointer" : "default" }}
+            >
+              <span className="qa-wizard-step__num">
+                {isCompleted ? <i className="bi bi-check-lg"></i> : s.id}
+              </span>
+              <span className="qa-wizard-step__label">
+                Paso {s.id}: {s.label}
+              </span>
+              {idx < WIZARD_STEPS.length - 1 && (
+                <span className="qa-wizard-step__sep" aria-hidden="true" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ============================================================================ */}
       {/* SECCIÓN 1: SELECCIÓN DE RUTA */}
       {/* ============================================================================ */}
 
-      <div className="qa-card">
-        <div
-          className={`qa-card-header ${openSection === 1 ? "open" : ""}`}
-          onClick={() => handleSectionToggle(1)}
-        >
-          <div className="d-flex align-items-center">
-            <h3>
-              <i
-                className="bi bi-geo-alt me-2"
-                style={{ color: "var(--qf-primary)" }}
-              ></i>
-              Paso 1: Seleccionar Ruta
-            </h3>
-            {rutaSeleccionada && (
-              <span
-                className="qa-badge ms-3"
-                style={{
-                  backgroundColor: "#d1e7dd",
-                  color: "#0f5132",
-                  borderColor: "transparent",
-                }}
-              >
-                <i className="bi bi-check-circle-fill me-1"></i>
-                Completado
-              </span>
-            )}
+      {currentStep === 1 && (
+        <div className="qa-card" ref={section1Ref}>
+          <div className="qa-card-header open">
+            <div className="d-flex align-items-center">
+              <h3>
+                <i
+                  className="bi bi-geo-alt me-2"
+                  style={{ color: "var(--qf-primary)" }}
+                ></i>
+                Paso 1: Seleccionar Ruta
+              </h3>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              {!rutaSeleccionada && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    refrescarTarifas();
+                  }}
+                  disabled={loadingRutas}
+                  className="qa-btn qa-btn-sm qa-btn-outline"
+                  title="Actualizar tarifas"
+                >
+                  {loadingRutas ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-1"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
+                      {t("Quotelcl.actualizando")}
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-arrow-clockwise me-1"></i>
+                      {t("Quotelcl.actualizaciontarifa")}
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
-          <div className="d-flex align-items-center gap-2">
-            {!rutaSeleccionada && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  refrescarTarifas();
-                }}
-                disabled={loadingRutas}
-                className="qa-btn qa-btn-sm qa-btn-outline"
-                title="Actualizar tarifas"
-              >
-                {loadingRutas ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-1"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    {t("Quotelcl.actualizando")}
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-arrow-clockwise me-1"></i>
-                    {t("Quotelcl.actualizaciontarifa")}
-                  </>
-                )}
-              </button>
-            )}
-            <i
-              className={`bi bi-chevron-${openSection === 1 ? "up" : "down"}`}
-              style={{ color: "var(--qa-text-secondary)" }}
-            ></i>
-          </div>
-        </div>
 
-        {openSection === 1 && (
           <div className="mt-4">
             {lastUpdate && !loadingRutas && !errorRutas && (
               <div
@@ -3702,151 +3733,17 @@ function QuoteLCL({
               </>
             )}
           </div>
-        )}
-
-        {/* Resumen colapsado cuando está cerrado */}
-        {openSection !== 1 &&
-          rutaSeleccionada &&
-          (() => {
-            const polPort = getPortByPOL(rutaSeleccionada.polNormalized);
-            const podPort = getPortByPOL(rutaSeleccionada.podNormalized);
-            const polCode = (
-              rutaSeleccionada.polNormalized ||
-              rutaSeleccionada.pol ||
-              ""
-            )
-              .toUpperCase()
-              .substring(0, 5);
-            const podCode = (
-              rutaSeleccionada.podNormalized ||
-              rutaSeleccionada.pod ||
-              ""
-            )
-              .toUpperCase()
-              .substring(0, 5);
-            const polCountryCode = polPort?.unlocode
-              ?.substring(0, 2)
-              .toLowerCase();
-            const podCountryCode = podPort?.unlocode
-              ?.substring(0, 2)
-              .toLowerCase();
-            const polLabel =
-              polSeleccionado?.label || polNR?.label || rutaSeleccionada.pol;
-            const podLabel =
-              podSeleccionado?.label || podNR?.label || rutaSeleccionada.pod;
-            return (
-              <div className="qa-route-summary">
-                <div className="qa-route-summary-cards">
-                  <div
-                    className="qa-route-summary-card"
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "12px",
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <small>Origen</small>
-                      <div className="qa-route-summary-iata">{polCode}</div>
-                      <div className="qa-route-summary-city">{polLabel}</div>
-                    </div>
-                    {polCountryCode && (
-                      <span
-                        className={`fi fi-${polCountryCode}`}
-                        style={{ fontSize: "2.2em", flexShrink: 0 }}
-                      />
-                    )}
-                  </div>
-                  <div className="qa-route-summary-arrow">
-                    <i className="bi bi-arrow-right"></i>
-                  </div>
-                  <div
-                    className="qa-route-summary-card"
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "12px",
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <small>Destino</small>
-                      <div className="qa-route-summary-iata">{podCode}</div>
-                      <div className="qa-route-summary-city">{podLabel}</div>
-                    </div>
-                    {podCountryCode && (
-                      <span
-                        className={`fi fi-${podCountryCode}`}
-                        style={{ fontSize: "2.2em", flexShrink: 0 }}
-                      />
-                    )}
-                  </div>
-                </div>
-                <div className="qa-route-summary-meta">
-                  {!sinTarifa &&
-                    rutaSeleccionada.operador &&
-                    rutaSeleccionada.operador !== "X" && (
-                      <span className="qa-route-meta-pill">
-                        <i className="bi bi-building"></i>
-                        {rutaSeleccionada.operador}
-                      </span>
-                    )}
-                  {!sinTarifa && rutaSeleccionada.validUntil && (
-                    <span className="qa-route-meta-pill">
-                      <i className="bi bi-calendar3"></i>
-                      Válido hasta {rutaSeleccionada.validUntil}
-                    </span>
-                  )}
-                  {!sinTarifa &&
-                    rutaSeleccionada.ttAprox &&
-                    rutaSeleccionada.ttAprox !== "X" && (
-                      <span className="qa-route-meta-pill">
-                        <i className="bi bi-clock"></i>
-                        {rutaSeleccionada.ttAprox} días tránsito
-                      </span>
-                    )}
-                  {!sinTarifa &&
-                    isEjecutivoMode &&
-                    rutaSeleccionada.operador && (
-                      <span
-                        className="qa-route-meta-pill"
-                        style={{
-                          backgroundColor: "rgba(255, 98, 0, 0.12)",
-                          color: "#ff6200",
-                          borderColor: "rgba(255, 98, 0, 0.3)",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <i className="bi bi-building"></i>
-                        Agente: {rutaSeleccionada.operador}
-                      </span>
-                    )}
-                  {sinTarifa && (
-                    <span className="qa-route-meta-pill">
-                      Ruta No Recurrente
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-      </div>
+        </div>
+      )}
 
       {/* ============================================================================ */}
       {/* SECCIÓN 2: DATOS DEL COMMODITY */}
       {/* ============================================================================ */}
 
-      {rutaSeleccionada && (
+      {currentStep === 2 && rutaSeleccionada && (
         <>
           <div className="qa-card" ref={section2Ref}>
-            <div
-              className={`qa-card-header ${openSection === 2 ? "open" : ""}`}
-              onClick={() => handleSectionToggle(2)}
-              style={{ cursor: "pointer" }}
-            >
+            <div className="qa-card-header open">
               <div className="d-flex align-items-center">
                 <h3>
                   <i
@@ -3855,793 +3752,652 @@ function QuoteLCL({
                   ></i>
                   Paso 2: Datos del Cargamento
                 </h3>
-                {step2Completed && (
-                  <span
-                    className="qa-badge ms-3"
-                    style={{
-                      backgroundColor: "#d1e7dd",
-                      color: "#0f5132",
-                      borderColor: "transparent",
-                    }}
-                  >
-                    <i className="bi bi-check-circle-fill me-1"></i>
-                    Completado
-                  </span>
-                )}
               </div>
-              <i
-                className={`bi bi-chevron-${openSection === 2 ? "up" : "down"}`}
-                style={{ color: "var(--qa-text-secondary)" }}
-              ></i>
             </div>
 
-            {openSection !== 2 && (
-              <div className="qa-route-summary">
-                {overallDimsAndWeight ? (
-                  <div className="qa-totals-bar">
-                    <div className="qa-totals-bar-item">
-                      <span className="qa-totals-bar-value">
-                        {manualVolume.toFixed(4)} m³
-                      </span>
-                      <span className="qa-totals-bar-label">Volumen total</span>
-                    </div>
-                    <div className="qa-totals-bar-item">
-                      <span className="qa-totals-bar-value">
-                        {manualWeight.toFixed(2)} kg
-                      </span>
-                      <span className="qa-totals-bar-label">Peso total</span>
-                    </div>
-                    <div className="qa-totals-bar-item">
-                      <span className="qa-totals-bar-value">
-                        {chargeableVolume.toFixed(4)} {lclChargeableUnit}
-                      </span>
-                      <span className="qa-totals-bar-label">
-                        Cargable (W/M)
-                      </span>
-                    </div>
-                    <div className="qa-totals-bar-item">
-                      <span className="qa-totals-bar-value">
-                        <strong>{lclChargeableBillingBasis}</strong>
-                      </span>
-                      <span className="qa-totals-bar-label">Cobro por</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="qa-totals-bar">
-                    <div className="qa-totals-bar-item">
-                      <span className="qa-totals-bar-value">
-                        {totalVolume.toFixed(4)} m³
-                      </span>
-                      <span className="qa-totals-bar-label">Volumen total</span>
-                    </div>
-                    <div className="qa-totals-bar-item">
-                      <span className="qa-totals-bar-value">
-                        {totalWeightKg.toFixed(2)} kg
-                      </span>
-                      <span className="qa-totals-bar-label">Peso total</span>
-                    </div>
-                    <div className="qa-totals-bar-item">
-                      <span className="qa-totals-bar-value">
-                        {chargeableVolume.toFixed(4)} {lclChargeableUnit}
-                      </span>
-                      <span className="qa-totals-bar-label">
-                        Cargable (W/M)
-                      </span>
-                    </div>
-                    <div className="qa-totals-bar-item">
-                      <span className="qa-totals-bar-value">
-                        <strong>{lclChargeableBillingBasis}</strong>
-                      </span>
-                      <span className="qa-totals-bar-label">Cobro por</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {openSection === 2 && (
-              <div>
-                {/* Toggle OVERALL */}
-                <div className="mb-4">
-                  <div className="qa-switch-container">
-                    <input
-                      className="qa-switch-input"
-                      type="checkbox"
-                      id="overallSwitchLCL"
-                      checked={overallDimsAndWeight}
-                      onChange={(e) =>
-                        setOverallDimsAndWeight(e.target.checked)
-                      }
-                    />
-                    <label
-                      className="qa-label mb-0"
-                      htmlFor="overallSwitchLCL"
-                      style={{ cursor: "pointer", flexGrow: 1 }}
-                    >
-                      <div className="d-flex align-items-center">
-                        <i
-                          className="bi bi-calculator me-2"
-                          style={{ fontSize: "1.2rem" }}
-                        ></i>
-                        <div>
-                          <span className="d-block text-dark">
-                            Dimensiones y Peso Totales
-                          </span>
-                          <small className="text-muted fw-normal">
-                            Ingresa el peso total y volumen total sin desglosar
-                            por pieza
-                          </small>
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {isSimulationMode && (
-                  <div
-                    className="p-3 rounded border"
-                    style={{
-                      borderColor: "rgba(255, 98, 0, 0.2)",
-                      backgroundColor: "rgba(255, 98, 0, 0.03)", // Un 3% de opacidad del naranja
-                    }}
+            <div>
+              {/* Toggle OVERALL */}
+              <div className="mb-4">
+                <div className="qa-switch-container">
+                  <input
+                    className="qa-switch-input"
+                    type="checkbox"
+                    id="overallSwitchLCL"
+                    checked={overallDimsAndWeight}
+                    onChange={(e) => setOverallDimsAndWeight(e.target.checked)}
+                  />
+                  <label
+                    className="qa-label mb-0"
+                    htmlFor="overallSwitchLCL"
+                    style={{ cursor: "pointer", flexGrow: 1 }}
                   >
-                    <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div className="d-flex align-items-center">
+                      <i
+                        className="bi bi-calculator me-2"
+                        style={{ fontSize: "1.2rem" }}
+                      ></i>
                       <div>
-                        <div className="fw-bold">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="#ffc107"
-                            style={{ flexShrink: 0 }}
-                          >
-                            <path d="M12 3L1 21h22L12 3z" />
-                            <rect
-                              x="11"
-                              y="9"
-                              width="2"
-                              height="6"
-                              fill="white"
-                            />
-                            <circle cx="12" cy="18" r="1.2" fill="white" />
-                          </svg>{" "}
-                          Ocean Freight Simulado
+                        <span className="d-block text-dark">
+                          Dimensiones y Peso Totales
+                        </span>
+                        <small className="text-muted fw-normal">
+                          Ingresa el peso total y volumen total sin desglosar
+                          por pieza
+                        </small>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {isSimulationMode && (
+                <div
+                  className="p-3 rounded border"
+                  style={{
+                    borderColor: "rgba(255, 98, 0, 0.2)",
+                    backgroundColor: "rgba(255, 98, 0, 0.03)", // Un 3% de opacidad del naranja
+                  }}
+                >
+                  <div className="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                      <div className="fw-bold">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="#ffc107"
+                          style={{ flexShrink: 0 }}
+                        >
+                          <path d="M12 3L1 21h22L12 3z" />
+                          <rect
+                            x="11"
+                            y="9"
+                            width="2"
+                            height="6"
+                            fill="white"
+                          />
+                          <circle cx="12" cy="18" r="1.2" fill="white" />
+                        </svg>{" "}
+                        Ocean Freight Simulado
+                        <span
+                          className="qf-badge ms-2"
+                          style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                        >
+                          Obligatorio
+                        </span>
+                      </div>
+                      <small className="text-muted">
+                        Ingresa el rate base por W/M. El valor venta se calcula
+                        automáticamente con +15%.
+                      </small>
+                    </div>
+                    <span
+                      className="badge"
+                      style={{
+                        backgroundColor: "rgba(255, 98, 0, 0.12)",
+                        color: "#ff6200",
+                      }}
+                    >
+                      Válida 5 días
+                    </span>
+                  </div>
+
+                  <div className="row g-3 align-items-end">
+                    <div className="col-md-6">
+                      <label className="qa-label small mb-1">
+                        Costo rate ({rutaSeleccionada.currency})
+                      </label>
+                      <input
+                        type="text"
+                        className="qa-input"
+                        value={simulatedOceanFreightRate}
+                        placeholder="Ej: 85"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === "" || /^[\d,\.]+$/.test(value)) {
+                            setSimulatedOceanFreightRate(value);
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="qa-label small mb-1">
+                        Venta rate ({rutaSeleccionada.currency})
+                      </label>
+                      <input
+                        type="text"
+                        className="qa-input"
+                        value={simulatedOceanFreightIncomeRate.toFixed(2)}
+                        disabled
+                        style={{
+                          backgroundColor: "#e9ecef",
+                          cursor: "not-allowed",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {!hasSimulationOceanRate && (
+                    <small className="text-danger d-block mt-2">
+                      Debes ingresar la tarifa manual de Ocean Freight para
+                      continuar con la simulación.
+                    </small>
+                  )}
+                </div>
+              )}
+              <hr className="my-4" />
+              <div className="row g-3">
+                {(() => {
+                  const polOpt = polSeleccionado ?? polNR;
+                  const polPort = polOpt ? getPortByPOL(polOpt.value) : null;
+                  const activePrefix =
+                    polPort?.unlocode?.substring(0, 2).toUpperCase() ?? null;
+                  const activePorts = activePrefix
+                    ? (countryPortsMap[activePrefix] ?? [])
+                    : [];
+                  const isCountryPol = activePorts.length > 0;
+
+                  const nearbyPorts =
+                    isCountryPol && pickupCoords
+                      ? getNearestPorts(pickupCoords, activePorts, 4)
+                      : [];
+                  const effectivePort = nearbyPortSelected
+                    ? (nearbyPorts.find(
+                        (p) => p.value === nearbyPortSelected.value,
+                      ) ??
+                      nearbyPorts[0] ??
+                      null)
+                    : (nearbyPorts[0] ?? null);
+
+                  let mapDestination: DestinationCoords | null = null;
+                  if (isCountryPol && effectivePort) {
+                    mapDestination = {
+                      lat: effectivePort.lat,
+                      lng: effectivePort.lng,
+                      name: effectivePort.label,
+                      code: polPort?.unlocode ?? "",
+                    };
+                  } else if (isCountryPol) {
+                    mapDestination = null;
+                  } else if (polPort) {
+                    mapDestination = {
+                      lat: polPort.lat,
+                      lng: polPort.lng,
+                      name: polPort.name,
+                      code: polPort.unlocode,
+                    };
+                  }
+
+                  const portMiddleContent =
+                    incoterm === "EXW" &&
+                    isCountryPol &&
+                    nearbyPorts.length >= 2 ? (
+                      <NearbyPortSelectorLCL
+                        nearbyPorts={nearbyPorts}
+                        selectedPort={nearbyPortSelected}
+                        onSelectPort={setNearbyPortSelected}
+                      />
+                    ) : null;
+
+                  return (
+                    <>
+                      {/* Incoterm */}
+                      <div className="col-md-6 mb-3">
+                        <label className="qa-label">
+                          <i className="bi bi-flag me-2"></i>
+                          Incoterm
                           <span
                             className="qf-badge ms-2"
                             style={{ fontSize: "0.7rem", fontWeight: 400 }}
                           >
                             Obligatorio
                           </span>
-                        </div>
-                        <small className="text-muted">
-                          Ingresa el rate base por W/M. El valor venta se
-                          calcula automáticamente con +15%.
-                        </small>
+                        </label>
+                        <select
+                          className="qa-select"
+                          value={incoterm}
+                          onChange={(e) =>
+                            setIncoterm(e.target.value as "EXW" | "FOB" | "")
+                          }
+                          style={{ maxWidth: "300px", width: "100%" }}
+                        >
+                          <option value="">
+                            {t("Quotelcl.selectincoterm")}
+                          </option>
+                          <option value="EXW">Ex Works [EXW]</option>
+                          <option value="FOB">Free On Board [FOB]</option>
+                        </select>
                       </div>
-                      <span
-                        className="badge"
-                        style={{
-                          backgroundColor: "rgba(255, 98, 0, 0.12)",
-                          color: "#ff6200",
-                        }}
-                      >
-                        Válida 5 días
-                      </span>
+
+                      {/* Dirección de recogida + mapa (solo EXW) */}
+                      {incoterm === "EXW" && (
+                        <div className="col-12 mb-3">
+                          <div className="bg-light p-3 rounded border">
+                            <CotizadorAddressMap
+                              value={pickupFromAddress}
+                              onChange={setPickupFromAddress}
+                              placeholder="Ingrese dirección de recogida"
+                              rows={2}
+                              pickupLabel={t("Quotelcl.pickup")}
+                              deliveryValue={deliveryToAddressDerived}
+                              deliveryLabel={t("Quotelcl.delivery")}
+                              onPickupCoordsChange={setPickupCoords}
+                              destinationCoords={mapDestination}
+                              middleContent={portMiddleContent}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+
+                {/* Detalles por piezas (solo en modo normal) */}
+                {!overallDimsAndWeight && (
+                  <div className="col-12">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h4 className="fs-6 fw-bold mb-0">
+                        Detalles de las Piezas
+                      </h4>
+
+                      <div className="d-flex align-items-center gap-2">
+                        <button
+                          type="button"
+                          className="qa-btn qa-btn-outline qa-btn-sm"
+                          onClick={() => handleDuplicatePiece()}
+                        >
+                          <i className="bi bi-files"></i>
+                          Duplicar Pieza
+                        </button>
+                        <button
+                          type="button"
+                          className="qa-btn qa-btn-primary qa-btn-sm"
+                          onClick={handleAddPiece}
+                        >
+                          <i className="bi bi-plus-lg"></i>Agregar Pieza
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="row g-3 align-items-end">
-                      <div className="col-md-6">
-                        <label className="qa-label small mb-1">
-                          Costo rate ({rutaSeleccionada.currency})
-                        </label>
-                        <input
-                          type="text"
-                          className="qa-input"
-                          value={simulatedOceanFreightRate}
-                          placeholder="Ej: 85"
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === "" || /^[\d,\.]+$/.test(value)) {
-                              setSimulatedOceanFreightRate(value);
-                            }
-                          }}
+                    <div className="mb-3">
+                      {piecesData.map((piece, index) => (
+                        <PieceAccordionLCL
+                          key={piece.id}
+                          piece={piece}
+                          index={index}
+                          isOpen={openAccordions.includes(piece.id)}
+                          onToggle={() => handleToggleAccordion(piece.id)}
+                          onRemove={() => handleRemovePiece(piece.id)}
+                          onUpdate={(field, value) =>
+                            handleUpdatePiece(piece.id, field, value)
+                          }
+                          packageTypes={packageTypeOptions.map((opt) => ({
+                            id: String(opt.id),
+                            name: opt.name,
+                          }))}
+                          canRemove={piecesData.length > 1}
                         />
+                      ))}
+                    </div>
+
+                    <div className="qa-totals-bar">
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {totalVolumeFromPieces.toFixed(4)} m³
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Volumen total
+                        </span>
                       </div>
-                      <div className="col-md-6">
-                        <label className="qa-label small mb-1">
-                          Venta rate ({rutaSeleccionada.currency})
-                        </label>
-                        <input
-                          type="text"
-                          className="qa-input"
-                          value={simulatedOceanFreightIncomeRate.toFixed(2)}
-                          disabled
-                          style={{
-                            backgroundColor: "#e9ecef",
-                            cursor: "not-allowed",
-                          }}
-                        />
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {totalWeightTonsFromPieces.toFixed(4)} t
+                        </span>
+                        <span className="qa-totals-bar-label">Peso total</span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {chargeableVolumeFromPieces.toFixed(4)}{" "}
+                          {lclChargeableUnit}
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Cargable (W/M)
+                        </span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          <strong>{lclChargeableBillingBasis}</strong>
+                        </span>
+                        <span className="qa-totals-bar-label">Cobro por</span>
                       </div>
                     </div>
 
-                    {!hasSimulationOceanRate && (
-                      <small className="text-danger d-block mt-2">
-                        Debes ingresar la tarifa manual de Ocean Freight para
-                        continuar con la simulación.
-                      </small>
-                    )}
-                  </div>
-                )}
-                <hr className="my-4" />
-                <div className="row g-3">
-                  {(() => {
-                    const polOpt = polSeleccionado ?? polNR;
-                    const polPort = polOpt ? getPortByPOL(polOpt.value) : null;
-                    const activePrefix =
-                      polPort?.unlocode?.substring(0, 2).toUpperCase() ?? null;
-                    const activePorts = activePrefix
-                      ? (countryPortsMap[activePrefix] ?? [])
-                      : [];
-                    const isCountryPol = activePorts.length > 0;
-
-                    const nearbyPorts =
-                      isCountryPol && pickupCoords
-                        ? getNearestPorts(pickupCoords, activePorts, 4)
-                        : [];
-                    const effectivePort = nearbyPortSelected
-                      ? (nearbyPorts.find(
-                          (p) => p.value === nearbyPortSelected.value,
-                        ) ??
-                        nearbyPorts[0] ??
-                        null)
-                      : (nearbyPorts[0] ?? null);
-
-                    let mapDestination: DestinationCoords | null = null;
-                    if (isCountryPol && effectivePort) {
-                      mapDestination = {
-                        lat: effectivePort.lat,
-                        lng: effectivePort.lng,
-                        name: effectivePort.label,
-                        code: polPort?.unlocode ?? "",
-                      };
-                    } else if (isCountryPol) {
-                      mapDestination = null;
-                    } else if (polPort) {
-                      mapDestination = {
-                        lat: polPort.lat,
-                        lng: polPort.lng,
-                        name: polPort.name,
-                        code: polPort.unlocode,
-                      };
-                    }
-
-                    const portMiddleContent =
-                      incoterm === "EXW" &&
-                      isCountryPol &&
-                      nearbyPorts.length >= 2 ? (
-                        <NearbyPortSelectorLCL
-                          nearbyPorts={nearbyPorts}
-                          selectedPort={nearbyPortSelected}
-                          onSelectPort={setNearbyPortSelected}
-                        />
-                      ) : null;
-
-                    return (
-                      <>
-                        {/* Incoterm */}
-                        <div className="col-md-6 mb-3">
-                          <label className="qa-label">
-                            <i className="bi bi-flag me-2"></i>
-                            Incoterm
-                            <span
-                              className="qf-badge ms-2"
-                              style={{ fontSize: "0.7rem", fontWeight: 400 }}
-                            >
-                              Obligatorio
-                            </span>
-                          </label>
-                          <select
-                            className="qa-select"
-                            value={incoterm}
-                            onChange={(e) =>
-                              setIncoterm(e.target.value as "EXW" | "FOB" | "")
-                            }
-                            style={{ maxWidth: "300px", width: "100%" }}
-                          >
-                            <option value="">
-                              {t("Quotelcl.selectincoterm")}
-                            </option>
-                            <option value="EXW">Ex Works [EXW]</option>
-                            <option value="FOB">Free On Board [FOB]</option>
-                          </select>
-                        </div>
-
-                        {/* Dirección de recogida + mapa (solo EXW) */}
-                        {incoterm === "EXW" && (
-                          <div className="col-12 mb-3">
-                            <div className="bg-light p-3 rounded border">
-                              <CotizadorAddressMap
-                                value={pickupFromAddress}
-                                onChange={setPickupFromAddress}
-                                placeholder="Ingrese dirección de recogida"
-                                rows={2}
-                                pickupLabel={t("Quotelcl.pickup")}
-                                deliveryValue={deliveryToAddressDerived}
-                                deliveryLabel={t("Quotelcl.delivery")}
-                                onPickupCoordsChange={setPickupCoords}
-                                destinationCoords={mapDestination}
-                                middleContent={portMiddleContent}
-                              />
+                    {/* Alertas de restricciones de dimensiones marítimas */}
+                    {oversizeErrorLCL && (
+                      <div className="mt-4">
+                        {oversizeLargo && (
+                          <div className="qa-alert qa-alert-warning">
+                            <i className="bi bi-exclamation-triangle-fill"></i>
+                            <div>
+                              <strong>
+                                {t("OversizeNotifyLCL.largoExcede")}:
+                              </strong>{" "}
+                              {t("OversizeNotifyLCL.largoMsg")}
                             </div>
                           </div>
                         )}
-                      </>
-                    );
-                  })()}
-
-                  {/* Detalles por piezas (solo en modo normal) */}
-                  {!overallDimsAndWeight && (
-                    <div className="col-12">
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h4 className="fs-6 fw-bold mb-0">
-                          Detalles de las Piezas
-                        </h4>
-
-                        <div className="d-flex align-items-center gap-2">
-                          <button
-                            type="button"
-                            className="qa-btn qa-btn-outline qa-btn-sm"
-                            onClick={() => handleDuplicatePiece()}
-                          >
-                            <i className="bi bi-files"></i>
-                            Duplicar Pieza
-                          </button>
-                          <button
-                            type="button"
-                            className="qa-btn qa-btn-primary qa-btn-sm"
-                            onClick={handleAddPiece}
-                          >
-                            <i className="bi bi-plus-lg"></i>Agregar Pieza
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="mb-3">
-                        {piecesData.map((piece, index) => (
-                          <PieceAccordionLCL
-                            key={piece.id}
-                            piece={piece}
-                            index={index}
-                            isOpen={openAccordions.includes(piece.id)}
-                            onToggle={() => handleToggleAccordion(piece.id)}
-                            onRemove={() => handleRemovePiece(piece.id)}
-                            onUpdate={(field, value) =>
-                              handleUpdatePiece(piece.id, field, value)
-                            }
-                            packageTypes={packageTypeOptions.map((opt) => ({
-                              id: String(opt.id),
-                              name: opt.name,
-                            }))}
-                            canRemove={piecesData.length > 1}
-                          />
-                        ))}
-                      </div>
-
-                      <div className="qa-totals-bar">
-                        <div className="qa-totals-bar-item">
-                          <span className="qa-totals-bar-value">
-                            {totalVolumeFromPieces.toFixed(4)} m³
-                          </span>
-                          <span className="qa-totals-bar-label">
-                            Volumen total
-                          </span>
-                        </div>
-                        <div className="qa-totals-bar-item">
-                          <span className="qa-totals-bar-value">
-                            {totalWeightTonsFromPieces.toFixed(4)} t
-                          </span>
-                          <span className="qa-totals-bar-label">
-                            Peso total
-                          </span>
-                        </div>
-                        <div className="qa-totals-bar-item">
-                          <span className="qa-totals-bar-value">
-                            {chargeableVolumeFromPieces.toFixed(4)}{" "}
-                            {lclChargeableUnit}
-                          </span>
-                          <span className="qa-totals-bar-label">
-                            Cargable (W/M)
-                          </span>
-                        </div>
-                        <div className="qa-totals-bar-item">
-                          <span className="qa-totals-bar-value">
-                            <strong>{lclChargeableBillingBasis}</strong>
-                          </span>
-                          <span className="qa-totals-bar-label">Cobro por</span>
-                        </div>
-                      </div>
-
-                      {/* Alertas de restricciones de dimensiones marítimas */}
-                      {oversizeErrorLCL && (
-                        <div className="mt-4">
-                          {oversizeLargo && (
-                            <div className="qa-alert qa-alert-warning">
-                              <i className="bi bi-exclamation-triangle-fill"></i>
-                              <div>
-                                <strong>
-                                  {t("OversizeNotifyLCL.largoExcede")}:
-                                </strong>{" "}
-                                {t("OversizeNotifyLCL.largoMsg")}
-                              </div>
+                        {oversizeAncho && (
+                          <div className="qa-alert qa-alert-warning">
+                            <i className="bi bi-exclamation-triangle-fill"></i>
+                            <div>
+                              <strong>
+                                {t("OversizeNotifyLCL.anchoExcede")}:
+                              </strong>{" "}
+                              {t("OversizeNotifyLCL.anchoMsg")}
                             </div>
-                          )}
-                          {oversizeAncho && (
-                            <div className="qa-alert qa-alert-warning">
-                              <i className="bi bi-exclamation-triangle-fill"></i>
-                              <div>
-                                <strong>
-                                  {t("OversizeNotifyLCL.anchoExcede")}:
-                                </strong>{" "}
-                                {t("OversizeNotifyLCL.anchoMsg")}
-                              </div>
+                          </div>
+                        )}
+                        {oversizeAlto && (
+                          <div className="qa-alert qa-alert-danger">
+                            <i className="bi bi-x-circle-fill"></i>
+                            <div>
+                              <strong>
+                                {t("OversizeNotifyLCL.altoExcede")}:
+                              </strong>{" "}
+                              {t("OversizeNotifyLCL.altoMsg")}
                             </div>
-                          )}
-                          {oversizeAlto && (
-                            <div className="qa-alert qa-alert-danger">
-                              <i className="bi bi-x-circle-fill"></i>
-                              <div>
-                                <strong>
-                                  {t("OversizeNotifyLCL.altoExcede")}:
-                                </strong>{" "}
-                                {t("OversizeNotifyLCL.altoMsg")}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Inputs OVERALL: peso y volumen totales */}
-                  {overallDimsAndWeight && (
-                    <div className="col-12">
-                      <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h4 className="fs-6 fw-bold mb-0">
-                          Detalles de las Piezas
-                        </h4>
-
-                        <div className="d-flex align-items-center gap-2">
-                          <button
-                            type="button"
-                            className="qa-btn qa-btn-outline qa-btn-sm"
-                            onClick={() => handleDuplicateOverallPiece()}
-                          >
-                            <i className="bi bi-files"></i>
-                            Duplicar Pieza
-                          </button>
-                          <button
-                            type="button"
-                            className="qa-btn qa-btn-primary qa-btn-sm"
-                            onClick={handleAddOverallPiece}
-                          >
-                            <i className="bi bi-plus-lg"></i>Agregar Pieza
-                          </button>
-                        </div>
+                          </div>
+                        )}
                       </div>
-
-                      <div className="mb-3">
-                        {overallPiecesData.map((piece, index) => (
-                          <OverallPieceAccordionLCL
-                            key={piece.id}
-                            piece={piece}
-                            index={index}
-                            isOpen={openOverallAccordions.includes(piece.id)}
-                            onToggle={() =>
-                              handleToggleOverallAccordion(piece.id)
-                            }
-                            onRemove={() => handleRemoveOverallPiece(piece.id)}
-                            packageTypes={packageTypeOptions.map((opt) => ({
-                              id: String(opt.id),
-                              name: opt.name,
-                            }))}
-                            onUpdate={(field, value) =>
-                              handleUpdateOverallPiece(piece.id, field, value)
-                            }
-                            canRemove={overallPiecesData.length > 1}
-                          />
-                        ))}
-                      </div>
-
-                      {/* Totals bar en modo OVERALL */}
-                      <div className="qa-totals-bar mt-3">
-                        <div className="qa-totals-bar-item">
-                          <span className="qa-totals-bar-value">
-                            {overallPiecesCount}
-                          </span>
-                          <span className="qa-totals-bar-label">Piezas</span>
-                        </div>
-                        <div className="qa-totals-bar-item">
-                          <span className="qa-totals-bar-value">
-                            {manualVolume.toFixed(4)} m³
-                          </span>
-                          <span className="qa-totals-bar-label">
-                            Volumen total
-                          </span>
-                        </div>
-                        <div className="qa-totals-bar-item">
-                          <span className="qa-totals-bar-value">
-                            {(manualWeight / 1000).toFixed(4)} t
-                          </span>
-                          <span className="qa-totals-bar-label">
-                            Peso total
-                          </span>
-                        </div>
-                        <div className="qa-totals-bar-item">
-                          <span className="qa-totals-bar-value">
-                            {chargeableVolume.toFixed(4)} {lclChargeableUnit}
-                          </span>
-                          <span className="qa-totals-bar-label">
-                            Cargable (W/M)
-                          </span>
-                        </div>
-                        <div className="qa-totals-bar-item">
-                          <span className="qa-totals-bar-value">
-                            <strong>{lclChargeableBillingBasis}</strong>
-                          </span>
-                          <span className="qa-totals-bar-label">Cobro por</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Botón Siguiente Paso 2 */}
-                <div className="d-flex justify-content-end mt-4">
-                  <button
-                    type="button"
-                    className="qa-btn qa-btn-primary"
-                    disabled={!canProceedToStep3}
-                    onClick={() => {
-                      if (!canProceedToStep3) return;
-                      setStep2Completed(true);
-                      setOpenSection(3);
-                      trackStep({
-                        step: "incoterm_charges",
-                        stepNumber: 3,
-                        totalSteps: 3,
-                      });
-                    }}
-                  >
-                    Siguiente
-                    <i className="bi bi-arrow-right ms-1"></i>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {step2Completed && (
-            <div className="qa-card" ref={section3Ref}>
-              <div
-                className={`qa-card-header ${openSection === 3 ? "open" : ""}`}
-                onClick={() => handleSectionToggle(3)}
-                style={{ cursor: "pointer" }}
-              >
-                <div className="d-flex align-items-center">
-                  <h3>
-                    <i
-                      className="bi bi-bag-plus-fill me-2"
-                      style={{ color: "var(--qf-primary)" }}
-                    ></i>
-                    Paso 3: Servicios Adicionales
-                  </h3>
-                  {step3Completed && (
-                    <span
-                      className="qa-badge ms-3"
-                      style={{
-                        backgroundColor: "#d1e7dd",
-                        color: "#0f5132",
-                        borderColor: "transparent",
-                      }}
-                    >
-                      <i className="bi bi-check-circle-fill me-1"></i>
-                      Completado
-                    </span>
-                  )}
-                </div>
-                <i
-                  className={`bi bi-chevron-${openSection === 3 ? "up" : "down"}`}
-                  style={{ color: "var(--qa-text-secondary)" }}
-                ></i>
-              </div>
-
-              {openSection !== 3 && (
-                <div className="qa-route-summary">
-                  <span
-                    className="qa-text-muted"
-                    style={{ fontSize: "0.85rem" }}
-                  >
-                    {seguroActivo || gastolocal ? (
-                      <>
-                        <i className="bi bi-check-circle-fill text-success me-1"></i>
-                        {[
-                          seguroActivo && "Seguro de Carga",
-                          gastolocal && "Gastos Locales",
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-info-circle me-1"></i>
-                        Sin servicios adicionales seleccionados.
-                      </>
                     )}
-                  </span>
-                </div>
-              )}
+                  </div>
+                )}
 
-              {openSection === 3 && (
-                <div>
-                  <div className="qa-addons-list">
-                    {/* Card: Seguro de Carga */}
-                    <div
-                      className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}
-                    >
-                      <div className="qa-addon-card__image">
-                        <img
-                          src={imgUrl("addcargos/seguro.png")}
-                          alt="Seguro de carga"
-                          loading="lazy"
-                        />
-                      </div>
-                      <div className="qa-addon-card__body">
-                        <h4>Agregar Seguro de Carga</h4>
-                        <p>
-                          Protege tu cargamento contra daños, pérdidas y robos
-                          durante el transporte. Se calcula en base al valor
-                          declarado de la mercadería.
-                        </p>
-                        {seguroActivo && valorMercaderia && (
-                          <span
-                            className="qa-badge qa-badge-primary mt-2"
-                            style={{ display: "inline-block" }}
-                          >
-                            Valor declarado: {rutaSeleccionada.currency}{" "}
-                            {valorMercaderia}
-                          </span>
-                        )}
-                      </div>
-                      <div className="qa-addon-card__action">
-                        {!seguroActivo ? (
-                          <button
-                            className="qa-addon-btn-add"
-                            onClick={() => {
-                              setTempValorSeguro("");
-                              setShowSeguroModal(true);
-                            }}
-                          >
-                            <i className="bi bi-plus-lg"></i>Agregar
-                          </button>
-                        ) : (
-                          <button
-                            className="qa-addon-btn-remove"
-                            onClick={() => {
-                              setSeguroActivo(false);
-                              setValorMercaderia("");
-                            }}
-                          >
-                            <i className="bi bi-x-lg"></i>Remover
-                          </button>
-                        )}
+                {/* Inputs OVERALL: peso y volumen totales */}
+                {overallDimsAndWeight && (
+                  <div className="col-12">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h4 className="fs-6 fw-bold mb-0">
+                        Detalles de las Piezas
+                      </h4>
+
+                      <div className="d-flex align-items-center gap-2">
+                        <button
+                          type="button"
+                          className="qa-btn qa-btn-outline qa-btn-sm"
+                          onClick={() => handleDuplicateOverallPiece()}
+                        >
+                          <i className="bi bi-files"></i>
+                          Duplicar Pieza
+                        </button>
+                        <button
+                          type="button"
+                          className="qa-btn qa-btn-primary qa-btn-sm"
+                          onClick={handleAddOverallPiece}
+                        >
+                          <i className="bi bi-plus-lg"></i>Agregar Pieza
+                        </button>
                       </div>
                     </div>
 
-                    {/* Card: Gastos Locales (Desconsolidación + Apertura) */}
-                    <div
-                      className={`qa-addon-card${gastolocal ? " is-active" : ""}`}
-                    >
-                      <div className="qa-addon-card__image">
-                        <img
-                          src={imgUrl("addcargos/gastos-locales.png")}
-                          alt="Gastos Locales"
-                          loading="lazy"
+                    <div className="mb-3">
+                      {overallPiecesData.map((piece, index) => (
+                        <OverallPieceAccordionLCL
+                          key={piece.id}
+                          piece={piece}
+                          index={index}
+                          isOpen={openOverallAccordions.includes(piece.id)}
+                          onToggle={() =>
+                            handleToggleOverallAccordion(piece.id)
+                          }
+                          onRemove={() => handleRemoveOverallPiece(piece.id)}
+                          packageTypes={packageTypeOptions.map((opt) => ({
+                            id: String(opt.id),
+                            name: opt.name,
+                          }))}
+                          onUpdate={(field, value) =>
+                            handleUpdateOverallPiece(piece.id, field, value)
+                          }
+                          canRemove={overallPiecesData.length > 1}
                         />
-                      </div>
-                      <div className="qa-addon-card__body">
-                        <h4>Agregar Gastos Locales</h4>
-                        <p>
-                          Incluye los cargos de desconsolidación y gastos de
-                          apertura en destino al momento de retirar la carga.
-                        </p>
-                      </div>
-                      <div className="qa-addon-card__action">
-                        {!gastolocal ? (
-                          <button
-                            className="qa-addon-btn-add"
-                            onClick={() => setGastolocal(true)}
-                          >
-                            <i className="bi bi-plus-lg"></i>Agregar
-                          </button>
-                        ) : (
-                          <button
-                            className="qa-addon-btn-remove"
-                            onClick={() => setGastolocal(false)}
-                          >
-                            <i className="bi bi-x-lg"></i>Remover
-                          </button>
-                        )}
-                      </div>
+                      ))}
                     </div>
 
-                    {/* Card: Live Tracking (Free) */}
-                    <div
-                      className={`qa-addon-card${liveTrackingActivo ? " is-active" : ""}`}
-                    >
-                      <div className="qa-addon-card__image">
-                        <img
-                          src={imgUrl("addcargos/live-tracking.png")}
-                          alt="Live Tracking"
-                          loading="lazy"
-                          onError={(e) => {
-                            (
-                              e.currentTarget as HTMLImageElement
-                            ).style.display = "none";
-                          }}
-                        />
+                    {/* Totals bar en modo OVERALL */}
+                    <div className="qa-totals-bar mt-3">
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {overallPiecesCount}
+                        </span>
+                        <span className="qa-totals-bar-label">Piezas</span>
                       </div>
-                      <div className="qa-addon-card__body">
-                        <h4>
-                          Live Tracking{" "}
-                          <span className="qa-badge qa-badge-primary ms-1">
-                            Free
-                          </span>
-                        </h4>
-                        <p>
-                          Monitorea tu cargamento LCL en tiempo real durante
-                          todo el tránsito marítimo. Recibe notificaciones
-                          automáticas en cada hito del envío. Servicio sin costo
-                          adicional.
-                        </p>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {manualVolume.toFixed(4)} m³
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Volumen total
+                        </span>
                       </div>
-                      <div className="qa-addon-card__action">
-                        {!liveTrackingActivo ? (
-                          <button
-                            className="qa-addon-btn-add"
-                            onClick={() => setLiveTrackingActivo(true)}
-                          >
-                            <i className="bi bi-plus-lg"></i>Agregar
-                          </button>
-                        ) : (
-                          <button
-                            className="qa-addon-btn-remove"
-                            onClick={() => setLiveTrackingActivo(false)}
-                          >
-                            <i className="bi bi-x-lg"></i>Remover
-                          </button>
-                        )}
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {(manualWeight / 1000).toFixed(4)} t
+                        </span>
+                        <span className="qa-totals-bar-label">Peso total</span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          {chargeableVolume.toFixed(4)} {lclChargeableUnit}
+                        </span>
+                        <span className="qa-totals-bar-label">
+                          Cargable (W/M)
+                        </span>
+                      </div>
+                      <div className="qa-totals-bar-item">
+                        <span className="qa-totals-bar-value">
+                          <strong>{lclChargeableBillingBasis}</strong>
+                        </span>
+                        <span className="qa-totals-bar-label">Cobro por</span>
                       </div>
                     </div>
                   </div>
+                )}
+              </div>
 
-                  {/* Botón Continuar */}
-                  <div className="d-flex justify-content-end mt-4 pt-3 border-top">
-                    <button
-                      className="qa-btn qa-btn-primary"
-                      onClick={() => {
-                        setStep3Completed(true);
-                        setOpenSection(4);
-                      }}
-                    >
-                      Continuar a Revisión
-                      <i className="bi bi-arrow-right ms-1"></i>
-                    </button>
-                  </div>
-                </div>
-              )}
+              {/* Botón Siguiente Paso 2 */}
+              <div className="d-flex justify-content-end mt-4">
+                <button
+                  type="button"
+                  className="qa-btn qa-btn-primary"
+                  disabled={!canProceedToStep3}
+                  onClick={() => {
+                    if (!canProceedToStep3) return;
+                    advanceToStep(3);
+                  }}
+                >
+                  Siguiente
+                  <i className="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
             </div>
-          )}
+          </div>
+        </>
+      )}
+
+      {/* ============================================================================ */}
+      {/* SECCIÓN 3: SERVICIOS ADICIONALES */}
+      {/* ============================================================================ */}
+
+      {currentStep === 3 && rutaSeleccionada && (
+        <>
+          <div className="qa-card" ref={section3Ref}>
+            <div className="qa-card-header open">
+              <div className="d-flex align-items-center">
+                <h3>
+                  <i
+                    className="bi bi-bag-plus-fill me-2"
+                    style={{ color: "var(--qf-primary)" }}
+                  ></i>
+                  Paso 3: Servicios Adicionales
+                </h3>
+              </div>
+            </div>
+
+            <div>
+              <div className="qa-addons-list">
+                {/* Card: Seguro de Carga */}
+                <div
+                  className={`qa-addon-card${seguroActivo ? " is-active" : ""}`}
+                >
+                  <div className="qa-addon-card__image">
+                    <img
+                      src={imgUrl("addcargos/seguro.png")}
+                      alt="Seguro de carga"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="qa-addon-card__body">
+                    <h4>Agregar Seguro de Carga</h4>
+                    <p>
+                      Protege tu cargamento contra daños, pérdidas y robos
+                      durante el transporte. Se calcula en base al valor
+                      declarado de la mercadería.
+                    </p>
+                    {seguroActivo && valorMercaderia && (
+                      <span
+                        className="qa-badge qa-badge-primary mt-2"
+                        style={{ display: "inline-block" }}
+                      >
+                        Valor declarado: {rutaSeleccionada.currency}{" "}
+                        {valorMercaderia}
+                      </span>
+                    )}
+                  </div>
+                  <div className="qa-addon-card__action">
+                    {!seguroActivo ? (
+                      <button
+                        className="qa-addon-btn-add"
+                        onClick={() => {
+                          setTempValorSeguro("");
+                          setShowSeguroModal(true);
+                        }}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar
+                      </button>
+                    ) : (
+                      <button
+                        className="qa-addon-btn-remove"
+                        onClick={() => {
+                          setSeguroActivo(false);
+                          setValorMercaderia("");
+                        }}
+                      >
+                        <i className="bi bi-x-lg"></i>Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card: Gastos Locales (Desconsolidación + Apertura) */}
+                <div
+                  className={`qa-addon-card${gastolocal ? " is-active" : ""}`}
+                >
+                  <div className="qa-addon-card__image">
+                    <img
+                      src={imgUrl("addcargos/gastos-locales.png")}
+                      alt="Gastos Locales"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="qa-addon-card__body">
+                    <h4>Agregar Gastos Locales</h4>
+                    <p>
+                      Incluye los cargos de desconsolidación y gastos de
+                      apertura en destino al momento de retirar la carga.
+                    </p>
+                  </div>
+                  <div className="qa-addon-card__action">
+                    {!gastolocal ? (
+                      <button
+                        className="qa-addon-btn-add"
+                        onClick={() => setGastolocal(true)}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar
+                      </button>
+                    ) : (
+                      <button
+                        className="qa-addon-btn-remove"
+                        onClick={() => setGastolocal(false)}
+                      >
+                        <i className="bi bi-x-lg"></i>Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card: Live Tracking (Free) */}
+                <div
+                  className={`qa-addon-card${liveTrackingActivo ? " is-active" : ""}`}
+                >
+                  <div className="qa-addon-card__image">
+                    <img
+                      src={imgUrl("addcargos/live-tracking.png")}
+                      alt="Live Tracking"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display =
+                          "none";
+                      }}
+                    />
+                  </div>
+                  <div className="qa-addon-card__body">
+                    <h4>
+                      Live Tracking{" "}
+                      <span className="qa-badge qa-badge-primary ms-1">
+                        Free
+                      </span>
+                    </h4>
+                    <p>
+                      Monitorea tu cargamento LCL en tiempo real durante todo el
+                      tránsito marítimo. Recibe notificaciones automáticas en
+                      cada hito del envío. Servicio sin costo adicional.
+                    </p>
+                  </div>
+                  <div className="qa-addon-card__action">
+                    {!liveTrackingActivo ? (
+                      <button
+                        className="qa-addon-btn-add"
+                        onClick={() => setLiveTrackingActivo(true)}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar
+                      </button>
+                    ) : (
+                      <button
+                        className="qa-addon-btn-remove"
+                        onClick={() => setLiveTrackingActivo(false)}
+                      >
+                        <i className="bi bi-x-lg"></i>Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón Continuar */}
+              <div className="d-flex justify-content-end mt-4 pt-3 border-top">
+                <button
+                  className="qa-btn qa-btn-primary"
+                  onClick={() => {
+                    advanceToStep(4);
+                  }}
+                >
+                  Continuar a Revisión
+                  <i className="bi bi-arrow-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+          </div>
         </>
       )}
 
@@ -4649,13 +4405,9 @@ function QuoteLCL({
       {/* SECCIÓN 4: REVISIÓN DE PIEZAS Y COSTOS */}
       {/* ============================================================================ */}
 
-      {step3Completed && (
+      {currentStep === 4 && rutaSeleccionada && (
         <div className="qa-card" ref={section4Ref}>
-          <div
-            className={`qa-card-header ${openSection === 4 ? "open" : ""}`}
-            onClick={() => setOpenSection(openSection === 4 ? 0 : 4)}
-            style={{ cursor: "pointer" }}
-          >
+          <div className="qa-card-header open">
             <div className="d-flex align-items-center">
               <h3>
                 <i
@@ -4665,141 +4417,133 @@ function QuoteLCL({
                 Paso 4: Revisión de Piezas y Costos
               </h3>
             </div>
-            <i
-              className={`bi bi-chevron-${openSection === 4 ? "up" : "down"}`}
-              style={{ color: "var(--qa-text-secondary)" }}
-            ></i>
           </div>
 
-          {openSection === 4 && (
-            <>
-              {/* Cálculos */}
-              <div className="row g-3">
-                <div className="col-md-12">
-                  <div
-                    className="p-3 rounded border d-flex flex-column h-100"
-                    style={{ backgroundColor: "var(--qa-bg-light)" }}
-                  >
-                    <h4 className="fs-6 fw-bold mb-3">
-                      Resumen del Cargamento
-                    </h4>
-                    <div className="qa-grid-4" style={{ fontSize: "0.9rem" }}>
-                      <div>
-                        <span className="qa-text-muted d-block">
-                          {t("Quotelcl.pesototal1")}
-                        </span>
-                        <strong>
-                          {totalWeightKg.toFixed(2)} kg (
-                          {totalWeightTons.toFixed(4)} t)
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="qa-text-muted d-block">
-                          {t("Quotelcl.volumentotal1")}
-                        </span>
-                        <strong>{totalVolume.toFixed(4)} m³</strong>
-                      </div>
-                      <div>
-                        <span className="qa-text-muted d-block">
-                          {t("Quotelcl.chargeable")}
-                        </span>
-                        <strong>
-                          {chargeableVolume.toFixed(4)} {lclChargeableUnit}
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="qa-text-muted d-block">
-                          {t("Quotelcl.cobropor")}
-                        </span>
-                        <strong>{lclChargeableBillingBasis}</strong>
-                      </div>
+          <>
+            {/* Cálculos */}
+            <div className="row g-3">
+              <div className="col-md-12">
+                <div
+                  className="p-3 rounded border d-flex flex-column h-100"
+                  style={{ backgroundColor: "var(--qa-bg-light)" }}
+                >
+                  <h4 className="fs-6 fw-bold mb-3">Resumen del Cargamento</h4>
+                  <div className="qa-grid-4" style={{ fontSize: "0.9rem" }}>
+                    <div>
+                      <span className="qa-text-muted d-block">
+                        {t("Quotelcl.pesototal1")}
+                      </span>
+                      <strong>
+                        {totalWeightKg.toFixed(2)} kg (
+                        {totalWeightTons.toFixed(4)} t)
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="qa-text-muted d-block">
+                        {t("Quotelcl.volumentotal1")}
+                      </span>
+                      <strong>{totalVolume.toFixed(4)} m³</strong>
+                    </div>
+                    <div>
+                      <span className="qa-text-muted d-block">
+                        {t("Quotelcl.chargeable")}
+                      </span>
+                      <strong>
+                        {chargeableVolume.toFixed(4)} {lclChargeableUnit}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="qa-text-muted d-block">
+                        {t("Quotelcl.cobropor")}
+                      </span>
+                      <strong>{lclChargeableBillingBasis}</strong>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Botón Generar Cotización */}
-              <div className="d-flex justify-content-end mt-4">
-                {btnPhase !== "done" ? (
-                  <button
-                    onClick={() => {
-                      setTipoAccion("cotizacion");
-                      testAPI("cotizacion");
-                    }}
-                    disabled={
-                      btnPhase !== "idle" ||
-                      loading ||
-                      authLoading ||
-                      !accessToken ||
-                      !incoterm ||
-                      (isSimulationMode && !hasSimulationOceanRate) ||
-                      oversizeErrorLCL ||
-                      (incoterm === "EXW" && !pickupFromAddress)
-                    }
-                    className={`qa-btn qa-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
-                  >
-                    <span className="quote-btn-content">
-                      {t("QuoteAIR.generarcotizacion")}
-                      <i className="ti ti-arrow-right"></i>
-                    </span>
-                    {btnPhase === "loading" && (
-                      <div className="quote-spinner-ring" />
-                    )}
-                    {btnPhase === "check" && (
-                      <svg
-                        className="quote-check-svg"
-                        width={22}
-                        height={22}
-                        viewBox="0 0 22 22"
-                        fill="none"
-                      >
-                        <circle
-                          cx="11"
-                          cy="11"
-                          r="9"
-                          stroke="rgba(255,255,255,0.3)"
-                          strokeWidth="2.5"
-                        />
-                        <polyline
-                          ref={checkDrawRef}
-                          className="quote-check-polyline"
-                          points="6,11 10,15 16,7"
-                          stroke="white"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                ) : (
-                  <div className="quote-confirm-row">
-                    <span className="quote-confirm-dot">
-                      <i className="ti ti-check" />
-                    </span>
-                    <span className="quote-confirm-text">
-                      Cotización generada
-                    </span>
-                    <button
-                      type="button"
-                      className="quote-confirm-download"
-                      onClick={() => {
-                        if (pdfFallbackRef.current) {
-                          downloadPDFFromBase64(
-                            pdfFallbackRef.current.base64,
-                            pdfFallbackRef.current.filename,
-                          );
-                        }
-                      }}
+            {/* Botón Generar Cotización */}
+            <div className="d-flex justify-content-end mt-4">
+              {btnPhase !== "done" ? (
+                <button
+                  onClick={() => {
+                    setTipoAccion("cotizacion");
+                    testAPI("cotizacion");
+                  }}
+                  disabled={
+                    btnPhase !== "idle" ||
+                    loading ||
+                    authLoading ||
+                    !accessToken ||
+                    !incoterm ||
+                    (isSimulationMode && !hasSimulationOceanRate) ||
+                    oversizeErrorLCL ||
+                    (incoterm === "EXW" && !pickupFromAddress)
+                  }
+                  className={`qa-btn qa-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
+                >
+                  <span className="quote-btn-content">
+                    {t("QuoteAIR.generarcotizacion")}
+                    <i className="ti ti-arrow-right"></i>
+                  </span>
+                  {btnPhase === "loading" && (
+                    <div className="quote-spinner-ring" />
+                  )}
+                  {btnPhase === "check" && (
+                    <svg
+                      className="quote-check-svg"
+                      width={22}
+                      height={22}
+                      viewBox="0 0 22 22"
+                      fill="none"
                     >
-                      <i className="ti ti-download" />
-                      Descargar PDF
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+                      <circle
+                        cx="11"
+                        cy="11"
+                        r="9"
+                        stroke="rgba(255,255,255,0.3)"
+                        strokeWidth="2.5"
+                      />
+                      <polyline
+                        ref={checkDrawRef}
+                        className="quote-check-polyline"
+                        points="6,11 10,15 16,7"
+                        stroke="white"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                </button>
+              ) : (
+                <div className="quote-confirm-row">
+                  <span className="quote-confirm-dot">
+                    <i className="ti ti-check" />
+                  </span>
+                  <span className="quote-confirm-text">
+                    Cotización generada
+                  </span>
+                  <button
+                    type="button"
+                    className="quote-confirm-download"
+                    onClick={() => {
+                      if (pdfFallbackRef.current) {
+                        downloadPDFFromBase64(
+                          pdfFallbackRef.current.base64,
+                          pdfFallbackRef.current.filename,
+                        );
+                      }
+                    }}
+                  >
+                    <i className="ti ti-download" />
+                    Descargar PDF
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
         </div>
       )}
 

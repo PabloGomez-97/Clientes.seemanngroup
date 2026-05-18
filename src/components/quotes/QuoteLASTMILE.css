@@ -1180,3 +1180,86 @@
   text-decoration: underline;
   color: #c5651a;
 }
+
+/* ============================================================================ */
+/* WIZARD: BARRA DE PROGRESO                                                   */
+/* ============================================================================ */
+.qlm-wizard-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 0.5rem 1.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.qlm-wizard-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: transparent;
+  border: none;
+  border-radius: var(--qa-radius);
+  cursor: default;
+  color: var(--qa-text-secondary);
+  font-size: 0.9rem;
+  transition: var(--qa-transition);
+}
+.qlm-wizard-step--clickable {
+  cursor: pointer;
+}
+.qlm-wizard-step--clickable:hover {
+  background: rgba(255, 98, 0, 0.06);
+  color: var(--qa-text-primary);
+}
+.qlm-wizard-step__circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f1f3f5;
+  color: var(--qa-text-secondary);
+  border: 1px solid var(--qa-border-color);
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: var(--qa-transition);
+}
+.qlm-wizard-step--active .qlm-wizard-step__circle {
+  background: var(--qa-primary);
+  color: #fff;
+  border-color: var(--qa-primary);
+  box-shadow: 0 0 0 4px rgba(255, 98, 0, 0.15);
+}
+.qlm-wizard-step--completed .qlm-wizard-step__circle {
+  background: #d1e7dd;
+  color: #0f5132;
+  border-color: #badbcc;
+}
+.qlm-wizard-step--active {
+  color: var(--qa-text-primary);
+  font-weight: 600;
+}
+.qlm-wizard-step__label {
+  white-space: nowrap;
+}
+.qlm-wizard-connector {
+  flex: 0 0 32px;
+  height: 2px;
+  background: var(--qa-border-color);
+  border-radius: 2px;
+  transition: var(--qa-transition);
+}
+.qlm-wizard-connector--completed {
+  background: #badbcc;
+}
+@media (max-width: 600px) {
+  .qlm-wizard-step__label {
+    display: none;
+  }
+  .qlm-wizard-connector {
+    flex: 0 0 16px;
+  }
+}

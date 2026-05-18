@@ -838,3 +838,94 @@
     font-size: 0.65rem;
   }
 }
+
+/* ============================================================================
+   Wizard de pasos (reemplaza accordions apilados)
+   ============================================================================ */
+.qf-wizard-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border: 1px solid var(--qf-border-color);
+  border-radius: var(--qf-radius);
+  box-shadow: var(--qf-shadow-sm);
+  flex-wrap: wrap;
+}
+
+.qf-wizard-step {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 0.5rem;
+  color: var(--qf-text-secondary);
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: var(--qf-transition);
+  user-select: none;
+}
+
+.qf-wizard-step__num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e9ecef;
+  color: var(--qf-text-secondary);
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  transition: var(--qf-transition);
+}
+
+.qf-wizard-step__label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qf-wizard-step__sep {
+  flex: 1 1 auto;
+  height: 2px;
+  background: #e9ecef;
+  margin: 0 0.75rem;
+  min-width: 16px;
+}
+
+.qf-wizard-step.is-active {
+  color: var(--qf-primary);
+  font-weight: 700;
+}
+.qf-wizard-step.is-active .qf-wizard-step__num {
+  background: var(--qf-primary);
+  color: #fff;
+}
+
+.qf-wizard-step.is-completed {
+  color: var(--qf-text-primary);
+}
+.qf-wizard-step.is-completed .qf-wizard-step__num {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+.qf-wizard-step.is-completed .qf-wizard-step__sep {
+  background: var(--qf-primary);
+}
+
+.qf-wizard-step.is-clickable:hover .qf-wizard-step__num {
+  outline: 2px solid var(--qf-primary);
+  outline-offset: 2px;
+}
+.qf-wizard-step.is-clickable:hover .qf-wizard-step__label {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .qf-wizard-step__label { display: none; }
+  .qf-wizard-step.is-active .qf-wizard-step__label { display: inline; }
+}
