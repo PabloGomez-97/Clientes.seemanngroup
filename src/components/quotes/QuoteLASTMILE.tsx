@@ -63,15 +63,15 @@ const LCL_DAP_DELIVERY_BRACKETS: Array<{
   maxM3: number;
   amount: number;
 }> = [
-  { maxKg: 500, maxM3: 2.5, amount: 183.26 },
-  { maxKg: 1000, maxM3: 5, amount: 202.9 },
-  { maxKg: 2000, maxM3: 8, amount: 248.71 },
-  { maxKg: 3000, maxM3: 11, amount: 274.89 },
-  { maxKg: 4000, maxM3: 15, amount: 294.53 },
-  { maxKg: 5000, maxM3: 20, amount: 314.16 },
-  { maxKg: 6000, maxM3: 25, amount: 353.43 },
-  { maxKg: 7000, maxM3: 30, amount: 392.7 },
-];
+    { maxKg: 500, maxM3: 2.5, amount: 183.26 },
+    { maxKg: 1000, maxM3: 5, amount: 202.9 },
+    { maxKg: 2000, maxM3: 8, amount: 248.71 },
+    { maxKg: 3000, maxM3: 11, amount: 274.89 },
+    { maxKg: 4000, maxM3: 15, amount: 294.53 },
+    { maxKg: 5000, maxM3: 20, amount: 314.16 },
+    { maxKg: 6000, maxM3: 25, amount: 353.43 },
+    { maxKg: 7000, maxM3: 30, amount: 392.7 },
+  ];
 
 const LCL_DAP_DELIVERY_MAX_KG = 7000;
 const LCL_DAP_DELIVERY_MAX_M3 = 30;
@@ -343,17 +343,17 @@ function QuoteLASTMILE({
   // Solo permite enteros positivos en los inputs de contenedores.
   const handleContenedorChange =
     (setter: React.Dispatch<React.SetStateAction<string>>) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value;
-      if (raw === "") {
-        setter("");
-        return;
-      }
-      // Solo dígitos; rechaza ".", "," y cualquier no-dígito
-      if (/^\d+$/.test(raw)) {
-        setter(raw);
-      }
-    };
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value;
+        if (raw === "") {
+          setter("");
+          return;
+        }
+        // Solo dígitos; rechaza ".", "," y cualquier no-dígito
+        if (/^\d+$/.test(raw)) {
+          setter(raw);
+        }
+      };
 
   // Wizard de pasos: solo un paso visible a la vez.
   // El usuario solo puede retroceder a pasos ya alcanzados; avanzar se hace
@@ -1121,10 +1121,10 @@ function QuoteLASTMILE({
         ttRate: number;
         dthcRate: number;
       }> = [
-        { code: "20GP", qty: cont20, ttRate: 690.2, dthcRate: 390.915 },
-        { code: "40HQ", qty: cont40HQ, ttRate: 547.4, dthcRate: 427.805 },
-        { code: "40NOR", qty: cont40NOR, ttRate: 547.4, dthcRate: 427.805 },
-      ];
+          { code: "20GP", qty: cont20, ttRate: 690.2, dthcRate: 390.915 },
+          { code: "40HQ", qty: cont40HQ, ttRate: 547.4, dthcRate: 427.805 },
+          { code: "40NOR", qty: cont40NOR, ttRate: 547.4, dthcRate: 427.805 },
+        ];
 
       for (const c of containerTypes) {
         if (c.qty <= 0) continue;
@@ -1587,7 +1587,7 @@ function QuoteLASTMILE({
             quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       // Calcular charges para el PDF (solo LCL + DAP tiene tarifa fija)
@@ -1724,10 +1724,10 @@ function QuoteLASTMILE({
           ttRate: number;
           dthcRate: number;
         }> = [
-          { code: "20GP", qty: cont20, ttRate: 690.2, dthcRate: 390.915 },
-          { code: "40HQ", qty: cont40HQ, ttRate: 547.4, dthcRate: 427.805 },
-          { code: "40NOR", qty: cont40NOR, ttRate: 547.4, dthcRate: 427.805 },
-        ];
+            { code: "20GP", qty: cont20, ttRate: 690.2, dthcRate: 390.915 },
+            { code: "40HQ", qty: cont40HQ, ttRate: 547.4, dthcRate: 427.805 },
+            { code: "40NOR", qty: cont40NOR, ttRate: 547.4, dthcRate: 427.805 },
+          ];
 
         const ttCharges: PDFCharge[] = containerTypes
           .filter((c) => c.qty > 0)
@@ -1994,9 +1994,9 @@ function QuoteLASTMILE({
                     value={
                       clienteSeleccionado
                         ? {
-                            value: clienteSeleccionado.username,
-                            label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
-                          }
+                          value: clienteSeleccionado.username,
+                          label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
+                        }
                         : null
                     }
                     onChange={(option) => {

@@ -3,6 +3,15 @@ export interface LatLngLiteral {
   lng: number;
 }
 
+export const VESPUCIO_RING_POLYGON_OUTSIDE: LatLngLiteral[] = [
+  { lat: -32.9550922475843, lng: -71.70619045211825 },
+  { lat: -33.01323332856963, lng: -70.38922169201729 },
+  { lat: -34.22947433542905, lng: -70.43055671610439 },
+  { lat: -34.18402613108356, lng: -72.11177517396789 },
+  { lat: -32.95508804779158, lng: -71.70618884312013 },
+];
+
+
 export const VESPUCIO_RING_POLYGON: LatLngLiteral[] = [
   { lat: -33.389288006086566, lng: -70.60221908187316 },
   { lat: -33.38953556713525, lng: -70.60299738965288 },
