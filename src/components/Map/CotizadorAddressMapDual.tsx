@@ -16,7 +16,9 @@ import {
 import "../quotes/QuoteLASTMILE.css";
 import {
   VESPUCIO_RING_POLYGON,
-  isInsideVespucioRing,
+  VESPUCIO_RING_POLYGON_OUTSIDE,
+  getVespucioDeliveryZone,
+  type VespucioDeliveryZone,
 } from "../../config/vespucioRing";
 import { GOOGLE_MAPS_LIBRARIES } from "../../config/googleMapsConfig";
 
@@ -301,10 +303,9 @@ interface CotizadorAddressMapDualProps {
   /** Cuando se provee, las coordenadas de recogida se pre-establecen
    *  (e.g. cuando el origen es un puerto conocido). */
   lockedPickupCoords?: { lat: number; lng: number } | null;
-  /** Notifica si la dirección de entrega cae dentro del Anillo de
-   *  Vespucio. `null` significa que aún no se puede determinar (sin
-   *  coordenadas o librería geometry no cargada). */
-  onDeliveryWithinRingChange?: (status: boolean | null) => void;
+  /** Zona de entrega respecto a los polígonos Vespucio.
+   *  `null` = aún no determinable (sin coordenadas o geometry no cargada). */
+  onDeliveryZoneChange?: (zone: VespucioDeliveryZone | null) => void;
 }
 
 const CotizadorAddressMapDual = ({
@@ -315,7 +316,7 @@ const CotizadorAddressMapDual = ({
   pickupPlaceholder = "Dirección de recogida",
   deliveryPlaceholder = "Dirección de entrega",
   lockedPickupCoords = null,
-  onDeliveryWithinRingChange,
+  onDeliveryZoneChange,
 }: CotizadorAddressMapDualProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
@@ -330,24 +331,21 @@ const CotizadorAddressMapDual = ({
     useState<google.maps.DirectionsResult | null>(null);
   const [routeDistance, setRouteDistance] = useState<string | null>(null);
   const [routeDuration, setRouteDuration] = useState<string | null>(null);
-  const [deliveryWithinRing, setDeliveryWithinRing] = useState<boolean | null>(
+  const [deliveryZone, setDeliveryZone] = useState<VespucioDeliveryZone | null>(
     null,
   );
   const mapRef = useRef<google.maps.Map | null>(null);
 
-  // Evaluar si la dirección de entrega cae dentro del Anillo de Vespucio.
-  // Usa google.maps.geometry.poly.containsLocation, que soporta polígonos
-  // arbitrarios (no solo círculos).
   useEffect(() => {
     if (!isLoaded || !deliveryCoords) {
-      setDeliveryWithinRing(null);
-      onDeliveryWithinRingChange?.(null);
+      setDeliveryZone(null);
+      onDeliveryZoneChange?.(null);
       return;
     }
-    const inside = isInsideVespucioRing(deliveryCoords);
-    setDeliveryWithinRing(inside);
-    onDeliveryWithinRingChange?.(inside);
-  }, [isLoaded, deliveryCoords, onDeliveryWithinRingChange]);
+    const zone = getVespucioDeliveryZone(deliveryCoords);
+    setDeliveryZone(zone);
+    onDeliveryZoneChange?.(zone);
+  }, [isLoaded, deliveryCoords, onDeliveryZoneChange]);
 
   // Sincronizar coordenadas cuando el origen es un puerto conocido
   useEffect(() => {
@@ -436,7 +434,7 @@ const CotizadorAddressMapDual = ({
             placeholder={deliveryPlaceholder}
             isLoaded={isLoaded}
           />
-          {deliveryCoords && deliveryWithinRing === false && (
+          {deliveryCoords && deliveryZone === "outside" && (
             <div
               className="mt-2 d-flex align-items-start gap-2 p-2 rounded"
               style={{
@@ -510,15 +508,26 @@ const CotizadorAddressMapDual = ({
                 )}
               </>
             )}
-            {/* Anillo de Vespucio: muestra el polígono de cobertura */}
+            <Polygon
+              paths={VESPUCIO_RING_POLYGON_OUTSIDE}
+              options={{
+                strokeColor: "#2e7d32",
+                strokeOpacity: 0.75,
+                strokeWeight: 2,
+                fillColor: "#2e7d32",
+                fillOpacity: 0.05,
+                clickable: false,
+                zIndex: 0,
+              }}
+            />
             <Polygon
               paths={VESPUCIO_RING_POLYGON}
               options={{
-                strokeColor: "blue",
-                strokeOpacity: 0.8,
+                strokeColor: "#1565c0",
+                strokeOpacity: 0.9,
                 strokeWeight: 2,
-                fillColor: "blue",
-                fillOpacity: 0.06,
+                fillColor: "#1565c0",
+                fillOpacity: 0.1,
                 clickable: false,
                 zIndex: 1,
               }}

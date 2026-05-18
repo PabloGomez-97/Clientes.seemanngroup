@@ -13,6 +13,10 @@ import {
 } from "./Pdftemplate/Pdfutils";
 import CotizadorAddressMapDual from "../Map/CotizadorAddressMapDual";
 import {
+  applyVespucioTransportSurcharge,
+  type VespucioDeliveryZone,
+} from "../../config/vespucioRing";
+import {
   GOOGLE_SHEET_LASTMILE_CSV_URL,
   parseCSV,
   parseLastMile,
@@ -293,6 +297,8 @@ function QuoteLASTMILE({
     lat: number;
     lng: number;
   } | null>(null);
+  const [deliveryVespucioZone, setDeliveryVespucioZone] =
+    useState<VespucioDeliveryZone | null>(null);
   // Piezas del cargamento (mismo modelo que QuoteAIR). Dimensiones en SI (cm/kg).
   const [piecesData, setPiecesData] = useState<PieceDataLM[]>([
     createEmptyPieceLM("1"),
@@ -652,20 +658,30 @@ function QuoteLASTMILE({
         cargoTotals.realWeight,
         cargoTotals.volume,
       );
-      const deliveryAmount = bracket ? Number(bracket.amount.toFixed(2)) : 0;
+      const deliveryAmount = bracket
+        ? applyVespucioTransportSurcharge(
+            Number(bracket.amount.toFixed(2)),
+            deliveryVespucioZone,
+          )
+        : 0;
       costoTransporte = 75 + 50 + 65 + docAmount + deliveryAmount;
     } else if (servicioSel === "FCL" && incotermSel === "DDP") {
       const c20 = parseInt(contenedores20GP || "0", 10) || 0;
       const c40HQ = parseInt(contenedores40HQ || "0", 10) || 0;
       const c40NOR = parseInt(contenedores40NOR || "0", 10) || 0;
-      const ttTotal = c20 * 690.2 + c40HQ * 547.4 + c40NOR * 547.4;
+      const ttTotal = applyVespucioTransportSurcharge(
+        Number((c20 * 690.2 + c40HQ * 547.4 + c40NOR * 547.4).toFixed(2)),
+        deliveryVespucioZone,
+      );
       const dthcTotal = c20 * 390.915 + c40HQ * 427.805 + c40NOR * 427.805;
       costoTransporte = 75 + 50 + 60 + ttTotal + dthcTotal;
     } else if (servicioSel === "AÉREO" && incotermSel === "DDP") {
       // AÉREO+DDP: costoTransporte = Desconsolidación 190 + Handling 60 +
       // Banking 50 + LAC 90 + TT (bracket por peso real total kg).
       const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
-      const ttAmount = ttBracket ? ttBracket.amount : 0;
+      const ttAmount = ttBracket
+        ? applyVespucioTransportSurcharge(ttBracket.amount, deliveryVespucioZone)
+        : 0;
       costoTransporte = 190 + 60 + 50 + 90 + ttAmount;
     } else {
       return { total: 0, costoTransporte: 0, seguroParaCIF: 0 };
@@ -701,6 +717,7 @@ function QuoteLASTMILE({
     cargoTotals.volume,
     cargoTotals.realWeight,
     aduanaConfig,
+    deliveryVespucioZone,
   ]);
 
   const cargoDescriptionPreview = useMemo(() => {
@@ -863,6 +880,7 @@ function QuoteLASTMILE({
         setPickupAddress("");
         setDeliveryAddress("");
         setPickupCoordsOverride(null);
+        setDeliveryVespucioZone(null);
         setSeguroActivo(false);
       }
       setCurrentStep(step);
@@ -923,8 +941,10 @@ function QuoteLASTMILE({
     });
 
     const charges: any[] = [];
+    const skipAutomatedPricing = deliveryVespucioZone === "outside";
 
     if (
+      !skipAutomatedPricing &&
       servicioSel === "LCL" &&
       (incotermSel === "DAP" || incotermSel === "DDP")
     ) {
@@ -996,8 +1016,11 @@ function QuoteLASTMILE({
         cargoTotals.volume,
       );
       if (bracket) {
-        const incomeAmount = Number(bracket.amount.toFixed(2));
-        const expenseAmount = Number((bracket.amount / 1.1).toFixed(2));
+        const incomeAmount = applyVespucioTransportSurcharge(
+          Number(bracket.amount.toFixed(2)),
+          deliveryVespucioZone,
+        );
+        const expenseAmount = Number((incomeAmount / 1.1).toFixed(2));
         const qty = Number(bracket.quantity.toFixed(3));
         const incomeRate =
           qty > 0 ? Number((incomeAmount / qty).toFixed(4)) : incomeAmount;
@@ -1065,6 +1088,7 @@ function QuoteLASTMILE({
         });
       }
     } else if (
+      !skipAutomatedPricing &&
       servicioSel === "FCL" &&
       (incotermSel === "DAP" || incotermSel === "DDP")
     ) {
@@ -1128,13 +1152,18 @@ function QuoteLASTMILE({
 
       for (const c of containerTypes) {
         if (c.qty <= 0) continue;
-        const ttAmount = Number((c.ttRate * c.qty).toFixed(3));
+        const ttAmount = applyVespucioTransportSurcharge(
+          Number((c.ttRate * c.qty).toFixed(2)),
+          deliveryVespucioZone,
+        );
+        const ttRateEffective =
+          c.qty > 0 ? Number((ttAmount / c.qty).toFixed(2)) : ttAmount;
         charges.push({
           service: { id: 134796, code: "TT" },
           income: {
             quantity: c.qty,
             unit: "CONTENEDOR",
-            rate: c.ttRate,
+            rate: ttRateEffective,
             amount: ttAmount,
             showamount: ttAmount,
             payment: "Collect",
@@ -1143,7 +1172,7 @@ function QuoteLASTMILE({
             currency: { abbr: "USD" as const },
             reference: "Amount to Transporte Terrestre",
             showOnDocument: true,
-            notes: `Transporte Terrestre - ${c.qty} contenedor${c.qty > 1 ? "es" : ""} ${c.code} × ${c.ttRate} USD`,
+            notes: `Transporte Terrestre - ${c.qty} contenedor${c.qty > 1 ? "es" : ""} ${c.code} × ${ttRateEffective} USD`,
           },
           expense: { currency: { abbr: "USD" as const } },
         });
@@ -1200,6 +1229,7 @@ function QuoteLASTMILE({
         });
       }
     } else if (
+      !skipAutomatedPricing &&
       servicioSel === "AÉREO" &&
       (incotermSel === "DAP" || incotermSel === "DDP")
     ) {
@@ -1251,7 +1281,10 @@ function QuoteLASTMILE({
       //   1501-2000 -> 163.63 USD
       const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
       if (ttBracket) {
-        const ttAmount = ttBracket.amount;
+        const ttAmount = applyVespucioTransportSurcharge(
+          ttBracket.amount,
+          deliveryVespucioZone,
+        );
         charges.push({
           service: { id: 134796, code: "TT" },
           income: {
@@ -1312,7 +1345,7 @@ function QuoteLASTMILE({
           });
         }
       }
-    } else {
+    } else if (!skipAutomatedPricing) {
       // Resto de combinaciones: placeholder pendiente de tarifa
       charges.push({
         service: { id: 168, code: "B" },
@@ -1562,8 +1595,8 @@ function QuoteLASTMILE({
         trackComplete({ quoteNumber });
       }
 
-      // Notificar al ejecutivo de cotización sin tarifa (siempre, last mile no tiene tarifa)
-      if (!isEjecutivoMode) {
+      // Zona 3: fuera del polígono exterior → cotización sin tarifa, aviso al ejecutivo
+      if (!isEjecutivoMode && deliveryVespucioZone === "outside") {
         fetch(`/api/send-no-rate-quote-email`, {
           method: "POST",
           headers: {
@@ -1601,8 +1634,10 @@ function QuoteLASTMILE({
       };
       let pdfCharges: PDFCharge[] = [];
       let pdfTotalCharges = 0;
+      const skipAutomatedPricing = deliveryVespucioZone === "outside";
 
       if (
+        !skipAutomatedPricing &&
         servicioSel === "LCL" &&
         (incotermSel === "DAP" || incotermSel === "DDP")
       ) {
@@ -1654,7 +1689,10 @@ function QuoteLASTMILE({
         );
         const deliveryCharges: PDFCharge[] = [];
         if (bracket) {
-          const incomeAmount = Number(bracket.amount.toFixed(2));
+          const incomeAmount = applyVespucioTransportSurcharge(
+            Number(bracket.amount.toFixed(2)),
+            deliveryVespucioZone,
+          );
           const qty = Number(bracket.quantity.toFixed(3));
           const incomeRate =
             qty > 0 ? Number((incomeAmount / qty).toFixed(4)) : incomeAmount;
@@ -1688,6 +1726,7 @@ function QuoteLASTMILE({
 
       // FCL + DAP / FCL + DDP — pdfCharges
       if (
+        !skipAutomatedPricing &&
         servicioSel === "FCL" &&
         (incotermSel === "DAP" || incotermSel === "DDP")
       ) {
@@ -1731,14 +1770,22 @@ function QuoteLASTMILE({
 
         const ttCharges: PDFCharge[] = containerTypes
           .filter((c) => c.qty > 0)
-          .map((c) => ({
-            code: "TT",
-            description: `Transporte Terrestre (${c.code})`,
-            quantity: c.qty,
-            unit: "CONTENEDOR",
-            rate: c.ttRate,
-            amount: Number((c.ttRate * c.qty).toFixed(3)),
-          }));
+          .map((c) => {
+            const amount = applyVespucioTransportSurcharge(
+              Number((c.ttRate * c.qty).toFixed(2)),
+              deliveryVespucioZone,
+            );
+            const rate =
+              c.qty > 0 ? Number((amount / c.qty).toFixed(2)) : amount;
+            return {
+              code: "TT",
+              description: `Transporte Terrestre (${c.code})`,
+              quantity: c.qty,
+              unit: "CONTENEDOR",
+              rate,
+              amount,
+            };
+          });
 
         const dthcCharges: PDFCharge[] = containerTypes
           .filter((c) => c.qty > 0)
@@ -1771,6 +1818,7 @@ function QuoteLASTMILE({
 
       // AÉREO + DAP / AÉREO + DDP — pdfCharges
       if (
+        !skipAutomatedPricing &&
         servicioSel === "AÉREO" &&
         (incotermSel === "DAP" || incotermSel === "DDP")
       ) {
@@ -1805,13 +1853,17 @@ function QuoteLASTMILE({
 
         const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
         if (ttBracket) {
+          const ttAmount = applyVespucioTransportSurcharge(
+            ttBracket.amount,
+            deliveryVespucioZone,
+          );
           pdfCharges.push({
             code: "TT",
             description: `Transporte Terrestre (≤${ttBracket.maxKg}kg)`,
             quantity: 1,
             unit: "Each",
-            rate: ttBracket.amount,
-            amount: ttBracket.amount,
+            rate: ttAmount,
+            amount: ttAmount,
           });
         }
 
@@ -2681,6 +2733,7 @@ function QuoteLASTMILE({
               deliveryValue={deliveryAddress}
               onDeliveryChange={setDeliveryAddress}
               lockedPickupCoords={pickupCoordsOverride}
+              onDeliveryZoneChange={setDeliveryVespucioZone}
             />
             {/* Información del cargamento: solo para servicios no-FCL
                     (LCL, AÉREO). Para FCL lo que importa son los contenedores. */}

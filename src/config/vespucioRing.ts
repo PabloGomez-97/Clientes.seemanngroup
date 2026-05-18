@@ -165,22 +165,64 @@ export const VESPUCIO_RING_POLYGON: LatLngLiteral[] = [
   { lat: -33.389283798899214, lng: -70.60221123071888 },
 ];
 
-export const isInsideVespucioRing = (
-  point: LatLngLiteral | null | undefined,
+/** Zona de cobertura según la dirección de entrega respecto a los polígonos Vespucio. */
+export type VespucioDeliveryZone = "inside" | "extended" | "outside";
+
+/** Factor multiplicador (+45 %) para TT / Delivery en zona extendida. */
+export const VESPUCIO_EXTENDED_ZONE_SURCHARGE = 1.45;
+
+const isPointInPolygon = (
+  point: LatLngLiteral,
+  polygonCoords: LatLngLiteral[],
 ): boolean | null => {
-  if (!point) return null;
   if (
     typeof google === "undefined" ||
     !google.maps?.geometry?.poly?.containsLocation
   ) {
     return null;
   }
-  const path = VESPUCIO_RING_POLYGON.map(
-    (p) => new google.maps.LatLng(p.lat, p.lng),
-  );
+  const path = polygonCoords.map((p) => new google.maps.LatLng(p.lat, p.lng));
   const polygon = new google.maps.Polygon({ paths: path });
   return google.maps.geometry.poly.containsLocation(
     new google.maps.LatLng(point.lat, point.lng),
     polygon,
   );
+};
+
+export const isInsideVespucioRing = (
+  point: LatLngLiteral | null | undefined,
+): boolean | null => {
+  if (!point) return null;
+  const zone = getVespucioDeliveryZone(point);
+  if (zone === null) return null;
+  return zone === "inside";
+};
+
+/**
+ * - inside: dentro del anillo (tarifa normal)
+ * - extended: fuera del anillo pero dentro del polígono exterior (+45 % TT/Delivery)
+ * - outside: fuera del polígono exterior (cotización sin tarifa, ejecutivo)
+ */
+export const getVespucioDeliveryZone = (
+  point: LatLngLiteral | null | undefined,
+): VespucioDeliveryZone | null => {
+  if (!point) return null;
+
+  const insideOuter = isPointInPolygon(point, VESPUCIO_RING_POLYGON_OUTSIDE);
+  if (insideOuter === null) return null;
+  if (!insideOuter) return "outside";
+
+  const insideRing = isPointInPolygon(point, VESPUCIO_RING_POLYGON);
+  if (insideRing === null) return null;
+  if (insideRing) return "inside";
+
+  return "extended";
+};
+
+export const applyVespucioTransportSurcharge = (
+  amount: number,
+  zone: VespucioDeliveryZone | null | undefined,
+): number => {
+  if (zone !== "extended" || amount <= 0) return amount;
+  return Number((amount * VESPUCIO_EXTENDED_ZONE_SURCHARGE).toFixed(2));
 };
