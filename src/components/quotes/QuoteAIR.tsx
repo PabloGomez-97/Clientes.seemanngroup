@@ -1682,10 +1682,24 @@ function QuoteAPITester({
   // Peso efectivo para Air Freight: cuando el peso no cae en un rango con precio disponible
   // y existe un rango superior con precio, el Air Freight se cobra por el peso mínimo de ese rango.
   // Todos los demás cargos siempre usan el peso real ingresado por el usuario (pesoChargeable).
-  const pesoAirFreight =
+  const pesoAirFreightBase =
     weightRangeError && weightRangeValidation?.pesoMinimoRequerido != null
       ? weightRangeValidation.pesoMinimoRequerido
       : pesoChargeable;
+
+  // Mínimo 45 kg obligatorio cuando la ruta tiene tarifa en el rango kg45 y el peso
+  // declarado es menor a 45 kg. No aplica al sistema de "siguiente rango disponible"
+  // (weightRangeError) ni al piso de minAirFreight (row[20]), que se gestiona por separado.
+  const pesoAirFreight =
+    !weightRangeError && rutaSeleccionada?.kg45 && pesoAirFreightBase < 45
+      ? 45
+      : pesoAirFreightBase;
+
+  // Peso para cargos adicionales (Airport Transfer, EXW, FCA Gastos x kg, etc.):
+  // - En el caso del "siguiente rango" (weightRangeError) solo el Air Freight usa el peso
+  //   del rango superior; los demás cargos siguen con el peso real del cliente.
+  // - En el caso del mínimo 45kg obligatorio (kg45 rule), TODOS los cargos respetan 45kg.
+  const pesoParaCargos = weightRangeError ? pesoChargeable : pesoAirFreight;
 
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
   const tarifaAirFreight = rutaSeleccionada
@@ -1788,10 +1802,10 @@ function QuoteAPITester({
     const totalSinSeguro =
       45 + // Handling
       (incoterm === "EXW"
-        ? calculateEXWRate(totalRealWeight, pesoChargeable)
+        ? calculateEXWRate(totalRealWeight, pesoParaCargos)
         : 0) + // EXW
       30 + // AWB
-      Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
+      Math.max(pesoParaCargos * 0.15, 50) + // Airport Transfer
       airFreightBaseForOptionalCharges + // Air Freight (cobrado por peso mínimo si aplica)
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
@@ -1799,7 +1813,7 @@ function QuoteAPITester({
             : 0) +
           (rutaSeleccionada.gastosXKg > 0
             ? Math.max(
-                rutaSeleccionada.gastosXKg * pesoChargeable * FCA_MARKUP,
+                rutaSeleccionada.gastosXKg * pesoParaCargos * FCA_MARKUP,
                 rutaSeleccionada.minGastosXKg > 0
                   ? rutaSeleccionada.minGastosXKg
                   : 0,
@@ -1832,12 +1846,12 @@ function QuoteAPITester({
   };
 
   // Función para calcular Gastos x kg (solo si incoterm es FCA)
-  // Aplica: gastosXKg * pesoChargeable * markup, con mínimo de minGastosXKg
+  // Aplica: gastosXKg * pesoParaCargos * markup, con mínimo de minGastosXKg
   const calculateGastosXKg = (): number => {
     if (incoterm !== "FCA" || !rutaSeleccionada) return 0;
     const ratePerKg = rutaSeleccionada.gastosXKg;
     if (ratePerKg <= 0) return 0;
-    const calculated = ratePerKg * pesoChargeable * FCA_MARKUP;
+    const calculated = ratePerKg * pesoParaCargos * FCA_MARKUP;
     const minimo = rutaSeleccionada.minGastosXKg;
     return minimo > 0 ? Math.max(calculated, minimo) : calculated;
   };
@@ -1849,10 +1863,10 @@ function QuoteAPITester({
     return (
       45 + // Handling
       (incoterm === "EXW"
-        ? calculateEXWRate(totalRealWeight, pesoChargeable)
+        ? calculateEXWRate(totalRealWeight, pesoParaCargos)
         : 0) +
       30 + // AWB
-      Math.max(pesoChargeable * 0.15, 50) + // Airport Transfer
+      Math.max(pesoParaCargos * 0.15, 50) + // Airport Transfer
       airFreightBaseForOptionalCharges + // Air Freight (cobrado por peso mínimo si aplica)
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
@@ -1860,7 +1874,7 @@ function QuoteAPITester({
             : 0) +
           (rutaSeleccionada.gastosXKg > 0
             ? Math.max(
-                rutaSeleccionada.gastosXKg * pesoChargeable * FCA_MARKUP,
+                rutaSeleccionada.gastosXKg * pesoParaCargos * FCA_MARKUP,
                 rutaSeleccionada.minGastosXKg > 0
                   ? rutaSeleccionada.minGastosXKg
                   : 0,
@@ -2868,14 +2882,14 @@ function QuoteAPITester({
       });
 
       // Cobro de Airport Transfer (mínimo 50)
-      const airportTransferAmount = Math.max(pesoChargeable * 0.15, 50);
+      const airportTransferAmount = Math.max(pesoParaCargos * 0.15, 50);
       charges.push({
         service: {
           id: 110936,
           code: "A/T",
         },
         income: {
-          quantity: pesoChargeable,
+          quantity: pesoParaCargos,
           unit: "kg",
           rate: 0.15,
           amount: airportTransferAmount,
@@ -5700,18 +5714,18 @@ function QuoteAPITester({
                 if (incoterm === "EXW") {
                   items.push({
                     label: "EXW Charges",
-                    amount: calculateEXWRate(tw, pesoChargeable),
+                    amount: calculateEXWRate(tw, pesoParaCargos),
                   });
                 }
                 items.push({ label: "AWB", amount: 30 });
                 items.push({
                   label: "Airport Transfer",
-                  amount: Math.max(pesoChargeable * 0.15, 50),
+                  amount: Math.max(pesoParaCargos * 0.15, 50),
                 });
                 items.push({
                   label: "Air Freight",
                   amount:
-                    (tarifaAirFreight?.precioConMarkup ?? 0) * pesoChargeable,
+                    (tarifaAirFreight?.precioConMarkup ?? 0) * pesoAirFreight,
                 });
                 if (seguroActivo && calculateSeguro() > 0) {
                   items.push({
