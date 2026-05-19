@@ -3284,7 +3284,6 @@ function QuoteAPITester({
     }
     // MODO OVERALL
     else {
-      // En modo Overall: el chargeable es el mayor numéricamente entre peso y volumen
 
       // Cobro de Handling
       charges.push({
