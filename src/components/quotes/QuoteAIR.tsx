@@ -541,7 +541,7 @@ function QuoteAPITester({
         console.error("Error al cargar datos desde Google Sheets:", err);
         setErrorRutas(
           "No se pudieron cargar las tarifas desde Google Sheets. " +
-            "Por favor, verifica tu conexión a internet o contacta al administrador.",
+          "Por favor, verifica tu conexión a internet o contacta al administrador.",
         );
         setLoadingRutas(false);
       }
@@ -696,13 +696,13 @@ function QuoteAPITester({
     if (rutaSeleccionada) {
       trackRouteSelected(
         originSeleccionado?.label ||
-          originNR?.label ||
-          rutaSeleccionada.origin ||
-          "",
+        originNR?.label ||
+        rutaSeleccionada.origin ||
+        "",
         destinationSeleccionado?.label ||
-          destNR?.label ||
-          rutaSeleccionada.destination ||
-          "",
+        destNR?.label ||
+        rutaSeleccionada.destination ||
+        "",
         { carrier: rutaSeleccionada.carrier },
       );
     }
@@ -1283,10 +1283,7 @@ function QuoteAPITester({
     };
   };
 
-  // ============================================================================
   // VALIDACIONES DE DIMENSIONES PARA TRANSPORTE AÉREO
-  // ============================================================================
-
   useEffect(() => {
     if (overallDimsAndWeight) {
       // En modo overall, no hay dimensiones específicas, así que limpiamos errores
@@ -1323,10 +1320,7 @@ function QuoteAPITester({
     setCargoFlightWarning(hasCargoWarning ? t("QuoteAIR.alturasupera") : null);
   }, [piecesData, overallDimsAndWeight]);
 
-  // ============================================================================
   // ACTUALIZAR DESTINATIONS CUANDO CAMBIA ORIGIN
-  // ============================================================================
-
   useEffect(() => {
     if (originSeleccionado) {
       // Destinations del sheet de tarifas (solo rutas con tarifa)
@@ -1356,9 +1350,7 @@ function QuoteAPITester({
     }
   }, [originSeleccionado, rutas]);
 
-  // ============================================================================
   // ACTUALIZAR DESTINATIONS NO RECURRENTES CUANDO CAMBIA ORIGIN NR
-  // ============================================================================
   useEffect(() => {
     if (originNR && expandedRoutesAir) {
       const destsForOrigin = expandedRoutesAir.rows
@@ -1430,8 +1422,8 @@ function QuoteAPITester({
       validUntil: isSimulationMode
         ? getSimulationValidUntilDisplay()
         : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(
-            "es-CL",
-          ),
+          "es-CL",
+        ),
       localCharges: 0,
       gastosXKg: 0,
       minGastosXKg: 0,
@@ -1453,9 +1445,7 @@ function QuoteAPITester({
     isSimulationMode,
   ]);
 
-  // ============================================================================
   // Auto-activar sinTarifa cuando no hay rutas con tarifa para Origin+Destination
-  // ============================================================================
   useEffect(() => {
     if (isSimulationMode) return;
     if (!originSeleccionado || !destinationSeleccionado || loadingRutas) return;
@@ -1524,10 +1514,7 @@ function QuoteAPITester({
     });
   }, []);
 
-  // ============================================================================
-  // FILTRAR RUTAS (ahora excluye rutas con fecha vencida)
-  // ============================================================================
-
+  // FILTRAR RUTAS (ahora excluye rutas con fecha vencida)  
   const rutasFiltradas = rutas
     .filter((ruta) => {
       if (!originSeleccionado || !destinationSeleccionado) return false;
@@ -1605,7 +1592,6 @@ function QuoteAPITester({
     activeCarriersKey,
     activeCurrenciesKey,
   ]);
-  // ============================================================================
 
   const handleOriginRecurrenteChange = (option: SelectOption | null) => {
     setOriginSeleccionado(option);
@@ -1658,32 +1644,21 @@ function QuoteAPITester({
     weightRangeValidation !== null && !weightRangeValidation.tienePrecio;
 
   // Peso efectivo para Air Freight: cuando el peso no cae en un rango con precio disponible
-  // y existe un rango superior con precio, el Air Freight se cobra por el peso mínimo de ese rango.
-  // Todos los demás cargos siempre usan el peso real ingresado por el usuario (pesoChargeable).
   const pesoAirFreightBase =
     weightRangeError && weightRangeValidation?.pesoMinimoRequerido != null
       ? weightRangeValidation.pesoMinimoRequerido
       : pesoChargeable;
 
   // Mínimo 45 kg obligatorio cuando la ruta tiene tarifa en el rango kg45 y el peso
-  // declarado es menor a 45 kg.
-  // NO aplica cuando:
-  //   - hay weightRangeError (sistema de "siguiente rango" tiene su propia lógica), o
-  //   - la ruta tiene minAirFreight (row[20]) > 0, que ya actúa como piso del flete y
-  //     tiene prioridad sobre la regla de 45kg (ej: rate=9.49, minAF=220, 1kg →
-  //     cobrar 220, NO 45×9.49=427.05).
   const pesoAirFreight =
     !weightRangeError &&
-    rutaSeleccionada?.kg45 &&
-    pesoAirFreightBase < 45 &&
-    !(rutaSeleccionada?.minAirFreight > 0)
+      rutaSeleccionada?.kg45 &&
+      pesoAirFreightBase < 45 &&
+      !(rutaSeleccionada?.minAirFreight > 0)
       ? 45
       : pesoAirFreightBase;
 
   // Peso para cargos adicionales (Airport Transfer, EXW, FCA Gastos x kg, etc.):
-  // - En el caso del "siguiente rango" (weightRangeError) solo el Air Freight usa el peso
-  //   del rango superior; los demás cargos siguen con el peso real del cliente.
-  // - En el caso del mínimo 45kg obligatorio (kg45 rule), TODOS los cargos respetan 45kg.
   const pesoParaCargos = weightRangeError ? pesoChargeable : pesoAirFreight;
 
   // Calcular tarifa AIR FREIGHT si hay ruta seleccionada
@@ -1713,10 +1688,7 @@ function QuoteAPITester({
     const rawIncomeAmount = incomeRate * pesoAirFreight;
     const rawExpenseAmount = expenseRate * pesoAirFreight;
 
-    // Mínimo flete aéreo (CSV row[20]). Se ignora en simulación y cuando no hay
-    // peso a cobrar. Si la celda está vacía/0, no se aplica piso.
-    // El mínimo es el valor FINAL cobrado al cliente (income).
-    // El expense siempre se calcula como tarifa × kg real (lo que se paga al carrier).
+    // Mínimo flete aéreo
     const minAirFreight =
       !isSimulationMode && pesoAirFreight > 0
         ? (rutaSeleccionada?.minAirFreight ?? 0)
@@ -1794,16 +1766,16 @@ function QuoteAPITester({
       airFreightBaseForOptionalCharges + // Air Freight (cobrado por peso mínimo si aplica)
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
-            ? rutaSeleccionada.localCharges * FCA_MARKUP
-            : 0) +
-          (rutaSeleccionada.gastosXKg > 0
-            ? Math.max(
-                rutaSeleccionada.gastosXKg * pesoParaCargos * FCA_MARKUP,
-                rutaSeleccionada.minGastosXKg > 0
-                  ? rutaSeleccionada.minGastosXKg
-                  : 0,
-              )
-            : 0)
+          ? rutaSeleccionada.localCharges * FCA_MARKUP
+          : 0) +
+        (rutaSeleccionada.gastosXKg > 0
+          ? Math.max(
+            rutaSeleccionada.gastosXKg * pesoParaCargos * FCA_MARKUP,
+            rutaSeleccionada.minGastosXKg > 0
+              ? rutaSeleccionada.minGastosXKg
+              : 0,
+          )
+          : 0)
         : 0); // FCA charges
 
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
@@ -1831,7 +1803,6 @@ function QuoteAPITester({
   };
 
   // Función para calcular Gastos x kg (solo si incoterm es FCA)
-  // Aplica: gastosXKg * pesoParaCargos * markup, con mínimo de minGastosXKg
   const calculateGastosXKg = (): number => {
     if (incoterm !== "FCA" || !rutaSeleccionada) return 0;
     const ratePerKg = rutaSeleccionada.gastosXKg;
@@ -1855,16 +1826,16 @@ function QuoteAPITester({
       airFreightBaseForOptionalCharges + // Air Freight (cobrado por peso mínimo si aplica)
       (incoterm === "FCA" && rutaSeleccionada
         ? (rutaSeleccionada.localCharges > 0
-            ? rutaSeleccionada.localCharges * FCA_MARKUP
-            : 0) +
-          (rutaSeleccionada.gastosXKg > 0
-            ? Math.max(
-                rutaSeleccionada.gastosXKg * pesoParaCargos * FCA_MARKUP,
-                rutaSeleccionada.minGastosXKg > 0
-                  ? rutaSeleccionada.minGastosXKg
-                  : 0,
-              )
-            : 0)
+          ? rutaSeleccionada.localCharges * FCA_MARKUP
+          : 0) +
+        (rutaSeleccionada.gastosXKg > 0
+          ? Math.max(
+            rutaSeleccionada.gastosXKg * pesoParaCargos * FCA_MARKUP,
+            rutaSeleccionada.minGastosXKg > 0
+              ? rutaSeleccionada.minGastosXKg
+              : 0,
+          )
+          : 0)
         : 0)
     );
   };
@@ -1897,10 +1868,7 @@ function QuoteAPITester({
     return result.total;
   };
 
-  // ============================================================================
   // FUNCIÓN DE TEST API
-  // ============================================================================
-
   const testAPI = async (
     tipoAccion: "cotizacion" | "operacion" = "cotizacion",
   ) => {
@@ -1932,7 +1900,7 @@ function QuoteAPITester({
     ) {
       setError(
         `Esta ruta no tiene tarifa para el rango ${weightRangeValidation?.rangoActual}. ` +
-          "No hay rangos de peso disponibles superiores. Contacta a tu ejecutivo comercial.",
+        "No hay rangos de peso disponibles superiores. Contacta a tu ejecutivo comercial.",
       );
       return;
     }
@@ -2100,11 +2068,11 @@ function QuoteAPITester({
 
       const packageTypeName = overallDimsAndWeight
         ? summarizeAirPackageTypes(
-            overallPiecesData.map((piece) => piece.packageType),
-          )
+          overallPiecesData.map((piece) => piece.packageType),
+        )
         : summarizeAirPackageTypes(
-            piecesData.map((piece) => piece.packageType),
-          );
+          piecesData.map((piece) => piece.packageType),
+        );
 
       // Preparar los charges para el PDF
       const pdfCharges: Array<{
@@ -2355,11 +2323,11 @@ function QuoteAPITester({
       if (sinTarifa && !isEjecutivoMode) {
         const pkgType = overallDimsAndWeight
           ? summarizeAirPackageTypes(
-              overallPiecesData.map((piece) => piece.packageType),
-            )
+            overallPiecesData.map((piece) => piece.packageType),
+          )
           : summarizeAirPackageTypes(
-              piecesData.map((piece) => piece.packageType),
-            );
+            piecesData.map((piece) => piece.packageType),
+          );
 
         let pesoTotalEmail: number;
         let volumenTotalEmail: number;
@@ -2419,7 +2387,7 @@ function QuoteAPITester({
             quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       // ── 2. Renderizar el PDF con quoteNumber real ──
@@ -2454,8 +2422,8 @@ function QuoteAPITester({
             : [];
         const pdfEffectiveAirport = nearbyAirportSelected
           ? (pdfNearbyAirports.find(
-              (a) => a.value === nearbyAirportSelected.value,
-            ) ??
+            (a) => a.value === nearbyAirportSelected.value,
+          ) ??
             pdfNearbyAirports[0] ??
             null)
           : (pdfNearbyAirports[0] ?? null);
@@ -2466,19 +2434,19 @@ function QuoteAPITester({
 
         const pdfPiecesData = !overallDimsAndWeight
           ? piecesData.map((piece) => ({
-              ...piece,
-              packageTypeName: getAirPackageTypeName(piece.packageType),
-            }))
+            ...piece,
+            packageTypeName: getAirPackageTypeName(piece.packageType),
+          }))
           : undefined;
         const overallPdfPieces = overallDimsAndWeight
           ? overallPiecesData.map((piece) => ({
-              id: piece.id,
-              packageTypeName: getAirPackageTypeName(piece.packageType),
-              description: piece.description,
-              weight: piece.weight,
-              volume: piece.volume,
-              chargeableWeight: Math.max(piece.weight, piece.volumeWeight),
-            }))
+            id: piece.id,
+            packageTypeName: getAirPackageTypeName(piece.packageType),
+            description: piece.description,
+            weight: piece.weight,
+            volume: piece.volume,
+            chargeableWeight: Math.max(piece.weight, piece.volumeWeight),
+          }))
           : undefined;
 
         root.render(
@@ -2493,12 +2461,12 @@ function QuoteAPITester({
                 ? getSimulationValidUntilDisplay()
                 : sinTarifa
                   ? new Date(
-                      Date.now() + 7 * 24 * 60 * 60 * 1000,
-                    ).toLocaleDateString()
+                    Date.now() + 7 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString()
                   : rutaSeleccionada.validUntil ||
-                    new Date(
-                      Date.now() + 7 * 24 * 60 * 60 * 1000,
-                    ).toLocaleDateString()
+                  new Date(
+                    Date.now() + 7 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString()
             }
             incoterm={incoterm}
             pickupFromAddress={
@@ -2684,9 +2652,7 @@ function QuoteAPITester({
         });
       }
 
-      // ── Auto-abrir modal para convertir cotización en operación ──
-      // Solo cuando es ruta recurrente, no es simulación y no es modo ejecutivo,
-      // y se obtuvo un quoteNumber real desde Linbis.
+      // Auto-abrir modal para convertir cotización en operación
       if (!sinTarifa && !isSimulationMode && quoteNumber) {
         setOperationModalCtx({
           quoteNumber,
@@ -3206,19 +3172,19 @@ function QuoteAPITester({
       // Si sinTarifa, poner todos los montos en 0
       const finalCharges = showPendingQuote
         ? charges.map((ch: any) => ({
-            ...ch,
-            income: {
-              ...ch.income,
-              rate: 0,
-              amount: 0,
-              ...(ch.income.showamount !== undefined ? { showamount: 0 } : {}),
-            },
-            expense: {
-              ...ch.expense,
-              ...(ch.expense.rate !== undefined ? { rate: 0 } : {}),
-              ...(ch.expense.amount !== undefined ? { amount: 0 } : {}),
-            },
-          }))
+          ...ch,
+          income: {
+            ...ch.income,
+            rate: 0,
+            amount: 0,
+            ...(ch.income.showamount !== undefined ? { showamount: 0 } : {}),
+          },
+          expense: {
+            ...ch.expense,
+            ...(ch.expense.rate !== undefined ? { rate: 0 } : {}),
+            ...(ch.expense.amount !== undefined ? { amount: 0 } : {}),
+          },
+        }))
         : charges;
 
       const oneWeekFromNow = new Date(
@@ -3725,19 +3691,19 @@ function QuoteAPITester({
       // Si sinTarifa, poner todos los montos en 0
       const finalChargesOverall = showPendingQuote
         ? charges.map((ch: any) => ({
-            ...ch,
-            income: {
-              ...ch.income,
-              rate: 0,
-              amount: 0,
-              ...(ch.income.showamount !== undefined ? { showamount: 0 } : {}),
-            },
-            expense: {
-              ...ch.expense,
-              ...(ch.expense.rate !== undefined ? { rate: 0 } : {}),
-              ...(ch.expense.amount !== undefined ? { amount: 0 } : {}),
-            },
-          }))
+          ...ch,
+          income: {
+            ...ch.income,
+            rate: 0,
+            amount: 0,
+            ...(ch.income.showamount !== undefined ? { showamount: 0 } : {}),
+          },
+          expense: {
+            ...ch.expense,
+            ...(ch.expense.rate !== undefined ? { rate: 0 } : {}),
+            ...(ch.expense.amount !== undefined ? { amount: 0 } : {}),
+          },
+        }))
         : charges;
 
       const oneWeekFromNowOverall = new Date(
@@ -3960,9 +3926,9 @@ function QuoteAPITester({
                     value={
                       clienteSeleccionado
                         ? {
-                            value: clienteSeleccionado.username,
-                            label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
-                          }
+                          value: clienteSeleccionado.username,
+                          label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
+                        }
                         : null
                     }
                     onChange={(option) => {
@@ -4054,9 +4020,8 @@ function QuoteAPITester({
           return (
             <div
               key={s.id}
-              className={`qa-wizard-step${isActive ? " is-active" : ""}${
-                isCompleted ? " is-completed" : ""
-              }${isReachable ? " is-clickable" : ""}`}
+              className={`qa-wizard-step${isActive ? " is-active" : ""}${isCompleted ? " is-completed" : ""
+                }${isReachable ? " is-clickable" : ""}`}
               onClick={() => goToStep(s.id)}
               role="tab"
               aria-selected={isActive}
@@ -4378,20 +4343,18 @@ function QuoteAPITester({
                                             </span>
                                             <span className="qa-rt-sort-icons">
                                               <i
-                                                className={`bi bi-caret-up-fill qa-rt-sort-icon${
-                                                  sortConfig.col === col &&
+                                                className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === col &&
                                                   sortConfig.dir === "asc"
-                                                    ? " active"
-                                                    : ""
-                                                }`}
+                                                  ? " active"
+                                                  : ""
+                                                  }`}
                                               />
                                               <i
-                                                className={`bi bi-caret-down-fill qa-rt-sort-icon${
-                                                  sortConfig.col === col &&
+                                                className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === col &&
                                                   sortConfig.dir === "desc"
-                                                    ? " active"
-                                                    : ""
-                                                }`}
+                                                  ? " active"
+                                                  : ""
+                                                  }`}
                                               />
                                             </span>
                                           </span>
@@ -4408,20 +4371,18 @@ function QuoteAPITester({
                                           {t("QuoteAIR.valido")}
                                           <span className="qa-rt-sort-icons">
                                             <i
-                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${
-                                                sortConfig.col === "validez" &&
+                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
                                                 sortConfig.dir === "asc"
-                                                  ? " active"
-                                                  : ""
-                                              }`}
+                                                ? " active"
+                                                : ""
+                                                }`}
                                             />
                                             <i
-                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${
-                                                sortConfig.col === "validez" &&
+                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
                                                 sortConfig.dir === "desc"
-                                                  ? " active"
-                                                  : ""
-                                              }`}
+                                                ? " active"
+                                                : ""
+                                                }`}
                                             />
                                           </span>
                                         </span>
@@ -4468,7 +4429,7 @@ function QuoteAPITester({
                                         const isDuplicateCarrier =
                                           carrierKey.length > 0 &&
                                           (carrierCounts[carrierKey] || 0) >
-                                            1 &&
+                                          1 &&
                                           seenCarriers.has(carrierKey);
                                         if (carrierKey)
                                           seenCarriers.add(carrierKey);
@@ -4479,9 +4440,8 @@ function QuoteAPITester({
                                             onClick={() =>
                                               handleSeleccionarRutaAir(ruta)
                                             }
-                                            className={`qa-rt-row${
-                                              isSelected ? " is-selected" : ""
-                                            }`}
+                                            className={`qa-rt-row${isSelected ? " is-selected" : ""
+                                              }`}
                                           >
                                             <td className="qa-rt-td-select">
                                               {isSelected ? (
@@ -4494,7 +4454,7 @@ function QuoteAPITester({
                                               <div className="qa-rt-carrier">
                                                 <div className="qa-rt-carrier-logo">
                                                   {ruta.carrier &&
-                                                  ruta.carrier !==
+                                                    ruta.carrier !==
                                                     "Por Confirmar" ? (
                                                     <img
                                                       src={imgUrl(
@@ -4597,17 +4557,16 @@ function QuoteAPITester({
                                             <td className="qa-rt-td-meta">
                                               {ruta.validUntil ? (
                                                 <span
-                                                  className={`qa-validity ${
-                                                    validityState === "valid"
-                                                      ? "valid"
+                                                  className={`qa-validity ${validityState === "valid"
+                                                    ? "valid"
+                                                    : validityState ===
+                                                      "expiring-soon"
+                                                      ? "expiring-soon"
                                                       : validityState ===
-                                                          "expiring-soon"
-                                                        ? "expiring-soon"
-                                                        : validityState ===
-                                                            "expired"
-                                                          ? "expired"
-                                                          : ""
-                                                  }`}
+                                                        "expired"
+                                                        ? "expired"
+                                                        : ""
+                                                    }`}
                                                 >
                                                   {formatValidUntilDisplay(
                                                     ruta.validUntil,
@@ -4900,8 +4859,8 @@ function QuoteAPITester({
                       : [];
                   const effectiveAirport = nearbyAirportSelected
                     ? (nearbyAirports.find(
-                        (a) => a.value === nearbyAirportSelected.value,
-                      ) ??
+                      (a) => a.value === nearbyAirportSelected.value,
+                    ) ??
                       nearbyAirports[0] ??
                       null)
                     : (nearbyAirports[0] ?? null);
@@ -5707,10 +5666,10 @@ function QuoteAPITester({
               // Build charges summary if tarifa is available
               let cargos:
                 | {
-                    currency: string;
-                    items: { label: string; amount: number }[];
-                    total: number;
-                  }
+                  currency: string;
+                  items: { label: string; amount: number }[];
+                  total: number;
+                }
                 | undefined;
 
               if (tarifaAirFreight && rutaSeleccionada) {
