@@ -69,7 +69,7 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedIndex(prev => 
+        setSelectedIndex(prev =>
           prev < suggestions.length - 1 ? prev + 1 : prev
         );
         break;
@@ -137,8 +137,8 @@ export const AirportAutocomplete: React.FC<AirportAutocompleteProps> = ({
               }}
             >
               <div style={{ fontWeight: 500, color: '#212529' }}>
-                <span style={{ 
-                  fontWeight: 'bold', 
+                <span style={{
+                  fontWeight: 'bold',
                   color: '#0d6efd',
                   marginRight: '8px'
                 }}>
