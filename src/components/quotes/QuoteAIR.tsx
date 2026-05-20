@@ -4174,19 +4174,6 @@ function QuoteAPITester({
                               }}
                             ></i>
                           </div>
-                          <span
-                            className="badge"
-                            style={{
-                              fontSize: "0.7rem",
-                              backgroundColor:
-                                routeMode === "recurrente"
-                                  ? "var(--qa-primary)"
-                                  : "#6c757d",
-                              color: "white",
-                            }}
-                          >
-                            Solicitar Cotización
-                          </span>
                         </div>
                         <p
                           className="mb-0"
@@ -4234,21 +4221,6 @@ function QuoteAPITester({
                             }}
                           ></i>
                         </div>
-                        <span
-                          className="badge"
-                          style={{
-                            fontSize: "0.7rem",
-                            backgroundColor:
-                              routeMode === "noRecurrente"
-                                ? "var(--qa-primary)"
-                                : "#6c757d",
-                            color: "white",
-                          }}
-                        >
-                          {isSimulationMode
-                            ? "Simular cotización"
-                            : "Solicitar cotización"}
-                        </span>
                       </div>
                       <p
                         className="mb-0"
