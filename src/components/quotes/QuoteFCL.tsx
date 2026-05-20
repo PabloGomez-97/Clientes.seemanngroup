@@ -458,7 +458,7 @@ function QuoteFCL({
         console.error("❌ Error al cargar datos FCL desde Google Sheets:", err);
         setErrorRutas(
           "No se pudieron cargar las tarifas desde Google Sheets. " +
-            "Por favor, verifica tu conexión a internet o contacta al administrador.",
+          "Por favor, verifica tu conexión a internet o contacta al administrador.",
         );
         setLoadingRutas(false);
       }
@@ -715,8 +715,8 @@ function QuoteFCL({
       validUntil: isSimulationMode
         ? getSimulationValidUntilDisplay()
         : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(
-            "es-CL",
-          ),
+          "es-CL",
+        ),
       row_number: 0,
       priceForComparison: 0,
       currency: "USD",
@@ -1294,14 +1294,14 @@ function QuoteFCL({
       const totalAmount = showPendingQuote
         ? 0
         : 60 + // BL
-          45 + // Handling
-          (incoterm === "EXW"
-            ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores)
-            : 0) + // EXW
-          oceanFreightValues.incomeAmount + // Ocean Freight
-          (seguroActivo ? calculateSeguro() : 0) + // Seguro
-          thcAmount +
-          aperturaAmount; // Gastos Locales
+        45 + // Handling
+        (incoterm === "EXW"
+          ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores)
+          : 0) + // EXW
+        oceanFreightValues.incomeAmount + // Ocean Freight
+        (seguroActivo ? calculateSeguro() : 0) + // Seguro
+        thcAmount +
+        aperturaAmount; // Gastos Locales
 
       const total = showPendingQuote
         ? "PENDIENTE"
@@ -1515,7 +1515,7 @@ function QuoteFCL({
             quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       // ── 2. Renderizar el PDF con quoteNumber real ──
@@ -1560,12 +1560,12 @@ function QuoteFCL({
             expirationDate={
               sinTarifa
                 ? new Date(
-                    Date.now() + 7 * 24 * 60 * 60 * 1000,
-                  ).toLocaleDateString()
+                  Date.now() + 7 * 24 * 60 * 60 * 1000,
+                ).toLocaleDateString()
                 : rutaSeleccionada.validUntil ||
-                  new Date(
-                    Date.now() + 7 * 24 * 60 * 60 * 1000,
-                  ).toLocaleDateString()
+                new Date(
+                  Date.now() + 7 * 24 * 60 * 60 * 1000,
+                ).toLocaleDateString()
             }
             incoterm={incoterm}
             pickupFromAddress={
@@ -1604,8 +1604,8 @@ function QuoteFCL({
                 ? getSimulationValidUntilDisplay()
                 : sinTarifa
                   ? new Date(
-                      Date.now() + 7 * 24 * 60 * 60 * 1000,
-                    ).toLocaleDateString()
+                    Date.now() + 7 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString()
                   : rutaSeleccionada.validUntil || undefined
             }
             isPendingQuote={showPendingQuote}
@@ -2089,19 +2089,19 @@ function QuoteFCL({
     // Si sinTarifa, poner todos los montos en 0
     const finalCharges = showPendingQuote
       ? charges.map((ch: any) => ({
-          ...ch,
-          income: {
-            ...ch.income,
-            rate: 0,
-            amount: 0,
-            ...(ch.income.showamount !== undefined ? { showamount: 0 } : {}),
-          },
-          expense: {
-            ...ch.expense,
-            ...(ch.expense.rate !== undefined ? { rate: 0 } : {}),
-            ...(ch.expense.amount !== undefined ? { amount: 0 } : {}),
-          },
-        }))
+        ...ch,
+        income: {
+          ...ch.income,
+          rate: 0,
+          amount: 0,
+          ...(ch.income.showamount !== undefined ? { showamount: 0 } : {}),
+        },
+        expense: {
+          ...ch.expense,
+          ...(ch.expense.rate !== undefined ? { rate: 0 } : {}),
+          ...(ch.expense.amount !== undefined ? { amount: 0 } : {}),
+        },
+      }))
       : charges;
 
     const oneWeekFromNow = new Date(
@@ -2235,9 +2235,9 @@ function QuoteFCL({
                     value={
                       clienteSeleccionado
                         ? {
-                            value: clienteSeleccionado.username,
-                            label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
-                          }
+                          value: clienteSeleccionado.username,
+                          label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
+                        }
                         : null
                     }
                     onChange={(option) => {
@@ -2329,9 +2329,8 @@ function QuoteFCL({
           return (
             <div
               key={s.id}
-              className={`qf-wizard-step${isActive ? " is-active" : ""}${
-                isCompleted ? " is-completed" : ""
-              }${isReachable ? " is-clickable" : ""}`}
+              className={`qf-wizard-step${isActive ? " is-active" : ""}${isCompleted ? " is-completed" : ""
+                }${isReachable ? " is-clickable" : ""}`}
               onClick={() => goToStep(s.id)}
               role="tab"
               aria-selected={isActive}
@@ -2433,11 +2432,29 @@ function QuoteFCL({
             )}
 
             {loadingRutas ? (
-              <div className="text-center py-5">
-                <div className="spinner-border text-primary" role="status">
-                  <span className="visually-hidden">Cargando...</span>
+              <div className="qa-routes-skeleton">
+                <div className="qa-skeleton-toolbar">
+                  <div className="qa-skeleton-line qa-skeleton-line-md"></div>
+                  <div className="qa-skeleton-badge"></div>
                 </div>
-                <p className="mt-3 text-muted">Cargando rutas disponibles...</p>
+
+                <div className="qa-skeleton-grid">
+                  <div className="qa-skeleton-card">
+                    <div className="qa-skeleton-card-header">
+                      <div className="qa-skeleton-line qa-skeleton-title"></div>
+                      <div className="qa-skeleton-button"></div>
+                    </div>
+                    <div className="qa-skeleton-line qa-skeleton-text"></div>
+                  </div>
+
+                  <div className="qa-skeleton-card">
+                    <div className="qa-skeleton-card-header">
+                      <div className="qa-skeleton-line qa-skeleton-title"></div>
+                      <div className="qa-skeleton-button"></div>
+                    </div>
+                    <div className="qa-skeleton-line qa-skeleton-text"></div>
+                  </div>
+                </div>
               </div>
             ) : errorRutas ? (
               <div className="alert alert-danger">❌ {errorRutas}</div>
@@ -2641,20 +2658,18 @@ function QuoteFCL({
                                               {col}
                                               <span className="qa-rt-sort-icons">
                                                 <i
-                                                  className={`bi bi-caret-up-fill qa-rt-sort-icon${
-                                                    sortConfig.col === col &&
-                                                    sortConfig.dir === "asc"
+                                                  className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === col &&
+                                                      sortConfig.dir === "asc"
                                                       ? " active"
                                                       : ""
-                                                  }`}
+                                                    }`}
                                                 />
                                                 <i
-                                                  className={`bi bi-caret-down-fill qa-rt-sort-icon${
-                                                    sortConfig.col === col &&
-                                                    sortConfig.dir === "desc"
+                                                  className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === col &&
+                                                      sortConfig.dir === "desc"
                                                       ? " active"
                                                       : ""
-                                                  }`}
+                                                    }`}
                                                 />
                                               </span>
                                             </span>
@@ -2675,20 +2690,18 @@ function QuoteFCL({
                                           Validez
                                           <span className="qa-rt-sort-icons">
                                             <i
-                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${
-                                                sortConfig.col === "validez" &&
-                                                sortConfig.dir === "asc"
+                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
+                                                  sortConfig.dir === "asc"
                                                   ? " active"
                                                   : ""
-                                              }`}
+                                                }`}
                                             />
                                             <i
-                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${
-                                                sortConfig.col === "validez" &&
-                                                sortConfig.dir === "desc"
+                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
+                                                  sortConfig.dir === "desc"
                                                   ? " active"
                                                   : ""
-                                              }`}
+                                                }`}
                                             />
                                           </span>
                                         </span>
@@ -2727,7 +2740,7 @@ function QuoteFCL({
                                         const isDuplicateCarrier =
                                           carrierKey.length > 0 &&
                                           (carrierCounts[carrierKey] || 0) >
-                                            1 &&
+                                          1 &&
                                           seenCarriers.has(carrierKey);
                                         if (carrierKey)
                                           seenCarriers.add(carrierKey);
@@ -2736,19 +2749,18 @@ function QuoteFCL({
                                           type: ContainerType;
                                           val?: string | null;
                                         }[] = [
-                                          { type: "20GP", val: ruta.gp20 },
-                                          { type: "40HQ", val: ruta.hq40 },
-                                          { type: "40NOR", val: ruta.nor40 },
-                                        ];
+                                            { type: "20GP", val: ruta.gp20 },
+                                            { type: "40HQ", val: ruta.hq40 },
+                                            { type: "40NOR", val: ruta.nor40 },
+                                          ];
 
                                         return (
                                           <tr
                                             key={ruta.id}
-                                            className={`qa-rt-row qa-rt-row--passive${
-                                              isRowSelected
+                                            className={`qa-rt-row qa-rt-row--passive${isRowSelected
                                                 ? " is-row-selected"
                                                 : ""
-                                            }`}
+                                              }`}
                                           >
                                             <td className="qa-rt-td-carrier">
                                               <div className="qa-rt-carrier">
@@ -2817,20 +2829,18 @@ function QuoteFCL({
                                               const isCellSelected =
                                                 isRowSelected &&
                                                 containerSeleccionado?.type ===
-                                                  type;
+                                                type;
 
                                               return (
                                                 <td
                                                   key={type}
-                                                  className={`qa-rt-td-price qa-rt-td-container${
-                                                    available
+                                                  className={`qa-rt-td-price qa-rt-td-container${available
                                                       ? " is-available"
                                                       : ""
-                                                  }${
-                                                    isCellSelected
+                                                    }${isCellSelected
                                                       ? " is-selected"
                                                       : ""
-                                                  }`}
+                                                    }`}
                                                   onClick={() => {
                                                     if (!available) return;
                                                     handleSeleccionarContainer(
@@ -2873,17 +2883,16 @@ function QuoteFCL({
                                             <td className="qa-rt-td-meta">
                                               {ruta.validUntil ? (
                                                 <span
-                                                  className={`qa-validity ${
-                                                    validityState === "valid"
+                                                  className={`qa-validity ${validityState === "valid"
                                                       ? "valid"
                                                       : validityState ===
-                                                          "expiring-soon"
+                                                        "expiring-soon"
                                                         ? "expiring-soon"
                                                         : validityState ===
-                                                            "expired"
+                                                          "expired"
                                                           ? "expired"
                                                           : ""
-                                                  }`}
+                                                    }`}
                                                 >
                                                   {formatValidUntilDisplay(
                                                     ruta.validUntil,
@@ -3166,8 +3175,8 @@ function QuoteFCL({
                           : [];
                       const effectivePort = nearbyPortSelected
                         ? (nearbyPorts.find(
-                            (p) => p.value === nearbyPortSelected.value,
-                          ) ??
+                          (p) => p.value === nearbyPortSelected.value,
+                        ) ??
                           nearbyPorts[0] ??
                           null)
                         : (nearbyPorts[0] ?? null);
@@ -3193,8 +3202,8 @@ function QuoteFCL({
 
                       const portMiddleContent =
                         incoterm === "EXW" &&
-                        isCountryPol &&
-                        nearbyPorts.length >= 2 ? (
+                          isCountryPol &&
+                          nearbyPorts.length >= 2 ? (
                           <NearbyPortSelectorFCL
                             nearbyPorts={nearbyPorts}
                             selectedPort={nearbyPortSelected}
@@ -3591,7 +3600,7 @@ function QuoteFCL({
                         {sinTarifa
                           ? routeInfoPlaceholder
                           : rutaSeleccionada.freeTime ||
-                            routeInfoPlaceholder}{" "}
+                          routeInfoPlaceholder}{" "}
                         Días
                       </strong>
                     </div>

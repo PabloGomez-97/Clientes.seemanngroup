@@ -4109,12 +4109,29 @@ function QuoteAPITester({
             )}
 
             {loadingRutas ? (
-              <div className="text-center py-5">
-                <div
-                  className="spinner-border text-primary"
-                  role="status"
-                ></div>
-                <p className="mt-3 text-muted">{t("QuoteAIR.cargandorutas")}</p>
+              <div className="qa-routes-skeleton">
+                <div className="qa-skeleton-toolbar">
+                  <div className="qa-skeleton-line qa-skeleton-line-md"></div>
+                  <div className="qa-skeleton-badge"></div>
+                </div>
+
+                <div className="qa-skeleton-grid">
+                  <div className="qa-skeleton-card">
+                    <div className="qa-skeleton-card-header">
+                      <div className="qa-skeleton-line qa-skeleton-title"></div>
+                      <div className="qa-skeleton-button"></div>
+                    </div>
+                    <div className="qa-skeleton-line qa-skeleton-text"></div>
+                  </div>
+
+                  <div className="qa-skeleton-card">
+                    <div className="qa-skeleton-card-header">
+                      <div className="qa-skeleton-line qa-skeleton-title"></div>
+                      <div className="qa-skeleton-button"></div>
+                    </div>
+                    <div className="qa-skeleton-line qa-skeleton-text"></div>
+                  </div>
+                </div>
               </div>
             ) : errorRutas ? (
               <div className="qa-alert qa-alert-danger">

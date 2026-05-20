@@ -556,7 +556,7 @@ function QuoteLCL({
         console.error("Error al cargar datos LCL desde Google Sheets:", err);
         setErrorRutas(
           "No se pudieron cargar las tarifas desde Google Sheets. " +
-            "Por favor, verifica tu conexión a internet o contacta al administrador.",
+          "Por favor, verifica tu conexión a internet o contacta al administrador.",
         );
         setLoadingRutas(false);
       }
@@ -1716,10 +1716,10 @@ function QuoteLCL({
       const subtotalAmount = showPendingQuote
         ? 0
         : 60 + // BL
-          45 + // Handling
-          (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
-          (tarifaOceanFreight?.income ?? 0) + // Ocean Freight
-          (seguroActivo ? calculateSeguro() : 0); // Seguro
+        45 + // Handling
+        (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
+        (tarifaOceanFreight?.income ?? 0) + // Ocean Freight
+        (seguroActivo ? calculateSeguro() : 0); // Seguro
       const totalAmount = showPendingQuote
         ? 0
         : subtotalAmount + calculateNoApilable();
@@ -1729,11 +1729,11 @@ function QuoteLCL({
 
       const packageTypeName = overallDimsAndWeight
         ? summarizeLclPackageTypes(
-            overallPiecesData.map((piece) => piece.packageType),
-          )
+          overallPiecesData.map((piece) => piece.packageType),
+        )
         : summarizeLclPackageTypes(
-            piecesData.map((piece) => piece.packageType),
-          );
+          piecesData.map((piece) => piece.packageType),
+        );
 
       // Preparar los charges para el PDF
       const pdfCharges: {
@@ -1979,7 +1979,7 @@ function QuoteLCL({
             quoteNumber: quoteNumber || undefined,
           }),
           keepalive: true,
-        }).catch(() => {});
+        }).catch(() => { });
       }
 
       // -- 2. Renderizar el PDF con quoteNumber real --
@@ -2016,34 +2016,34 @@ function QuoteLCL({
       await new Promise<void>((resolve) => {
         const pdfPiecesData = !overallDimsAndWeight
           ? piecesData.map((piece) => {
-              const piecePackageType = packageTypeOptions.find(
-                (opt) => opt.id === Number(piece.packageType),
-              );
+            const piecePackageType = packageTypeOptions.find(
+              (opt) => opt.id === Number(piece.packageType),
+            );
 
-              return {
-                id: piece.id,
-                packageTypeName: piecePackageType?.code
-                  ? `${piecePackageType.code} - ${piecePackageType.name}`
-                  : piecePackageType?.name || packageTypeName,
-                description: piece.description || description,
-                length: piece.length,
-                width: piece.width,
-                height: piece.height,
-                weight: piece.weight,
-                volume: piece.volume,
-                wmChargeable: piece.wmChargeable,
-              };
-            })
-          : undefined;
-        const overallPdfPieces = overallDimsAndWeight
-          ? overallPiecesData.map((piece) => ({
+            return {
               id: piece.id,
-              packageTypeName: getLclPackageTypeName(piece.packageType),
-              description: piece.description,
+              packageTypeName: piecePackageType?.code
+                ? `${piecePackageType.code} - ${piecePackageType.name}`
+                : piecePackageType?.name || packageTypeName,
+              description: piece.description || description,
+              length: piece.length,
+              width: piece.width,
+              height: piece.height,
               weight: piece.weight,
               volume: piece.volume,
               wmChargeable: piece.wmChargeable,
-            }))
+            };
+          })
+          : undefined;
+        const overallPdfPieces = overallDimsAndWeight
+          ? overallPiecesData.map((piece) => ({
+            id: piece.id,
+            packageTypeName: getLclPackageTypeName(piece.packageType),
+            description: piece.description,
+            weight: piece.weight,
+            volume: piece.volume,
+            wmChargeable: piece.wmChargeable,
+          }))
           : undefined;
 
         root.render(
@@ -2056,12 +2056,12 @@ function QuoteLCL({
             expirationDate={
               sinTarifa
                 ? new Date(
-                    Date.now() + 7 * 24 * 60 * 60 * 1000,
-                  ).toLocaleDateString()
+                  Date.now() + 7 * 24 * 60 * 60 * 1000,
+                ).toLocaleDateString()
                 : rutaSeleccionada.validUntil ||
-                  new Date(
-                    Date.now() + 7 * 24 * 60 * 60 * 1000,
-                  ).toLocaleDateString()
+                new Date(
+                  Date.now() + 7 * 24 * 60 * 60 * 1000,
+                ).toLocaleDateString()
             }
             incoterm={incoterm}
             pickupFromAddress={
@@ -2118,8 +2118,8 @@ function QuoteLCL({
                 ? getSimulationValidUntilDisplay()
                 : sinTarifa
                   ? new Date(
-                      Date.now() + 7 * 24 * 60 * 60 * 1000,
-                    ).toLocaleDateString()
+                    Date.now() + 7 * 24 * 60 * 60 * 1000,
+                  ).toLocaleDateString()
                   : rutaSeleccionada.validUntil || undefined
             }
             isPendingQuote={showPendingQuote}
@@ -2648,13 +2648,13 @@ function QuoteLCL({
     // Si sinTarifa, poner todos los montos en 0
     const finalCharges = showPendingQuote
       ? charges.map((c: any) => ({
-          ...c,
-          income: { ...c.income, rate: 0, amount: 0, showamount: 0 },
-          expense:
-            c.expense?.amount !== undefined
-              ? { ...c.expense, rate: 0, amount: 0, showamount: 0 }
-              : c.expense,
-        }))
+        ...c,
+        income: { ...c.income, rate: 0, amount: 0, showamount: 0 },
+        expense:
+          c.expense?.amount !== undefined
+            ? { ...c.expense, rate: 0, amount: 0, showamount: 0 }
+            : c.expense,
+      }))
       : charges;
 
     return {
@@ -2724,45 +2724,45 @@ function QuoteLCL({
       },
       commodities: overallDimsAndWeight
         ? overallPiecesData.map((piece) => ({
-            commodityType: "Standard",
-            packageType: {
-              id: piece.packageType,
-            },
-            pieces: 1,
-            description:
-              piece.description.trim() || DEFAULT_OVERALL_LCL_DESCRIPTION,
-            overallDimsAndWeight: true,
-            weightPerUnitValue: piece.weight,
-            weightPerUnitUOM: "kg",
-            totalWeightValue: piece.weight,
-            totalWeightUOM: "kg",
-            volumeValue: piece.volume,
-            volumeUOM: "m3",
-            totalVolumeValue: piece.volume,
-            totalVolumeUOM: "m3",
-          }))
+          commodityType: "Standard",
+          packageType: {
+            id: piece.packageType,
+          },
+          pieces: 1,
+          description:
+            piece.description.trim() || DEFAULT_OVERALL_LCL_DESCRIPTION,
+          overallDimsAndWeight: true,
+          weightPerUnitValue: piece.weight,
+          weightPerUnitUOM: "kg",
+          totalWeightValue: piece.weight,
+          totalWeightUOM: "kg",
+          volumeValue: piece.volume,
+          volumeUOM: "m3",
+          totalVolumeValue: piece.volume,
+          totalVolumeUOM: "m3",
+        }))
         : piecesData.map((piece) => ({
-            commodityType: "Standard",
-            packageType: {
-              id: piece.packageType,
-            },
-            pieces: 1,
-            description: piece.description,
-            weightPerUnitValue: piece.weight,
-            weightPerUnitUOM: "kg",
-            totalWeightValue: piece.weight,
-            totalWeightUOM: "kg",
-            lengthValue: piece.length,
-            lengthUOM: "cm",
-            widthValue: piece.width,
-            widthUOM: "cm",
-            heightValue: piece.height,
-            heightUOM: "cm",
-            volumeValue: piece.volume,
-            volumeUOM: "m3",
-            totalVolumeValue: piece.volume,
-            totalVolumeUOM: "m3",
-          })),
+          commodityType: "Standard",
+          packageType: {
+            id: piece.packageType,
+          },
+          pieces: 1,
+          description: piece.description,
+          weightPerUnitValue: piece.weight,
+          weightPerUnitUOM: "kg",
+          totalWeightValue: piece.weight,
+          totalWeightUOM: "kg",
+          lengthValue: piece.length,
+          lengthUOM: "cm",
+          widthValue: piece.width,
+          widthUOM: "cm",
+          heightValue: piece.height,
+          heightUOM: "cm",
+          volumeValue: piece.volume,
+          volumeUOM: "m3",
+          totalVolumeValue: piece.volume,
+          totalVolumeUOM: "m3",
+        })),
       charges: finalCharges,
     };
   };
@@ -2824,9 +2824,9 @@ function QuoteLCL({
                     value={
                       clienteSeleccionado
                         ? {
-                            value: clienteSeleccionado.username,
-                            label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
-                          }
+                          value: clienteSeleccionado.username,
+                          label: `${clienteSeleccionado.username} (${clienteSeleccionado.email})`,
+                        }
                         : null
                     }
                     onChange={(option) => {
@@ -2918,9 +2918,8 @@ function QuoteLCL({
           return (
             <div
               key={s.id}
-              className={`qa-wizard-step${isActive ? " is-active" : ""}${
-                isCompleted ? " is-completed" : ""
-              }${isReachable ? " is-clickable" : ""}`}
+              className={`qa-wizard-step${isActive ? " is-active" : ""}${isCompleted ? " is-completed" : ""
+                }${isReachable ? " is-clickable" : ""}`}
               onClick={() => goToStep(s.id)}
               role="tab"
               aria-selected={isActive}
@@ -3009,12 +3008,29 @@ function QuoteLCL({
             )}
 
             {loadingRutas ? (
-              <div className="text-center py-5">
-                <div
-                  className="spinner-border text-primary"
-                  role="status"
-                ></div>
-                <p className="mt-3 text-muted">{t("Quotelcl.cargandorutas")}</p>
+              <div className="qa-routes-skeleton">
+                <div className="qa-skeleton-toolbar">
+                  <div className="qa-skeleton-line qa-skeleton-line-md"></div>
+                  <div className="qa-skeleton-badge"></div>
+                </div>
+
+                <div className="qa-skeleton-grid">
+                  <div className="qa-skeleton-card">
+                    <div className="qa-skeleton-card-header">
+                      <div className="qa-skeleton-line qa-skeleton-title"></div>
+                      <div className="qa-skeleton-button"></div>
+                    </div>
+                    <div className="qa-skeleton-line qa-skeleton-text"></div>
+                  </div>
+
+                  <div className="qa-skeleton-card">
+                    <div className="qa-skeleton-card-header">
+                      <div className="qa-skeleton-line qa-skeleton-title"></div>
+                      <div className="qa-skeleton-button"></div>
+                    </div>
+                    <div className="qa-skeleton-line qa-skeleton-text"></div>
+                  </div>
+                </div>
               </div>
             ) : errorRutas ? (
               <div className="qa-alert qa-alert-danger">
@@ -3214,20 +3230,18 @@ function QuoteLCL({
                                           </span>
                                           <span className="qa-rt-sort-icons">
                                             <i
-                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${
-                                                sortConfig.col === "ofWM" &&
-                                                sortConfig.dir === "asc"
+                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === "ofWM" &&
+                                                  sortConfig.dir === "asc"
                                                   ? " active"
                                                   : ""
-                                              }`}
+                                                }`}
                                             />
                                             <i
-                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${
-                                                sortConfig.col === "ofWM" &&
-                                                sortConfig.dir === "desc"
+                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === "ofWM" &&
+                                                  sortConfig.dir === "desc"
                                                   ? " active"
                                                   : ""
-                                              }`}
+                                                }`}
                                             />
                                           </span>
                                         </span>
@@ -3252,20 +3266,18 @@ function QuoteLCL({
                                           Validez
                                           <span className="qa-rt-sort-icons">
                                             <i
-                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${
-                                                sortConfig.col === "validez" &&
-                                                sortConfig.dir === "asc"
+                                              className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
+                                                  sortConfig.dir === "asc"
                                                   ? " active"
                                                   : ""
-                                              }`}
+                                                }`}
                                             />
                                             <i
-                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${
-                                                sortConfig.col === "validez" &&
-                                                sortConfig.dir === "desc"
+                                              className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
+                                                  sortConfig.dir === "desc"
                                                   ? " active"
                                                   : ""
-                                              }`}
+                                                }`}
                                             />
                                           </span>
                                         </span>
@@ -3304,7 +3316,7 @@ function QuoteLCL({
                                         const isDuplicateCarrier =
                                           carrierKey.length > 0 &&
                                           (carrierCounts[carrierKey] || 0) >
-                                            1 &&
+                                          1 &&
                                           seenCarriers.has(carrierKey);
                                         if (carrierKey)
                                           seenCarriers.add(carrierKey);
@@ -3315,9 +3327,8 @@ function QuoteLCL({
                                             onClick={() =>
                                               handleSeleccionarRutaLcl(ruta)
                                             }
-                                            className={`qa-rt-row${
-                                              isSelected ? " is-selected" : ""
-                                            }`}
+                                            className={`qa-rt-row${isSelected ? " is-selected" : ""
+                                              }`}
                                           >
                                             <td className="qa-rt-td-select">
                                               {isSelected ? (
@@ -3409,17 +3420,16 @@ function QuoteLCL({
                                             <td className="qa-rt-td-meta">
                                               {ruta.validUntil ? (
                                                 <span
-                                                  className={`qa-validity ${
-                                                    validityState === "valid"
+                                                  className={`qa-validity ${validityState === "valid"
                                                       ? "valid"
                                                       : validityState ===
-                                                          "expiring-soon"
+                                                        "expiring-soon"
                                                         ? "expiring-soon"
                                                         : validityState ===
-                                                            "expired"
+                                                          "expired"
                                                           ? "expired"
                                                           : ""
-                                                  }`}
+                                                    }`}
                                                 >
                                                   {formatValidUntilDisplay(
                                                     ruta.validUntil,
@@ -3692,8 +3702,8 @@ function QuoteLCL({
                       : [];
                   const effectivePort = nearbyPortSelected
                     ? (nearbyPorts.find(
-                        (p) => p.value === nearbyPortSelected.value,
-                      ) ??
+                      (p) => p.value === nearbyPortSelected.value,
+                    ) ??
                       nearbyPorts[0] ??
                       null)
                     : (nearbyPorts[0] ?? null);
@@ -3719,8 +3729,8 @@ function QuoteLCL({
 
                   const portMiddleContent =
                     incoterm === "EXW" &&
-                    isCountryPol &&
-                    nearbyPorts.length >= 2 ? (
+                      isCountryPol &&
+                      nearbyPorts.length >= 2 ? (
                       <NearbyPortSelectorLCL
                         nearbyPorts={nearbyPorts}
                         selectedPort={nearbyPortSelected}
@@ -4363,10 +4373,10 @@ function QuoteLCL({
               // Build charges summary if available
               let cargos:
                 | {
-                    currency: string;
-                    items: { label: string; amount: number }[];
-                    total: number;
-                  }
+                  currency: string;
+                  items: { label: string; amount: number }[];
+                  total: number;
+                }
                 | undefined;
 
               if (tarifaOceanFreight && rutaSeleccionada) {
