@@ -90,10 +90,16 @@ function ProveedorLayout() {
         />
 
         <div
-          className="flex-fill p-4"
-          style={{ overflowY: "auto", backgroundColor: "#f8f9fa" }}
+          className="flex-fill user-layout-main layout-main--sticky-footer"
+          style={{
+            overflowY: "auto",
+            backgroundColor: "#f8f9fa",
+            minHeight: 0,
+          }}
         >
-          <Outlet />
+          <div className="layout-main__content">
+            <Outlet />
+          </div>
           <Footer />
         </div>
       </div>

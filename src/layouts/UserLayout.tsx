@@ -235,36 +235,26 @@ function UserLayout() {
 
           <div
             ref={mainRef}
-            className="flex-fill user-layout-main"
+            className="flex-fill user-layout-main layout-main--sticky-footer"
             style={{
               overflowY: "auto",
               backgroundColor: "#f8f9fa",
               minHeight: 0,
             }}
           >
-            <Outlet
-              context={{
-                accessToken,
-                refreshAccessToken,
-                onLogout: handleLogout,
-              }}
-            />
+            <div className="layout-main__content">
+              <Outlet
+                context={{
+                  accessToken,
+                  refreshAccessToken,
+                  onLogout: handleLogout,
+                }}
+              />
+            </div>
             <Footer />
           </div>
         </div>
         <ChatWidget />
-
-        <style>{`
-        .user-layout-main {
-          padding: 24px;
-        }
-
-        @media (max-width: 768px) {
-          .user-layout-main {
-            padding: 12px 0 18px;
-          }
-        }
-      `}</style>
       </div>
     </ChatbotProvider>
   );

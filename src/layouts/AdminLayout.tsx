@@ -160,20 +160,22 @@ function AdminLayout() {
 
           <div
             ref={mainRef}
-            className="flex-fill p-4"
+            className="flex-fill user-layout-main layout-main--sticky-footer"
             style={{
               overflowY: "auto",
               backgroundColor: "#f8f9fa",
               minHeight: 0,
             }}
           >
-            <Outlet
-              context={{
-                accessToken,
-                refreshAccessToken,
-                onLogout: handleLogout,
-              }}
-            />
+            <div className="layout-main__content">
+              <Outlet
+                context={{
+                  accessToken,
+                  refreshAccessToken,
+                  onLogout: handleLogout,
+                }}
+              />
+            </div>
             <Footer />
           </div>
         </div>

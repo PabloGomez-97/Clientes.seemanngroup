@@ -5,8 +5,9 @@
   usando negative margins para ocupar el ancho completo de la pantalla.
 */
 .sg-footer {
+  flex-shrink: 0;
   margin-top: 3rem;
-  margin-left: -1.5rem;   /* compensar p-4 del layout */
+  margin-left: -1.5rem;   /* compensar padding de .user-layout-main */
   margin-right: -1.5rem;
   margin-bottom: -1.5rem;
   background-color: #dce4ed;
@@ -253,4 +254,25 @@
     justify-content: center;
     gap: 1rem;
   }
+}
+
+/* ===== Layout: sticky footer (UserLayout, AdminLayout, ProveedorLayout) ===== */
+.user-layout-main {
+  padding: 24px;
+}
+
+@media (max-width: 768px) {
+  .user-layout-main {
+    padding: 12px 0 18px;
+  }
+}
+
+.layout-main--sticky-footer {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Crece solo el espacio vacío (páginas cortas); no comprime el contenido largo */
+.layout-main__content {
+  flex: 1 0 auto;
 }

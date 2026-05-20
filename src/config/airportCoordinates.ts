@@ -88,14 +88,14 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     iata: "VCP",
     countryCode: "BR"
   },
-  brazil: {
+  guarulhos: {
     lat: -23.4241,
     lng: -46.4784,
     name: "São Paulo-Guarulhos International Airport",
     iata: "GRU",
     countryCode: "BR"
   },
-  hong: {
+  hong_kong: {
     lat: 22.3132,
     lng: 113.9371,
     name: "Hong Kong International Airport",
