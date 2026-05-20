@@ -2950,7 +2950,7 @@ function QuoteLCL({
             <div className="d-flex align-items-center">
               <h3>
                 <i
-                  className="bi bi-geo-alt me-2"
+                  className=""
                   style={{ color: "var(--qf-primary)" }}
                 ></i>
                 Paso 1: Seleccionar Ruta
@@ -3172,7 +3172,7 @@ function QuoteLCL({
                         <PortSelectorFCL
                           id="lcl-pol-recurrente"
                           label={t("Quotelcl.puertoorigen")}
-                          icon="bi-send"
+                          icon=""
                           value={polSeleccionado}
                           onChange={handlePolRecurrenteChange}
                           options={opcionesPOL}
@@ -3185,7 +3185,7 @@ function QuoteLCL({
                         <PortSelectorFCL
                           id="lcl-pod-recurrente"
                           label={t("Quotelcl.puertodest")}
-                          icon="bi-geo-alt"
+                          icon=""
                           value={podSeleccionado}
                           onChange={setPodSeleccionado}
                           options={opcionesPOD}
@@ -3231,16 +3231,16 @@ function QuoteLCL({
                                           <span className="qa-rt-sort-icons">
                                             <i
                                               className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === "ofWM" &&
-                                                  sortConfig.dir === "asc"
-                                                  ? " active"
-                                                  : ""
+                                                sortConfig.dir === "asc"
+                                                ? " active"
+                                                : ""
                                                 }`}
                                             />
                                             <i
                                               className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === "ofWM" &&
-                                                  sortConfig.dir === "desc"
-                                                  ? " active"
-                                                  : ""
+                                                sortConfig.dir === "desc"
+                                                ? " active"
+                                                : ""
                                                 }`}
                                             />
                                           </span>
@@ -3267,16 +3267,16 @@ function QuoteLCL({
                                           <span className="qa-rt-sort-icons">
                                             <i
                                               className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
-                                                  sortConfig.dir === "asc"
-                                                  ? " active"
-                                                  : ""
+                                                sortConfig.dir === "asc"
+                                                ? " active"
+                                                : ""
                                                 }`}
                                             />
                                             <i
                                               className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
-                                                  sortConfig.dir === "desc"
-                                                  ? " active"
-                                                  : ""
+                                                sortConfig.dir === "desc"
+                                                ? " active"
+                                                : ""
                                                 }`}
                                             />
                                           </span>
@@ -3421,14 +3421,14 @@ function QuoteLCL({
                                               {ruta.validUntil ? (
                                                 <span
                                                   className={`qa-validity ${validityState === "valid"
-                                                      ? "valid"
+                                                    ? "valid"
+                                                    : validityState ===
+                                                      "expiring-soon"
+                                                      ? "expiring-soon"
                                                       : validityState ===
-                                                        "expiring-soon"
-                                                        ? "expiring-soon"
-                                                        : validityState ===
-                                                          "expired"
-                                                          ? "expired"
-                                                          : ""
+                                                        "expired"
+                                                        ? "expired"
+                                                        : ""
                                                     }`}
                                                 >
                                                   {formatValidUntilDisplay(
@@ -3499,7 +3499,7 @@ function QuoteLCL({
                         <PortSelectorFCL
                           id="lcl-pol-nr"
                           label={t("Quotelcl.puertoorigen")}
-                          icon="bi-send"
+                          icon=""
                           value={polNR}
                           onChange={handlePolNRChange}
                           options={opcionesPOL_NR}
@@ -3512,7 +3512,7 @@ function QuoteLCL({
                         <PortSelectorFCL
                           id="lcl-pod-nr"
                           label={t("Quotelcl.puertodest")}
-                          icon="bi-geo-alt"
+                          icon=""
                           value={podNR}
                           onChange={handlePodNRChange}
                           options={opcionesPOD_NR}

@@ -2361,7 +2361,7 @@ function QuoteFCL({
             <div className="d-flex align-items-center">
               <h3>
                 <i
-                  className="bi bi-geo-alt me-2"
+                  className=""
                   style={{ color: "var(--qf-primary)" }}
                 ></i>
                 Paso 1: Seleccionar Ruta
@@ -2595,7 +2595,7 @@ function QuoteFCL({
                         <PortSelectorFCL
                           id="fcl-pol-recurrente"
                           label="Puerto de Origen (POL)"
-                          icon="bi-send"
+                          icon=""
                           value={polSeleccionado}
                           onChange={handlePolRecurrenteChange}
                           options={opcionesPOL}
@@ -2608,7 +2608,7 @@ function QuoteFCL({
                         <PortSelectorFCL
                           id="fcl-pod-recurrente"
                           label="Puerto de Destino (POD)"
-                          icon="bi-geo-alt"
+                          icon=""
                           value={podSeleccionado}
                           onChange={setPodSeleccionado}
                           options={opcionesPOD}
@@ -2659,16 +2659,16 @@ function QuoteFCL({
                                               <span className="qa-rt-sort-icons">
                                                 <i
                                                   className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === col &&
-                                                      sortConfig.dir === "asc"
-                                                      ? " active"
-                                                      : ""
+                                                    sortConfig.dir === "asc"
+                                                    ? " active"
+                                                    : ""
                                                     }`}
                                                 />
                                                 <i
                                                   className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === col &&
-                                                      sortConfig.dir === "desc"
-                                                      ? " active"
-                                                      : ""
+                                                    sortConfig.dir === "desc"
+                                                    ? " active"
+                                                    : ""
                                                     }`}
                                                 />
                                               </span>
@@ -2691,16 +2691,16 @@ function QuoteFCL({
                                           <span className="qa-rt-sort-icons">
                                             <i
                                               className={`bi bi-caret-up-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
-                                                  sortConfig.dir === "asc"
-                                                  ? " active"
-                                                  : ""
+                                                sortConfig.dir === "asc"
+                                                ? " active"
+                                                : ""
                                                 }`}
                                             />
                                             <i
                                               className={`bi bi-caret-down-fill qa-rt-sort-icon${sortConfig.col === "validez" &&
-                                                  sortConfig.dir === "desc"
-                                                  ? " active"
-                                                  : ""
+                                                sortConfig.dir === "desc"
+                                                ? " active"
+                                                : ""
                                                 }`}
                                             />
                                           </span>
@@ -2758,8 +2758,8 @@ function QuoteFCL({
                                           <tr
                                             key={ruta.id}
                                             className={`qa-rt-row qa-rt-row--passive${isRowSelected
-                                                ? " is-row-selected"
-                                                : ""
+                                              ? " is-row-selected"
+                                              : ""
                                               }`}
                                           >
                                             <td className="qa-rt-td-carrier">
@@ -2835,8 +2835,8 @@ function QuoteFCL({
                                                 <td
                                                   key={type}
                                                   className={`qa-rt-td-price qa-rt-td-container${available
-                                                      ? " is-available"
-                                                      : ""
+                                                    ? " is-available"
+                                                    : ""
                                                     }${isCellSelected
                                                       ? " is-selected"
                                                       : ""
@@ -2884,14 +2884,14 @@ function QuoteFCL({
                                               {ruta.validUntil ? (
                                                 <span
                                                   className={`qa-validity ${validityState === "valid"
-                                                      ? "valid"
+                                                    ? "valid"
+                                                    : validityState ===
+                                                      "expiring-soon"
+                                                      ? "expiring-soon"
                                                       : validityState ===
-                                                        "expiring-soon"
-                                                        ? "expiring-soon"
-                                                        : validityState ===
-                                                          "expired"
-                                                          ? "expired"
-                                                          : ""
+                                                        "expired"
+                                                        ? "expired"
+                                                        : ""
                                                     }`}
                                                 >
                                                   {formatValidUntilDisplay(
@@ -2962,7 +2962,7 @@ function QuoteFCL({
                         <PortSelectorFCL
                           id="fcl-pol-nr"
                           label="Puerto de Origen (POL)"
-                          icon="bi-send"
+                          icon=""
                           value={polNR}
                           onChange={handlePolNRChange}
                           options={opcionesPOL_NR}
@@ -2975,7 +2975,7 @@ function QuoteFCL({
                         <PortSelectorFCL
                           id="fcl-pod-nr"
                           label="Puerto de Destino (POD)"
-                          icon="bi-geo-alt"
+                          icon=""
                           value={podNR}
                           onChange={handlePodNRChange}
                           options={opcionesPOD_NR}

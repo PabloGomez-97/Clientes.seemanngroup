@@ -4051,7 +4051,7 @@ function QuoteAPITester({
             <div className="d-flex align-items-center">
               <h3>
                 <i
-                  className="bi bi-geo-alt me-2"
+                  className=""
                   style={{ color: "var(--qa-primary)" }}
                 ></i>
                 Paso 1: Seleccionar Ruta
@@ -4273,7 +4273,7 @@ function QuoteAPITester({
                         <AirportSelectorAIR
                           id="air-origin-recurrente"
                           label={t("QuoteAIR.Origen")}
-                          icon="bi-airplane-fill"
+                          icon=""
                           value={originSeleccionado}
                           onChange={handleOriginRecurrenteChange}
                           options={opcionesOrigin}
@@ -4285,7 +4285,7 @@ function QuoteAPITester({
                         <AirportSelectorAIR
                           id="air-dest-recurrente"
                           label={t("QuoteAIR.Destino")}
-                          icon="bi-geo-alt"
+                          icon=""
                           value={destinationSeleccionado}
                           onChange={setDestinationSeleccionado}
                           options={opcionesDestination}
@@ -4653,7 +4653,7 @@ function QuoteAPITester({
                         <AirportSelectorAIR
                           id="air-origin-nr"
                           label={t("QuoteAIR.Origen")}
-                          icon="bi-airplane-fill"
+                          icon=""
                           value={originNR}
                           onChange={handleOriginNRChange}
                           options={opcionesOrigin_NR}
@@ -4665,7 +4665,7 @@ function QuoteAPITester({
                         <AirportSelectorAIR
                           id="air-dest-nr"
                           label={t("QuoteAIR.Destino")}
-                          icon="bi-geo-alt"
+                          icon=""
                           value={destNR}
                           onChange={handleDestNRChange}
                           options={opcionesDest_NR}
