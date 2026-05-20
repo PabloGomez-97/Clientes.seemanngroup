@@ -69,7 +69,7 @@ import {
   type CountryAirport,
 } from "./Handlers/Air/ExpandedRoutesAir";
 import NearbyAirportSelector from "./NearbySelector/NearbyAirportSelector";
-import AirportSelectorAIR from "./AirportSelectorAIR";
+import { AirportSelectorAIR } from "./Selectroute";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   SIMULATION_MISSING_VALUE,

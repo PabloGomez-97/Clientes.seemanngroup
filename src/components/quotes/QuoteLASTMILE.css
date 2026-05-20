@@ -12,6 +12,15 @@
   --qa-radius: 8px; /* Radio de borde suave y moderno */
   --qa-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --qa-transition: all 0.2s ease-in-out;
+
+  /* Selectores Origen/Destino — interacción sutil (no alerta) */
+  --qa-select-border: #d0d5dd;
+  --qa-select-border-hover: #b8bec8;
+  --qa-select-border-focus: rgba(255, 98, 0, 0.38);
+  --qa-select-shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --qa-select-shadow-hover: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --qa-select-ring-focus: 0 0 0 3px rgba(255, 98, 0, 0.06);
+  --qa-select-accent-muted: rgba(255, 98, 0, 0.55);
 }
 
 .qa-container {
@@ -145,10 +154,19 @@
   min-width: 0;
 }
 
-.qa-input:focus, .qa-select:focus, .qa-textarea:focus {
+.qa-input:hover:not(:focus):not(:disabled),
+.qa-select:hover:not(:focus):not(:disabled),
+.qa-textarea:hover:not(:focus):not(:disabled) {
+  border-color: #c5cad3;
+  box-shadow: var(--qa-select-shadow-hover);
+}
+
+.qa-input:focus,
+.qa-select:focus,
+.qa-textarea:focus {
   outline: none;
-  border-color: var(--qa-primary);
-  box-shadow: 0 0 0 2px rgba(255, 98, 0, 0.1); /* Primary color shadow */
+  border-color: var(--qa-select-border-focus);
+  box-shadow: var(--qa-select-ring-focus);
 }
 
 /* Pickup address map overlay */

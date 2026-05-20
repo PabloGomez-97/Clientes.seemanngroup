@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import Select from "react-select";
+import { routeSelectStyles } from "./Selectroute";
 import ReactDOM from "react-dom/client";
 import { PDFTemplateLastMile } from "./Pdftemplate/Pdftemplatelastmile";
 import {
@@ -2684,6 +2685,7 @@ function QuoteLASTMILE({
                     placeholder="Selecciona origen..."
                     isClearable
                     menuPlacement="auto"
+                    styles={routeSelectStyles}
                   />
                 </div>
                 <div className="col-md-6">
@@ -2702,6 +2704,7 @@ function QuoteLASTMILE({
                     isClearable
                     isDisabled={!origenSel}
                     menuPlacement="auto"
+                    styles={routeSelectStyles}
                   />
                 </div>
               </div>

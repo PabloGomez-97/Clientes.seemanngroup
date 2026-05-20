@@ -54,7 +54,7 @@ import {
   type CountryPort,
 } from "./Handlers/FCL/ExpandedRoutesFcl";
 import NearbyPortSelectorFCL from "./NearbySelector/NearbyPortSelectorFCL";
-import PortSelectorFCL from "./PortSelectorFCL";
+import { PortSelectorFCL } from "./Selectroute";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
 import {
   SIMULATION_MISSING_VALUE,
