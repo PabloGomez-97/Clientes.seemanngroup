@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useAgenciaAduanas } from "../../hooks/useAgenciaAduanas";
 import { useAgenciaAduanasFcl } from "../../hooks/useAgenciaAduanasFcl";
+import { useAgenciaAduanasLcl } from "../../hooks/useAgenciaAduanasLcl";
 import type { IExchangeRates, IChargeValues } from "../../types/agenciaAduana";
 import type { IFclChargeValues } from "../../types/agenciaAduanaFcl";
+import type { ILclChargeValues } from "../../types/agenciaAduanaLcl";
+import { DESPACHO_SUELTA_IVA_PCT } from "../../types/agenciaAduanaLcl";
 
-type AgenciaTab = "AÉREO" | "FCL";
+type AgenciaTab = "AÉREO" | "FCL" | "LCL";
 
-const TABS: AgenciaTab[] = ["AÉREO", "FCL"];
+const TABS: AgenciaTab[] = ["AÉREO", "FCL", "LCL"];
 
 const EXCHANGE_RATE_LABELS: {
   key: keyof IExchangeRates;
@@ -123,6 +126,68 @@ const FCL_CHARGE_LABELS: {
   },
 ];
 
+const LCL_CHARGE_LABELS: {
+  key: keyof ILclChargeValues;
+  label: string;
+  suffix: string;
+  description: string;
+}[] = [
+  {
+    key: "honorariosPct",
+    label: "Honorarios",
+    suffix: "% del CIF",
+    description: "Porcentaje aplicado sobre el valor CIF (LCL)",
+  },
+  {
+    key: "honorariosMinCurrency",
+    label: "Honorarios Mínimos",
+    suffix: "moneda cotización",
+    description: "Monto mínimo de honorarios en la moneda de la cotización",
+  },
+  {
+    key: "customsClearanceCurrency",
+    label: "Customs Clearance",
+    suffix: "moneda cotización",
+    description: "Cargo fijo por customs clearance",
+  },
+  {
+    key: "despachoSueltaRatePerWM",
+    label: "Despacho carga suelta",
+    suffix: "por W/M",
+    description: `Tarifa × W/M cargable × 1.${DESPACHO_SUELTA_IVA_PCT} (IVA ${DESPACHO_SUELTA_IVA_PCT}% fijo en código)`,
+  },
+  {
+    key: "separacionBLCurrency",
+    label: "Separación BL",
+    suffix: "moneda cotización",
+    description: "Separación de carga por BL (fijo)",
+  },
+  {
+    key: "apoyoTramitacionCurrency",
+    label: "Apoyo tramitación",
+    suffix: "moneda cotización",
+    description: "Apoyo a clientes en tramitación (fijo)",
+  },
+  {
+    key: "apoyoServicioDocumentalCurrency",
+    label: "Apoyo servicio documental",
+    suffix: "moneda cotización",
+    description: "Apoyo clientes en servicio documental (fijo)",
+  },
+  {
+    key: "ivaAduaneroPct",
+    label: "IVA Aduanero",
+    suffix: "% del CIF",
+    description: "IVA aduanero sobre CIF (distinto del 19% del despacho suelta)",
+  },
+  {
+    key: "derechosPct",
+    label: "Derechos",
+    suffix: "% del CIF",
+    description: "Derechos de importación",
+  },
+];
+
 export default function AgenciaAduanas() {
   const [activeTab, setActiveTab] = useState<AgenciaTab>("AÉREO");
   const {
@@ -139,6 +204,13 @@ export default function AgenciaAduanas() {
     saving: fclSaving,
     updateConfig: updateFclConfig,
   } = useAgenciaAduanasFcl();
+  const {
+    config: lclConfig,
+    loading: lclLoading,
+    error: lclError,
+    saving: lclSaving,
+    updateConfig: updateLclConfig,
+  } = useAgenciaAduanasLcl();
 
   const [editingRates, setEditingRates] = useState<Partial<IExchangeRates>>({});
   const [editingAereoCharges, setEditingAereoCharges] = useState<
@@ -146,6 +218,9 @@ export default function AgenciaAduanas() {
   >({});
   const [editingFclCharges, setEditingFclCharges] = useState<
     Partial<IFclChargeValues>
+  >({});
+  const [editingLclCharges, setEditingLclCharges] = useState<
+    Partial<ILclChargeValues>
   >({});
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -231,6 +306,33 @@ export default function AgenciaAduanas() {
     }
   };
 
+  const handleLclChargeChange = (key: keyof ILclChargeValues, value: string) => {
+    const num = parseFloat(value);
+    if (value === "" || isNaN(num)) {
+      setEditingLclCharges((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+    setEditingLclCharges((prev) => ({ ...prev, [key]: num }));
+  };
+
+  const handleSaveLclCharges = async () => {
+    if (Object.keys(editingLclCharges).length === 0) return;
+    try {
+      setSaveError(null);
+      setSuccessMsg(null);
+      await updateLclConfig({ charges: editingLclCharges });
+      setEditingLclCharges({});
+      setSuccessMsg("Valores de cobros (LCL) actualizados correctamente");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (e) {
+      setSaveError((e as Error).message);
+    }
+  };
+
   const ufInCurrencies = aereoConfig.exchangeRates
     ? {
         USD: (
@@ -254,12 +356,26 @@ export default function AgenciaAduanas() {
       }
     : null;
 
-  const tabLoading = activeTab === "AÉREO" ? aereoLoading : fclLoading;
-  const tabError = activeTab === "AÉREO" ? aereoError : fclError;
+  const tabLoading =
+    activeTab === "AÉREO"
+      ? aereoLoading
+      : activeTab === "FCL"
+        ? fclLoading
+        : lclLoading;
+  const tabError =
+    activeTab === "AÉREO"
+      ? aereoError
+      : activeTab === "FCL"
+        ? fclError
+        : lclError;
   const updatedBy =
-    activeTab === "AÉREO" ? aereoConfig.updatedBy : fclConfig.updatedBy;
+    activeTab === "AÉREO"
+      ? aereoConfig.updatedBy
+      : activeTab === "FCL"
+        ? fclConfig.updatedBy
+        : lclConfig.updatedBy;
 
-  if (aereoLoading && fclLoading) {
+  if (aereoLoading && fclLoading && lclLoading) {
     return (
       <div
         className="d-flex justify-content-center align-items-center"
@@ -278,8 +394,8 @@ export default function AgenciaAduanas() {
           Agencia de Aduanas y Nacionalización
         </h3>
         <p className="text-muted mb-0">
-          Configuración independiente por modalidad: Aéreo (tasas UF + CLP) y
-          FCL (montos en moneda de cotización).
+          Configuración independiente por modalidad: Aéreo (tasas UF + CLP), FCL
+          y LCL (montos en moneda de cotización).
         </p>
       </div>
 
@@ -598,6 +714,93 @@ export default function AgenciaAduanas() {
                     }
                   >
                     {fclSaving ? "Guardando..." : "Guardar Valores de Cobros"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {activeTab === "LCL" && (
+        <>
+          {tabLoading ? (
+            <div className="d-flex justify-content-center py-5">
+              <div className="spinner-border text-primary" />
+            </div>
+          ) : (
+            <div className="card mb-4 shadow-sm">
+              <div className="card-header bg-white py-3">
+                <h5 className="mb-0 fw-bold">
+                  <i className="bi bi-receipt me-2 text-primary" />
+                  Valores de Cobros (LCL)
+                </h5>
+                <small className="text-muted">
+                  Montos en moneda de cotización. Extraport Charges en cotizador
+                  agrupa despacho suelta (× W/M × 1,19 fijo), separación BL, apoyo
+                  tramitación y apoyo documental.
+                </small>
+              </div>
+              <div className="card-body">
+                <div className="row g-3">
+                  {LCL_CHARGE_LABELS.map(
+                    ({ key, label, suffix, description }) => {
+                      const currentValue = lclConfig.charges[key];
+                      const editedValue = editingLclCharges[key];
+                      const isEdited = editedValue !== undefined;
+                      return (
+                        <div key={key} className="col-md-6">
+                          <div
+                            className={`p-3 rounded border ${isEdited ? "border-warning" : ""}`}
+                          >
+                            <label className="form-label fw-semibold mb-1">
+                              {label}
+                            </label>
+                            <small className="text-muted d-block mb-2">
+                              {description}
+                            </small>
+                            <div className="input-group">
+                              <input
+                                type="number"
+                                className={`form-control ${isEdited ? "border-warning" : ""}`}
+                                value={isEdited ? editedValue : currentValue}
+                                onChange={(e) =>
+                                  handleLclChargeChange(key, e.target.value)
+                                }
+                                step={suffix.includes("%") ? "0.01" : "1"}
+                                min="0"
+                              />
+                              <span
+                                className="input-group-text"
+                                style={{ fontSize: "0.85rem", minWidth: "100px" }}
+                              >
+                                {suffix}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+                <div className="d-flex justify-content-end mt-3">
+                  {Object.keys(editingLclCharges).length > 0 && (
+                    <button
+                      className="btn btn-outline-secondary me-2"
+                      onClick={() => setEditingLclCharges({})}
+                      disabled={lclSaving}
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleSaveLclCharges}
+                    disabled={
+                      Object.keys(editingLclCharges).length === 0 || lclSaving
+                    }
+                  >
+                    {lclSaving ? "Guardando..." : "Guardar Valores de Cobros"}
                   </button>
                 </div>
               </div>

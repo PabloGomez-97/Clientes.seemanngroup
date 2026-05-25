@@ -1615,6 +1615,24 @@ const AgenciaAduanaFclConfig = (
 ) as AgenciaAduanaFclConfigModel;
 
 // ============================================================
+// MODELO AGENCIA DE ADUANAS LCL - CONFIG (Singleton, colección separada)
+// ============================================================
+import {
+  AgenciaAduanaLclConfigSchema,
+  DEFAULT_LCL_CONFIG,
+  type IAgenciaAduanaLclConfigDoc,
+  type AgenciaAduanaLclConfigModel,
+} from '../api/models/AgenciaAduanaLclConfig.ts';
+
+const AgenciaAduanaLclConfig = (
+  mongoose.models.AgenciaAduanaLclConfig ||
+  mongoose.model<IAgenciaAduanaLclConfigDoc>(
+    'AgenciaAduanaLclConfig',
+    AgenciaAduanaLclConfigSchema,
+  )
+) as AgenciaAduanaLclConfigModel;
+
+// ============================================================
 // MODELO GESTIÓN COTIZADOR - CONFIG (Singleton, colección gestioncotizador)
 // ============================================================
 import {
@@ -6531,6 +6549,55 @@ app.put('/api/agencia-aduana-fcl/config', auth, async (req, res) => {
   } catch (e) {
     console.error('[agencia-aduana-fcl] Error PUT config:', e);
     return res.status(500).json({ error: 'Error al actualizar configuración FCL' });
+  }
+});
+
+// GET /api/agencia-aduana-lcl/config
+app.get('/api/agencia-aduana-lcl/config', async (_req, res) => {
+  try {
+    let config = await AgenciaAduanaLclConfig.findOne();
+    if (!config) {
+      config = await AgenciaAduanaLclConfig.create(DEFAULT_LCL_CONFIG);
+    }
+    return res.json(config);
+  } catch (e) {
+    console.error('[agencia-aduana-lcl] Error GET config:', e);
+    return res.status(500).json({ error: 'Error al obtener configuración LCL' });
+  }
+});
+
+// PUT /api/agencia-aduana-lcl/config (solo admin)
+app.put('/api/agencia-aduana-lcl/config', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub });
+    if (!ejecutivoDoc?.roles?.administrador) {
+      return res.status(403).json({ error: 'Solo administradores pueden modificar la configuración' });
+    }
+
+    const { charges } = req.body;
+    if (!charges) {
+      return res.status(400).json({ error: 'Debe enviar charges' });
+    }
+
+    const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
+    for (const [key, val] of Object.entries(charges)) {
+      if (typeof val !== 'number' || val < 0) {
+        return res.status(400).json({ error: `Valor de cobro LCL inválido: ${key}` });
+      }
+      updateData[`charges.${key}`] = val;
+    }
+
+    const config = await AgenciaAduanaLclConfig.findOneAndUpdate(
+      {},
+      { $set: updateData },
+      { new: true, upsert: true },
+    );
+
+    return res.json(config);
+  } catch (e) {
+    console.error('[agencia-aduana-lcl] Error PUT config:', e);
+    return res.status(500).json({ error: 'Error al actualizar configuración LCL' });
   }
 });
 

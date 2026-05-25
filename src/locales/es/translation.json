@@ -1035,6 +1035,14 @@
     "contenedores": "cont.",
     "ingreseValorProducto": "Ingrese el valor del producto para ver el desglose."
   },
+  "AgenciaAduanaLcl": {
+    "desgloseCobros": "Desglose de Cobros - Agencia de Aduanas (LCL)",
+    "customsClearance": "Customs Clearance",
+    "extraportCharges": "Extraport Charges",
+    "wmLabel": "W/M",
+    "wmUnit": "cargable",
+    "sinCargable": "Complete el cargamento en el Paso 2 para activar Agencia de Aduanas (W/M cargable requerido)."
+  },
   "QuoteINT": {
     "titulo": "Agencia de Aduanas e Internacionalización",
     "subtitulo": "Genera una cotización de internacionalización ingresando los valores de tu operación.",

@@ -1034,6 +1034,14 @@
     "contenedores": "ctr.",
     "ingreseValorProducto": "Enter the product value to see the breakdown."
   },
+  "AgenciaAduanaLcl": {
+    "desgloseCobros": "Charges Breakdown - Customs Agency (LCL)",
+    "customsClearance": "Customs Clearance",
+    "extraportCharges": "Extraport Charges",
+    "wmLabel": "W/M",
+    "wmUnit": "chargeable",
+    "sinCargable": "Complete cargo in Step 2 to enable Customs Agency (chargeable W/M required)."
+  },
   "QuoteINT": {
     "titulo": "Customs Agency & Internationalization",
     "subtitulo": "Generate an internationalization quotation by entering your operation values.",

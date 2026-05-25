@@ -1670,6 +1670,24 @@ const AgenciaAduanaFclConfig = (
 ) as AgenciaAduanaFclConfigModel;
 
 // ============================================================
+// MODELO AGENCIA DE ADUANAS LCL - CONFIG (Singleton, colección separada)
+// ============================================================
+import {
+  AgenciaAduanaLclConfigSchema,
+  DEFAULT_LCL_CONFIG,
+  type IAgenciaAduanaLclConfigDoc,
+  type AgenciaAduanaLclConfigModel,
+} from './models/AgenciaAduanaLclConfig.js';
+
+const AgenciaAduanaLclConfig = (
+  mongoose.models.AgenciaAduanaLclConfig ||
+  mongoose.model<IAgenciaAduanaLclConfigDoc>(
+    'AgenciaAduanaLclConfig',
+    AgenciaAduanaLclConfigSchema,
+  )
+) as AgenciaAduanaLclConfigModel;
+
+// ============================================================
 // MODELO GESTIÓN COTIZADOR - CONFIG (Singleton, colección gestioncotizador)
 // ============================================================
 import {
@@ -6721,6 +6739,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (e) {
         console.error('[agencia-aduana-fcl] Error PUT config:', e);
         return res.status(500).json({ error: 'Error al actualizar configuración FCL' });
+      }
+    }
+
+    // GET /api/agencia-aduana-lcl/config
+    if (path === '/api/agencia-aduana-lcl/config' && method === 'GET') {
+      try {
+        let config = await AgenciaAduanaLclConfig.findOne();
+        if (!config) {
+          config = await AgenciaAduanaLclConfig.create(DEFAULT_LCL_CONFIG);
+        }
+        return res.json(config);
+      } catch (e) {
+        console.error('[agencia-aduana-lcl] Error GET config:', e);
+        return res.status(500).json({ error: 'Error al obtener configuración LCL' });
+      }
+    }
+
+    // PUT /api/agencia-aduana-lcl/config (solo admin)
+    if (path === '/api/agencia-aduana-lcl/config' && method === 'PUT') {
+      try {
+        const currentUser = requireAuth(req);
+        const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub });
+        if (!ejecutivoDoc?.roles?.administrador) {
+          return res.status(403).json({ error: 'Solo administradores pueden modificar la configuración' });
+        }
+
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        const { charges } = body;
+        if (!charges) {
+          return res.status(400).json({ error: 'Debe enviar charges' });
+        }
+
+        const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
+        for (const [key, val] of Object.entries(charges)) {
+          if (typeof val !== 'number' || val < 0) {
+            return res.status(400).json({ error: `Valor de cobro LCL inválido: ${key}` });
+          }
+          updateData[`charges.${key}`] = val;
+        }
+
+        const config = await AgenciaAduanaLclConfig.findOneAndUpdate(
+          {},
+          { $set: updateData },
+          { new: true, upsert: true },
+        );
+
+        return res.json(config);
+      } catch (e) {
+        console.error('[agencia-aduana-lcl] Error PUT config:', e);
+        return res.status(500).json({ error: 'Error al actualizar configuración LCL' });
       }
     }
 
