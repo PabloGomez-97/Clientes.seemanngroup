@@ -4,6 +4,7 @@ import {
   type IFclCotizadorConfig,
   type ILclCotizadorConfig,
   type ILclDeliveryBracket,
+  type IAereoTtBracket,
 } from "../../hooks/useGestionCotizador";
 
 type CotizadorTab = "FCL" | "LCL" | "AÉREO" | "ÚLTIMA MILLA";
@@ -48,13 +49,17 @@ const FCL_FIELDS: {
 ];
 
 export default function GestionCotizador() {
-  const { config, loading, error, saving, updateFcl, updateLcl } =
+  const { config, loading, error, saving, updateFcl, updateLcl, updateAereo } =
     useGestionCotizador();
   const [activeTab, setActiveTab] = useState<CotizadorTab>("FCL");
   const [editingFcl, setEditingFcl] = useState<Partial<IFclCotizadorConfig>>({});
   const [editingLcl, setEditingLcl] = useState<{
     vespucioExtendedSurchargePct?: number;
     brackets?: ILclDeliveryBracket[];
+  }>({});
+  const [editingAereo, setEditingAereo] = useState<{
+    vespucioExtendedSurchargePct?: number;
+    brackets?: IAereoTtBracket[];
   }>({});
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -131,6 +136,56 @@ export default function GestionCotizador() {
       await updateLcl(editingLcl);
       setEditingLcl({});
       setSuccessMsg("Configuración LCL actualizada correctamente");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (e) {
+      setSaveError((e as Error).message);
+    }
+  };
+
+  const handleAereoBracketChange = (
+    index: number,
+    field: keyof IAereoTtBracket,
+    value: string,
+  ) => {
+    const num = parseFloat(value);
+    const base =
+      editingAereo.brackets ??
+      config.aereo.brackets.map((b) => ({ ...b }));
+    const next = base.map((b, i) =>
+      i === index
+        ? {
+            ...b,
+            [field]: value === "" || isNaN(num) ? b[field] : num,
+          }
+        : { ...b },
+    );
+    setEditingAereo((prev) => ({ ...prev, brackets: next }));
+  };
+
+  const handleAereoVespucioChange = (value: string) => {
+    const num = parseFloat(value);
+    if (value === "" || isNaN(num)) {
+      setEditingAereo((prev) => {
+        const next = { ...prev };
+        delete next.vespucioExtendedSurchargePct;
+        return next;
+      });
+      return;
+    }
+    setEditingAereo((prev) => ({
+      ...prev,
+      vespucioExtendedSurchargePct: num,
+    }));
+  };
+
+  const handleSaveAereo = async () => {
+    if (Object.keys(editingAereo).length === 0) return;
+    try {
+      setSaveError(null);
+      setSuccessMsg(null);
+      await updateAereo(editingAereo);
+      setEditingAereo({});
+      setSuccessMsg("Configuración AÉREO actualizada correctamente");
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (e) {
       setSaveError((e as Error).message);
@@ -431,7 +486,131 @@ export default function GestionCotizador() {
         </div>
       )}
 
-      {activeTab !== "FCL" && activeTab !== "LCL" && (
+      {activeTab === "AÉREO" && (
+        <div className="card shadow-sm">
+          <div className="card-header bg-white py-3">
+            <h5 className="mb-0 fw-bold">
+              <i className="bi bi-airplane me-2 text-primary" />
+              AÉREO — Transporte Terrestre (Última Milla)
+            </h5>
+            <small className="text-muted">
+              Código Linbis: TT (id 134796). Bracket por peso real total (kg).
+              Solo destino Santiago de Chile. EXPENSE = INCOME ÷ 1,10 (fijo).
+            </small>
+          </div>
+          <div className="card-body">
+            <div className="row g-3 mb-4">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">
+                  Recargo zona extendida (Vespucio)
+                </label>
+                <div className="input-group" style={{ maxWidth: "220px" }}>
+                  <input
+                    type="number"
+                    className={`form-control ${editingAereo.vespucioExtendedSurchargePct !== undefined ? "border-warning" : ""}`}
+                    value={
+                      editingAereo.vespucioExtendedSurchargePct ??
+                      config.aereo.vespucioExtendedSurchargePct
+                    }
+                    onChange={(e) => handleAereoVespucioChange(e.target.value)}
+                    step="0.1"
+                    min="0"
+                  />
+                  <span className="input-group-text">%</span>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <p className="text-muted small mb-0">
+                  Límite máximo: {config.aereo.maxKg} kg (fuera de rango no se
+                  puede agregar el servicio).
+                </p>
+              </div>
+            </div>
+
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Hasta (kg)</th>
+                    <th>Monto INCOME</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(editingAereo.brackets ?? config.aereo.brackets).map(
+                    (b, index) => {
+                      const edited =
+                        editingAereo.brackets !== undefined &&
+                        JSON.stringify(editingAereo.brackets[index]) !==
+                          JSON.stringify(config.aereo.brackets[index]);
+                      return (
+                        <tr key={index}>
+                          <td className="text-muted">{index + 1}</td>
+                          <td>
+                            <input
+                              type="number"
+                              className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                              value={b.maxKg}
+                              onChange={(e) =>
+                                handleAereoBracketChange(
+                                  index,
+                                  "maxKg",
+                                  e.target.value,
+                                )
+                              }
+                              step="1"
+                              min="1"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                              value={b.amount}
+                              onChange={(e) =>
+                                handleAereoBracketChange(
+                                  index,
+                                  "amount",
+                                  e.target.value,
+                                )
+                              }
+                              step="0.01"
+                              min="0.01"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    },
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={Object.keys(editingAereo).length === 0 || saving}
+                onClick={handleSaveAereo}
+              >
+                {saving ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-save me-2" />
+                    Guardar cambios AÉREO
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "ÚLTIMA MILLA" && (
         <div
           className="card shadow-sm border-0"
           style={{ backgroundColor: "#f8f9fa" }}
@@ -440,7 +619,7 @@ export default function GestionCotizador() {
             <i className="bi bi-tools display-6 d-block mb-3" />
             <h5 className="fw-semibold text-secondary">{activeTab}</h5>
             <p className="mb-0">
-              Configuración en desarrollo. Disponible: FCL y LCL.
+              Cotizador dedicado Última Milla (flujo separado).
             </p>
           </div>
         </div>

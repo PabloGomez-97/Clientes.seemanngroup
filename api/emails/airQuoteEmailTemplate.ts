@@ -18,6 +18,10 @@ export interface AirQuoteEmailData {
   incoterm?: string;
   pickupFromAddress?: string;
   deliveryToAddress?: string;
+  ultimaMilla?: boolean;
+  ultimaMillaDireccion?: string;
+  ultimaMillaMonto?: string;
+  ultimaMillaZonaExtendida?: boolean;
   agente?: string;
   quoteNumber?: string;
   proveedor?: {
@@ -67,6 +71,9 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
   const incotermRow = data.incoterm ? row('Incoterm', data.incoterm) : '';
   const exwRows = (data.incoterm === 'EXW' && (data.pickupFromAddress || data.deliveryToAddress))
     ? `${data.pickupFromAddress ? row('Dirección de recogida', data.pickupFromAddress) : ''}${data.deliveryToAddress ? row('Dirección de entrega', data.deliveryToAddress) : ''}`
+    : '';
+  const ultimaMillaRows = data.ultimaMilla
+    ? `${row('Última Milla', 'Sí (agregada en cotización)')}${data.ultimaMillaDireccion ? row('Dirección de entrega (Última Milla)', data.ultimaMillaDireccion) : ''}${data.ultimaMillaMonto ? row('Monto Última Milla', data.ultimaMillaMonto) : ''}${data.ultimaMillaZonaExtendida ? row('Recargo zona extendida', 'Sí (zona Américo Vespucio extendida)') : ''}`
     : '';
   const highlightedRow = (label: string, value: string | undefined | null) => `
     <tr>
@@ -174,6 +181,7 @@ export function buildAirQuoteEmailHTML(data: AirQuoteEmailData): string {
                 ${agenteRow}
                 ${incotermRow}
                 ${exwRows}
+                ${ultimaMillaRows}
                 ${row('Descripción de la carga', data.descripcionCarga)}
                 ${row('Peso chargeable', pesoDisplay)}
                 ${row('Total', `${data.total}`)}

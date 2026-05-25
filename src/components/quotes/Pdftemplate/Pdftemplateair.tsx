@@ -32,6 +32,7 @@ interface PDFTemplateAIRProps {
   incoterm: string;
   pickupFromAddress?: string;
   deliveryToAddress?: string;
+  ultimaMillaDeliveryAddress?: string;
   salesRep: string;
   pieces: number;
   packageTypeName: string;
@@ -90,6 +91,7 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
   incoterm,
   pickupFromAddress,
   deliveryToAddress,
+  ultimaMillaDeliveryAddress,
   salesRep,
   pieces,
   packageTypeName,
@@ -676,6 +678,29 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
           >
             * Airport Transfer: {currency} 0.15/kg — Minimum {currency} 50
           </div>
+        </div>
+      )}
+
+      {ultimaMillaDeliveryAddress && (
+        <div
+          style={{
+            backgroundColor: C.bg,
+            border: `1px solid ${C.line}`,
+            borderLeft: `3px solid ${C.accent}`,
+            borderRadius: "3px",
+            padding: "7px 12px",
+            marginBottom: "10px",
+            fontSize: "7.5pt",
+            color: C.sub,
+            lineHeight: 1.5,
+          }}
+        >
+          <strong style={{ color: C.text }}>Última Milla</strong> — Esta
+          cotización incluye transporte terrestre desde el aeropuerto de destino
+          hasta la siguiente dirección de entrega:{" "}
+          <span style={{ color: C.text, fontWeight: 600 }}>
+            {ultimaMillaDeliveryAddress}
+          </span>
         </div>
       )}
 

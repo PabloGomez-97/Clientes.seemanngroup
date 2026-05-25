@@ -1607,6 +1607,8 @@ import {
   type IFclCotizadorConfig,
   type ILclCotizadorConfig,
   type ILclDeliveryBracket,
+  type IAereoCotizadorConfig,
+  type IAereoTtBracket,
 } from '../api/models/GestionCotizadorConfig.ts';
 
 const GestionCotizadorConfig = (
@@ -5142,7 +5144,7 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       const emailData: AirQuoteEmailData = {
         ejecutivoNombre,
         clienteUsername,
-        clienteNombre: currentUser.nombreuser,
+        clienteNombre: clienteNombreResolved,
         origen: origen || '',
         destino: destino || '',
         carrier: carrier || '',
@@ -5154,6 +5156,10 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         incoterm: incoterm || undefined,
         pickupFromAddress: incoterm === 'EXW' ? (pickupFromAddress || undefined) : undefined,
         deliveryToAddress: incoterm === 'EXW' ? (deliveryToAddress || undefined) : undefined,
+        ultimaMilla: ultimaMilla || undefined,
+        ultimaMillaDireccion: ultimaMilla ? ultimaMillaDireccion : undefined,
+        ultimaMillaMonto: ultimaMilla ? ultimaMillaMonto : undefined,
+        ultimaMillaZonaExtendida: ultimaMilla ? ultimaMillaZonaExtendida : undefined,
         agente: agente || undefined,
         quoteNumber: quoteNumber || undefined,
         proveedor: proveedor || undefined,
@@ -6488,16 +6494,18 @@ app.put('/api/gestion-cotizador/config', auth, async (req, res) => {
       });
     }
 
-    const { fcl, lcl } = req.body as {
+    const { fcl, lcl, aereo } = req.body as {
       fcl?: Partial<IFclCotizadorConfig>;
       lcl?: Partial<ILclCotizadorConfig>;
+      aereo?: Partial<IAereoCotizadorConfig>;
     };
     if (
       (!fcl || typeof fcl !== 'object') &&
-      (!lcl || typeof lcl !== 'object')
+      (!lcl || typeof lcl !== 'object') &&
+      (!aereo || typeof aereo !== 'object')
     ) {
       return res.status(400).json({
-        error: 'Debe enviar el objeto fcl y/o lcl con los valores a actualizar',
+        error: 'Debe enviar el objeto fcl, lcl y/o aereo con los valores a actualizar',
       });
     }
 
@@ -6569,6 +6577,42 @@ app.put('/api/gestion-cotizador/config', auth, async (req, res) => {
           }
         }
         updateData['lcl.brackets'] = lcl.brackets;
+      }
+    }
+
+    if (aereo && typeof aereo === 'object') {
+      if (aereo.vespucioExtendedSurchargePct !== undefined) {
+        if (
+          typeof aereo.vespucioExtendedSurchargePct !== 'number' ||
+          aereo.vespucioExtendedSurchargePct < 0
+        ) {
+          return res.status(400).json({ error: 'Recargo zona extendida AÉREO inválido' });
+        }
+        updateData['aereo.vespucioExtendedSurchargePct'] =
+          aereo.vespucioExtendedSurchargePct;
+      }
+      if (aereo.maxKg !== undefined) {
+        if (typeof aereo.maxKg !== 'number' || aereo.maxKg <= 0) {
+          return res.status(400).json({ error: 'Límite máximo kg AÉREO inválido' });
+        }
+        updateData['aereo.maxKg'] = aereo.maxKg;
+      }
+      if (aereo.brackets !== undefined) {
+        if (!Array.isArray(aereo.brackets) || aereo.brackets.length === 0) {
+          return res.status(400).json({ error: 'Tabla de brackets AÉREO inválida' });
+        }
+        for (let i = 0; i < aereo.brackets.length; i++) {
+          const b = aereo.brackets[i] as IAereoTtBracket;
+          if (
+            typeof b.maxKg !== 'number' ||
+            typeof b.amount !== 'number' ||
+            b.maxKg <= 0 ||
+            b.amount <= 0
+          ) {
+            return res.status(400).json({ error: `Bracket AÉREO ${i + 1} inválido` });
+          }
+        }
+        updateData['aereo.brackets'] = aereo.brackets;
       }
     }
 

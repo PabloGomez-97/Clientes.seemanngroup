@@ -3,23 +3,33 @@ import type {
   IGestionCotizadorConfig,
   IFclCotizadorConfig,
   ILclCotizadorConfig,
+  IAereoCotizadorConfig,
 } from "../types/gestionCotizador";
 import { DEFAULT_GESTION_COTIZADOR_CONFIG } from "../types/gestionCotizador";
 import { useAuth } from "../auth/AuthContext";
 
-export type { IGestionCotizadorConfig, IFclCotizadorConfig, ILclCotizadorConfig };
+export type {
+  IGestionCotizadorConfig,
+  IFclCotizadorConfig,
+  ILclCotizadorConfig,
+  IAereoCotizadorConfig,
+};
 export {
   DEFAULT_GESTION_COTIZADOR_CONFIG,
   getFclTtRate,
   getVespucioExtendedMultiplier,
   findLclDeliveryBracket,
   lclDeliveryExpenseFromIncome,
+  findAereoTtBracket,
+  aereoTtExpenseFromIncome,
+  isAirUltimaMillaEligibleDestination,
   LCL_DELIVERY_EXPENSE_DIVISOR,
 } from "../types/gestionCotizador";
 
 function normalizeConfig(data: Record<string, unknown>): IGestionCotizadorConfig {
   const fclRaw = data.fcl as Partial<IFclCotizadorConfig> | undefined;
   const lclRaw = data.lcl as Partial<ILclCotizadorConfig> | undefined;
+  const aereoRaw = data.aereo as Partial<IAereoCotizadorConfig> | undefined;
   return {
     fcl: {
       ttRate20GP:
@@ -39,6 +49,16 @@ function normalizeConfig(data: Record<string, unknown>): IGestionCotizadorConfig
       vespucioExtendedSurchargePct:
         lclRaw?.vespucioExtendedSurchargePct ??
         DEFAULT_GESTION_COTIZADOR_CONFIG.lcl.vespucioExtendedSurchargePct,
+    },
+    aereo: {
+      brackets:
+        Array.isArray(aereoRaw?.brackets) && aereoRaw.brackets.length > 0
+          ? aereoRaw.brackets
+          : DEFAULT_GESTION_COTIZADOR_CONFIG.aereo.brackets,
+      maxKg: aereoRaw?.maxKg ?? DEFAULT_GESTION_COTIZADOR_CONFIG.aereo.maxKg,
+      vespucioExtendedSurchargePct:
+        aereoRaw?.vespucioExtendedSurchargePct ??
+        DEFAULT_GESTION_COTIZADOR_CONFIG.aereo.vespucioExtendedSurchargePct,
     },
     updatedBy: (data.updatedBy as string) ?? "system",
   };
@@ -74,7 +94,11 @@ export function useGestionCotizador() {
   }, [fetchConfig]);
 
   const putConfig = useCallback(
-    async (body: { fcl?: Partial<IFclCotizadorConfig>; lcl?: Partial<ILclCotizadorConfig> }) => {
+    async (body: {
+      fcl?: Partial<IFclCotizadorConfig>;
+      lcl?: Partial<ILclCotizadorConfig>;
+      aereo?: Partial<IAereoCotizadorConfig>;
+    }) => {
       const res = await fetch("/api/gestion-cotizador/config", {
         method: "PUT",
         headers: {
@@ -127,6 +151,23 @@ export function useGestionCotizador() {
     [putConfig],
   );
 
+  const updateAereo = useCallback(
+    async (updates: Partial<IAereoCotizadorConfig>) => {
+      try {
+        setSaving(true);
+        setError(null);
+        await putConfig({ aereo: updates });
+      } catch (e) {
+        console.error("[useGestionCotizador] update AÉREO error:", e);
+        setError((e as Error).message);
+        throw e;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [putConfig],
+  );
+
   return {
     config,
     loading,
@@ -134,6 +175,7 @@ export function useGestionCotizador() {
     saving,
     updateFcl,
     updateLcl,
+    updateAereo,
     refetch: fetchConfig,
   };
 }

@@ -30,9 +30,21 @@ export interface ILclCotizadorConfig {
   vespucioExtendedSurchargePct: number;
 }
 
+export interface IAereoTtBracket {
+  maxKg: number;
+  amount: number;
+}
+
+export interface IAereoCotizadorConfig {
+  brackets: IAereoTtBracket[];
+  maxKg: number;
+  vespucioExtendedSurchargePct: number;
+}
+
 export interface IGestionCotizadorConfig {
   fcl: IFclCotizadorConfig;
   lcl: ILclCotizadorConfig;
+  aereo: IAereoCotizadorConfig;
   updatedBy: string;
 }
 
@@ -70,9 +82,24 @@ export const DEFAULT_LCL_COTIZADOR: ILclCotizadorConfig = {
   vespucioExtendedSurchargePct: 45,
 };
 
+export const DEFAULT_AEREO_TT_BRACKETS: IAereoTtBracket[] = [
+  { maxKg: 300, amount: 85.09 },
+  { maxKg: 500, amount: 91.63 },
+  { maxKg: 1000, amount: 104.72 },
+  { maxKg: 1500, amount: 117.81 },
+  { maxKg: 2000, amount: 163.63 },
+];
+
+export const DEFAULT_AEREO_COTIZADOR: IAereoCotizadorConfig = {
+  brackets: DEFAULT_AEREO_TT_BRACKETS,
+  maxKg: 2000,
+  vespucioExtendedSurchargePct: 45,
+};
+
 export const DEFAULT_GESTION_COTIZADOR_CONFIG: IGestionCotizadorConfig = {
   fcl: DEFAULT_FCL_COTIZADOR,
   lcl: DEFAULT_LCL_COTIZADOR,
+  aereo: DEFAULT_AEREO_COTIZADOR,
   updatedBy: "system",
 };
 
@@ -83,6 +110,14 @@ const LclDeliveryBracketSchema = new mongoose.Schema<ILclDeliveryBracket>(
   {
     maxKg: { type: Number, required: true },
     maxM3: { type: Number, required: true },
+    amount: { type: Number, required: true },
+  },
+  { _id: false },
+);
+
+const AereoTtBracketSchema = new mongoose.Schema<IAereoTtBracket>(
+  {
+    maxKg: { type: Number, required: true },
     amount: { type: Number, required: true },
   },
   { _id: false },
@@ -119,6 +154,18 @@ export const GestionCotizadorConfigSchema =
           type: Number,
           required: true,
           default: DEFAULT_LCL_COTIZADOR.vespucioExtendedSurchargePct,
+        },
+      },
+      aereo: {
+        brackets: {
+          type: [AereoTtBracketSchema],
+          default: DEFAULT_AEREO_TT_BRACKETS,
+        },
+        maxKg: { type: Number, required: true, default: 2000 },
+        vespucioExtendedSurchargePct: {
+          type: Number,
+          required: true,
+          default: DEFAULT_AEREO_COTIZADOR.vespucioExtendedSurchargePct,
         },
       },
       updatedBy: { type: String, required: true, default: "system" },

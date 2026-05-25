@@ -21,9 +21,22 @@ export interface ILclCotizadorConfig {
   vespucioExtendedSurchargePct: number;
 }
 
+export interface IAereoTtBracket {
+  maxKg: number;
+  amount: number;
+}
+
+export interface IAereoCotizadorConfig {
+  brackets: IAereoTtBracket[];
+  /** Límite superior peso real (kg) para tabla TT */
+  maxKg: number;
+  vespucioExtendedSurchargePct: number;
+}
+
 export interface IGestionCotizadorConfig {
   fcl: IFclCotizadorConfig;
   lcl: ILclCotizadorConfig;
+  aereo: IAereoCotizadorConfig;
   updatedBy: string;
 }
 
@@ -51,9 +64,24 @@ export const DEFAULT_LCL_COTIZADOR: ILclCotizadorConfig = {
   vespucioExtendedSurchargePct: 45,
 };
 
+export const DEFAULT_AEREO_TT_BRACKETS: IAereoTtBracket[] = [
+  { maxKg: 300, amount: 85.09 },
+  { maxKg: 500, amount: 91.63 },
+  { maxKg: 1000, amount: 104.72 },
+  { maxKg: 1500, amount: 117.81 },
+  { maxKg: 2000, amount: 163.63 },
+];
+
+export const DEFAULT_AEREO_COTIZADOR: IAereoCotizadorConfig = {
+  brackets: DEFAULT_AEREO_TT_BRACKETS,
+  maxKg: 2000,
+  vespucioExtendedSurchargePct: 45,
+};
+
 export const DEFAULT_GESTION_COTIZADOR_CONFIG: IGestionCotizadorConfig = {
   fcl: DEFAULT_FCL_COTIZADOR,
   lcl: DEFAULT_LCL_COTIZADOR,
+  aereo: DEFAULT_AEREO_COTIZADOR,
   updatedBy: "system",
 };
 
@@ -129,4 +157,45 @@ export function findLclDeliveryBracket(
 
 export function lclDeliveryExpenseFromIncome(incomeAmount: number): number {
   return Number((incomeAmount / LCL_DELIVERY_EXPENSE_DIVISOR).toFixed(2));
+}
+
+/** Alias: mismo divisor 1.10 para TT aéreo */
+export const aereoTtExpenseFromIncome = lclDeliveryExpenseFromIncome;
+
+export interface AereoTtBracketResult {
+  amount: number;
+  bracketIndex: number;
+}
+
+/**
+ * Bracket TT Aéreo: solo peso real total (kg), suma de piezas.
+ */
+export function findAereoTtBracket(
+  realWeightKg: number,
+  aereo: IAereoCotizadorConfig = DEFAULT_AEREO_COTIZADOR,
+): AereoTtBracketResult | null {
+  const { brackets, maxKg } = aereo;
+  if (realWeightKg <= 0 || realWeightKg > maxKg) return null;
+  const idx = brackets.findIndex((b) => realWeightKg <= b.maxKg);
+  if (idx < 0) return null;
+  return {
+    amount: brackets[idx].amount,
+    bracketIndex: idx,
+  };
+}
+
+/** Destinos con última milla aérea (Santiago de Chile) */
+export const AIR_ULTIMA_MILLA_DESTINATION_NORMALIZED = new Set([
+  "santiago de chile",
+  "santiago_de_chile",
+]);
+
+export function isAirUltimaMillaEligibleDestination(
+  destinationNormalized?: string | null,
+  destinationLabel?: string | null,
+): boolean {
+  const norm = (destinationNormalized ?? "").trim().toLowerCase();
+  if (AIR_ULTIMA_MILLA_DESTINATION_NORMALIZED.has(norm)) return true;
+  const label = (destinationLabel ?? "").toLowerCase();
+  return label.includes("santiago") && label.includes("chile");
 }

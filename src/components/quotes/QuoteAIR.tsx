@@ -60,8 +60,24 @@ import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import type { CrearOperacionPayload } from "../../services/operaciones";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
+import CotizadorAddressMapDual from "../Map/CotizadorAddressMapDual";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
-import { getAirportByOrigin } from "../../config/airportCoordinates";
+import {
+  airportCoordinates,
+  getAirportByOrigin,
+} from "../../config/airportCoordinates";
+import {
+  applyVespucioTransportSurcharge,
+  type VespucioDeliveryZone,
+} from "../../config/vespucioRing";
+import {
+  useGestionCotizador,
+  findAereoTtBracket,
+  aereoTtExpenseFromIncome,
+  getVespucioExtendedMultiplier,
+  isAirUltimaMillaEligibleDestination,
+} from "../../hooks/useGestionCotizador";
+import type { AereoTtBracketResult } from "../../types/gestionCotizador";
 import {
   COUNTRY_AIRPORT_CONFIGS,
   fetchCountryAirports,
@@ -199,6 +215,15 @@ function QuoteAPITester({
   const { registrarEvento } = useAuditLog();
   const { trackStart, trackStep, trackRouteSelected, trackComplete } =
     useQuoteTracking("AIR");
+  const { config: gestionCotizadorConfig } = useGestionCotizador();
+  const aereoTtConfig = gestionCotizadorConfig.aereo;
+  const vespucioExtendedMultiplierAir = useMemo(
+    () =>
+      getVespucioExtendedMultiplier(
+        aereoTtConfig.vespucioExtendedSurchargePct,
+      ),
+    [aereoTtConfig.vespucioExtendedSurchargePct],
+  );
 
   const [loading, setLoading] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -410,6 +435,18 @@ function QuoteAPITester({
   // Estado para Live Tracking (servicio gratuito)
   const [liveTrackingActivo, setLiveTrackingActivo] = useState(false);
 
+  // Última Milla — TT (solo destino Santiago de Chile)
+  const [ultimaMillaActivo, setUltimaMillaActivo] = useState(false);
+  const [ultimaMillaDireccion, setUltimaMillaDireccion] = useState("");
+  const [ultimaMillaVespucioZone, setUltimaMillaVespucioZone] =
+    useState<VespucioDeliveryZone | null>(null);
+  const [ultimaMillaBracket, setUltimaMillaBracket] =
+    useState<AereoTtBracketResult | null>(null);
+  const [showUltimaMillaModal, setShowUltimaMillaModal] = useState(false);
+  const [tempUltimaMillaDireccion, setTempUltimaMillaDireccion] = useState("");
+  const [tempUltimaMillaZone, setTempUltimaMillaZone] =
+    useState<VespucioDeliveryZone | null>(null);
+
   // Estado para Agencia de Aduanas y Nacionalización
   const [aduanaActivo, setAduanaActivo] = useState(false);
   const [valorProductoAduana, setValorProductoAduana] = useState<string>("");
@@ -434,6 +471,12 @@ function QuoteAPITester({
   const manualWeight = overallTotals.totalWeight;
   const manualVolume = overallTotals.totalVolume;
   const pesoVolumetricoOverall = overallTotals.totalVolumetricWeight;
+
+  /** Peso real total (suma de piezas) — base para bracket TT última milla */
+  const totalRealWeightKg = useMemo(() => {
+    if (overallDimsAndWeight) return overallTotals.totalWeight;
+    return piecesData.reduce((sum, piece) => sum + (piece.weight || 0), 0);
+  }, [overallDimsAndWeight, overallTotals.totalWeight, piecesData]);
   const hasCargoStep2Data = overallDimsAndWeight
     ? overallPiecesData.some((piece) => piece.weight > 0 || piece.volume > 0)
     : piecesData.some((piece) => piece.weight > 0);
@@ -896,6 +939,9 @@ function QuoteAPITester({
     valorMercaderia,
     gastolocal,
     liveTrackingActivo,
+    ultimaMillaActivo,
+    ultimaMillaDireccion,
+    ultimaMillaVespucioZone,
     aduanaActivo,
     valorProductoAduana,
     clienteSeleccionado,
@@ -1794,6 +1840,63 @@ function QuoteAPITester({
     return exwRate * 0.6;
   };
 
+  const ultimaMillaDisponibleDestino = isAirUltimaMillaEligibleDestination(
+    rutaSeleccionada?.destinationNormalized ??
+      destinationSeleccionado?.value,
+    rutaSeleccionada?.destination ?? destinationSeleccionado?.label,
+  );
+
+  const ultimaMillaCargaEnRango =
+    totalRealWeightKg > 0 &&
+    findAereoTtBracket(totalRealWeightKg, aereoTtConfig) !== null;
+
+  const ultimaMillaPickupCoords = useMemo(() => {
+    const scl = airportCoordinates.santiago_de_chile;
+    return scl ? { lat: scl.lat, lng: scl.lng } : null;
+  }, []);
+
+  const ultimaMillaAplicaCobro =
+    ultimaMillaActivo &&
+    ultimaMillaDisponibleDestino &&
+    ultimaMillaDireccion.trim().length > 0 &&
+    ultimaMillaVespucioZone !== null &&
+    ultimaMillaVespucioZone !== "outside" &&
+    ultimaMillaBracket !== null;
+
+  const calculateUltimaMilla = (): number => {
+    if (!ultimaMillaAplicaCobro || !ultimaMillaBracket) return 0;
+    return applyVespucioTransportSurcharge(
+      ultimaMillaBracket.amount,
+      ultimaMillaVespucioZone,
+      vespucioExtendedMultiplierAir,
+    );
+  };
+
+  const resetUltimaMilla = () => {
+    setUltimaMillaActivo(false);
+    setUltimaMillaDireccion("");
+    setUltimaMillaVespucioZone(null);
+    setUltimaMillaBracket(null);
+    setTempUltimaMillaDireccion("");
+    setTempUltimaMillaZone(null);
+  };
+
+  useEffect(() => {
+    if (!ultimaMillaDisponibleDestino) {
+      resetUltimaMilla();
+    }
+  }, [ultimaMillaDisponibleDestino]);
+
+  useEffect(() => {
+    if (!ultimaMillaActivo) return;
+    const bracket = findAereoTtBracket(totalRealWeightKg, aereoTtConfig);
+    if (!bracket) {
+      resetUltimaMilla();
+    } else {
+      setUltimaMillaBracket(bracket);
+    }
+  }, [ultimaMillaActivo, totalRealWeightKg, aereoTtConfig]);
+
   // Función para calcular FCA Local Charges (solo si incoterm es FCA y la ruta tiene localCharges > 0)
   const calculateFCALocalCharges = (): number => {
     if (incoterm !== "FCA" || !rutaSeleccionada) return 0;
@@ -2221,6 +2324,18 @@ function QuoteAPITester({
         });
       }
 
+      if (ultimaMillaAplicaCobro) {
+        const umAmount = calculateUltimaMilla();
+        pdfCharges.push({
+          code: "TT",
+          description: "TRANSPORTE TERRESTRE",
+          quantity: 1,
+          unit: "Shipment",
+          rate: umAmount,
+          amount: umAmount,
+        });
+      }
+
       // No Apilable (solo si incoterm es EXW y hay piezas no apilables)
       if (noApilableActivo && incoterm === "EXW") {
         const noApilableAmount = calculateNoApilable();
@@ -2473,7 +2588,14 @@ function QuoteAPITester({
               incoterm === "EXW" ? pickupFromAddress : undefined
             }
             deliveryToAddress={
-              incoterm === "EXW" ? deliveryToAddressDerived : undefined
+              ultimaMillaAplicaCobro
+                ? undefined
+                : incoterm === "EXW"
+                  ? deliveryToAddressDerived
+                  : undefined
+            }
+            ultimaMillaDeliveryAddress={
+              ultimaMillaAplicaCobro ? ultimaMillaDireccion : undefined
             }
             salesRep={salesRepName}
             pieces={
@@ -2626,7 +2748,12 @@ function QuoteAPITester({
           body: JSON.stringify({
             ejecutivoEmail: ejecutivo?.email,
             ejecutivoNombre: ejecutivo?.nombre,
-            clienteNombre: user?.nombreuser,
+            clienteUsername: isEjecutivoMode
+              ? clienteSeleccionado?.username
+              : user?.username,
+            clienteNombre: isEjecutivoMode
+              ? clienteSeleccionado?.username
+              : user?.nombreuser,
             tipoServicio: "Aéreo",
             origen: rutaSeleccionada.origin,
             destino: rutaSeleccionada.destination,
@@ -2638,6 +2765,15 @@ function QuoteAPITester({
               incoterm === "EXW" ? pickupFromAddress : undefined,
             deliveryToAddress:
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
+            ...(ultimaMillaAplicaCobro
+              ? {
+                  ultimaMilla: true,
+                  ultimaMillaDireccion: ultimaMillaDireccion,
+                  ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
+                  ultimaMillaZonaExtendida:
+                    ultimaMillaVespucioZone === "extended",
+                }
+              : {}),
             precio: sinTarifa ? 0 : airFreightQuoteValues.incomeAmount,
             currency: rutaSeleccionada.currency,
             total: total,
@@ -3047,6 +3183,69 @@ function QuoteAPITester({
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
             },
+          },
+        });
+      }
+
+      // Cobro de Última Milla — Transporte Terrestre (solo destino Santiago de Chile)
+      if (ultimaMillaAplicaCobro && ultimaMillaBracket) {
+        const incomeAmount = calculateUltimaMilla();
+        const expenseAmount = aereoTtExpenseFromIncome(incomeAmount);
+        const divisa = (rutaSeleccionada.currency || "USD") as
+          | "USD"
+          | "EUR"
+          | "GBP"
+          | "CAD"
+          | "CHF"
+          | "CLP"
+          | "SEK";
+        const bracketCfg =
+          aereoTtConfig.brackets[ultimaMillaBracket.bracketIndex];
+        const zoneNote =
+          ultimaMillaVespucioZone === "extended"
+            ? ` (+${aereoTtConfig.vespucioExtendedSurchargePct}% zona extendida)`
+            : "";
+        charges.push({
+          service: {
+            id: 134796,
+            code: "TT",
+            description: "TRANSPORTE TERRESTRE",
+          },
+          income: {
+            quantity: 1,
+            unit: "SHIPMENT",
+            rate: incomeAmount,
+            amount: incomeAmount,
+            showamount: incomeAmount,
+            payment: "Collect",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: divisa,
+            },
+            reference: "AIR-ULTIMA-MILLA",
+            showOnDocument: true,
+            notes: `Transporte Terrestre${zoneNote} - tramo ≤${bracketCfg?.maxKg ?? "?"} kg (peso real ${totalRealWeightKg.toFixed(2)} kg). Entrega: ${ultimaMillaDireccion}`,
+          },
+          expense: {
+            quantity: 1,
+            unit: "SHIPMENT",
+            rate: expenseAmount,
+            amount: expenseAmount,
+            showamount: expenseAmount,
+            payment: "Collect",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: divisa,
+            },
+            reference: "AIR-ULTIMA-MILLA-EXP",
+            showOnDocument: true,
+            notes: "Transporte Terrestre expense - income / 1.10",
           },
         });
       }
@@ -3600,6 +3799,69 @@ function QuoteAPITester({
             currency: {
               abbr: (rutaSeleccionada.currency || "USD") as any,
             },
+          },
+        });
+      }
+
+      // Cobro de Última Milla — TT (Overall mode)
+      if (ultimaMillaAplicaCobro && ultimaMillaBracket) {
+        const incomeAmount = calculateUltimaMilla();
+        const expenseAmount = aereoTtExpenseFromIncome(incomeAmount);
+        const divisa = (rutaSeleccionada.currency || "USD") as
+          | "USD"
+          | "EUR"
+          | "GBP"
+          | "CAD"
+          | "CHF"
+          | "CLP"
+          | "SEK";
+        const bracketCfg =
+          aereoTtConfig.brackets[ultimaMillaBracket.bracketIndex];
+        const zoneNote =
+          ultimaMillaVespucioZone === "extended"
+            ? ` (+${aereoTtConfig.vespucioExtendedSurchargePct}% zona extendida)`
+            : "";
+        charges.push({
+          service: {
+            id: 134796,
+            code: "TT",
+            description: "TRANSPORTE TERRESTRE",
+          },
+          income: {
+            quantity: 1,
+            unit: "SHIPMENT",
+            rate: incomeAmount,
+            amount: incomeAmount,
+            showamount: incomeAmount,
+            payment: "Collect",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: divisa,
+            },
+            reference: "AIR-ULTIMA-MILLA-OVERALL",
+            showOnDocument: true,
+            notes: `Transporte Terrestre${zoneNote} - tramo ≤${bracketCfg?.maxKg ?? "?"} kg (peso real ${totalRealWeightKg.toFixed(2)} kg). Entrega: ${ultimaMillaDireccion}`,
+          },
+          expense: {
+            quantity: 1,
+            unit: "SHIPMENT",
+            rate: expenseAmount,
+            amount: expenseAmount,
+            showamount: expenseAmount,
+            payment: "Collect",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: divisa,
+            },
+            reference: "AIR-ULTIMA-MILLA-OVERALL-EXP",
+            showOnDocument: true,
+            notes: "Transporte Terrestre expense - income / 1.10",
           },
         });
       }
@@ -5313,6 +5575,68 @@ function QuoteAPITester({
                 </div>
               </div>
 
+              {/* Card: Última Milla (solo destino Santiago de Chile) */}
+              {ultimaMillaDisponibleDestino && (
+                <div
+                  className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
+                >
+                  <div className="qa-addon-card__image">
+                    <img
+                      src={imgUrl("addcargos/ultima-milla.png")}
+                      alt="Última Milla"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display =
+                          "none";
+                      }}
+                    />
+                  </div>
+                  <div className="qa-addon-card__body">
+                    <h4>Agregar Última Milla</h4>
+                    <p>
+                      Transporte terrestre desde el aeropuerto de Santiago hasta
+                      su bodega. Tarifa según peso real total (kg) de las piezas.
+                    </p>
+                    {!ultimaMillaCargaEnRango && (
+                      <p className="text-danger small mb-0 mt-2">
+                        Ingrese el peso real de las piezas (máx.{" "}
+                        {aereoTtConfig.maxKg} kg) para cotizar última milla.
+                      </p>
+                    )}
+                    {ultimaMillaActivo && ultimaMillaDireccion && (
+                      <span
+                        className="qa-badge qa-badge-primary mt-2"
+                        style={{ display: "inline-block" }}
+                      >
+                        Entrega: {ultimaMillaDireccion}
+                      </span>
+                    )}
+                  </div>
+                  <div className="qa-addon-card__action">
+                    {!ultimaMillaActivo ? (
+                      <button
+                        className="qa-addon-btn-add"
+                        disabled={!ultimaMillaCargaEnRango}
+                        onClick={() => {
+                          setTempUltimaMillaDireccion("");
+                          setTempUltimaMillaZone(null);
+                          setShowUltimaMillaModal(true);
+                        }}
+                      >
+                        <i className="bi bi-plus-lg"></i>Agregar
+                      </button>
+                    ) : (
+                      <button
+                        className="qa-addon-btn-remove"
+                        onClick={resetUltimaMilla}
+                      >
+                        <i className="bi bi-x-lg"></i>Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Card: Agencia de Aduanas */}
               {!aduanaConfigLoading && (
                 <div
@@ -5765,6 +6089,109 @@ function QuoteAPITester({
           </div>
         </div>
       )}
+
+      {/* Modal: Última Milla */}
+      <Modal
+        show={showUltimaMillaModal}
+        onHide={() => setShowUltimaMillaModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-truck me-2"
+              style={{ color: "var(--qa-primary)" }}
+            ></i>
+            Agregar Última Milla
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small mb-3">
+            Indique la dirección de entrega final. El transporte terrestre se
+            cotiza desde el aeropuerto de Santiago (
+            {rutaSeleccionada?.destination ?? "Santiago de Chile"}) hasta su
+            bodega.
+          </p>
+          {!ultimaMillaCargaEnRango && (
+            <p className="text-danger small">
+              El peso real del cargamento debe estar entre 1 y {aereoTtConfig.maxKg}{" "}
+              kg para aplicar la tarifa.
+            </p>
+          )}
+          {ultimaMillaPickupCoords ? (
+            <CotizadorAddressMapDual
+              pickupValue={
+                rutaSeleccionada?.destination ?? "Santiago de Chile"
+              }
+              onPickupChange={() => {}}
+              deliveryValue={tempUltimaMillaDireccion}
+              onDeliveryChange={setTempUltimaMillaDireccion}
+              pickupPlaceholder="Aeropuerto Santiago (SCL)"
+              deliveryPlaceholder="Ingrese dirección de entrega"
+              lockedPickupCoords={ultimaMillaPickupCoords}
+              onDeliveryZoneChange={setTempUltimaMillaZone}
+              outsideCoverageMessage="La dirección se encuentra fuera de nuestra zona de cobertura. No es posible agregar el servicio de Última Milla para esta ubicación."
+            />
+          ) : (
+            <p className="text-danger small mb-0">
+              No se pudo cargar la ubicación del aeropuerto de Santiago.
+            </p>
+          )}
+          {tempUltimaMillaZone === "extended" && (
+            <p className="text-muted small mt-3 mb-0">
+              <i className="bi bi-info-circle me-1"></i>
+              La dirección está en zona extendida: se aplicará un recargo del{" "}
+              {aereoTtConfig.vespucioExtendedSurchargePct}% sobre el transporte
+              terrestre.
+            </p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowUltimaMillaModal(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qa-primary)",
+              borderColor: "var(--qa-primary)",
+            }}
+            disabled={
+              !ultimaMillaCargaEnRango ||
+              !tempUltimaMillaDireccion.trim() ||
+              tempUltimaMillaZone === null ||
+              tempUltimaMillaZone === "outside" ||
+              !ultimaMillaPickupCoords
+            }
+            onClick={() => {
+              if (
+                !ultimaMillaCargaEnRango ||
+                !tempUltimaMillaDireccion.trim() ||
+                tempUltimaMillaZone === null ||
+                tempUltimaMillaZone === "outside"
+              ) {
+                return;
+              }
+              const bracket = findAereoTtBracket(
+                totalRealWeightKg,
+                aereoTtConfig,
+              );
+              if (!bracket) return;
+              setUltimaMillaBracket(bracket);
+              setUltimaMillaDireccion(tempUltimaMillaDireccion);
+              setUltimaMillaVespucioZone(tempUltimaMillaZone);
+              setUltimaMillaActivo(true);
+              setShowUltimaMillaModal(false);
+            }}
+          >
+            Confirmar
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Modal: Seguro de Carga */}
       <Modal
