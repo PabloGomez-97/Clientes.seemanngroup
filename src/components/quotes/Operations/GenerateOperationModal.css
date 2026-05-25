@@ -256,6 +256,14 @@
   letter-spacing: 0.04em;
 }
 
+.go-doc__optional {
+  font-size: 10px;
+  font-weight: 600;
+  color: #656d76;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .go-doc__upload {
   margin-top: 8px;
   display: flex;

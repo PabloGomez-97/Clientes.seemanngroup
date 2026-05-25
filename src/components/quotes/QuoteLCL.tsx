@@ -42,7 +42,7 @@ import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
 import { QuoteGeneratingMessage } from "./QuoteGeneratingMessage";
 import "./QuoteAIR.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
-import type { CrearOperacionPayload } from "../../services/operaciones";
+import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
 import {
   type PieceData,
   type OutletContext,
@@ -397,13 +397,11 @@ function QuoteLCL({
   // Indica si la ruta seleccionada NO tiene tarifa en el sheet LCL
   const [sinTarifa, setSinTarifa] = useState(false);
 
-  // Modal para convertir cotización en operación tras descargar PDF
-  const [operationModalCtx, setOperationModalCtx] = useState<{
-    quoteNumber: string;
-    quoteId?: string;
-    validUntil?: string | null;
-    emailContext: CrearOperacionPayload["emailContext"];
-  } | null>(null);
+  const {
+    operationModalCtx,
+    scheduleOperationModal,
+    clearOperationModal,
+  } = useOperationModalAfterPdf();
 
   // ============================================================================
   // PUERTOS POR PAÍS (para EXW desde POL en países con soporte de selección)
@@ -2504,9 +2502,9 @@ function QuoteLCL({
         });
       }
 
-      // -- Auto-abrir modal para convertir cotización en operación --
+      // Abrir modal 5s después de descargar el PDF
       if (!sinTarifa && !isSimulationMode && quoteNumber) {
-        setOperationModalCtx({
+        scheduleOperationModal({
           quoteNumber,
           quoteId: (apiResponse || response)?.quote?.id,
           validUntil: rutaSeleccionada.validUntil ?? null,
@@ -5375,7 +5373,7 @@ function QuoteLCL({
       {operationModalCtx && (
         <GenerateOperationModal
           show={!!operationModalCtx}
-          onClose={() => setOperationModalCtx(null)}
+          onClose={clearOperationModal}
           quoteNumber={operationModalCtx.quoteNumber}
           quoteId={operationModalCtx.quoteId}
           tipoServicio="LCL"

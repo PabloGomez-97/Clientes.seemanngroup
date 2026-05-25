@@ -59,7 +59,7 @@ import { QuoteGeneratingMessage } from "./QuoteGeneratingMessage";
 import "./QuoteAIR.css";
 import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
-import type { CrearOperacionPayload } from "../../services/operaciones";
+import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
 import CotizadorAddressMapDual from "../Map/CotizadorAddressMapDual";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
@@ -231,13 +231,11 @@ function QuoteAPITester({
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Estado para abrir modal de generación de operación tras descargar PDF
-  const [operationModalCtx, setOperationModalCtx] = useState<{
-    quoteNumber: string;
-    quoteId?: string;
-    validUntil?: string | null;
-    emailContext: CrearOperacionPayload["emailContext"];
-  } | null>(null);
+  const {
+    operationModalCtx,
+    scheduleOperationModal,
+    clearOperationModal,
+  } = useOperationModalAfterPdf();
 
   // Button animation phase: idle → loading → check → done
   type BtnPhase = "idle" | "loading" | "check" | "done";
@@ -2789,9 +2787,9 @@ function QuoteAPITester({
         });
       }
 
-      // Auto-abrir modal para convertir cotización en operación
+      // Abrir modal 5s después de descargar el PDF
       if (!sinTarifa && !isSimulationMode && quoteNumber) {
-        setOperationModalCtx({
+        scheduleOperationModal({
           quoteNumber,
           quoteId: (apiResponse || response)?.quote?.id,
           validUntil: rutaSeleccionada.validUntil ?? null,
@@ -6441,7 +6439,7 @@ function QuoteAPITester({
       {operationModalCtx && (
         <GenerateOperationModal
           show={!!operationModalCtx}
-          onClose={() => setOperationModalCtx(null)}
+          onClose={clearOperationModal}
           quoteNumber={operationModalCtx.quoteNumber}
           quoteId={operationModalCtx.quoteId}
           tipoServicio="AIR"

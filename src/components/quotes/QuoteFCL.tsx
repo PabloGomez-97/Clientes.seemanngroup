@@ -54,7 +54,7 @@ import "./QuoteAIR.css";
 import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
-import type { CrearOperacionPayload } from "../../services/operaciones";
+import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   fetchExpandedRoutes,
@@ -192,13 +192,11 @@ function QuoteFCL({
   const [incoterm, setIncoterm] = useState<"EXW" | "FOB" | "">("");
   const [pickupFromAddress, setPickupFromAddress] = useState("");
 
-  // Modal para convertir cotización en operación tras descargar PDF
-  const [operationModalCtx, setOperationModalCtx] = useState<{
-    quoteNumber: string;
-    quoteId?: string;
-    validUntil?: string | null;
-    emailContext: CrearOperacionPayload["emailContext"];
-  } | null>(null);
+  const {
+    operationModalCtx,
+    scheduleOperationModal,
+    clearOperationModal,
+  } = useOperationModalAfterPdf();
 
   const [opcionesPOL, setOpcionesPOL] = useState<SelectOption[]>([]);
   const [opcionesPOD, setOpcionesPOD] = useState<SelectOption[]>([]);
@@ -1970,9 +1968,9 @@ function QuoteFCL({
         });
       }
 
-      // ── Auto-abrir modal para convertir cotización en operación ──
+      // Abrir modal 5s después de descargar el PDF
       if (!sinTarifa && !isSimulationMode && quoteNumber) {
-        setOperationModalCtx({
+        scheduleOperationModal({
           quoteNumber,
           quoteId: (apiResponse || response)?.quote?.id,
           validUntil: rutaSeleccionada.validUntil ?? null,
@@ -4533,7 +4531,7 @@ function QuoteFCL({
       {operationModalCtx && (
         <GenerateOperationModal
           show={!!operationModalCtx}
-          onClose={() => setOperationModalCtx(null)}
+          onClose={clearOperationModal}
           quoteNumber={operationModalCtx.quoteNumber}
           quoteId={operationModalCtx.quoteId}
           tipoServicio="FCL"

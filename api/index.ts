@@ -5572,16 +5572,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (!EMAIL_REGEX.test(String(proveedor.email))) {
           return res.status(400).json({ error: 'Email del proveedor inválido' });
         }
-        if (!Array.isArray(documentos) || documentos.length === 0) {
-          return res.status(400).json({ error: 'Documentos requeridos' });
-        }
-
-        const REQUIRED_TIPOS = ['Orden de compra', 'Invoice', 'Packing List'];
-        const tiposPresentes = new Set(documentos.map((d: any) => d?.tipo));
-        for (const t of REQUIRED_TIPOS) {
-          if (!tiposPresentes.has(t)) {
-            return res.status(400).json({ error: `Falta documento obligatorio: ${t}` });
-          }
+        if (!Array.isArray(documentos)) {
+          return res.status(400).json({ error: 'documentos debe ser un arreglo' });
         }
 
         // Resolver owner (igual que en /api/documentos/upload)

@@ -11,7 +11,7 @@ import "./GenerateOperationModal.css";
 
 type DocTipo = "Orden de compra" | "Invoice" | "Packing List";
 
-const REQUIRED_DOCS: DocTipo[] = ["Orden de compra", "Invoice", "Packing List"];
+const DOC_TIPOS: DocTipo[] = ["Orden de compra", "Invoice", "Packing List"];
 
 const ALLOWED_EXT = ".pdf,.xls,.xlsx,.doc,.docx";
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -211,12 +211,7 @@ export default function GenerateOperationModal({
     return errs;
   }, [form]);
 
-  const missingDocs = REQUIRED_DOCS.filter((t) => !files[t]);
-
-  const canSubmit =
-    Object.keys(formErrors).length === 0 &&
-    missingDocs.length === 0 &&
-    !submitting;
+  const canSubmit = Object.keys(formErrors).length === 0 && !submitting;
 
   const handleSubmit = async () => {
     setTouched(true);
@@ -225,16 +220,15 @@ export default function GenerateOperationModal({
       return;
     }
     if (!canSubmit) {
-      setError(
-        "Completa todos los campos y adjunta los 3 documentos requeridos.",
-      );
+      setError("Completa todos los campos del proveedor.");
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
+      const tiposConArchivo = DOC_TIPOS.filter((tipo) => files[tipo]);
       const documentos = await Promise.all(
-        REQUIRED_DOCS.map(async (tipo) => {
+        tiposConArchivo.map(async (tipo) => {
           const file = files[tipo]!;
           const contenidoBase64 = await fileToBase64(file);
           return { tipo, nombreArchivo: file.name, contenidoBase64 };
@@ -299,8 +293,8 @@ export default function GenerateOperationModal({
               <p>
                 Generar una operación significa que aceptas avanzar con esta
                 tarifa y compartirás los datos del proveedor junto con los
-                documentos de referencia (orden de compra, invoice y packing
-                list).
+                documentos de referencia si los tienes disponibles (orden de
+                compra, invoice y packing list).
               </p>
               <p>
                 Si no estás listo, puedes cerrar este diálogo y la cotización
@@ -469,17 +463,17 @@ export default function GenerateOperationModal({
 
               <div className="go-section__title">Documentos de referencia</div>
               <p className="go-form__hint" style={{ marginBottom: 12 }}>
-                Adjunta un archivo por cada tipo. Formatos aceptados: PDF, Excel
-                y Word. Máximo 5MB por archivo.
+                Puedes adjuntar uno, varios o ninguno. Formatos aceptados: PDF,
+                Excel y Word. Máximo 5MB por archivo.
               </p>
 
-              {REQUIRED_DOCS.map((tipo) => {
+              {DOC_TIPOS.map((tipo) => {
                 const file = files[tipo];
                 return (
                   <div className="go-doc" key={tipo}>
                     <div className="go-doc__head">
                       <div className="go-doc__name">{tipo}</div>
-                      <div className="go-doc__required">Obligatorio</div>
+                      <div className="go-doc__optional">Opcional</div>
                     </div>
                     <div className="go-doc__upload">
                       <label className="go-doc__file-label">
@@ -559,8 +553,8 @@ export default function GenerateOperationModal({
                 asignado.
               </div>
               <p>
-                Los documentos quedaron asociados a la cotización y disponibles
-                en la sección Documentos del portal.
+                Si adjuntaste documentos, quedaron asociados a la cotización y
+                disponibles en la sección Documentos del portal.
               </p>
             </div>
             <div className="go-modal__footer">

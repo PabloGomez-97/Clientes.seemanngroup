@@ -25,6 +25,7 @@ export interface CrearOperacionPayload {
   quoteId?: string | null;
   tipoServicio: 'AIR' | 'FCL' | 'LCL';
   proveedor: Proveedor;
+  /** Opcional: puede enviarse vacío o con uno o más documentos */
   documentos: DocumentoOperacionPayload[];
   emailContext?: {
     origen?: string;
