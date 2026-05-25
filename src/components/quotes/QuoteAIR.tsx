@@ -55,6 +55,7 @@ import {
   type ExpandedRoutesAirData,
 } from "./Handlers/Air/ExpandedRoutesAir";
 import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
+import { QuoteGeneratingMessage } from "./QuoteGeneratingMessage";
 import "./QuoteAIR.css";
 import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
@@ -5856,7 +5857,8 @@ function QuoteAPITester({
               </div>
             )}
 
-            <div className="d-flex justify-content-end mt-4">
+            <div className="quote-submit-row mt-4">
+              <QuoteGeneratingMessage btnPhase={btnPhase} />
               {btnPhase !== "done" ? (
                 <button
                   type="button"

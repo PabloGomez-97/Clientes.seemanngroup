@@ -45,6 +45,7 @@ import { imgUrl } from "../../config/images";
 import { getLastMileCoords } from "../../config/lastmilleCoordinates";
 import "flag-icons/css/flag-icons.min.css";
 import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
+import { QuoteGeneratingMessage } from "./QuoteGeneratingMessage";
 import "./QuoteLASTMILE.css";
 
 interface OutletContext {
@@ -3158,7 +3159,8 @@ function QuoteLASTMILE({
               </div>
             )}
 
-            <div className="d-flex justify-content-end mt-4">
+            <div className="quote-submit-row mt-4">
+              <QuoteGeneratingMessage btnPhase={btnPhase} />
               {btnPhase !== "done" ? (
                 <button
                   className={`qa-btn qa-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
