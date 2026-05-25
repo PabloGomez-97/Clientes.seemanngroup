@@ -1027,6 +1027,14 @@
     "totalAduana": "Total Agencia de Aduana",
     "notaSeguroTeorico": "El seguro se calcula de forma teórica: ((Valor Producto + Costo Transporte) × 1.1) × 2%. Active el seguro para usar el valor real."
   },
+  "AgenciaAduanaFcl": {
+    "desgloseCobros": "Desglose de Cobros - Agencia de Aduanas (FCL)",
+    "customsClearance": "Customs Clearance",
+    "gateIn": "Gate In",
+    "docProcess": "Doc Process",
+    "contenedores": "cont.",
+    "ingreseValorProducto": "Ingrese el valor del producto para ver el desglose."
+  },
   "QuoteINT": {
     "titulo": "Agencia de Aduanas e Internacionalización",
     "subtitulo": "Genera una cotización de internacionalización ingresando los valores de tu operación.",

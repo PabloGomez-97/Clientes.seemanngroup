@@ -1652,6 +1652,24 @@ const AgenciaAduanaConfig = (
 ) as AgenciaAduanaConfigModel;
 
 // ============================================================
+// MODELO AGENCIA DE ADUANAS FCL - CONFIG (Singleton, colección separada)
+// ============================================================
+import {
+  AgenciaAduanaFclConfigSchema,
+  DEFAULT_FCL_CONFIG,
+  type IAgenciaAduanaFclConfigDoc,
+  type AgenciaAduanaFclConfigModel,
+} from './models/AgenciaAduanaFclConfig.js';
+
+const AgenciaAduanaFclConfig = (
+  mongoose.models.AgenciaAduanaFclConfig ||
+  mongoose.model<IAgenciaAduanaFclConfigDoc>(
+    'AgenciaAduanaFclConfig',
+    AgenciaAduanaFclConfigSchema,
+  )
+) as AgenciaAduanaFclConfigModel;
+
+// ============================================================
 // MODELO GESTIÓN COTIZADOR - CONFIG (Singleton, colección gestioncotizador)
 // ============================================================
 import {
@@ -6653,6 +6671,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       } catch (e) {
         console.error('[agencia-aduana] Error PUT config:', e);
         return res.status(500).json({ error: 'Error al actualizar configuración' });
+      }
+    }
+
+    // GET /api/agencia-aduana-fcl/config
+    if (path === '/api/agencia-aduana-fcl/config' && method === 'GET') {
+      try {
+        let config = await AgenciaAduanaFclConfig.findOne();
+        if (!config) {
+          config = await AgenciaAduanaFclConfig.create(DEFAULT_FCL_CONFIG);
+        }
+        return res.json(config);
+      } catch (e) {
+        console.error('[agencia-aduana-fcl] Error GET config:', e);
+        return res.status(500).json({ error: 'Error al obtener configuración FCL' });
+      }
+    }
+
+    // PUT /api/agencia-aduana-fcl/config (solo admin)
+    if (path === '/api/agencia-aduana-fcl/config' && method === 'PUT') {
+      try {
+        const currentUser = requireAuth(req);
+        const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub });
+        if (!ejecutivoDoc?.roles?.administrador) {
+          return res.status(403).json({ error: 'Solo administradores pueden modificar la configuración' });
+        }
+
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        const { charges } = body;
+        if (!charges) {
+          return res.status(400).json({ error: 'Debe enviar charges' });
+        }
+
+        const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
+        for (const [key, val] of Object.entries(charges)) {
+          if (typeof val !== 'number' || val < 0) {
+            return res.status(400).json({ error: `Valor de cobro FCL inválido: ${key}` });
+          }
+          updateData[`charges.${key}`] = val;
+        }
+
+        const config = await AgenciaAduanaFclConfig.findOneAndUpdate(
+          {},
+          { $set: updateData },
+          { new: true, upsert: true },
+        );
+
+        return res.json(config);
+      } catch (e) {
+        console.error('[agencia-aduana-fcl] Error PUT config:', e);
+        return res.status(500).json({ error: 'Error al actualizar configuración FCL' });
       }
     }
 

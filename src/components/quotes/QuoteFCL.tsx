@@ -80,6 +80,11 @@ import {
   parseValidUntilToISO,
   formatValidUntilDisplay,
 } from "./Handlers/handlerFechas";
+import { AduanaSectionFcl } from "./Handlers/FCL/AduanaSectionFcl";
+import {
+  useAgenciaAduanasFcl,
+  calculateAduanaChargesFcl,
+} from "../../hooks/useAgenciaAduanasFcl";
 
 const INITIAL_VISIBLE_ROUTES = 5;
 
@@ -206,6 +211,14 @@ function QuoteFCL({
   // Estado para el seguro opcional
   const [seguroActivo, setSeguroActivo] = useState(false);
   const [valorMercaderia, setValorMercaderia] = useState<string>("");
+
+  // Agencia de Aduanas y Nacionalización
+  const [aduanaActivo, setAduanaActivo] = useState(false);
+  const [valorProductoAduana, setValorProductoAduana] = useState<string>("");
+  const [aduanaMaster, setAduanaMaster] = useState<boolean | null>(null);
+  const { config: aduanaFclConfig, loading: aduanaFclConfigLoading } =
+    useAgenciaAduanasFcl();
+
   // Estado para Gastos Locales (THC + Apertura)
   const [gastolocal, setGastolocal] = useState(false);
 
@@ -237,6 +250,10 @@ function QuoteFCL({
   // Modal Seguro
   const [showSeguroModal, setShowSeguroModal] = useState(false);
   const [tempValorSeguro, setTempValorSeguro] = useState("");
+
+  // Modal Agencia de Aduanas
+  const [showAduanaModal, setShowAduanaModal] = useState(false);
+  const [tempValorAduana, setTempValorAduana] = useState("");
 
   // Modal: imagen del contenedor
   const [showContainerModal, setShowContainerModal] = useState(false);
@@ -919,6 +936,8 @@ function QuoteFCL({
     nearbyPortSelected,
     seguroActivo,
     valorMercaderia,
+    aduanaActivo,
+    valorProductoAduana,
     gastolocal,
     liveTrackingActivo,
     ultimaMillaActivo,
@@ -1172,6 +1191,82 @@ function QuoteFCL({
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
   };
 
+  const handleToggleSeguro = (checked: boolean) => {
+    setSeguroActivo(checked);
+    if (checked) {
+      if (aduanaActivo) {
+        setValorMercaderia(valorProductoAduana);
+        setAduanaMaster(true);
+      } else {
+        setAduanaMaster(null);
+      }
+    } else if (aduanaActivo) {
+      setAduanaMaster(null);
+    } else {
+      setAduanaMaster(null);
+    }
+  };
+
+  const handleToggleAduana = (checked: boolean) => {
+    setAduanaActivo(checked);
+    if (checked) {
+      if (seguroActivo) {
+        setValorProductoAduana(valorMercaderia);
+        setAduanaMaster(false);
+      } else {
+        setAduanaMaster(null);
+      }
+    } else {
+      setAduanaActivo(false);
+      setAduanaMaster(null);
+    }
+  };
+
+  const calculateCostoTransporteBase = (): number => {
+    if (!rutaSeleccionada || !containerSeleccionado) return 0;
+    if (isSimulationMode && !hasSimulationContainerRate) return 0;
+    return (
+      60 + // BL
+      45 + // Handling
+      (incoterm === "EXW"
+        ? calculateEXWRate(containerSeleccionado.type, cantidadContenedores)
+        : 0) +
+      oceanFreightBaseForOptionals
+    );
+  };
+
+  const calculateAduana = (): number => {
+    if (
+      !aduanaActivo ||
+      !rutaSeleccionada ||
+      !containerSeleccionado ||
+      (isSimulationMode && !hasSimulationContainerRate)
+    ) {
+      return 0;
+    }
+    const valorProd = parseFloat(valorProductoAduana.replace(",", ".")) || 0;
+    if (valorProd === 0) return 0;
+
+    const costoTransporte = calculateCostoTransporteBase();
+
+    let seguroParaCIF: number;
+    if (seguroActivo) {
+      seguroParaCIF = calculateSeguro();
+    } else {
+      seguroParaCIF = (valorProd + costoTransporte) * 1.1 * 0.02;
+    }
+
+    const result = calculateAduanaChargesFcl(
+      valorProd,
+      costoTransporte,
+      seguroParaCIF,
+      cantidadContenedores,
+      aduanaFclConfig,
+    );
+
+    return result.total;
+  };
+
   const ultimaMillaDisponible = isUltimaMillaEligiblePOD(
     rutaSeleccionada?.podNormalized,
   );
@@ -1391,6 +1486,7 @@ function QuoteFCL({
           : 0) + // EXW
         oceanFreightValues.incomeAmount + // Ocean Freight
         (seguroActivo ? calculateSeguro() : 0) + // Seguro
+        (aduanaActivo ? calculateAduana() : 0) + // Agencia de Aduanas
         thcAmount +
         aperturaAmount + // Gastos Locales
         calculateUltimaMilla(); // Última Milla
@@ -1521,6 +1617,21 @@ function QuoteFCL({
           rate: ttRateEffective,
           amount: ttAmount,
         });
+      }
+
+      // Agencia de Aduanas y Nacionalización
+      if (aduanaActivo) {
+        const aduanaAmount = calculateAduana();
+        if (aduanaAmount > 0) {
+          pdfCharges.push({
+            code: "ADA",
+            description: "AGENCIA DE ADUANA",
+            quantity: 1,
+            unit: "Shipment",
+            rate: aduanaAmount,
+            amount: aduanaAmount,
+          });
+        }
       }
 
       // Calcular total
@@ -2221,6 +2332,44 @@ function QuoteFCL({
           },
         },
       });
+    }
+
+    // Cobro de AGENCIA DE ADUANA (solo si está activo y hay valor producto)
+    if (aduanaActivo) {
+      const aduanaAmount = calculateAduana();
+      if (aduanaAmount > 0) {
+        charges.push({
+          service: {
+            id: 127954,
+            code: "ADA",
+            description: "AGENCIA DE ADUANA",
+          },
+          income: {
+            quantity: 1,
+            unit: "AGENCIA DE ADUANA",
+            rate: aduanaAmount,
+            amount: aduanaAmount,
+            showamount: aduanaAmount,
+            payment: "Collect",
+            billApplyTo: "Other",
+            billTo: {
+              name: effectiveUsername,
+            },
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+            reference: "Amount to Agencia de Aduana",
+            showOnDocument: true,
+            notes:
+              "Agencia de Aduana y Nacionalización FCL - honorarios, customs clearance, gate in, doc process, IVA aduanero y derechos",
+          },
+          expense: {
+            currency: {
+              abbr: (rutaSeleccionada.currency || "USD") as any,
+            },
+          },
+        });
+      }
     }
 
     // Cobro de Última Milla — Transporte Terrestre (solo POD San Antonio / Valparaiso)
@@ -3567,6 +3716,11 @@ function QuoteFCL({
                       >
                         Valor declarado: {rutaSeleccionada.currency}{" "}
                         {valorMercaderia}
+                        {aduanaMaster === true && (
+                          <span className="ms-1">
+                            <i className="bi bi-lock-fill"></i>
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>
@@ -3584,16 +3738,70 @@ function QuoteFCL({
                     ) : (
                       <button
                         className="qf-addon-btn-remove"
-                        onClick={() => {
-                          setSeguroActivo(false);
-                          setValorMercaderia("");
-                        }}
+                        onClick={() => handleToggleSeguro(false)}
                       >
                         <i className="bi bi-x-lg"></i>Remover
                       </button>
                     )}
                   </div>
                 </div>
+
+                {/* Card: Agencia de Aduanas */}
+                {!aduanaFclConfigLoading && (
+                  <div
+                    className={`qf-addon-card${aduanaActivo ? " is-active" : ""}`}
+                  >
+                    <div className="qf-addon-card__image">
+                      <img
+                        src={imgUrl("addcargos/agencia-aduanas.png")}
+                        alt="Agencia de Aduanas"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="qf-addon-card__body">
+                      <h4>{t("AgenciaAduana.toggle")}</h4>
+                      <p>
+                        Servicio integral de despacho aduanero y nacionalización
+                        de tu cargamento en destino. Incluye honorarios, customs
+                        clearance, gate in y tramitación documental.
+                      </p>
+                      {aduanaActivo && valorProductoAduana && (
+                        <span
+                          className="qf-badge qf-badge-primary mt-2"
+                          style={{ display: "inline-block" }}
+                        >
+                          Valor producto: {rutaSeleccionada.currency}{" "}
+                          {valorProductoAduana}
+                          {aduanaMaster === false && (
+                            <span className="ms-1">
+                              <i className="bi bi-lock-fill"></i>
+                            </span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    <div className="qf-addon-card__action">
+                      {!aduanaActivo ? (
+                        <button
+                          className="qf-addon-btn-add"
+                          onClick={() => {
+                            setTempValorAduana("");
+                            setShowAduanaModal(true);
+                          }}
+                        >
+                          <i className="bi bi-plus-lg"></i>Agregar
+                        </button>
+                      ) : (
+                        <button
+                          className="qf-addon-btn-remove"
+                          onClick={() => handleToggleAduana(false)}
+                        >
+                          <i className="bi bi-x-lg"></i>Remover
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Card: Gastos Locales */}
                 <div
@@ -3735,6 +3943,22 @@ function QuoteFCL({
                 )}
               </div>
 
+              {aduanaActivo && !aduanaFclConfigLoading && aduanaFclConfig && (
+                <div className="mt-3 px-1">
+                  <AduanaSectionFcl
+                    activo={aduanaActivo}
+                    valorProducto={valorProductoAduana}
+                    costoTransporte={calculateCostoTransporteBase()}
+                    seguroActivo={seguroActivo}
+                    seguroMonto={seguroActivo ? calculateSeguro() : 0}
+                    currency={rutaSeleccionada.currency}
+                    cantidadContenedores={cantidadContenedores}
+                    config={aduanaFclConfig}
+                    valorProductoDisabled={aduanaMaster === false}
+                  />
+                </div>
+              )}
+
               {/* Botón Continuar */}
               <div className="d-flex justify-content-end mt-4 pt-3 border-top">
                 <button
@@ -3843,7 +4067,11 @@ function QuoteFCL({
                   )}
 
                   {/* Resumen de servicios adicionales activos */}
-                  {(seguroActivo || gastolocal || ultimaMillaActivo) && (
+                  {(seguroActivo ||
+                    aduanaActivo ||
+                    gastolocal ||
+                    liveTrackingActivo ||
+                    ultimaMillaActivo) && (
                     <div className="border-top pt-2 mt-1">
                       <span className="text-muted d-block mb-1">
                         Servicios Adicionales:
@@ -3854,6 +4082,14 @@ function QuoteFCL({
                             <i className="bi bi-shield-check me-1"></i>Seguro
                             {valorMercaderia &&
                               ` — ${rutaSeleccionada.currency} ${valorMercaderia}`}
+                          </span>
+                        )}
+                        {aduanaActivo && (
+                          <span className="qf-badge qf-badge-primary">
+                            <i className="bi bi-building me-1"></i>
+                            {t("AgenciaAduana.toggle")}
+                            {valorProductoAduana &&
+                              ` — ${rutaSeleccionada.currency} ${valorProductoAduana}`}
                           </span>
                         )}
                         {gastolocal && (
@@ -4118,6 +4354,13 @@ function QuoteFCL({
           <p className="text-muted small mb-3">
             Protege tu cargamento. Ingresa el valor declarado de la mercadería
             para calcular el costo del seguro.
+            {aduanaActivo && (
+              <span className="d-block mt-1 text-info">
+                <i className="bi bi-info-circle me-1"></i>
+                El valor se sincronizará con el valor de producto de Agencia de
+                Aduanas.
+              </span>
+            )}
           </p>
           <label htmlFor="seguroModalValorFCL" className="qf-label">
             Valor Mercadería ({rutaSeleccionada?.currency || "USD"}){" "}
@@ -4128,12 +4371,18 @@ function QuoteFCL({
             className="qf-input"
             id="seguroModalValorFCL"
             placeholder="Ej: 10000"
-            value={tempValorSeguro}
+            value={aduanaActivo ? valorProductoAduana : tempValorSeguro}
+            disabled={aduanaActivo}
             autoFocus
             onChange={(e) => {
               const v = e.target.value;
               if (v === "" || /^[\d,\.]+$/.test(v)) setTempValorSeguro(v);
             }}
+            style={
+              aduanaActivo
+                ? { backgroundColor: "#f0f0f0", cursor: "not-allowed" }
+                : undefined
+            }
           />
         </Modal.Body>
         <Modal.Footer>
@@ -4146,11 +4395,87 @@ function QuoteFCL({
               backgroundColor: "var(--qf-primary)",
               borderColor: "var(--qf-primary)",
             }}
-            disabled={!tempValorSeguro}
+            disabled={!aduanaActivo && !tempValorSeguro}
             onClick={() => {
-              setSeguroActivo(true);
-              setValorMercaderia(tempValorSeguro);
+              if (!aduanaActivo) {
+                setValorMercaderia(tempValorSeguro);
+              }
+              handleToggleSeguro(true);
               setShowSeguroModal(false);
+            }}
+          >
+            Confirmar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal: Agencia de Aduanas */}
+      <Modal
+        show={showAduanaModal}
+        onHide={() => setShowAduanaModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-building me-2"
+              style={{ color: "var(--qf-primary)" }}
+            ></i>
+            {t("AgenciaAduana.toggle")}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small mb-3">
+            Servicio de despacho aduanero y nacionalización. Ingresa el valor
+            del producto para calcular los honorarios y gastos asociados.
+            {seguroActivo && (
+              <span className="d-block mt-1 text-info">
+                <i className="bi bi-info-circle me-1"></i>
+                El valor se sincronizará con el valor declarado del seguro.
+              </span>
+            )}
+          </p>
+          <label htmlFor="aduanaModalValorFCL" className="qf-label">
+            {t("AgenciaAduana.valorProducto")} (
+            {rutaSeleccionada?.currency || "USD"}){" "}
+            <span className="text-danger">*</span>
+          </label>
+          <input
+            type="text"
+            className="qf-input"
+            id="aduanaModalValorFCL"
+            placeholder="Ej: 10000 o 10000,50"
+            value={seguroActivo ? valorMercaderia : tempValorAduana}
+            disabled={seguroActivo}
+            autoFocus
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || /^[\d,\.]+$/.test(v)) setTempValorAduana(v);
+            }}
+            style={
+              seguroActivo
+                ? { backgroundColor: "#f0f0f0", cursor: "not-allowed" }
+                : undefined
+            }
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowAduanaModal(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qf-primary)",
+              borderColor: "var(--qf-primary)",
+            }}
+            disabled={!seguroActivo && !tempValorAduana}
+            onClick={() => {
+              if (!seguroActivo) {
+                setValorProductoAduana(tempValorAduana);
+              }
+              handleToggleAduana(true);
+              setShowAduanaModal(false);
             }}
           >
             Confirmar

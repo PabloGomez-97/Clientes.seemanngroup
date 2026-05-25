@@ -613,15 +613,7 @@ export default function QuoteInternacionalizacion() {
                   <div className="d-flex flex-column gap-1">
                     <div className="d-flex justify-content-between">
                       <span className="text-muted">
-                        {t("AgenciaAduana.honorarios")} (
-                        {aduanaConfig.charges.honorariosPct}%
-                        {aduanaResult.honorariosUsedMin && (
-                          <span className="text-warning">
-                            {" "}
-                            → {t("AgenciaAduana.minimo")}
-                          </span>
-                        )}
-                        )
+                        {t("AgenciaAduana.honorarios")}
                       </span>
                       <span>
                         {currency} {fmt(aduanaResult.honorarios)}

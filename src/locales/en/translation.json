@@ -1026,6 +1026,14 @@
     "totalAduana": "Total Customs Agency",
     "notaSeguroTeorico": "Insurance is calculated theoretically: ((Product Value + Transport Cost) × 1.1) × 2%. Enable insurance to use the actual value."
   },
+  "AgenciaAduanaFcl": {
+    "desgloseCobros": "Charges Breakdown - Customs Agency (FCL)",
+    "customsClearance": "Customs Clearance",
+    "gateIn": "Gate In",
+    "docProcess": "Doc Process",
+    "contenedores": "ctr.",
+    "ingreseValorProducto": "Enter the product value to see the breakdown."
+  },
   "QuoteINT": {
     "titulo": "Customs Agency & Internationalization",
     "subtitulo": "Generate an internationalization quotation by entering your operation values.",
