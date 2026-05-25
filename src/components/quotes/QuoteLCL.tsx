@@ -39,7 +39,6 @@ import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
 import "flag-icons/css/flag-icons.min.css";
 import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
-import { QuoteGeneratingMessage } from "./QuoteGeneratingMessage";
 import "./QuoteAIR.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import type { CrearOperacionPayload } from "../../services/operaciones";
@@ -4654,8 +4653,7 @@ function QuoteLCL({
             </div>
 
             {/* Botón Generar Cotización */}
-            <div className="quote-submit-row mt-4">
-              <QuoteGeneratingMessage btnPhase={btnPhase} />
+            <div className="d-flex justify-content-end mt-4">
               {btnPhase !== "done" ? (
                 <button
                   onClick={() => {

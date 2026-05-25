@@ -49,7 +49,6 @@ import {
   type ClienteAsignado,
 } from "./Handlers/FCL/HandlerQuoteFCL";
 import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
-import { QuoteGeneratingMessage } from "./QuoteGeneratingMessage";
 import "./QuoteAIR.css";
 import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
@@ -1334,11 +1333,11 @@ function QuoteFCL({
             incoterm,
             ...(ultimaMillaAplicaCobro
               ? {
-                  ultimaMilla: true,
-                  ultimaMillaDireccion: ultimaMillaDireccion,
-                  ultimaMillaMonto: calculateUltimaMilla(),
-                  ultimaMillaZona: ultimaMillaVespucioZone,
-                }
+                ultimaMilla: true,
+                ultimaMillaDireccion: ultimaMillaDireccion,
+                ultimaMillaMonto: calculateUltimaMilla(),
+                ultimaMillaZona: ultimaMillaVespucioZone,
+              }
               : {}),
           },
           clienteAfectado: clienteSeleccionado?.username || "",
@@ -1838,12 +1837,12 @@ function QuoteFCL({
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
             ...(ultimaMillaAplicaCobro
               ? {
-                  ultimaMilla: true,
-                  ultimaMillaDireccion: ultimaMillaDireccion,
-                  ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
-                  ultimaMillaZonaExtendida:
-                    ultimaMillaVespucioZone === "extended",
-                }
+                ultimaMilla: true,
+                ultimaMillaDireccion: ultimaMillaDireccion,
+                ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
+                ultimaMillaZonaExtendida:
+                  ultimaMillaVespucioZone === "extended",
+              }
               : {}),
             precio: sinTarifa ? 0 : oceanFreightValues.incomeAmount,
             currency: rutaSeleccionada.currency,
@@ -1878,12 +1877,12 @@ function QuoteFCL({
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
             ...(ultimaMillaAplicaCobro
               ? {
-                  ultimaMilla: true,
-                  ultimaMillaDireccion: ultimaMillaDireccion,
-                  ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
-                  ultimaMillaZonaExtendida:
-                    ultimaMillaVespucioZone === "extended",
-                }
+                ultimaMilla: true,
+                ultimaMillaDireccion: ultimaMillaDireccion,
+                ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
+                ultimaMillaZonaExtendida:
+                  ultimaMillaVespucioZone === "extended",
+              }
               : {}),
             currency: rutaSeleccionada.currency,
             total: total,
@@ -3875,8 +3874,7 @@ function QuoteFCL({
               </div>
 
               {/* Botón Generar Cotización */}
-              <div className="quote-submit-row mt-4 pt-3 border-top">
-                <QuoteGeneratingMessage btnPhase={btnPhase} />
+              <div className="d-flex justify-content-end mt-4 pt-3 border-top">
                 {btnPhase !== "done" ? (
                   <button
                     className={`qf-btn qf-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}

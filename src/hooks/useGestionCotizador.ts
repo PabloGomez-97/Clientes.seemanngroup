@@ -3,7 +3,9 @@ import type {
   IGestionCotizadorConfig,
   IFclCotizadorConfig,
   ILclCotizadorConfig,
+  ILclDeliveryBracket,
   IAereoCotizadorConfig,
+  IAereoTtBracket,
 } from "../types/gestionCotizador";
 import { DEFAULT_GESTION_COTIZADOR_CONFIG } from "../types/gestionCotizador";
 import { useAuth } from "../auth/AuthContext";
@@ -12,7 +14,9 @@ export type {
   IGestionCotizadorConfig,
   IFclCotizadorConfig,
   ILclCotizadorConfig,
+  ILclDeliveryBracket,
   IAereoCotizadorConfig,
+  IAereoTtBracket,
 };
 export {
   DEFAULT_GESTION_COTIZADOR_CONFIG,
