@@ -22,6 +22,18 @@ import {
 } from "./Handlers/LCL/OverallPieceAccordionLCL.tsx";
 import { useTranslation } from "react-i18next";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
+import CotizadorAddressMapDual from "../Map/CotizadorAddressMapDual";
+import {
+  applyVespucioTransportSurcharge,
+  type VespucioDeliveryZone,
+} from "../../config/vespucioRing";
+import {
+  useGestionCotizador,
+  findLclDeliveryBracket,
+  lclDeliveryExpenseFromIncome,
+  getVespucioExtendedMultiplier,
+} from "../../hooks/useGestionCotizador";
+import type { LclDeliveryBracketResult } from "../../types/gestionCotizador";
 import { imgUrl } from "../../config/images";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
@@ -63,6 +75,11 @@ import {
 import NearbyPortSelectorLCL from "./NearbySelector/NearbyPortSelectorLCL.tsx";
 import { PortSelectorFCL } from "./Selectroute";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
+
+const LCL_ULTIMA_MILLA_ELIGIBLE_PODS = new Set(["san antonio", "valparaiso"]);
+
+const isUltimaMillaEligiblePOD = (podNormalized?: string | null): boolean =>
+  !!podNormalized && LCL_ULTIMA_MILLA_ELIGIBLE_PODS.has(podNormalized);
 import {
   SIMULATION_MISSING_VALUE,
   getSimulationIncomeRate,
@@ -181,6 +198,15 @@ function QuoteLCL({
   const { registrarEvento } = useAuditLog();
   const { trackStart, trackStep, trackRouteSelected, trackComplete } =
     useQuoteTracking("LCL");
+  const { config: gestionCotizadorConfig } = useGestionCotizador();
+  const lclTtConfig = gestionCotizadorConfig.lcl;
+  const vespucioExtendedMultiplierLcl = useMemo(
+    () =>
+      getVespucioExtendedMultiplier(
+        lclTtConfig.vespucioExtendedSurchargePct,
+      ),
+    [lclTtConfig.vespucioExtendedSurchargePct],
+  );
 
   // -- Estados para selección de cliente (modo ejecutivo) --
   const [clientesAsignados, setClientesAsignados] = useState<ClienteAsignado[]>(
@@ -331,6 +357,18 @@ function QuoteLCL({
 
   // Estado para Live Tracking (servicio gratuito)
   const [liveTrackingActivo, setLiveTrackingActivo] = useState(false);
+
+  // Última Milla — DELV (solo POD San Antonio / Valparaiso)
+  const [ultimaMillaActivo, setUltimaMillaActivo] = useState(false);
+  const [ultimaMillaDireccion, setUltimaMillaDireccion] = useState("");
+  const [ultimaMillaVespucioZone, setUltimaMillaVespucioZone] =
+    useState<VespucioDeliveryZone | null>(null);
+  const [ultimaMillaBracket, setUltimaMillaBracket] =
+    useState<LclDeliveryBracketResult | null>(null);
+  const [showUltimaMillaModal, setShowUltimaMillaModal] = useState(false);
+  const [tempUltimaMillaDireccion, setTempUltimaMillaDireccion] = useState("");
+  const [tempUltimaMillaZone, setTempUltimaMillaZone] =
+    useState<VespucioDeliveryZone | null>(null);
 
   // Estado para notificación de oversize al ejecutivo
   const [loadingOversizeNotify, setLoadingOversizeNotify] = useState(false);
@@ -1127,6 +1165,9 @@ function QuoteLCL({
     valorMercaderia,
     gastolocal,
     liveTrackingActivo,
+    ultimaMillaActivo,
+    ultimaMillaDireccion,
+    ultimaMillaVespucioZone,
     clienteSeleccionado,
   ]);
 
@@ -1533,6 +1574,75 @@ function QuoteLCL({
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
   };
 
+  const ultimaMillaDisponiblePOD = isUltimaMillaEligiblePOD(
+    rutaSeleccionada?.podNormalized ?? podSeleccionado?.value,
+  );
+
+  const ultimaMillaCargaEnRango =
+    findLclDeliveryBracket(totalWeightKg, totalVolume, lclTtConfig) !== null;
+
+  const ultimaMillaPickupCoords = useMemo(() => {
+    const podNorm =
+      rutaSeleccionada?.podNormalized ?? podSeleccionado?.value ?? null;
+    if (!podNorm) return null;
+    const portKey = podNorm.replace(/\s+/g, "_");
+    const port =
+      portCoordinates[portKey as keyof typeof portCoordinates] ?? null;
+    if (!port) return null;
+    return { lat: port.lat, lng: port.lng };
+  }, [rutaSeleccionada?.podNormalized, podSeleccionado?.value]);
+
+  const ultimaMillaAplicaCobro =
+    ultimaMillaActivo &&
+    ultimaMillaDisponiblePOD &&
+    ultimaMillaDireccion.trim().length > 0 &&
+    ultimaMillaVespucioZone !== null &&
+    ultimaMillaVespucioZone !== "outside" &&
+    ultimaMillaBracket !== null;
+
+  const calculateUltimaMilla = (): number => {
+    if (!ultimaMillaAplicaCobro || !ultimaMillaBracket) return 0;
+    return applyVespucioTransportSurcharge(
+      ultimaMillaBracket.amount,
+      ultimaMillaVespucioZone,
+      vespucioExtendedMultiplierLcl,
+    );
+  };
+
+  const resetUltimaMilla = () => {
+    setUltimaMillaActivo(false);
+    setUltimaMillaDireccion("");
+    setUltimaMillaVespucioZone(null);
+    setUltimaMillaBracket(null);
+    setTempUltimaMillaDireccion("");
+    setTempUltimaMillaZone(null);
+  };
+
+  useEffect(() => {
+    if (!ultimaMillaDisponiblePOD) {
+      resetUltimaMilla();
+    }
+  }, [ultimaMillaDisponiblePOD]);
+
+  useEffect(() => {
+    if (!ultimaMillaActivo) return;
+    const bracket = findLclDeliveryBracket(
+      totalWeightKg,
+      totalVolume,
+      lclTtConfig,
+    );
+    if (!bracket) {
+      resetUltimaMilla();
+    } else {
+      setUltimaMillaBracket(bracket);
+    }
+  }, [
+    ultimaMillaActivo,
+    totalWeightKg,
+    totalVolume,
+    lclTtConfig,
+  ]);
+
   // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
@@ -1670,6 +1780,14 @@ function QuoteLCL({
             pod: podSeleccionado?.label || "",
             operador: rutaSeleccionada?.operador || "",
             incoterm,
+            ...(ultimaMillaAplicaCobro
+              ? {
+                  ultimaMilla: true,
+                  ultimaMillaDireccion: ultimaMillaDireccion,
+                  ultimaMillaMonto: calculateUltimaMilla(),
+                  ultimaMillaZona: ultimaMillaVespucioZone,
+                }
+              : {}),
           },
           clienteAfectado: clienteSeleccionado?.username || "",
         });
@@ -1719,7 +1837,8 @@ function QuoteLCL({
         45 + // Handling
         (incoterm === "EXW" ? calculateEXWRate() : 0) + // EXW
         (tarifaOceanFreight?.income ?? 0) + // Ocean Freight
-        (seguroActivo ? calculateSeguro() : 0); // Seguro
+        (seguroActivo ? calculateSeguro() : 0) + // Seguro
+        calculateUltimaMilla(); // Última Milla
       const totalAmount = showPendingQuote
         ? 0
         : subtotalAmount + calculateNoApilable();
@@ -1855,6 +1974,18 @@ function QuoteLCL({
           unit: "Shipment",
           rate: 0,
           amount: 0,
+        });
+      }
+
+      if (ultimaMillaAplicaCobro) {
+        const umAmount = calculateUltimaMilla();
+        pdfCharges.push({
+          code: "DELV",
+          description: "DELIVERY - TRUCKING",
+          quantity: 1,
+          unit: "Shipment",
+          rate: umAmount,
+          amount: umAmount,
         });
       }
 
@@ -2068,9 +2199,14 @@ function QuoteLCL({
               incoterm === "EXW" ? (pickupFromAddress ?? undefined) : undefined
             }
             deliveryToAddress={
-              incoterm === "EXW"
-                ? (deliveryToAddressDerived ?? undefined)
-                : undefined
+              ultimaMillaAplicaCobro
+                ? undefined
+                : incoterm === "EXW"
+                  ? (deliveryToAddressDerived ?? undefined)
+                  : undefined
+            }
+            ultimaMillaDeliveryAddress={
+              ultimaMillaAplicaCobro ? ultimaMillaDireccion : undefined
             }
             salesRep={salesRepName}
             pieces={
@@ -2219,6 +2355,9 @@ function QuoteLCL({
           body: JSON.stringify({
             ejecutivoEmail: ejecutivo?.email,
             ejecutivoNombre: ejecutivo?.nombre,
+            clienteUsername: isEjecutivoMode
+              ? clienteSeleccionado?.username
+              : user?.username,
             clienteNombre: isEjecutivoMode
               ? clienteSeleccionado?.username
               : user?.nombreuser,
@@ -2231,6 +2370,15 @@ function QuoteLCL({
               incoterm === "EXW" ? pickupFromAddress : undefined,
             deliveryToAddress:
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
+            ...(ultimaMillaAplicaCobro
+              ? {
+                  ultimaMilla: true,
+                  ultimaMillaDireccion: ultimaMillaDireccion,
+                  ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
+                  ultimaMillaZonaExtendida:
+                    ultimaMillaVespucioZone === "extended",
+                }
+              : {}),
             precio: sinTarifa ? 0 : (tarifaOceanFreight?.income ?? 0),
             currency: rutaSeleccionada.currency,
             total: showPendingQuote ? "PENDIENTE" : total,
@@ -2260,6 +2408,15 @@ function QuoteLCL({
               incoterm === "EXW" ? pickupFromAddress : undefined,
             deliveryToAddress:
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
+            ...(ultimaMillaAplicaCobro
+              ? {
+                  ultimaMilla: true,
+                  ultimaMillaDireccion: ultimaMillaDireccion,
+                  ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
+                  ultimaMillaZonaExtendida:
+                    ultimaMillaVespucioZone === "extended",
+                }
+              : {}),
             currency: rutaSeleccionada.currency,
             total: total,
             agente: rutaSeleccionada.operador || undefined,
@@ -2596,6 +2753,65 @@ function QuoteLCL({
           currency: {
             abbr: divisa,
           },
+        },
+      });
+    }
+
+    // Cobro de Última Milla — DELIVERY TRUCKING (solo POD San Antonio / Valparaiso)
+    if (ultimaMillaAplicaCobro && ultimaMillaBracket) {
+      const incomeAmount = calculateUltimaMilla();
+      const expenseAmount = lclDeliveryExpenseFromIncome(incomeAmount);
+      const qty = Number(ultimaMillaBracket.quantity.toFixed(3));
+      const incomeRate =
+        qty > 0 ? Number((incomeAmount / qty).toFixed(4)) : incomeAmount;
+      const expenseRate =
+        qty > 0 ? Number((expenseAmount / qty).toFixed(4)) : expenseAmount;
+      const bracketCfg = lclTtConfig.brackets[ultimaMillaBracket.bracketIndex];
+      const zoneNote =
+        ultimaMillaVespucioZone === "extended"
+          ? ` (+${lclTtConfig.vespucioExtendedSurchargePct}% zona extendida)`
+          : "";
+      charges.push({
+        service: {
+          id: 134724,
+          code: "DELV",
+          description: "DELIVERY - TRUCKING",
+        },
+        income: {
+          quantity: qty,
+          unit: ultimaMillaBracket.unit,
+          rate: incomeRate,
+          amount: incomeAmount,
+          showamount: incomeAmount,
+          payment: "Collect",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: divisa,
+          },
+          reference: "LCL-ULTIMA-MILLA",
+          showOnDocument: true,
+          notes: `Delivery Trucking${zoneNote} - tramo ≤${bracketCfg?.maxKg ?? "?"}kg / ≤${bracketCfg?.maxM3 ?? "?"}m³ por ${ultimaMillaBracket.unit === "m3" ? "volumen" : "peso"}. Entrega: ${ultimaMillaDireccion}`,
+        },
+        expense: {
+          quantity: qty,
+          unit: ultimaMillaBracket.unit,
+          rate: expenseRate,
+          amount: expenseAmount,
+          showamount: expenseAmount,
+          payment: "Collect",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: divisa,
+          },
+          reference: "LCL-ULTIMA-MILLA-EXP",
+          showOnDocument: true,
+          notes: "Delivery Trucking expense - income / 1.10",
         },
       });
     }
@@ -4152,6 +4368,71 @@ function QuoteLCL({
                     )}
                   </div>
                 </div>
+
+                {/* Card: Última Milla (solo POD San Antonio / Valparaiso) */}
+                {ultimaMillaDisponiblePOD && (
+                  <div
+                    className={`qa-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
+                  >
+                    <div className="qa-addon-card__image">
+                      <img
+                        src={imgUrl("addcargos/ultima-milla.png")}
+                        alt="Última Milla"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display =
+                            "none";
+                        }}
+                      />
+                    </div>
+                    <div className="qa-addon-card__body">
+                      <h4>Agregar Última Milla</h4>
+                      <p>
+                        Entrega terrestre desde el puerto de destino hasta su
+                        bodega. Tarifa por tramo según peso total (kg) o volumen
+                        (m³), aplicando siempre el rango más alto.
+                      </p>
+                      {!ultimaMillaCargaEnRango && (
+                        <p className="text-danger small mb-0 mt-2">
+                          El cargamento supera el máximo permitido (
+                          {lclTtConfig.maxKg} kg / {lclTtConfig.maxM3} m³).
+                          No es posible cotizar última milla para este volumen o
+                          peso.
+                        </p>
+                      )}
+                      {ultimaMillaActivo && ultimaMillaDireccion && (
+                        <span
+                          className="qa-badge qa-badge-primary mt-2"
+                          style={{ display: "inline-block" }}
+                        >
+                          Entrega: {ultimaMillaDireccion}
+                        </span>
+                      )}
+                    </div>
+                    <div className="qa-addon-card__action">
+                      {!ultimaMillaActivo ? (
+                        <button
+                          className="qa-addon-btn-add"
+                          disabled={!ultimaMillaCargaEnRango}
+                          onClick={() => {
+                            setTempUltimaMillaDireccion("");
+                            setTempUltimaMillaZone(null);
+                            setShowUltimaMillaModal(true);
+                          }}
+                        >
+                          <i className="bi bi-plus-lg"></i>Agregar
+                        </button>
+                      ) : (
+                        <button
+                          className="qa-addon-btn-remove"
+                          onClick={resetUltimaMilla}
+                        >
+                          <i className="bi bi-x-lg"></i>Remover
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Botón Continuar */}
@@ -4170,6 +4451,107 @@ function QuoteLCL({
           </div>
         </>
       )}
+
+      {/* Modal: Última Milla */}
+      <Modal
+        show={showUltimaMillaModal}
+        onHide={() => setShowUltimaMillaModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-truck me-2"
+              style={{ color: "var(--qf-primary)" }}
+            ></i>
+            Agregar Última Milla
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small mb-3">
+            Indique la dirección de entrega final. El transporte terrestre se
+            cotiza desde el puerto de destino (
+            {rutaSeleccionada?.pod ?? "Puerto"}) hasta su bodega.
+          </p>
+          {!ultimaMillaCargaEnRango && (
+            <p className="text-danger small">
+              El peso o volumen del cargamento excede los límites de última milla
+              ({lclTtConfig.maxKg} kg / {lclTtConfig.maxM3} m³).
+            </p>
+          )}
+          {ultimaMillaPickupCoords ? (
+            <CotizadorAddressMapDual
+              pickupValue={rutaSeleccionada?.pod ?? ""}
+              onPickupChange={() => {}}
+              deliveryValue={tempUltimaMillaDireccion}
+              onDeliveryChange={setTempUltimaMillaDireccion}
+              pickupPlaceholder={`Puerto de ${rutaSeleccionada?.pod ?? "destino"}`}
+              deliveryPlaceholder="Ingrese dirección de entrega"
+              lockedPickupCoords={ultimaMillaPickupCoords}
+              onDeliveryZoneChange={setTempUltimaMillaZone}
+              outsideCoverageMessage="La dirección se encuentra fuera de nuestra zona de cobertura. No es posible agregar el servicio de Última Milla para esta ubicación."
+            />
+          ) : (
+            <p className="text-danger small mb-0">
+              No se pudo cargar la ubicación del puerto de destino.
+            </p>
+          )}
+          {tempUltimaMillaZone === "extended" && (
+            <p className="text-muted small mt-3 mb-0">
+              <i className="bi bi-info-circle me-1"></i>
+              La dirección está en zona extendida: se aplicará un recargo del{" "}
+              {lclTtConfig.vespucioExtendedSurchargePct}% sobre el transporte
+              terrestre.
+            </p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowUltimaMillaModal(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qf-primary)",
+              borderColor: "var(--qf-primary)",
+            }}
+            disabled={
+              !ultimaMillaCargaEnRango ||
+              !tempUltimaMillaDireccion.trim() ||
+              tempUltimaMillaZone === null ||
+              tempUltimaMillaZone === "outside" ||
+              !ultimaMillaPickupCoords
+            }
+            onClick={() => {
+              if (
+                !ultimaMillaCargaEnRango ||
+                !tempUltimaMillaDireccion.trim() ||
+                tempUltimaMillaZone === null ||
+                tempUltimaMillaZone === "outside"
+              ) {
+                return;
+              }
+              const bracket = findLclDeliveryBracket(
+                totalWeightKg,
+                totalVolume,
+                lclTtConfig,
+              );
+              if (!bracket) return;
+              setUltimaMillaBracket(bracket);
+              setUltimaMillaDireccion(tempUltimaMillaDireccion);
+              setUltimaMillaVespucioZone(tempUltimaMillaZone);
+              setUltimaMillaActivo(true);
+              setShowUltimaMillaModal(false);
+            }}
+          >
+            Confirmar
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* ============================================================================ */}
       {/* SECCIÓN 4: REVISIÓN DE PIEZAS Y COSTOS */}
@@ -4229,6 +4611,43 @@ function QuoteLCL({
                       <strong>{lclChargeableBillingBasis}</strong>
                     </div>
                   </div>
+
+                  {(seguroActivo ||
+                    gastolocal ||
+                    liveTrackingActivo ||
+                    ultimaMillaActivo) && (
+                    <div className="border-top pt-2 mt-3">
+                      <span className="qa-text-muted d-block mb-1">
+                        Servicios Adicionales:
+                      </span>
+                      <div className="d-flex flex-wrap gap-2">
+                        {seguroActivo && (
+                          <span className="qa-badge qa-badge-primary">
+                            <i className="bi bi-shield-check me-1"></i>Seguro
+                            {valorMercaderia &&
+                              ` — ${rutaSeleccionada.currency} ${valorMercaderia}`}
+                          </span>
+                        )}
+                        {gastolocal && (
+                          <span className="qa-badge qa-badge-primary">
+                            <i className="bi bi-building me-1"></i>Gastos
+                            Locales
+                          </span>
+                        )}
+                        {liveTrackingActivo && (
+                          <span className="qa-badge qa-badge-primary">
+                            <i className="bi bi-geo-alt me-1"></i>Live Tracking
+                          </span>
+                        )}
+                        {ultimaMillaActivo && ultimaMillaDireccion && (
+                          <span className="qa-badge qa-badge-primary">
+                            <i className="bi bi-truck me-1"></i>Última Milla
+                            {` — ${ultimaMillaDireccion}`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

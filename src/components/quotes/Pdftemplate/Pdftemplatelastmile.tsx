@@ -618,10 +618,10 @@ export const PDFTemplateLastMile: React.FC<PDFTemplateLastMileProps> = ({
           lineHeight: 1.5,
         }}
       >
-        <strong style={{ color: C.text }}>Online Tracking</strong> — Upon
-        confirmation you will receive complimentary access to our real-time
-        tracking system to monitor your shipment status, ETA, and location
-        updates.
+        <strong style={{ color: C.text }}>Seguimiento en Línea</strong> — Al
+        confirmar su cotización, recibirá acceso gratuito a nuestro sistema de
+        seguimiento en tiempo real para monitorear el estado de su envío, ETA y
+        actualizaciones de ubicación.
       </div>
 
       {/* ── Mensaje 48hrs (solo cuando NO hay tarifa calculada) ── */}

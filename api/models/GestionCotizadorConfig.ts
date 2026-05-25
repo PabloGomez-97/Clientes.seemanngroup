@@ -14,8 +14,25 @@ export interface IFclCotizadorConfig {
   vespucioExtendedSurchargePct: number;
 }
 
+export interface ILclDeliveryBracket {
+  maxKg: number;
+  maxM3: number;
+  /** Monto INCOME (USD o moneda de ruta en cotizador) */
+  amount: number;
+}
+
+export interface ILclCotizadorConfig {
+  brackets: ILclDeliveryBracket[];
+  /** Límite superior peso real (kg) para tabla DELV */
+  maxKg: number;
+  /** Límite superior volumen (m³) para tabla DELV */
+  maxM3: number;
+  vespucioExtendedSurchargePct: number;
+}
+
 export interface IGestionCotizadorConfig {
   fcl: IFclCotizadorConfig;
+  lcl: ILclCotizadorConfig;
   updatedBy: string;
 }
 
@@ -35,10 +52,41 @@ export const DEFAULT_FCL_COTIZADOR: IFclCotizadorConfig = {
   vespucioExtendedSurchargePct: 45,
 };
 
+export const DEFAULT_LCL_DELIVERY_BRACKETS: ILclDeliveryBracket[] = [
+  { maxKg: 500, maxM3: 2.5, amount: 183.26 },
+  { maxKg: 1000, maxM3: 5, amount: 202.9 },
+  { maxKg: 2000, maxM3: 8, amount: 248.71 },
+  { maxKg: 3000, maxM3: 11, amount: 274.89 },
+  { maxKg: 4000, maxM3: 15, amount: 294.53 },
+  { maxKg: 5000, maxM3: 20, amount: 314.16 },
+  { maxKg: 6000, maxM3: 25, amount: 353.43 },
+  { maxKg: 7000, maxM3: 30, amount: 392.7 },
+];
+
+export const DEFAULT_LCL_COTIZADOR: ILclCotizadorConfig = {
+  brackets: DEFAULT_LCL_DELIVERY_BRACKETS,
+  maxKg: 7000,
+  maxM3: 30,
+  vespucioExtendedSurchargePct: 45,
+};
+
 export const DEFAULT_GESTION_COTIZADOR_CONFIG: IGestionCotizadorConfig = {
   fcl: DEFAULT_FCL_COTIZADOR,
+  lcl: DEFAULT_LCL_COTIZADOR,
   updatedBy: "system",
 };
+
+/** EXPENSE = INCOME / divisor (markup 10 % → divisor 1.10) */
+export const LCL_DELIVERY_EXPENSE_DIVISOR = 1.1;
+
+const LclDeliveryBracketSchema = new mongoose.Schema<ILclDeliveryBracket>(
+  {
+    maxKg: { type: Number, required: true },
+    maxM3: { type: Number, required: true },
+    amount: { type: Number, required: true },
+  },
+  { _id: false },
+);
 
 export const GestionCotizadorConfigSchema =
   new mongoose.Schema<IGestionCotizadorConfigDoc>(
@@ -58,6 +106,19 @@ export const GestionCotizadorConfigSchema =
           type: Number,
           required: true,
           default: DEFAULT_FCL_COTIZADOR.vespucioExtendedSurchargePct,
+        },
+      },
+      lcl: {
+        brackets: {
+          type: [LclDeliveryBracketSchema],
+          default: DEFAULT_LCL_DELIVERY_BRACKETS,
+        },
+        maxKg: { type: Number, required: true, default: 7000 },
+        maxM3: { type: Number, required: true, default: 30 },
+        vespucioExtendedSurchargePct: {
+          type: Number,
+          required: true,
+          default: DEFAULT_LCL_COTIZADOR.vespucioExtendedSurchargePct,
         },
       },
       updatedBy: { type: String, required: true, default: "system" },

@@ -2,6 +2,8 @@ import { useState } from "react";
 import {
   useGestionCotizador,
   type IFclCotizadorConfig,
+  type ILclCotizadorConfig,
+  type ILclDeliveryBracket,
 } from "../../hooks/useGestionCotizador";
 
 type CotizadorTab = "FCL" | "LCL" | "AÉREO" | "ÚLTIMA MILLA";
@@ -46,9 +48,14 @@ const FCL_FIELDS: {
 ];
 
 export default function GestionCotizador() {
-  const { config, loading, error, saving, updateFcl } = useGestionCotizador();
+  const { config, loading, error, saving, updateFcl, updateLcl } =
+    useGestionCotizador();
   const [activeTab, setActiveTab] = useState<CotizadorTab>("FCL");
   const [editingFcl, setEditingFcl] = useState<Partial<IFclCotizadorConfig>>({});
+  const [editingLcl, setEditingLcl] = useState<{
+    vespucioExtendedSurchargePct?: number;
+    brackets?: ILclDeliveryBracket[];
+  }>({});
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -78,6 +85,63 @@ export default function GestionCotizador() {
       setSaveError((e as Error).message);
     }
   };
+
+  const handleLclBracketChange = (
+    index: number,
+    field: keyof ILclDeliveryBracket,
+    value: string,
+  ) => {
+    const num = parseFloat(value);
+    const base =
+      editingLcl.brackets ??
+      config.lcl.brackets.map((b) => ({ ...b }));
+    const next = base.map((b, i) =>
+      i === index
+        ? {
+            ...b,
+            [field]:
+              value === "" || isNaN(num) ? b[field] : num,
+          }
+        : { ...b },
+    );
+    setEditingLcl((prev) => ({ ...prev, brackets: next }));
+  };
+
+  const handleLclVespucioChange = (value: string) => {
+    const num = parseFloat(value);
+    if (value === "" || isNaN(num)) {
+      setEditingLcl((prev) => {
+        const next = { ...prev };
+        delete next.vespucioExtendedSurchargePct;
+        return next;
+      });
+      return;
+    }
+    setEditingLcl((prev) => ({
+      ...prev,
+      vespucioExtendedSurchargePct: num,
+    }));
+  };
+
+  const handleSaveLcl = async () => {
+    if (Object.keys(editingLcl).length === 0) return;
+    try {
+      setSaveError(null);
+      setSuccessMsg(null);
+      await updateLcl(editingLcl);
+      setEditingLcl({});
+      setSuccessMsg("Configuración LCL actualizada correctamente");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (e) {
+      setSaveError((e as Error).message);
+    }
+  };
+
+  const lclBracketsDisplay =
+    editingLcl.brackets ?? config.lcl.brackets;
+  const lclVespucioDisplay =
+    editingLcl.vespucioExtendedSurchargePct ??
+    config.lcl.vespucioExtendedSurchargePct;
 
   if (loading) {
     return (
@@ -237,7 +301,137 @@ export default function GestionCotizador() {
         </div>
       )}
 
-      {activeTab !== "FCL" && (
+      {activeTab === "LCL" && (
+        <div className="card shadow-sm">
+          <div className="card-header bg-white py-3">
+            <h5 className="mb-0 fw-bold">
+              <i className="bi bi-box-seam me-2 text-primary" />
+              LCL — Delivery Trucking (Última Milla)
+            </h5>
+            <small className="text-muted">
+              Código Linbis: DELV (id 134724). Bracket por mayor tramo entre peso
+              real (kg) y volumen (m³). EXPENSE = INCOME ÷ 1,10 (fijo).
+            </small>
+          </div>
+          <div className="card-body">
+            <div className="row g-3 mb-4">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold">
+                  Recargo zona extendida (Vespucio)
+                </label>
+                <div className="input-group" style={{ maxWidth: "220px" }}>
+                  <input
+                    type="number"
+                    className={`form-control ${editingLcl.vespucioExtendedSurchargePct !== undefined ? "border-warning" : ""}`}
+                    value={lclVespucioDisplay}
+                    onChange={(e) => handleLclVespucioChange(e.target.value)}
+                    step="0.1"
+                    min="0"
+                  />
+                  <span className="input-group-text">%</span>
+                </div>
+                <small className="text-muted">
+                  Multiplicador:{" "}
+                  <strong>
+                    {(1 + (Number(lclVespucioDisplay) || 0) / 100).toFixed(2)}×
+                  </strong>
+                </small>
+              </div>
+              <div className="col-md-6">
+                <p className="text-muted small mb-0">
+                  Límites máximos: {config.lcl.maxKg} kg / {config.lcl.maxM3}{" "}
+                  m³ (fuera de rango no se puede agregar el servicio).
+                </p>
+              </div>
+            </div>
+
+            <div className="table-responsive">
+              <table className="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Hasta (kg)</th>
+                    <th>Hasta (m³)</th>
+                    <th>Monto INCOME</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lclBracketsDisplay.map((b, index) => {
+                    const edited =
+                      editingLcl.brackets !== undefined &&
+                      JSON.stringify(editingLcl.brackets[index]) !==
+                        JSON.stringify(config.lcl.brackets[index]);
+                    return (
+                      <tr key={index}>
+                        <td className="text-muted">{index + 1}</td>
+                        <td>
+                          <input
+                            type="number"
+                            className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                            value={b.maxKg}
+                            onChange={(e) =>
+                              handleLclBracketChange(index, "maxKg", e.target.value)
+                            }
+                            step="1"
+                            min="1"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                            value={b.maxM3}
+                            onChange={(e) =>
+                              handleLclBracketChange(index, "maxM3", e.target.value)
+                            }
+                            step="0.1"
+                            min="0.1"
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                            value={b.amount}
+                            onChange={(e) =>
+                              handleLclBracketChange(index, "amount", e.target.value)
+                            }
+                            step="0.01"
+                            min="0.01"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={Object.keys(editingLcl).length === 0 || saving}
+                onClick={handleSaveLcl}
+              >
+                {saving ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <i className="bi bi-save me-2" />
+                    Guardar cambios LCL
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab !== "FCL" && activeTab !== "LCL" && (
         <div
           className="card shadow-sm border-0"
           style={{ backgroundColor: "#f8f9fa" }}
@@ -246,7 +440,7 @@ export default function GestionCotizador() {
             <i className="bi bi-tools display-6 d-block mb-3" />
             <h5 className="fw-semibold text-secondary">{activeTab}</h5>
             <p className="mb-0">
-              Configuración en desarrollo. Por ahora solo FCL está disponible.
+              Configuración en desarrollo. Disponible: FCL y LCL.
             </p>
           </div>
         </div>

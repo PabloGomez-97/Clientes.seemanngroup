@@ -1331,6 +1331,14 @@ function QuoteFCL({
             container: containerSeleccionado?.type || "",
             cantidad: cantidadContenedores,
             incoterm,
+            ...(ultimaMillaAplicaCobro
+              ? {
+                  ultimaMilla: true,
+                  ultimaMillaDireccion: ultimaMillaDireccion,
+                  ultimaMillaMonto: calculateUltimaMilla(),
+                  ultimaMillaZona: ultimaMillaVespucioZone,
+                }
+              : {}),
           },
           clienteAfectado: clienteSeleccionado?.username || "",
         });
@@ -1673,10 +1681,13 @@ function QuoteFCL({
             }
             deliveryToAddress={
               ultimaMillaAplicaCobro
-                ? ultimaMillaDireccion
+                ? undefined
                 : incoterm === "EXW"
                   ? (deliveryToAddressDerived ?? undefined)
                   : undefined
+            }
+            ultimaMillaDeliveryAddress={
+              ultimaMillaAplicaCobro ? ultimaMillaDireccion : undefined
             }
             salesRep={salesRepName}
             containerType={containerName}
@@ -1807,7 +1818,12 @@ function QuoteFCL({
           body: JSON.stringify({
             ejecutivoEmail: ejecutivo?.email,
             ejecutivoNombre: ejecutivo?.nombre,
-            clienteNombre: user?.nombreuser,
+            clienteUsername: isEjecutivoMode
+              ? clienteSeleccionado?.username
+              : user?.username,
+            clienteNombre: isEjecutivoMode
+              ? clienteSeleccionado?.username
+              : user?.nombreuser,
             tipoServicio: "Marítimo FCL",
             origen: rutaSeleccionada.pol,
             destino: rutaSeleccionada.pod,
@@ -1819,6 +1835,15 @@ function QuoteFCL({
               incoterm === "EXW" ? pickupFromAddress : undefined,
             deliveryToAddress:
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
+            ...(ultimaMillaAplicaCobro
+              ? {
+                  ultimaMilla: true,
+                  ultimaMillaDireccion: ultimaMillaDireccion,
+                  ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
+                  ultimaMillaZonaExtendida:
+                    ultimaMillaVespucioZone === "extended",
+                }
+              : {}),
             precio: sinTarifa ? 0 : oceanFreightValues.incomeAmount,
             currency: rutaSeleccionada.currency,
             total: total,
@@ -1850,6 +1875,15 @@ function QuoteFCL({
               incoterm === "EXW" ? pickupFromAddress : undefined,
             deliveryToAddress:
               incoterm === "EXW" ? deliveryToAddressDerived : undefined,
+            ...(ultimaMillaAplicaCobro
+              ? {
+                  ultimaMilla: true,
+                  ultimaMillaDireccion: ultimaMillaDireccion,
+                  ultimaMillaMonto: `${rutaSeleccionada.currency} ${calculateUltimaMilla().toFixed(2)}`,
+                  ultimaMillaZonaExtendida:
+                    ultimaMillaVespucioZone === "extended",
+                }
+              : {}),
             currency: rutaSeleccionada.currency,
             total: total,
             agente: rutaSeleccionada.company || undefined,

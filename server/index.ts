@@ -1605,6 +1605,8 @@ import {
   type IGestionCotizadorConfigDoc,
   type GestionCotizadorConfigModel,
   type IFclCotizadorConfig,
+  type ILclCotizadorConfig,
+  type ILclDeliveryBracket,
 } from '../api/models/GestionCotizadorConfig.ts';
 
 const GestionCotizadorConfig = (
@@ -5021,13 +5023,9 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
     console.log('Endpoint /api/send-operation-email hit');
     const currentUser = await User.findOne({ email: (req as any).user.sub }).populate('ejecutivoId');
     console.log('Current user:', currentUser?.email, 'Ejecutivo:', (currentUser?.ejecutivoId as any)?.email);
-    if (!currentUser || !currentUser.ejecutivoId) {
-      return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+    if (!currentUser) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
     }
-
-    const ejecutivoEmail = (currentUser.ejecutivoId as any).email;
-    const ejecutivoNombre = (currentUser.ejecutivoId as any).nombre || 'Ejecutivo';
-    const clienteUsername = currentUser.username || currentUser.email;
 
     const {
       tipoServicio = 'Aéreo',
@@ -5038,6 +5036,10 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       total,
       tipoAccion,
       tipo,
+      ejecutivoEmail: ejecutivoEmailBody,
+      ejecutivoNombre: ejecutivoNombreBody,
+      clienteUsername: clienteUsernameBody,
+      clienteNombre: clienteNombreBody,
       // Aéreo específico
       description,
       chargeableWeight,
@@ -5048,11 +5050,34 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       // EXW específico
       pickupFromAddress,
       deliveryToAddress,
+      ultimaMilla,
+      ultimaMillaDireccion,
+      ultimaMillaMonto,
+      ultimaMillaZonaExtendida,
       // Agente y número de cotización
       agente,
       quoteNumber,
       proveedor,
     } = req.body;
+
+    const ejecutivoEmail =
+      (typeof ejecutivoEmailBody === 'string' && ejecutivoEmailBody.trim()) ||
+      (currentUser.ejecutivoId as any)?.email;
+    const ejecutivoNombre =
+      (typeof ejecutivoNombreBody === 'string' && ejecutivoNombreBody.trim()) ||
+      (currentUser.ejecutivoId as any)?.nombre ||
+      'Ejecutivo';
+    const clienteUsername =
+      (typeof clienteUsernameBody === 'string' && clienteUsernameBody.trim()) ||
+      currentUser.username ||
+      currentUser.email;
+    const clienteNombreResolved =
+      (typeof clienteNombreBody === 'string' && clienteNombreBody.trim()) ||
+      currentUser.nombreuser;
+
+    if (!ejecutivoEmail) {
+      return res.status(400).json({ error: 'No se encontró ejecutivo asignado al usuario' });
+    }
 
     const tipoAccionResolved = (tipoAccion || tipo) as 'cotizacion' | 'operacion' | undefined;
 
@@ -5063,7 +5088,7 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       const emailData: FclQuoteEmailData = {
         ejecutivoNombre,
         clienteUsername,
-        clienteNombre: currentUser.nombreuser,
+        clienteNombre: clienteNombreResolved,
         pol: origen || '',
         pod: destino || '',
         carrier: carrier || '',
@@ -5075,6 +5100,10 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         tipoAccion: tipoAccionResolved,
         pickupFromAddress: incoterm === 'EXW' ? (pickupFromAddress || undefined) : undefined,
         deliveryToAddress: incoterm === 'EXW' ? (deliveryToAddress || undefined) : undefined,
+        ultimaMilla: ultimaMilla || undefined,
+        ultimaMillaDireccion: ultimaMilla ? ultimaMillaDireccion : undefined,
+        ultimaMillaMonto: ultimaMilla ? ultimaMillaMonto : undefined,
+        ultimaMillaZonaExtendida: ultimaMilla ? ultimaMillaZonaExtendida : undefined,
         agente: agente || undefined,
         quoteNumber: quoteNumber || undefined,
         proveedor: proveedor || undefined,
@@ -5085,7 +5114,7 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
       const emailData: LclQuoteEmailData = {
         ejecutivoNombre,
         clienteUsername,
-        clienteNombre: currentUser.nombreuser,
+        clienteNombre: clienteNombreResolved,
         pol: origen || '',
         pod: destino || '',
         operador: carrier || '',
@@ -5095,6 +5124,10 @@ app.post('/api/send-operation-email', auth, async (req, res) => {
         tipoAccion: tipoAccionResolved,
         pickupFromAddress: incoterm === 'EXW' ? (pickupFromAddress || undefined) : undefined,
         deliveryToAddress: incoterm === 'EXW' ? (deliveryToAddress || undefined) : undefined,
+        ultimaMilla: ultimaMilla || undefined,
+        ultimaMillaDireccion: ultimaMilla ? ultimaMillaDireccion : undefined,
+        ultimaMillaMonto: ultimaMilla ? ultimaMillaMonto : undefined,
+        ultimaMillaZonaExtendida: ultimaMilla ? ultimaMillaZonaExtendida : undefined,
         agente: agente || undefined,
         quoteNumber: quoteNumber || undefined,
         proveedor: proveedor || undefined,
@@ -6455,32 +6488,88 @@ app.put('/api/gestion-cotizador/config', auth, async (req, res) => {
       });
     }
 
-    const { fcl } = req.body as { fcl?: Partial<IFclCotizadorConfig> };
-    if (!fcl || typeof fcl !== 'object') {
-      return res.status(400).json({ error: 'Debe enviar el objeto fcl con los valores a actualizar' });
+    const { fcl, lcl } = req.body as {
+      fcl?: Partial<IFclCotizadorConfig>;
+      lcl?: Partial<ILclCotizadorConfig>;
+    };
+    if (
+      (!fcl || typeof fcl !== 'object') &&
+      (!lcl || typeof lcl !== 'object')
+    ) {
+      return res.status(400).json({
+        error: 'Debe enviar el objeto fcl y/o lcl con los valores a actualizar',
+      });
     }
 
     const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
-    if (fcl.ttRate20GP !== undefined) {
-      if (typeof fcl.ttRate20GP !== 'number' || fcl.ttRate20GP <= 0) {
-        return res.status(400).json({ error: 'Tarifa TT 20GP inválida' });
+
+    if (fcl && typeof fcl === 'object') {
+      if (fcl.ttRate20GP !== undefined) {
+        if (typeof fcl.ttRate20GP !== 'number' || fcl.ttRate20GP <= 0) {
+          return res.status(400).json({ error: 'Tarifa TT 20GP inválida' });
+        }
+        updateData['fcl.ttRate20GP'] = fcl.ttRate20GP;
       }
-      updateData['fcl.ttRate20GP'] = fcl.ttRate20GP;
+      if (fcl.ttRate40 !== undefined) {
+        if (typeof fcl.ttRate40 !== 'number' || fcl.ttRate40 <= 0) {
+          return res.status(400).json({ error: 'Tarifa TT 40 inválida' });
+        }
+        updateData['fcl.ttRate40'] = fcl.ttRate40;
+      }
+      if (fcl.vespucioExtendedSurchargePct !== undefined) {
+        if (
+          typeof fcl.vespucioExtendedSurchargePct !== 'number' ||
+          fcl.vespucioExtendedSurchargePct < 0
+        ) {
+          return res.status(400).json({ error: 'Recargo zona extendida FCL inválido' });
+        }
+        updateData['fcl.vespucioExtendedSurchargePct'] =
+          fcl.vespucioExtendedSurchargePct;
+      }
     }
-    if (fcl.ttRate40 !== undefined) {
-      if (typeof fcl.ttRate40 !== 'number' || fcl.ttRate40 <= 0) {
-        return res.status(400).json({ error: 'Tarifa TT 40 inválida' });
+
+    if (lcl && typeof lcl === 'object') {
+      if (lcl.vespucioExtendedSurchargePct !== undefined) {
+        if (
+          typeof lcl.vespucioExtendedSurchargePct !== 'number' ||
+          lcl.vespucioExtendedSurchargePct < 0
+        ) {
+          return res.status(400).json({ error: 'Recargo zona extendida LCL inválido' });
+        }
+        updateData['lcl.vespucioExtendedSurchargePct'] =
+          lcl.vespucioExtendedSurchargePct;
       }
-      updateData['fcl.ttRate40'] = fcl.ttRate40;
-    }
-    if (fcl.vespucioExtendedSurchargePct !== undefined) {
-      if (
-        typeof fcl.vespucioExtendedSurchargePct !== 'number' ||
-        fcl.vespucioExtendedSurchargePct < 0
-      ) {
-        return res.status(400).json({ error: 'Recargo zona extendida inválido' });
+      if (lcl.maxKg !== undefined) {
+        if (typeof lcl.maxKg !== 'number' || lcl.maxKg <= 0) {
+          return res.status(400).json({ error: 'Límite máximo kg LCL inválido' });
+        }
+        updateData['lcl.maxKg'] = lcl.maxKg;
       }
-      updateData['fcl.vespucioExtendedSurchargePct'] = fcl.vespucioExtendedSurchargePct;
+      if (lcl.maxM3 !== undefined) {
+        if (typeof lcl.maxM3 !== 'number' || lcl.maxM3 <= 0) {
+          return res.status(400).json({ error: 'Límite máximo m³ LCL inválido' });
+        }
+        updateData['lcl.maxM3'] = lcl.maxM3;
+      }
+      if (lcl.brackets !== undefined) {
+        if (!Array.isArray(lcl.brackets) || lcl.brackets.length === 0) {
+          return res.status(400).json({ error: 'Tabla de brackets LCL inválida' });
+        }
+        for (let i = 0; i < lcl.brackets.length; i++) {
+          const b = lcl.brackets[i] as ILclDeliveryBracket;
+          if (
+            typeof b.maxKg !== 'number' ||
+            typeof b.maxM3 !== 'number' ||
+            typeof b.amount !== 'number' ||
+            b.maxKg <= 0 ||
+            b.maxM3 <= 0 ||
+            b.amount <= 0
+          ) {
+            return res.status(400).json({ error: `Bracket LCL ${i + 1} inválido` });
+          }
+        }
+        updateData['lcl.brackets'] = lcl.brackets;
+      }
     }
 
     if (Object.keys(updateData).length <= 1) {

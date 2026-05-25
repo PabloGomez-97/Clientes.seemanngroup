@@ -32,6 +32,8 @@ interface PDFTemplateLCLProps {
   incoterm: string;
   pickupFromAddress?: string;
   deliveryToAddress?: string;
+  /** Dirección de entrega cuando el cliente agregó Última Milla */
+  ultimaMillaDeliveryAddress?: string;
   salesRep: string;
   pieces: number;
   packageTypeName: string;
@@ -89,6 +91,7 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
   incoterm,
   pickupFromAddress,
   deliveryToAddress,
+  ultimaMillaDeliveryAddress,
   salesRep,
   pieces,
   packageTypeName,
@@ -687,6 +690,30 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
         </div>
       )}
 
+      {/* ── Last Mile (Última Milla) ── */}
+      {ultimaMillaDeliveryAddress && (
+        <div
+          style={{
+            backgroundColor: C.bg,
+            border: `1px solid ${C.line}`,
+            borderLeft: `3px solid ${C.accent}`,
+            borderRadius: "3px",
+            padding: "7px 12px",
+            marginBottom: "10px",
+            fontSize: "7.5pt",
+            color: C.sub,
+            lineHeight: 1.5,
+          }}
+        >
+          <strong style={{ color: C.text }}>Última Milla</strong> — Esta
+          cotización incluye transporte terrestre desde el puerto de destino hasta
+          la siguiente dirección de entrega:{" "}
+          <span style={{ color: C.text, fontWeight: 600 }}>
+            {ultimaMillaDeliveryAddress}
+          </span>
+        </div>
+      )}
+
       {/* ── Tracking message ── */}
       <div
         style={{
@@ -701,10 +728,10 @@ export const PDFTemplateLCL: React.FC<PDFTemplateLCLProps> = ({
           lineHeight: 1.5,
         }}
       >
-        <strong style={{ color: C.text }}>Online Tracking</strong> — Upon
-        confirmation you will receive complimentary access to our real-time
-        tracking system to monitor your shipment status, ETA, and location
-        updates.
+        <strong style={{ color: C.text }}>Seguimiento en Línea</strong> — Al
+        confirmar su cotización, recibirá acceso gratuito a nuestro sistema de
+        seguimiento en tiempo real para monitorear el estado de su envío, ETA y
+        actualizaciones de ubicación.
       </div>
 
       {/* ── Aviso de tarifa próxima a vencer ── */}

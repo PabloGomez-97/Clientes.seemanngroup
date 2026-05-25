@@ -16,6 +16,11 @@ export interface LclQuoteEmailData {
   tipoAccion?: 'cotizacion' | 'operacion';
   pickupFromAddress?: string;
   deliveryToAddress?: string;
+  /** Servicio adicional Última Milla */
+  ultimaMilla?: boolean;
+  ultimaMillaDireccion?: string;
+  ultimaMillaMonto?: string;
+  ultimaMillaZonaExtendida?: boolean;
   agente?: string;
   quoteNumber?: string;
   proveedor?: {
@@ -61,6 +66,9 @@ export function buildLclQuoteEmailHTML(data: LclQuoteEmailData): string {
   const incotermRow = data.incoterm ? row('Incoterm', data.incoterm) : '';
   const exwRows = (data.incoterm === 'EXW' && (data.pickupFromAddress || data.deliveryToAddress))
     ? `${data.pickupFromAddress ? row('Dirección de recogida', data.pickupFromAddress) : ''}${data.deliveryToAddress ? row('Dirección de entrega', data.deliveryToAddress) : ''}`
+    : '';
+  const ultimaMillaRows = data.ultimaMilla
+    ? `${row('Última Milla', 'Sí (agregada en cotización)')}${data.ultimaMillaDireccion ? row('Dirección de entrega (Última Milla)', data.ultimaMillaDireccion) : ''}${data.ultimaMillaMonto ? row('Monto Última Milla', data.ultimaMillaMonto) : ''}${data.ultimaMillaZonaExtendida ? row('Recargo zona extendida', 'Sí (zona Américo Vespucio extendida)') : ''}`
     : '';
   const highlightedRow = (label: string, value: string | undefined | null) => `
     <tr>
@@ -167,6 +175,7 @@ export function buildLclQuoteEmailHTML(data: LclQuoteEmailData): string {
                 ${agenteRow}
                 ${incotermRow}
                 ${exwRows}
+                ${ultimaMillaRows}
                 ${row('Total', `${data.total}`)}
                 <tr>
                   <td class="detail-label" style="padding:8px 12px;font-size:13px;color:${C.muted};white-space:nowrap;width:190px;">Fecha de generación</td>

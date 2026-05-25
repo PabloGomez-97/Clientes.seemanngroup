@@ -693,10 +693,10 @@ export const PDFTemplateAIR: React.FC<PDFTemplateAIRProps> = ({
           lineHeight: 1.5,
         }}
       >
-        <strong style={{ color: C.text }}>Online Tracking</strong> — Upon
-        confirmation you will receive complimentary access to our real-time
-        tracking system to monitor your shipment status, ETA, and location
-        updates.
+        <strong style={{ color: C.text }}>Seguimiento en Línea</strong> — Al
+        confirmar su cotización, recibirá acceso gratuito a nuestro sistema de
+        seguimiento en tiempo real para monitorear el estado de su envío, ETA y
+        actualizaciones de ubicación.
       </div>
 
       {/* ── Aviso de tarifa próxima a vencer ── */}
