@@ -58,7 +58,9 @@ function verifyToken(token: string): AuthPayload {
 const OPERATIONS_FOLLOWER_EMAIL = 'operaciones@seemanngroup.com';
 const MAX_VISIBLE_TRACK_FOLLOWERS = 10;
 const MAX_SAVED_TRACKING_EMAILS = 20;
+const MAX_SAVED_TRACKING_PHONES = 20;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const STORED_PHONE_REGEX = /^\+[1-9]\d{4,15}$/;
 
 function normalizeTrackingFollowers(rawFollowers: unknown): string[] {
   const uniqueFollowers = new Map<string, string>();
@@ -124,6 +126,51 @@ function validateTrackingPreferenceEmails(rawEmails: unknown): {
   }
 
   return { emails: Array.from(uniqueEmails.values()) };
+}
+
+function normalizeStoredPhone(phone: string): string {
+  return phone.trim().replace(/\s/g, '');
+}
+
+function validateTrackingPreferencePhones(rawPhones: unknown): {
+  phones?: string[];
+  error?: string;
+} {
+  if (!Array.isArray(rawPhones)) {
+    return { error: 'phones debe ser un array de teléfonos' };
+  }
+
+  if (rawPhones.length > MAX_SAVED_TRACKING_PHONES) {
+    return {
+      error: `Máximo ${MAX_SAVED_TRACKING_PHONES} teléfonos permitidos por cuenta`,
+    };
+  }
+
+  const uniquePhones = new Map<string, string>();
+
+  for (const rawPhone of rawPhones) {
+    if (typeof rawPhone !== 'string') {
+      return { error: 'Cada teléfono debe ser un texto válido' };
+    }
+
+    const phone = normalizeStoredPhone(rawPhone);
+
+    if (!phone) {
+      return { error: 'No se permiten teléfonos vacíos' };
+    }
+
+    if (!STORED_PHONE_REGEX.test(phone)) {
+      return { error: `El teléfono ${rawPhone} no es válido` };
+    }
+
+    if (uniquePhones.has(phone)) {
+      return { error: 'No se permiten teléfonos duplicados' };
+    }
+
+    uniquePhones.set(phone, phone);
+  }
+
+  return { phones: Array.from(uniquePhones.values()) };
 }
 
 async function getShipsgoShipmentFollowerEmail(
@@ -319,6 +366,7 @@ const findDuplicateCompanyNames = async (companyNames: string[]): Promise<string
 interface ITrackingEmailPreference {
   reference: string;
   emails: string[];
+  phones: string[];
   updatedBy: string;
 }
 
@@ -335,6 +383,7 @@ const TrackingEmailPreferenceSchema = new mongoose.Schema<ITrackingEmailPreferen
   {
     reference: { type: String, required: true, unique: true, trim: true, index: true },
     emails: { type: [String], default: [] },
+    phones: { type: [String], default: [] },
     updatedBy: { type: String, required: true, trim: true },
   },
   { timestamps: true }
@@ -2001,6 +2050,7 @@ app.get('/api/tracking-email-preferences', auth, async (req, res) => {
       preference: {
         reference,
         emails: preference?.emails || [],
+        phones: preference?.phones || [],
         updatedAt: preference?.updatedAt || null,
       },
     });
@@ -2014,9 +2064,17 @@ app.put('/api/tracking-email-preferences', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
     const reference = String(req.body?.reference || '').trim();
+    const hasEmails = req.body?.emails !== undefined;
+    const hasPhones = req.body?.phones !== undefined;
 
     if (!reference) {
       return res.status(400).json({ error: 'reference es un campo requerido' });
+    }
+
+    if (!hasEmails && !hasPhones) {
+      return res.status(400).json({
+        error: 'Debes enviar emails y/o phones para actualizar la configuración',
+      });
     }
 
     const canManageReference = await canManageShipsgoReference(
@@ -2030,13 +2088,33 @@ app.put('/api/tracking-email-preferences', auth, async (req, res) => {
       });
     }
 
-    const validation = validateTrackingPreferenceEmails(req.body?.emails);
+    const existing = await TrackingEmailPreference.findOne({ reference }).lean();
+    let nextEmails = existing?.emails || [];
+    let nextPhones = existing?.phones || [];
 
-    if (validation.error || !validation.emails) {
-      return res.status(400).json({ error: validation.error || 'emails inválidos' });
+    if (hasEmails) {
+      const validation = validateTrackingPreferenceEmails(req.body?.emails);
+
+      if (validation.error || !validation.emails) {
+        return res.status(400).json({ error: validation.error || 'emails inválidos' });
+      }
+
+      nextEmails = validation.emails;
     }
 
-    if (validation.emails.length === 0) {
+    if (hasPhones) {
+      const phoneValidation = validateTrackingPreferencePhones(req.body?.phones);
+
+      if (phoneValidation.error || !phoneValidation.phones) {
+        return res.status(400).json({
+          error: phoneValidation.error || 'phones inválidos',
+        });
+      }
+
+      nextPhones = phoneValidation.phones;
+    }
+
+    if (nextEmails.length === 0 && nextPhones.length === 0) {
       await TrackingEmailPreference.deleteOne({ reference });
 
       return res.json({
@@ -2044,6 +2122,7 @@ app.put('/api/tracking-email-preferences', auth, async (req, res) => {
         preference: {
           reference,
           emails: [],
+          phones: [],
           updatedAt: null,
         },
       });
@@ -2053,7 +2132,8 @@ app.put('/api/tracking-email-preferences', auth, async (req, res) => {
       { reference },
       {
         reference,
-        emails: validation.emails,
+        emails: nextEmails,
+        phones: nextPhones,
         updatedBy: currentUser.sub,
       },
       {
@@ -2068,6 +2148,7 @@ app.put('/api/tracking-email-preferences', auth, async (req, res) => {
       preference: {
         reference,
         emails: preference?.emails || [],
+        phones: preference?.phones || [],
         updatedAt: preference?.updatedAt || null,
       },
     });

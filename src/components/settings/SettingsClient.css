@@ -33,9 +33,16 @@
 /* ── Tabs (card selectors) ── */
 .sc-tabs {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin-bottom: 1.5rem;
+}
+
+.sc-tabs--two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.sc-tabs--three {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .sc-tab {
@@ -211,6 +218,25 @@
   color: #9ca3af;
 }
 
+.sc-note--inline {
+  margin: 0.35rem 0 0;
+}
+
+.sc-phone-fields {
+  display: grid;
+  grid-template-columns: minmax(130px, 168px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.sc-phone-field-prefix {
+  min-width: 0;
+}
+
+.sc-phone-field-number {
+  min-width: 0;
+}
+
 /* ── Buttons ── */
 .sc-btn {
   display: inline-flex;
@@ -298,6 +324,18 @@
 @media (max-width: 640px) {
   .sc-page {
     padding: 1rem;
+  }
+
+  .sc-tabs--three {
+    grid-template-columns: 1fr;
+  }
+
+  .sc-phone-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .sc-phone-prefix-select {
+    max-width: none;
   }
 
   .sc-email-item {
