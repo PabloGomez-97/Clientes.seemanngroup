@@ -220,6 +220,11 @@ function SidebarAdmin({
               name: "Gestión Aduanera",
               badge: { text: "CHIEF", type: "admin" as const },
             },
+            {
+              path: "/admin/gestion-cotizador",
+              name: "Gestión Cotizador",
+              badge: { text: "CHIEF", type: "admin" as const },
+            },
           ],
         },
       ],

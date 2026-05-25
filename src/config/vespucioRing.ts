@@ -380,7 +380,10 @@ export const getVespucioDeliveryZone = (
 export const applyVespucioTransportSurcharge = (
   amount: number,
   zone: VespucioDeliveryZone | null | undefined,
+  extendedMultiplier: number = VESPUCIO_EXTENDED_ZONE_SURCHARGE,
 ): number => {
   if (zone !== "extended" || amount <= 0) return amount;
-  return Number((amount * VESPUCIO_EXTENDED_ZONE_SURCHARGE).toFixed(2));
+  const mult =
+    extendedMultiplier > 0 ? extendedMultiplier : VESPUCIO_EXTENDED_ZONE_SURCHARGE;
+  return Number((amount * mult).toFixed(2));
 };

@@ -39,6 +39,7 @@ import OPDocumentacion from "./components/administrador/OP-Documentacion";
 import OPReporteriaClientes from "./components/administrador/OP-reporteriaclientes";
 import Auditoria from "./components/administrador/Auditoria";
 import AgenciaAduanas from "./components/administrador/AgenciaAduanas";
+import GestionCotizador from "./components/administrador/GestionCotizador";
 import ComportamientoDeClientes from "./components/administrador/CustomerBehaviorTracking/ComportamientoDeClientes";
 import OPComportamientoDeClientes from "./components/administrador/CustomerBehaviorTracking/OP-ComportamientoDeClientes";
 import PricingAlertsPanel from "./components/administrador/PricingAlerts/PricingAlertsPanel";
@@ -212,6 +213,7 @@ function App() {
           </Route>
           <Route path="auditoria" element={<Auditoria />} />
           <Route path="agencia-aduanas" element={<AgenciaAduanas />} />
+          <Route path="gestion-cotizador" element={<GestionCotizador />} />
           <Route
             path="comportamiento-clientes/:clientUsername?"
             element={<ComportamientoDeClientes />}

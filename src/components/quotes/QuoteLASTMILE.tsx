@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
@@ -37,6 +37,10 @@ import {
   calculateAduanaCharges,
   type SupportedCurrency,
 } from "../../hooks/useAgenciaAduanas";
+import {
+  useGestionCotizador,
+  getVespucioExtendedMultiplier,
+} from "../../hooks/useGestionCotizador";
 import { imgUrl } from "../../config/images";
 import { getLastMileCoords } from "../../config/lastmilleCoordinates";
 import "flag-icons/css/flag-icons.min.css";
@@ -338,6 +342,22 @@ function QuoteLASTMILE({
 
   // Aduana / Extraport expenses (solo aplica para LCL + DDP)
   const { config: aduanaConfig } = useAgenciaAduanas();
+  const { config: gestionCotizadorConfig } = useGestionCotizador();
+  const fclTtFromDb = gestionCotizadorConfig.fcl;
+  const vespucioExtendedMultiplier = useMemo(
+    () =>
+      getVespucioExtendedMultiplier(fclTtFromDb.vespucioExtendedSurchargePct),
+    [fclTtFromDb.vespucioExtendedSurchargePct],
+  );
+  const applyVespucioSurcharge = useCallback(
+    (amount: number, zone: VespucioDeliveryZone | null | undefined) =>
+      applyVespucioTransportSurcharge(
+        amount,
+        zone,
+        vespucioExtendedMultiplier,
+      ),
+    [vespucioExtendedMultiplier],
+  );
   const [valorMercaderiaDDP, setValorMercaderiaDDP] = useState<string>("");
   const [valorSeguroDDP, setValorSeguroDDP] = useState<string>("");
 
@@ -660,7 +680,7 @@ function QuoteLASTMILE({
         cargoTotals.volume,
       );
       const deliveryAmount = bracket
-        ? applyVespucioTransportSurcharge(
+        ? applyVespucioSurcharge(
             Number(bracket.amount.toFixed(2)),
             deliveryVespucioZone,
           )
@@ -670,8 +690,14 @@ function QuoteLASTMILE({
       const c20 = parseInt(contenedores20GP || "0", 10) || 0;
       const c40HQ = parseInt(contenedores40HQ || "0", 10) || 0;
       const c40NOR = parseInt(contenedores40NOR || "0", 10) || 0;
-      const ttTotal = applyVespucioTransportSurcharge(
-        Number((c20 * 690.2 + c40HQ * 547.4 + c40NOR * 547.4).toFixed(2)),
+      const ttTotal = applyVespucioSurcharge(
+        Number(
+          (
+            c20 * fclTtFromDb.ttRate20GP +
+            c40HQ * fclTtFromDb.ttRate40 +
+            c40NOR * fclTtFromDb.ttRate40
+          ).toFixed(2),
+        ),
         deliveryVespucioZone,
       );
       const dthcTotal = c20 * 390.915 + c40HQ * 427.805 + c40NOR * 427.805;
@@ -681,7 +707,7 @@ function QuoteLASTMILE({
       // Banking 50 + LAC 90 + TT (bracket por peso real total kg).
       const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
       const ttAmount = ttBracket
-        ? applyVespucioTransportSurcharge(ttBracket.amount, deliveryVespucioZone)
+        ? applyVespucioSurcharge(ttBracket.amount, deliveryVespucioZone)
         : 0;
       costoTransporte = 190 + 60 + 50 + 90 + ttAmount;
     } else {
@@ -719,6 +745,8 @@ function QuoteLASTMILE({
     cargoTotals.realWeight,
     aduanaConfig,
     deliveryVespucioZone,
+    fclTtFromDb,
+    vespucioExtendedMultiplier,
   ]);
 
   const cargoDescriptionPreview = useMemo(() => {
@@ -1017,7 +1045,7 @@ function QuoteLASTMILE({
         cargoTotals.volume,
       );
       if (bracket) {
-        const incomeAmount = applyVespucioTransportSurcharge(
+        const incomeAmount = applyVespucioSurcharge(
           Number(bracket.amount.toFixed(2)),
           deliveryVespucioZone,
         );
@@ -1146,14 +1174,14 @@ function QuoteLASTMILE({
         ttRate: number;
         dthcRate: number;
       }> = [
-          { code: "20GP", qty: cont20, ttRate: 690.2, dthcRate: 390.915 },
-          { code: "40HQ", qty: cont40HQ, ttRate: 547.4, dthcRate: 427.805 },
-          { code: "40NOR", qty: cont40NOR, ttRate: 547.4, dthcRate: 427.805 },
+          { code: "20GP", qty: cont20, ttRate: fclTtFromDb.ttRate20GP, dthcRate: 390.915 },
+          { code: "40HQ", qty: cont40HQ, ttRate: fclTtFromDb.ttRate40, dthcRate: 427.805 },
+          { code: "40NOR", qty: cont40NOR, ttRate: fclTtFromDb.ttRate40, dthcRate: 427.805 },
         ];
 
       for (const c of containerTypes) {
         if (c.qty <= 0) continue;
-        const ttAmount = applyVespucioTransportSurcharge(
+        const ttAmount = applyVespucioSurcharge(
           Number((c.ttRate * c.qty).toFixed(2)),
           deliveryVespucioZone,
         );
@@ -1282,7 +1310,7 @@ function QuoteLASTMILE({
       //   1501-2000 -> 163.63 USD
       const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
       if (ttBracket) {
-        const ttAmount = applyVespucioTransportSurcharge(
+        const ttAmount = applyVespucioSurcharge(
           ttBracket.amount,
           deliveryVespucioZone,
         );
@@ -1690,7 +1718,7 @@ function QuoteLASTMILE({
         );
         const deliveryCharges: PDFCharge[] = [];
         if (bracket) {
-          const incomeAmount = applyVespucioTransportSurcharge(
+          const incomeAmount = applyVespucioSurcharge(
             Number(bracket.amount.toFixed(2)),
             deliveryVespucioZone,
           );
@@ -1764,15 +1792,15 @@ function QuoteLASTMILE({
           ttRate: number;
           dthcRate: number;
         }> = [
-            { code: "20GP", qty: cont20, ttRate: 690.2, dthcRate: 390.915 },
-            { code: "40HQ", qty: cont40HQ, ttRate: 547.4, dthcRate: 427.805 },
-            { code: "40NOR", qty: cont40NOR, ttRate: 547.4, dthcRate: 427.805 },
+            { code: "20GP", qty: cont20, ttRate: fclTtFromDb.ttRate20GP, dthcRate: 390.915 },
+            { code: "40HQ", qty: cont40HQ, ttRate: fclTtFromDb.ttRate40, dthcRate: 427.805 },
+            { code: "40NOR", qty: cont40NOR, ttRate: fclTtFromDb.ttRate40, dthcRate: 427.805 },
           ];
 
         const ttCharges: PDFCharge[] = containerTypes
           .filter((c) => c.qty > 0)
           .map((c) => {
-            const amount = applyVespucioTransportSurcharge(
+            const amount = applyVespucioSurcharge(
               Number((c.ttRate * c.qty).toFixed(2)),
               deliveryVespucioZone,
             );
@@ -1854,7 +1882,7 @@ function QuoteLASTMILE({
 
         const ttBracket = findAereoTTBracket(cargoTotals.realWeight);
         if (ttBracket) {
-          const ttAmount = applyVespucioTransportSurcharge(
+          const ttAmount = applyVespucioSurcharge(
             ttBracket.amount,
             deliveryVespucioZone,
           );

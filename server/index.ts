@@ -1597,6 +1597,25 @@ const AgenciaAduanaConfig = (
 ) as AgenciaAduanaConfigModel;
 
 // ============================================================
+// MODELO GESTIÓN COTIZADOR - CONFIG (Singleton, colección gestioncotizador)
+// ============================================================
+import {
+  GestionCotizadorConfigSchema,
+  DEFAULT_GESTION_COTIZADOR_CONFIG,
+  type IGestionCotizadorConfigDoc,
+  type GestionCotizadorConfigModel,
+  type IFclCotizadorConfig,
+} from '../api/models/GestionCotizadorConfig.ts';
+
+const GestionCotizadorConfig = (
+  mongoose.models.GestionCotizadorConfig ||
+  mongoose.model<IGestionCotizadorConfigDoc>(
+    'GestionCotizadorConfig',
+    GestionCotizadorConfigSchema,
+  )
+) as GestionCotizadorConfigModel;
+
+// ============================================================
 // MODELO OPERACIÓN + CLIENTE-PROVEEDOR
 // ============================================================
 import {
@@ -6406,6 +6425,78 @@ app.put('/api/agencia-aduana/config', auth, async (req, res) => {
   } catch (e) {
     console.error('[agencia-aduana] Error PUT config:', e);
     return res.status(500).json({ error: 'Error al actualizar configuración' });
+  }
+});
+
+// ============================================================
+// GESTIÓN COTIZADOR - CONFIG ENDPOINTS
+// ============================================================
+
+app.get('/api/gestion-cotizador/config', async (_req, res) => {
+  try {
+    let config = await GestionCotizadorConfig.findOne();
+    if (!config) {
+      config = await GestionCotizadorConfig.create(DEFAULT_GESTION_COTIZADOR_CONFIG);
+    }
+    return res.json(config);
+  } catch (e) {
+    console.error('[gestion-cotizador] Error GET config:', e);
+    return res.status(500).json({ error: 'Error al obtener configuración del cotizador' });
+  }
+});
+
+app.put('/api/gestion-cotizador/config', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub });
+    if (!ejecutivoDoc?.roles?.administrador) {
+      return res.status(403).json({
+        error: 'Solo administradores pueden modificar la configuración del cotizador',
+      });
+    }
+
+    const { fcl } = req.body as { fcl?: Partial<IFclCotizadorConfig> };
+    if (!fcl || typeof fcl !== 'object') {
+      return res.status(400).json({ error: 'Debe enviar el objeto fcl con los valores a actualizar' });
+    }
+
+    const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
+    if (fcl.ttRate20GP !== undefined) {
+      if (typeof fcl.ttRate20GP !== 'number' || fcl.ttRate20GP <= 0) {
+        return res.status(400).json({ error: 'Tarifa TT 20GP inválida' });
+      }
+      updateData['fcl.ttRate20GP'] = fcl.ttRate20GP;
+    }
+    if (fcl.ttRate40 !== undefined) {
+      if (typeof fcl.ttRate40 !== 'number' || fcl.ttRate40 <= 0) {
+        return res.status(400).json({ error: 'Tarifa TT 40 inválida' });
+      }
+      updateData['fcl.ttRate40'] = fcl.ttRate40;
+    }
+    if (fcl.vespucioExtendedSurchargePct !== undefined) {
+      if (
+        typeof fcl.vespucioExtendedSurchargePct !== 'number' ||
+        fcl.vespucioExtendedSurchargePct < 0
+      ) {
+        return res.status(400).json({ error: 'Recargo zona extendida inválido' });
+      }
+      updateData['fcl.vespucioExtendedSurchargePct'] = fcl.vespucioExtendedSurchargePct;
+    }
+
+    if (Object.keys(updateData).length <= 1) {
+      return res.status(400).json({ error: 'No hay campos válidos para actualizar' });
+    }
+
+    const config = await GestionCotizadorConfig.findOneAndUpdate(
+      {},
+      { $set: updateData },
+      { new: true, upsert: true },
+    );
+
+    return res.json(config);
+  } catch (e) {
+    console.error('[gestion-cotizador] Error PUT config:', e);
+    return res.status(500).json({ error: 'Error al actualizar configuración del cotizador' });
   }
 });
 

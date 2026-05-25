@@ -20,6 +20,11 @@ import {
   applyVespucioTransportSurcharge,
   type VespucioDeliveryZone,
 } from "../../config/vespucioRing";
+import {
+  useGestionCotizador,
+  getFclTtRate,
+  getVespucioExtendedMultiplier,
+} from "../../hooks/useGestionCotizador";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
 import { imgUrl } from "../../config/images";
@@ -78,14 +83,9 @@ import {
 const INITIAL_VISIBLE_ROUTES = 5;
 
 const FCL_ULTIMA_MILLA_ELIGIBLE_PODS = new Set(["san antonio", "valparaiso"]);
-const FCL_TT_RATE_20GP = 690.2;
-const FCL_TT_RATE_40 = 547.4;
 
 const isUltimaMillaEligiblePOD = (podNormalized?: string | null): boolean =>
   !!podNormalized && FCL_ULTIMA_MILLA_ELIGIBLE_PODS.has(podNormalized);
-
-const getUltimaMillaRate = (containerType: ContainerType): number =>
-  containerType === "20GP" ? FCL_TT_RATE_20GP : FCL_TT_RATE_40;
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
@@ -124,6 +124,12 @@ function QuoteFCL({
   const { registrarEvento } = useAuditLog();
   const { trackStart, trackStep, trackRouteSelected, trackComplete } =
     useQuoteTracking("FCL");
+  const { config: gestionCotizadorConfig } = useGestionCotizador();
+  const fclTtConfig = gestionCotizadorConfig.fcl;
+  const vespucioExtendedMultiplier = useMemo(
+    () => getVespucioExtendedMultiplier(fclTtConfig.vespucioExtendedSurchargePct),
+    [fclTtConfig.vespucioExtendedSurchargePct],
+  );
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<any>(null);
@@ -1190,9 +1196,13 @@ function QuoteFCL({
     if (!ultimaMillaAplicaCobro || !containerSeleccionado) {
       return 0;
     }
-    const baseRate = getUltimaMillaRate(containerSeleccionado.type);
+    const baseRate = getFclTtRate(containerSeleccionado.type, fclTtConfig);
     const baseAmount = Number((baseRate * cantidadContenedores).toFixed(2));
-    return applyVespucioTransportSurcharge(baseAmount, ultimaMillaVespucioZone);
+    return applyVespucioTransportSurcharge(
+      baseAmount,
+      ultimaMillaVespucioZone,
+      vespucioExtendedMultiplier,
+    );
   };
 
   const resetUltimaMilla = () => {
@@ -2187,7 +2197,7 @@ function QuoteFCL({
           : ttAmount;
       const zoneNote =
         ultimaMillaVespucioZone === "extended"
-          ? " (+45% zona extendida)"
+          ? ` (+${fclTtConfig.vespucioExtendedSurchargePct}% zona extendida)`
           : "";
       charges.push({
         service: {
@@ -4006,7 +4016,14 @@ function QuoteFCL({
               No se pudo cargar la ubicación del puerto de destino.
             </p>
           )}
-
+          {tempUltimaMillaZone === "extended" && (
+            <p className="text-muted small mt-3 mb-0">
+              <i className="bi bi-info-circle me-1"></i>
+              La dirección está en zona extendida: se aplicará un recargo del{" "}
+              {fclTtConfig.vespucioExtendedSurchargePct}% sobre el transporte
+              terrestre.
+            </p>
+          )}
         </Modal.Body>
         <Modal.Footer>
           <Button
