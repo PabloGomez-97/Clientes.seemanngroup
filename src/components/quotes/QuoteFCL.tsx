@@ -49,6 +49,7 @@ import {
   type ClienteAsignado,
 } from "./Handlers/FCL/HandlerQuoteFCL";
 import { useScrollToTopOnStepChange } from "./hooks/useScrollToTopOnStepChange";
+import { QuoteGeneratingMessage } from "./QuoteGeneratingMessage";
 import "./QuoteAIR.css";
 import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
@@ -3874,7 +3875,8 @@ function QuoteFCL({
               </div>
 
               {/* Botón Generar Cotización */}
-              <div className="d-flex justify-content-end mt-4 pt-3 border-top">
+              <div className="quote-submit-row mt-4 pt-3 border-top">
+                <QuoteGeneratingMessage btnPhase={btnPhase} />
                 {btnPhase !== "done" ? (
                   <button
                     className={`qf-btn qf-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}

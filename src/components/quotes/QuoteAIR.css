@@ -1390,6 +1390,20 @@
   }
 }
 
+.quote-submit-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.quote-generating-message {
+  color: #6c757d;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  animation: quote-confirm-in 0.35s ease forwards;
+}
+
 .quote-submit-btn {
   height: 42px;
   position: relative;
