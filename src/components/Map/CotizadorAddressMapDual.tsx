@@ -306,6 +306,8 @@ interface CotizadorAddressMapDualProps {
   /** Zona de entrega respecto a los polígonos Vespucio.
    *  `null` = aún no determinable (sin coordenadas o geometry no cargada). */
   onDeliveryZoneChange?: (zone: VespucioDeliveryZone | null) => void;
+  /** Mensaje cuando la entrega queda fuera del polígono exterior (zona outside). */
+  outsideCoverageMessage?: string;
 }
 
 const CotizadorAddressMapDual = ({
@@ -317,6 +319,7 @@ const CotizadorAddressMapDual = ({
   deliveryPlaceholder = "Dirección de entrega",
   lockedPickupCoords = null,
   onDeliveryZoneChange,
+  outsideCoverageMessage,
 }: CotizadorAddressMapDualProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "",
@@ -450,9 +453,8 @@ const CotizadorAddressMapDual = ({
                 style={{ color: "#f0ad4e", marginTop: "2px" }}
               ></i>
               <span>
-                La dirección se encuentra fuera de nuestro radio del alcance. Un
-                ejecutivo se comunicará contigo para entregarte una tarifa
-                correspondiente.
+                {outsideCoverageMessage ??
+                  "La dirección se encuentra fuera de nuestro radio del alcance. Un ejecutivo se comunicará contigo para entregarte una tarifa correspondiente."}
               </span>
             </div>
           )}

@@ -65,7 +65,7 @@ export const PDFTemplateFCL: React.FC<PDFTemplateFCLProps> = ({
   carrier,
   transitTime,
   freeTime,
-  remarks,
+  remarks: _remarks,
   validUntil,
   isPendingQuote = false,
   company,
@@ -538,25 +538,6 @@ export const PDFTemplateFCL: React.FC<PDFTemplateFCLProps> = ({
               {currency} {fmt(totalCharges)}
             </span>
           </div>
-        </div>
-      )}
-
-      {/* ── Remarks ── */}
-      {remarks && (
-        <div
-          style={{
-            backgroundColor: C.bg,
-            border: `1px solid ${C.line}`,
-            borderLeft: `3px solid ${C.accent}`,
-            borderRadius: "3px",
-            padding: "7px 12px",
-            marginBottom: "10px",
-            fontSize: "7.5pt",
-            color: C.sub,
-            lineHeight: 1.5,
-          }}
-        >
-          <strong style={{ color: C.text }}>Remarks</strong> — {remarks}
         </div>
       )}
 

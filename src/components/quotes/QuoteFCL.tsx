@@ -15,6 +15,11 @@ import {
 import { useTranslation } from "react-i18next";
 import ReactDOM from "react-dom/client";
 import CotizadorAddressMap from "../Map/CotizadorAddressMap";
+import CotizadorAddressMapDual from "../Map/CotizadorAddressMapDual";
+import {
+  applyVespucioTransportSurcharge,
+  type VespucioDeliveryZone,
+} from "../../config/vespucioRing";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
 import { imgUrl } from "../../config/images";
@@ -71,6 +76,16 @@ import {
 } from "./Handlers/handlerFechas";
 
 const INITIAL_VISIBLE_ROUTES = 5;
+
+const FCL_ULTIMA_MILLA_ELIGIBLE_PODS = new Set(["san antonio", "valparaiso"]);
+const FCL_TT_RATE_20GP = 690.2;
+const FCL_TT_RATE_40 = 547.4;
+
+const isUltimaMillaEligiblePOD = (podNormalized?: string | null): boolean =>
+  !!podNormalized && FCL_ULTIMA_MILLA_ELIGIBLE_PODS.has(podNormalized);
+
+const getUltimaMillaRate = (containerType: ContainerType): number =>
+  containerType === "20GP" ? FCL_TT_RATE_20GP : FCL_TT_RATE_40;
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
 function expandClientesPorEmpresa(
@@ -189,6 +204,16 @@ function QuoteFCL({
 
   // Estado para Live Tracking (servicio gratuito)
   const [liveTrackingActivo, setLiveTrackingActivo] = useState(false);
+
+  // Estado para Última Milla (transporte terrestre — solo POD San Antonio / Valparaiso)
+  const [ultimaMillaActivo, setUltimaMillaActivo] = useState(false);
+  const [ultimaMillaDireccion, setUltimaMillaDireccion] = useState("");
+  const [ultimaMillaVespucioZone, setUltimaMillaVespucioZone] =
+    useState<VespucioDeliveryZone | null>(null);
+  const [showUltimaMillaModal, setShowUltimaMillaModal] = useState(false);
+  const [tempUltimaMillaDireccion, setTempUltimaMillaDireccion] = useState("");
+  const [tempUltimaMillaZone, setTempUltimaMillaZone] =
+    useState<VespucioDeliveryZone | null>(null);
 
   // Wizard de pasos: solo un paso visible a la vez.
   // El usuario solo puede retroceder a pasos ya alcanzados; avanzar se hace
@@ -889,6 +914,9 @@ function QuoteFCL({
     valorMercaderia,
     gastolocal,
     liveTrackingActivo,
+    ultimaMillaActivo,
+    ultimaMillaDireccion,
+    ultimaMillaVespucioZone,
     clienteSeleccionado,
   ]);
   // Las funciones getValidityClass, parseValidUntilToISO y formatValidUntilDisplay
@@ -1137,6 +1165,50 @@ function QuoteFCL({
     return Math.max((valorCarga + totalSinSeguro) * 1.1 * 0.0025, 25);
   };
 
+  const ultimaMillaDisponible = isUltimaMillaEligiblePOD(
+    rutaSeleccionada?.podNormalized,
+  );
+
+  const ultimaMillaPickupCoords = useMemo(() => {
+    const podNorm = rutaSeleccionada?.podNormalized;
+    if (!podNorm) return null;
+    const portKey = podNorm.replace(/\s+/g, "_");
+    const port =
+      portCoordinates[portKey as keyof typeof portCoordinates] ?? null;
+    if (!port) return null;
+    return { lat: port.lat, lng: port.lng };
+  }, [rutaSeleccionada?.podNormalized]);
+
+  const ultimaMillaAplicaCobro =
+    ultimaMillaActivo &&
+    ultimaMillaDisponible &&
+    ultimaMillaDireccion.trim().length > 0 &&
+    ultimaMillaVespucioZone !== null &&
+    ultimaMillaVespucioZone !== "outside";
+
+  const calculateUltimaMilla = (): number => {
+    if (!ultimaMillaAplicaCobro || !containerSeleccionado) {
+      return 0;
+    }
+    const baseRate = getUltimaMillaRate(containerSeleccionado.type);
+    const baseAmount = Number((baseRate * cantidadContenedores).toFixed(2));
+    return applyVespucioTransportSurcharge(baseAmount, ultimaMillaVespucioZone);
+  };
+
+  const resetUltimaMilla = () => {
+    setUltimaMillaActivo(false);
+    setUltimaMillaDireccion("");
+    setUltimaMillaVespucioZone(null);
+    setTempUltimaMillaDireccion("");
+    setTempUltimaMillaZone(null);
+  };
+
+  useEffect(() => {
+    if (!ultimaMillaDisponible) {
+      resetUltimaMilla();
+    }
+  }, [ultimaMillaDisponible]);
+
   // ============================================================================
   // FUNCIÓN DE TEST API
   // ============================================================================
@@ -1301,7 +1373,8 @@ function QuoteFCL({
         oceanFreightValues.incomeAmount + // Ocean Freight
         (seguroActivo ? calculateSeguro() : 0) + // Seguro
         thcAmount +
-        aperturaAmount; // Gastos Locales
+        aperturaAmount + // Gastos Locales
+        calculateUltimaMilla(); // Última Milla
 
       const total = showPendingQuote
         ? "PENDIENTE"
@@ -1411,6 +1484,23 @@ function QuoteFCL({
           unit: "Each",
           rate: 0,
           amount: 0,
+        });
+      }
+
+      // Última Milla — Transporte Terrestre (solo POD San Antonio / Valparaiso)
+      if (ultimaMillaAplicaCobro) {
+        const ttAmount = calculateUltimaMilla();
+        const ttRateEffective =
+          cantidadContenedores > 0
+            ? Number((ttAmount / cantidadContenedores).toFixed(2))
+            : ttAmount;
+        pdfCharges.push({
+          code: "TT",
+          description: "TRANSPORTE TERRESTRE",
+          quantity: cantidadContenedores,
+          unit: "Container",
+          rate: ttRateEffective,
+          amount: ttAmount,
         });
       }
 
@@ -1572,9 +1662,11 @@ function QuoteFCL({
               incoterm === "EXW" ? (pickupFromAddress ?? undefined) : undefined
             }
             deliveryToAddress={
-              incoterm === "EXW"
-                ? (deliveryToAddressDerived ?? undefined)
-                : undefined
+              ultimaMillaAplicaCobro
+                ? ultimaMillaDireccion
+                : incoterm === "EXW"
+                  ? (deliveryToAddressDerived ?? undefined)
+                  : undefined
             }
             salesRep={salesRepName}
             containerType={containerName}
@@ -2071,6 +2163,59 @@ function QuoteFCL({
         expense: {
           quantity: 1,
           unit: "LIVE TRACKING",
+          rate: 0,
+          amount: 0,
+          showamount: 0,
+          payment: "Collect",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: rutaSeleccionada.currency,
+          },
+        },
+      });
+    }
+
+    // Cobro de Última Milla — Transporte Terrestre (solo POD San Antonio / Valparaiso)
+    if (ultimaMillaAplicaCobro) {
+      const ttAmount = calculateUltimaMilla();
+      const ttRateEffective =
+        cantidadContenedores > 0
+          ? Number((ttAmount / cantidadContenedores).toFixed(2))
+          : ttAmount;
+      const zoneNote =
+        ultimaMillaVespucioZone === "extended"
+          ? " (+45% zona extendida)"
+          : "";
+      charges.push({
+        service: {
+          id: 134796,
+          code: "TT",
+          description: "TRANSPORTE TERRESTRE",
+        },
+        income: {
+          quantity: cantidadContenedores,
+          unit: "CONTENEDOR",
+          rate: ttRateEffective,
+          amount: ttAmount,
+          showamount: ttAmount,
+          payment: "Collect",
+          billApplyTo: "Other",
+          billTo: {
+            name: effectiveUsername,
+          },
+          currency: {
+            abbr: rutaSeleccionada.currency,
+          },
+          reference: "FCL-ULTIMA-MILLA",
+          showOnDocument: true,
+          notes: `Transporte Terrestre${zoneNote} - ${cantidadContenedores} contenedor${cantidadContenedores > 1 ? "es" : ""} ${containerSeleccionado.type} × ${ttRateEffective} ${rutaSeleccionada.currency}. Entrega: ${ultimaMillaDireccion}`,
+        },
+        expense: {
+          quantity: cantidadContenedores,
+          unit: "CONTENEDOR",
           rate: 0,
           amount: 0,
           showamount: 0,
@@ -3488,6 +3633,61 @@ function QuoteFCL({
                     )}
                   </div>
                 </div>
+                {/* Card: Última Milla (solo POD San Antonio / Valparaiso) */}
+                {ultimaMillaDisponible && (
+                  <div
+                    className={`qf-addon-card${ultimaMillaActivo ? " is-active" : ""}`}
+                  >
+                    <div className="qf-addon-card__image">
+                      <img
+                        src={imgUrl("addcargos/ultima-milla.png")}
+                        alt="Última Milla"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display =
+                            "none";
+                        }}
+                      />
+                    </div>
+                    <div className="qf-addon-card__body">
+                      <h4>Agregar Última Milla</h4>
+                      <p>
+                        Transporte terrestre desde el puerto de destino hasta su
+                        bodega o dirección final. Tarifa por contenedor según
+                        tipo seleccionado.
+                      </p>
+                      {ultimaMillaActivo && ultimaMillaDireccion && (
+                        <span
+                          className="qf-badge qf-badge-primary mt-2"
+                          style={{ display: "inline-block" }}
+                        >
+                          Entrega: {ultimaMillaDireccion}
+                        </span>
+                      )}
+                    </div>
+                    <div className="qf-addon-card__action">
+                      {!ultimaMillaActivo ? (
+                        <button
+                          className="qf-addon-btn-add"
+                          onClick={() => {
+                            setTempUltimaMillaDireccion("");
+                            setTempUltimaMillaZone(null);
+                            setShowUltimaMillaModal(true);
+                          }}
+                        >
+                          <i className="bi bi-plus-lg"></i>Agregar
+                        </button>
+                      ) : (
+                        <button
+                          className="qf-addon-btn-remove"
+                          onClick={resetUltimaMilla}
+                        >
+                          <i className="bi bi-x-lg"></i>Remover
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Botón Continuar */}
@@ -3598,7 +3798,7 @@ function QuoteFCL({
                   )}
 
                   {/* Resumen de servicios adicionales activos */}
-                  {(seguroActivo || gastolocal) && (
+                  {(seguroActivo || gastolocal || ultimaMillaActivo) && (
                     <div className="border-top pt-2 mt-1">
                       <span className="text-muted d-block mb-1">
                         Servicios Adicionales:
@@ -3615,6 +3815,12 @@ function QuoteFCL({
                           <span className="qf-badge qf-badge-primary">
                             <i className="bi bi-building me-1"></i>Gastos
                             Locales (THC + Apertura)
+                          </span>
+                        )}
+                        {ultimaMillaActivo && ultimaMillaDireccion && (
+                          <span className="qf-badge qf-badge-primary">
+                            <i className="bi bi-truck me-1"></i>Última Milla
+                            {` — ${ultimaMillaDireccion}`}
                           </span>
                         )}
                       </div>
@@ -3759,6 +3965,85 @@ function QuoteFCL({
             }}
           />
         </Modal.Body>
+      </Modal>
+
+      {/* Modal: Última Milla — dirección de entrega */}
+      <Modal
+        show={showUltimaMillaModal}
+        onHide={() => setShowUltimaMillaModal(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <i
+              className="bi bi-truck me-2"
+              style={{ color: "var(--qf-primary)" }}
+            ></i>
+            Agregar Última Milla
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted small mb-3">
+            Indique la dirección de entrega final. El transporte terrestre se
+            cotiza desde el puerto de destino (
+            {rutaSeleccionada?.pod ?? "Puerto"}) hasta su bodega.
+          </p>
+          {ultimaMillaPickupCoords ? (
+            <CotizadorAddressMapDual
+              pickupValue={rutaSeleccionada?.pod ?? ""}
+              onPickupChange={() => { }}
+              deliveryValue={tempUltimaMillaDireccion}
+              onDeliveryChange={setTempUltimaMillaDireccion}
+              pickupPlaceholder={`Puerto de ${rutaSeleccionada?.pod ?? "destino"}`}
+              deliveryPlaceholder="Ingrese dirección de entrega"
+              lockedPickupCoords={ultimaMillaPickupCoords}
+              onDeliveryZoneChange={setTempUltimaMillaZone}
+              outsideCoverageMessage="La dirección se encuentra fuera de nuestra zona de cobertura. No es posible agregar el servicio de Última Milla para esta ubicación."
+            />
+          ) : (
+            <p className="text-danger small mb-0">
+              No se pudo cargar la ubicación del puerto de destino.
+            </p>
+          )}
+
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowUltimaMillaModal(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            style={{
+              backgroundColor: "var(--qf-primary)",
+              borderColor: "var(--qf-primary)",
+            }}
+            disabled={
+              !tempUltimaMillaDireccion.trim() ||
+              tempUltimaMillaZone === null ||
+              tempUltimaMillaZone === "outside" ||
+              !ultimaMillaPickupCoords
+            }
+            onClick={() => {
+              if (
+                !tempUltimaMillaDireccion.trim() ||
+                tempUltimaMillaZone === null ||
+                tempUltimaMillaZone === "outside"
+              ) {
+                return;
+              }
+              setUltimaMillaDireccion(tempUltimaMillaDireccion);
+              setUltimaMillaVespucioZone(tempUltimaMillaZone);
+              setUltimaMillaActivo(true);
+              setShowUltimaMillaModal(false);
+            }}
+          >
+            Confirmar
+          </Button>
+        </Modal.Footer>
       </Modal>
 
       {/* Modal: Seguro de Carga */}
