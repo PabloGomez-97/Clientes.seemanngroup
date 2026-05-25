@@ -1,4 +1,4 @@
-// src/layouts/AdminLayout.tsx - Same structure as UserLayout
+// src/layouts/AdminLayout.tsx - Same structure as UserLayouts
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import NavbarAdmin from "./Navbar-admin";
