@@ -6,6 +6,7 @@ import i18n from "../i18n";
 import { imgUrl } from "../config/images";
 import PortalNotificationBell from "../components/notifications/PortalNotificationBell";
 import { useChatbotContext } from "../contexts/ChatbotContext";
+import SidebarToggleButton from "./SidebarToggleButton";
 
 // Design tokens - Enterprise Dark + Brand (same as client Navbar)
 const colors = {
@@ -22,12 +23,14 @@ interface NavbarAdminProps {
   onLogout: () => void;
   toggleSidebar: () => void;
   isSidebarCollapsed: boolean;
+  isMobile?: boolean;
 }
 
 function NavbarAdmin({
   onLogout,
   toggleSidebar,
   isSidebarCollapsed,
+  isMobile = false,
 }: NavbarAdminProps) {
   const { user, logout } = useAuth();
   const { toggleChat } = useChatbotContext();
@@ -123,7 +126,7 @@ function NavbarAdmin({
         borderBottom: `1px solid ${colors.border}`,
         display: "flex",
         alignItems: "center",
-        justifyContent: "flex-end",
+        justifyContent: isMobile ? "space-between" : "flex-end",
         padding: "0 20px",
         gap: "12px",
         position: "sticky",
@@ -133,6 +136,15 @@ function NavbarAdmin({
           '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
+      {isMobile && (
+        <SidebarToggleButton
+          isCollapsed={isSidebarCollapsed}
+          onClick={toggleSidebar}
+          ariaLabel={isSidebarCollapsed ? "Abrir menú" : "Cerrar menú"}
+          title={isSidebarCollapsed ? "Abrir menú" : "Cerrar menú"}
+        />
+      )}
+
       {/* Right Section - Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         {/* AI Chat Button */}

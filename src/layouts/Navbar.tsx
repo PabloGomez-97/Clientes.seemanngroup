@@ -7,6 +7,7 @@ import i18n from "../i18n";
 import { imgUrl } from "../config/images";
 import PortalNotificationBell from "../components/notifications/PortalNotificationBell";
 import { useChatbotContext } from "../contexts/ChatbotContext";
+import SidebarToggleButton from "./SidebarToggleButton";
 
 // Design tokens - Enterprise Dark + Brand
 const colors = {
@@ -22,9 +23,15 @@ interface NavbarProps {
   onLogout: () => void;
   toggleSidebar: () => void;
   isSidebarCollapsed: boolean;
+  isMobile?: boolean;
 }
 
-function Navbar({ onLogout, toggleSidebar, isSidebarCollapsed }: NavbarProps) {
+function Navbar({
+  onLogout,
+  toggleSidebar,
+  isSidebarCollapsed,
+  isMobile = false,
+}: NavbarProps) {
   const { user, logout, activeUsername } = useAuth();
   const { toggleChat } = useChatbotContext();
   const navigate = useNavigate();
@@ -175,7 +182,7 @@ function Navbar({ onLogout, toggleSidebar, isSidebarCollapsed }: NavbarProps) {
           borderBottom: `1px solid ${colors.border}`,
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: isMobile ? "space-between" : "flex-end",
           padding: "0 20px",
           gap: "12px",
           position: "sticky",
@@ -186,6 +193,23 @@ function Navbar({ onLogout, toggleSidebar, isSidebarCollapsed }: NavbarProps) {
             '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
         }}
       >
+        {isMobile && (
+          <SidebarToggleButton
+            isCollapsed={isSidebarCollapsed}
+            onClick={toggleSidebar}
+            ariaLabel={
+              isSidebarCollapsed
+                ? t("home.navbar.openMenu")
+                : t("home.navbar.closeMenu")
+            }
+            title={
+              isSidebarCollapsed
+                ? t("home.navbar.openMenu")
+                : t("home.navbar.closeMenu")
+            }
+          />
+        )}
+
         {/* Right Section - Actions */}
         <div
           className="main-navbar-actions"

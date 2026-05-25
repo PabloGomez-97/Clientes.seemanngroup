@@ -9,7 +9,8 @@ import Footer from "../components/Footer/Footer";
 import { ChatbotProvider } from "../contexts/ChatbotContext";
 import { useLinbisToken } from "../hooks/useLinbisToken";
 
-const MOBILE_BREAKPOINT = 768;
+/** Teléfono y tablet: menú lateral como drawer */
+const MOBILE_BREAKPOINT = 1024;
 
 const isMobileViewport = () =>
   typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT;
@@ -231,6 +232,7 @@ function UserLayout() {
             onLogout={handleLogout}
             toggleSidebar={toggleSidebar}
             isSidebarCollapsed={sidebarCollapsed}
+            isMobile={isMobile}
           />
 
           <div

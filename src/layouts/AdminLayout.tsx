@@ -10,7 +10,8 @@ import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";
 import { useLinbisToken } from "../hooks/useLinbisToken";
 
-const MOBILE_BREAKPOINT = 768;
+/** Teléfono y tablet: menú lateral como drawer */
+const MOBILE_BREAKPOINT = 1024;
 
 const isMobileViewport = () =>
   typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT;
@@ -156,6 +157,7 @@ function AdminLayout() {
             onLogout={handleLogout}
             toggleSidebar={toggleSidebar}
             isSidebarCollapsed={sidebarCollapsed}
+            isMobile={isMobile}
           />
 
           <div

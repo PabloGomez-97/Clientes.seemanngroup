@@ -579,8 +579,8 @@ function Sidebar({
           ))}
         </nav>
 
-        {/* Bottom toggle button — only on desktop */}
-        {!isMobile && (
+        {/* Bottom toggle — desktop siempre; móvil solo con menú abierto */}
+        {(!isMobile || !isCollapsed) && (
           <div
             style={{
               borderTop: `1px solid ${colors.border}`,
@@ -592,11 +592,13 @@ function Sidebar({
               type="button"
               onClick={onToggle}
               aria-label={
-                isCollapsed
-                  ? "Expandir barra lateral"
-                  : "Colapsar barra lateral"
+                isMobile
+                  ? "Cerrar menú de navegación"
+                  : isCollapsed
+                    ? "Expandir barra lateral"
+                    : "Colapsar barra lateral"
               }
-              title={isCollapsed ? "Expandir" : "Colapsar"}
+              title={isMobile ? "Cerrar menú" : isCollapsed ? "Expandir" : "Colapsar"}
               style={{
                 width: "100%",
                 height: "34px",
@@ -649,7 +651,9 @@ function Sidebar({
                   opacity="0.65"
                 />
               </svg>
-              {!isCollapsed && <span>Colapsar menú</span>}
+              {(!isCollapsed || isMobile) && (
+                <span>{isMobile ? "Cerrar menú" : "Colapsar menú"}</span>
+              )}
             </button>
           </div>
         )}
@@ -671,7 +675,7 @@ function Sidebar({
             background: transparent;
           }
 
-          @media (max-width: 768px) {
+          @media (max-width: 1024px) {
             .sidebar-shell {
               border-top-right-radius: 24px;
               border-bottom-right-radius: 24px;
@@ -689,6 +693,13 @@ function Sidebar({
 
             .sidebar-nav {
               padding: 14px 0 28px !important;
+            }
+          }
+
+          @media (max-width: 768px) {
+            .sidebar-shell {
+              width: min(86vw, 320px) !important;
+              min-width: min(86vw, 320px) !important;
             }
           }
 

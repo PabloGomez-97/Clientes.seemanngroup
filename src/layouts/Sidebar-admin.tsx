@@ -642,8 +642,8 @@ function SidebarAdmin({
           ))}
         </nav>
 
-        {/* Bottom toggle button — only on desktop */}
-        {!isMobile && (
+        {/* Bottom toggle — desktop siempre; móvil solo con menú abierto */}
+        {(!isMobile || !isCollapsed) && (
           <div
             style={{
               borderTop: `1px solid ${colors.border}`,
@@ -655,11 +655,13 @@ function SidebarAdmin({
               type="button"
               onClick={onToggle}
               aria-label={
-                isCollapsed
-                  ? "Expandir barra lateral"
-                  : "Colapsar barra lateral"
+                isMobile
+                  ? "Cerrar menú de navegación"
+                  : isCollapsed
+                    ? "Expandir barra lateral"
+                    : "Colapsar barra lateral"
               }
-              title={isCollapsed ? "Expandir" : "Colapsar"}
+              title={isMobile ? "Cerrar menú" : isCollapsed ? "Expandir" : "Colapsar"}
               style={{
                 width: "100%",
                 height: "34px",
@@ -712,7 +714,9 @@ function SidebarAdmin({
                   opacity="0.65"
                 />
               </svg>
-              {!isCollapsed && <span>Colapsar menú</span>}
+              {(!isCollapsed || isMobile) && (
+                <span>{isMobile ? "Cerrar menú" : "Colapsar menú"}</span>
+              )}
             </button>
           </div>
         )}

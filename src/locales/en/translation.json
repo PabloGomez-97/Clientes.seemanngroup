@@ -129,6 +129,8 @@
       "title": "Trusted by our clients"
     },
     "navbar": {
+      "openMenu": "Open menu",
+      "closeMenu": "Close menu",
       "notifications": {
         "newQuote": "New quote",
         "quoteCreated": "Quote #1234 created",

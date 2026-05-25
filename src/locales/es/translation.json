@@ -129,6 +129,8 @@
       "title": "Clientes que confían en nosotros"
     },
     "navbar": {
+      "openMenu": "Abrir menú",
+      "closeMenu": "Cerrar menú",
       "notifications": {
         "newQuote": "Nueva cotización",
         "quoteCreated": "Cotización #1234 creada",
