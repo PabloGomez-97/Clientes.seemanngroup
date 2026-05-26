@@ -456,7 +456,11 @@ function ShipsGoTracking({
               <div className="sg-error">
                 <h4>Error</h4>
                 <p>{airError}</p>
-                <button className="sg-error-btn" onClick={fetchAir}>
+                <button
+                  className="sg-error-btn"
+                  type="button"
+                  onClick={() => void fetchAir({ force: true })}
+                >
                   Reintentar
                 </button>
               </div>
@@ -716,7 +720,11 @@ function ShipsGoTracking({
               <div className="sg-error">
                 <h4>Error</h4>
                 <p>{oceanError}</p>
-                <button className="sg-error-btn" onClick={fetchOcean}>
+                <button
+                  className="sg-error-btn"
+                  type="button"
+                  onClick={() => void fetchOcean({ force: true })}
+                >
                   Reintentar
                 </button>
               </div>
