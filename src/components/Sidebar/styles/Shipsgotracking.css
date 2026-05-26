@@ -26,6 +26,12 @@
   margin-bottom: 1.25rem;
 }
 
+.sg-page-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .sg-page-header-left h1 {
   font-size: 1.25rem;
   font-weight: 600;
