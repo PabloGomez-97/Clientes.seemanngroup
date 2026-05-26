@@ -15,14 +15,14 @@ const EXCHANGE_RATE_LABELS: {
   key: keyof IExchangeRates;
   label: string;
 }[] = [
-  { key: "ufToCLP", label: "1 UF" },
-  { key: "usdToCLP", label: "1 USD" },
-  { key: "eurToCLP", label: "1 EUR" },
-  { key: "gbpToCLP", label: "1 GBP" },
-  { key: "cadToCLP", label: "1 CAD" },
-  { key: "chfToCLP", label: "1 CHF" },
-  { key: "sekToCLP", label: "1 SEK" },
-];
+    { key: "ufToCLP", label: "1 UF" },
+    { key: "usdToCLP", label: "1 USD" },
+    { key: "eurToCLP", label: "1 EUR" },
+    { key: "gbpToCLP", label: "1 GBP" },
+    { key: "cadToCLP", label: "1 CAD" },
+    { key: "chfToCLP", label: "1 CHF" },
+    { key: "sekToCLP", label: "1 SEK" },
+  ];
 
 const AEREO_CHARGE_LABELS: {
   key: keyof IChargeValues;
@@ -30,49 +30,49 @@ const AEREO_CHARGE_LABELS: {
   suffix: string;
   description: string;
 }[] = [
-  {
-    key: "honorariosPct",
-    label: "Honorarios",
-    suffix: "% del CIF",
-    description: "Porcentaje aplicado sobre el valor CIF",
-  },
-  {
-    key: "honorariosMinUF",
-    label: "Honorarios Mínimos",
-    suffix: "UF",
-    description: "Monto mínimo de honorarios en UF",
-  },
-  {
-    key: "gastosDespachoUF",
-    label: "Gastos Despachos",
-    suffix: "UF",
-    description: "Gastos de despacho aduanero",
-  },
-  {
-    key: "tramitacionUF",
-    label: "Tramitación CDA SAG/Seremi/ISP",
-    suffix: "UF",
-    description: "Cargos por tramitación de documentos",
-  },
-  {
-    key: "mensajeriaUF",
-    label: "Mensajería",
-    suffix: "UF",
-    description: "Gastos de mensajería",
-  },
-  {
-    key: "ivaAduaneroPct",
-    label: "IVA Aduanero",
-    suffix: "% del CIF",
-    description: "Impuesto al valor agregado aduanero",
-  },
-  {
-    key: "derechosPct",
-    label: "Derechos",
-    suffix: "% del CIF",
-    description: "Derechos de importación",
-  },
-];
+    {
+      key: "honorariosPct",
+      label: "Honorarios",
+      suffix: "% del CIF",
+      description: "Porcentaje aplicado sobre el valor CIF",
+    },
+    {
+      key: "honorariosMinUF",
+      label: "Honorarios Mínimos",
+      suffix: "UF",
+      description: "Monto mínimo de honorarios en UF",
+    },
+    {
+      key: "gastosDespachoUF",
+      label: "Gastos Despachos",
+      suffix: "UF",
+      description: "Gastos de despacho aduanero",
+    },
+    {
+      key: "tramitacionUF",
+      label: "Tramitación CDA SAG/Seremi/ISP",
+      suffix: "UF",
+      description: "Cargos por tramitación de documentos",
+    },
+    {
+      key: "mensajeriaUF",
+      label: "Mensajería",
+      suffix: "UF",
+      description: "Gastos de mensajería",
+    },
+    {
+      key: "ivaAduaneroPct",
+      label: "IVA Aduanero",
+      suffix: "% del CIF",
+      description: "Impuesto al valor agregado aduanero",
+    },
+    {
+      key: "derechosPct",
+      label: "Derechos",
+      suffix: "% del CIF",
+      description: "Derechos de importación",
+    },
+  ];
 
 const FCL_CHARGE_LABELS: {
   key: keyof IFclChargeValues;
@@ -80,51 +80,51 @@ const FCL_CHARGE_LABELS: {
   suffix: string;
   description: string;
 }[] = [
-  {
-    key: "honorariosPct",
-    label: "Honorarios",
-    suffix: "% del CIF",
-    description: "Porcentaje aplicado sobre el valor CIF (FCL)",
-  },
-  {
-    key: "honorariosMinCurrency",
-    label: "Honorarios Mínimos",
-    suffix: "moneda cotización",
-    description:
-      "Monto mínimo de honorarios en la moneda de la cotización (USD, EUR, etc.)",
-  },
-  {
-    key: "customsClearanceCurrency",
-    label: "Customs Clearance",
-    suffix: "moneda cotización",
-    description: "Cargo fijo por customs clearance",
-  },
-  {
-    key: "gateInPerContainerCurrency",
-    label: "Gate In",
-    suffix: "por contenedor",
-    description:
-      "Tarifa por contenedor; en cotización se multiplica por cantidad de contenedores",
-  },
-  {
-    key: "docProcessCurrency",
-    label: "Doc Process",
-    suffix: "moneda cotización",
-    description: "Cargo fijo por procesamiento documental",
-  },
-  {
-    key: "ivaAduaneroPct",
-    label: "IVA Aduanero",
-    suffix: "% del CIF",
-    description: "Impuesto al valor agregado aduanero",
-  },
-  {
-    key: "derechosPct",
-    label: "Derechos",
-    suffix: "% del CIF",
-    description: "Derechos de importación",
-  },
-];
+    {
+      key: "honorariosPct",
+      label: "Honorarios",
+      suffix: "% del CIF",
+      description: "Porcentaje aplicado sobre el valor CIF (FCL)",
+    },
+    {
+      key: "honorariosMinCurrency",
+      label: "Honorarios Mínimos",
+      suffix: "moneda cotización",
+      description:
+        "Monto mínimo de honorarios en la moneda de la cotización (USD, EUR, etc.)",
+    },
+    {
+      key: "customsClearanceCurrency",
+      label: "Customs Clearance",
+      suffix: "moneda cotización",
+      description: "Cargo fijo por customs clearance",
+    },
+    {
+      key: "gateInPerContainerCurrency",
+      label: "Gate In",
+      suffix: "por contenedor",
+      description:
+        "Tarifa por contenedor; en cotización se multiplica por cantidad de contenedores",
+    },
+    {
+      key: "docProcessCurrency",
+      label: "Doc Process",
+      suffix: "moneda cotización",
+      description: "Cargo fijo por procesamiento documental",
+    },
+    {
+      key: "ivaAduaneroPct",
+      label: "IVA Aduanero",
+      suffix: "% del CIF",
+      description: "Impuesto al valor agregado aduanero",
+    },
+    {
+      key: "derechosPct",
+      label: "Derechos",
+      suffix: "% del CIF",
+      description: "Derechos de importación",
+    },
+  ];
 
 const LCL_CHARGE_LABELS: {
   key: keyof ILclChargeValues;
@@ -132,61 +132,61 @@ const LCL_CHARGE_LABELS: {
   suffix: string;
   description: string;
 }[] = [
-  {
-    key: "honorariosPct",
-    label: "Honorarios",
-    suffix: "% del CIF",
-    description: "Porcentaje aplicado sobre el valor CIF (LCL)",
-  },
-  {
-    key: "honorariosMinCurrency",
-    label: "Honorarios Mínimos",
-    suffix: "moneda cotización",
-    description: "Monto mínimo de honorarios en la moneda de la cotización",
-  },
-  {
-    key: "customsClearanceCurrency",
-    label: "Customs Clearance",
-    suffix: "moneda cotización",
-    description: "Cargo fijo por customs clearance",
-  },
-  {
-    key: "despachoSueltaRatePerWM",
-    label: "Despacho carga suelta",
-    suffix: "por W/M",
-    description: `Tarifa × W/M cargable × 1.${DESPACHO_SUELTA_IVA_PCT} (IVA ${DESPACHO_SUELTA_IVA_PCT}% fijo en código)`,
-  },
-  {
-    key: "separacionBLCurrency",
-    label: "Separación BL",
-    suffix: "moneda cotización",
-    description: "Separación de carga por BL (fijo)",
-  },
-  {
-    key: "apoyoTramitacionCurrency",
-    label: "Apoyo tramitación",
-    suffix: "moneda cotización",
-    description: "Apoyo a clientes en tramitación (fijo)",
-  },
-  {
-    key: "apoyoServicioDocumentalCurrency",
-    label: "Apoyo servicio documental",
-    suffix: "moneda cotización",
-    description: "Apoyo clientes en servicio documental (fijo)",
-  },
-  {
-    key: "ivaAduaneroPct",
-    label: "IVA Aduanero",
-    suffix: "% del CIF",
-    description: "IVA aduanero sobre CIF (distinto del 19% del despacho suelta)",
-  },
-  {
-    key: "derechosPct",
-    label: "Derechos",
-    suffix: "% del CIF",
-    description: "Derechos de importación",
-  },
-];
+    {
+      key: "honorariosPct",
+      label: "Honorarios",
+      suffix: "% del CIF",
+      description: "Porcentaje aplicado sobre el valor CIF (LCL)",
+    },
+    {
+      key: "honorariosMinCurrency",
+      label: "Honorarios Mínimos",
+      suffix: "moneda cotización",
+      description: "Monto mínimo de honorarios en la moneda de la cotización",
+    },
+    {
+      key: "customsClearanceCurrency",
+      label: "Customs Clearance",
+      suffix: "moneda cotización",
+      description: "Cargo fijo por customs clearance",
+    },
+    {
+      key: "despachoSueltaRatePerWM",
+      label: "Despacho carga suelta",
+      suffix: "por W/M",
+      description: `Tarifa × W/M cargable × 1.${DESPACHO_SUELTA_IVA_PCT} (IVA ${DESPACHO_SUELTA_IVA_PCT}% fijo en código)`,
+    },
+    {
+      key: "separacionBLCurrency",
+      label: "Separación BL",
+      suffix: "moneda cotización",
+      description: "Separación de carga por BL (fijo)",
+    },
+    {
+      key: "apoyoTramitacionCurrency",
+      label: "Apoyo tramitación",
+      suffix: "moneda cotización",
+      description: "Apoyo a clientes en tramitación (fijo)",
+    },
+    {
+      key: "apoyoServicioDocumentalCurrency",
+      label: "Apoyo servicio documental",
+      suffix: "moneda cotización",
+      description: "Apoyo clientes en servicio documental (fijo)",
+    },
+    {
+      key: "ivaAduaneroPct",
+      label: "IVA Aduanero",
+      suffix: "% del CIF",
+      description: "IVA aduanero sobre CIF (distinto del 19% del despacho suelta)",
+    },
+    {
+      key: "derechosPct",
+      label: "Derechos",
+      suffix: "% del CIF",
+      description: "Derechos de importación",
+    },
+  ];
 
 export default function AgenciaAduanas() {
   const [activeTab, setActiveTab] = useState<AgenciaTab>("AÉREO");
@@ -335,25 +335,25 @@ export default function AgenciaAduanas() {
 
   const ufInCurrencies = aereoConfig.exchangeRates
     ? {
-        USD: (
-          aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.usdToCLP
-        ).toFixed(2),
-        EUR: (
-          aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.eurToCLP
-        ).toFixed(2),
-        GBP: (
-          aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.gbpToCLP
-        ).toFixed(2),
-        CAD: (
-          aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.cadToCLP
-        ).toFixed(2),
-        CHF: (
-          aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.chfToCLP
-        ).toFixed(2),
-        SEK: (
-          aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.sekToCLP
-        ).toFixed(2),
-      }
+      USD: (
+        aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.usdToCLP
+      ).toFixed(2),
+      EUR: (
+        aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.eurToCLP
+      ).toFixed(2),
+      GBP: (
+        aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.gbpToCLP
+      ).toFixed(2),
+      CAD: (
+        aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.cadToCLP
+      ).toFixed(2),
+      CHF: (
+        aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.chfToCLP
+      ).toFixed(2),
+      SEK: (
+        aereoConfig.exchangeRates.ufToCLP / aereoConfig.exchangeRates.sekToCLP
+      ).toFixed(2),
+    }
     : null;
 
   const tabLoading =
@@ -563,6 +563,13 @@ export default function AgenciaAduanas() {
                     <i className="bi bi-receipt me-2 text-primary" />
                     Valores de Cobros (Aéreo)
                   </h5>
+                  <small className="text-muted">
+                    Los valores se sacaron de acá:
+                  </small>
+                  <hr />
+                  <a href="https://docs.google.com/spreadsheets/d/1nOmjJ_QzQ5i_sY0KwU9HP7Fx5fDV54r-/edit?usp=sharing&ouid=102171263323609993698&rtpof=true&sd=true" target="_blank" rel="noopener noreferrer">
+                    <strong>https://docs.google.com/spreadsheets/d/1nOmjJ_QzQ5i_sY0KwU9HP7Fx5fDV54r-/edit?usp=sharing&ouid=102171263323609993698&rtpof=true&sd=true</strong>
+                  </a>
                 </div>
                 <div className="card-body">
                   <div className="row g-3">
@@ -650,9 +657,12 @@ export default function AgenciaAduanas() {
                   Valores de Cobros (FCL)
                 </h5>
                 <small className="text-muted">
-                  Montos en la moneda de la cotización (sin conversión UF). Gate
-                  In se multiplica por cantidad de contenedores en el cotizador.
+                  Los valores se sacaron de acá:
                 </small>
+                <hr />
+                <a href="https://docs.google.com/spreadsheets/d/1nOmjJ_QzQ5i_sY0KwU9HP7Fx5fDV54r-/edit?usp=sharing&ouid=102171263323609993698&rtpof=true&sd=true" target="_blank" rel="noopener noreferrer">
+                  <strong>https://docs.google.com/spreadsheets/d/1nOmjJ_QzQ5i_sY0KwU9HP7Fx5fDV54r-/edit?usp=sharing&ouid=102171263323609993698&rtpof=true&sd=true</strong>
+                </a>
               </div>
               <div className="card-body">
                 <div className="row g-3">
@@ -736,10 +746,12 @@ export default function AgenciaAduanas() {
                   Valores de Cobros (LCL)
                 </h5>
                 <small className="text-muted">
-                  Montos en moneda de cotización. Extraport Charges en cotizador
-                  agrupa despacho suelta (× W/M × 1,19 fijo), separación BL, apoyo
-                  tramitación y apoyo documental.
+                  Los valores se sacaron de acá:
                 </small>
+                <hr />
+                <a href="https://docs.google.com/spreadsheets/d/1nOmjJ_QzQ5i_sY0KwU9HP7Fx5fDV54r-/edit?usp=sharing&ouid=102171263323609993698&rtpof=true&sd=true" target="_blank" rel="noopener noreferrer">
+                  <strong>https://docs.google.com/spreadsheets/d/1nOmjJ_QzQ5i_sY0KwU9HP7Fx5fDV54r-/edit?usp=sharing&ouid=102171263323609993698&rtpof=true&sd=true</strong>
+                </a>
               </div>
               <div className="card-body">
                 <div className="row g-3">
@@ -807,12 +819,13 @@ export default function AgenciaAduanas() {
             </div>
           )}
         </>
-      )}
+      )
+      }
 
       <div className="text-muted small text-end">
         <i className="bi bi-clock me-1" />
         Última modificación ({activeTab}): {updatedBy || "sistema"}
       </div>
-    </div>
+    </div >
   );
 }

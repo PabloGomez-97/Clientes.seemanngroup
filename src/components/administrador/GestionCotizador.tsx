@@ -19,34 +19,34 @@ const FCL_FIELDS: {
   step?: string;
   min?: string;
 }[] = [
-  {
-    key: "ttRate20GP",
-    label: "Transporte Terrestre (TT) — Contenedor 20GP",
-    suffix: "por contenedor",
-    description:
-      "Tarifa de última milla por cada contenedor 20GP seleccionado en la cotización FCL.",
-    step: "0.01",
-    min: "0.01",
-  },
-  {
-    key: "ttRate40",
-    label: "Transporte Terrestre (TT) — Contenedor 40HQ / 40NOR",
-    suffix: "por contenedor",
-    description:
-      "Tarifa de última milla por cada contenedor 40HQ o 40NOR seleccionado en la cotización FCL.",
-    step: "0.01",
-    min: "0.01",
-  },
-  {
-    key: "vespucioExtendedSurchargePct",
-    label: "Recargo zona extendida (Vespucio)",
-    suffix: "% adicional",
-    description:
-      "Porcentaje adicional sobre el TT cuando la dirección de entrega está entre el anillo de Américo Vespucio y el polígono exterior de cobertura.",
-    step: "0.1",
-    min: "0",
-  },
-];
+    {
+      key: "ttRate20GP",
+      label: "Transporte Terrestre (TT) — Contenedor 20GP",
+      suffix: "por contenedor",
+      description:
+        "Tarifa de última milla por cada contenedor 20GP seleccionado en la cotización FCL.",
+      step: "0.01",
+      min: "0.01",
+    },
+    {
+      key: "ttRate40",
+      label: "Transporte Terrestre (TT) — Contenedor 40HQ / 40NOR",
+      suffix: "por contenedor",
+      description:
+        "Tarifa de última milla por cada contenedor 40HQ o 40NOR seleccionado en la cotización FCL.",
+      step: "0.01",
+      min: "0.01",
+    },
+    {
+      key: "vespucioExtendedSurchargePct",
+      label: "Recargo zona extendida (Vespucio)",
+      suffix: "% adicional",
+      description:
+        "Porcentaje adicional sobre el TT cuando la dirección de entrega está entre el anillo de Américo Vespucio y el polígono exterior de cobertura.",
+      step: "0.1",
+      min: "0",
+    },
+  ];
 
 export default function GestionCotizador() {
   const { config, loading, error, saving, updateFcl, updateLcl, updateAereo } =
@@ -103,10 +103,10 @@ export default function GestionCotizador() {
     const next = base.map((b, i) =>
       i === index
         ? {
-            ...b,
-            [field]:
-              value === "" || isNaN(num) ? b[field] : num,
-          }
+          ...b,
+          [field]:
+            value === "" || isNaN(num) ? b[field] : num,
+        }
         : { ...b },
     );
     setEditingLcl((prev) => ({ ...prev, brackets: next }));
@@ -154,9 +154,9 @@ export default function GestionCotizador() {
     const next = base.map((b, i) =>
       i === index
         ? {
-            ...b,
-            [field]: value === "" || isNaN(num) ? b[field] : num,
-          }
+          ...b,
+          [field]: value === "" || isNaN(num) ? b[field] : num,
+        }
         : { ...b },
     );
     setEditingAereo((prev) => ({ ...prev, brackets: next }));
@@ -257,8 +257,9 @@ export default function GestionCotizador() {
               FCL — Transporte Terrestre (Última Milla)
             </h5>
             <small className="text-muted">
-              Código de cargo en Linbis: TT (id 134796). Aplica al servicio
-              adicional en cotización FCL hacia San Antonio o Valparaíso.
+              La info se saca del correo de Diego Morales:
+              <hr />
+              <strong>RE: 11808 // SOLICITUD TARIFADO</strong>
             </small>
           </div>
           <div className="card-body">
@@ -364,8 +365,9 @@ export default function GestionCotizador() {
               LCL — Delivery Trucking (Última Milla)
             </h5>
             <small className="text-muted">
-              Código Linbis: DELV (id 134724). Bracket por mayor tramo entre peso
-              real (kg) y volumen (m³). EXPENSE = INCOME ÷ 1,10 (fijo).
+              La info se saca del correo de Diego Morales:
+              <hr />
+              <strong>RE: 11808 // SOLICITUD TARIFADO</strong>
             </small>
           </div>
           <div className="card-body">
@@ -415,7 +417,7 @@ export default function GestionCotizador() {
                     const edited =
                       editingLcl.brackets !== undefined &&
                       JSON.stringify(editingLcl.brackets[index]) !==
-                        JSON.stringify(config.lcl.brackets[index]);
+                      JSON.stringify(config.lcl.brackets[index]);
                     return (
                       <tr key={index}>
                         <td className="text-muted">{index + 1}</td>
@@ -494,9 +496,10 @@ export default function GestionCotizador() {
               AÉREO — Transporte Terrestre (Última Milla)
             </h5>
             <small className="text-muted">
-              Código Linbis: TT (id 134796). Bracket por peso real total (kg).
-              Solo destino Santiago de Chile. EXPENSE = INCOME ÷ 1,10 (fijo).
+              La info se saca del correo de Cristopher Merino
             </small>
+            <hr />
+            <strong>RE: CTO - 476 // 11807 // SOLICITUD TARIFADO PARA FULL CONTAINER</strong>
           </div>
           <div className="card-body">
             <div className="row g-3 mb-4">
@@ -542,7 +545,7 @@ export default function GestionCotizador() {
                       const edited =
                         editingAereo.brackets !== undefined &&
                         JSON.stringify(editingAereo.brackets[index]) !==
-                          JSON.stringify(config.aereo.brackets[index]);
+                        JSON.stringify(config.aereo.brackets[index]);
                       return (
                         <tr key={index}>
                           <td className="text-muted">{index + 1}</td>
