@@ -14,8 +14,11 @@ async function main() {
 
   const db = await getMongoDb(MONGODB_URI, WHATSAPP_MONGODB_DB);
 
-  const authCol = db.collection(process.env.BAILEYS_AUTH_COLLECTION || 'baileys_auth');
-  const cursorCol = db.collection('whatsapp_worker_cursor');
+  type SessionIdDoc = { _id: string };
+  const authCol = db.collection<SessionIdDoc>(
+    process.env.BAILEYS_AUTH_COLLECTION || 'baileys_auth',
+  );
+  const cursorCol = db.collection<SessionIdDoc>('whatsapp_worker_cursor');
 
   const authRes = await authCol.deleteOne({ _id: BAILEYS_SESSION_ID });
   const cursorRes = await cursorCol.deleteOne({ _id: BAILEYS_SESSION_ID });

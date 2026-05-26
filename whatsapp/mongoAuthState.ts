@@ -1,4 +1,8 @@
-import type { AuthenticationState, SignalDataTypeMap } from '@whiskeysockets/baileys';
+import type {
+  AuthenticationCreds,
+  AuthenticationState,
+  SignalDataTypeMap,
+} from '@whiskeysockets/baileys';
 import { BufferJSON, initAuthCreds } from '@whiskeysockets/baileys';
 import type { Collection, Db } from 'mongodb';
 
@@ -31,7 +35,9 @@ export async function useMongoAuthState(opts: {
   );
 
   const existing = await collection.findOne({ _id: opts.sessionId });
-  const creds = existing?.creds ? deserialize(existing.creds) : initAuthCreds();
+  const creds: AuthenticationCreds = existing?.creds
+    ? deserialize<AuthenticationCreds>(existing.creds)
+    : initAuthCreds();
   const keys: Record<string, any> = existing?.keys ? deserialize(existing.keys) : {};
 
   async function persist(): Promise<void> {

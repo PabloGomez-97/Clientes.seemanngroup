@@ -48,7 +48,7 @@ async function main() {
       {
         reference,
         phone,
-        phones: (current as any)?.phones || res.value?.phones || [],
+        phones: (current as { phones?: string[] } | null)?.phones ?? [],
       },
       null,
       2,
