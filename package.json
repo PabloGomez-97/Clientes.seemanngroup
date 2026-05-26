@@ -8,6 +8,11 @@
     "build": "tsc -b && vite build",
     "hash-users": "ts-node --esm scripts/hash-users.ts",
     "auth": "tsx watch server/index.ts",
+    "whatsapp:worker": "node -r dotenv/config ./node_modules/.bin/tsx whatsapp/worker.ts",
+    "whatsapp:test": "node -r dotenv/config ./node_modules/.bin/tsx scripts/whatsapp-send-test.ts",
+    "whatsapp:reset": "node -r dotenv/config ./node_modules/.bin/tsx scripts/whatsapp-reset-session.ts",
+    "whatsapp:insert-test-notification": "node -r dotenv/config ./node_modules/.bin/tsx scripts/whatsapp-insert-test-notification.ts",
+    "whatsapp:optin-add-phone": "node -r dotenv/config ./node_modules/.bin/tsx scripts/whatsapp-optin-add-phone.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -57,7 +62,9 @@
     "mongoose": "^8.19.1",
     "openai": "^6.7.0",
     "papaparse": "^5.5.3",
+    "pino": "^9.9.0",
     "puppeteer-core": "^24.34.0",
+    "qrcode-terminal": "^0.12.0",
     "react": "^19.1.1",
     "react-bootstrap": "^2.10.10",
     "react-chartjs-2": "^5.3.1",
@@ -71,6 +78,7 @@
     "react-virtualized-auto-sizer": "^1.0.26",
     "react-window": "^2.2.2",
     "recharts": "^3.2.1",
+    "@whiskeysockets/baileys": "^6.7.18",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
