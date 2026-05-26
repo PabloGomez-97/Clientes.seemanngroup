@@ -25,6 +25,8 @@ import {
   getFclTtRate,
   getVespucioExtendedMultiplier,
 } from "../../hooks/useGestionCotizador";
+import { useFclExwConfig } from "../../hooks/useFclExwConfig";
+import { DEFAULT_FCL_EXW_CONFIG } from "../../types/fclExwConfig";
 import type { DestinationCoords } from "../Map/CotizadorAddressMap";
 import { getPortByPOL, portCoordinates } from "../../config/portCoordinates";
 import { imgUrl } from "../../config/images";
@@ -132,6 +134,7 @@ function QuoteFCL({
     useQuoteTracking("FCL");
   const { config: gestionCotizadorConfig } = useGestionCotizador();
   const fclTtConfig = gestionCotizadorConfig.fcl;
+  const { config: fclExwConfig } = useFclExwConfig();
   const vespucioExtendedMultiplier = useMemo(
     () => getVespucioExtendedMultiplier(fclTtConfig.vespucioExtendedSurchargePct),
     [fclTtConfig.vespucioExtendedSurchargePct],
@@ -1120,7 +1123,9 @@ function QuoteFCL({
     containerType: ContainerType,
     cantidad: number,
   ): number => {
-    const ratePerContainer = containerType === "20GP" ? 900 : 1090; // 40HQ y 40NOR cobran 1090
+    const exwCfg = fclExwConfig ?? DEFAULT_FCL_EXW_CONFIG;
+    const ratePerContainer =
+      containerType === "20GP" ? exwCfg.exwRate20GP : exwCfg.exwRate40; // 40HQ y 40NOR
     return ratePerContainer * cantidad;
   };
 

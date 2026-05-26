@@ -1760,6 +1760,22 @@ const GestionCotizadorConfig = (
 ) as GestionCotizadorConfigModel;
 
 // ============================================================
+// MODELO FCL EXW - CONFIG (Singleton, colección fcl_exw_config)
+// ============================================================
+import {
+  FclExwConfigSchema,
+  DEFAULT_FCL_EXW_CONFIG,
+  type IFclExwConfigDoc,
+  type FclExwConfigModel,
+  type IFclExwConfig,
+} from './models/FclExwConfig.js';
+
+const FclExwConfig = (
+  mongoose.models.FclExwConfig ||
+  mongoose.model<IFclExwConfigDoc>('FclExwConfig', FclExwConfigSchema)
+) as FclExwConfigModel;
+
+// ============================================================
 // MODELO OPERACIÓN + CLIENTE-PROVEEDOR
 // ============================================================
 import {
@@ -6869,6 +6885,76 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // ============================================================
     // GESTIÓN COTIZADOR - CONFIG ENDPOINTS
     // ============================================================
+
+    // ============================================================
+    // FCL EXW - CONFIG ENDPOINTS (singleton)
+    // ============================================================
+
+    // GET /api/fcl-exw/config
+    if (path === '/api/fcl-exw/config' && method === 'GET') {
+      try {
+        let config = await FclExwConfig.findOne();
+        if (!config) {
+          config = await FclExwConfig.create(DEFAULT_FCL_EXW_CONFIG);
+        }
+        return res.json(config);
+      } catch (e) {
+        console.error('[fcl-exw] Error GET config:', e);
+        return res.status(500).json({ error: 'Error al obtener configuración EXW FCL' });
+      }
+    }
+
+    // PUT /api/fcl-exw/config — solo administrador
+    if (path === '/api/fcl-exw/config' && method === 'PUT') {
+      try {
+        const currentUser = requireAuth(req);
+        const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub });
+        if (!ejecutivoDoc?.roles?.administrador) {
+          return res.status(403).json({
+            error: 'Solo administradores pueden modificar la configuración EXW FCL',
+          });
+        }
+
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        const { exw } = body as { exw?: Partial<IFclExwConfig> };
+        if (!exw || typeof exw !== 'object') {
+          return res.status(400).json({
+            error: 'Debe enviar el objeto exw con los valores a actualizar',
+          });
+        }
+
+        const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
+
+        if (exw.exwRate20GP !== undefined) {
+          if (typeof exw.exwRate20GP !== 'number' || exw.exwRate20GP <= 0) {
+            return res.status(400).json({ error: 'Tarifa EXW 20GP inválida' });
+          }
+          updateData.exwRate20GP = exw.exwRate20GP;
+        }
+
+        if (exw.exwRate40 !== undefined) {
+          if (typeof exw.exwRate40 !== 'number' || exw.exwRate40 <= 0) {
+            return res.status(400).json({ error: 'Tarifa EXW 40 inválida' });
+          }
+          updateData.exwRate40 = exw.exwRate40;
+        }
+
+        if (Object.keys(updateData).length <= 1) {
+          return res.status(400).json({ error: 'No hay campos válidos para actualizar' });
+        }
+
+        const config = await FclExwConfig.findOneAndUpdate(
+          {},
+          { $set: updateData },
+          { new: true, upsert: true },
+        );
+
+        return res.json(config);
+      } catch (e) {
+        console.error('[fcl-exw] Error PUT config:', e);
+        return res.status(500).json({ error: 'Error al actualizar configuración EXW FCL' });
+      }
+    }
 
     // GET /api/gestion-cotizador/config
     if (path === '/api/gestion-cotizador/config' && method === 'GET') {

@@ -2,10 +2,11 @@ import { useState } from "react";
 import {
   useGestionCotizador,
   type IFclCotizadorConfig,
-  type ILclCotizadorConfig,
   type ILclDeliveryBracket,
   type IAereoTtBracket,
 } from "../../hooks/useGestionCotizador";
+import { useFclExwConfig } from "../../hooks/useFclExwConfig";
+import type { IFclExwConfig } from "../../types/fclExwConfig";
 
 type CotizadorTab = "FCL" | "LCL" | "AÉREO" | "ÚLTIMA MILLA";
 
@@ -51,8 +52,21 @@ const FCL_FIELDS: {
 export default function GestionCotizador() {
   const { config, loading, error, saving, updateFcl, updateLcl, updateAereo } =
     useGestionCotizador();
+  const {
+    config: exwConfig,
+    loading: exwLoading,
+    error: exwError,
+    saving: exwSaving,
+    updateExw,
+  } = useFclExwConfig();
   const [activeTab, setActiveTab] = useState<CotizadorTab>("FCL");
   const [editingFcl, setEditingFcl] = useState<Partial<IFclCotizadorConfig>>({});
+  const [editingExw, setEditingExw] = useState<
+    Partial<Pick<IFclExwConfig, "exwRate20GP" | "exwRate40">>
+  >({});
+  const [activeFclAccordion, setActiveFclAccordion] = useState<
+    "tt" | "exw" | null
+  >(null);
   const [editingLcl, setEditingLcl] = useState<{
     vespucioExtendedSurchargePct?: number;
     brackets?: ILclDeliveryBracket[];
@@ -77,6 +91,22 @@ export default function GestionCotizador() {
     setEditingFcl((prev) => ({ ...prev, [key]: num }));
   };
 
+  const handleExwChange = (
+    key: "exwRate20GP" | "exwRate40",
+    value: string,
+  ) => {
+    const num = parseFloat(value);
+    if (value === "" || isNaN(num)) {
+      setEditingExw((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+    setEditingExw((prev) => ({ ...prev, [key]: num }));
+  };
+
   const handleSaveFcl = async () => {
     if (Object.keys(editingFcl).length === 0) return;
     try {
@@ -85,6 +115,20 @@ export default function GestionCotizador() {
       await updateFcl(editingFcl);
       setEditingFcl({});
       setSuccessMsg("Configuración FCL actualizada correctamente");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (e) {
+      setSaveError((e as Error).message);
+    }
+  };
+
+  const handleSaveExw = async () => {
+    if (Object.keys(editingExw).length === 0) return;
+    try {
+      setSaveError(null);
+      setSuccessMsg(null);
+      await updateExw(editingExw);
+      setEditingExw({});
+      setSuccessMsg("Configuración EXW FCL actualizada correctamente");
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (e) {
       setSaveError((e as Error).message);
@@ -250,109 +294,287 @@ export default function GestionCotizador() {
       </ul>
 
       {activeTab === "FCL" && (
-        <div className="card shadow-sm">
-          <div className="card-header bg-white py-3">
-            <h5 className="mb-0 fw-bold">
-              <i className="bi bi-truck me-2 text-primary" />
-              FCL — Transporte Terrestre (Última Milla)
-            </h5>
-            <small className="text-muted">
-              La info se saca del correo de Diego Morales:
-              <hr />
-              <strong>RE: 11808 // SOLICITUD TARIFADO</strong>
-            </small>
-          </div>
-          <div className="card-body">
-            <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th style={{ width: "35%" }}>Parámetro</th>
-                    <th style={{ width: "30%" }}>Valor</th>
-                    <th style={{ width: "35%" }}>Descripción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {FCL_FIELDS.map(({ key, label, suffix, description, step, min }) => {
-                    const currentValue = config.fcl[key];
-                    const editedValue = editingFcl[key];
-                    const isEdited = editedValue !== undefined;
-                    const displayValue = isEdited ? editedValue : currentValue;
-
-                    return (
-                      <tr key={key}>
-                        <td>
-                          <span className="fw-semibold">{label}</span>
-                          <br />
-                          <small className="text-muted">{suffix}</small>
-                        </td>
-                        <td>
-                          <div
-                            className="input-group"
-                            style={{ maxWidth: "220px" }}
-                          >
-                            <input
-                              type="number"
-                              className={`form-control ${isEdited ? "border-warning" : ""}`}
-                              value={displayValue}
-                              onChange={(e) => handleFclChange(key, e.target.value)}
-                              step={step}
-                              min={min}
-                            />
-                            {key === "vespucioExtendedSurchargePct" && (
-                              <span className="input-group-text">%</span>
-                            )}
-                          </div>
-                          {key === "vespucioExtendedSurchargePct" && (
-                            <small className="text-muted d-block mt-1">
-                              Multiplicador actual:{" "}
-                              <strong>
-                                {(1 + (Number(displayValue) || 0) / 100).toFixed(2)}×
-                              </strong>
-                            </small>
-                          )}
-                        </td>
-                        <td>
-                          <small className="text-muted">{description}</small>
-                          {isEdited && (
-                            <span className="badge bg-warning text-dark ms-2">
-                              Modificado
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+        <div
+          className="accordion gestion-cotizador-fcl-accordion"
+          id="accordion-fcl-gestion-cotizador"
+        >
+          <div className="accordion-item shadow-sm border rounded-3 mb-3 overflow-hidden">
+            <h2 className="accordion-header" id="heading-fcl-tt">
               <button
+                className={`accordion-button py-3 px-4 fs-5 fw-semibold ${
+                  activeFclAccordion === "tt" ? "" : "collapsed"
+                }`}
                 type="button"
-                className="btn btn-primary"
-                disabled={Object.keys(editingFcl).length === 0 || saving}
-                onClick={handleSaveFcl}
+                aria-expanded={activeFclAccordion === "tt"}
+                aria-controls="collapse-fcl-tt"
+                onClick={() =>
+                  setActiveFclAccordion((prev) => (prev === "tt" ? null : "tt"))
+                }
               >
-                {saving ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" />
-                    Guardando...
-                  </>
+                <i className="bi bi-truck me-3 text-primary fs-4" />
+                FCL — Transporte Terrestre (Última Milla)
+              </button>
+            </h2>
+            <div
+              id="collapse-fcl-tt"
+              className={`accordion-collapse collapse ${
+                activeFclAccordion === "tt" ? "show" : ""
+              }`}
+              aria-labelledby="heading-fcl-tt"
+            >
+              <div className="accordion-body p-4">
+                <small className="text-muted d-block mb-3">
+                  La info se saca del correo de Diego Morales:
+                  <hr />
+                  <strong>RE: 11808 // SOLICITUD TARIFADO</strong>
+                </small>
+
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th style={{ width: "35%" }}>Parámetro</th>
+                        <th style={{ width: "30%" }}>Valor</th>
+                        <th style={{ width: "35%" }}>Descripción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {FCL_FIELDS.map(
+                        ({ key, label, suffix, description, step, min }) => {
+                          const currentValue = config.fcl[key];
+                          const editedValue = editingFcl[key];
+                          const isEdited = editedValue !== undefined;
+                          const displayValue = isEdited ? editedValue : currentValue;
+
+                          return (
+                            <tr key={key}>
+                              <td>
+                                <span className="fw-semibold">{label}</span>
+                                <br />
+                                <small className="text-muted">{suffix}</small>
+                              </td>
+                              <td>
+                                <div
+                                  className="input-group"
+                                  style={{ maxWidth: "220px" }}
+                                >
+                                  <input
+                                    type="number"
+                                    className={`form-control ${isEdited ? "border-warning" : ""}`}
+                                    value={displayValue}
+                                    onChange={(e) =>
+                                      handleFclChange(key, e.target.value)
+                                    }
+                                    step={step}
+                                    min={min}
+                                  />
+                                  {key === "vespucioExtendedSurchargePct" && (
+                                    <span className="input-group-text">%</span>
+                                  )}
+                                </div>
+                                {key === "vespucioExtendedSurchargePct" && (
+                                  <small className="text-muted d-block mt-1">
+                                    Multiplicador actual:{" "}
+                                    <strong>
+                                      {(
+                                        1 + (Number(displayValue) || 0) / 100
+                                      ).toFixed(2)}
+                                      ×
+                                    </strong>
+                                  </small>
+                                )}
+                              </td>
+                              <td>
+                                <small className="text-muted">{description}</small>
+                                {isEdited && (
+                                  <span className="badge bg-warning text-dark ms-2">
+                                    Modificado
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        },
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={Object.keys(editingFcl).length === 0 || saving}
+                    onClick={handleSaveFcl}
+                  >
+                    {saving ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-save me-2" />
+                        Guardar cambios FCL
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {config.updatedBy && (
+                  <p className="text-muted small mb-0 mt-2">
+                    Última actualización por: <strong>{config.updatedBy}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="accordion-item shadow-sm border rounded-3 mb-3 overflow-hidden">
+            <h2 className="accordion-header" id="heading-fcl-exw">
+              <button
+                className={`accordion-button py-3 px-4 fs-5 fw-semibold ${
+                  activeFclAccordion === "exw" ? "" : "collapsed"
+                }`}
+                type="button"
+                aria-expanded={activeFclAccordion === "exw"}
+                aria-controls="collapse-fcl-exw"
+                onClick={() =>
+                  setActiveFclAccordion((prev) =>
+                    prev === "exw" ? null : "exw",
+                  )
+                }
+              >
+                <i className="bi bi-cash-coin me-3 text-primary fs-4" />
+                Valores EXW x contenedor
+              </button>
+            </h2>
+            <div
+              id="collapse-fcl-exw"
+              className={`accordion-collapse collapse ${
+                activeFclAccordion === "exw" ? "show" : ""
+              }`}
+              aria-labelledby="heading-fcl-exw"
+            >
+              <div className="accordion-body p-4">
+                {exwLoading ? (
+                  <div className="d-flex align-items-center gap-2 text-muted">
+                    <span className="spinner-border spinner-border-sm" />
+                    Cargando configuración EXW...
+                  </div>
                 ) : (
                   <>
-                    <i className="bi bi-save me-2" />
-                    Guardar cambios FCL
+                    {exwError && (
+                      <div className="alert alert-danger d-flex align-items-center gap-2">
+                        <i className="bi bi-exclamation-triangle-fill" />
+                        {exwError}
+                      </div>
+                    )}
+
+                    <div className="table-responsive">
+                      <table className="table table-hover align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th style={{ width: "45%" }}>Parámetro</th>
+                            <th style={{ width: "25%" }}>Valor</th>
+                            <th style={{ width: "30%" }}>Descripción</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(
+                            [
+                              {
+                                key: "exwRate20GP" as const,
+                                label: "EXW — Contenedor 20GP",
+                                description: "Monto EXW por contenedor 20GP.",
+                              },
+                              {
+                                key: "exwRate40" as const,
+                                label: "EXW — Contenedor 40HQ / 40NOR",
+                                description:
+                                  "Monto EXW por contenedor 40HQ o 40NOR.",
+                              },
+                            ] as const
+                          ).map(({ key, label, description }) => {
+                            const currentValue = exwConfig[key];
+                            const editedValue = editingExw[key];
+                            const isEdited = editedValue !== undefined;
+                            const displayValue = isEdited ? editedValue : currentValue;
+
+                            return (
+                              <tr key={key}>
+                                <td>
+                                  <span className="fw-semibold">{label}</span>
+                                  <br />
+                                  <small className="text-muted">
+                                    por contenedor
+                                  </small>
+                                </td>
+                                <td>
+                                  <div
+                                    className="input-group"
+                                    style={{ maxWidth: "220px" }}
+                                  >
+                                    <input
+                                      type="number"
+                                      className={`form-control ${isEdited ? "border-warning" : ""}`}
+                                      value={displayValue}
+                                      onChange={(e) =>
+                                        handleExwChange(key, e.target.value)
+                                      }
+                                      step="0.01"
+                                      min="0.01"
+                                    />
+                                  </div>
+                                </td>
+                                <td>
+                                  <small className="text-muted">{description}</small>
+                                  {isEdited && (
+                                    <span className="badge bg-warning text-dark ms-2">
+                                      Modificado
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={
+                          Object.keys(editingExw).length === 0 || exwSaving
+                        }
+                        onClick={handleSaveExw}
+                      >
+                        {exwSaving ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" />
+                            Guardando...
+                          </>
+                        ) : (
+                          <>
+                            <i className="bi bi-save me-2" />
+                            Guardar cambios EXW
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {exwConfig.updatedBy && (
+                      <p className="text-muted small mb-0 mt-2">
+                        Última actualización por:{" "}
+                        <strong>{exwConfig.updatedBy}</strong>
+                      </p>
+                    )}
                   </>
                 )}
-              </button>
+              </div>
             </div>
-
-            {config.updatedBy && (
-              <p className="text-muted small mb-0 mt-2">
-                Última actualización por: <strong>{config.updatedBy}</strong>
-              </p>
-            )}
           </div>
         </div>
       )}
