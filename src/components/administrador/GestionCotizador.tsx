@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useGestionCotizador,
   type IFclCotizadorConfig,
@@ -67,6 +67,12 @@ export default function GestionCotizador() {
   const [activeFclAccordion, setActiveFclAccordion] = useState<
     "tt" | "exw" | null
   >(null);
+  const [activeLclAccordion, setActiveLclAccordion] = useState<
+    "delivery" | null
+  >(null);
+  const [activeAereoAccordion, setActiveAereoAccordion] = useState<"tt" | null>(
+    null,
+  );
   const [editingLcl, setEditingLcl] = useState<{
     vespucioExtendedSurchargePct?: number;
     brackets?: ILclDeliveryBracket[];
@@ -77,6 +83,12 @@ export default function GestionCotizador() {
   }>({});
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveFclAccordion(null);
+    setActiveLclAccordion(null);
+    setActiveAereoAccordion(null);
+  }, [activeTab]);
 
   const handleFclChange = (key: keyof IFclCotizadorConfig, value: string) => {
     const num = parseFloat(value);
@@ -580,259 +592,354 @@ export default function GestionCotizador() {
       )}
 
       {activeTab === "LCL" && (
-        <div className="card shadow-sm">
-          <div className="card-header bg-white py-3">
-            <h5 className="mb-0 fw-bold">
-              <i className="bi bi-box-seam me-2 text-primary" />
-              LCL — Delivery Trucking (Última Milla)
-            </h5>
-            <small className="text-muted">
-              La info se saca del correo de Diego Morales:
-              <hr />
-              <strong>RE: 11808 // SOLICITUD TARIFADO</strong>
-            </small>
-          </div>
-          <div className="card-body">
-            <div className="row g-3 mb-4">
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">
-                  Recargo zona extendida (Vespucio)
-                </label>
-                <div className="input-group" style={{ maxWidth: "220px" }}>
-                  <input
-                    type="number"
-                    className={`form-control ${editingLcl.vespucioExtendedSurchargePct !== undefined ? "border-warning" : ""}`}
-                    value={lclVespucioDisplay}
-                    onChange={(e) => handleLclVespucioChange(e.target.value)}
-                    step="0.1"
-                    min="0"
-                  />
-                  <span className="input-group-text">%</span>
-                </div>
-                <small className="text-muted">
-                  Multiplicador:{" "}
-                  <strong>
-                    {(1 + (Number(lclVespucioDisplay) || 0) / 100).toFixed(2)}×
-                  </strong>
-                </small>
-              </div>
-              <div className="col-md-6">
-                <p className="text-muted small mb-0">
-                  Límites máximos: {config.lcl.maxKg} kg / {config.lcl.maxM3}{" "}
-                  m³ (fuera de rango no se puede agregar el servicio).
-                </p>
-              </div>
-            </div>
-
-            <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Hasta (kg)</th>
-                    <th>Hasta (m³)</th>
-                    <th>Monto INCOME</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lclBracketsDisplay.map((b, index) => {
-                    const edited =
-                      editingLcl.brackets !== undefined &&
-                      JSON.stringify(editingLcl.brackets[index]) !==
-                      JSON.stringify(config.lcl.brackets[index]);
-                    return (
-                      <tr key={index}>
-                        <td className="text-muted">{index + 1}</td>
-                        <td>
-                          <input
-                            type="number"
-                            className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
-                            value={b.maxKg}
-                            onChange={(e) =>
-                              handleLclBracketChange(index, "maxKg", e.target.value)
-                            }
-                            step="1"
-                            min="1"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
-                            value={b.maxM3}
-                            onChange={(e) =>
-                              handleLclBracketChange(index, "maxM3", e.target.value)
-                            }
-                            step="0.1"
-                            min="0.1"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
-                            value={b.amount}
-                            onChange={(e) =>
-                              handleLclBracketChange(index, "amount", e.target.value)
-                            }
-                            step="0.01"
-                            min="0.01"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="d-flex justify-content-end mt-3 pt-3 border-top">
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={Object.keys(editingLcl).length === 0 || saving}
-                onClick={handleSaveLcl}
+        <>
+          <div
+            className="accordion gestion-cotizador-fcl-accordion"
+            id="accordion-lcl-gestion-cotizador"
+          >
+            <div className="accordion-item shadow-sm border rounded-3 mb-3 overflow-hidden">
+              <h2 className="accordion-header" id="heading-lcl-delivery">
+                <button
+                  className={`accordion-button py-3 px-4 fs-5 fw-semibold ${
+                    activeLclAccordion === "delivery" ? "" : "collapsed"
+                  }`}
+                  type="button"
+                  aria-expanded={activeLclAccordion === "delivery"}
+                  aria-controls="collapse-lcl-delivery"
+                  onClick={() =>
+                    setActiveLclAccordion((prev) =>
+                      prev === "delivery" ? null : "delivery",
+                    )
+                  }
+                >
+                  <i className="bi bi-box-seam me-3 text-primary fs-4" />
+                  LCL — Delivery Trucking (Última Milla)
+                </button>
+              </h2>
+              <div
+                id="collapse-lcl-delivery"
+                className={`accordion-collapse collapse ${
+                  activeLclAccordion === "delivery" ? "show" : ""
+                }`}
+                aria-labelledby="heading-lcl-delivery"
               >
-                {saving ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-save me-2" />
-                    Guardar cambios LCL
-                  </>
-                )}
-              </button>
+                <div className="accordion-body p-4">
+                  <small className="text-muted d-block mb-3">
+                    La info se saca del correo de Diego Morales:
+                    <hr />
+                    <strong>RE: 11808 // SOLICITUD TARIFADO</strong>
+                  </small>
+
+                  <div className="row g-3 mb-4">
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">
+                        Recargo zona extendida (Vespucio)
+                      </label>
+                      <div className="input-group" style={{ maxWidth: "220px" }}>
+                        <input
+                          type="number"
+                          className={`form-control ${editingLcl.vespucioExtendedSurchargePct !== undefined ? "border-warning" : ""}`}
+                          value={lclVespucioDisplay}
+                          onChange={(e) =>
+                            handleLclVespucioChange(e.target.value)
+                          }
+                          step="0.1"
+                          min="0"
+                        />
+                        <span className="input-group-text">%</span>
+                      </div>
+                      <small className="text-muted">
+                        Multiplicador:{" "}
+                        <strong>
+                          {(1 + (Number(lclVespucioDisplay) || 0) / 100).toFixed(
+                            2,
+                          )}
+                          ×
+                        </strong>
+                      </small>
+                    </div>
+                    <div className="col-md-6">
+                      <p className="text-muted small mb-0">
+                        Límites máximos: {config.lcl.maxKg} kg /{" "}
+                        {config.lcl.maxM3} m³ (fuera de rango no se puede agregar
+                        el servicio).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="table-responsive">
+                    <table className="table table-hover align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Hasta (kg)</th>
+                          <th>Hasta (m³)</th>
+                          <th>Monto INCOME</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lclBracketsDisplay.map((b, index) => {
+                          const edited =
+                            editingLcl.brackets !== undefined &&
+                            JSON.stringify(editingLcl.brackets[index]) !==
+                              JSON.stringify(config.lcl.brackets[index]);
+                          return (
+                            <tr key={index}>
+                              <td className="text-muted">{index + 1}</td>
+                              <td>
+                                <input
+                                  type="number"
+                                  className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                                  value={b.maxKg}
+                                  onChange={(e) =>
+                                    handleLclBracketChange(
+                                      index,
+                                      "maxKg",
+                                      e.target.value,
+                                    )
+                                  }
+                                  step="1"
+                                  min="1"
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                                  value={b.maxM3}
+                                  onChange={(e) =>
+                                    handleLclBracketChange(
+                                      index,
+                                      "maxM3",
+                                      e.target.value,
+                                    )
+                                  }
+                                  step="0.1"
+                                  min="0.1"
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                                  value={b.amount}
+                                  onChange={(e) =>
+                                    handleLclBracketChange(
+                                      index,
+                                      "amount",
+                                      e.target.value,
+                                    )
+                                  }
+                                  step="0.01"
+                                  min="0.01"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={Object.keys(editingLcl).length === 0 || saving}
+                      onClick={handleSaveLcl}
+                    >
+                      {saving ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" />
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-save me-2" />
+                          Guardar cambios LCL
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {activeTab === "AÉREO" && (
-        <div className="card shadow-sm">
-          <div className="card-header bg-white py-3">
-            <h5 className="mb-0 fw-bold">
-              <i className="bi bi-airplane me-2 text-primary" />
-              AÉREO — Transporte Terrestre (Última Milla)
-            </h5>
-            <small className="text-muted">
-              La info se saca del correo de Cristopher Merino
-            </small>
-            <hr />
-            <strong>RE: CTO - 476 // 11807 // SOLICITUD TARIFADO PARA FULL CONTAINER</strong>
-          </div>
-          <div className="card-body">
-            <div className="row g-3 mb-4">
-              <div className="col-md-6">
-                <label className="form-label fw-semibold">
-                  Recargo zona extendida (Vespucio)
-                </label>
-                <div className="input-group" style={{ maxWidth: "220px" }}>
-                  <input
-                    type="number"
-                    className={`form-control ${editingAereo.vespucioExtendedSurchargePct !== undefined ? "border-warning" : ""}`}
-                    value={
-                      editingAereo.vespucioExtendedSurchargePct ??
-                      config.aereo.vespucioExtendedSurchargePct
-                    }
-                    onChange={(e) => handleAereoVespucioChange(e.target.value)}
-                    step="0.1"
-                    min="0"
-                  />
-                  <span className="input-group-text">%</span>
+        <>
+          <div
+            className="accordion gestion-cotizador-fcl-accordion"
+            id="accordion-aereo-gestion-cotizador"
+          >
+            <div className="accordion-item shadow-sm border rounded-3 mb-3 overflow-hidden">
+              <h2 className="accordion-header" id="heading-aereo-tt">
+                <button
+                  className={`accordion-button py-3 px-4 fs-5 fw-semibold ${
+                    activeAereoAccordion === "tt" ? "" : "collapsed"
+                  }`}
+                  type="button"
+                  aria-expanded={activeAereoAccordion === "tt"}
+                  aria-controls="collapse-aereo-tt"
+                  onClick={() =>
+                    setActiveAereoAccordion((prev) =>
+                      prev === "tt" ? null : "tt",
+                    )
+                  }
+                >
+                  <i className="bi bi-airplane me-3 text-primary fs-4" />
+                  AÉREO — Transporte Terrestre (Última Milla)
+                </button>
+              </h2>
+              <div
+                id="collapse-aereo-tt"
+                className={`accordion-collapse collapse ${
+                  activeAereoAccordion === "tt" ? "show" : ""
+                }`}
+                aria-labelledby="heading-aereo-tt"
+              >
+                <div className="accordion-body p-4">
+                  <small className="text-muted d-block mb-3">
+                    La info se saca del correo de Cristopher Merino
+                    <hr />
+                    <strong>
+                      RE: CTO - 476 // 11807 // SOLICITUD TARIFADO PARA FULL
+                      CONTAINER
+                    </strong>
+                  </small>
+
+                  <div className="row g-3 mb-4">
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">
+                        Recargo zona extendida (Vespucio)
+                      </label>
+                      <div className="input-group" style={{ maxWidth: "220px" }}>
+                        <input
+                          type="number"
+                          className={`form-control ${editingAereo.vespucioExtendedSurchargePct !== undefined ? "border-warning" : ""}`}
+                          value={
+                            editingAereo.vespucioExtendedSurchargePct ??
+                            config.aereo.vespucioExtendedSurchargePct
+                          }
+                          onChange={(e) =>
+                            handleAereoVespucioChange(e.target.value)
+                          }
+                          step="0.1"
+                          min="0"
+                        />
+                        <span className="input-group-text">%</span>
+                      </div>
+                      <small className="text-muted">
+                        Multiplicador:{" "}
+                        <strong>
+                          {(
+                            1 +
+                            (Number(
+                              editingAereo.vespucioExtendedSurchargePct ??
+                                config.aereo.vespucioExtendedSurchargePct,
+                            ) || 0) /
+                              100
+                          ).toFixed(2)}
+                          ×
+                        </strong>
+                      </small>
+                    </div>
+                    <div className="col-md-6">
+                      <p className="text-muted small mb-0">
+                        Límite máximo: {config.aereo.maxKg} kg (fuera de rango
+                        no se puede agregar el servicio).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="table-responsive">
+                    <table className="table table-hover align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Hasta (kg)</th>
+                          <th>Monto INCOME</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(editingAereo.brackets ?? config.aereo.brackets).map(
+                          (b, index) => {
+                            const edited =
+                              editingAereo.brackets !== undefined &&
+                              JSON.stringify(editingAereo.brackets[index]) !==
+                                JSON.stringify(config.aereo.brackets[index]);
+                            return (
+                              <tr key={index}>
+                                <td className="text-muted">{index + 1}</td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                                    value={b.maxKg}
+                                    onChange={(e) =>
+                                      handleAereoBracketChange(
+                                        index,
+                                        "maxKg",
+                                        e.target.value,
+                                      )
+                                    }
+                                    step="1"
+                                    min="1"
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
+                                    value={b.amount}
+                                    onChange={(e) =>
+                                      handleAereoBracketChange(
+                                        index,
+                                        "amount",
+                                        e.target.value,
+                                      )
+                                    }
+                                    step="0.01"
+                                    min="0.01"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          },
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={
+                        Object.keys(editingAereo).length === 0 || saving
+                      }
+                      onClick={handleSaveAereo}
+                    >
+                      {saving ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" />
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-save me-2" />
+                          Guardar cambios AÉREO
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="col-md-6">
-                <p className="text-muted small mb-0">
-                  Límite máximo: {config.aereo.maxKg} kg (fuera de rango no se
-                  puede agregar el servicio).
-                </p>
-              </div>
-            </div>
-
-            <div className="table-responsive">
-              <table className="table table-hover align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Hasta (kg)</th>
-                    <th>Monto INCOME</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(editingAereo.brackets ?? config.aereo.brackets).map(
-                    (b, index) => {
-                      const edited =
-                        editingAereo.brackets !== undefined &&
-                        JSON.stringify(editingAereo.brackets[index]) !==
-                        JSON.stringify(config.aereo.brackets[index]);
-                      return (
-                        <tr key={index}>
-                          <td className="text-muted">{index + 1}</td>
-                          <td>
-                            <input
-                              type="number"
-                              className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
-                              value={b.maxKg}
-                              onChange={(e) =>
-                                handleAereoBracketChange(
-                                  index,
-                                  "maxKg",
-                                  e.target.value,
-                                )
-                              }
-                              step="1"
-                              min="1"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className={`form-control form-control-sm ${edited ? "border-warning" : ""}`}
-                              value={b.amount}
-                              onChange={(e) =>
-                                handleAereoBracketChange(
-                                  index,
-                                  "amount",
-                                  e.target.value,
-                                )
-                              }
-                              step="0.01"
-                              min="0.01"
-                            />
-                          </td>
-                        </tr>
-                      );
-                    },
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="d-flex justify-content-end mt-3 pt-3 border-top">
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={Object.keys(editingAereo).length === 0 || saving}
-                onClick={handleSaveAereo}
-              >
-                {saving ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <i className="bi bi-save me-2" />
-                    Guardar cambios AÉREO
-                  </>
-                )}
-              </button>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {activeTab === "ÚLTIMA MILLA" && (
