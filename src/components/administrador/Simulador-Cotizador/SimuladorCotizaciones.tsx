@@ -91,7 +91,11 @@ const SimuladorCotizaciones: React.FC = () => {
       <div className="cotizador-page">
         <div className="cotizador-container">
           <div className="cotizador-header">
-            <h1>Simulador de Cotizaciones</h1>
+            <h1 className="d-flex align-items-baseline flex-wrap gap-2">
+              Simulador de Cotizaciones
+              <span className="text-danger">[DEPRECATED]</span>
+            </h1>
+
             <p>
               Genera simulaciones de cotización para tus clientes. Selecciona el
               tipo de servicio para comenzar.
