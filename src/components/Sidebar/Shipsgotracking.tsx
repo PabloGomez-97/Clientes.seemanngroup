@@ -838,8 +838,8 @@ function ShipsGoTracking({
                                     className="sg-link-live"
                                     href={`https://shipsgo.com/live-map-container-tracking?query=${encodeURIComponent(
                                       s.container_number ||
-                                        s.booking_number ||
-                                        "",
+                                      s.booking_number ||
+                                      "",
                                     )}`}
                                     target="_blank"
                                     rel="noopener noreferrer"

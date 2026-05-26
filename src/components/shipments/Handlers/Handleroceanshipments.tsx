@@ -682,7 +682,11 @@ export function InfoField({
           wordBreak: "break-word",
         }}
       >
-        {String(value)}
+        {typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+          ? String(value)
+          : value}
       </div>
     </div>
   );

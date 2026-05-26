@@ -178,6 +178,10 @@ function OceanShipmentsView({
   const [trackedOceanNumbers, setTrackedOceanNumbers] = useState<Set<string>>(
     new Set(),
   );
+  /** ETA naviera (port_of_discharge) por container/booking, desde ShipsGo */
+  const [shipsgoArrivalByNumber, setShipsgoArrivalByNumber] = useState<
+    Record<string, string>
+  >({});
 
   // HBLI cache (tracking number lookup via /commodities chain)
   const [hbliCache, setHbliCache] = useState<Record<string, HBLICacheEntry>>(
@@ -272,6 +276,33 @@ function OceanShipmentsView({
       return dateString;
     }
   };
+
+  const renderEtaBadge = () => (
+    <span
+      style={{
+        fontSize: "0.85em",
+        fontWeight: 700,
+        letterSpacing: "0.2px",
+        padding: "0px 5px",
+        background:
+          "linear-gradient(260deg, rgba(66, 133, 244, 0.34) 8.57%, rgba(231, 10, 62, 0.34) 101.84%)",
+        border: "1px solid rgba(162, 45, 125, 0.95)",
+        borderRadius: 3,
+        color: "rgb(142, 30, 104)",
+        lineHeight: 1.1,
+        whiteSpace: "nowrap",
+      }}
+    >
+      ETA
+    </span>
+  );
+
+  const renderArrivalInline = (dateString?: string | null, fromShipsgo = false) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      {fromShipsgo ? renderEtaBadge() : null}
+      <span>{formatDateInline(dateString)}</span>
+    </span>
+  );
 
   /* -- Synchronous HBLI helper: reads from already-loaded charges[] --- */
   const getHBLIFromShipment = (shipment: OceanShippingOrder): string | null => {
@@ -772,29 +803,40 @@ function OceanShipmentsView({
     setHbliCache({});
     setQuoteNumberCache({});
     setTrackedOceanNumbers(new Set());
+    setShipsgoArrivalByNumber({});
   }, [activeUsername]);
 
   // Fetch tracked ocean shipments from ShipsGo
   useEffect(() => {
-    if (!activeUsername || !token) return;
+    if (!activeUsername) return;
     (async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/api/shipsgo/ocean/shipments`);
         if (!res.ok) return;
         const data = await res.json();
         const nums = new Set<string>();
+        const etaByNumber: Record<string, string> = {};
         for (const s of data.shipments ?? []) {
-          if (s.reference === activeUsername) {
-            if (s.container_number) nums.add(s.container_number.toUpperCase());
-            if (s.booking_number) nums.add(s.booking_number.toUpperCase());
+          if (s.reference !== activeUsername) continue;
+          const eta = s.route?.port_of_discharge?.date_of_discharge;
+          if (s.container_number) {
+            const key = s.container_number.toUpperCase();
+            nums.add(key);
+            if (eta) etaByNumber[key] = eta;
+          }
+          if (s.booking_number) {
+            const key = s.booking_number.toUpperCase();
+            nums.add(key);
+            if (eta) etaByNumber[key] = eta;
           }
         }
         setTrackedOceanNumbers(nums);
+        setShipsgoArrivalByNumber(etaByNumber);
       } catch {
         /* ignore */
       }
     })();
-  }, [activeUsername, token]);
+  }, [activeUsername]);
 
   /* -- Accordion -------------------------------------------- */
   const toggleAccordion = (shipmentId: string | number) => {
@@ -848,6 +890,17 @@ function OceanShipmentsView({
     if (trackedOceanNumbers.size === 0) return false;
     const num = getTrackOceanNumber(shipment).trim().toUpperCase();
     return !!num && trackedOceanNumbers.has(num);
+  };
+
+  /** Fecha llegada: ShipsGo (naviera) si hay tracking activo; si no, Linbis */
+  const getEffectiveArrivalDate = (
+    shipment: OceanShippingOrder,
+  ): string | null | undefined => {
+    const num = getTrackOceanNumber(shipment).trim().toUpperCase();
+    if (num && shipsgoArrivalByNumber[num]) {
+      return shipsgoArrivalByNumber[num];
+    }
+    return shipment.arrivalDate;
   };
 
   const openTrackModal = (shipment: OceanShippingOrder) => {
@@ -1095,8 +1148,9 @@ function OceanShipmentsView({
     }
     if (filterArrivalDate) {
       filtered = filtered.filter((s) => {
-        if (!s.arrivalDate) return false;
-        const d = new Date(s.arrivalDate);
+        const arrival = getEffectiveArrivalDate(s);
+        if (!arrival) return false;
+        const d = new Date(arrival);
         d.setTime(d.getTime() + 3600000);
         return d.toISOString().split("T")[0] === filterArrivalDate;
       });
@@ -1596,6 +1650,11 @@ function OceanShipmentsView({
                 {paginatedShipments.map((shipment, index) => {
                   const shipmentId = shipment.id || shipment.number || index;
                   const isExpanded = expandedShipmentId === shipmentId;
+                  const effectiveArrivalDate = getEffectiveArrivalDate(shipment);
+                  const effectiveArrivalIsShipsgo = (() => {
+                    const num = getTrackOceanNumber(shipment).trim().toUpperCase();
+                    return !!(num && shipsgoArrivalByNumber[num]);
+                  })();
 
                   return (
                     <React.Fragment key={shipmentId}>
@@ -1627,7 +1686,10 @@ function OceanShipmentsView({
                           {formatDateInline(shipment.departureDate)}
                         </td>
                         <td className="osv-td osv-td--center">
-                          {formatDateInline(shipment.arrivalDate)}
+                          {renderArrivalInline(
+                            effectiveArrivalDate,
+                            effectiveArrivalIsShipsgo,
+                          )}
                         </td>
                         <td className="osv-td osv-td--center">
                           {shipment.carrier?.name || "-"}
@@ -1679,9 +1741,9 @@ function OceanShipmentsView({
                                   <span className="osv-route-card__value">
                                     {shipment.destination?.name?.trim() || "-"}
                                   </span>
-                                  {shipment.arrivalDate && (
+                                  {effectiveArrivalDate && (
                                     <span className="osv-route-card__date">
-                                      {formatDateInline(shipment.arrivalDate)}
+                                      {formatDateInline(effectiveArrivalDate)}
                                     </span>
                                   )}
                                 </div>
@@ -1749,7 +1811,7 @@ function OceanShipmentsView({
                                               {(() => {
                                                 const qnEntry =
                                                   quoteNumberCache[
-                                                    shipment.number
+                                                  shipment.number
                                                   ];
                                                 if (qnEntry?.loading)
                                                   return (
@@ -1961,9 +2023,7 @@ function OceanShipmentsView({
                                               />
                                               <InfoField
                                                 label="Fecha Llegada"
-                                                value={formatDateLong(
-                                                  shipment.arrivalDate,
-                                                )}
+                                                value={formatDateLong(effectiveArrivalDate)}
                                               />
                                             </div>
                                           </div>
@@ -2017,7 +2077,7 @@ function OceanShipmentsView({
                                                   shipment.totalCargo
                                                     ?.containers
                                                     ? shipment.totalCargo
-                                                        .containers
+                                                      .containers
                                                     : null
                                                 }
                                               />

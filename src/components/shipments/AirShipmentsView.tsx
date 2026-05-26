@@ -252,6 +252,10 @@ function AirShipmentsView({
 
   // Already-tracked AWBs (from ShipsGo)
   const [trackedAwbs, setTrackedAwbs] = useState<Set<string>>(new Set());
+  /** ETA aerolínea (route.destination.date_of_rcf) por AWB, desde ShipsGo */
+  const [shipsgoArrivalByAwb, setShipsgoArrivalByAwb] = useState<
+    Record<string, string>
+  >({});
 
   // Filter fields
   const [filterNumber, setFilterNumber] = useState("");
@@ -351,6 +355,39 @@ function AirShipmentsView({
     }
   };
 
+  const renderEtaBadge = () => (
+    <span
+      style={{
+        fontSize: "0.85em",
+        fontWeight: 700,
+        letterSpacing: "0.2px",
+        padding: "0px 5px",
+        background:
+          "linear-gradient(260deg, rgba(66, 133, 244, 0.34) 8.57%, rgba(231, 10, 62, 0.34) 101.84%)",
+        border: "1px solid rgba(162, 45, 125, 0.95)",
+        borderRadius: 3,
+        color: "rgb(142, 30, 104)",
+        lineHeight: 1.1,
+        whiteSpace: "nowrap",
+      }}
+    >
+      ETA
+    </span>
+  );
+
+  const renderArrivalInline = (displayDate?: string, fromShipsgo = false) => (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      {fromShipsgo ? renderEtaBadge() : null}
+      <span>{formatDateInline(displayDate)}</span>
+    </span>
+  );
+
+  const getEffectiveArrivalDisplayDate = (shipment: AirShipment): string => {
+    const awb = getTrackAwbNumber(shipment).replace(/[\s-]/g, "");
+    if (awb && shipsgoArrivalByAwb[awb]) return shipsgoArrivalByAwb[awb];
+    return shipment.arrival?.date ?? shipment.arrival?.displayDate ?? "";
+  };
+
   /*  API  */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getAllCommodities = (s: AirShipment): any[] => {
@@ -359,6 +396,7 @@ function AirShipmentsView({
       Array.isArray(s.subShipments) &&
       s.subShipments.length > 0
     ) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const comms: any[] = [];
       for (const sub of s.subShipments) {
         if (sub.commodities && Array.isArray(sub.commodities)) {
@@ -648,11 +686,12 @@ function AirShipmentsView({
     setCargoDetailsCache({});
     setQuoteNumberCache({});
     setTrackedAwbs(new Set());
+    setShipsgoArrivalByAwb({});
   }, [activeUsername]);
 
   // Fetch tracked air shipments from ShipsGo
   useEffect(() => {
-    if (!activeUsername || !token) return;
+    if (!activeUsername) return;
     const API =
       import.meta.env.MODE === "development"
         ? "http://localhost:4000"
@@ -663,17 +702,22 @@ function AirShipmentsView({
         if (!res.ok) return;
         const data = await res.json();
         const awbs = new Set<string>();
+        const etaByAwb: Record<string, string> = {};
         for (const s of data.shipments ?? []) {
           if (s.reference === activeUsername && s.awb_number) {
-            awbs.add(s.awb_number.replace(/[\s-]/g, ""));
+            const key = s.awb_number.replace(/[\s-]/g, "");
+            awbs.add(key);
+            const eta = s.route?.destination?.date_of_rcf;
+            if (eta) etaByAwb[key] = eta;
           }
         }
         setTrackedAwbs(awbs);
+        setShipsgoArrivalByAwb(etaByAwb);
       } catch {
         /* ignore */
       }
     })();
-  }, [activeUsername, token]);
+  }, [activeUsername]);
 
   /*  Cache  */
   useEffect(() => {
@@ -810,8 +854,9 @@ function AirShipmentsView({
     }
     if (filterArrivalDate) {
       filtered = filtered.filter((s) => {
-        if (!s.arrival?.date) return false;
-        const d = new Date(s.arrival.date);
+        const arrival = getEffectiveArrivalDisplayDate(s);
+        if (!arrival) return false;
+        const d = new Date(arrival);
         d.setTime(d.getTime() + 3600000);
         return d.toISOString().split("T")[0] === filterArrivalDate;
       });
@@ -868,7 +913,7 @@ function AirShipmentsView({
     return shipment.trackingNumber || shipment.number || "-";
   };
 
-  const isTrackAwbReady = (_shipment: AirShipment) => true;
+  const isTrackAwbReady = () => true;
 
   const openTrackModal = (shipment: AirShipment) => {
     setTrackShipment(shipment);
@@ -1481,6 +1526,15 @@ function AirShipmentsView({
                 {paginatedShipments.map((shipment, index) => {
                   const shipmentId = shipment.id || shipment.number || index;
                   const isExpanded = expandedShipmentId === shipmentId;
+                  const effectiveArrivalDisplayDate =
+                    getEffectiveArrivalDisplayDate(shipment);
+                  const effectiveArrivalIsShipsgo = (() => {
+                    const awb = getTrackAwbNumber(shipment).replace(
+                      /[\s-]/g,
+                      "",
+                    );
+                    return !!(awb && shipsgoArrivalByAwb[awb]);
+                  })();
 
                   return (
                     <React.Fragment key={shipmentId}>
@@ -1515,9 +1569,9 @@ function AirShipmentsView({
                           )}
                         </td>
                         <td className="asv-td asv-td--center">
-                          {formatDateInline(
-                            shipment.arrival?.date ??
-                              shipment.arrival?.displayDate,
+                          {renderArrivalInline(
+                            effectiveArrivalDisplayDate,
+                            effectiveArrivalIsShipsgo,
                           )}
                         </td>
                         <td className="asv-td asv-td--center">
@@ -1577,11 +1631,10 @@ function AirShipmentsView({
                                       ? `${shipment.destination.name}${shipment.destination.code ? ` (${shipment.destination.code})` : ""}`
                                       : "-"}
                                   </span>
-                                  {shipment.arrival?.displayDate && (
+                                  {effectiveArrivalDisplayDate && (
                                     <span className="asv-route-card__date">
                                       {formatDateInline(
-                                        shipment.arrival?.date ??
-                                          shipment.arrival?.displayDate,
+                                        effectiveArrivalDisplayDate,
                                       )}
                                     </span>
                                   )}
@@ -1735,7 +1788,7 @@ function AirShipmentsView({
                                                 </div>
                                                 {(() => {
                                                   const isTrackReady =
-                                                    isTrackAwbReady(shipment);
+                                                    isTrackAwbReady();
 
                                                   return isShipmentAlreadyTracked(
                                                     shipment,
@@ -1818,10 +1871,12 @@ function AirShipmentsView({
                                               <InfoField
                                                 label="Fecha Llegada"
                                                 value={
-                                                  shipment.arrival
-                                                    ? formatDate(
-                                                        shipment.arrival,
-                                                      )
+                                                  effectiveArrivalDisplayDate
+                                                    ? formatDate({
+                                                        date: effectiveArrivalDisplayDate,
+                                                        displayDate:
+                                                          effectiveArrivalDisplayDate,
+                                                      })
                                                     : null
                                                 }
                                               />
