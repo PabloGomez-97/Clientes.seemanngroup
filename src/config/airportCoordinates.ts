@@ -1,3 +1,8 @@
+import {
+  AIRPORT_ORIGIN_COUNTRY_FALLBACK,
+  AIRPORT_ORIGIN_KEY_ALIASES,
+} from "./airportOriginAliases";
+
 export interface AirportCoords {
   lat: number;
   lng: number;
@@ -1127,26 +1132,42 @@ function normalizeText(value: string): string {
  * Busca las coordenadas del aeropuerto por el nombre normalizado del origen.
  * Intenta coincidencia exacta primero, luego parcial.
  */
+function resolveAirportCoordinateKey(normalized: string): string | null {
+  const key = normalizeText(normalized);
+  if (!key) return null;
+
+  const aliasKey = AIRPORT_ORIGIN_KEY_ALIASES[key];
+  if (aliasKey && airportCoordinates[aliasKey]) {
+    return aliasKey;
+  }
+
+  if (airportCoordinates[key]) {
+    return key;
+  }
+
+  return null;
+}
+
+/** País ISO2 del origen según catálogo o alias (sin requerir coordenadas). */
+export function getOriginCountryCode(originNormalized: string): string | null {
+  const coords = getAirportByOrigin(originNormalized);
+  if (coords?.countryCode) return coords.countryCode.toUpperCase();
+
+  const key = normalizeText(originNormalized);
+  const fallback = AIRPORT_ORIGIN_COUNTRY_FALLBACK[key];
+  return fallback?.toUpperCase() ?? null;
+}
+
 export function getAirportByOrigin(
   originNormalized: string,
 ): AirportCoords | null {
   if (!originNormalized) return null;
 
   const key = normalizeText(originNormalized);
-  const aliases: Record<string, string> = {
-    "sudafrica johannesburgo": "sudafrica",
-    "south africa johannesburg": "sudafrica",
-    johannesburgo: "johannesburgo",
-    johannesburg: "johannesburg",
-  };
+  const resolvedKey = resolveAirportCoordinateKey(originNormalized);
 
-  if (aliases[key] && airportCoordinates[aliases[key]]) {
-    return airportCoordinates[aliases[key]];
-  }
-
-  // Coincidencia exacta
-  if (airportCoordinates[key]) {
-    return airportCoordinates[key];
+  if (resolvedKey) {
+    return airportCoordinates[resolvedKey];
   }
 
   // Coincidencia parcial: si el origin contiene el nombre del aeropuerto o viceversa

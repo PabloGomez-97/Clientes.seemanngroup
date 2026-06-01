@@ -76,8 +76,21 @@ import {
   type CountryPort,
 } from "./Handlers/LCL/ExpandedRoutesLcl";
 import NearbyPortSelectorLCL from "./NearbySelector/NearbyPortSelectorLCL.tsx";
-import { PortSelectorFCL } from "./Selectroute";
+import { CountryOriginSelector, PortSelectorFCL } from "./Selectroute";
 import { useQuoteTracking } from "../../hooks/useQuoteTracking";
+import {
+  buildOriginIndex,
+  buildPolOptionsForCountryAndPod,
+  buildPodOptionsForCountry,
+  findCountryForOrigin,
+  getCountryLabel,
+  getOriginsInCountry,
+  getRatedOriginsInCountryForPod,
+  rankRatedOriginsByDistance,
+  resolveExwMapDestination,
+  type OriginIndex,
+  type OriginSelectOption,
+} from "./originSelection";
 
 const LCL_ULTIMA_MILLA_ELIGIBLE_PODS = new Set(["san antonio", "valparaiso"]);
 
@@ -267,6 +280,12 @@ function QuoteLCL({
 
   const [opcionesPOL, setOpcionesPOL] = useState<SelectOption[]>([]);
   const [opcionesPOD, setOpcionesPOD] = useState<SelectOption[]>([]);
+  const [paisSeleccionado, setPaisSeleccionado] =
+    useState<OriginSelectOption | null>(null);
+  const [paisNR, setPaisNR] = useState<OriginSelectOption | null>(null);
+  const [exwResolvedDistanceKm, setExwResolvedDistanceKm] = useState<
+    number | null
+  >(null);
 
   const [operadoresActivos, setOperadoresActivos] = useState<Set<Operador>>(
     new Set(),
@@ -458,23 +477,253 @@ function QuoteLCL({
     : "X";
   const showPendingQuote = sinTarifa && !isSimulationMode;
 
-  // Resetear el puerto seleccionado si la ruta deja de ser EXW + país soportado.
-  useEffect(() => {
-    const polOpt = polSeleccionado ?? polNR;
-    const polPort = polOpt ? getPortByPOL(polOpt.value) : null;
-    const prefix = polPort?.unlocode?.substring(0, 2).toUpperCase() ?? null;
-    const hasCountryPorts =
-      prefix !== null && (countryPortsMap[prefix]?.length ?? 0) > 0;
-    if (incoterm !== "EXW" || !hasCountryPorts) {
-      if (nearbyPortSelected) setNearbyPortSelected(null);
+  const originIndex = useMemo((): OriginIndex | null => {
+    if (rutas.length === 0) return null;
+    const polMap = new Map<string, string>();
+    rutas.forEach((r) => {
+      if (!polMap.has(r.polNormalized)) {
+        polMap.set(r.polNormalized, r.pol);
+      }
+    });
+    return buildOriginIndex(
+      Array.from(polMap.entries()).map(([normalized, label]) => ({
+        normalized,
+        label,
+      })),
+      {
+        getCountryCode: (normalized) =>
+          getPortByPOL(normalized)?.unlocode?.substring(0, 2).toUpperCase() ??
+          null,
+        getCoords: (normalized) => {
+          const port = getPortByPOL(normalized);
+          return port ? { lat: port.lat, lng: port.lng } : null;
+        },
+      },
+    );
+  }, [rutas]);
+
+  const originIndexNR = useMemo((): OriginIndex | null => {
+    if (!expandedRoutes?.pols.length) return null;
+    return buildOriginIndex(
+      expandedRoutes.pols.map((p) => ({
+        normalized: p.value,
+        label: p.label,
+      })),
+      {
+      getCountryCode: (normalized) =>
+        getPortByPOL(normalized)?.unlocode?.substring(0, 2).toUpperCase() ??
+        null,
+      getCoords: (normalized) => {
+        const port = getPortByPOL(normalized);
+        return port ? { lat: port.lat, lng: port.lng } : null;
+      },
+    },
+    );
+  }, [expandedRoutes]);
+
+  const activeOriginIndex =
+    routeMode === "noRecurrente" ? originIndexNR : originIndex;
+  const activePais = routeMode === "noRecurrente" ? paisNR : paisSeleccionado;
+  const activePodNormalized =
+    routeMode === "noRecurrente"
+      ? (podNR?.value ?? null)
+      : (podSeleccionado?.value ?? null);
+
+  const opcionesPOLPais = useMemo((): SelectOption[] => {
+    if (!activePais || !originIndex || !activePodNormalized) return [];
+    const isRouteEligible = (ruta: RutaLCL) =>
+      isSimulationMode || getValidityClass(ruta.validUntil) !== "expired";
+    return buildPolOptionsForCountryAndPod(
+      rutas,
+      originIndex,
+      activePais.value,
+      activePodNormalized,
+      (_polNorm, pol) => capitalize(pol),
+      isRouteEligible,
+    );
+  }, [
+    activePais,
+    originIndex,
+    activePodNormalized,
+    rutas,
+    isSimulationMode,
+  ]);
+
+  const ratedOriginsForPod = useMemo(() => {
+    if (!activePais || !originIndex || !activePodNormalized) return [];
+    const isRouteEligible = (ruta: RutaLCL) =>
+      isSimulationMode || getValidityClass(ruta.validUntil) !== "expired";
+    return getRatedOriginsInCountryForPod(
+      originIndex,
+      activePais.value,
+      activePodNormalized,
+      rutas,
+      isRouteEligible,
+    );
+  }, [
+    activePais,
+    originIndex,
+    activePodNormalized,
+    rutas,
+    isSimulationMode,
+  ]);
+
+  const exwNearbyRatedPorts = useMemo(() => {
+    if (
+      incoterm !== "EXW" ||
+      !pickupCoords ||
+      !activePais ||
+      ratedOriginsForPod.length === 0
+    ) {
+      return [];
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [incoterm, polSeleccionado?.value, polNR?.value]);
+    const origins = ratedOriginsForPod;
+    return rankRatedOriginsByDistance(pickupCoords, origins, 4).map((r) => ({
+      value: r.origin.normalized,
+      label: r.origin.label,
+      lat: r.origin.lat,
+      lng: r.origin.lng,
+      distanceKm: r.distanceKm,
+    }));
+  }, [incoterm, pickupCoords, activePais, ratedOriginsForPod]);
+
+  const exwMapDestination = useMemo((): DestinationCoords | null => {
+    if (incoterm !== "EXW" || exwNearbyRatedPorts.length === 0) return null;
+    return resolveExwMapDestination(
+      exwNearbyRatedPorts,
+      nearbyPortSelected,
+      (value) => getPortByPOL(value)?.unlocode ?? "",
+    );
+  }, [incoterm, exwNearbyRatedPorts, nearbyPortSelected]);
+
+  // Resetear puerto cercano si deja de ser EXW.
+  useEffect(() => {
+    if (incoterm !== "EXW") {
+      if (nearbyPortSelected) setNearbyPortSelected(null);
+      setExwResolvedDistanceKm(null);
+    }
+  }, [incoterm, nearbyPortSelected]);
 
   // Resetear cuando cambia la dirección de recogida.
   useEffect(() => {
     setNearbyPortSelected(null);
   }, [pickupCoords?.lat, pickupCoords?.lng]);
+
+  // Resolver POL tarificado más cercano (EXW).
+  useEffect(() => {
+    if (
+      incoterm !== "EXW" ||
+      !pickupCoords ||
+      !activePais ||
+      !activePodNormalized ||
+      ratedOriginsForPod.length === 0
+    ) {
+      return;
+    }
+    const ranked = rankRatedOriginsByDistance(
+      pickupCoords,
+      ratedOriginsForPod,
+      4,
+    );
+    if (ranked.length === 0) {
+      setPolSeleccionado(null);
+      setPolNR(null);
+      setExwResolvedDistanceKm(null);
+      return;
+    }
+    const manual = nearbyPortSelected
+      ? ranked.find((r) => r.origin.normalized === nearbyPortSelected.value)
+      : null;
+    const chosen = manual ?? ranked[0];
+    const option = {
+      value: chosen.origin.normalized,
+      label: chosen.origin.label,
+    };
+    if (routeMode === "noRecurrente") {
+      setPolNR(option);
+    } else {
+      setPolSeleccionado(option);
+    }
+    setExwResolvedDistanceKm(chosen.distanceKm);
+  }, [
+    incoterm,
+    pickupCoords,
+    activePais,
+    activePodNormalized,
+    ratedOriginsForPod,
+    nearbyPortSelected,
+    routeMode,
+  ]);
+
+  useEffect(() => {
+    if (!activePodNormalized) return;
+    const pol = routeMode === "noRecurrente" ? polNR : polSeleccionado;
+    if (!pol) return;
+    if (
+      opcionesPOLPais.length > 0 &&
+      !opcionesPOLPais.some((o) => o.value === pol.value)
+    ) {
+      if (routeMode === "noRecurrente") {
+        setPolNR(null);
+      } else {
+        setPolSeleccionado(null);
+      }
+      setRutaSeleccionada(null);
+      setSinTarifa(false);
+      setNearbyPortSelected(null);
+      setExwResolvedDistanceKm(null);
+    }
+  }, [
+    activePodNormalized,
+    opcionesPOLPais,
+    polNR,
+    polSeleccionado,
+    routeMode,
+  ]);
+
+  // PODs disponibles según país de origen (no depende del POL en EXW).
+  useEffect(() => {
+    if (!activePais || !activeOriginIndex) {
+      setOpcionesPOD([]);
+      setPodSeleccionado(null);
+      setRutaSeleccionada(null);
+      setSinTarifa(false);
+      return;
+    }
+    const pods = buildPodOptionsForCountry(
+      rutas,
+      activeOriginIndex,
+      activePais.value,
+      (podNorm, routePod) => getPODDisplayName(podNorm) || routePod,
+    );
+    setOpcionesPOD(pods);
+    setPodSeleccionado(null);
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
+  }, [activePais, activeOriginIndex, rutas]);
+
+  useEffect(() => {
+    if (!paisNR || !originIndexNR || !expandedRoutes) {
+      setOpcionesPOD_NR([]);
+      setPodNR(null);
+      return;
+    }
+    const originNorms = new Set(
+      getOriginsInCountry(originIndexNR, paisNR.value).map((o) => o.normalized),
+    );
+    const podMap = new Map<string, string>();
+    expandedRoutes.rows.forEach((row) => {
+      if (!originNorms.has(row.polNorm)) return;
+      if (!podMap.has(row.podNorm)) {
+        podMap.set(row.podNorm, row.podLabel);
+      }
+    });
+    const pods = Array.from(podMap.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "es"));
+    setOpcionesPOD_NR(pods);
+    setPodNR(null);
+  }, [paisNR, originIndexNR, expandedRoutes]);
 
   // -- Cargar clientes asignados al ejecutivo (solo en modo ejecutivo) --
   const isPricingRole = user?.roles?.pricing === true;
@@ -625,22 +874,36 @@ function QuoteLCL({
     if (loadingRutas || !preselectedPOL) return;
 
     if (isSimulationMode) {
-      if (opcionesPOL_NR.length === 0) return;
+      if (!originIndexNR) return;
       const polOption = opcionesPOL_NR.find(
         (opt) => opt.value === preselectedPOL.value,
       );
       if (polOption) {
+        const countryCode = findCountryForOrigin(originIndexNR, polOption.value);
+        if (countryCode) {
+          setPaisNR({
+            value: countryCode,
+            label: getCountryLabel(countryCode),
+          });
+        }
         setRouteMode("noRecurrente");
         setPolNR(polOption);
       }
       return;
     }
 
-    if (opcionesPOL.length > 0) {
+    if (originIndex) {
       const polOption = opcionesPOL.find(
         (opt) => opt.value === preselectedPOL.value,
       );
       if (polOption) {
+        const countryCode = findCountryForOrigin(originIndex, polOption.value);
+        if (countryCode) {
+          setPaisSeleccionado({
+            value: countryCode,
+            label: getCountryLabel(countryCode),
+          });
+        }
         setRouteMode("recurrente");
         setPolSeleccionado(polOption);
       }
@@ -649,6 +912,8 @@ function QuoteLCL({
     loadingRutas,
     opcionesPOL,
     opcionesPOL_NR,
+    originIndex,
+    originIndexNR,
     preselectedPOL,
     isSimulationMode,
   ]);
@@ -1088,8 +1353,6 @@ function QuoteLCL({
   };
 
   const canProceedToStep3 = useMemo(() => {
-    if (!incoterm) return false;
-    if (incoterm === "EXW" && !pickupFromAddress) return false;
     if (
       overallDimsAndWeight &&
       (manualWeight <= 0 ||
@@ -1099,8 +1362,6 @@ function QuoteLCL({
       return false;
     return true;
   }, [
-    incoterm,
-    pickupFromAddress,
     overallDimsAndWeight,
     overallCompletedPiecesCount,
     overallPiecesData.length,
@@ -1191,64 +1452,6 @@ function QuoteLCL({
     clienteSeleccionado,
   ]);
 
-  useEffect(() => {
-    if (polSeleccionado) {
-      // Filtrar rutas por POL seleccionado (solo rutas con tarifa)
-      const rutasParaPOL = rutas.filter(
-        (r) => r.polNormalized === polSeleccionado.value,
-      );
-
-      // Agrupar por podNormalized y obtener el nombre de display preferido
-      const podMap = new Map<string, string>();
-
-      rutasParaPOL.forEach((r) => {
-        if (!podMap.has(r.podNormalized)) {
-          podMap.set(r.podNormalized, getPODDisplayName(r.podNormalized));
-        }
-      });
-
-      // Crear opciones únicas ordenadas alfabéticamente
-      const podsUnicos = Array.from(podMap.entries())
-        .map(([normalized, displayName]) => ({
-          value: normalized,
-          label: displayName,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-
-      setOpcionesPOD(podsUnicos);
-      setPodSeleccionado(null);
-      setRutaSeleccionada(null);
-      setSinTarifa(false);
-    } else {
-      setOpcionesPOD([]);
-      setPodSeleccionado(null);
-      setRutaSeleccionada(null);
-      setSinTarifa(false);
-    }
-  }, [polSeleccionado, rutas]);
-
-  // ============================================================================
-  // ACTUALIZAR PODs NO RECURRENTES CUANDO CAMBIA POL NR
-  // ============================================================================
-  useEffect(() => {
-    if (polNR && expandedRoutes) {
-      const podsForPol = expandedRoutes.rows
-        .filter((r) => r.polNorm === polNR.value)
-        .reduce((map, r) => {
-          if (!map.has(r.podNorm)) map.set(r.podNorm, r.podLabel);
-          return map;
-        }, new Map<string, string>());
-      const podsUnicos = Array.from(podsForPol.entries())
-        .map(([value, label]) => ({ value, label }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-      setOpcionesPOD_NR(podsUnicos);
-      setPodNR(null);
-    } else {
-      setOpcionesPOD_NR([]);
-      setPodNR(null);
-    }
-  }, [polNR, expandedRoutes]);
-
   // Auto-activar sinTarifa cuando se selecciona ruta no recurrente
   // Si la ruta coincide con una recurrente, se trata como recurrente (smart routing)
   useEffect(() => {
@@ -1314,14 +1517,27 @@ function QuoteLCL({
   // Auto-activar sinTarifa cuando el POD elegido no tiene rutas disponibles
   useEffect(() => {
     if (isSimulationMode) return;
-    if (!polSeleccionado || !podSeleccionado || loadingRutas) return;
+    if (
+      !paisSeleccionado ||
+      !podSeleccionado ||
+      !incoterm ||
+      loadingRutas ||
+      (incoterm === "FOB" && !polSeleccionado) ||
+      (incoterm === "EXW" && (!pickupCoords || !polSeleccionado))
+    ) {
+      return;
+    }
+
+    const polResolved = polSeleccionado;
+    const podResolved = podSeleccionado;
+    if (!polResolved || !podResolved) return;
 
     const hayRutas = rutas.some((r) => {
       const validityState = getValidityClass(r.validUntil);
       if (validityState === "expired") return false;
       return (
-        r.polNormalized === polSeleccionado.value &&
-        r.podNormalized === podSeleccionado.value &&
+        r.polNormalized === polResolved.value &&
+        r.podNormalized === podResolved.value &&
         operadoresActivos.has(r.operador)
       );
     });
@@ -1329,10 +1545,10 @@ function QuoteLCL({
     if (!hayRutas && !rutaSeleccionada) {
       const mockRuta: RutaLCL = {
         id: "sin-tarifa-lcl",
-        pol: polSeleccionado.label,
-        polNormalized: polSeleccionado.value,
-        pod: podSeleccionado.label,
-        podNormalized: podSeleccionado.value,
+        pol: polResolved.label,
+        polNormalized: polResolved.value,
+        pod: podResolved.label,
+        podNormalized: podResolved.value,
         servicio: null,
         ofWM: 0,
         ofWMString: "0",
@@ -1349,8 +1565,11 @@ function QuoteLCL({
       setSinTarifa(true);
     }
   }, [
+    paisSeleccionado,
     polSeleccionado,
     podSeleccionado,
+    incoterm,
+    pickupCoords,
     rutas,
     operadoresActivos,
     loadingRutas,
@@ -1421,6 +1640,26 @@ function QuoteLCL({
   // FILTRAR RUTAS (excluye rutas con fecha vencida)
   // ============================================================================
 
+  const recurrenteRouteReady =
+    !!paisSeleccionado &&
+    !!podSeleccionado &&
+    !!incoterm &&
+    (incoterm === "FOB"
+      ? !!polSeleccionado
+      : incoterm === "EXW"
+        ? !!pickupCoords && !!polSeleccionado
+        : false);
+
+  const nrRouteReady =
+    !!paisNR &&
+    !!podNR &&
+    !!incoterm &&
+    (incoterm === "FOB"
+      ? !!polNR
+      : incoterm === "EXW"
+        ? !!pickupCoords && !!polNR
+        : false);
+
   const rutasFiltradas = rutas
     .filter((ruta) => {
       if (!polSeleccionado || !podSeleccionado) return false;
@@ -1487,9 +1726,32 @@ function QuoteLCL({
   // HANDLERS PARA SELECTOR DUAL (RECURRENTES / NO RECURRENTES)
   // ============================================================================
 
+  const handlePaisRecurrenteChange = (option: OriginSelectOption | null) => {
+    setPaisSeleccionado(option);
+    setPolSeleccionado(null);
+    setPodSeleccionado(null);
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
+    setNearbyPortSelected(null);
+    setPickupFromAddress("");
+    setPickupCoords(null);
+    setExwResolvedDistanceKm(null);
+  };
+
+  const handlePaisNRChange = (option: OriginSelectOption | null) => {
+    setPaisNR(option);
+    setPolNR(null);
+    setPodNR(null);
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
+    setNearbyPortSelected(null);
+    setPickupFromAddress("");
+    setPickupCoords(null);
+    setExwResolvedDistanceKm(null);
+  };
+
   const handlePolRecurrenteChange = (option: SelectOption | null) => {
     setPolSeleccionado(option);
-    setPodSeleccionado(null);
     setRutaSeleccionada(null);
     setSinTarifa(false);
   };
@@ -2242,27 +2504,9 @@ function QuoteLCL({
       tempDiv.style.left = "-9999px";
       document.body.appendChild(tempDiv);
 
-      // Calcular el puerto asignado (EXW + país con soporte) para el PDF
       const pdfPolOpt = polSeleccionado ?? polNR;
-      const pdfPolPort = pdfPolOpt ? getPortByPOL(pdfPolOpt.value) : null;
-      const pdfPrefix =
-        pdfPolPort?.unlocode?.substring(0, 2).toUpperCase() ?? null;
-      const pdfActivePorts = pdfPrefix
-        ? (countryPortsMap[pdfPrefix] ?? [])
-        : [];
-      const pdfNearbyPorts =
-        pdfActivePorts.length > 0 && pickupCoords
-          ? getNearestPorts(pickupCoords, pdfActivePorts, 4)
-          : [];
-      const pdfEffectivePort = nearbyPortSelected
-        ? (pdfNearbyPorts.find((p) => p.value === nearbyPortSelected.value) ??
-          pdfNearbyPorts[0] ??
-          null)
-        : (pdfNearbyPorts[0] ?? null);
       const assignedPortLabel =
-        incoterm === "EXW" && pdfEffectivePort
-          ? pdfEffectivePort.label
-          : undefined;
+        incoterm === "EXW" && pdfPolOpt ? pdfPolOpt.label : undefined;
 
       const logoDataUrl = "/logo.png";
       const root = ReactDOM.createRoot(tempDiv);
@@ -3423,8 +3667,13 @@ function QuoteLCL({
                       <div
                         onClick={() => {
                           setRouteMode("recurrente");
+                          setPaisNR(null);
                           setPolNR(null);
                           setPodNR(null);
+                          setPaisSeleccionado(null);
+                          setPolSeleccionado(null);
+                          setPodSeleccionado(null);
+                          setIncoterm("");
                           setRutaSeleccionada(null);
                           setSinTarifa(false);
                         }}
@@ -3468,8 +3717,13 @@ function QuoteLCL({
                     <div
                       onClick={() => {
                         setRouteMode("noRecurrente");
+                        setPaisSeleccionado(null);
                         setPolSeleccionado(null);
                         setPodSeleccionado(null);
+                        setPaisNR(null);
+                        setPolNR(null);
+                        setPodNR(null);
+                        setIncoterm("");
                         setRutaSeleccionada(null);
                         setSinTarifa(false);
                       }}
@@ -3517,15 +3771,17 @@ function QuoteLCL({
                   <div className="mb-4">
                     <div className="row g-3 mb-4">
                       <div className="col-md-6">
-                        <PortSelectorFCL
-                          id="lcl-pol-recurrente"
-                          label={t("Quotelcl.puertoorigen")}
-                          icon=""
-                          value={polSeleccionado}
-                          onChange={handlePolRecurrenteChange}
-                          options={opcionesPOL}
-                          placeholder="Ingresa Puerto o UN/LOCODE"
+                        <CountryOriginSelector
+                          id="lcl-pais-recurrente"
+                          label={t("Quotelcl.paisorigen", {
+                            defaultValue: "País de origen",
+                          })}
+                          value={paisSeleccionado}
+                          onChange={handlePaisRecurrenteChange}
+                          options={originIndex?.countries ?? []}
+                          placeholder="Selecciona país de origen"
                           menuPlacement="bottom"
+                          isDisabled={!originIndex?.countries.length}
                         />
                       </div>
 
@@ -3538,23 +3794,127 @@ function QuoteLCL({
                           onChange={setPodSeleccionado}
                           options={opcionesPOD}
                           placeholder={
-                            polSeleccionado
+                            paisSeleccionado
                               ? "Ingresa Puerto o UN/LOCODE"
-                              : "Selecciona primero el origen"
+                              : "Selecciona primero el país de origen"
                           }
-                          isDisabled={!polSeleccionado}
+                          isDisabled={!paisSeleccionado}
                           menuPlacement="bottom"
                         />
                       </div>
                     </div>
 
-                    {polSeleccionado && podSeleccionado && (
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          <i className="bi bi-flag me-2"></i>
+                          Incoterm
+                          <span
+                            className="qf-badge ms-2"
+                            style={{ fontSize: "0.7rem", fontWeight: 400 }}
+                          >
+                            Obligatorio
+                          </span>
+                        </label>
+                        <select
+                          className="qa-select"
+                          value={incoterm}
+                          onChange={(e) => {
+                            const next = e.target.value as "EXW" | "FOB" | "";
+                            setIncoterm(next);
+                            setRutaSeleccionada(null);
+                            setSinTarifa(false);
+                            if (next !== "EXW") {
+                              setPickupFromAddress("");
+                              setPickupCoords(null);
+                            }
+                            if (next !== "FOB") {
+                              if (incoterm === "FOB") {
+                                setPolSeleccionado(null);
+                              }
+                            }
+                          }}
+                          style={{ maxWidth: "300px", width: "100%" }}
+                          disabled={!paisSeleccionado || !podSeleccionado}
+                        >
+                          <option value="">
+                            {t("Quotelcl.selectincoterm")}
+                          </option>
+                          <option value="EXW">Ex Works [EXW]</option>
+                          <option value="FOB">Free On Board [FOB]</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {incoterm === "FOB" && paisSeleccionado && (
+                      <div className="row g-3 mb-4">
+                        <div className="col-md-6">
+                          <PortSelectorFCL
+                            id="lcl-pol-recurrente-fob"
+                            label={t("Quotelcl.puertoorigen")}
+                            icon=""
+                            value={polSeleccionado}
+                            onChange={handlePolRecurrenteChange}
+                            options={opcionesPOLPais}
+                            placeholder="Selecciona puerto de origen"
+                            menuPlacement="bottom"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {incoterm === "EXW" && paisSeleccionado && podSeleccionado && (
+                      <div className="mb-4 bg-light p-3 rounded border">
+                        {polSeleccionado && exwResolvedDistanceKm != null && (
+                          <div className="alert alert-success py-2 px-3 mb-3 small">
+                            <i className="bi bi-geo-alt-fill me-2"></i>
+                            Puerto asignado: <strong>{polSeleccionado.label}</strong>
+                            {" · "}
+                            {exwResolvedDistanceKm.toFixed(0)} km desde la recogida
+                          </div>
+                        )}
+                        {exwNearbyRatedPorts.length === 0 &&
+                          pickupCoords &&
+                          incoterm === "EXW" && (
+                            <div className="alert alert-warning py-2 px-3 mb-3 small">
+                              No hay tarifas geolocalizables para esta dirección en
+                              el país seleccionado.
+                            </div>
+                          )}
+                        <CotizadorAddressMap
+                          value={pickupFromAddress}
+                          onChange={setPickupFromAddress}
+                          placeholder="Ingrese dirección de recogida"
+                          rows={2}
+                          pickupLabel={t("Quotelcl.pickup", {
+                            defaultValue: "Recogida",
+                          })}
+                          deliveryValue={deliveryToAddressDerived}
+                          deliveryLabel={t("Quotelcl.delivery", {
+                            defaultValue: "Entrega",
+                          })}
+                          onPickupCoordsChange={setPickupCoords}
+                          destinationCoords={exwMapDestination}
+                          middleContent={
+                            exwNearbyRatedPorts.length >= 2 ? (
+                              <NearbyPortSelectorLCL
+                                nearbyPorts={exwNearbyRatedPorts}
+                                selectedPort={nearbyPortSelected}
+                                onSelectPort={setNearbyPortSelected}
+                              />
+                            ) : null
+                          }
+                        />
+                      </div>
+                    )}
+
+                    {recurrenteRouteReady && (
                       <div className="mt-4" ref={routesRef}>
                         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                           <h6 className="qa-section-label mb-0">
                             Rutas Disponibles ({rutasFiltradas.length})
                           </h6>
-                          {rutasFiltradas.length > 0 && (
+                          {rutasFiltradas.length > 0 && polSeleccionado && podSeleccionado && (
                             <LclPriceHistoryModal
                               polLabel={polSeleccionado.label}
                               podLabel={podSeleccionado.label}
@@ -3853,15 +4213,17 @@ function QuoteLCL({
                   <div>
                     <div className="row g-3 mb-4">
                       <div className="col-md-6">
-                        <PortSelectorFCL
-                          id="lcl-pol-nr"
-                          label={t("Quotelcl.puertoorigen")}
-                          icon=""
-                          value={polNR}
-                          onChange={handlePolNRChange}
-                          options={opcionesPOL_NR}
-                          placeholder="Ingresa Puerto o UN/LOCODE"
+                        <CountryOriginSelector
+                          id="lcl-pais-nr"
+                          label={t("Quotelcl.paisorigen", {
+                            defaultValue: "País de origen",
+                          })}
+                          value={paisNR}
+                          onChange={handlePaisNRChange}
+                          options={originIndexNR?.countries ?? []}
+                          placeholder="Selecciona país de origen"
                           menuPlacement="bottom"
+                          isDisabled={!originIndexNR?.countries.length}
                         />
                       </div>
 
@@ -3874,15 +4236,103 @@ function QuoteLCL({
                           onChange={handlePodNRChange}
                           options={opcionesPOD_NR}
                           placeholder={
-                            polNR
+                            paisNR
                               ? "Ingresa Puerto o UN/LOCODE"
-                              : "Selecciona primero el origen"
+                              : "Selecciona primero el país de origen"
                           }
-                          isDisabled={!polNR}
+                          isDisabled={!paisNR}
                           menuPlacement="bottom"
                         />
                       </div>
                     </div>
+
+                    <div className="row g-3 mb-4">
+                      <div className="col-md-6">
+                        <label className="qa-label">
+                          <i className="bi bi-flag me-2"></i>
+                          Incoterm
+                        </label>
+                        <select
+                          className="qa-select"
+                          value={incoterm}
+                          onChange={(e) => {
+                            const next = e.target.value as "EXW" | "FOB" | "";
+                            setIncoterm(next);
+                            setRutaSeleccionada(null);
+                            setSinTarifa(false);
+                            if (next !== "EXW") {
+                              setPickupFromAddress("");
+                              setPickupCoords(null);
+                            }
+                            if (next !== "FOB") {
+                              setPolNR(null);
+                            }
+                          }}
+                          style={{ maxWidth: "300px", width: "100%" }}
+                          disabled={!paisNR || !podNR}
+                        >
+                          <option value="">
+                            {t("Quotelcl.selectincoterm")}
+                          </option>
+                          <option value="EXW">Ex Works [EXW]</option>
+                          <option value="FOB">Free On Board [FOB]</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {incoterm === "FOB" && paisNR && (
+                      <div className="row g-3 mb-4">
+                        <div className="col-md-6">
+                          <PortSelectorFCL
+                            id="lcl-pol-nr-fob"
+                            label={t("Quotelcl.puertoorigen")}
+                            icon=""
+                            value={polNR}
+                            onChange={handlePolNRChange}
+                            options={opcionesPOLPais}
+                            placeholder="Selecciona puerto de origen"
+                            menuPlacement="bottom"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {incoterm === "EXW" && paisNR && podNR && (
+                      <div className="mb-4 bg-light p-3 rounded border">
+                        {polNR && exwResolvedDistanceKm != null && (
+                          <div className="alert alert-success py-2 px-3 mb-3 small">
+                            <i className="bi bi-geo-alt-fill me-2"></i>
+                            Puerto asignado: <strong>{polNR.label}</strong>
+                            {" · "}
+                            {exwResolvedDistanceKm.toFixed(0)} km desde la recogida
+                          </div>
+                        )}
+                        <CotizadorAddressMap
+                          value={pickupFromAddress}
+                          onChange={setPickupFromAddress}
+                          placeholder="Ingrese dirección de recogida"
+                          rows={2}
+                          pickupLabel={t("Quotelcl.pickup", {
+                            defaultValue: "Recogida",
+                          })}
+                          deliveryValue={deliveryToAddressDerived}
+                          deliveryLabel={t("Quotelcl.delivery", {
+                            defaultValue: "Entrega",
+                          })}
+                          onPickupCoordsChange={setPickupCoords}
+                          destinationCoords={exwMapDestination}
+                          middleContent={
+                            exwNearbyRatedPorts.length >= 2 ? (
+                              <NearbyPortSelectorLCL
+                                nearbyPorts={exwNearbyRatedPorts}
+                                selectedPort={nearbyPortSelected}
+                                onSelectPort={setNearbyPortSelected}
+                              />
+                            ) : null
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </>
@@ -4041,113 +4491,7 @@ function QuoteLCL({
                   )}
                 </div>
               )}
-              <hr className="my-4" />
               <div className="row g-3">
-                {(() => {
-                  const polOpt = polSeleccionado ?? polNR;
-                  const polPort = polOpt ? getPortByPOL(polOpt.value) : null;
-                  const activePrefix =
-                    polPort?.unlocode?.substring(0, 2).toUpperCase() ?? null;
-                  const activePorts = activePrefix
-                    ? (countryPortsMap[activePrefix] ?? [])
-                    : [];
-                  const isCountryPol = activePorts.length > 0;
-
-                  const nearbyPorts =
-                    isCountryPol && pickupCoords
-                      ? getNearestPorts(pickupCoords, activePorts, 4)
-                      : [];
-                  const effectivePort = nearbyPortSelected
-                    ? (nearbyPorts.find(
-                      (p) => p.value === nearbyPortSelected.value,
-                    ) ??
-                      nearbyPorts[0] ??
-                      null)
-                    : (nearbyPorts[0] ?? null);
-
-                  let mapDestination: DestinationCoords | null = null;
-                  if (isCountryPol && effectivePort) {
-                    mapDestination = {
-                      lat: effectivePort.lat,
-                      lng: effectivePort.lng,
-                      name: effectivePort.label,
-                      code: polPort?.unlocode ?? "",
-                    };
-                  } else if (isCountryPol) {
-                    mapDestination = null;
-                  } else if (polPort) {
-                    mapDestination = {
-                      lat: polPort.lat,
-                      lng: polPort.lng,
-                      name: polPort.name,
-                      code: polPort.unlocode,
-                    };
-                  }
-
-                  const portMiddleContent =
-                    incoterm === "EXW" &&
-                      isCountryPol &&
-                      nearbyPorts.length >= 2 ? (
-                      <NearbyPortSelectorLCL
-                        nearbyPorts={nearbyPorts}
-                        selectedPort={nearbyPortSelected}
-                        onSelectPort={setNearbyPortSelected}
-                      />
-                    ) : null;
-
-                  return (
-                    <>
-                      {/* Incoterm */}
-                      <div className="col-md-6 mb-3">
-                        <label className="qa-label">
-                          <i className="bi bi-flag me-2"></i>
-                          Incoterm
-                          <span
-                            className="qf-badge ms-2"
-                            style={{ fontSize: "0.7rem", fontWeight: 400 }}
-                          >
-                            Obligatorio
-                          </span>
-                        </label>
-                        <select
-                          className="qa-select"
-                          value={incoterm}
-                          onChange={(e) =>
-                            setIncoterm(e.target.value as "EXW" | "FOB" | "")
-                          }
-                          style={{ maxWidth: "300px", width: "100%" }}
-                        >
-                          <option value="">
-                            {t("Quotelcl.selectincoterm")}
-                          </option>
-                          <option value="EXW">Ex Works [EXW]</option>
-                          <option value="FOB">Free On Board [FOB]</option>
-                        </select>
-                      </div>
-
-                      {/* Dirección de recogida + mapa (solo EXW) */}
-                      {incoterm === "EXW" && (
-                        <div className="col-12 mb-3">
-                          <div className="bg-light p-3 rounded border">
-                            <CotizadorAddressMap
-                              value={pickupFromAddress}
-                              onChange={setPickupFromAddress}
-                              placeholder="Ingrese dirección de recogida"
-                              rows={2}
-                              pickupLabel={t("Quotelcl.pickup")}
-                              deliveryValue={deliveryToAddressDerived}
-                              deliveryLabel={t("Quotelcl.delivery")}
-                              onPickupCoordsChange={setPickupCoords}
-                              destinationCoords={mapDestination}
-                              middleContent={portMiddleContent}
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-
                 {/* Detalles por piezas (solo en modo normal) */}
                 {!overallDimsAndWeight && (
                   <div className="col-12">

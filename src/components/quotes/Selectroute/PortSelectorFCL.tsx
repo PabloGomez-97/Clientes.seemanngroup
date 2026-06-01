@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import Select from "react-select";
-import { portCoordinates } from "../../../config/portCoordinates";
+import { getPortByPOL } from "../../../config/portCoordinates";
 import type { SelectOption } from "../Handlers/FCL/HandlerQuoteFCL";
 import { routeSelectStyles } from "./routeSelectStyles";
 
@@ -18,8 +18,9 @@ interface PortSelectorFCLProps {
   menuPlacement?: "auto" | "top" | "bottom";
 }
 
-const getUnlocode = (value: string): string | null =>
-  portCoordinates[value.toLowerCase()]?.unlocode ?? null;
+/** Misma resolución que EXW/geo: clave exacta o coincidencia parcial (ej. long beach → long_beach). */
+const getUnlocode = (polNormalized: string): string | null =>
+  getPortByPOL(polNormalized)?.unlocode ?? null;
 
 function PortSelectorFCL({
   id,
