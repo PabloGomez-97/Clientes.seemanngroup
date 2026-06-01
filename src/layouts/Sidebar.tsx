@@ -62,6 +62,9 @@ function Sidebar({
   // Determinar si se muestra el selector de cuenta
   const usernames = user?.usernames || [];
   const showAccountSelector = usernames.length > 1;
+  const ejecutivo = user?.ejecutivo;
+  const hasEjecutivo = !!ejecutivo;
+  const showEjecutivoStrip = !isMobile && hasEjecutivo;
 
   const menuSections: MenuSection[] = [
     {
@@ -345,11 +348,64 @@ function Sidebar({
           </div>
         )}
 
+        {showEjecutivoStrip && ejecutivo && (
+          <div
+            className={[
+              "sidebar-ejecutivo",
+              isCollapsed && !isMobile ? "sidebar-ejecutivo--collapsed" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            title={`${t("sidebar.yourExecutive")} ${ejecutivo.nombre}`}
+          >
+            {(!isCollapsed || isMobile) && (
+              <span className="sidebar-ejecutivo__text">
+                <span className="sidebar-ejecutivo__label">
+                  {t("sidebar.yourExecutive")}{" "}
+                </span>
+                <span className="sidebar-ejecutivo__name">{ejecutivo.nombre}</span>
+              </span>
+            )}
+            <div className="sidebar-ejecutivo__actions">
+              <a
+                href={`mailto:${ejecutivo.email}`}
+                className="sidebar-ejecutivo__action"
+                title={ejecutivo.email}
+                aria-label={ejecutivo.email}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+                  <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555zM0 4.697v7.104l5.803-3.558L0 4.697zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757zm3.436-.586L16 11.801V4.697l-5.803 3.546z" />
+                </svg>
+              </a>
+              {ejecutivo.telefono ? (
+                <a
+                  href={`tel:${ejecutivo.telefono}`}
+                  className="sidebar-ejecutivo__action"
+                  title={ejecutivo.telefono}
+                  aria-label={ejecutivo.telefono}
+                >
+                  <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+                    <path
+                      fillRule="evenodd"
+                      d="M1.885.511a1.745 1.745 0 0 1 2.61.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z"
+                    />
+                  </svg>
+                </a>
+              ) : null}
+            </div>
+          </div>
+        )}
+
         <nav
-          className="sidebar-nav"
+          className={[
+            "sidebar-nav",
+            isCollapsed && !isMobile ? "sidebar-nav--collapsed" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
           style={{
             flex: 1,
-            padding: isCollapsed && !isMobile ? "12px 10px" : "12px 0",
+            padding: isCollapsed && !isMobile ? undefined : isMobile ? "12px 0" : undefined,
           }}
         >
           {menuSections.map((section, sectionIdx) => (
@@ -682,6 +738,83 @@ function Sidebar({
 
           .sidebar-scroll::-webkit-scrollbar-thumb {
             background: transparent;
+          }
+
+          /* Desktop: franja ejecutivo (40px) + menú alineado al carrusel */
+          @media (min-width: 1025px) {
+            .sidebar-ejecutivo {
+              flex-shrink: 0;
+              height: 40px;
+              min-height: 40px;
+              max-height: 40px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              padding: 0 12px;
+              box-sizing: border-box;
+              border-bottom: 1px solid ${colors.border};
+            }
+
+            .sidebar-ejecutivo--collapsed {
+              justify-content: center;
+              padding: 0 8px;
+            }
+
+            .sidebar-ejecutivo__text {
+              flex: 1;
+              min-width: 0;
+              font-size: 12px;
+              line-height: 1.2;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .sidebar-ejecutivo__label {
+              font-weight: 500;
+              color: ${colors.textMuted};
+            }
+
+            .sidebar-ejecutivo__name {
+              font-weight: 600;
+              color: ${colors.text};
+            }
+
+            .sidebar-ejecutivo__actions {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              flex-shrink: 0;
+            }
+
+            .sidebar-ejecutivo__action {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              width: 28px;
+              height: 28px;
+              border-radius: 6px;
+              color: ${colors.textMuted};
+              text-decoration: none;
+              transition: background-color 0.18s ease, color 0.18s ease;
+            }
+
+            .sidebar-ejecutivo__action svg {
+              fill: currentColor;
+            }
+
+            .sidebar-ejecutivo__action:hover {
+              background-color: ${colors.bgHover};
+              color: ${colors.text};
+            }
+
+            .sidebar-nav {
+              padding: ${showEjecutivoStrip ? "0 0 12px" : "40px 0 12px"};
+            }
+
+            .sidebar-nav.sidebar-nav--collapsed {
+              padding: ${showEjecutivoStrip ? "0 10px 12px" : "40px 10px 12px"};
+            }
           }
 
           @media (max-width: 1024px) {

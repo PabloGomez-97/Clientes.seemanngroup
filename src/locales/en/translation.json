@@ -614,7 +614,8 @@
     "altoMsg": "One or more pieces exceed 259 cm in height. This cargo is considered oversize and requires a special quote."
   },
   "sidebar": {
-    "account": "Active Account"
+    "account": "Active Account",
+    "yourExecutive": "Your executive:"
   },
   "priceHistoryExplorer": {
     "title": "Price history",

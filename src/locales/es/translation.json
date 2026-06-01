@@ -615,7 +615,8 @@
     "altoMsg": "Una o más piezas superan los 259 cm de alto. Esta carga se considera oversize y requiere cotización especial."
   },
   "sidebar": {
-    "account": "Cuenta Activa"
+    "account": "Cuenta Activa",
+    "yourExecutive": "Tu ejecutivo:"
   },
   "priceHistoryExplorer": {
     "title": "Histórico de precios",
