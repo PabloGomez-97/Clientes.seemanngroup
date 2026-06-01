@@ -87,6 +87,8 @@ import {
 } from "./Handlers/Air/ExpandedRoutesAir";
 import NearbyAirportSelector from "./NearbySelector/NearbyAirportSelector";
 import { AirportSelectorAIR } from "./Selectroute";
+import { AirPriceHistoryModal } from "./Handlers/Air/AirPriceHistoryModal";
+import { useAirPriceHistory } from "./Handlers/Air/useAirPriceHistory";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   SIMULATION_MISSING_VALUE,
@@ -345,6 +347,7 @@ function QuoteAPITester({
   const [loadingRutas, setLoadingRutas] = useState(true);
   const [errorRutas, setErrorRutas] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [historicalRefreshToken, setHistoricalRefreshToken] = useState(0);
 
   const [originSeleccionado, setOriginSeleccionado] =
     useState<SelectOption | null>(null);
@@ -1018,6 +1021,7 @@ function QuoteAPITester({
 
       setLoadingRutas(false);
       setLastUpdate(new Date());
+      setHistoricalRefreshToken((t) => t + 1);
       console.log(
         "Tarifas actualizadas exitosamente:",
         rutasParsed.length,
@@ -1615,6 +1619,16 @@ function QuoteAPITester({
   const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
   const activeCarriersKey = Array.from(carriersActivos).sort().join("|");
   const activeCurrenciesKey = Array.from(monedasActivas).sort().join("|");
+
+  const {
+    loading: loadingPriceHistory,
+    error: errorPriceHistory,
+    seriesResult: priceHistorySeries,
+  } = useAirPriceHistory(
+    originSeleccionado?.value,
+    destinationSeleccionado?.value,
+    historicalRefreshToken,
+  );
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {
@@ -4535,10 +4549,21 @@ function QuoteAPITester({
 
                     {originSeleccionado && destinationSeleccionado && (
                       <div className="mt-4" ref={routesRef}>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h6 className="qa-section-label">
+                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                          <h6 className="qa-section-label mb-0">
                             Rutas Disponibles ({rutasFiltradas.length})
                           </h6>
+                          {rutasFiltradas.length > 0 && (
+                            <AirPriceHistoryModal
+                              originLabel={originSeleccionado.label}
+                              destinationLabel={
+                                destinationSeleccionado.label
+                              }
+                              loading={loadingPriceHistory}
+                              error={errorPriceHistory}
+                              seriesResult={priceHistorySeries}
+                            />
+                          )}
                         </div>
 
                         {rutasFiltradas.length === 0 ? (

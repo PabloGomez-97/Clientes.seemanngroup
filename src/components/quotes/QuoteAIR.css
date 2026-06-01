@@ -1615,3 +1615,203 @@
     display: inline;
   }
 }
+
+/* ============================================================
+   Histórico de precios (Rutas Disponibles)
+   ============================================================ */
+
+.qa-price-history-section {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #ececec;
+}
+
+.qa-price-history-embedded {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.qa-price-history-open-btn {
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.qa-price-history-modal .modal-body {
+  padding-top: 0.75rem;
+}
+
+.qa-price-history-modal-route {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--qa-text-primary, #1f2937);
+  margin: 0 0 1rem;
+}
+
+.qa-price-history-header--compact {
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.qa-price-history-modal .qa-price-history-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 992px) {
+  .qa-price-history-modal .qa-price-history-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.qa-price-history-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.qa-price-history-subtitle {
+  font-size: 0.78rem;
+  color: var(--qa-text-secondary, #6b7280);
+}
+
+.qa-price-history-mixed-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  white-space: nowrap;
+}
+
+.qa-price-history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.qa-price-history-grid--single {
+  grid-template-columns: 1fr;
+  max-width: 520px;
+}
+
+@media (max-width: 768px) {
+  .qa-price-history-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.qa-price-history-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem 0.5rem;
+  background: #fafafa;
+}
+
+.qa-price-history-panel--empty {
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.qa-price-history-panel-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.qa-price-history-panel-currency {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #9ca3af;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.qa-price-history-limited {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin: 0 0 0.35rem;
+}
+
+.qa-price-history-chart-wrap {
+  width: 100%;
+  min-height: 160px;
+}
+
+.qa-price-history-empty-tier {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  margin: auto 0;
+}
+
+.qa-price-history-message {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.qa-price-history-message--error {
+  color: #b91c1c;
+}
+
+.qa-price-history-tooltip {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.qa-price-history-tooltip-label {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.qa-price-history-tooltip-value {
+  color: #6366f1;
+  font-weight: 600;
+}
+
+.qa-price-history-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .qa-price-history-skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.qa-price-history-skeleton-panel {
+  min-height: 200px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: qa-price-history-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes qa-price-history-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

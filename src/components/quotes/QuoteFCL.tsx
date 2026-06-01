@@ -56,6 +56,8 @@ import "./QuoteAIR.css";
 import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
+import { FclPriceHistoryModal } from "./Handlers/FCL/FclPriceHistoryModal";
+import { useFclPriceHistory } from "./Handlers/FCL/useFclPriceHistory";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
@@ -177,6 +179,7 @@ function QuoteFCL({
   const [loadingRutas, setLoadingRutas] = useState(true);
   const [errorRutas, setErrorRutas] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [historicalRefreshToken, setHistoricalRefreshToken] = useState(0);
 
   const [polSeleccionado, setPolSeleccionado] = useState<SelectOption | null>(
     null,
@@ -644,6 +647,7 @@ function QuoteFCL({
 
       setLoadingRutas(false);
       setLastUpdate(new Date());
+      setHistoricalRefreshToken((t) => t + 1);
       console.log(
         "✅ Tarifas FCL actualizadas exitosamente:",
         rutasParsed.length,
@@ -998,6 +1002,16 @@ function QuoteFCL({
     : rutasFiltradas.slice(0, INITIAL_VISIBLE_ROUTES);
   const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
   const activeCarriersKey = Array.from(carriersActivos).sort().join("|");
+
+  const {
+    loading: loadingPriceHistory,
+    error: errorPriceHistory,
+    seriesResult: priceHistorySeries,
+  } = useFclPriceHistory(
+    polSeleccionado?.value,
+    podSeleccionado?.value,
+    historicalRefreshToken,
+  );
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {
@@ -2941,10 +2955,19 @@ function QuoteFCL({
                     {polSeleccionado && podSeleccionado && (
                       <div className="mt-4" ref={routesRef}>
                         {/* Header mejorado */}
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h6 className="qa-section-label">
+                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                          <h6 className="qa-section-label mb-0">
                             Rutas Disponibles ({rutasFiltradas.length})
                           </h6>
+                          {rutasFiltradas.length > 0 && (
+                            <FclPriceHistoryModal
+                              polLabel={polSeleccionado.label}
+                              podLabel={podSeleccionado.label}
+                              loading={loadingPriceHistory}
+                              error={errorPriceHistory}
+                              seriesResult={priceHistorySeries}
+                            />
+                          )}
                         </div>
 
                         {rutasFiltradas.length > 0 &&

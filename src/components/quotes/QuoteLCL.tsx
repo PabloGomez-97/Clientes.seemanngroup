@@ -43,6 +43,8 @@ import { QuoteGeneratingMessage } from "./QuoteGeneratingMessage";
 import "./QuoteAIR.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
+import { LclPriceHistoryModal } from "./Handlers/LCL/LclPriceHistoryModal";
+import { useLclPriceHistory } from "./Handlers/LCL/useLclPriceHistory";
 import {
   type PieceData,
   type OutletContext,
@@ -251,6 +253,7 @@ function QuoteLCL({
   const [loadingRutas, setLoadingRutas] = useState(true);
   const [errorRutas, setErrorRutas] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [historicalRefreshToken, setHistoricalRefreshToken] = useState(0);
 
   const [polSeleccionado, setPolSeleccionado] = useState<SelectOption | null>(
     null,
@@ -769,6 +772,7 @@ function QuoteLCL({
 
       setLoadingRutas(false);
       setLastUpdate(new Date());
+      setHistoricalRefreshToken((t) => t + 1);
       console.log(
         "Tarifas LCL actualizadas exitosamente:",
         rutasParsed.length,
@@ -1451,6 +1455,16 @@ function QuoteLCL({
     : rutasFiltradas.slice(0, INITIAL_VISIBLE_ROUTES);
   const hasHiddenRoutes = rutasFiltradas.length > INITIAL_VISIBLE_ROUTES;
   const activeOperadoresKey = Array.from(operadoresActivos).sort().join("|");
+
+  const {
+    loading: loadingPriceHistory,
+    error: errorPriceHistory,
+    seriesResult: priceHistorySeries,
+  } = useLclPriceHistory(
+    polSeleccionado?.value,
+    podSeleccionado?.value,
+    historicalRefreshToken,
+  );
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {
@@ -3536,10 +3550,19 @@ function QuoteLCL({
 
                     {polSeleccionado && podSeleccionado && (
                       <div className="mt-4" ref={routesRef}>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h6 className="qa-section-label">
+                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                          <h6 className="qa-section-label mb-0">
                             Rutas Disponibles ({rutasFiltradas.length})
                           </h6>
+                          {rutasFiltradas.length > 0 && (
+                            <LclPriceHistoryModal
+                              polLabel={polSeleccionado.label}
+                              podLabel={podSeleccionado.label}
+                              loading={loadingPriceHistory}
+                              error={errorPriceHistory}
+                              seriesResult={priceHistorySeries}
+                            />
+                          )}
                         </div>
 
                         {rutasFiltradas.length > 0 &&
