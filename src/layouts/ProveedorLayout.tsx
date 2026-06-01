@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import NavbarAdmin from "./Navbar-admin";
 import SidebarProveedor from "./Sidebar-proveedor";
+import ChatWidget from "../components/Chatbot/ChatWidget";
 import Footer from "../components/Footer/Footer";
+import { ChatbotProvider } from "../contexts/ChatbotContext";
 import { useAuth } from "../auth/AuthContext";
 import { canAccessRoute } from "../config/roleRoutes";
 
@@ -70,40 +72,44 @@ function ProveedorLayout() {
   }
 
   return (
-    <div className="d-flex" style={{ height: "100vh", position: "relative" }}>
-      <SidebarProveedor
-        isCollapsed={sidebarCollapsed}
-        isMobile={isMobile}
-        onCloseMobile={() => setSidebarCollapsed(true)}
-        onToggle={toggleSidebar}
-      />
-
-      <div
-        className="flex-fill d-flex flex-column"
-        style={{ overflow: "hidden" }}
-      >
-        <NavbarAdmin
-          accessToken=""
-          onLogout={() => {}}
-          toggleSidebar={toggleSidebar}
-          isSidebarCollapsed={sidebarCollapsed}
+    <ChatbotProvider>
+      <div className="d-flex" style={{ height: "100vh", position: "relative" }}>
+        <SidebarProveedor
+          isCollapsed={sidebarCollapsed}
+          isMobile={isMobile}
+          onCloseMobile={() => setSidebarCollapsed(true)}
+          onToggle={toggleSidebar}
         />
 
         <div
-          className="flex-fill user-layout-main layout-main--sticky-footer"
-          style={{
-            overflowY: "auto",
-            backgroundColor: "#f8f9fa",
-            minHeight: 0,
-          }}
+          className="flex-fill d-flex flex-column"
+          style={{ overflow: "hidden" }}
         >
-          <div className="layout-main__content">
-            <Outlet />
+          <NavbarAdmin
+            accessToken=""
+            onLogout={() => {}}
+            toggleSidebar={toggleSidebar}
+            isSidebarCollapsed={sidebarCollapsed}
+            isMobile={isMobile}
+          />
+
+          <div
+            className="flex-fill user-layout-main layout-main--sticky-footer"
+            style={{
+              overflowY: "auto",
+              backgroundColor: "#f8f9fa",
+              minHeight: 0,
+            }}
+          >
+            <div className="layout-main__content">
+              <Outlet />
+            </div>
+            <Footer />
           </div>
-          <Footer />
         </div>
+        <ChatWidget />
       </div>
-    </div>
+    </ChatbotProvider>
   );
 }
 
