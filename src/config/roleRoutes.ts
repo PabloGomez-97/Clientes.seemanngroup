@@ -40,6 +40,7 @@ export const PRICING_ROUTES: string[] = [
   '/admin/documentos-proveedores',
   '/admin/alertas-pricing',
   '/admin/settings',
+  '/admin/historico-precios',
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -56,6 +57,7 @@ export const EJECUTIVO_ROUTES: string[] = [
   '/admin/documentacion',
   '/admin/comportamiento-clientes',
   '/admin/settings',
+  '/admin/historico-precios',
 ];
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -70,6 +72,7 @@ export const OPERACIONES_ROUTES: string[] = [
   '/admin/op-documentacion',
   '/admin/op-trackeos',
   '/admin/settings',
+  '/admin/historico-precios',
 ];
 
 // ────────────────────────────────────────────────────────────────────────────

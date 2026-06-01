@@ -229,6 +229,16 @@ function SidebarAdmin({
         },
       ],
     },
+
+    {
+      items: [
+        {
+          path: "/admin/historico-precios",
+          name: "Histórico de precios",
+          icon: "fa fa-line-chart",
+        },
+      ],
+    },
   ];
 
   // Filter by permission (restrictedTo + roles)

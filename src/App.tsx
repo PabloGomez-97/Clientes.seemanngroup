@@ -64,6 +64,7 @@ import GroundShipmentsView from "./components/shipments/GroundShipmentsView";
 import Financiera from "./components/Sidebar/ReporteriaFinanciera";
 import Settings from "./components/settings/Settings";
 import ReporteriaOperacional from "./components/Sidebar/ReporteriaOperacional";
+import PriceHistoryExplorer from "./components/Sidebar/priceHistory/PriceHistoryExplorer";
 import ShipsGoTracking from "./components/Sidebar/Shipsgotracking";
 import CreateShipmentForm from "./components/Sidebar/New-tracking";
 import CreateOceanShipmentForm from "./components/Sidebar/New-ocean-tracking";
@@ -199,6 +200,7 @@ function App() {
             path="documentos-proveedores"
             element={<DocumentosProveedores />}
           />
+          <Route path="historico-precios" element={<PriceHistoryExplorer />} />
 
           {/* Rutas de Reportería con subrutas */}
           <Route path="reporteria" element={<ReporteriaLayout />}>
@@ -280,6 +282,7 @@ function App() {
           <Route path="financiera" element={<Financiera />} />
           <Route path="settings" element={<Settings />} />
           <Route path="operacional" element={<ReporteriaOperacional />} />
+          <Route path="historico-precios" element={<PriceHistoryExplorer />} />
           <Route path="new-tracking" element={<CreateShipmentForm />} />
           <Route
             path="new-ocean-tracking"

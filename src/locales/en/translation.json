@@ -205,6 +205,7 @@
       "reporting": "Reporting",
       "financial": "Financial",
       "operational": "Operational",
+      "priceHistory": "Price history",
       "news": "News",
       "novedades": "News"
     },
@@ -614,6 +615,49 @@
   },
   "sidebar": {
     "account": "Active Account"
+  },
+  "priceHistoryExplorer": {
+    "title": "Price history",
+    "subtitle": "Rate trends by route, carrier, and band. Select an origin country to browse by mode.",
+    "countryFilter": "Origin country",
+    "cityFilter": "Origin city",
+    "airTierFilter": "Weight band (kg)",
+    "fclTierFilter": "Container",
+    "allAirTiers": "All weight bands",
+    "allFclTiers": "All containers",
+    "noRoutesForTier": "No routes for the selected weight band or container.",
+    "allCities": "All cities",
+    "noRoutesForCity": "No routes for the selected city in this mode.",
+    "showMoreCharts": "Show more charts",
+    "allCountries": "Select country…",
+    "featuredTitle": "Today's reference",
+    "featuredDesc": "Random sample of one route and band. Choose a country to explore all available routes.",
+    "byCountryTitle": "Routes by origin country",
+    "pickCountryHint": "Select an origin country to view Air, FCL, and LCL charts.",
+    "noRoutesInTab": "No historical routes for this country in the selected mode.",
+    "loadError": "Could not load price history.",
+    "loading": "Loading price history…",
+    "noSeriesData": "Not enough data for this chart.",
+    "limitedHistory": "Limited history; the trend may change with new updates.",
+    "carrier": "Carrier",
+    "agent": "Agent",
+    "addEntity": "Add {{label}} to chart",
+    "selectEntity": "Select…",
+    "maxEntitiesAdded": "Maximum 5 additional {{label}}",
+    "lowestPrice": "Lowest price",
+    "removeEntity": "Remove {{label}} from chart",
+    "originCountry": "Origin: {{country}}",
+    "rangeEstimate": "Estimated next update: {{low}} – {{high}}",
+    "trend": {
+      "up": "Upward trend",
+      "down": "Downward trend",
+      "stable": "Stable trend"
+    },
+    "mode": {
+      "air": "Air",
+      "fcl": "FCL",
+      "lcl": "LCL"
+    }
   },
   "novedades": {
     "title": "News",

@@ -148,6 +148,15 @@ function Sidebar({
     {
       items: [
         {
+          path: "/historico-precios",
+          name: t("home.sidebar.priceHistory"),
+          icon: "fa fa-chart-line",
+        },
+      ],
+    },
+    {
+      items: [
+        {
           path: "/novedades",
           name: t("home.sidebar.novedades"),
           icon: "fa fa-newspaper",
@@ -382,8 +391,8 @@ function Sidebar({
                   const isItemActive = item.path
                     ? isActive(item.path)
                     : item.subItems?.some((subItem) =>
-                        isActive(subItem.path),
-                      ) || false;
+                      isActive(subItem.path),
+                    ) || false;
                   const isHovered =
                     hoveredItem === `${section.title}-${item.name}`;
 

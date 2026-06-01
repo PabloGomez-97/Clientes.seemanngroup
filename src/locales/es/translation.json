@@ -205,6 +205,7 @@
       "reporting": "Reportería",
       "financial": "Financiera",
       "operational": "Operacional",
+      "priceHistory": "Histórico de precios",
       "news": "Novedades",
       "novedades": "Novedades"
     },
@@ -615,6 +616,49 @@
   },
   "sidebar": {
     "account": "Cuenta Activa"
+  },
+  "priceHistoryExplorer": {
+    "title": "Histórico de precios",
+    "subtitle": "Evolución de tarifas por ruta, carrier y tramo. Selecciona un país de origen para ver el detalle por modalidad.",
+    "countryFilter": "País de origen",
+    "cityFilter": "Ciudad de origen",
+    "airTierFilter": "Tramo (kg)",
+    "fclTierFilter": "Contenedor",
+    "allAirTiers": "Todos los tramos",
+    "allFclTiers": "Todos los contenedores",
+    "noRoutesForTier": "No hay rutas para el tramo o contenedor seleccionado.",
+    "allCities": "Todas las ciudades",
+    "noRoutesForCity": "No hay rutas para la ciudad seleccionada en esta modalidad.",
+    "showMoreCharts": "Mostrar más gráficos",
+    "allCountries": "Seleccionar país…",
+    "featuredTitle": "Referencia del día",
+    "featuredDesc": "Ejemplo aleatorio de una ruta y tramo. Elige un país para explorar todas las rutas disponibles.",
+    "byCountryTitle": "Rutas por país de origen",
+    "pickCountryHint": "Selecciona un país de origen para ver los gráficos de Aéreo, FCL y LCL.",
+    "noRoutesInTab": "No hay rutas históricas para este país en la modalidad seleccionada.",
+    "loadError": "No se pudo cargar el histórico de precios.",
+    "loading": "Cargando histórico de precios…",
+    "noSeriesData": "Sin datos suficientes para este gráfico.",
+    "limitedHistory": "Histórico con pocos registros; la tendencia puede variar con nuevas actualizaciones.",
+    "carrier": "Carrier",
+    "agent": "Agente",
+    "addEntity": "Agregar {{label}} al gráfico",
+    "selectEntity": "Seleccionar…",
+    "maxEntitiesAdded": "Máximo 5 {{label}} adicionales",
+    "lowestPrice": "Más económico",
+    "removeEntity": "Quitar {{label}} del gráfico",
+    "originCountry": "Origen: {{country}}",
+    "rangeEstimate": "Próxima actualización estimada: {{low}} – {{high}}",
+    "trend": {
+      "up": "Tendencia al alza",
+      "down": "Tendencia a la baja",
+      "stable": "Tendencia estable"
+    },
+    "mode": {
+      "air": "Aéreo",
+      "fcl": "FCL",
+      "lcl": "LCL"
+    }
   },
   "novedades": {
     "title": "Novedades",
