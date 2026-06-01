@@ -524,13 +524,22 @@ function QuoteLCL({
   const activeOriginIndex =
     routeMode === "noRecurrente" ? originIndexNR : originIndex;
   const activePais = routeMode === "noRecurrente" ? paisNR : paisSeleccionado;
-  const activePodNormalized =
-    routeMode === "noRecurrente"
-      ? (podNR?.value ?? null)
-      : (podSeleccionado?.value ?? null);
+  const isNoRecurrente = routeMode === "noRecurrente";
+  const activePodNormalized = isNoRecurrente
+    ? (podNR?.value ?? null)
+    : (podSeleccionado?.value ?? null);
 
   const opcionesPOLPais = useMemo((): SelectOption[] => {
-    if (!activePais || !originIndex || !activePodNormalized) return [];
+    if (!activePais || !activeOriginIndex) return [];
+    if (isNoRecurrente) {
+      return getOriginsInCountry(activeOriginIndex, activePais.value).map(
+        (o) => ({
+          value: o.normalized,
+          label: o.label,
+        }),
+      );
+    }
+    if (!originIndex || !activePodNormalized) return [];
     const isRouteEligible = (ruta: RutaLCL) =>
       isSimulationMode || getValidityClass(ruta.validUntil) !== "expired";
     return buildPolOptionsForCountryAndPod(
@@ -543,14 +552,20 @@ function QuoteLCL({
     );
   }, [
     activePais,
+    activeOriginIndex,
+    isNoRecurrente,
     originIndex,
     activePodNormalized,
     rutas,
     isSimulationMode,
   ]);
 
-  const ratedOriginsForPod = useMemo(() => {
-    if (!activePais || !originIndex || !activePodNormalized) return [];
+  const exwOriginCandidates = useMemo(() => {
+    if (!activePais || !activeOriginIndex) return [];
+    if (isNoRecurrente) {
+      return getOriginsInCountry(activeOriginIndex, activePais.value);
+    }
+    if (!originIndex || !activePodNormalized) return [];
     const isRouteEligible = (ruta: RutaLCL) =>
       isSimulationMode || getValidityClass(ruta.validUntil) !== "expired";
     return getRatedOriginsInCountryForPod(
@@ -562,6 +577,8 @@ function QuoteLCL({
     );
   }, [
     activePais,
+    activeOriginIndex,
+    isNoRecurrente,
     originIndex,
     activePodNormalized,
     rutas,
@@ -573,11 +590,11 @@ function QuoteLCL({
       incoterm !== "EXW" ||
       !pickupCoords ||
       !activePais ||
-      ratedOriginsForPod.length === 0
+      exwOriginCandidates.length === 0
     ) {
       return [];
     }
-    const origins = ratedOriginsForPod;
+    const origins = exwOriginCandidates;
     return rankRatedOriginsByDistance(pickupCoords, origins, 4).map((r) => ({
       value: r.origin.normalized,
       label: r.origin.label,
@@ -585,7 +602,7 @@ function QuoteLCL({
       lng: r.origin.lng,
       distanceKm: r.distanceKm,
     }));
-  }, [incoterm, pickupCoords, activePais, ratedOriginsForPod]);
+  }, [incoterm, pickupCoords, activePais, exwOriginCandidates]);
 
   const exwMapDestination = useMemo((): DestinationCoords | null => {
     if (incoterm !== "EXW" || exwNearbyRatedPorts.length === 0) return null;
@@ -615,14 +632,17 @@ function QuoteLCL({
       incoterm !== "EXW" ||
       !pickupCoords ||
       !activePais ||
-      !activePodNormalized ||
-      ratedOriginsForPod.length === 0
+      !activeOriginIndex ||
+      exwOriginCandidates.length === 0
     ) {
+      return;
+    }
+    if (!isNoRecurrente && !activePodNormalized) {
       return;
     }
     const ranked = rankRatedOriginsByDistance(
       pickupCoords,
-      ratedOriginsForPod,
+      exwOriginCandidates,
       4,
     );
     if (ranked.length === 0) {
@@ -649,36 +669,34 @@ function QuoteLCL({
     incoterm,
     pickupCoords,
     activePais,
+    activeOriginIndex,
     activePodNormalized,
-    ratedOriginsForPod,
+    exwOriginCandidates,
+    isNoRecurrente,
     nearbyPortSelected,
     routeMode,
   ]);
 
   useEffect(() => {
+    if (isNoRecurrente) return;
     if (!activePodNormalized) return;
-    const pol = routeMode === "noRecurrente" ? polNR : polSeleccionado;
+    const pol = polSeleccionado;
     if (!pol) return;
     if (
       opcionesPOLPais.length > 0 &&
       !opcionesPOLPais.some((o) => o.value === pol.value)
     ) {
-      if (routeMode === "noRecurrente") {
-        setPolNR(null);
-      } else {
-        setPolSeleccionado(null);
-      }
+      setPolSeleccionado(null);
       setRutaSeleccionada(null);
       setSinTarifa(false);
       setNearbyPortSelected(null);
       setExwResolvedDistanceKm(null);
     }
   }, [
+    isNoRecurrente,
     activePodNormalized,
     opcionesPOLPais,
-    polNR,
     polSeleccionado,
-    routeMode,
   ]);
 
   // PODs disponibles según país de origen (no depende del POL en EXW).

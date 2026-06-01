@@ -506,13 +506,22 @@ function QuoteAPITester({
   const activeOriginIndex =
     routeMode === "noRecurrente" ? originIndexNR : originIndex;
   const activePais = routeMode === "noRecurrente" ? paisNR : paisSeleccionado;
-  const activeDestinationNormalized =
-    routeMode === "noRecurrente"
-      ? (destNR?.value ?? null)
-      : (destinationSeleccionado?.value ?? null);
+  const isNoRecurrente = routeMode === "noRecurrente";
+  const activeDestinationNormalized = isNoRecurrente
+    ? (destNR?.value ?? null)
+    : (destinationSeleccionado?.value ?? null);
 
   const opcionesOriginPais = useMemo((): SelectOption[] => {
-    if (!activePais || !originIndex || !activeDestinationNormalized) return [];
+    if (!activePais || !activeOriginIndex) return [];
+    if (isNoRecurrente) {
+      return getOriginsInCountry(activeOriginIndex, activePais.value).map(
+        (o) => ({
+          value: o.normalized,
+          label: o.label,
+        }),
+      );
+    }
+    if (!originIndex || !activeDestinationNormalized) return [];
     const isRouteEligible = (ruta: RutaAerea) =>
       isSimulationMode || getValidityClass(ruta.validUntil) !== "expired";
     return buildOriginOptionsForCountryAndDestination(
@@ -525,14 +534,20 @@ function QuoteAPITester({
     );
   }, [
     activePais,
+    activeOriginIndex,
+    isNoRecurrente,
     originIndex,
     activeDestinationNormalized,
     rutas,
     isSimulationMode,
   ]);
 
-  const ratedOriginsForDestination = useMemo(() => {
-    if (!activePais || !originIndex || !activeDestinationNormalized) return [];
+  const exwOriginCandidates = useMemo(() => {
+    if (!activePais || !activeOriginIndex) return [];
+    if (isNoRecurrente) {
+      return getOriginsInCountry(activeOriginIndex, activePais.value);
+    }
+    if (!originIndex || !activeDestinationNormalized) return [];
     const isRouteEligible = (ruta: RutaAerea) =>
       isSimulationMode || getValidityClass(ruta.validUntil) !== "expired";
     return getRatedOriginsInCountryForDestination(
@@ -544,6 +559,8 @@ function QuoteAPITester({
     );
   }, [
     activePais,
+    activeOriginIndex,
+    isNoRecurrente,
     originIndex,
     activeDestinationNormalized,
     rutas,
@@ -555,11 +572,11 @@ function QuoteAPITester({
       incoterm !== "EXW" ||
       !pickupCoords ||
       !activePais ||
-      ratedOriginsForDestination.length === 0
+      exwOriginCandidates.length === 0
     ) {
       return [];
     }
-    const origins = ratedOriginsForDestination;
+    const origins = exwOriginCandidates;
     return rankRatedOriginsByDistance(pickupCoords, origins, 4).map((r) => ({
       value: r.origin.normalized,
       label: r.origin.label,
@@ -567,7 +584,7 @@ function QuoteAPITester({
       lng: r.origin.lng,
       distanceKm: r.distanceKm,
     }));
-  }, [incoterm, pickupCoords, activePais, ratedOriginsForDestination]);
+  }, [incoterm, pickupCoords, activePais, exwOriginCandidates]);
 
   const exwMapDestination = useMemo((): DestinationCoords | null => {
     if (incoterm !== "EXW" || exwNearbyRatedAirports.length === 0) return null;
@@ -754,14 +771,17 @@ function QuoteAPITester({
       incoterm !== "EXW" ||
       !pickupCoords ||
       !activePais ||
-      !activeDestinationNormalized ||
-      ratedOriginsForDestination.length === 0
+      !activeOriginIndex ||
+      exwOriginCandidates.length === 0
     ) {
+      return;
+    }
+    if (!isNoRecurrente && !activeDestinationNormalized) {
       return;
     }
     const ranked = rankRatedOriginsByDistance(
       pickupCoords,
-      ratedOriginsForDestination,
+      exwOriginCandidates,
       4,
     );
     if (ranked.length === 0) {
@@ -788,37 +808,34 @@ function QuoteAPITester({
     incoterm,
     pickupCoords,
     activePais,
+    activeOriginIndex,
     activeDestinationNormalized,
-    ratedOriginsForDestination,
+    exwOriginCandidates,
+    isNoRecurrente,
     nearbyAirportSelected,
     routeMode,
   ]);
 
   useEffect(() => {
+    if (isNoRecurrente) return;
     if (!activeDestinationNormalized) return;
-    const origin =
-      routeMode === "noRecurrente" ? originNR : originSeleccionado;
+    const origin = originSeleccionado;
     if (!origin) return;
     if (
       opcionesOriginPais.length > 0 &&
       !opcionesOriginPais.some((o) => o.value === origin.value)
     ) {
-      if (routeMode === "noRecurrente") {
-        setOriginNR(null);
-      } else {
-        setOriginSeleccionado(null);
-      }
+      setOriginSeleccionado(null);
       setRutaSeleccionada(null);
       setSinTarifa(false);
       setNearbyAirportSelected(null);
       setExwResolvedDistanceKm(null);
     }
   }, [
+    isNoRecurrente,
     activeDestinationNormalized,
     opcionesOriginPais,
-    originNR,
     originSeleccionado,
-    routeMode,
   ]);
 
   useEffect(() => {
