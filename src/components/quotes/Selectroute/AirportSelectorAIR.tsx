@@ -16,6 +16,8 @@ interface AirportSelectorAIRProps {
   icon?: string;
   hint?: string;
   menuPlacement?: "auto" | "top" | "bottom";
+  /** Si false, muestra solo el nombre del catálogo (p. ej. destino). Por defecto true (origen). */
+  showAirportPrefix?: boolean;
 }
 
 const getIata = (value: string): string | null =>
@@ -33,19 +35,25 @@ function AirportSelectorAIR({
   icon = "bi-geo-alt",
   hint,
   menuPlacement = "auto",
+  showAirportPrefix = true,
 }: AirportSelectorAIRProps) {
-  const formatOptionLabel = useCallback((option: SelectOption) => {
-    const iata = getIata(option.value);
-    return (
-      <div className="psfcl-option">
-        <span className="psfcl-name">
-          <span className="psfcl-name">Aeropuerto de </span>
-          {option.label}
-        </span>
-        {iata && <span className="psfcl-badge">{iata}</span>}
-      </div>
-    );
-  }, []);
+  const formatOptionLabel = useCallback(
+    (option: SelectOption) => {
+      const iata = getIata(option.value);
+      return (
+        <div className="psfcl-option">
+          <span className="psfcl-name">
+            {showAirportPrefix && (
+              <span className="psfcl-name">Aeropuerto de </span>
+            )}
+            {option.label}
+          </span>
+          {iata && <span className="psfcl-badge">{iata}</span>}
+        </div>
+      );
+    },
+    [showAirportPrefix],
+  );
 
   const filterOption = useCallback(
     (
@@ -55,15 +63,18 @@ function AirportSelectorAIR({
       if (!inputValue) return true;
       const s = inputValue.toLowerCase().trim();
       const iata = getIata(option.value);
-      const fullLabel = `aeropuerto de ${option.label.toLowerCase()}`;
+      const labelLower = option.label.toLowerCase();
+      const fullLabel = showAirportPrefix
+        ? `aeropuerto de ${labelLower}`
+        : labelLower;
       return (
         fullLabel.includes(s) ||
-        option.label.toLowerCase().includes(s) ||
+        labelLower.includes(s) ||
         option.value.toLowerCase().includes(s) ||
         (iata?.toLowerCase() ?? "").includes(s)
       );
     },
-    [],
+    [showAirportPrefix],
   );
 
   return (

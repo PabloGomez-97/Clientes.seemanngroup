@@ -4850,6 +4850,7 @@ function QuoteAPITester({
                           id="air-dest-recurrente"
                           label={t("QuoteAIR.Destino")}
                           icon=""
+                          showAirportPrefix={false}
                           value={destinationSeleccionado}
                           onChange={setDestinationSeleccionado}
                           options={opcionesDestination}
@@ -5352,6 +5353,7 @@ function QuoteAPITester({
                           id="air-dest-nr"
                           label={t("QuoteAIR.Destino")}
                           icon=""
+                          showAirportPrefix={false}
                           value={destNR}
                           onChange={handleDestNRChange}
                           options={opcionesDest_NR}
