@@ -26,6 +26,8 @@ export const AIRPORT_ORIGIN_KEY_ALIASES: Readonly<Record<string, string>> = {
   "aeropuerto internacional benito juarez": "ciudad_de_mexico",
   "benito juarez": "ciudad_de_mexico",
 
+  guaira: "la_guaira",
+
   // Brasil — São Paulo (GRU en Guarulhos)
   "sao paulo": "guarulhos",
 

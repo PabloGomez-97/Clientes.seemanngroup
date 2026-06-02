@@ -467,6 +467,24 @@ export const portCoordinates: Record<string, PortCoords> = {
     name: "Port of Busan",
     unlocode: "KRPUS",
   },
+  caucedo: {
+    lat: 18.4263,
+    lng: -69.6319,
+    name: "Port of Caucedo",
+    unlocode: "DOCAU",
+  },
+  corinto: {
+    lat: 12.4890,
+    lng: -87.1697,
+    name: "Port of Corinto",
+    unlocode: "NICIO",
+  },
+  guaira: {
+    lat: 10.6028,
+    lng: -66.9492,
+    name: "Port of Guaira",
+    unlocode: "VELAG",
+  },
   // ==========================================
   // C - D
   // ==========================================
@@ -572,7 +590,7 @@ export const portCoordinates: Record<string, PortCoords> = {
   ludhiana: { lat: 30.9022, lng: 75.8566, name: "ICD Ludhiana", unlocode: "INLUH" },
   lyon: { lat: 45.7144, lng: 4.8322, name: "Port Edouard Herriot (Lyon)", unlocode: "FRLYS" },
   lyttelton: { lat: -43.6066, lng: 172.7166, name: "Port of Lyttelton", unlocode: "NZLYT" },
-  
+
   // ==========================================
   // M - O
   // ==========================================
