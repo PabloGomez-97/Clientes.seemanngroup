@@ -58,6 +58,8 @@ import "./QuoteFCL.css";
 import "flag-icons/css/flag-icons.min.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import { FclPriceHistoryModal } from "./Handlers/FCL/FclPriceHistoryModal";
+import { FclPriceHistoryStep2Panel } from "./Handlers/FCL/FclPriceHistoryStep2Panel";
+import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useFclPriceHistory } from "./Handlers/FCL/useFclPriceHistory";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
 import { linbisFetch } from "../../services/linbisFetch";
@@ -1257,6 +1259,43 @@ function QuoteFCL({
     podSeleccionado?.value,
     historicalRefreshToken,
   );
+
+  const setCotizadorSidebar = useAirCotizadorSidebarOptional()?.setSidebar;
+  const showStep2PriceHistoryPanel =
+    currentStep === 2 &&
+    !!rutaSeleccionada &&
+    !!containerSeleccionado &&
+    routeMode === "recurrente";
+
+  useEffect(() => {
+    if (!setCotizadorSidebar) return;
+
+    if (!showStep2PriceHistoryPanel || !rutaSeleccionada) {
+      setCotizadorSidebar(null);
+      return;
+    }
+
+    setCotizadorSidebar(
+      <FclPriceHistoryStep2Panel
+        polLabel={rutaSeleccionada.pol}
+        podLabel={rutaSeleccionada.pod}
+        loading={loadingPriceHistory}
+        error={errorPriceHistory}
+        seriesResult={priceHistorySeries}
+      />,
+    );
+
+    return () => {
+      setCotizadorSidebar(null);
+    };
+  }, [
+    setCotizadorSidebar,
+    showStep2PriceHistoryPanel,
+    rutaSeleccionada,
+    loadingPriceHistory,
+    errorPriceHistory,
+    priceHistorySeries,
+  ]);
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {

@@ -1815,3 +1815,23 @@
     background-position: -200% 0;
   }
 }
+
+.qa-price-history-grid--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qa-price-history-skeleton-grid--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qa-price-history-grid--stack .qa-price-history-panel {
+  margin: 0;
+}
+
+.qa-price-history-grid--stack .qa-price-history-chart-wrap {
+  min-height: 120px;
+}

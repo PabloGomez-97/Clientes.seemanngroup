@@ -98,6 +98,8 @@ import {
   type OriginSelectOption,
 } from "./originSelection";
 import { AirPriceHistoryModal } from "./Handlers/Air/AirPriceHistoryModal";
+import { AirPriceHistoryStep2Panel } from "./Handlers/Air/AirPriceHistoryStep2Panel";
+import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useAirPriceHistory } from "./Handlers/Air/useAirPriceHistory";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
@@ -1909,6 +1911,40 @@ function QuoteAPITester({
     destinationSeleccionado?.value,
     historicalRefreshToken,
   );
+
+  const setCotizadorSidebar = useAirCotizadorSidebarOptional()?.setSidebar;
+  const showStep2PriceHistoryPanel =
+    currentStep === 2 && !!rutaSeleccionada && routeMode === "recurrente";
+
+  useEffect(() => {
+    if (!setCotizadorSidebar) return;
+
+    if (!showStep2PriceHistoryPanel || !rutaSeleccionada) {
+      setCotizadorSidebar(null);
+      return;
+    }
+
+    setCotizadorSidebar(
+      <AirPriceHistoryStep2Panel
+        originLabel={rutaSeleccionada.origin}
+        destinationLabel={rutaSeleccionada.destination}
+        loading={loadingPriceHistory}
+        error={errorPriceHistory}
+        seriesResult={priceHistorySeries}
+      />,
+    );
+
+    return () => {
+      setCotizadorSidebar(null);
+    };
+  }, [
+    setCotizadorSidebar,
+    showStep2PriceHistoryPanel,
+    rutaSeleccionada,
+    loadingPriceHistory,
+    errorPriceHistory,
+    priceHistorySeries,
+  ]);
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {

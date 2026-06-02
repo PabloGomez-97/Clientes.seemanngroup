@@ -123,7 +123,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  
+
   margin-bottom: 16px;
 }
 
@@ -135,7 +135,7 @@
   background-color: #f0f2f4;
   display: flex;
   align-items: center;
-  
+
   justify-content: center;
   color: #232f3e;
   font-size: 18px;
@@ -273,6 +273,70 @@
   max-width: 1400px;
 }
 
+.cotizador-container--with-sidebar {
+  max-width: min(1680px, 98vw);
+}
+
+.cotizador-split {
+  display: block;
+}
+
+.cotizador-split--active {
+  display: flex;
+  align-items: stretch;
+  gap: clamp(16px, 2vw, 28px);
+}
+
+.cotizador-split__main {
+  flex: 2;
+  min-width: 0;
+}
+
+.cotizador-split__aside {
+  flex: 1;
+  min-width: 0;
+  max-width: 33.333%;
+}
+
+.cotizador-quote-container--history {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.cotizador-history-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+}
+
+.cotizador-history-panel__header {
+  flex-shrink: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cotizador-history-panel__title {
+  margin: 0 0 6px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #232f3e;
+  letter-spacing: -0.02em;
+}
+
+.cotizador-history-panel__route {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.cotizador-history-panel__body {
+  flex: 1;
+}
+
 /* ── Back Button ── */
 .cotizador-back {
   display: inline-flex;
@@ -323,8 +387,11 @@
 .cotizador-quote-container--form {
   border-radius: 24px;
   padding: clamp(18px, 4vw, 40px);
+  padding-bottom: clamp(2rem, 4vw, 3rem);
   border: none;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 /* ── Address Map ── */
@@ -402,7 +469,7 @@
   box-shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
 }
 
-.cotizador-map__suggestions li + li {
+.cotizador-map__suggestions li+li {
   margin-top: 4px;
 }
 
@@ -460,6 +527,18 @@
 
   .cotizador-quote-container--form {
     border-radius: 18px;
+  }
+
+  .cotizador-split--active {
+    display: block;
+  }
+
+  .cotizador-split__aside {
+    display: none;
+  }
+
+  .cotizador-container--with-sidebar {
+    max-width: 1400px;
   }
 }
 

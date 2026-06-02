@@ -1,7 +1,7 @@
 import { PriceHistoryModal } from "../shared/PriceHistoryModal";
 import type { FclPriceHistorySeriesResult } from "./HandlerQuoteFCLHistorical";
 
-const FCL_PRICE_HISTORY_TIERS = [
+export const FCL_PRICE_HISTORY_TIERS = [
   { tier: "gp20", labelKey: "priceHistoryTier20GP" },
   { tier: "hq40", labelKey: "priceHistoryTier40HQ" },
   { tier: "nor40", labelKey: "priceHistoryTier40NOR" },

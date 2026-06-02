@@ -1,7 +1,7 @@
 import { PriceHistoryModal } from "../shared/PriceHistoryModal";
 import type { LclPriceHistorySeriesResult } from "./HandlerQuoteLCLHistorical";
 
-const LCL_PRICE_HISTORY_TIERS = [
+export const LCL_PRICE_HISTORY_TIERS = [
   { tier: "ofWM", labelKey: "priceHistoryTierWM" },
 ] as const;
 

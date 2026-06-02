@@ -25,6 +25,8 @@ interface PriceHistoryChartsProps {
   error: string | null;
   seriesResult: PriceHistorySeriesResult | null;
   embedded?: boolean;
+  /** Una columna apilada (panel lateral paso 2). */
+  layout?: "grid" | "stack";
 }
 
 const CHART_COLOR = "#6366f1";
@@ -139,17 +141,25 @@ export function PriceHistoryCharts({
   error,
   seriesResult,
   embedded = false,
+  layout = "grid",
 }: PriceHistoryChartsProps) {
   const { t } = useTranslation();
-  const chartHeight = embedded ? 200 : 160;
+  const isStack = layout === "stack";
+  const chartHeight = isStack ? 140 : embedded ? 200 : 160;
   const wrapClass = embedded
     ? "qa-price-history-embedded"
     : "qa-price-history-section";
+  const gridClass = isStack
+    ? "qa-price-history-grid qa-price-history-grid--stack"
+    : `qa-price-history-grid${tiers.length === 1 ? " qa-price-history-grid--single" : ""}`;
+  const skeletonClass = isStack
+    ? "qa-price-history-skeleton-grid qa-price-history-skeleton-grid--stack"
+    : "qa-price-history-skeleton-grid";
 
   if (loading) {
     return (
       <div className={wrapClass}>
-        <div className="qa-price-history-skeleton-grid">
+        <div className={skeletonClass}>
           {tiers.map(({ tier }) => (
             <div key={tier} className="qa-price-history-skeleton-panel" />
           ))}
@@ -201,9 +211,7 @@ export function PriceHistoryCharts({
         </div>
       )}
 
-      <div
-        className={`qa-price-history-grid${tiers.length === 1 ? " qa-price-history-grid--single" : ""}`}
-      >
+      <div className={gridClass}>
         {tiers.map(({ tier, labelKey }) => {
           const points = seriesByTier[tier] ?? [];
           const chartData = points.map((p) => ({

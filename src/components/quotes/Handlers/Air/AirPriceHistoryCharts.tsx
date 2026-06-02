@@ -21,6 +21,8 @@ interface AirPriceHistoryChartsProps {
   seriesResult: AirPriceHistorySeriesResult | null;
   /** Sin borde ni título de sección (contenido dentro del modal). */
   embedded?: boolean;
+  /** Una columna apilada (panel lateral paso 2). */
+  layout?: "grid" | "stack";
 }
 
 const TIER_I18N_KEY: Record<AirWeightTier, string> = {
@@ -139,17 +141,25 @@ export function AirPriceHistoryCharts({
   error,
   seriesResult,
   embedded = false,
+  layout = "grid",
 }: AirPriceHistoryChartsProps) {
   const { t } = useTranslation();
-  const chartHeight = embedded ? 200 : 160;
+  const isStack = layout === "stack";
+  const chartHeight = isStack ? 140 : embedded ? 200 : 160;
   const wrapClass = embedded
     ? "qa-price-history-embedded"
     : "qa-price-history-section";
+  const gridClass = isStack
+    ? "qa-price-history-grid qa-price-history-grid--stack"
+    : "qa-price-history-grid";
+  const skeletonClass = isStack
+    ? "qa-price-history-skeleton-grid qa-price-history-skeleton-grid--stack"
+    : "qa-price-history-skeleton-grid";
 
   if (loading) {
     return (
       <div className={wrapClass}>
-        <div className="qa-price-history-skeleton-grid">
+        <div className={skeletonClass}>
           {AIR_WEIGHT_TIERS.map((tier) => (
             <div key={tier} className="qa-price-history-skeleton-panel" />
           ))}
@@ -203,7 +213,7 @@ export function AirPriceHistoryCharts({
         </div>
       )}
 
-      <div className="qa-price-history-grid">
+      <div className={gridClass}>
         {AIR_WEIGHT_TIERS.map((tier) => {
           const points = seriesByTier[tier];
           const chartData = points.map((p) => ({

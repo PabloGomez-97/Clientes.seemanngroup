@@ -44,6 +44,8 @@ import "./QuoteAIR.css";
 import GenerateOperationModal from "./Operations/GenerateOperationModal";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
 import { LclPriceHistoryModal } from "./Handlers/LCL/LclPriceHistoryModal";
+import { LclPriceHistoryStep2Panel } from "./Handlers/LCL/LclPriceHistoryStep2Panel";
+import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useLclPriceHistory } from "./Handlers/LCL/useLclPriceHistory";
 import {
   type PieceData,
@@ -1722,6 +1724,40 @@ function QuoteLCL({
     podSeleccionado?.value,
     historicalRefreshToken,
   );
+
+  const setCotizadorSidebar = useAirCotizadorSidebarOptional()?.setSidebar;
+  const showStep2PriceHistoryPanel =
+    currentStep === 2 && !!rutaSeleccionada && routeMode === "recurrente";
+
+  useEffect(() => {
+    if (!setCotizadorSidebar) return;
+
+    if (!showStep2PriceHistoryPanel || !rutaSeleccionada) {
+      setCotizadorSidebar(null);
+      return;
+    }
+
+    setCotizadorSidebar(
+      <LclPriceHistoryStep2Panel
+        polLabel={rutaSeleccionada.pol}
+        podLabel={rutaSeleccionada.pod}
+        loading={loadingPriceHistory}
+        error={errorPriceHistory}
+        seriesResult={priceHistorySeries}
+      />,
+    );
+
+    return () => {
+      setCotizadorSidebar(null);
+    };
+  }, [
+    setCotizadorSidebar,
+    showStep2PriceHistoryPanel,
+    rutaSeleccionada,
+    loadingPriceHistory,
+    errorPriceHistory,
+    priceHistorySeries,
+  ]);
 
   // Scroll a rutas cuando aparecen
   useEffect(() => {

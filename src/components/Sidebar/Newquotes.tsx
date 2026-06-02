@@ -6,7 +6,34 @@ import CotizadorFCL from "../quotes/QuoteFCL";
 import CotizadorLCL from "../quotes/QuoteLCL";
 import CotizadorLastMile from "../quotes/QuoteLASTMILE";
 import ActivityBar from "./ActivityBar";
+import {
+  AirCotizadorSidebarProvider,
+  AirCotizadorSidebarSlot,
+  useAirCotizadorSidebarOptional,
+} from "../quotes/Handlers/Air/AirCotizadorSidebarContext";
 import "./styles/Cotizador.css";
+
+function CotizadorFormLayout({ children }: { children: React.ReactNode }) {
+  const sidebarCtx = useAirCotizadorSidebarOptional();
+  const hasSidebar = sidebarCtx?.hasSidebar ?? false;
+
+  return (
+    <div
+      className={`cotizador-container cotizador-container--form${hasSidebar ? " cotizador-container--with-sidebar" : ""}`}
+    >
+      <div
+        className={`cotizador-split${hasSidebar ? " cotizador-split--active" : ""}`}
+      >
+        <div className="cotizador-split__main">
+          <div className="cotizador-quote-container cotizador-quote-container--form">
+            {children}
+          </div>
+        </div>
+        <AirCotizadorSidebarSlot />
+      </div>
+    </div>
+  );
+}
 
 type TipoCotizacion = "AEREO" | "FCL" | "LCL" | "LASTMILE" | null;
 
@@ -123,8 +150,8 @@ const Cotizador: React.FC = () => {
     <>
       <ActivityBar />
       <div className="cotizador-page cotizador-page--form">
-        <div className="cotizador-container cotizador-container--form">
-          <div className="cotizador-quote-container cotizador-quote-container--form">
+        <AirCotizadorSidebarProvider>
+          <CotizadorFormLayout>
             {tipoCotizacion === "AEREO" && (
               <CotizadorAereo
                 key="aereo"
@@ -153,8 +180,8 @@ const Cotizador: React.FC = () => {
                 preselectedDestination={preselectedData?.destination}
               />
             )}
-          </div>
-        </div>
+          </CotizadorFormLayout>
+        </AirCotizadorSidebarProvider>
       </div>
     </>
   );
