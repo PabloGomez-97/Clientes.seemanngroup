@@ -298,6 +298,22 @@
   max-width: 33.333%;
 }
 
+/* Misma altura visual en ambos cards (el más alto define la fila) */
+.cotizador-split--active .cotizador-split__main,
+.cotizador-split--active .cotizador-split__aside {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.cotizador-split--active .cotizador-split__main > .cotizador-quote-container--form,
+.cotizador-split--active .cotizador-split__aside > .cotizador-quote-container--history {
+  flex: 1 1 auto;
+  min-height: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
 .cotizador-quote-container--history {
   display: flex;
   flex-direction: column;
