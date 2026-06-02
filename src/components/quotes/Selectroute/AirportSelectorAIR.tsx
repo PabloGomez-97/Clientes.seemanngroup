@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import Select from "react-select";
-import { airportCoordinates } from "../../../config/airportCoordinates";
+import { getAirportByOrigin } from "../../../config/airportCoordinates";
 import type { SelectOption } from "../Handlers/Air/HandlerQuoteAir";
 import { routeSelectStyles } from "./routeSelectStyles";
 
@@ -18,14 +18,8 @@ interface AirportSelectorAIRProps {
   menuPlacement?: "auto" | "top" | "bottom";
 }
 
-const getIata = (value: string): string | null => {
-  const key = value.toLowerCase();
-  return (
-    airportCoordinates[key]?.iata ??
-    airportCoordinates[key.replace(/\s+/g, "_")]?.iata ??
-    null
-  );
-};
+const getIata = (value: string): string | null =>
+  getAirportByOrigin(value)?.iata ?? null;
 
 function AirportSelectorAIR({
   id,

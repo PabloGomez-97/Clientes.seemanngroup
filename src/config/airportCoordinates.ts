@@ -100,6 +100,13 @@ export const airportCoordinates: Record<string, AirportCoords> = {
     iata: "GRU",
     countryCode: "BR"
   },
+  belo_horizonte: {
+    lat: -19.6243,
+    lng: -43.9719,
+    name: "Aeroporto Internacional de Belo Horizonte-Confins",
+    iata: "CNF",
+    countryCode: "BR"
+  },
   hong_kong: {
     lat: 22.3132,
     lng: 113.9371,
