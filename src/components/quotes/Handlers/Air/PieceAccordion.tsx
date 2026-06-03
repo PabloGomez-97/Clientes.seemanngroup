@@ -130,7 +130,7 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
             {/* Package Type */}
             <div className="col-md-6 mb-3">
               <label className="qa-label">
-                {t("Pieceaccordionair.tipopaquete")}
+                Tipo de Paquete
               </label>
               <select
                 className="qa-select"
@@ -151,14 +151,14 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
             {/* Description */}
             <div className="col-md-6 mb-3">
               <label className="qa-label">
-                {t("Pieceaccordionair.descripcion")}
+                Descripción
               </label>
               <input
                 type="text"
                 className="qa-input"
                 value={piece.description}
                 onChange={(e) => onUpdate("description", e.target.value)}
-                placeholder={t("Pieceaccordionair.descripcionPlaceholder")}
+                placeholder="Describe el contenido de esta pieza..."
               />
             </div>
 
