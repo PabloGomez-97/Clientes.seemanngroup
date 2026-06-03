@@ -16,11 +16,7 @@ interface OverallPieceAccordionAirProps {
   isOpen: boolean;
   onToggle: () => void;
   onRemove: () => void;
-  packageTypes: Array<{ id: string; name: string }>;
-  onUpdate: (
-    field: "description" | "packageType" | "weight" | "volume",
-    value: string | number,
-  ) => void;
+  onUpdate: (field: "weight" | "volume", value: string | number) => void;
   canRemove: boolean;
 }
 
@@ -32,14 +28,11 @@ export const OverallPieceAccordionAir: React.FC<
   isOpen,
   onToggle,
   onRemove,
-  packageTypes,
   onUpdate,
   canRemove,
 }) => {
   const { t } = useTranslation();
   const [useUSCustomary, setUseUSCustomary] = useState(false);
-  const selectedPackageTypeName =
-    packageTypes.find((type) => type.id === piece.packageType)?.name || "";
 
   const displayWeight = (kg: number): number | string => {
     if (!kg) return "";
@@ -78,13 +71,6 @@ export const OverallPieceAccordionAir: React.FC<
               ({piece.weight.toFixed(2)} kg | {piece.volume.toFixed(3)} m3)
             </span>
           )}
-          {(selectedPackageTypeName || piece.description.trim()) && (
-            <div className="qa-text-muted small mt-1">
-              {[selectedPackageTypeName, piece.description.trim()]
-                .filter(Boolean)
-                .join(" | ")}
-            </div>
-          )}
         </div>
         <div className="d-flex align-items-center gap-2">
           {canRemove && (
@@ -111,35 +97,6 @@ export const OverallPieceAccordionAir: React.FC<
       {isOpen && (
         <div className="qa-accordion-content">
           <div className="row g-3">
-            <div className="col-md-6 mb-3">
-              <label className="qa-label">
-                {t("Pieceaccordionair.tipopaquete")}
-              </label>
-              <select
-                className="qa-select"
-                value={piece.packageType}
-                onChange={(e) => onUpdate("packageType", e.target.value)}
-              >
-                {packageTypes.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="col-md-6 mb-3">
-              <label className="qa-label">Descripción</label>
-              <input
-                type="text"
-                className="qa-input"
-                value={piece.description}
-                onChange={(e) => onUpdate("description", e.target.value)}
-                placeholder="Descripción de la pieza"
-                maxLength={120}
-              />
-            </div>
-
             <div className="col-12">
               <div className="d-flex align-items-center gap-2">
                 <small className="qa-text-muted fw-semibold">

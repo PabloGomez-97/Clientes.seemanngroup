@@ -4,7 +4,6 @@ import { useAuth } from "../../auth/AuthContext";
 import { useAuditLog } from "../../hooks/useAuditLog";
 import * as XLSX from "xlsx";
 import Select from "react-select";
-import { packageTypeOptions } from "./PackageTypes/PiecestypesLCL";
 import { Modal, Button, OverlayTrigger, Tooltip } from "react-bootstrap";
 import { PDFTemplateLCL } from "./Pdftemplate/Pdftemplatelcl";
 import * as bootstrap from "bootstrap";
@@ -117,8 +116,10 @@ import {
   calculateAduanaChargesLcl,
 } from "../../hooks/useAgenciaAduanasLcl";
 
-const DEFAULT_OVERALL_LCL_DESCRIPTION = "Cargamento Marítimo LCL";
+const DEFAULT_OVERALL_LCL_DESCRIPTION = "Cargamento LCL";
+/** ID del tipo de paquete BOX en el API de cotización LCL */
 const DEFAULT_OVERALL_LCL_PACKAGE_TYPE = "97";
+const FIXED_LCL_PACKAGE_TYPE_NAME = "BOX";
 const INITIAL_VISIBLE_ROUTES = 5;
 
 /** Expande cuentas multi-empresa: una entrada por empresa en el selector */
@@ -142,7 +143,7 @@ function createOverallPieceLCL(
   id: string,
   weight = 0,
   volume = 0,
-  description = "",
+  description = DEFAULT_OVERALL_LCL_DESCRIPTION,
   packageType = DEFAULT_OVERALL_LCL_PACKAGE_TYPE,
 ): OverallPieceDataLCL {
   const weightTons = weight / 1000;
@@ -158,30 +159,12 @@ function createOverallPieceLCL(
   };
 }
 
-function getLclPackageTypeName(packageTypeId?: string): string {
-  const packageType = packageTypeOptions.find(
-    (opt) => String(opt.id) === packageTypeId,
-  );
-
-  if (!packageType) return "Standard";
-
-  return packageType.code
-    ? `${packageType.code} - ${packageType.name}`
-    : packageType.name;
+function getLclPackageTypeName(): string {
+  return FIXED_LCL_PACKAGE_TYPE_NAME;
 }
 
-function summarizeLclPackageTypes(packageTypeIds: string[]): string {
-  const names = Array.from(
-    new Set(
-      packageTypeIds
-        .filter(Boolean)
-        .map((packageTypeId) => getLclPackageTypeName(packageTypeId)),
-    ),
-  );
-
-  if (names.length === 1) return names[0];
-  if (names.length > 1) return "Varios";
-  return "Standard";
+function summarizeLclPackageTypes(): string {
+  return FIXED_LCL_PACKAGE_TYPE_NAME;
 }
 
 function isOverallPieceCompleteLCL(piece: OverallPieceDataLCL): boolean {
@@ -191,11 +174,7 @@ function isOverallPieceCompleteLCL(piece: OverallPieceDataLCL): boolean {
 function buildOverallPiecesSummaryLCL(pieces: OverallPieceDataLCL[]): string {
   return pieces
     .map((piece, index) => {
-      const packageTypeName = getLclPackageTypeName(piece.packageType);
-      const effectiveDescription =
-        piece.description.trim() || DEFAULT_OVERALL_LCL_DESCRIPTION;
-
-      return `Pieza ${index + 1}: ${packageTypeName} / ${effectiveDescription} / ${piece.volume.toFixed(4)} m3 / ${piece.weight.toFixed(2)} kg`;
+      return `Pieza ${index + 1}: ${FIXED_LCL_PACKAGE_TYPE_NAME} / ${DEFAULT_OVERALL_LCL_DESCRIPTION} / ${piece.volume.toFixed(4)} m3 / ${piece.weight.toFixed(2)} kg`;
     })
     .join("; ");
 }
@@ -330,8 +309,8 @@ function QuoteLCL({
   const [piecesData, setPiecesData] = useState<PieceData[]>([
     {
       id: "1",
-      packageType: "",
-      description: "",
+      packageType: DEFAULT_OVERALL_LCL_PACKAGE_TYPE,
+      description: DEFAULT_OVERALL_LCL_DESCRIPTION,
       length: 0,
       width: 0,
       height: 0,
@@ -1086,8 +1065,8 @@ function QuoteLCL({
     const newId = (piecesData.length + 1).toString();
     const newPiece: PieceData = {
       id: newId,
-      packageType: "",
-      description: "",
+      packageType: DEFAULT_OVERALL_LCL_PACKAGE_TYPE,
+      description: DEFAULT_OVERALL_LCL_DESCRIPTION,
       length: 0,
       width: 0,
       height: 0,
@@ -1137,8 +1116,8 @@ function QuoteLCL({
       const sourcePiece = prev[idx];
       const newPieceRaw: PieceData = {
         id: "",
-        packageType: sourcePiece.packageType,
-        description: sourcePiece.description,
+        packageType: DEFAULT_OVERALL_LCL_PACKAGE_TYPE,
+        description: DEFAULT_OVERALL_LCL_DESCRIPTION,
         length: sourcePiece.length,
         width: sourcePiece.width,
         height: sourcePiece.height,
@@ -1265,13 +1244,7 @@ function QuoteLCL({
       const sourcePiece = prev[idx];
       const inserted = [
         ...prev.slice(0, idx + 1),
-        createOverallPieceLCL(
-          "",
-          sourcePiece.weight,
-          sourcePiece.volume,
-          sourcePiece.description,
-          sourcePiece.packageType,
-        ),
+        createOverallPieceLCL("", sourcePiece.weight, sourcePiece.volume),
         ...prev.slice(idx + 1),
       ];
       const renumbered = inserted.map((piece, index) => ({
@@ -1324,29 +1297,16 @@ function QuoteLCL({
 
   const handleUpdateOverallPiece = (
     id: string,
-    field: "description" | "packageType" | "weight" | "volume",
+    field: "weight" | "volume",
     value: string | number,
   ) => {
     setOverallPiecesData((prev) =>
       prev.map((piece) => {
         if (piece.id !== id) return piece;
 
-        if (field === "description" || field === "packageType") {
-          return {
-            ...piece,
-            [field]: typeof value === "string" ? value : String(value),
-          };
-        }
-
         const nextWeight = field === "weight" ? Number(value) : piece.weight;
         const nextVolume = field === "volume" ? Number(value) : piece.volume;
-        return createOverallPieceLCL(
-          piece.id,
-          nextWeight,
-          nextVolume,
-          piece.description,
-          piece.packageType,
-        );
+        return createOverallPieceLCL(piece.id, nextWeight, nextVolume);
       }),
     );
   };
@@ -2102,30 +2062,13 @@ function QuoteLCL({
       return;
     }
 
-    // Validar que todas las piezas tengan tipo de paquete seleccionado
-    if (!overallDimsAndWeight) {
-      const piezasSinTipo = piecesData.filter((piece) => !piece.packageType);
-      if (piezasSinTipo.length > 0) {
-        setError(t("Pieceaccordionlcl.inforuta3"));
-        return;
-      }
-    } else {
+    if (overallDimsAndWeight) {
       const overallPiecesIncompletas = overallPiecesData.filter(
         (piece) => !isOverallPieceCompleteLCL(piece),
       );
       if (overallPiecesIncompletas.length > 0) {
         setError(
           "Debes completar el peso y el volumen de todas las piezas OVERALL antes de generar la cotización",
-        );
-        return;
-      }
-
-      const overallPiecesWithoutPackageType = overallPiecesData.filter(
-        (piece) => !piece.packageType,
-      );
-      if (overallPiecesWithoutPackageType.length > 0) {
-        setError(
-          "Debes seleccionar un Tipo de Paquete para todas las piezas OVERALL antes de generar la cotización",
         );
         return;
       }
@@ -2270,13 +2213,7 @@ function QuoteLCL({
         ? "PENDIENTE"
         : rutaSeleccionada.currency + " " + totalAmount.toFixed(2);
 
-      const packageTypeName = overallDimsAndWeight
-        ? summarizeLclPackageTypes(
-          overallPiecesData.map((piece) => piece.packageType),
-        )
-        : summarizeLclPackageTypes(
-          piecesData.map((piece) => piece.packageType),
-        );
+      const packageTypeName = summarizeLclPackageTypes();
 
       // Preparar los charges para el PDF
       const pdfCharges: {
@@ -2567,31 +2504,23 @@ function QuoteLCL({
 
       await new Promise<void>((resolve) => {
         const pdfPiecesData = !overallDimsAndWeight
-          ? piecesData.map((piece) => {
-            const piecePackageType = packageTypeOptions.find(
-              (opt) => opt.id === Number(piece.packageType),
-            );
-
-            return {
-              id: piece.id,
-              packageTypeName: piecePackageType?.code
-                ? `${piecePackageType.code} - ${piecePackageType.name}`
-                : piecePackageType?.name || packageTypeName,
-              description: piece.description || description,
-              length: piece.length,
-              width: piece.width,
-              height: piece.height,
-              weight: piece.weight,
-              volume: piece.volume,
-              wmChargeable: piece.wmChargeable,
-            };
-          })
+          ? piecesData.map((piece) => ({
+            id: piece.id,
+            packageTypeName: getLclPackageTypeName(),
+            description: DEFAULT_OVERALL_LCL_DESCRIPTION,
+            length: piece.length,
+            width: piece.width,
+            height: piece.height,
+            weight: piece.weight,
+            volume: piece.volume,
+            wmChargeable: piece.wmChargeable,
+          }))
           : undefined;
         const overallPdfPieces = overallDimsAndWeight
           ? overallPiecesData.map((piece) => ({
             id: piece.id,
-            packageTypeName: getLclPackageTypeName(piece.packageType),
-            description: piece.description,
+            packageTypeName: getLclPackageTypeName(),
+            description: DEFAULT_OVERALL_LCL_DESCRIPTION,
             weight: piece.weight,
             volume: piece.volume,
             wmChargeable: piece.wmChargeable,
@@ -3400,11 +3329,10 @@ function QuoteLCL({
         ? overallPiecesData.map((piece) => ({
           commodityType: "Standard",
           packageType: {
-            id: piece.packageType,
+            id: DEFAULT_OVERALL_LCL_PACKAGE_TYPE,
           },
           pieces: 1,
-          description:
-            piece.description.trim() || DEFAULT_OVERALL_LCL_DESCRIPTION,
+          description: DEFAULT_OVERALL_LCL_DESCRIPTION,
           overallDimsAndWeight: true,
           weightPerUnitValue: piece.weight,
           weightPerUnitUOM: "kg",
@@ -3418,10 +3346,10 @@ function QuoteLCL({
         : piecesData.map((piece) => ({
           commodityType: "Standard",
           packageType: {
-            id: piece.packageType,
+            id: DEFAULT_OVERALL_LCL_PACKAGE_TYPE,
           },
           pieces: 1,
-          description: piece.description,
+          description: DEFAULT_OVERALL_LCL_DESCRIPTION,
           weightPerUnitValue: piece.weight,
           weightPerUnitUOM: "kg",
           totalWeightValue: piece.weight,
@@ -4585,10 +4513,6 @@ function QuoteLCL({
                           onUpdate={(field, value) =>
                             handleUpdatePiece(piece.id, field, value)
                           }
-                          packageTypes={packageTypeOptions.map((opt) => ({
-                            id: String(opt.id),
-                            name: opt.name,
-                          }))}
                           canRemove={piecesData.length > 1}
                         />
                       ))}
@@ -4705,10 +4629,6 @@ function QuoteLCL({
                             handleToggleOverallAccordion(piece.id)
                           }
                           onRemove={() => handleRemoveOverallPiece(piece.id)}
-                          packageTypes={packageTypeOptions.map((opt) => ({
-                            id: String(opt.id),
-                            name: opt.name,
-                          }))}
                           onUpdate={(field, value) =>
                             handleUpdateOverallPiece(piece.id, field, value)
                           }

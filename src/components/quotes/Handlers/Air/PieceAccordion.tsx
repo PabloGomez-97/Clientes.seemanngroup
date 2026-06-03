@@ -10,7 +10,6 @@ interface PieceAccordionProps {
   onToggle: () => void;
   onRemove: () => void;
   onUpdate: (field: keyof PieceData, value: any) => void;
-  packageTypes: Array<{ id: string; name: string }>;
   canRemove: boolean;
 }
 
@@ -21,7 +20,6 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
   onToggle,
   onRemove,
   onUpdate,
-  packageTypes,
   canRemove,
 }) => {
   // Calcular volumen (L x W x H) en m³
@@ -127,41 +125,6 @@ export const PieceAccordion: React.FC<PieceAccordionProps> = ({
       {isOpen && (
         <div className="qa-accordion-content">
           <div className="row g-3">
-            {/* Package Type */}
-            <div className="col-md-6 mb-3">
-              <label className="qa-label">
-                Tipo de Paquete
-              </label>
-              <select
-                className="qa-select"
-                value={piece.packageType}
-                onChange={(e) => onUpdate("packageType", e.target.value)}
-              >
-                <option value="">
-                  {t("Pieceaccordionair.seleccionartipo")}
-                </option>
-                {packageTypes.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Description */}
-            <div className="col-md-6 mb-3">
-              <label className="qa-label">
-                Descripción
-              </label>
-              <input
-                type="text"
-                className="qa-input"
-                value={piece.description}
-                onChange={(e) => onUpdate("description", e.target.value)}
-                placeholder="Describe el contenido de esta pieza..."
-              />
-            </div>
-
             {/* Unit System Toggle */}
             <div className="col-12">
               <div className="d-flex align-items-center gap-2">
