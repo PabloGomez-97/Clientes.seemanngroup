@@ -3,6 +3,7 @@ import {
   normalize,
   parseCurrency,
   type Currency,
+  type RutaAerea,
 } from "./HandlerQuoteAir";
 import {
   formatValidUntilDisplay,
@@ -178,4 +179,52 @@ export function buildMarketMinSeries(
     hasMixedCurrencies,
     rowCount: filtered.length,
   };
+}
+
+/** Mínimo de mercado por tramo desde tarifas vigentes (sheet actual). */
+export function getCurrentAirMarketMinPrices(
+  rutas: RutaAerea[],
+  originNorm: string,
+  destNorm: string,
+  markup: number = AIR_PRICE_HISTORY_MARKUP,
+): {
+  pricesByTier: Record<AirWeightTier, number>;
+  currency: Currency;
+  rowCount: number;
+} {
+  const filtered = rutas.filter(
+    (r) =>
+      r.originNormalized === originNorm &&
+      r.destinationNormalized === destNorm,
+  );
+
+  const pricesByTier = {} as Record<AirWeightTier, number>;
+  for (const tier of AIR_WEIGHT_TIERS) {
+    let min = Infinity;
+    for (const row of filtered) {
+      const price = extractPrice(row[tier]) * markup;
+      if (price > 0 && price < min) {
+        min = price;
+      }
+    }
+    pricesByTier[tier] = min === Infinity ? 0 : min;
+  }
+
+  const { currency } = resolveDominantCurrency(
+    filtered.map((r) => ({
+      originNorm: r.originNormalized,
+      destNorm: r.destinationNormalized,
+      validUntil: r.validUntil ?? "",
+      currency: r.currency,
+      prices: {
+        kg45: r.kg45,
+        kg100: r.kg100,
+        kg300: r.kg300,
+        kg500: r.kg500,
+        kg1000: r.kg1000,
+      },
+    })),
+  );
+
+  return { pricesByTier, currency, rowCount: filtered.length };
 }

@@ -19,7 +19,7 @@ export function AirPriceHistoryStep2Panel({
   return (
     <div className="cotizador-history-panel" aria-label="Tendencia de precios">
       <header className="cotizador-history-panel__header">
-        <h2 className="cotizador-history-panel__title">Tendencia de precios</h2>
+        <h2 className="cotizador-history-panel__title">Tendencia de precios estimada</h2>
         <p className="cotizador-history-panel__route">
           {originLabel} → {destinationLabel}
         </p>

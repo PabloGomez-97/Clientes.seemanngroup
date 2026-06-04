@@ -4,6 +4,7 @@ import {
   parseCurrency,
   splitCombinedPOD,
   type Currency,
+  type RutaFCL,
 } from "./HandlerQuoteFCL";
 import {
   buildPriceHistoryMarketMinSeries,
@@ -74,4 +75,47 @@ export function buildFclMarketMinSeries(
       historicalPodMatchesSelection(row.podRaw, podNorm, splitCombinedPOD),
     extractPrice,
   );
+}
+
+/** Mínimo de mercado por contenedor desde tarifas vigentes (sheet actual). */
+export function getCurrentFclMarketMinPrices(
+  rutas: RutaFCL[],
+  polNorm: string,
+  podNorm: string,
+  markup: number = FCL_PRICE_HISTORY_MARKUP,
+): {
+  pricesByTier: Record<FclPriceTier, number>;
+  currency: Currency;
+  rowCount: number;
+} {
+  const filtered = rutas.filter(
+    (r) => r.polNormalized === polNorm && r.podNormalized === podNorm,
+  );
+
+  const pricesByTier = {} as Record<FclPriceTier, number>;
+  for (const tier of FCL_PRICE_TIERS) {
+    let min = Infinity;
+    for (const row of filtered) {
+      const price = extractPrice(row[tier]) * markup;
+      if (price > 0 && price < min) {
+        min = price;
+      }
+    }
+    pricesByTier[tier] = min === Infinity ? 0 : min;
+  }
+
+  const currencyCounts = new Map<Currency, number>();
+  for (const row of filtered) {
+    currencyCounts.set(row.currency, (currencyCounts.get(row.currency) || 0) + 1);
+  }
+  let currency: Currency = "USD";
+  let max = 0;
+  for (const [cur, count] of currencyCounts) {
+    if (count > max) {
+      max = count;
+      currency = cur;
+    }
+  }
+
+  return { pricesByTier, currency, rowCount: filtered.length };
 }

@@ -47,6 +47,11 @@ import { LclPriceHistoryStep2Panel } from "./Handlers/LCL/LclPriceHistoryStep2Pa
 import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useLclPriceHistory } from "./Handlers/LCL/useLclPriceHistory";
 import {
+  LCL_PRICE_TIERS,
+  getCurrentLclMarketMinPrices,
+} from "./Handlers/LCL/HandlerQuoteLCLHistorical";
+import { mergeCurrentRatesIntoPriceHistory } from "./Handlers/shared/mergeCurrentPriceHistory";
+import {
   type PieceData,
   type OutletContext,
   type RutaLCL,
@@ -1685,6 +1690,31 @@ function QuoteLCL({
     historicalRefreshToken,
   );
 
+  const priceHistorySeriesWithCurrent = useMemo(() => {
+    if (!polSeleccionado?.value || !podSeleccionado?.value) {
+      return priceHistorySeries;
+    }
+    const current = getCurrentLclMarketMinPrices(
+      rutas,
+      polSeleccionado.value,
+      podSeleccionado.value,
+    );
+    return mergeCurrentRatesIntoPriceHistory(
+      priceHistorySeries,
+      LCL_PRICE_TIERS,
+      current.pricesByTier,
+      {
+        currentCurrency: current.currency,
+        currentRowCount: current.rowCount,
+      },
+    );
+  }, [
+    priceHistorySeries,
+    rutas,
+    polSeleccionado?.value,
+    podSeleccionado?.value,
+  ]);
+
   const setCotizadorSidebar = useAirCotizadorSidebarOptional()?.setSidebar;
   const showStep2PriceHistoryPanel =
     currentStep === 2 && !!rutaSeleccionada && routeMode === "recurrente";
@@ -1703,7 +1733,7 @@ function QuoteLCL({
         podLabel={rutaSeleccionada.pod}
         loading={loadingPriceHistory}
         error={errorPriceHistory}
-        seriesResult={priceHistorySeries}
+        seriesResult={priceHistorySeriesWithCurrent}
       />,
     );
 
@@ -1716,7 +1746,7 @@ function QuoteLCL({
     rutaSeleccionada,
     loadingPriceHistory,
     errorPriceHistory,
-    priceHistorySeries,
+    priceHistorySeriesWithCurrent,
   ]);
 
   // Scroll a rutas cuando aparecen
@@ -3902,7 +3932,7 @@ function QuoteLCL({
                               podLabel={podSeleccionado.label}
                               loading={loadingPriceHistory}
                               error={errorPriceHistory}
-                              seriesResult={priceHistorySeries}
+                              seriesResult={priceHistorySeriesWithCurrent}
                             />
                           )}
                         </div>

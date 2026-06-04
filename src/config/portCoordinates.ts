@@ -245,6 +245,12 @@ export const portCoordinates: Record<string, PortCoords> = {
     name: "Puerto de Acajutla",
     unlocode: "SVACJ",
   },
+  altamira: {
+    lat: 22.4814,
+    lng: -97.8807,
+    name: "Puerto de Altamira",
+    unlocode: "MXATM",
+  },
   adelaide: {
     lat: -34.8425,
     lng: 138.5036,

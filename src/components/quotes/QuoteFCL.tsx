@@ -61,6 +61,11 @@ import { FclPriceHistoryModal } from "./Handlers/FCL/FclPriceHistoryModal";
 import { FclPriceHistoryStep2Panel } from "./Handlers/FCL/FclPriceHistoryStep2Panel";
 import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useFclPriceHistory } from "./Handlers/FCL/useFclPriceHistory";
+import {
+  FCL_PRICE_TIERS,
+  getCurrentFclMarketMinPrices,
+} from "./Handlers/FCL/HandlerQuoteFCLHistorical";
+import { mergeCurrentRatesIntoPriceHistory } from "./Handlers/shared/mergeCurrentPriceHistory";
 import { useOperationModalAfterPdf } from "./Operations/useOperationModalAfterPdf";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
@@ -1260,6 +1265,31 @@ function QuoteFCL({
     historicalRefreshToken,
   );
 
+  const priceHistorySeriesWithCurrent = useMemo(() => {
+    if (!polSeleccionado?.value || !podSeleccionado?.value) {
+      return priceHistorySeries;
+    }
+    const current = getCurrentFclMarketMinPrices(
+      rutas,
+      polSeleccionado.value,
+      podSeleccionado.value,
+    );
+    return mergeCurrentRatesIntoPriceHistory(
+      priceHistorySeries,
+      FCL_PRICE_TIERS,
+      current.pricesByTier,
+      {
+        currentCurrency: current.currency,
+        currentRowCount: current.rowCount,
+      },
+    );
+  }, [
+    priceHistorySeries,
+    rutas,
+    polSeleccionado?.value,
+    podSeleccionado?.value,
+  ]);
+
   const setCotizadorSidebar = useAirCotizadorSidebarOptional()?.setSidebar;
   const showStep2PriceHistoryPanel =
     currentStep === 2 &&
@@ -1281,7 +1311,7 @@ function QuoteFCL({
         podLabel={rutaSeleccionada.pod}
         loading={loadingPriceHistory}
         error={errorPriceHistory}
-        seriesResult={priceHistorySeries}
+        seriesResult={priceHistorySeriesWithCurrent}
       />,
     );
 
@@ -1294,7 +1324,7 @@ function QuoteFCL({
     rutaSeleccionada,
     loadingPriceHistory,
     errorPriceHistory,
-    priceHistorySeries,
+    priceHistorySeriesWithCurrent,
   ]);
 
   // Scroll a rutas cuando aparecen
@@ -3386,7 +3416,7 @@ function QuoteFCL({
                               podLabel={podSeleccionado.label}
                               loading={loadingPriceHistory}
                               error={errorPriceHistory}
-                              seriesResult={priceHistorySeries}
+                              seriesResult={priceHistorySeriesWithCurrent}
                             />
                           )}
                         </div>

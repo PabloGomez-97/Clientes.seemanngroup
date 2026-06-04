@@ -100,6 +100,11 @@ import { AirPriceHistoryModal } from "./Handlers/Air/AirPriceHistoryModal";
 import { AirPriceHistoryStep2Panel } from "./Handlers/Air/AirPriceHistoryStep2Panel";
 import { useAirCotizadorSidebarOptional } from "./Handlers/Air/AirCotizadorSidebarContext";
 import { useAirPriceHistory } from "./Handlers/Air/useAirPriceHistory";
+import {
+  AIR_WEIGHT_TIERS,
+  getCurrentAirMarketMinPrices,
+} from "./Handlers/Air/HandlerQuoteAirHistorical";
+import { mergeCurrentRatesIntoPriceHistory } from "./Handlers/shared/mergeCurrentPriceHistory";
 import { linbisFetch } from "../../services/linbisFetch";
 import {
   SIMULATION_MISSING_VALUE,
@@ -1876,6 +1881,31 @@ function QuoteAPITester({
     historicalRefreshToken,
   );
 
+  const priceHistorySeriesWithCurrent = useMemo(() => {
+    if (!originSeleccionado?.value || !destinationSeleccionado?.value) {
+      return priceHistorySeries;
+    }
+    const current = getCurrentAirMarketMinPrices(
+      rutas,
+      originSeleccionado.value,
+      destinationSeleccionado.value,
+    );
+    return mergeCurrentRatesIntoPriceHistory(
+      priceHistorySeries,
+      AIR_WEIGHT_TIERS,
+      current.pricesByTier,
+      {
+        currentCurrency: current.currency,
+        currentRowCount: current.rowCount,
+      },
+    );
+  }, [
+    priceHistorySeries,
+    rutas,
+    originSeleccionado?.value,
+    destinationSeleccionado?.value,
+  ]);
+
   const setCotizadorSidebar = useAirCotizadorSidebarOptional()?.setSidebar;
   const showStep2PriceHistoryPanel =
     currentStep === 2 && !!rutaSeleccionada && routeMode === "recurrente";
@@ -1894,7 +1924,7 @@ function QuoteAPITester({
         destinationLabel={rutaSeleccionada.destination}
         loading={loadingPriceHistory}
         error={errorPriceHistory}
-        seriesResult={priceHistorySeries}
+        seriesResult={priceHistorySeriesWithCurrent}
       />,
     );
 
@@ -1907,7 +1937,7 @@ function QuoteAPITester({
     rutaSeleccionada,
     loadingPriceHistory,
     errorPriceHistory,
-    priceHistorySeries,
+    priceHistorySeriesWithCurrent,
   ]);
 
   // Scroll a rutas cuando aparecen
@@ -4956,7 +4986,7 @@ function QuoteAPITester({
                               }
                               loading={loadingPriceHistory}
                               error={errorPriceHistory}
-                              seriesResult={priceHistorySeries}
+                              seriesResult={priceHistorySeriesWithCurrent}
                             />
                           )}
                         </div>

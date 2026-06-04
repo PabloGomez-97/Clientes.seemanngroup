@@ -2,6 +2,7 @@ import {
   extractPrice,
   normalize,
   splitCombinedPOD,
+  type RutaLCL,
 } from "./HandlerQuoteLCL";
 import { buildPriceHistoryMarketMinSeries, historicalPodMatchesSelection } from "../shared/buildPriceHistorySeries";
 import type {
@@ -75,4 +76,47 @@ export function buildLclMarketMinSeries(
       historicalPodMatchesSelection(row.podRaw, podNorm, splitCombinedPOD),
     extractPrice,
   );
+}
+
+/** Mínimo de mercado W/M desde tarifas vigentes (sheet actual). */
+export function getCurrentLclMarketMinPrices(
+  rutas: RutaLCL[],
+  polNorm: string,
+  podNorm: string,
+  markup: number = LCL_PRICE_HISTORY_MARKUP,
+): {
+  pricesByTier: Record<LclPriceTier, number>;
+  currency: "USD" | "EUR";
+  rowCount: number;
+} {
+  const filtered = rutas.filter(
+    (r) => r.polNormalized === polNorm && r.podNormalized === podNorm,
+  );
+
+  let min = Infinity;
+  for (const row of filtered) {
+    const price = extractPrice(row.ofWMString) * markup;
+    if (price > 0 && price < min) {
+      min = price;
+    }
+  }
+
+  const currencyCounts = new Map<"USD" | "EUR", number>();
+  for (const row of filtered) {
+    currencyCounts.set(row.currency, (currencyCounts.get(row.currency) || 0) + 1);
+  }
+  let currency: "USD" | "EUR" = "USD";
+  let max = 0;
+  for (const [cur, count] of currencyCounts) {
+    if (count > max) {
+      max = count;
+      currency = cur;
+    }
+  }
+
+  return {
+    pricesByTier: { ofWM: min === Infinity ? 0 : min },
+    currency,
+    rowCount: filtered.length,
+  };
 }
