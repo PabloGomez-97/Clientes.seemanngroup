@@ -1721,6 +1721,25 @@ const FclExwConfig = (
 ) as FclExwConfigModel;
 
 // ============================================================
+// MODELO AIRCONNECT ESPAÑA - CONFIG (Singleton, air_connect_spain_config)
+// ============================================================
+import {
+  AirConnectSpainConfigSchema,
+  DEFAULT_AIR_CONNECT_SPAIN_CONFIG,
+  type IAirConnectSpainConfigDoc,
+  type AirConnectSpainConfigModel,
+  type IAirConnectSpainConfig,
+} from '../api/models/AirConnectSpainConfig.ts';
+
+const AirConnectSpainConfig = (
+  mongoose.models.AirConnectSpainConfig ||
+  mongoose.model<IAirConnectSpainConfigDoc>(
+    'AirConnectSpainConfig',
+    AirConnectSpainConfigSchema,
+  )
+) as AirConnectSpainConfigModel;
+
+// ============================================================
 // MODELO OPERACIÓN + CLIENTE-PROVEEDOR
 // ============================================================
 import {
@@ -6758,6 +6777,71 @@ app.put('/api/fcl-exw/config', auth, async (req, res) => {
   } catch (e) {
     console.error('[fcl-exw] Error PUT config:', e);
     return res.status(500).json({ error: 'Error al actualizar configuración EXW FCL' });
+  }
+});
+
+// ============================================================
+// AIRCONNECT ESPAÑA - CONFIG ENDPOINTS (singleton)
+// ============================================================
+
+app.get('/api/air-connect-spain/config', async (_req, res) => {
+  try {
+    let config = await AirConnectSpainConfig.findOne();
+    if (!config) {
+      config = await AirConnectSpainConfig.create(DEFAULT_AIR_CONNECT_SPAIN_CONFIG);
+    }
+    return res.json(config);
+  } catch (e) {
+    console.error('[air-connect-spain] Error GET config:', e);
+    return res.status(500).json({ error: 'Error al obtener configuración AirConnect España' });
+  }
+});
+
+app.put('/api/air-connect-spain/config', auth, async (req, res) => {
+  try {
+    const currentUser = (req as any).user as AuthPayload;
+    const ejecutivoDoc = await Ejecutivo.findOne({ email: currentUser.sub });
+    if (!ejecutivoDoc?.roles?.administrador) {
+      return res.status(403).json({
+        error: 'Solo administradores pueden modificar la configuración AirConnect España',
+      });
+    }
+
+    const { airConnectSpain } = req.body as {
+      airConnectSpain?: Partial<IAirConnectSpainConfig>;
+    };
+    if (!airConnectSpain || typeof airConnectSpain !== 'object') {
+      return res.status(400).json({
+        error: 'Debe enviar el objeto airConnectSpain con los valores a actualizar',
+      });
+    }
+
+    const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
+
+    if (airConnectSpain.profitMarkupPct !== undefined) {
+      if (
+        typeof airConnectSpain.profitMarkupPct !== 'number' ||
+        airConnectSpain.profitMarkupPct < 0
+      ) {
+        return res.status(400).json({ error: 'Margen AirConnect España inválido' });
+      }
+      updateData.profitMarkupPct = airConnectSpain.profitMarkupPct;
+    }
+
+    if (Object.keys(updateData).length <= 1) {
+      return res.status(400).json({ error: 'No hay campos válidos para actualizar' });
+    }
+
+    const config = await AirConnectSpainConfig.findOneAndUpdate(
+      {},
+      { $set: updateData },
+      { new: true, upsert: true },
+    );
+
+    return res.json(config);
+  } catch (e) {
+    console.error('[air-connect-spain] Error PUT config:', e);
+    return res.status(500).json({ error: 'Error al actualizar configuración AirConnect España' });
   }
 });
 
