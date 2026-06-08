@@ -58,6 +58,24 @@ export const portCoordinates: Record<string, PortCoords> = {
     name: "Cochin Port",
     unlocode: "INCOK",
   },
+  lirquen: {
+    lat: -36.7127,
+    lng: -72.9813,
+    name: "Port of Lirquen",
+    unlocode: "CLLQN",
+  },
+  lazaro_cardenas: {
+    lat: 17.9683,
+    lng: -102.1796,
+    name: "Port of Lazaro Cardenas",
+    unlocode: "MXLZC",
+  },
+  veracruz: {
+    lat: 19.2128,
+    lng: -96.1252,
+    name: "Port of Veracruz",
+    unlocode: "MXVER",
+  },
   dalian: {
     lat: 38.9281,
     lng: 121.6387,
