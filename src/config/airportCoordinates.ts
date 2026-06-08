@@ -1041,7 +1041,7 @@ export const airportCoordinates: Record<string, AirportCoords> = {
   valencia: {
     lat: 39.4891,
     lng: -0.4811,
-    name: "Valencia Airport",
+    name: "Aeropuerto de Valencia",
     iata: "VLC",
     countryCode: "ES"
   },
