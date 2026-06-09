@@ -749,7 +749,7 @@ function ShipmentsView() {
       )}
 
       {/* Loading */}
-      {loading && <LoadingTips />}
+      {loading && <LoadingTips variant="operational" />}
 
       {/* -- Main content -- */}
       {!loading && shipments.length > 0 && (

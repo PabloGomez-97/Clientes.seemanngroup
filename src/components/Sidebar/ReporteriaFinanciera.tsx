@@ -1154,7 +1154,7 @@ function ReporteriaFinanciera() {
       </div>
 
       {/* Loading */}
-      {loading && <LoadingTips />}
+      {loading && <LoadingTips variant="financial" />}
 
       {/* -- Error ------------------------------------------- */}
       {error && (
