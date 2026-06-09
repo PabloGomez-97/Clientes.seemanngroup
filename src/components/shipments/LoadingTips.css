@@ -165,6 +165,22 @@
   letter-spacing: 0.02em;
 }
 
+.lt-loading-text {
+  min-width: 7.5rem;
+  animation: lt-message-fade 0.35s ease;
+}
+
+@keyframes lt-message-fade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .lt-loading-spinner {
   width: 18px;
   height: 18px;

@@ -1,4 +1,7 @@
+import { useState, useEffect } from "react";
 import "./LoadingTips.css";
+
+const LOADING_MESSAGE_DELAY_MS = 3000;
 
 export type LoadingTipsVariant = "table" | "financial" | "operational";
 
@@ -150,6 +153,16 @@ function getRowCells(index: number, columns?: LoadingTipsColumn[]): RowCell[] {
 }
 
 function LoadingOverlay() {
+  const [message, setMessage] = useState("Cargando");
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setMessage("Por favor, espere");
+    }, LOADING_MESSAGE_DELAY_MS);
+
+    return () => window.clearTimeout(id);
+  }, []);
+
   return (
     <div className="lt-loading-overlay">
       <div className="lt-loading-message">
@@ -168,7 +181,9 @@ function LoadingOverlay() {
             strokeLinecap="round"
           />
         </svg>
-        <span>Cargando</span>
+        <span className="lt-loading-text" key={message}>
+          {message}
+        </span>
       </div>
     </div>
   );
