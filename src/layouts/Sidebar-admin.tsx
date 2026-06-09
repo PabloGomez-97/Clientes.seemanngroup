@@ -85,6 +85,7 @@ function SidebarAdmin({
     },
 
     {
+      title: "Cotización",
       items: [
         {
           path: "/admin/cotizador-administrador",
@@ -97,6 +98,18 @@ function SidebarAdmin({
           icon: "fa fa-flask",
         },
         {
+          path: "/admin/gestion-cotizador",
+          name: "Gestión Cotizador",
+          icon: "fa fa-sliders-h",
+          badge: { text: "CHIEF", type: "admin" as const },
+        },
+      ],
+    },
+
+    {
+      title: "Clientes y análisis",
+      items: [
+        {
           path: "/admin/comportamiento-clientes",
           name: "Análisis de Clientes",
           icon: "fa fa-chart-line",
@@ -107,10 +120,22 @@ function SidebarAdmin({
           name: "Análisis de Clientes [Global]",
           icon: "fa fa-chart-line",
         },
+        {
+          path: "/admin/reporteriaclientes",
+          name: "Directorio de Clientes",
+          icon: "fa fa-address-book",
+          hiddenForAdmin: true,
+        },
+        {
+          path: "/admin/op-reporteriaclientes",
+          name: "Directorio de Clientes [Global]",
+          icon: "fa fa-address-book",
+        },
       ],
     },
 
     {
+      title: "Operaciones",
       items: [
         {
           name: "Operaciones",
@@ -122,13 +147,8 @@ function SidebarAdmin({
               hiddenForAdmin: true,
             },
             {
-              path: "/admin/reporteriaclientes",
-              name: "Directorio de Clientes",
-              hiddenForAdmin: true,
-            },
-            {
-              path: "/admin/op-reporteriaclientes",
-              name: "Directorio de Clientes [Global]",
+              path: "/admin/op-documentacion",
+              name: "Documentación Global",
             },
             {
               path: "/admin/trackeos",
@@ -139,14 +159,11 @@ function SidebarAdmin({
               path: "/admin/op-trackeos",
               name: "Monitoreo de Envíos [Global]",
             },
-            {
-              path: "/admin/op-documentacion",
-              name: "Documentación Global",
-            },
           ],
         },
       ],
     },
+
     {
       title: "Tarifario",
       items: [
@@ -161,6 +178,11 @@ function SidebarAdmin({
           icon: "fa fa-table",
         },
         {
+          path: "/admin/historico-precios",
+          name: "Histórico de precios",
+          icon: "fa fa-line-chart",
+        },
+        {
           path: "/admin/documentos-proveedores",
           name: "Documentación de Proveedores",
           icon: "fa fa-file-alt",
@@ -172,6 +194,7 @@ function SidebarAdmin({
         },
       ],
     },
+
     {
       title: "Reportes",
       items: [
@@ -200,6 +223,7 @@ function SidebarAdmin({
     },
 
     {
+      title: "Administración",
       items: [
         {
           name: "Administración",
@@ -211,31 +235,16 @@ function SidebarAdmin({
               badge: { text: "CHIEF", type: "admin" as const },
             },
             {
-              path: "/admin/auditoria",
-              name: "Auditoría",
-              badge: { text: "AUDIT", type: "admin" as const },
-            },
-            {
               path: "/admin/agencia-aduanas",
               name: "Gestión Aduanera",
               badge: { text: "CHIEF", type: "admin" as const },
             },
             {
-              path: "/admin/gestion-cotizador",
-              name: "Gestión Cotizador",
-              badge: { text: "CHIEF", type: "admin" as const },
+              path: "/admin/auditoria",
+              name: "Auditoría",
+              badge: { text: "AUDIT", type: "admin" as const },
             },
           ],
-        },
-      ],
-    },
-
-    {
-      items: [
-        {
-          path: "/admin/historico-precios",
-          name: "Histórico de precios",
-          icon: "fa fa-line-chart",
         },
       ],
     },
