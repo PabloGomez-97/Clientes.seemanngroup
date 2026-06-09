@@ -937,10 +937,15 @@ export default function HomeEjecutivo() {
           (s, c) => s + (c.stats?.quotesCompleted || 0),
           0,
         );
-        const totalAbandoned = clients.reduce(
+        const totalAbandonedRaw = clients.reduce(
           (s, c) => s + (c.stats?.quotesAbandoned || 0),
           0,
         );
+        const totalPending = Math.max(
+          0,
+          totalStarted - totalCompleted - totalAbandonedRaw,
+        );
+        const totalAbandoned = totalAbandonedRaw + totalPending;
         const uniqueAccountCount = new Set(clients.map((c) => c.email)).size;
         const overallRate =
           totalStarted > 0
@@ -1223,8 +1228,10 @@ export default function HomeEjecutivo() {
         events.find((e) => e.event === "QUOTE_STARTED")?.count || 0;
       const completed =
         events.find((e) => e.event === "QUOTE_COMPLETED")?.count || 0;
-      const abandoned =
+      const abandonedRaw =
         events.find((e) => e.event === "QUOTE_ABANDONED")?.count || 0;
+      const pending = Math.max(0, started - completed - abandonedRaw);
+      const abandoned = abandonedRaw + pending;
       const abandonRate =
         started > 0 ? Math.round((abandoned / started) * 100) : 0;
       return { type, started, completed, abandoned, abandonRate };
