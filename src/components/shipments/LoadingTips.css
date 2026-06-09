@@ -51,6 +51,16 @@
   text-align: center;
 }
 
+.lt-skeleton-th-label {
+  font-weight: 500;
+  font-size: 0.75rem;
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  color: #9ca3af;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
 /* Bones */
 .lt-bone {
   position: relative;

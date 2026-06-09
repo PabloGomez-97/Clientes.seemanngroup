@@ -1622,7 +1622,18 @@ function OceanShipmentsView({
       )}
 
       {/* Loading */}
-      {loading && <LoadingTips />}
+      {loading && (
+        <LoadingTips
+          columns={[
+            { label: "Número" },
+            { label: "Origen" },
+            { label: "Referencia Cliente" },
+            { label: "Fecha Salida", center: true },
+            { label: "Fecha Llegada", center: true },
+            { label: "Carrier", center: true },
+          ]}
+        />
+      )}
 
       {/* Error */}
       {error && (

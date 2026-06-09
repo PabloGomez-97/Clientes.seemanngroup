@@ -2,8 +2,14 @@ import "./LoadingTips.css";
 
 export type LoadingTipsVariant = "table" | "financial" | "operational";
 
+export interface LoadingTipsColumn {
+  label: string;
+  center?: boolean;
+}
+
 interface LoadingTipsProps {
   variant?: LoadingTipsVariant;
+  columns?: LoadingTipsColumn[];
 }
 
 const ROW_COUNT = 10;
@@ -65,8 +71,82 @@ const ROW_PATTERNS: RowCell[][] = [
   ],
 ];
 
-function getRowCells(index: number): RowCell[] {
-  return ROW_PATTERNS[index % ROW_PATTERNS.length];
+const ROW_PATTERNS_6: RowCell[][] = [
+  [
+    { className: "lt-bone--id" },
+    { className: "lt-bone--city-lg" },
+    { className: "lt-bone--transport" },
+    { className: "lt-bone--date", center: true },
+    { className: "lt-bone--date", center: true },
+    { className: "lt-bone--city", center: true },
+  ],
+  [
+    { className: "lt-bone--id" },
+    { className: "lt-bone--city" },
+    { className: "lt-bone--transport" },
+    { className: "lt-bone--date", center: true },
+    { className: "lt-bone--date", center: true },
+    { className: "lt-bone--city-lg", center: true },
+  ],
+  [
+    { className: "lt-bone--id" },
+    { className: "lt-bone--city" },
+    { className: "lt-bone--city-lg" },
+    { className: "lt-bone--date", center: true },
+    { className: "lt-bone--date", center: true },
+    { className: "lt-bone--city", center: true },
+  ],
+];
+
+const ROW_PATTERNS_7: RowCell[][] = [
+  [
+    { className: "lt-bone--id" },
+    { className: "lt-bone--city" },
+    { className: "lt-bone--city-lg" },
+    { className: "lt-bone--date" },
+    { className: "lt-bone--city-lg" },
+    { className: "lt-bone--badge", center: true },
+    { className: "lt-bone--transit", center: true },
+  ],
+  [
+    { className: "lt-bone--id" },
+    { className: "lt-bone--city-lg" },
+    { className: "lt-bone--city" },
+    { className: "lt-bone--date" },
+    { className: "lt-bone--city" },
+    { className: "lt-bone--badge", center: true },
+    { className: "lt-bone--transit", center: true },
+  ],
+  [
+    { className: "lt-bone--id" },
+    { className: "lt-bone--city" },
+    { className: "lt-bone--city" },
+    { className: "lt-bone--date" },
+    { className: "lt-bone--transport" },
+    { className: "lt-bone--badge", center: true },
+    { className: "lt-bone--transit", center: true },
+  ],
+];
+
+const ROW_PATTERNS_BY_COUNT: Record<number, RowCell[][]> = {
+  6: ROW_PATTERNS_6,
+  7: ROW_PATTERNS_7,
+  10: ROW_PATTERNS,
+};
+
+function getRowCells(index: number, columns?: LoadingTipsColumn[]): RowCell[] {
+  const count = columns?.length ?? HEADER_COLUMNS.length;
+  const patterns = ROW_PATTERNS_BY_COUNT[count] ?? ROW_PATTERNS;
+  const cells = patterns[index % patterns.length];
+
+  if (!columns) {
+    return cells;
+  }
+
+  return cells.map((cell, i) => ({
+    ...cell,
+    center: columns[i]?.center ?? cell.center,
+  }));
 }
 
 function LoadingOverlay() {
@@ -185,27 +265,36 @@ function ChartPanelSkeleton({
   );
 }
 
-function TableSkeleton() {
+function TableSkeleton({ columns }: { columns?: LoadingTipsColumn[] }) {
   return (
     <div className="lt-table-wrapper">
       <div className="lt-table-scroll">
-        <table className="lt-skeleton-table" aria-hidden="true">
+        <table className="lt-skeleton-table">
           <thead>
             <tr>
-              {HEADER_COLUMNS.map((col, i) => (
-                <th
-                  key={i}
-                  className={`lt-skeleton-th${col.center ? " lt-skeleton-th--center" : ""}`}
-                >
-                  <span className={`lt-bone lt-bone--header ${col.className}`} />
-                </th>
-              ))}
+              {columns
+                ? columns.map((col, i) => (
+                    <th
+                      key={i}
+                      className={`lt-skeleton-th${col.center ? " lt-skeleton-th--center" : ""}`}
+                    >
+                      <span className="lt-skeleton-th-label">{col.label}</span>
+                    </th>
+                  ))
+                : HEADER_COLUMNS.map((col, i) => (
+                    <th
+                      key={i}
+                      className={`lt-skeleton-th${col.center ? " lt-skeleton-th--center" : ""}`}
+                    >
+                      <span className={`lt-bone lt-bone--header ${col.className}`} />
+                    </th>
+                  ))}
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: ROW_COUNT }).map((_, rowIndex) => (
               <tr key={rowIndex}>
-                {getRowCells(rowIndex).map((cell, cellIndex) => (
+                {getRowCells(rowIndex, columns).map((cell, cellIndex) => (
                   <td
                     key={cellIndex}
                     className={`lt-skeleton-td${cell.center ? " lt-skeleton-td--center" : ""}`}
@@ -301,12 +390,15 @@ function OperationalSkeleton() {
   );
 }
 
-export default function LoadingTips({ variant = "table" }: LoadingTipsProps) {
+export default function LoadingTips({
+  variant = "table",
+  columns,
+}: LoadingTipsProps) {
   return (
     <div role="status" aria-live="polite" aria-busy="true">
       {variant === "financial" && <FinancialSkeleton />}
       {variant === "operational" && <OperationalSkeleton />}
-      {variant === "table" && <TableSkeleton />}
+      {variant === "table" && <TableSkeleton columns={columns} />}
     </div>
   );
 }

@@ -1030,7 +1030,19 @@ function GroundShipmentsView({
       )}
 
       {/* Loading */}
-      {loading && <LoadingTips />}
+      {loading && (
+        <LoadingTips
+          columns={[
+            { label: "Numero" },
+            { label: "Origen" },
+            { label: "Destino" },
+            { label: "Fecha Salida" },
+            { label: "Transportista" },
+            { label: "Tipo", center: true },
+            { label: "Piezas", center: true },
+          ]}
+        />
+      )}
 
       {/* Error */}
       {error && (

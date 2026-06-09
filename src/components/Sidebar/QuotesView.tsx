@@ -1327,7 +1327,22 @@ function QuotesView({
 
       {/* -- Loading ----------------------------------------- */}
       {/* Loading */}
-      {loading && <LoadingTips />}
+      {loading && (
+        <LoadingTips
+          columns={[
+            { label: t("quotesView.thNumber") },
+            { label: "Etapa", center: true },
+            { label: "Vigencia", center: true },
+            { label: t("quotesView.thOrigin") },
+            { label: t("quotesView.thDestination") },
+            { label: t("quotesView.thTransport") },
+            { label: t("quotesView.thIssueDate") },
+            { label: t("quotesView.thValidUntil") },
+            { label: t("quotesView.thTransit"), center: true },
+            { label: t("quotesView.thPDF"), center: true },
+          ]}
+        />
+      )}
 
       {/* -- Error ------------------------------------------- */}
       {error && (
