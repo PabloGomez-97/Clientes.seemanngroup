@@ -1,6 +1,7 @@
 // src/layouts/Sidebar-admin.tsx - AWS/Azure Minimalist Design (same as client)
 import { useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../auth/AuthContext";
 import { canSeeSidebarItem } from "../config/roleRoutes";
 import { imgUrl } from "../config/images";
@@ -29,6 +30,7 @@ interface MenuItem {
   path?: string;
   name: string;
   icon: string;
+  menuId?: string;
   restrictedTo?: string | string[];
   hiddenForAdmin?: boolean;
   badge?: {
@@ -62,6 +64,7 @@ function SidebarAdmin({
 }: SidebarAdminProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -81,83 +84,90 @@ function SidebarAdmin({
 
   const menuSections: MenuSection[] = [
     {
-      items: [{ path: "/admin/home", name: "Inicio", icon: "fa fa-home" }],
-    },
-
-    {
-      title: "Cotización",
       items: [
         {
-          path: "/admin/cotizador-administrador",
-          name: "Cotizador",
-          icon: "bi bi-currency-dollar",
-        },
-        {
-          path: "/admin/simulador-cotizaciones",
-          name: "Simulador de Cotizaciones",
-          icon: "fa fa-flask",
-        },
-        {
-          path: "/admin/gestion-cotizador",
-          name: "Gestión Cotizador",
-          icon: "fa fa-sliders-h",
-          badge: { text: "CHIEF", type: "admin" as const },
+          path: "/admin/home",
+          name: t("admin.sidebar.home"),
+          icon: "fa fa-home",
         },
       ],
     },
 
     {
-      title: "Clientes y análisis",
+      title: t("admin.sidebar.sectionQuote"),
+      items: [
+        {
+          path: "/admin/cotizador-administrador",
+          name: t("admin.sidebar.quoter"),
+          icon: "bi bi-currency-dollar",
+        },
+        {
+          path: "/admin/simulador-cotizaciones",
+          name: t("admin.sidebar.quoteSimulator"),
+          icon: "fa fa-flask",
+        },
+        {
+          path: "/admin/gestion-cotizador",
+          name: t("admin.sidebar.quoteManagement"),
+          icon: "fa fa-sliders-h",
+          badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
+        },
+      ],
+    },
+
+    {
+      title: t("admin.sidebar.sectionClients"),
       items: [
         {
           path: "/admin/comportamiento-clientes",
-          name: "Análisis de Clientes",
+          name: t("admin.sidebar.clientAnalysis"),
           icon: "fa fa-chart-line",
           hiddenForAdmin: true,
         },
         {
           path: "/admin/op-comportamiento-clientes",
-          name: "Análisis de Clientes [Global]",
+          name: t("admin.sidebar.clientAnalysisGlobal"),
           icon: "fa fa-chart-line",
         },
         {
           path: "/admin/reporteriaclientes",
-          name: "Directorio de Clientes",
+          name: t("admin.sidebar.clientDirectory"),
           icon: "fa fa-address-book",
           hiddenForAdmin: true,
         },
         {
           path: "/admin/op-reporteriaclientes",
-          name: "Directorio de Clientes [Global]",
+          name: t("admin.sidebar.clientDirectoryGlobal"),
           icon: "fa fa-address-book",
         },
       ],
     },
 
     {
-      title: "Operaciones",
+      title: t("admin.sidebar.sectionOperations"),
       items: [
         {
-          name: "Operaciones",
+          menuId: "operations",
+          name: t("admin.sidebar.operations"),
           icon: "fa fa-route",
           subItems: [
             {
               path: "/admin/documentacion",
-              name: "Documentación de Clientes",
+              name: t("admin.sidebar.clientDocumentation"),
               hiddenForAdmin: true,
             },
             {
               path: "/admin/op-documentacion",
-              name: "Documentación Global",
+              name: t("admin.sidebar.globalDocumentation"),
             },
             {
               path: "/admin/trackeos",
-              name: "Monitoreo de Envíos",
+              name: t("admin.sidebar.shipmentMonitoring"),
               hiddenForAdmin: true,
             },
             {
               path: "/admin/op-trackeos",
-              name: "Monitoreo de Envíos [Global]",
+              name: t("admin.sidebar.shipmentMonitoringGlobal"),
             },
           ],
         },
@@ -165,57 +175,58 @@ function SidebarAdmin({
     },
 
     {
-      title: "Tarifario",
+      title: t("admin.sidebar.sectionTariff"),
       items: [
         {
           path: "/admin/pricing",
-          name: "Administración de Tarifas",
+          name: t("admin.sidebar.tariffAdmin"),
           icon: "fa fa-tags",
         },
         {
           path: "/admin/tarifario-completo",
-          name: "Tarifario General",
+          name: t("admin.sidebar.generalTariff"),
           icon: "fa fa-table",
         },
         {
           path: "/admin/historico-precios",
-          name: "Histórico de precios",
+          name: t("admin.sidebar.priceHistory"),
           icon: "fa fa-line-chart",
         },
         {
           path: "/admin/documentos-proveedores",
-          name: "Documentación de Proveedores",
+          name: t("admin.sidebar.supplierDocumentation"),
           icon: "fa fa-file-alt",
         },
         {
           path: "/admin/alertas-pricing",
-          name: "Alertas Tarifas",
+          name: t("admin.sidebar.tariffAlerts"),
           icon: "fa fa-exclamation-triangle",
         },
       ],
     },
 
     {
-      title: "Reportes",
+      title: t("admin.sidebar.sectionReports"),
       items: [
         {
+          menuId: "reports",
           path: "/admin/reporteria",
-          name: "Reportes",
+          name: t("admin.sidebar.reports"),
           icon: "fa fa-chart-bar",
           subItems: [
             {
               path: "/admin/reporteria",
-              name: "Reportes LINBIS",
+              name: t("admin.sidebar.reportsLinbis"),
             },
             {
               path: "/admin/reportexecutive",
-              name: "Reporte de Cotizaciones",
-              badge: { text: "CHIEF", type: "admin" as const },
+              name: t("admin.sidebar.quotesReport"),
+              badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
             {
               path: "/admin/reportoperational",
-              name: "Reporte de Facturaciones",
-              badge: { text: "CHIEF", type: "admin" as const },
+              name: t("admin.sidebar.billingReport"),
+              badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
           ],
         },
@@ -223,26 +234,27 @@ function SidebarAdmin({
     },
 
     {
-      title: "Administración",
+      title: t("admin.sidebar.sectionAdministration"),
       items: [
         {
-          name: "Administración",
+          menuId: "administration",
+          name: t("admin.sidebar.administration"),
           icon: "fa fa-shield-alt",
           subItems: [
             {
               path: "/admin/users",
-              name: "Gestión de Usuarios",
-              badge: { text: "CHIEF", type: "admin" as const },
+              name: t("admin.sidebar.userManagement"),
+              badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
             {
               path: "/admin/agencia-aduanas",
-              name: "Gestión Aduanera",
-              badge: { text: "CHIEF", type: "admin" as const },
+              name: t("admin.sidebar.customsManagement"),
+              badge: { text: t("admin.sidebar.badgeChief"), type: "admin" as const },
             },
             {
               path: "/admin/auditoria",
-              name: "Auditoría",
-              badge: { text: "AUDIT", type: "admin" as const },
+              name: t("admin.sidebar.audit"),
+              badge: { text: t("admin.sidebar.badgeAudit"), type: "admin" as const },
             },
           ],
         },
@@ -427,7 +439,9 @@ function SidebarAdmin({
                 {section.items.map((item, itemIdx) => {
                   const hasSubItems = item.subItems && item.subItems.length > 0;
                   const visibleSubItems = item.subItems || [];
-                  const isExpanded = expandedMenus.includes(item.name);
+                  const isExpanded = item.menuId
+                    ? expandedMenus.includes(item.menuId)
+                    : false;
                   const isItemActive =
                     (item.path ? isActive(item.path) : false) ||
                     visibleSubItems.some((subItem) => isActive(subItem.path));
@@ -451,7 +465,7 @@ function SidebarAdmin({
                               navigateFromSidebar(e, visibleSubItems[0].path);
                             } else {
                               e.preventDefault();
-                              toggleMenu(item.name);
+                              toggleMenu(item.menuId!);
                             }
                           } else if (item.path) {
                             navigateFromSidebar(e, item.path);
@@ -675,12 +689,18 @@ function SidebarAdmin({
               onClick={onToggle}
               aria-label={
                 isMobile
-                  ? "Cerrar menú de navegación"
+                  ? t("admin.sidebar.closeNavAria")
                   : isCollapsed
-                    ? "Expandir barra lateral"
-                    : "Colapsar barra lateral"
+                    ? t("admin.sidebar.expandSidebarAria")
+                    : t("admin.sidebar.collapseSidebarAria")
               }
-              title={isMobile ? "Cerrar menú" : isCollapsed ? "Expandir" : "Colapsar"}
+              title={
+                isMobile
+                  ? t("admin.sidebar.closeMenu")
+                  : isCollapsed
+                    ? t("admin.sidebar.expand")
+                    : t("admin.sidebar.collapse")
+              }
               style={{
                 width: "100%",
                 height: "34px",
@@ -734,7 +754,11 @@ function SidebarAdmin({
                 />
               </svg>
               {(!isCollapsed || isMobile) && (
-                <span>{isMobile ? "Cerrar menú" : "Colapsar menú"}</span>
+                <span>
+                  {isMobile
+                    ? t("admin.sidebar.closeMenu")
+                    : t("admin.sidebar.collapseMenu")}
+                </span>
               )}
             </button>
           </div>
