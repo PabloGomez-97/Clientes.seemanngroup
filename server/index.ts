@@ -6797,6 +6797,27 @@ app.get('/api/air-connect-spain/config', async (_req, res) => {
   }
 });
 
+app.post('/api/air-connect-spain/quotation/calculate', auth, async (req, res) => {
+  try {
+    const { callAirConnectQuotationApi } = await import(
+      '../api/airConnectSpainQuotationProxy.ts'
+    );
+    const data = await callAirConnectQuotationApi(req.body);
+    return res.json(data);
+  } catch (e: unknown) {
+    console.error('[air-connect-spain] Error POST quotation/calculate:', e);
+    if (e && typeof e === 'object' && 'status' in e && typeof e.status === 'number') {
+      const status = e.status as number;
+      const message = e instanceof Error ? e.message : 'Error AirConnect';
+      if (status >= 400 && status < 500) {
+        return res.status(status).json({ error: message });
+      }
+      return res.status(502).json({ error: message });
+    }
+    return res.status(502).json({ error: 'Error al consultar tarifas AirConnect' });
+  }
+});
+
 app.put('/api/air-connect-spain/config', auth, async (req, res) => {
   try {
     const currentUser = (req as any).user as AuthPayload;
@@ -6818,14 +6839,24 @@ app.put('/api/air-connect-spain/config', auth, async (req, res) => {
 
     const updateData: Record<string, unknown> = { updatedBy: currentUser.sub };
 
-    if (airConnectSpain.profitMarkupPct !== undefined) {
+    if (airConnectSpain.profitMarkupPctFca !== undefined) {
       if (
-        typeof airConnectSpain.profitMarkupPct !== 'number' ||
-        airConnectSpain.profitMarkupPct < 0
+        typeof airConnectSpain.profitMarkupPctFca !== 'number' ||
+        airConnectSpain.profitMarkupPctFca < 0
       ) {
-        return res.status(400).json({ error: 'Margen AirConnect España inválido' });
+        return res.status(400).json({ error: 'Margen FCA AirConnect España inválido' });
       }
-      updateData.profitMarkupPct = airConnectSpain.profitMarkupPct;
+      updateData.profitMarkupPctFca = airConnectSpain.profitMarkupPctFca;
+    }
+
+    if (airConnectSpain.profitMarkupPctExw !== undefined) {
+      if (
+        typeof airConnectSpain.profitMarkupPctExw !== 'number' ||
+        airConnectSpain.profitMarkupPctExw < 0
+      ) {
+        return res.status(400).json({ error: 'Margen EXW AirConnect España inválido' });
+      }
+      updateData.profitMarkupPctExw = airConnectSpain.profitMarkupPctExw;
     }
 
     if (Object.keys(updateData).length <= 1) {

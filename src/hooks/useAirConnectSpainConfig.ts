@@ -4,15 +4,30 @@ import { DEFAULT_AIR_CONNECT_SPAIN_CONFIG } from "../types/airConnectSpainConfig
 import { useAuth } from "../auth/AuthContext";
 
 function normalizeConfig(data: Record<string, unknown>): IAirConnectSpainConfig {
-  const profitMarkupPct = data.profitMarkupPct;
+  const legacy =
+    typeof data.profitMarkupPct === "number" && !Number.isNaN(data.profitMarkupPct)
+      ? data.profitMarkupPct
+      : undefined;
+  const fca = data.profitMarkupPctFca;
+  const exw = data.profitMarkupPctExw;
+
   return {
-    profitMarkupPct:
-      typeof profitMarkupPct === "number" && !Number.isNaN(profitMarkupPct)
-        ? profitMarkupPct
-        : DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPct,
-    updatedBy: (data.updatedBy as string) ?? DEFAULT_AIR_CONNECT_SPAIN_CONFIG.updatedBy,
+    profitMarkupPctFca:
+      typeof fca === "number" && !Number.isNaN(fca)
+        ? fca
+        : (legacy ?? DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctFca),
+    profitMarkupPctExw:
+      typeof exw === "number" && !Number.isNaN(exw)
+        ? exw
+        : DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctExw,
+    updatedBy:
+      (data.updatedBy as string) ?? DEFAULT_AIR_CONNECT_SPAIN_CONFIG.updatedBy,
   };
 }
+
+export type AirConnectSpainConfigUpdate = Partial<
+  Pick<IAirConnectSpainConfig, "profitMarkupPctFca" | "profitMarkupPctExw">
+>;
 
 export function useAirConnectSpainConfig() {
   const { token } = useAuth();
@@ -46,7 +61,7 @@ export function useAirConnectSpainConfig() {
   }, [fetchConfig]);
 
   const updateConfig = useCallback(
-    async (updates: Partial<Pick<IAirConnectSpainConfig, "profitMarkupPct">>) => {
+    async (updates: AirConnectSpainConfigUpdate) => {
       const res = await fetch("/api/air-connect-spain/config", {
         method: "PUT",
         headers: {
@@ -66,7 +81,7 @@ export function useAirConnectSpainConfig() {
   );
 
   const save = useCallback(
-    async (updates: Partial<Pick<IAirConnectSpainConfig, "profitMarkupPct">>) => {
+    async (updates: AirConnectSpainConfigUpdate) => {
       try {
         setSaving(true);
         setError(null);

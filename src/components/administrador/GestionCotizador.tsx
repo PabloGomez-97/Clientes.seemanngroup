@@ -80,10 +80,13 @@ export default function GestionCotizador() {
     "delivery" | null
   >(null);
   const [activeAereoAccordion, setActiveAereoAccordion] = useState<
-    "tt" | "airconnect" | null
+    "tt" | "airconnect-fca" | "airconnect-exw" | null
   >(null);
-  const [editingAirConnectSpain, setEditingAirConnectSpain] = useState<{
-    profitMarkupPct?: number;
+  const [editingAirConnectFca, setEditingAirConnectFca] = useState<{
+    profitMarkupPctFca?: number;
+  }>({});
+  const [editingAirConnectExw, setEditingAirConnectExw] = useState<{
+    profitMarkupPctExw?: number;
   }>({});
   const [editingLcl, setEditingLcl] = useState<{
     vespucioExtendedSurchargePct?: number;
@@ -260,39 +263,72 @@ export default function GestionCotizador() {
     }
   };
 
-  const handleAirConnectSpainMarkupChange = (value: string) => {
+  const handleAirConnectFcaMarkupChange = (value: string) => {
     const num = parseFloat(value);
     if (value === "" || isNaN(num)) {
-      setEditingAirConnectSpain((prev) => {
+      setEditingAirConnectFca((prev) => {
         const next = { ...prev };
-        delete next.profitMarkupPct;
+        delete next.profitMarkupPctFca;
         return next;
       });
       return;
     }
-    setEditingAirConnectSpain((prev) => ({
+    setEditingAirConnectFca((prev) => ({
       ...prev,
-      profitMarkupPct: num,
+      profitMarkupPctFca: num,
     }));
   };
 
-  const handleSaveAirConnectSpain = async () => {
-    if (Object.keys(editingAirConnectSpain).length === 0) return;
+  const handleAirConnectExwMarkupChange = (value: string) => {
+    const num = parseFloat(value);
+    if (value === "" || isNaN(num)) {
+      setEditingAirConnectExw((prev) => {
+        const next = { ...prev };
+        delete next.profitMarkupPctExw;
+        return next;
+      });
+      return;
+    }
+    setEditingAirConnectExw((prev) => ({
+      ...prev,
+      profitMarkupPctExw: num,
+    }));
+  };
+
+  const handleSaveAirConnectFca = async () => {
+    if (Object.keys(editingAirConnectFca).length === 0) return;
     try {
       setSaveError(null);
       setSuccessMsg(null);
-      await updateAirConnectSpain(editingAirConnectSpain);
-      setEditingAirConnectSpain({});
-      setSuccessMsg("Configuración AirConnect España actualizada correctamente");
+      await updateAirConnectSpain(editingAirConnectFca);
+      setEditingAirConnectFca({});
+      setSuccessMsg("Configuración FCA AirConnect España actualizada correctamente");
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (e) {
       setSaveError((e as Error).message);
     }
   };
 
-  const airConnectSpainMarkupDisplay =
-    editingAirConnectSpain.profitMarkupPct ??
-    airConnectSpainConfig.profitMarkupPct;
+  const handleSaveAirConnectExw = async () => {
+    if (Object.keys(editingAirConnectExw).length === 0) return;
+    try {
+      setSaveError(null);
+      setSuccessMsg(null);
+      await updateAirConnectSpain(editingAirConnectExw);
+      setEditingAirConnectExw({});
+      setSuccessMsg("Configuración EXW AirConnect España actualizada correctamente");
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (e) {
+      setSaveError((e as Error).message);
+    }
+  };
+
+  const airConnectFcaMarkupDisplay =
+    editingAirConnectFca.profitMarkupPctFca ??
+    airConnectSpainConfig.profitMarkupPctFca;
+  const airConnectExwMarkupDisplay =
+    editingAirConnectExw.profitMarkupPctExw ??
+    airConnectSpainConfig.profitMarkupPctExw;
 
   const lclBracketsDisplay =
     editingLcl.brackets ?? config.lcl.brackets;
@@ -986,56 +1022,53 @@ export default function GestionCotizador() {
             </div>
 
             <div className="accordion-item shadow-sm border rounded-3 mb-3 overflow-hidden">
-              <h2 className="accordion-header" id="heading-aereo-airconnect">
+              <h2 className="accordion-header" id="heading-aereo-airconnect-fca">
                 <button
                   className={`accordion-button py-3 px-4 fs-5 fw-semibold ${
-                    activeAereoAccordion === "airconnect" ? "" : "collapsed"
+                    activeAereoAccordion === "airconnect-fca" ? "" : "collapsed"
                   }`}
                   type="button"
-                  aria-expanded={activeAereoAccordion === "airconnect"}
-                  aria-controls="collapse-aereo-airconnect"
+                  aria-expanded={activeAereoAccordion === "airconnect-fca"}
+                  aria-controls="collapse-aereo-airconnect-fca"
                   onClick={() =>
                     setActiveAereoAccordion((prev) =>
-                      prev === "airconnect" ? null : "airconnect",
+                      prev === "airconnect-fca" ? null : "airconnect-fca",
                     )
                   }
                 >
                   <i className="bi bi-globe-europe-africa me-3 text-primary fs-4" />
-                  AirConnect España
+                  FCA AirConnect España
                 </button>
               </h2>
               <div
-                id="collapse-aereo-airconnect"
+                id="collapse-aereo-airconnect-fca"
                 className={`accordion-collapse collapse ${
-                  activeAereoAccordion === "airconnect" ? "show" : ""
+                  activeAereoAccordion === "airconnect-fca" ? "show" : ""
                 }`}
-                aria-labelledby="heading-aereo-airconnect"
+                aria-labelledby="heading-aereo-airconnect-fca"
               >
                 <div className="accordion-body p-4">
                   <small className="text-muted d-block mb-3">
-                    Margen aplicado a las tarifas AirConnect España→SCL mostradas
-                    al cliente en el Paso 4 (flete, fuel, fees, totales). No se
-                    informa al cliente; es margen interno.
+                    Margen sobre tarifas AirConnect España→SCL con incoterm FCA
+                    (Paso 4). No visible para el cliente.
                   </small>
-
                   {airConnectSpainError && (
                     <div className="alert alert-danger py-2 mb-3">
                       {airConnectSpainError}
                     </div>
                   )}
-
                   <div className="row g-3 mb-4">
                     <div className="col-md-6">
                       <label className="form-label fw-semibold">
-                        Margen de ganancia
+                        Margen de ganancia FCA
                       </label>
                       <div className="input-group" style={{ maxWidth: "220px" }}>
                         <input
                           type="number"
-                          className={`form-control ${editingAirConnectSpain.profitMarkupPct !== undefined ? "border-warning" : ""}`}
-                          value={airConnectSpainMarkupDisplay}
+                          className={`form-control ${editingAirConnectFca.profitMarkupPctFca !== undefined ? "border-warning" : ""}`}
+                          value={airConnectFcaMarkupDisplay}
                           onChange={(e) =>
-                            handleAirConnectSpainMarkupChange(e.target.value)
+                            handleAirConnectFcaMarkupChange(e.target.value)
                           }
                           step="0.1"
                           min="0"
@@ -1046,23 +1079,22 @@ export default function GestionCotizador() {
                         Multiplicador:{" "}
                         <strong>
                           {airConnectProfitMultiplier(
-                            Number(airConnectSpainMarkupDisplay) || 0,
+                            Number(airConnectFcaMarkupDisplay) || 0,
                           ).toFixed(4)}
                           ×
                         </strong>
                       </small>
                     </div>
                   </div>
-
                   <div className="d-flex justify-content-end mt-3 pt-3 border-top">
                     <button
                       type="button"
                       className="btn btn-primary"
                       disabled={
-                        Object.keys(editingAirConnectSpain).length === 0 ||
+                        Object.keys(editingAirConnectFca).length === 0 ||
                         airConnectSpainSaving
                       }
-                      onClick={handleSaveAirConnectSpain}
+                      onClick={handleSaveAirConnectFca}
                     >
                       {airConnectSpainSaving ? (
                         <>
@@ -1072,12 +1104,98 @@ export default function GestionCotizador() {
                       ) : (
                         <>
                           <i className="bi bi-save me-2" />
-                          Guardar cambios AirConnect España
+                          Guardar cambios FCA
                         </>
                       )}
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
 
+            <div className="accordion-item shadow-sm border rounded-3 mb-3 overflow-hidden">
+              <h2 className="accordion-header" id="heading-aereo-airconnect-exw">
+                <button
+                  className={`accordion-button py-3 px-4 fs-5 fw-semibold ${
+                    activeAereoAccordion === "airconnect-exw" ? "" : "collapsed"
+                  }`}
+                  type="button"
+                  aria-expanded={activeAereoAccordion === "airconnect-exw"}
+                  aria-controls="collapse-aereo-airconnect-exw"
+                  onClick={() =>
+                    setActiveAereoAccordion((prev) =>
+                      prev === "airconnect-exw" ? null : "airconnect-exw",
+                    )
+                  }
+                >
+                  <i className="bi bi-mailbox me-3 text-primary fs-4" />
+                  EXW AirConnect España
+                </button>
+              </h2>
+              <div
+                id="collapse-aereo-airconnect-exw"
+                className={`accordion-collapse collapse ${
+                  activeAereoAccordion === "airconnect-exw" ? "show" : ""
+                }`}
+                aria-labelledby="heading-aereo-airconnect-exw"
+              >
+                <div className="accordion-body p-4">
+                  <small className="text-muted d-block mb-3">
+                    Margen sobre tarifas AirConnect España→SCL con incoterm EXW
+                    (código postal + Paso 4). No visible para el cliente.
+                  </small>
+                  <div className="row g-3 mb-4">
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">
+                        Margen de ganancia EXW
+                      </label>
+                      <div className="input-group" style={{ maxWidth: "220px" }}>
+                        <input
+                          type="number"
+                          className={`form-control ${editingAirConnectExw.profitMarkupPctExw !== undefined ? "border-warning" : ""}`}
+                          value={airConnectExwMarkupDisplay}
+                          onChange={(e) =>
+                            handleAirConnectExwMarkupChange(e.target.value)
+                          }
+                          step="0.1"
+                          min="0"
+                        />
+                        <span className="input-group-text">%</span>
+                      </div>
+                      <small className="text-muted">
+                        Multiplicador:{" "}
+                        <strong>
+                          {airConnectProfitMultiplier(
+                            Number(airConnectExwMarkupDisplay) || 0,
+                          ).toFixed(4)}
+                          ×
+                        </strong>
+                      </small>
+                    </div>
+                  </div>
+                  <div className="d-flex justify-content-end mt-3 pt-3 border-top">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={
+                        Object.keys(editingAirConnectExw).length === 0 ||
+                        airConnectSpainSaving
+                      }
+                      onClick={handleSaveAirConnectExw}
+                    >
+                      {airConnectSpainSaving ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" />
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <i className="bi bi-save me-2" />
+                          Guardar cambios EXW
+                        </>
+                      )}
+                    </button>
+                  </div>
                   {airConnectSpainConfig.updatedBy && (
                     <p className="text-muted small mb-0 mt-2">
                       Última actualización por:{" "}

@@ -13,7 +13,7 @@ export interface AirConnectCalculateParcel {
   nonStackable: boolean;
 }
 
-export interface AirConnectCalculateQuotationInput {
+export interface AirConnectFcaCalculateInput {
   airportOrigin: string;
   airportDest: string;
   parcelsInput: {
@@ -24,6 +24,20 @@ export interface AirConnectCalculateQuotationInput {
   };
   contactCompanyName?: string;
 }
+
+export interface AirConnectExwCalculateInput {
+  postalCode: string;
+  airportDest: string;
+  parcelsInput: {
+    incoterm: "EXW";
+    parcels: AirConnectCalculateParcel[];
+  };
+  contactCompanyName?: string;
+}
+
+export type AirConnectCalculateQuotationInput =
+  | AirConnectFcaCalculateInput
+  | AirConnectExwCalculateInput;
 
 export const SPAIN_COUNTRY_CODE = "ES";
 export const SANTIAGO_IATA = "SCL";
@@ -45,10 +59,10 @@ export const SPAIN_AIRCONNECT_ORIGINS = [
   { value: "BIO", label: "Bilbao" },
 ] as const;
 
-const DEFAULT_AIR_CONNECT_BASE_URL =
-  "https://57aaug0p0i.execute-api.eu-west-1.amazonaws.com/dev";
-
 export const AIR_CONNECT_CURRENCY = "EUR";
+
+export const AIR_CONNECT_EXW_POSTAL_ERROR =
+  "El código postal ingresado no es válido o no está disponible. Verifícalo e inténtalo de nuevo.";
 
 export const LINBIS_GASTOS_TOTALES_SERVICE = {
   id: 140869,
@@ -75,36 +89,36 @@ export interface AirConnectAirFreightOffer {
 
 export interface AirConnectQuotationResponse {
   quotationId?: string;
+  postalCode?: string;
   origin: string;
   destination: string;
+  cityName?: string;
   totalLand?: number;
   FCA?: number;
   PNS?: number;
   THC?: number;
+  airportTransfer?: number;
   airFreight: AirConnectAirFreightOffer[];
   totalAmount: { airline: string; total: number }[];
   parcelsData?: {
     airChargeableWeight?: number;
     grossWeight?: number;
     volume?: number;
+    landChargeableWeight?: number;
   };
 }
 
-export function isAirConnectSpainSclFlow(params: {
-  routeMode: "recurrente" | "noRecurrente" | null;
-  paisValue?: string;
-  destValue?: string;
-  incoterm: string;
-  isSimulationMode: boolean;
-}): boolean {
-  return (
-    !params.isSimulationMode &&
-    params.routeMode === "recurrente" &&
-    params.paisValue === SPAIN_COUNTRY_CODE &&
-    params.destValue === SANTIAGO_IATA &&
-    params.incoterm === "FCA"
-  );
-}
+export type AirConnectCargoInput = {
+  overallDimsAndWeight: boolean;
+  manualWeight: number;
+  manualVolume: number;
+  pieces: {
+    weight: number;
+    totalVolume: number;
+    volume: number;
+    noApilable: boolean;
+  }[];
+};
 
 /** Volumen (m³) → lado de cubo equivalente en cm para la API */
 export function volumeM3ToCubeSidesCm(volumeM3: number): {
@@ -147,7 +161,19 @@ export function buildAirConnectParcels(params: {
     nonStackable = params.pieces.some((p) => p.noApilable);
   }
 
-  const { length, width, height } = volumeM3ToCubeSidesCm(volumeM3);
+  let length: number;
+  let width: number;
+  let height: number;
+  if (volumeM3 > 0) {
+    ({ length, width, height } = volumeM3ToCubeSidesCm(volumeM3));
+  } else if (grossWeight > 0) {
+    // Peso sin volumen declarado: cubo mínimo para que la API acepte el bulto
+    length = 10;
+    width = 10;
+    height = 10;
+  } else {
+    ({ length, width, height } = { length: 0, width: 0, height: 0 });
+  }
 
   return [
     {
@@ -161,19 +187,10 @@ export function buildAirConnectParcels(params: {
   ];
 }
 
-export function buildAirConnectCalculateInput(params: {
+export function buildAirConnectFcaCalculateInput(params: {
   airportOrigin: string;
   contactCompanyName: string;
-  overallDimsAndWeight: boolean;
-  manualWeight: number;
-  manualVolume: number;
-  pieces: {
-    weight: number;
-    totalVolume: number;
-    volume: number;
-    noApilable: boolean;
-  }[];
-}): AirConnectCalculateQuotationInput {
+} & AirConnectCargoInput): AirConnectFcaCalculateInput {
   return {
     airportOrigin: params.airportOrigin,
     airportDest: SANTIAGO_IATA,
@@ -181,16 +198,29 @@ export function buildAirConnectCalculateInput(params: {
       incoterm: "FCA",
       awbType: "CONSOLIDATED",
       parcelsOrigin: "AIRPORT",
-      parcels: buildAirConnectParcels({
-        overallDimsAndWeight: params.overallDimsAndWeight,
-        manualWeight: params.manualWeight,
-        manualVolume: params.manualVolume,
-        pieces: params.pieces,
-      }),
+      parcels: buildAirConnectParcels(params),
     },
     contactCompanyName: params.contactCompanyName,
   };
 }
+
+export function buildAirConnectExwCalculateInput(params: {
+  postalCode: string;
+  contactCompanyName: string;
+} & AirConnectCargoInput): AirConnectExwCalculateInput {
+  return {
+    postalCode: params.postalCode.trim(),
+    airportDest: SANTIAGO_IATA,
+    parcelsInput: {
+      incoterm: "EXW",
+      parcels: buildAirConnectParcels(params),
+    },
+    contactCompanyName: params.contactCompanyName,
+  };
+}
+
+/** @deprecated Usar buildAirConnectFcaCalculateInput */
+export const buildAirConnectCalculateInput = buildAirConnectFcaCalculateInput;
 
 export interface AirConnectPricedOffer extends AirConnectAirFreightOffer {
   key: string;
@@ -216,7 +246,7 @@ export function priceAirConnectOffer(
   offer: AirConnectAirFreightOffer,
   chargeableWeight: number,
   totalLand: number,
-  profitMarkupPct = DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPct,
+  profitMarkupPct = DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctFca,
 ): Omit<AirConnectPricedOffer, "key"> {
   const apiFreight = chargeableWeight * offer.rate;
   const apiFuel = offer.fuelSurcharge ?? 0;
@@ -248,7 +278,7 @@ export function priceAirConnectOffer(
 export function buildAirConnectPricedOffers(
   quote: AirConnectQuotationResponse,
   fallbackChargeableWeight = 0,
-  profitMarkupPct = DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPct,
+  profitMarkupPct = DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctFca,
 ): AirConnectPricedOffer[] {
   const chargeableWeight =
     quote.parcelsData?.airChargeableWeight ?? fallbackChargeableWeight;
@@ -272,6 +302,21 @@ export function matchAirConnectTotalAmount(
     t.airline.toLowerCase().includes(offer.airline.trim().toLowerCase()),
   );
   return loose?.total ?? null;
+}
+
+export function resolveAirConnectOriginLabel(
+  quote: Pick<AirConnectQuotationResponse, "origin" | "cityName" | "postalCode">,
+): { value: string; label: string } {
+  const iata = quote.origin?.trim() || "";
+  const city = quote.cityName?.trim();
+  const postal = quote.postalCode?.trim();
+  if (city && iata) {
+    return { value: iata, label: `${city} (${iata})` };
+  }
+  if (postal) {
+    return { value: iata || postal, label: `CP ${postal}${iata ? ` → ${iata}` : ""}` };
+  }
+  return { value: iata, label: iata || "España" };
 }
 
 export function createAirConnectMockRuta(
@@ -307,26 +352,61 @@ export function createAirConnectMockRuta(
   };
 }
 
+export function createAirConnectMockRutaFromPostal(postalCode: string): RutaAerea {
+  const trimmed = postalCode.trim();
+  return createAirConnectMockRuta({
+    value: trimmed,
+    label: `CP ${trimmed} (España)`,
+  });
+}
+
+export function mapAirConnectQuoteToRuta(
+  quote: AirConnectQuotationResponse,
+): RutaAerea {
+  const origin = resolveAirConnectOriginLabel(quote);
+  return createAirConnectMockRuta(origin);
+}
+
+function isAirConnectNetworkError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    err.name === "TypeError" ||
+    msg.includes("failed to fetch") ||
+    msg.includes("networkerror") ||
+    msg.includes("load failed")
+  );
+}
+
+export function formatAirConnectFetchError(
+  err: unknown,
+  incoterm: "FCA" | "EXW",
+): string {
+  if (incoterm === "EXW") {
+    return AIR_CONNECT_EXW_POSTAL_ERROR;
+  }
+  if (isAirConnectNetworkError(err)) {
+    return "No se pudo conectar con el servicio de tarifas. Inténtalo de nuevo en unos momentos.";
+  }
+  return err instanceof Error
+    ? err.message
+    : "No se pudo obtener tarifas de AirConnect";
+}
+
 export async function fetchAirConnectQuotation(
   input: AirConnectCalculateQuotationInput,
+  authToken?: string | null,
 ): Promise<AirConnectQuotationResponse> {
-  const apiKey = import.meta.env.VITE_API_KEY_3LG;
-  const baseUrl =
-    import.meta.env.VITE_AIR_CONNECT_BASE_URL || DEFAULT_AIR_CONNECT_BASE_URL;
-
-  if (!apiKey) {
-    throw new Error(
-      "Falta VITE_API_KEY_3LG en el entorno. Agrega la clave de AirConnect al archivo .env.",
-    );
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
   }
 
-  const url = `${baseUrl.replace(/\/+$/, "")}/api/quotations/calculate`;
-  const response = await fetch(url, {
+  const response = await fetch("/api/air-connect-spain/quotation/calculate", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Api-Key": apiKey,
-    },
+    headers,
     body: JSON.stringify(input),
   });
 
@@ -336,6 +416,11 @@ export async function fetchAirConnectQuotation(
     | null;
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error(
+        "Sesión no válida. Cierra sesión, vuelve a entrar e inténtalo de nuevo.",
+      );
+    }
     const message =
       (body && "error" in body && typeof body.error === "string"
         ? body.error

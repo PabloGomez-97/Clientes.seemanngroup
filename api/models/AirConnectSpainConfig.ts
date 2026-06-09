@@ -2,12 +2,14 @@ import mongoose from "mongoose";
 
 // ============================================================================
 // MODELO: Configuración AirConnect España (singleton)
-// Margen de ganancia aplicado a tarifas mostradas al cliente
+// Margen de ganancia FCA y EXW sobre costos AirConnect
 // ============================================================================
 
 export interface IAirConnectSpainConfig {
-  /** Margen de ganancia sobre costos AirConnect (porcentaje, ej. 15 = +15%) */
-  profitMarkupPct: number;
+  profitMarkupPctFca: number;
+  profitMarkupPctExw: number;
+  /** @deprecated Legado — se migra a profitMarkupPctFca al leer */
+  profitMarkupPct?: number;
   updatedBy: string;
 }
 
@@ -22,18 +24,25 @@ export type AirConnectSpainConfigModel =
   mongoose.Model<IAirConnectSpainConfigDoc>;
 
 export const DEFAULT_AIR_CONNECT_SPAIN_CONFIG: IAirConnectSpainConfig = {
-  profitMarkupPct: 15,
+  profitMarkupPctFca: 15,
+  profitMarkupPctExw: 15,
   updatedBy: "system",
 };
 
 export const AirConnectSpainConfigSchema =
   new mongoose.Schema<IAirConnectSpainConfigDoc>(
     {
-      profitMarkupPct: {
+      profitMarkupPctFca: {
         type: Number,
         required: true,
-        default: DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPct,
+        default: DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctFca,
       },
+      profitMarkupPctExw: {
+        type: Number,
+        required: true,
+        default: DEFAULT_AIR_CONNECT_SPAIN_CONFIG.profitMarkupPctExw,
+      },
+      profitMarkupPct: { type: Number, required: false },
       updatedBy: {
         type: String,
         required: true,

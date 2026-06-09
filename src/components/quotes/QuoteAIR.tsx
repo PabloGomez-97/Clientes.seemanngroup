@@ -113,16 +113,16 @@ import {
   SANTIAGO_DESTINATION_OPTION,
   SPAIN_AIRCONNECT_ORIGINS,
   AIR_CONNECT_CURRENCY,
-  buildAirConnectCalculateInput,
-  buildAirConnectParcels,
-  buildAirConnectPricedOffers,
-  createAirConnectMockRuta,
-  fetchAirConnectQuotation,
-  isAirConnectSpainSclFlow,
   LINBIS_GASTOS_TOTALES_SERVICE,
   type AirConnectPricedOffer,
-  type AirConnectQuotationResponse,
 } from "../../services/airConnectSpainQuote";
+import {
+  AirConnectSpainStep1Fields,
+  AirConnectSpainStep4Panel,
+  useAirConnectSpain,
+  isAirConnectSpainFcaFlow,
+  isAirConnectSpainFlow,
+} from "./AirConnectSpain";
 import {
   SIMULATION_MISSING_VALUE,
   getSimulationIncomeRate,
@@ -384,13 +384,6 @@ function QuoteAPITester({
   const [rutaSeleccionada, setRutaSeleccionada] = useState<RutaAerea | null>(
     null,
   );
-  const [airConnectQuote, setAirConnectQuote] =
-    useState<AirConnectQuotationResponse | null>(null);
-  const [airConnectLoading, setAirConnectLoading] = useState(false);
-  const [airConnectError, setAirConnectError] = useState<string | null>(null);
-  const [selectedAirConnectKey, setSelectedAirConnectKey] = useState<
-    string | null
-  >(null);
   const [showAllRoutes, setShowAllRoutes] = useState(false);
 
   // Estado para ordenamiento de columnas aéreas
@@ -530,7 +523,7 @@ function QuoteAPITester({
     ? (destNR?.value ?? null)
     : (destinationSeleccionado?.value ?? null);
 
-  const isAirConnectSpainScl = isAirConnectSpainSclFlow({
+  const isAirConnectSpainFca = isAirConnectSpainFcaFlow({
     routeMode,
     paisValue: paisSeleccionado?.value,
     destValue: destinationSeleccionado?.value,
@@ -549,7 +542,7 @@ function QuoteAPITester({
   }, [originIndex]);
 
   const opcionesOriginPais = useMemo((): SelectOption[] => {
-    if (isAirConnectSpainScl) {
+    if (isAirConnectSpainFca) {
       return [...SPAIN_AIRCONNECT_ORIGINS];
     }
     if (!activePais || !activeOriginIndex) return [];
@@ -573,7 +566,7 @@ function QuoteAPITester({
       isRouteEligible,
     );
   }, [
-    isAirConnectSpainScl,
+    isAirConnectSpainFca,
     activePais,
     activeOriginIndex,
     isNoRecurrente,
@@ -1044,27 +1037,14 @@ function QuoteAPITester({
     setSimulatedAirFreightRate("");
   }, [isSimulationMode, originNR?.value, destNR?.value, routeMode]);
 
-  const prevAirConnectOriginRef = useRef<string | null>(null);
-
-  // Auto-abrir sección 2 cuando se seleccione una ruta (o aeropuerto AirConnect)
   useEffect(() => {
-    if (isAirConnectSpainScl && originSeleccionado && currentStep === 1) {
-      const originValue = originSeleccionado.value;
-      if (originValue === prevAirConnectOriginRef.current) {
-        return;
-      }
-      prevAirConnectOriginRef.current = originValue;
-      if (!rutaSeleccionada) {
-        setRutaSeleccionada(createAirConnectMockRuta(originSeleccionado));
-      }
-      advanceToStep(2);
-      trackStep({ step: "commodity", stepNumber: 2, totalSteps: 3 });
-      return;
-    }
-    if (!isAirConnectSpainScl || !originSeleccionado) {
-      prevAirConnectOriginRef.current = null;
-    }
-    if (rutaSeleccionada && currentStep === 1) {
+    if (rutaSeleccionada && currentStep === 1 && !isAirConnectSpainFlow({
+      routeMode,
+      paisValue: paisSeleccionado?.value,
+      destValue: destinationSeleccionado?.value,
+      incoterm,
+      isSimulationMode,
+    })) {
       advanceToStep(2);
       trackStep({ step: "commodity", stepNumber: 2, totalSteps: 3 });
     }
@@ -1082,8 +1062,6 @@ function QuoteAPITester({
       );
     }
   }, [
-    isAirConnectSpainScl,
-    originSeleccionado,
     rutaSeleccionada,
     currentStep,
     trackRouteSelected,
@@ -1092,29 +1070,11 @@ function QuoteAPITester({
     destinationSeleccionado?.label,
     originNR?.label,
     destNR?.label,
-  ]);
-
-  useEffect(() => {
-    setAirConnectQuote(null);
-    setAirConnectError(null);
-    setSelectedAirConnectKey(null);
-    if (btnPhase === "done") {
-      setBtnPhase("idle");
-      setResponse(null);
-      pdfFallbackRef.current = null;
-    }
-  }, [
-    isAirConnectSpainScl,
-    originSeleccionado?.value,
-    overallDimsAndWeight,
-    manualWeight,
-    manualVolume,
-    piecesData,
-    seguroActivo,
-    aduanaActivo,
-    ultimaMillaActivo,
-    valorMercaderia,
-    valorProductoAduana,
+    routeMode,
+    paisSeleccionado?.value,
+    destinationSeleccionado?.value,
+    incoterm,
+    isSimulationMode,
   ]);
 
   const handleToggleSeguro = (checked: boolean) => {
@@ -1236,141 +1196,6 @@ function QuoteAPITester({
     }
   }, [canProceedToStep4, currentStep]);
 
-  useEffect(() => {
-    if (currentStep !== 4 || !isAirConnectSpainScl || !originSeleccionado?.value) {
-      return;
-    }
-    if (!canProceedToStep3) return;
-
-    const parcelProbe = buildAirConnectParcels({
-      overallDimsAndWeight,
-      manualWeight,
-      manualVolume,
-      pieces: piecesData,
-    })[0];
-    if (
-      !parcelProbe.weight ||
-      !parcelProbe.length ||
-      !parcelProbe.width ||
-      !parcelProbe.height
-    ) {
-      return;
-    }
-
-    let cancelled = false;
-    const loadQuote = async () => {
-      setAirConnectLoading(true);
-      setAirConnectError(null);
-      try {
-        const input = buildAirConnectCalculateInput({
-          airportOrigin: originSeleccionado.value,
-          contactCompanyName:
-            clienteSeleccionado?.nombreuser ||
-            clienteSeleccionado?.username ||
-            effectiveUsername ||
-            "Seemann Group",
-          overallDimsAndWeight,
-          manualWeight,
-          manualVolume,
-          pieces: piecesData,
-        });
-        const data = await fetchAirConnectQuotation(input);
-        if (!cancelled) {
-          setAirConnectQuote(data);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setAirConnectError(
-            err instanceof Error
-              ? err.message
-              : "No se pudo obtener tarifas de AirConnect",
-          );
-          setAirConnectQuote(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setAirConnectLoading(false);
-        }
-      }
-    };
-
-    void loadQuote();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    currentStep,
-    isAirConnectSpainScl,
-    originSeleccionado?.value,
-    canProceedToStep3,
-    overallDimsAndWeight,
-    manualWeight,
-    manualVolume,
-    piecesData,
-    clienteSeleccionado,
-    effectiveUsername,
-  ]);
-
-  const resetAirConnectWizardToStep1 = () => {
-    prevAirConnectOriginRef.current = null;
-
-    setPaisSeleccionado(null);
-    setDestinationSeleccionado(null);
-    setIncoterm("");
-    setOriginSeleccionado(null);
-    setRutaSeleccionada(null);
-    setSinTarifa(false);
-    setNearbyAirportSelected(null);
-    setPickupFromAddress("");
-    setPickupCoords(null);
-    setExwResolvedDistanceKm(null);
-    setShowAllRoutes(false);
-
-    setAirConnectQuote(null);
-    setAirConnectError(null);
-    setSelectedAirConnectKey(null);
-    setAirConnectLoading(false);
-
-    setOverallDimsAndWeight(false);
-    setDescription(DEFAULT_OVERALL_AIR_DESCRIPTION);
-    setOverallPiecesData([createOverallPieceAir("1", 100, 0.48)]);
-    setPiecesData([createInitialAirPieceData()]);
-    setOpenAccordions(["1"]);
-    setOpenOverallAccordions(["1"]);
-    setWeightError(null);
-    setDimensionError(null);
-    setOversizeError(null);
-    setHeightError(null);
-    setCargoFlightWarning(null);
-    setLowHeightWarning(null);
-
-    setSeguroActivo(false);
-    setValorMercaderia("");
-    setAduanaActivo(false);
-    setValorProductoAduana("");
-    setAduanaMaster(null);
-    setUltimaMillaActivo(false);
-    setUltimaMillaDireccion("");
-    setUltimaMillaVespucioZone(null);
-    setUltimaMillaBracket(null);
-    setGastolocal(false);
-    setLiveTrackingActivo(false);
-
-    setBtnPhase("idle");
-    setResponse(null);
-    pdfFallbackRef.current = null;
-    setMaxStepReached(1);
-  };
-
-  // Navegación del wizard: solo permitir retroceder a pasos ya alcanzados.
-  const goToStep = (step: number) => {
-    if (step >= 1 && step <= maxStepReached && step < currentStep) {
-      if (step === 1 && isAirConnectSpainScl) {
-        resetAirConnectWizardToStep1();
-      }
-      setCurrentStep(step);
-    }
-  };
   const advanceToStep = (step: number) => {
     setCurrentStep(step);
     setMaxStepReached((prev) => Math.max(prev, step));
@@ -2026,18 +1851,6 @@ function QuoteAPITester({
     });
   }, []);
 
-  const recurrenteRouteReady =
-    !!paisSeleccionado &&
-    !!destinationSeleccionado &&
-    !!incoterm &&
-    (isAirConnectSpainScl
-      ? !!originSeleccionado
-      : incoterm === "FCA"
-        ? !!originSeleccionado
-        : incoterm === "EXW"
-          ? !!pickupCoords && !!originSeleccionado
-          : false);
-
   const nrRouteReady =
     !!paisNR &&
     !!destNR &&
@@ -2217,19 +2030,6 @@ function QuoteAPITester({
     setPickupFromAddress("");
     setPickupCoords(null);
     setExwResolvedDistanceKm(null);
-  };
-
-  const handleOriginRecurrenteChange = (option: SelectOption | null) => {
-    setOriginSeleccionado(option);
-    setAirConnectQuote(null);
-    setAirConnectError(null);
-    if (isAirConnectSpainScl && option) {
-      setRutaSeleccionada(createAirConnectMockRuta(option));
-      setSinTarifa(false);
-      return;
-    }
-    setRutaSeleccionada(null);
-    setSinTarifa(false);
   };
 
   const handleOriginNRChange = (option: SelectOption | null) => {
@@ -2457,6 +2257,134 @@ function QuoteAPITester({
     );
   };
 
+  const airConnectContactCompanyName =
+    clienteSeleccionado?.nombreuser ||
+    clienteSeleccionado?.username ||
+    effectiveUsername ||
+    "Seemann Group";
+
+  const airConnect = useAirConnectSpain({
+    routeMode,
+    paisValue: paisSeleccionado?.value,
+    destValue: destinationSeleccionado?.value,
+    incoterm,
+    isSimulationMode,
+    originSeleccionado,
+    rutaSeleccionada,
+    setRutaSeleccionada,
+    currentStep,
+    canProceedToStep3,
+    cargo: {
+      overallDimsAndWeight,
+      manualWeight,
+      manualVolume,
+      pieces: piecesData,
+    },
+    contactCompanyName: airConnectContactCompanyName,
+    authToken: token,
+    config: airConnectSpainConfig,
+    pesoChargeable,
+    step3: {
+      ultimaMillaActivo,
+      calculateUltimaMilla,
+      seguroActivo,
+      valorMercaderia,
+      aduanaActivo,
+      valorProductoAduana,
+      aduanaConfig,
+      gastolocal,
+    },
+    onAdvanceToStep2: () => {
+      advanceToStep(2);
+      trackStep({ step: "commodity", stepNumber: 2, totalSteps: 3 });
+    },
+    onCargoInputsChanged: () => {
+      if (btnPhase === "done") {
+        setBtnPhase("idle");
+        setResponse(null);
+        pdfFallbackRef.current = null;
+      }
+    },
+  });
+
+  const resetAirConnectWizardToStep1 = () => {
+    airConnect.resetAirConnectState();
+
+    setPaisSeleccionado(null);
+    setDestinationSeleccionado(null);
+    setIncoterm("");
+    setOriginSeleccionado(null);
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
+    setNearbyAirportSelected(null);
+    setPickupFromAddress("");
+    setPickupCoords(null);
+    setExwResolvedDistanceKm(null);
+    setShowAllRoutes(false);
+
+    setOverallDimsAndWeight(false);
+    setDescription(DEFAULT_OVERALL_AIR_DESCRIPTION);
+    setOverallPiecesData([createOverallPieceAir("1", 100, 0.48)]);
+    setPiecesData([createInitialAirPieceData()]);
+    setOpenAccordions(["1"]);
+    setOpenOverallAccordions(["1"]);
+    setWeightError(null);
+    setDimensionError(null);
+    setOversizeError(null);
+    setHeightError(null);
+    setCargoFlightWarning(null);
+    setLowHeightWarning(null);
+
+    setSeguroActivo(false);
+    setValorMercaderia("");
+    setAduanaActivo(false);
+    setValorProductoAduana("");
+    setAduanaMaster(null);
+    setUltimaMillaActivo(false);
+    setUltimaMillaDireccion("");
+    setUltimaMillaVespucioZone(null);
+    setUltimaMillaBracket(null);
+    setGastolocal(false);
+    setLiveTrackingActivo(false);
+
+    setBtnPhase("idle");
+    setResponse(null);
+    pdfFallbackRef.current = null;
+    setMaxStepReached(1);
+  };
+
+  const goToStep = (step: number) => {
+    if (step >= 1 && step <= maxStepReached && step < currentStep) {
+      if (step === 1 && airConnect.isActive) {
+        resetAirConnectWizardToStep1();
+      }
+      setCurrentStep(step);
+    }
+  };
+
+  const recurrenteRouteReady =
+    !!paisSeleccionado &&
+    !!destinationSeleccionado &&
+    !!incoterm &&
+    (airConnect.isActive
+      ? airConnect.isRouteStepReady
+      : incoterm === "FCA"
+        ? !!originSeleccionado
+        : incoterm === "EXW"
+          ? !!pickupCoords && !!originSeleccionado
+          : false);
+
+  const handleOriginRecurrenteChange = (option: SelectOption | null) => {
+    setOriginSeleccionado(option);
+    if (airConnect.isFca) {
+      airConnect.handleOriginChange(option);
+      setSinTarifa(false);
+      return;
+    }
+    setRutaSeleccionada(null);
+    setSinTarifa(false);
+  };
+
   const resetUltimaMilla = () => {
     setUltimaMillaActivo(false);
     setUltimaMillaDireccion("");
@@ -2556,74 +2484,6 @@ function QuoteAPITester({
     return result.total;
   };
 
-  const calculateAirConnectStep3Extras = (transportBaseline: number): number => {
-    let extra = 0;
-    if (ultimaMillaActivo) {
-      extra += calculateUltimaMilla();
-    }
-    const valorCarga = parseFloat(valorMercaderia.replace(",", ".")) || 0;
-    if (seguroActivo) {
-      extra += Math.max((valorCarga + transportBaseline) * 1.1 * 0.0025, 25);
-    }
-    if (aduanaActivo && aduanaConfig) {
-      const valorProd = parseFloat(valorProductoAduana.replace(",", ".")) || 0;
-      if (valorProd > 0) {
-        const seguroParaCIF = seguroActivo
-          ? Math.max((valorCarga + transportBaseline) * 1.1 * 0.0025, 25)
-          : (valorProd + transportBaseline) * 1.1 * 0.02;
-        extra += calculateAduanaCharges(
-          valorProd,
-          transportBaseline,
-          seguroParaCIF,
-          AIR_CONNECT_CURRENCY as SupportedCurrency,
-          aduanaConfig,
-        ).total;
-      }
-    }
-    if (gastolocal) {
-      extra += 194.4;
-    }
-    return extra;
-  };
-
-  const airConnectPricedOffers = useMemo((): AirConnectPricedOffer[] => {
-    if (!airConnectQuote) return [];
-    return buildAirConnectPricedOffers(
-      airConnectQuote,
-      pesoChargeable,
-      airConnectSpainConfig.profitMarkupPct,
-    );
-  }, [airConnectQuote, pesoChargeable, airConnectSpainConfig.profitMarkupPct]);
-
-  const airConnectStep3Baseline = useMemo(() => {
-    if (airConnectPricedOffers.length === 0) return 0;
-    return Math.min(...airConnectPricedOffers.map((o) => o.apiWithLand));
-  }, [airConnectPricedOffers]);
-
-  const airConnectStep3Extra = useMemo(
-    () => calculateAirConnectStep3Extras(airConnectStep3Baseline),
-    [
-      airConnectStep3Baseline,
-      ultimaMillaActivo,
-      seguroActivo,
-      aduanaActivo,
-      gastolocal,
-      valorMercaderia,
-      valorProductoAduana,
-      aduanaConfig,
-      ultimaMillaBracket,
-      ultimaMillaVespucioZone,
-      totalRealWeightKg,
-    ],
-  );
-
-  const selectedAirConnectOffer = useMemo(
-    () =>
-      airConnectPricedOffers.find((o) => o.key === selectedAirConnectKey) ??
-      null,
-    [airConnectPricedOffers, selectedAirConnectKey],
-  );
-
   const buildAirConnectLinbisCommodities = () => {
     if (overallDimsAndWeight) {
       return overallPiecesData.map((piece) => ({
@@ -2680,7 +2540,7 @@ function QuoteAPITester({
   const getAirConnectLinbisPayload = (offer: AirConnectPricedOffer) => {
     if (!rutaSeleccionada) return null;
 
-    const grandTotal = offer.incomeWithLand + airConnectStep3Extra;
+    const grandTotal = offer.incomeWithLand + airConnect.step3Extra;
     const airlineLabel = offer.via
       ? `${offer.airline} (vía ${offer.via})`
       : offer.airline;
@@ -2735,7 +2595,7 @@ function QuoteAPITester({
 
   const buildAirConnectPdfCharges = (offer: AirConnectPricedOffer) => {
     const chargeableWeight =
-      airConnectQuote?.parcelsData?.airChargeableWeight ?? pesoChargeable;
+      airConnect.quote?.parcelsData?.airChargeableWeight ?? pesoChargeable;
     const airlineLabel = offer.via
       ? `${offer.airline} (${offer.via})`
       : offer.airline;
@@ -2882,7 +2742,7 @@ function QuoteAPITester({
       const pdfCharges = buildAirConnectPdfCharges(offer);
       const totalCharges = pdfCharges.reduce((sum, c) => sum + c.amount, 0);
       const chargeableWeight =
-        airConnectQuote?.parcelsData?.airChargeableWeight ?? pesoChargeable;
+        airConnect.quote?.parcelsData?.airChargeableWeight ?? pesoChargeable;
       const airlineLabel = offer.via
         ? `${offer.airline} (${offer.via})`
         : offer.airline;
@@ -3060,7 +2920,7 @@ function QuoteAPITester({
   };
 
   const testAPIAirConnect = async () => {
-    if (!selectedAirConnectOffer || !rutaSeleccionada) {
+    if (!airConnect.selectedOffer || !rutaSeleccionada) {
       setError("Selecciona una aerolínea antes de generar la cotización");
       return;
     }
@@ -3104,7 +2964,7 @@ function QuoteAPITester({
         console.warn("[QuoteAIR] pre Linbis:", e);
       }
 
-      const payload = getAirConnectLinbisPayload(selectedAirConnectOffer);
+      const payload = getAirConnectLinbisPayload(airConnect.selectedOffer);
       if (!payload) {
         throw new Error("No se pudo armar la cotización para Linbis");
       }
@@ -3135,7 +2995,7 @@ function QuoteAPITester({
           detalles: {
             origen: originSeleccionado?.label || "",
             destino: destinationSeleccionado?.label || "",
-            carrier: selectedAirConnectOffer.airline,
+            carrier: airConnect.selectedOffer.airline,
             incoterm,
           },
           clienteAfectado: effectiveUsername,
@@ -3143,16 +3003,16 @@ function QuoteAPITester({
       }
 
       trackComplete({
-        origen: originSeleccionado?.label || "",
+        origen: originSeleccionado?.label || rutaSeleccionada?.origin || "",
         destino: destinationSeleccionado?.label || "",
-        carrier: selectedAirConnectOffer.airline,
+        carrier: airConnect.selectedOffer.airline,
         incoterm,
         tipo: "cotizacion",
         isRecurring: false,
       });
 
       await generateAirConnectPDF(
-        selectedAirConnectOffer,
+        airConnect.selectedOffer,
         data,
         previousMaxId,
       );
@@ -5735,8 +5595,7 @@ function QuoteAPITester({
                             setIncoterm(next);
                             setRutaSeleccionada(null);
                             setSinTarifa(false);
-                            setAirConnectQuote(null);
-                            setAirConnectError(null);
+                            airConnect.resetAirConnectState();
                             if (next !== "EXW") {
                               setPickupFromAddress("");
                               setPickupCoords(null);
@@ -5761,7 +5620,22 @@ function QuoteAPITester({
                       </div>
                     </div>
 
-                    {incoterm === "FCA" && paisSeleccionado && (
+                    <AirConnectSpainStep1Fields
+                      routeMode={routeMode}
+                      paisValue={paisSeleccionado?.value}
+                      destValue={destinationSeleccionado?.value}
+                      incoterm={incoterm}
+                      isSimulationMode={isSimulationMode}
+                      hasPais={!!paisSeleccionado}
+                      originLabel={t("QuoteAIR.Origen")}
+                      originSeleccionado={originSeleccionado}
+                      originOptions={opcionesOriginPais}
+                      onOriginChange={handleOriginRecurrenteChange}
+                      postalCode={airConnect.postalCode}
+                      onPostalCodeChange={airConnect.setPostalCode}
+                    />
+
+                    {incoterm === "FCA" && paisSeleccionado && !airConnect.isFca && (
                       <div className="row g-3 mb-4">
                         <div className="col-md-6">
                           <AirportSelectorAIR
@@ -5780,7 +5654,8 @@ function QuoteAPITester({
 
                     {incoterm === "EXW" &&
                       paisSeleccionado &&
-                      destinationSeleccionado && (
+                      destinationSeleccionado &&
+                      !airConnect.isExw && (
                         <div className="mb-4 bg-light p-3 rounded border">
                           {originSeleccionado &&
                             exwResolvedDistanceKm != null && (
@@ -5824,7 +5699,7 @@ function QuoteAPITester({
                         </div>
                       )}
 
-                    {isAirConnectSpainScl && recurrenteRouteReady && (
+                    {airConnect.isActive && recurrenteRouteReady && (
                       <div className="alert alert-info py-2 px-3 mb-3 small">
                         <i className="bi bi-airplane me-2"></i>
                         Tarifas por aerolínea se calcularán en el
@@ -5832,7 +5707,7 @@ function QuoteAPITester({
                       </div>
                     )}
 
-                    {recurrenteRouteReady && !isAirConnectSpainScl && (
+                    {recurrenteRouteReady && !airConnect.isActive && (
                       <div className="mt-4" ref={routesRef}>
                         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                           <h6 className="qa-section-label mb-0">
@@ -6689,7 +6564,7 @@ function QuoteAPITester({
               !weightRangeValidation.tienePrecio &&
               rutaSeleccionada &&
               !sinTarifa &&
-              !isAirConnectSpainScl && (
+              !airConnect.isActive && (
                 <WeightRangeAlert
                   validation={weightRangeValidation}
                   pesoChargeable={pesoChargeable}
@@ -7153,194 +7028,44 @@ function QuoteAPITester({
               </div>
             )}
 
-            {isAirConnectSpainScl && (
-              <div className="mb-4">
-                <h6 className="qa-section-label mb-3">
-                  Opciones por aerolínea
-                </h6>
-                {airConnectLoading && (
-                  <div className="text-center py-4 text-muted">
-                    <div className="spinner-border spinner-border-sm me-2" />
-                    Consultando tarifas…
-                  </div>
-                )}
-                {airConnectError && !airConnectLoading && (
-                  <div className="alert alert-danger">{airConnectError}</div>
-                )}
-                {airConnectQuote && !airConnectLoading && (
-                  <>
-                    <div className="p-3 bg-light rounded border mb-3 small">
-                      <div className="row g-2">
-                        <div className="col-6 text-muted">Ruta</div>
-                        <div className="col-6 text-end fw-semibold">
-                          {airConnectQuote.origin} → {airConnectQuote.destination}
-                        </div>
-                        <div className="col-6 text-muted">Peso cobrable (API)</div>
-                        <div className="col-6 text-end fw-semibold">
-                          {(
-                            airConnectQuote.parcelsData?.airChargeableWeight ?? 0
-                          ).toFixed(2)}{" "}
-                          kg
-                        </div>
-                        <div className="col-6 text-muted">Cargos terrestres</div>
-                        <div className="col-6 text-end fw-semibold">
-                          {(airConnectQuote.totalLand ?? 0).toFixed(2)}{" "}
-                          {AIR_CONNECT_CURRENCY}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="qa-routes-table-wrap">
-                      <table className="qa-routes-table">
-                        <thead>
-                          <tr>
-                            <th className="qa-rt-th-select"></th>
-                            <th>Aerolínea</th>
-                            <th>Tramo</th>
-                            <th>Rate EUR/kg</th>
-                            <th>Flete</th>
-                            <th>Fuel</th>
-                            <th>Fees</th>
-                            <th>Total aéreo</th>
-                            <th>Total c/ tierra</th>
-                            {airConnectStep3Extra > 0 ? <th>Serv. adic.</th> : null}
-                            <th>Total estimado</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {[...airConnectPricedOffers]
-                            .sort(
-                              (a, b) =>
-                                a.incomeWithLand +
-                                airConnectStep3Extra -
-                                (b.incomeWithLand + airConnectStep3Extra),
-                            )
-                            .map((offer) => {
-                              const grandTotal =
-                                offer.incomeWithLand + airConnectStep3Extra;
-                              const isSelected =
-                                selectedAirConnectKey === offer.key;
-                              return (
-                                <tr
-                                  key={offer.key}
-                                  className={
-                                    isSelected ? "is-selected" : undefined
-                                  }
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={() =>
-                                    setSelectedAirConnectKey(offer.key)
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (
-                                      e.key === "Enter" ||
-                                      e.key === " "
-                                    ) {
-                                      e.preventDefault();
-                                      setSelectedAirConnectKey(offer.key);
-                                    }
-                                  }}
-                                >
-                                  <td className="qa-rt-td-select">
-                                    <input
-                                      type="radio"
-                                      name="airconnect-offer"
-                                      checked={isSelected}
-                                      onChange={() =>
-                                        setSelectedAirConnectKey(offer.key)
-                                      }
-                                      onClick={(e) => e.stopPropagation()}
-                                    />
-                                  </td>
-                                  <td>
-                                    {offer.airline}
-                                    {offer.via ? (
-                                      <div className="small text-muted">
-                                        vía {offer.via}
-                                      </div>
-                                    ) : null}
-                                  </td>
-                                  <td>{offer.freight}</td>
-                                  <td className="fw-semibold">
-                                    {offer.incomeRate.toFixed(2)}
-                                  </td>
-                                  <td>{offer.incomeFreight.toFixed(2)}</td>
-                                  <td>{offer.fuelAmount.toFixed(2)}</td>
-                                  <td>{offer.feesAmount.toFixed(2)}</td>
-                                  <td>{offer.incomeAirTotal.toFixed(2)}</td>
-                                  <td>{offer.incomeWithLand.toFixed(2)}</td>
-                                  {airConnectStep3Extra > 0 ? (
-                                    <td>{airConnectStep3Extra.toFixed(2)}</td>
-                                  ) : null}
-                                  <td className="fw-bold text-primary">
-                                    {grandTotal.toFixed(2)} {AIR_CONNECT_CURRENCY}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                        </tbody>
-                      </table>
-                    </div>
-                    {selectedAirConnectOffer && (
-                      <div className="quote-submit-row mt-4">
-                        <QuoteGeneratingMessage btnPhase={btnPhase} />
-                        {btnPhase !== "done" ? (
-                          <button
-                            type="button"
-                            className={`qa-btn qa-btn-primary quote-submit-btn${btnPhase !== "idle" ? " is-morphed" : ""}`}
-                            onClick={() => {
-                              setTipoAccion("cotizacion");
-                              void testAPIAirConnect();
-                            }}
-                            disabled={
-                              btnPhase !== "idle" ||
-                              loading ||
-                              authLoading ||
-                              !accessToken ||
-                              airConnectLoading
-                            }
-                          >
-                            <span className="quote-btn-content">
-                              Generar Cotización
-                              <i className="ti ti-arrow-right"></i>
-                            </span>
-                            {btnPhase === "loading" && (
-                              <div className="quote-spinner-ring" />
-                            )}
-                          </button>
-                        ) : (
-                          <div className="quote-confirm-row">
-                            <span className="quote-confirm-dot">
-                              <i className="ti ti-check" />
-                            </span>
-                            <span className="quote-confirm-text">
-                              Cotización generada (
-                              {selectedAirConnectOffer.airline})
-                            </span>
-                            <button
-                              type="button"
-                              className="quote-confirm-download"
-                              onClick={() => {
-                                if (pdfFallbackRef.current) {
-                                  downloadPDFFromBase64(
-                                    pdfFallbackRef.current.base64,
-                                    pdfFallbackRef.current.filename,
-                                  );
-                                }
-                              }}
-                            >
-                              <i className="ti ti-download" />
-                              Descargar PDF
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+            {airConnect.isActive && (
+              <AirConnectSpainStep4Panel
+                isExw={airConnect.isExw}
+                exwPostalRetryActive={airConnect.exwPostalRetryActive}
+                loading={airConnect.loading}
+                error={airConnect.error}
+                quote={airConnect.quote}
+                pricedOffers={airConnect.pricedOffers}
+                step3Extra={airConnect.step3Extra}
+                selectedKey={airConnect.selectedKey}
+                onSelectOffer={airConnect.setSelectedKey}
+                postalCode={airConnect.postalCode}
+                onPostalCodeChange={airConnect.setPostalCode}
+                onRetryQuote={() => void airConnect.retryQuote()}
+                btnPhase={btnPhase}
+                onGenerateQuote={() => {
+                  setTipoAccion("cotizacion");
+                  void testAPIAirConnect();
+                }}
+                submitDisabled={
+                  btnPhase !== "idle" ||
+                  loading ||
+                  authLoading ||
+                  !accessToken ||
+                  airConnect.loading
+                }
+                onDownloadPdf={() => {
+                  if (pdfFallbackRef.current) {
+                    downloadPDFFromBase64(
+                      pdfFallbackRef.current.base64,
+                      pdfFallbackRef.current.filename,
+                    );
+                  }
+                }}
+              />
             )}
 
-            {!isAirConnectSpainScl && (
+            {!airConnect.isActive && (
               <div className="quote-submit-row mt-4">
                 <QuoteGeneratingMessage btnPhase={btnPhase} />
                 {btnPhase !== "done" ? (
